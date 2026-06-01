@@ -87264,7 +87264,7 @@ phases:
     agent: gate-reviewer
   - id: pi_model_map_draft_live_cli_channel_fix_20260601
     name: Fix live Pi inventory output-channel seam
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       failure_provenance: introduced_or_exposed_by_live_runtime
@@ -87438,6 +87438,87 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-01T11:25:42.052483+00:00'
+    done_at: '2026-06-01T11:32:19.336237+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - `design/pi-model-map-draft-helper.md` — Pi inventory data source, redirect-safe
+      stdout/stderr, unresolved/unavailable failure codes, and fixture/runtime verification
+      targets reviewed.
+
+      - `src/larva/shell/pi.py` — launcher subprocess handling and stdout/stderr separation
+      reviewed; no change needed there.
+
+      - `src/larva/shell/cli.py` — `larva pi` pass-through and `pi-model-map` dispatch/result
+      emission reviewed.
+
+      - `src/larva/shell/pi_model_map_cli.py` — root cause identified: `_load_pi_inventory`
+      parsed only `completed.stdout` after successful Pi exit.
+
+      - `tests/shell/test_pi_model_map_draft_contract.py` — protected redirect-safe/unresolved/write/no-guess
+      tests reviewed and extended.
+
+      - `tests/shell/test_pi_launcher_contract.py` and `tests/shell/test_pi_extension_real_runtime.py`
+      — launcher/runtime proof style reviewed.
+
+      - `INVAR.md` — Shell owns subprocess/I/O; no Core changes made.
+
+
+      ## Fix Receipt
+
+      - branch_commit: `56d19d00c3b0dcdcd510ab79728ca50ef2cdc7a7`
+
+      - main_merge_commit: `0b9b960`
+
+      - root_cause: `_load_pi_inventory` treated successful Pi stderr as diagnostics-only
+      and parsed only stdout; real Pi emitted inventory rows on stderr, producing
+      empty helper inventory.
+
+      - changed_files: `src/larva/shell/pi_model_map_cli.py`, `tests/shell/test_pi_model_map_draft_contract.py`.
+
+      - implementation: added `_parse_successful_pi_inventory(stdout, stderr)` and
+      routed successful Pi inventory parsing through it. On return code 0, it parses
+      available stdout/stderr inventory text; on nonzero, stderr remains diagnostic
+      and returns `LARVA_PI_MODELS_UNAVAILABLE` behavior.
+
+      - stderr_inventory_regression: added `test_successful_pi_inventory_rows_on_stderr_are_consumed`;
+      focused run included 4 passed; full contract run on main includes 16 passed.
+
+      - stdout_stderr_contract_proof: redirect-safe stdout test still passes; regression
+      asserts inventory header text is absent from helper stdout and report text remains
+      stderr.
+
+      - unresolved_fail_closed_proof: malformed and ambiguous non-interactive tests
+      still pass with `LARVA_PI_MODEL_MAP_UNRESOLVED` and no guessing.
+
+      - personal_file_ban_check: source scan found no `/Users/tefx/dotfiles/agent/models.yaml`
+      / scaffold path usage.
+
+      - provider_preference_ban_check: no provider-family preference table introduced.
+
+      - residual_live_proof_delegated_to: `pi_model_map_draft_live_cli_retest_20260601`.
+
+
+      ## Mainline Verification
+
+      - `uv run pytest tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_real_runtime.py -q` exit 0: `72 passed`.
+
+      - `uv run invar guard` exit 0: status passed; errors 0; warnings 0; doctest
+      passed.
+
+      - `git diff --check` exit 0; `git status --porcelain` clean.
+
+
+      ## checklist_receipt
+
+      All seven checklist items were PROVEN and toggled with `vectl_check` before
+      completion.
+
+
+      Commit hash(es): `56d19d00c3b0dcdcd510ab79728ca50ef2cdc7a7`'
   - id: pi_model_map_draft_live_cli_retest_20260601
     name: Retest live Pi current-registry model-map draft proof
     status: pending
