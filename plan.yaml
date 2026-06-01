@@ -91052,7 +91052,7 @@ phases:
       gaps_or_blockers: none"
   - id: pi_postspec_launcher_config_runtime_verify_20260602
     name: Verify launcher/config runtime and invar guard
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -91143,6 +91143,8 @@ phases:
     depends_on:
     - pi_postspec_launcher_config_residual_impl_20260602
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T17:03:35.906493+00:00'
   - id: pi_postspec_launcher_config_gate_20260602
     name: Gate launcher/config post-spec conformance
     status: pending
