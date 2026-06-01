@@ -92418,42 +92418,42 @@ phases:
       or bytes.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step including VT46, and `NOT READ: <reason>`
       only for legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] larva_subagent ToolResult wrapper mirrors task_id/persona_id/status/result_text/error
+      - [x] larva_subagent ToolResult wrapper mirrors task_id/persona_id/status/result_text/error
       exactly in details and top-level metadata, with isError derived from status.
 
-      - [ ] Every non-null task_id result content includes the documented resume footer;
+      - [x] Every non-null task_id result content includes the documented resume footer;
       null task_id results do not imply resume.
 
-      - [ ] larva_subagent_sessions(limit?) behavior matches default/max/invalid/cap/newest-first/details-only/no-sidecar/no-scan/no-alias
+      - [x] larva_subagent_sessions(limit?) behavior matches default/max/invalid/cap/newest-first/details-only/no-sidecar/no-scan/no-alias
       requirements.
 
-      - [ ] renderCall/onUpdate/renderResult produce row-local persona/mode/task/task_id/status/error/output
+      - [x] renderCall/onUpdate/renderResult produce row-local persona/mode/task/task_id/status/error/output
       visibility without changing parent footer.
 
-      - [ ] VT46 collapsed renderResult final view shows persona and terminal state.
+      - [x] VT46 collapsed renderResult final view shows persona and terminal state.
 
-      - [ ] VT46 expanded renderResult final view shows persona id, mode, full task,
+      - [x] VT46 expanded renderResult final view shows persona id, mode, full task,
       task_id when known, final status, error if any, final output, and resume footer
       as independent evidence fields.
 
-      - [ ] VT46 renderResult preserves parent `larva:` footer state and never overwrites
+      - [x] VT46 renderResult preserves parent `larva:` footer state and never overwrites
       it with child/resume footer content.
 
-      - [ ] VT46 renderResult does not introduce a widget dashboard or dashboard-like
+      - [x] VT46 renderResult does not introduce a widget dashboard or dashboard-like
       aggregate surface.
 
-      - [ ] Preview/truncation helper strips ANSI, collapses controls/newlines, NFC-normalizes,
+      - [x] Preview/truncation helper strips ANSI, collapses controls/newlines, NFC-normalizes,
       counts code points, and keeps ellipsis inside 120/80/200 bounds.
 
-      - [ ] Child Pi RPC/session behavior and resume validation from the design doc
+      - [x] Child Pi RPC/session behavior and resume validation from the design doc
       remain unchanged.'
     evidence_template: '## refs Read Confirmation
 
