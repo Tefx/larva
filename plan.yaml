@@ -85031,7 +85031,7 @@ phases:
     agent: gate-reviewer
   - id: pi_model_map_openrouter_prefix_cleanup_20260601
     name: Cleanup redundant OpenRouter Gemini exact model-map entry
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -85156,6 +85156,18 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-06-01T10:08:11.473366+00:00'
+    done_at: '2026-06-01T10:14:26.791897+00:00'
+    evidence: 'Operator-local config cleanup completed with no repo changes. Target
+      file `/Users/tefx/.pi/larva/model-map.json` changed from checksum `79a6232ed30393d1671072707db9f8638aefe3867817a56f5339a8b6b932c87d`
+      to `c0480416fc1530ff6f01f53bf2e8270b968a4c7fb59af3c273b9ca80188497c6`. Removed
+      exact key `openrouter/google/gemini-3.1-pro-preview`; after verification showed
+      `has_exact False`, `prefix_rules [{''from_prefix'': ''openrouter/'', ''to_provider'':
+      ''openrouter'', ''to_model_id_prefix'': ''''}]`, and required exact mappings
+      unchanged for `openai/gpt-5.5`, `ollama-cloud/glm-5.1`, `ollama-cloud/kimi-k2.6`,
+      and `ollama-cloud/minimax-m2.7`. Write set was only `/Users/tefx/.pi/larva/model-map.json`;
+      worktree had no repo changes. Evidence attested `/Users/tefx/dotfiles/agent/models.yaml`
+      and personal scaffold inventory were not read. Checklist receipt all PROVEN
+      and toggled before completion.'
   - id: pi_model_map_openrouter_prefix_retest_20260601
     name: Retest OpenRouter Gemini model-map prefix resolution
     status: pending
