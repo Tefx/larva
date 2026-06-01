@@ -192,6 +192,15 @@ Policy rules:
   is allowed minus denied tools.
 - There is no `ask` action.
 
+Startup and switch behavior differ only for Pi builds that do not expose the tool
+enumeration surface. During initial startup, an absent or unsupported enumerator
+uses a startup-tolerant empty baseline so Pi can launch. If startup reaches
+active-tool update but `setActiveTools` fails, startup leaves no active persona
+committed and shows startup unavailable with `LARVA_TOOL_ENUMERATION_FAILED`.
+For `/larva-persona` switching, genuine `getAllTools` failures or active-tool
+update failures return `LARVA_TOOL_ENUMERATION_FAILED` and preserve the previous
+active persona/model/tool state.
+
 The launcher does not parse this file. It passes the policy path to the Pi
 extension, and the extension owns JSON readability, shape validation, and commit
 behavior for startup, `/larva-persona` switches, and child session startup.

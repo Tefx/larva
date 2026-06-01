@@ -133,8 +133,14 @@ Launch failure rules:
   stderr and terminates startup with a non-zero exit instead of continuing as
   `larva: none`.
 - Policy tool names that are not currently registered in Pi are ignored, not
-  fatal. If Pi's tool enumeration API itself fails, initial startup is fatal with
-  `LARVA_TOOL_ENUMERATION_FAILED` using the same stderr and non-zero-exit rule.
+  fatal. During initial startup only, an absent or unsupported Pi tool
+  enumeration surface is tolerated by using a startup-tolerant empty baseline so
+  older Pi builds can still launch. If startup reaches tool activation but
+  `setActiveTools` fails, the extension must leave no active startup persona and
+  show startup unavailable with `LARVA_TOOL_ENUMERATION_FAILED` rather than
+  committing a false active persona. For in-session switching, genuine
+  `getAllTools` failures or active-tool update failures return
+  `LARVA_TOOL_ENUMERATION_FAILED` and preserve the previous active state.
 - If Pi rejects the requested model for initial `--persona`, the extension writes
   `larva pi: LARVA_MODEL_UNAVAILABLE: <message>` to stderr and terminates startup
   with a non-zero exit. For an in-session switch, it preserves the previous active
@@ -565,8 +571,13 @@ Policy contract:
 - Policy tool names are applied as exact string filters over Pi's currently
   registered model-facing tools. Names not present in the current Pi registry are
   ignored.
-- If Pi cannot enumerate model-facing tool names, the attempted commit fails with
-  `LARVA_TOOL_ENUMERATION_FAILED` and preserves the previous committed envelope.
+- If Pi cannot enumerate model-facing tool names, the attempted strict commit
+  fails with `LARVA_TOOL_ENUMERATION_FAILED` and preserves the previous committed
+  envelope. The only startup exception is an absent or unsupported Pi tool
+  enumeration surface during initial launch, which uses a startup-tolerant empty
+  baseline rather than failing before the first prompt. Startup active-tool update
+  failure leaves no active startup persona and exposes startup unavailable with
+  `LARVA_TOOL_ENUMERATION_FAILED`.
 
 Matching is exact string matching in the first design target. Wildcards,
 path-level rules, command-level bash rules, and project-level overrides are out
@@ -601,9 +612,10 @@ preserves the previous active state. For child startup, it returns a failed
 
 Tool filtering baseline:
 
-- On every successful persona commit, the extension enumerates Pi's current
+- On every successful strict persona commit, the extension enumerates Pi's current
   model-facing tools and treats that set as the unfiltered baseline for this
-  commit.
+  commit. During initial startup only, if the Pi runtime lacks a supported tool
+  enumeration surface, the extension may use a startup-tolerant empty baseline.
 - The target persona policy is applied to that baseline only. Prior Larva
   restrictions from an earlier persona commit do not carry over.
 - Missing configured tool-policy file: no extra Larva-Pi tool restriction; the
@@ -1517,15 +1529,20 @@ Command and hook contracts:
   followed by `pi.setModel(model)`. Missing slash, empty provider, empty model id,
   Pi registry miss, or `false` from `pi.setModel` maps to
   `LARVA_MODEL_UNAVAILABLE`.
-- Policy enforcement is two-stage. At every commit, the extension enumerates the
-  current Pi model-facing tools as that commit's baseline, applies the target
+- Policy enforcement is two-stage. At every strict commit, the extension enumerates
+  the current Pi model-facing tools as that commit's baseline, applies the target
   persona allow/deny policy to that baseline, and calls
   `pi.setActiveTools(filteredTools)` so disallowed tools are not offered to the
   model. Missing policy means `filteredTools` equals the current baseline. Prior
   Larva restrictions from an earlier persona commit do not carry over. At
   tool-call time, `tool_call` interception denies any disallowed tool that still
   appears. If enumeration or active-tool update fails, commit fails with
-  `LARVA_TOOL_ENUMERATION_FAILED` and preserves prior state.
+  `LARVA_TOOL_ENUMERATION_FAILED` and preserves prior state. During initial
+  startup only, absence of a supported Pi enumeration surface is treated as a
+  startup-tolerant empty baseline. If the startup active-tool update fails, the
+  startup degrades to no committed active persona with startup unavailable status;
+  genuine `getAllTools` failures and active-tool update failures remain
+  fail-closed for strict in-session switching.
 - If `tool_call` denies `larva_subagent`, Pi observes `ToolPolicyDecision` with
   `action: "deny"` and `LARVA_TOOL_DENIED`; the custom tool handler is not
   invoked and no `LarvaSubagentResult` is produced.
@@ -1670,7 +1687,7 @@ architecture_basis:
     Pi interactive classification: "Launcher scan of forwarded pi_args for exact print/json/mode markers"
     Pi model map: "~/.pi/larva/model-map.json or absolute LARVA_PI_MODEL_MAP_FILE override, adapter-local, parsed only by Pi extension"
     Pi tool rules: "~/.pi/larva/tool-policy.json or explicit absolute LARVA_PI_TOOL_POLICY_FILE override only; no implicit legacy ~/.pi/tool-policy.json fallback; adapter-local, parsed only by Pi extension"
-    Pi runtime tool baseline: "Current Pi model-facing tools enumerated by the extension at each persona commit"
+    Pi runtime tool baseline: "Current Pi model-facing tools enumerated by the extension at each strict persona commit; initial startup may use an empty baseline when Pi lacks a supported enumeration surface"
     child session root: "~/.pi/larva/child-sessions or absolute LARVA_PI_CHILD_SESSION_DIR test override"
     child session identity: "Pi child session file path returned as task_id"
     child session validation: "Canonical readable .jsonl path under child session root"
@@ -1693,7 +1710,7 @@ architecture_basis:
     interactive_mode: "LARVA_PI_INTERACTIVE_TUI from exact -p/--print/--json/--mode detector; non-interactive wins conflicts"
     switch: "/larva-persona <id>, next model invocation, atomic commit"
     projection: "before_agent_start prompt composition + pi.setModel(model), committed at launch/switch/child startup"
-    policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
+    policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; initial startup tolerates absent/unsupported enumeration surfaces with an empty baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
     persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent"
     subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
     subagent_sessions_helper: "optional larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, or provenance proof"
@@ -1729,7 +1746,7 @@ architecture_basis:
       - "Parent Pi extension keeps a process-local recent-session index capped at 25 entries only for optional resume UX."
     lifecycle_ordering:
       - "Launcher preflights Larva-owned arguments, extension path, real Pi executable, extension flag, Larva CLI argv prefix, interactive classification, and initial persona id only."
-      - "Extension parses active-target policy shape, selects model, enumerates the current Pi model-facing tool baseline, applies target policy, ignores missing policy tool names, sets active tools, and commits persona envelope only after checks pass."
+      - "Extension parses active-target policy shape, selects model, enumerates the current Pi model-facing tool baseline for strict commits, applies target policy, ignores missing policy tool names, sets active tools, and commits persona envelope only after checks pass; initial startup may substitute an empty baseline only when the Pi enumeration surface is absent or unsupported."
       - "Child extension performs child persona/model/policy initialization before replying to get_state."
       - "Subagent child process discovers sessionFile via RPC get_state and validates it before exposing task_id."
       - "Resume marks task_id active before starting the child process and clears it after completion, failure, or cancellation."
@@ -1901,9 +1918,13 @@ Implementation gates must prove these observable behaviors:
    `--extension` when supported. If neither flag is supported, it exits before Pi
    starts with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED` and does not write Pi settings.
 6. Initial `--persona` commit runs during extension initialization before first
-   user prompt, selector, or `larva: none` status. Malformed/unavailable model,
-   invalid policy shape, or failed tool enumeration writes
-   `larva pi: <ERROR_CODE>:` to stderr and makes Pi exit non-zero.
+   user prompt, selector, or `larva: none` status. Malformed/unavailable model or
+   invalid policy shape writes `larva pi: <ERROR_CODE>:` to stderr and makes Pi
+   exit non-zero. An absent or unsupported Pi tool enumeration surface at startup
+   uses the startup-tolerant empty baseline instead of failing. Startup
+   `setActiveTools` failure degrades to no committed startup persona with startup
+   unavailable status. Genuine `getAllTools` or active-tool update failures remain
+   `LARVA_TOOL_ENUMERATION_FAILED` for strict in-session switching.
 7. `/larva-persona <valid>` commits one `PersonaEnvelope`, calls
    `ctx.modelRegistry.find(...)` plus `pi.setModel(...)`, and status shows the
    committed persona id.
@@ -1927,8 +1948,8 @@ Implementation gates must prove these observable behaviors:
 13. Model strings parse at the first slash: `openrouter/google/gemini` becomes
     provider `openrouter` and model id `google/gemini`; missing slash, empty
     provider, empty model id, unavailable model, invalid target policy shape, or
-    failed tool enumeration returns `ok: false` with the documented error and
-    leaves the previous envelope unchanged.
+    failed strict tool enumeration returns `ok: false` with the documented error
+    and leaves the previous envelope unchanged.
 14. Missing policy file and missing active target persona policy entry do not add
     extra tool restrictions: the commit uses the current Pi model-facing tool
     baseline, and prior Larva restrictions from an earlier persona do not carry
