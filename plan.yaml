@@ -91311,9 +91311,17 @@ phases:
       context between Larva marker blocks.
 
       </risk_probes>'
-    verification: '- [ ] /larva-persona completion matches case-insensitive substring
-      ordering, cache TTL/expiry/in-flight sharing, selector/no-arg mode rules, and
-      null/delegate behavior on list failure.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step, and `NOT READ: <reason>` only for
+      legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] /larva-persona completion matches case-insensitive substring ordering,
+      cache TTL/expiry/in-flight sharing, selector/no-arg mode rules, and null/delegate
+      behavior on list failure.
 
       - [ ] @persona mention provider handles only documented token classes, preserves/merges
       Pi file-reference candidates, dedupes by exact value, and never supports raw
