@@ -92118,8 +92118,61 @@ phases:
 
       - [ ] NEEDS_TEST, UNPROVEN, and UNCERTAIN_BLOCKING items include closure paths.
 
+      - [ ] VT46 renderResult rows independently cover collapsed final view, expanded
+      final view fields, resume footer behavior, parent `larva:` footer preservation,
+      and no-widget-dashboard prohibition.
+
       - [ ] Audit explicitly checks no orphan requirements and no generic ''tested
       it works'' proof substitutions.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step,
+      including VT42-VT48 and VT46 renderResult passages>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for verifier>
+
+      - no_change_reason: <required; verifier should normally report no product changes>
+
+
+      ## Full Spec Conformance Receipt
+
+      - requirements_register: <complete register or artifact ref>
+
+      - evidence_table: <7-verdict evidence table or artifact ref>
+
+      - orphan_requirement_check: <result and evidence>
+
+      - closure_paths: <NEEDS_TEST/UNPROVEN/UNCERTAIN_BLOCKING closure paths>
+
+
+      ## VT46 renderResult Conformance Rows
+
+      - vt46_collapsed_final_view: <requirement ref | evidence ref | verdict>
+
+      - vt46_expanded_fields: <persona id, mode, full task, task_id when known, final
+      status, error if any, final output, resume footer | evidence refs | verdicts>
+
+      - vt46_parent_larva_footer_preserved: <evidence ref | verdict>
+
+      - vt46_no_widget_dashboard: <evidence ref | verdict>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_run: <raw command lines and exit codes, if any>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
