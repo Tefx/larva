@@ -90753,6 +90753,41 @@ phases:
 
       - [ ] Matrix identifies which old Pi phases are covered and which residual implementation/proof
       remains.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none`>
+
+      - no_change_reason: <required when no files changed>
+
+
+      ## Requirement Traceability Receipt
+
+      - matrix_artifact: <paste or reference the completed requirement-to-checklist
+      traceability matrix>
+
+      - requirements_covered: <launcher/config requirement families covered>
+
+      - dispositions: <OWNED/DEFERRED/EXCLUDED/AMBIGUOUS counts with rationale>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_or_queries: <commands/searches/docs sections inspected, if any>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
