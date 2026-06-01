@@ -92203,9 +92203,17 @@ phases:
       input acceptance, no sidecars/legacy fallback/raw @<id>/prompt catalogue dumps.
 
       </risk_probes>'
-    verification: '- [ ] Requirements register covers every material requirement family
-      from the design doc, README, implementation handoff, architecture basis change
-      notes, and verification targets.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step including VT46, and `NOT READ: <reason>`
+      only for legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] Requirements register covers every material requirement family from the
+      design doc, README, implementation handoff, architecture basis change notes,
+      and verification targets.
 
       - [ ] Evidence table uses CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE
       verdicts.
