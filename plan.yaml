@@ -85263,6 +85263,12 @@ phases:
       - tests remain expected-red before implementation: <satisfied/failed/blocked/unobserved>
 
       - no personal scaffold or provider preference encoded: <satisfied/failed/blocked/unobserved>'
+    refs:
+    - design/pi-model-map-draft-helper.md
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    - src/larva/shell/pi.py
+    - INVAR.md
     depends_on:
     - pi_model_map_draft_contract_20260601
     agent: python-executor
