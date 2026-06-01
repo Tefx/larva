@@ -86812,7 +86812,7 @@ phases:
       all accepted and toggled before completion.'
   - id: pi_subagent_toolresult_adapter_impl_20260601
     name: Complete Pi adapter-boundary ToolResult wrapper for larva_subagent
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -86944,6 +86944,8 @@ phases:
     depends_on:
     - pi_subagent_toolresult_red_tests_20260601
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T09:06:43.483957+00:00'
   - id: pi_subagent_toolresult_runtime_smoke_20260601
     name: Extend Pi extension runtime smoke for renderer-safe tool result shape
     status: pending
