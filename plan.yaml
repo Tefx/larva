@@ -87067,7 +87067,7 @@ phases:
   - id: pi_subagent_toolresult_interactive_crash_proof_20260601
     name: Prove Pi interactive/RPC path no longer crashes on larva_subagent result
       rendering
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
@@ -87164,6 +87164,26 @@ phases:
     agent: client-runtime-verifier
     claimed_by: client-runtime-verifier
     claimed_at: '2026-06-01T09:27:21.349238+00:00'
+    done_at: '2026-06-01T09:32:36.083006+00:00'
+    evidence: 'Verify-only client/runtime proof completed; no files changed and no
+      merge required. Refs confirmation cited `contrib/pi-extension/larva.ts` adapter
+      wrapper (`content`, `details`, `isError`, registered handler/execute) and `scripts/pi-extension-runtime-smoke.mjs`
+      `tool-result-renderer-shape` path. Local Pi environment recorded: `/opt/homebrew/bin/pi`,
+      version `0.78.0`. Runtime proof used fixture-backed extension smoke plus installed
+      Pi renderer helper because full live TUI automation was unavailable and the
+      step explicitly permits the narrowest fixture-backed Pi event/render path. Mainline
+      verification: `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+      exited green and showed registered `larva_subagent` plus success and failure/cancel
+      result cases with renderer-safe content and preserved details; `node -e import(file:///opt/homebrew/.../render-utils.js)`
+      successfully called `getTextOutput` on a ToolResult and returned `LARVA_NO_ACTIVE_PERSONA:
+      No active parent Larva persona.`. Evidence explicitly searched/recorded absence
+      of `getTextOutput`, `content.filter`, `Cannot read properties of undefined`,
+      and `uncaughtException`; meaningful user-visible text came from ToolResult `content`.
+      Clarified closure: proof_gap `NON_BLOCKING`, headline `PASS`, verdict `PASS`,
+      blockers `[]`, because fixture-backed renderer path satisfies the step''s fallback
+      clause; unobserved full live TUI automation is disclosed with downstream owner
+      if strict terminal UI coverage is later required. Checklist receipt all PROVEN
+      and toggled before completion.'
   - id: pi_subagent_toolresult_docs_20260601
     name: Document semantic LarvaSubagentResult versus Pi ToolResult wrapper
     status: done
