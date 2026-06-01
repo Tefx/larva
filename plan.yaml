@@ -94320,3 +94320,150 @@ phases:
     depends_on:
     - pi_postspec_full_runtime_gate_20260602
     agent: frontend-engineer
+  - id: pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
+    name: Retest initial startup tool enumerator fail-closed blocker
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      Independence Level: L2
+
+      PROOF ARTIFACT: Independent runtime/contract retest proving the initial persona
+      startup tool enumerator fail-closed blocker is closed and the finalization gate
+      may reopen.
+
+
+      Scope:
+
+      - Rerun the exact failed broad Pi contract command from `pi_postspec_full_runtime_gate_20260602`.
+
+      - Rerun the exact failed B1-B7 regression probe command from `pi_postspec_full_runtime_gate_20260602`.
+
+      - Rerun relevant supplemental runtime, autocomplete, VT46, and invar checks
+      needed to prove the fix did not regress already-green proof families.
+
+      - Produce a behavioral proof register with blockers empty and `gate_open_allowed:
+      true` only if all blocker-class obligations are proven.
+
+
+      AUTHORITATIVE REFS TO READ:
+
+      - `design/pi-coding-agent-integration.md`
+
+      - `contrib/pi-extension/README.md`
+
+      - `tests/shell/test_pi_reported_failures_expected_red.py`
+
+      - `tests/shell/test_pi_extension_contract.py`
+
+      - `contrib/pi-extension/larva.ts`
+
+
+      <side_effect_budget>
+
+      Allowed: run tests/smoke/guard and collect raw proof. Forbidden: code edits,
+      docs edits, changing expected results, skipping product failures without environment
+      evidence, or declaring gate_open_allowed true with blockers or unobserved blocker-class
+      rows.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - The exact formerly failing test must be green inside both broad and B1-B7
+      command families, not only in isolation.
+
+      - B5 atomicity must remain intact while startup absent/unsupported enumerator
+      behavior is non-fail-closed.
+
+      - Supplemental runtime/autocomplete/VT46/invar proof must remain green or have
+      explicit environment-supported non-blocking disposition.
+
+      </risk_probes>'
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per authoritative ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`,
+      `tests/shell/test_pi_reported_failures_expected_red.py`, `tests/shell/test_pi_extension_contract.py`,
+      `contrib/pi-extension/larva.ts`) and key passages or `NOT READ: <reason>`.
+
+      - [ ] Raw output from broad Pi contract command is included and green: `./.venv/bin/python
+      -m pytest tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_model_map.py tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py tests/shell/test_pi_reported_failures_expected_red.py
+      -v`.
+
+      - [ ] Raw output from B1-B7 regression probe command is included and green:
+      `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim
+      tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path
+      tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag
+      tests/shell/test_pi_launcher_contract.py::test_launcher_interactive_tui_classification
+      tests/shell/test_pi_launcher_contract.py::test_bridge_uses_larva_cli_argv_json
+      tests/shell/test_pi_launcher_contract.py::test_bridge_list_uses_larva_cli_argv_json
+      tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors
+      tests/shell/test_pi_reported_failures_expected_red.py -v`.
+
+      - [ ] Raw output from supplemental Pi runtime test is included and green: `./.venv/bin/python
+      -m pytest tests/shell/test_pi_extension_real_runtime.py -v`.
+
+      - [ ] Raw output from autocomplete smoke proof is included and remains green
+      or has environment-supported non-blocking disposition.
+
+      - [ ] Raw output from VT46 targeted proof is included and remains green or has
+      environment-supported non-blocking disposition.
+
+      - [ ] Raw output from `invar guard` is included and green.
+
+      - [ ] Behavioral proof register includes `blockers: []` and `gate_open_allowed:
+      true`, with no `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` blocker-class
+      rows.
+
+      - [ ] checklist_receipt maps each checklist item to satisfied/failed/blocked/unobserved.'
+    evidence_template: "## Verification Report\n**Tester**: integration-verifier (independent\
+      \ retest)\n**Scope**: initial startup tool enumerator fail-closed blocker and\
+      \ Pi finalization runtime proof\n**Independence Level**: L2\n\n## refs Read\
+      \ Confirmation (MANDATORY)\nFor each ref in this step:\n- design/pi-coding-agent-integration.md\
+      \ — <key passage or NOT READ: reason>\n- contrib/pi-extension/README.md — <key\
+      \ passage or NOT READ: reason>\n- tests/shell/test_pi_reported_failures_expected_red.py\
+      \ — <key passage or NOT READ: reason>\n- tests/shell/test_pi_extension_contract.py\
+      \ — <key passage or NOT READ: reason>\n- contrib/pi-extension/larva.ts — <key\
+      \ passage or NOT READ: reason>\n\n## Raw Command Output\n### Broad Pi contract\
+      \ command\ncommand: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py\
+      \ tests/shell/test_pi_extension_contract.py tests/shell/test_pi_model_map.py\
+      \ tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_extension_tool_policy_static.py\
+      \ tests/shell/test_pi_postspec_subagent_ux_expected_red.py tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -v`\nraw_output: |\n\
+      \  <paste>\nexit_code: <code>\n\n### B1-B7 regression probe command\ncommand:\
+      \ `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_interactive_tui_classification\
+      \ tests/shell/test_pi_launcher_contract.py::test_bridge_uses_larva_cli_argv_json\
+      \ tests/shell/test_pi_launcher_contract.py::test_bridge_list_uses_larva_cli_argv_json\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -v`\nraw_output: |\n\
+      \  <paste>\nexit_code: <code>\n\n### Supplemental Pi runtime\ncommand: `./.venv/bin/python\
+      \ -m pytest tests/shell/test_pi_extension_real_runtime.py -v`\nraw_output: |\n\
+      \  <paste>\nexit_code: <code>\n\n### Autocomplete smoke\ncommand: <exact autocomplete\
+      \ smoke command>\nraw_output: |\n  <paste>\nexit_code: <code>\n\n### VT46 targeted\
+      \ proof\ncommand: <exact VT46 command>\nraw_output: |\n  <paste>\nexit_code:\
+      \ <code>\n\n### Invar guard\ncommand: <exact invar guard command>\nraw_output:\
+      \ |\n  <paste>\nexit_code: <code>\n\n## Behavioral Proof Register\n| requirement_ref\
+      \ | behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path\
+      \ | gate_decision_basis |\n| --- | --- | --- | --- | --- | --- | --- |\n| failing\
+      \ startup enumerator blocker | Initial persona startup does not fail closed\
+      \ on absent/unsupported enumerator and does not leave `LARVA_TOOL_ENUMERATION_FAILED`\
+      \ | broad + B1-B7 commands green | <evidence ref> | PROVEN|BLOCKED|UNPROVEN\
+      \ | <path> | <basis> |\n| B5 atomicity | Genuine `getAllTools`/active-tool update\
+      \ failures preserve `LARVA_TOOL_ENUMERATION_FAILED`, avoid empty active tools,\
+      \ and preserve prior state | B1-B7/probe evidence | <evidence ref> | PROVEN|BLOCKED|UNPROVEN\
+      \ | <path> | <basis> |\n\nblockers: []\ngate_open_allowed: true|false\n\n##\
+      \ checklist_receipt\n- <checklist item>: satisfied|failed|blocked|unobserved\
+      \ — <evidence ref>"
+    depends_on:
+    - pi_postspec_initial_startup_tool_enumerator_failclosed_fix_20260602
+    agent: integration-verifier
