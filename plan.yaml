@@ -93698,35 +93698,35 @@ phases:
 
       5. Session helper evidence that relies on sidecars, filesystem scans, aliases,
       or unbounded detail loading.'
-    verification: '- [ ] `## refs Read Confirmation` cites key passages for VT39,
+    verification: '- [x] `## refs Read Confirmation` cites key passages for VT39,
       VT42-VT48, `getAllTools` failure semantics, slash-status runtime proof, failure-path
       notification behavior, and `larva_subagent_sessions(limit?)`.
 
-      - [ ] Full conformance pytest suite that previously reported `3 failed, 76 passed`
+      - [x] Full conformance pytest suite that previously reported `3 failed, 76 passed`
       is green, or any remaining expected-xfail is exact, authority-cited, and includes
       a closure path.
 
-      - [ ] Slash-status runtime smoke produces status commit and notify evidence
+      - [x] Slash-status runtime smoke produces status commit and notify evidence
       without prompt timeouts.
 
-      - [ ] Failure-path runtime smoke produces Larva error notification evidence
+      - [x] Failure-path runtime smoke produces Larva error notification evidence
       without prompt timeouts.
 
-      - [ ] `larva_subagent_sessions` helper contract no longer times out and proves
+      - [x] `larva_subagent_sessions` helper contract no longer times out and proves
       invalid limit, success, no sidecar, no filesystem scan, no alias, and details-only
       behavior.
 
-      - [ ] `getAllTools` failure maps to `LARVA_TOOL_ENUMERATION_FAILED`, does not
+      - [x] `getAllTools` failure maps to `LARVA_TOOL_ENUMERATION_FAILED`, does not
       silently commit empty tools, and preserves prior active-tool state.
 
-      - [ ] Child stderr whitelist exactly matches the design-authorized family or
+      - [x] Child stderr whitelist exactly matches the design-authorized family or
       a documented valid deviation is cited and tested.
 
-      - [ ] VT47 editor-autocomplete runtime hook proof is PROVEN, or explicitly classified
+      - [x] VT47 editor-autocomplete runtime hook proof is PROVEN, or explicitly classified
       as design-authorized supplemental proof with non-blocking rationale and environment
       limitation.
 
-      - [ ] No PersonaSpec/opifex/shared schema changes, no legacy fallback/raw `@<id>`/prompt
+      - [x] No PersonaSpec/opifex/shared schema changes, no legacy fallback/raw `@<id>`/prompt
       catalogue/sidecars/widget dashboard were introduced.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
