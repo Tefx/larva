@@ -84582,7 +84582,7 @@ phases:
       side effects; no artifacts modified.'
 - id: pi-model-map-runtime-and-autocomplete-2026-06-01
   name: Pi Persona Autocomplete Substring Cache and Model Map Proof 2026-06-01
-  status: pending
+  status: locked
   gate: 'Phase accepted only when docs, implementation, tests, runtime model-map proof,
     client/runtime autocomplete proof, invar guard, and independent gate evidence
     show: case-insensitive substring persona matching; prefix matches ranked before
@@ -84598,9 +84598,11 @@ phases:
     Tab-driven through Pi command completer/narrow TUI provider and delegates non-/larva-persona
     input to Pi base provider. Runtime model-map work is verification-only for the
     existing user-authorized ~/.pi/larva/model-map.json unless an executor returns
-    explicit evidence that a new user authorization is required.'
+    explicit evidence that a new user authorization is required. This phase is gated
+    behind pi-tool-policy-no-legacy-2026-06-01 so downstream Pi work cannot inherit
+    superseded legacy tool-policy fallback semantics.'
   depends_on:
-  - pi-adapter-local-model-map-config-2026-06-01
+  - pi-tool-policy-no-legacy-2026-06-01
   steps:
   - id: pi_persona_autocomplete_contract_docs_20260601
     name: Freeze autocomplete and model-map docs contract
