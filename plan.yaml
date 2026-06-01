@@ -92072,8 +92072,16 @@ phases:
       a dashboard outside row-local custom rendering.
 
       </risk_probes>'
-    verification: '- [ ] All subagent UX requirements have positive evidence or explicit
-      blocking remediation.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step including VT46, and `NOT READ: <reason>`
+      only for legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] All subagent UX requirements have positive evidence or explicit blocking
+      remediation.
 
       - [ ] Runtime proof is present for user-observable ToolResult/rendering surfaces;
       source-only proof is insufficient.
