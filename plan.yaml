@@ -92609,7 +92609,7 @@ phases:
       none'
   - id: pi_postspec_subagent_ux_runtime_proof_20260602
     name: Prove subagent ToolResult, session helper, and rendering runtime behavior
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -92744,6 +92744,89 @@ phases:
     agent: client-runtime-verifier
     claimed_by: client-runtime-verifier
     claimed_at: '2026-06-01T18:23:21.842019+00:00'
+    done_at: '2026-06-01T18:31:12.665879+00:00'
+    evidence: 'status: SUCCESS
+
+      worker_task_id: ses_17b91c85bffeRBbVYzL4L05kM5
+
+      merge_result: branch had no code changes; `git merge --squash vectl/step-pi_postspec_subagent_ux_runtime_proof_20260602`
+      reported already up to date.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — verified VT46/runtime visibility requirements
+      for renderCall/onUpdate/renderResult, collapsed and expanded final render views,
+      parent `larva:` footer preservation, no widget dashboard, and process-local
+      `larva_subagent_sessions(limit?)` behavior.
+
+      - contrib/pi-extension/README.md — verified supplemental runtime proof requirement
+      beyond source/Invar, ToolResult wrapper fields, visible resume footer, sessions
+      helper limits/details-only shape, and bounded rendering previews.
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: none
+
+      - no_change_reason: verification-only runtime proof; worker and mainline produced
+      no code changes for this proof step.
+
+
+      ## Client Runtime Receipt
+
+      - surface_class: Pi extension ToolResult/rendering/session helper surface.
+
+      - worker runtime proof: expected-red UX suite passed (4 passed), contract/runtime
+      suite passed (70 passed), failure-path smoke showed status evidence, supplemental
+      harness proved success/failure/cancel/error paths, visible resume footer, `larva_subagent_sessions`
+      default/max/invalid/details-only behavior, renderCall/onUpdate/renderResult,
+      VT46 collapsed/expanded views, parent footer preservation, no dashboard, and
+      ANSI/control/Unicode/ellipsis truncation behavior.
+
+
+      ## Mainline final-state verification
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      -q` → exit 0; 4 passed in 11.31s.
+
+      - `uv run --group dev pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -q` → exit 0; 68 passed, 2 xfailed in 49.59s. Xfails are expected runtime-environment
+      skips, not blocking failures.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path` → exit
+      0; uiRequests include `setStatus` entries with `statusKey`/`statusText` and
+      expected error notifications for missing/unparseable persona paths.
+
+      - `uv run --group dev invar guard --changed` → exit 0; status passed, files_checked
+      0, errors 0.
+
+
+      ## Behavioral proof / closure fields
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+      - uncertainty_sources: []
+
+
+      ## Checklist receipt
+
+      All ten checklist obligations were toggled by orchestrator: refs confirmation,
+      no-change/receipts/blockers, runtime success/failure/cancel/error paths, visible
+      resume footer, sessions helper shape, renderCall/onUpdate/renderResult plus
+      parent footer, VT46 collapsed and expanded views, no footer overwrite/dashboard,
+      and raw command/artifact captures.
+
+
+      ## Gaps / blockers
+
+      none'
   - id: pi_postspec_subagent_ux_gate_20260602
     name: Gate subagent sessions and rendering UX
     status: pending
