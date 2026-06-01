@@ -94,6 +94,21 @@ type LarvaSubagentToolResult = LarvaSubagentResult & {
   details: LarvaSubagentResult;
   isError: boolean;
 };
+type RecentSubagentSession = {
+  task_id: string;
+  persona_id: string;
+  last_status: LarvaSubagentResult["status"];
+  sequence: number;
+};
+type LarvaSubagentSessionsResult = {
+  content: PiTextContent[];
+  details: {
+    status: "success" | "failed";
+    sessions: RecentSubagentSession[];
+    error: LarvaError | null;
+  };
+  isError: boolean;
+};
 
 type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
 type CommandOptions = {
@@ -122,6 +137,8 @@ type ToolDefinition<Input, Output> = {
     onUpdate?: (update: unknown) => void,
     ctx?: PiContext,
   ) => Promise<Output>;
+  renderCall?: (input: Input) => string | { text: string };
+  renderResult?: (result: Output, options?: { expanded?: boolean; input?: Input }) => string | { text: string };
 };
 type SelectorOption = { id: string; label: string; description?: string };
 type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string };
@@ -137,7 +154,7 @@ type PiApi = {
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
-  registerTool?: (tool: ToolDefinition<LarvaSubagentInput, LarvaSubagentToolResult>) => void;
+  registerTool?: <Input, Output>(tool: ToolDefinition<Input, Output>) => void;
   on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown) => void;
 };
 type PiContext = PiApi & {
@@ -168,6 +185,8 @@ const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona)
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const state: ActiveState = { envelope: null, activeTools: new Set<string>() };
 const activeTaskIds: Set<string> = new Set<string>();
+const recentSubagentSessions: RecentSubagentSession[] = [];
+let recentSubagentSessionSequence = 0;
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
@@ -190,7 +209,12 @@ async function setLarvaStatus(ctx: PiContext, statusText: string): Promise<void>
   const setter = ctx.ui?.setStatus as ((keyOrStatus: string, status?: string) => void | Promise<void>) | undefined;
   if (!setter) return;
   if (setter.length >= 2) {
+    const footerValue = statusText.startsWith("larva: ") ? statusText.slice("larva: ".length) : statusText;
     await setter("larva", statusText);
+    if (footerValue !== statusText) {
+      await setter("larva", footerValue);
+      await setter("larva", statusText);
+    }
     return;
   }
   await setter(statusText);
@@ -870,13 +894,148 @@ function larvaSubagentResultText(result: LarvaSubagentResult): string {
   return result.status === "cancelled" ? "Larva subagent was cancelled." : "Larva subagent failed.";
 }
 
+const ANSI_ESCAPE_RE = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const CONTROL_RE = /[\p{Cc}\p{Cf}]+/gu;
+
+function visibleText(value: string): string {
+  return value.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(CONTROL_RE, " ").replace(/ {2,}/g, " ").trim();
+}
+
+function boundedVisible(value: string, limit: number): string {
+  const normalized = visibleText(value);
+  const codePoints = Array.from(normalized);
+  if (codePoints.length <= limit) return normalized;
+  if (limit <= 1) return "…".slice(0, limit);
+  return `${codePoints.slice(0, limit - 1).join("")}…`;
+}
+
+function boundedVisibleSuffix(value: string, limit: number): string {
+  const normalized = visibleText(value);
+  const codePoints = Array.from(normalized);
+  if (codePoints.length <= limit) return normalized;
+  if (limit <= 1) return "…".slice(0, limit);
+  return `…${codePoints.slice(-(limit - 1)).join("")}`;
+}
+
+function resumeFooter(result: LarvaSubagentResult): string {
+  if (result.task_id === null) return "";
+  return [
+    "---",
+    "Larva subagent session:",
+    `persona_id: ${result.persona_id}`,
+    `task_id: ${result.task_id}`,
+    "reuse: pass this exact task_id to larva_subagent",
+  ].join("\n");
+}
+
+function withResumeFooter(result: LarvaSubagentResult): string {
+  const base = larvaSubagentResultText(result);
+  const footer = resumeFooter(result);
+  return footer.length > 0 ? `${base}\n${footer}` : base;
+}
+
 function wrapLarvaSubagentToolResult(result: LarvaSubagentResult): LarvaSubagentToolResult {
   return {
     ...result,
-    content: [{ type: "text", text: larvaSubagentResultText(result) }],
+    content: [{ type: "text", text: withResumeFooter(result) }],
     details: result,
     isError: result.status !== "success",
   };
+}
+
+function recordRecentSubagentSession(result: LarvaSubagentResult): void {
+  if (result.task_id === null) return;
+  recentSubagentSessionSequence += 1;
+  recentSubagentSessions.push({
+    task_id: result.task_id,
+    persona_id: result.persona_id,
+    last_status: result.status,
+    sequence: recentSubagentSessionSequence,
+  });
+  while (recentSubagentSessions.length > 25) recentSubagentSessions.shift();
+}
+
+function parseSessionsLimit(input: unknown): number | LarvaError {
+  const limit = isRecord(input) && input.limit !== undefined ? input.limit : 10;
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 25) {
+    return error("LARVA_BAD_INPUT", "limit must be an integer from 1 to 25.");
+  }
+  return limit;
+}
+
+function larva_subagent_sessions(input: unknown): LarvaSubagentSessionsResult {
+  const limit = parseSessionsLimit(input);
+  if (isLarvaError(limit)) {
+    return {
+      content: [{ type: "text", text: `${limit.code}: ${limit.message}` }],
+      details: { status: "failed", sessions: [], error: limit },
+      isError: true,
+    };
+  }
+  const sessions = [...recentSubagentSessions]
+    .sort((left, right) => right.sequence - left.sequence)
+    .slice(0, limit);
+  const summary = sessions.length === 0
+    ? "Recent Larva subagent sessions: none"
+    : `Recent Larva subagent sessions: ${sessions.map((session) => `${session.sequence}:${session.persona_id}:${session.last_status}`).join(", ")}`;
+  return {
+    content: [{ type: "text", text: summary }],
+    details: { status: "success", sessions, error: null },
+    isError: false,
+  };
+}
+
+function subagentMode(input: LarvaSubagentInput): "new" | "resume" {
+  return typeof input.task_id === "string" && input.task_id.trim().length > 0 ? "resume" : "new";
+}
+
+function renderLarvaSubagentCall(input: LarvaSubagentInput): { text: string } {
+  const personaId = typeof input.persona_id === "string" && input.persona_id.trim().length > 0 ? visibleText(input.persona_id) : "";
+  const task = typeof input.task === "string" ? input.task : "";
+  const mode = subagentMode(input);
+  const header = `larva_subagent -> ${personaId} [${mode}]`;
+  if (mode === "resume" && typeof input.task_id === "string") {
+    return { text: `${header}\ntask_id: ${boundedVisibleSuffix(input.task_id, 80)}\n${boundedVisible(task, 120)}` };
+  }
+  const separator = " ";
+  const availableForTask = Math.max(1, 120 - Array.from(header).length - separator.length);
+  return { text: `${header}${separator}${boundedVisible(task, availableForTask)}` };
+}
+
+function progressUpdate(input: LarvaSubagentInput, phase: string, taskId?: string | null): { text: string; details: Record<string, string | null> } {
+  const personaId = typeof input.persona_id === "string" ? visibleText(input.persona_id) : "";
+  const taskPreview = boundedVisible(typeof input.task === "string" ? input.task : "", 120);
+  const details = {
+    persona_id: personaId,
+    mode: subagentMode(input),
+    task_preview: taskPreview,
+    phase,
+    task_id: taskId ?? (typeof input.task_id === "string" ? input.task_id : null),
+  };
+  return {
+    text: boundedVisible(`larva_subagent ${phase}: ${personaId} [${details.mode}] ${taskPreview}`, 200),
+    details,
+  };
+}
+
+function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { expanded?: boolean; input?: LarvaSubagentInput }): { text: string } {
+  const details = result.details ?? result;
+  const terminal = details.status === "success" ? "completed" : details.status;
+  if (!options?.expanded) return { text: `${details.persona_id} ${terminal}` };
+  const input = options.input ?? {};
+  const mode = subagentMode(input);
+  const lines = [
+    `persona_id: ${details.persona_id}`,
+    `mode: ${mode}`,
+    `task: ${typeof input.task === "string" ? input.task : ""}`,
+  ];
+  if (details.task_id !== null) lines.push(`task_id: ${details.task_id}`);
+  lines.push(`status: ${details.status}`);
+  if (details.error) lines.push(`error: ${details.error.code}: ${details.error.message}`);
+  lines.push(`output: ${details.result_text}`);
+  const footer = resumeFooter(details);
+  if (footer.length > 0) lines.push(footer);
+  return { text: lines.join("\n") };
 }
 
 function normalizeString(value: unknown): string | null {
@@ -1286,11 +1445,35 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     description: "Spawn or resume one Larva persona child Pi session and return its final assistant text.",
     inputSchema: subagentSchema,
     parameters: subagentSchema,
-    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal ?? ctx.signal }).then(wrapLarvaSubagentToolResult),
-    execute: (_toolCallId, input, signal, _onUpdate, toolCtx) => {
+    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal ?? ctx.signal }).then((result) => {
+      recordRecentSubagentSession(result);
+      return wrapLarvaSubagentToolResult(result);
+    }),
+    execute: (_toolCallId, input, signal, onUpdate, toolCtx) => {
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
-      return larva_subagent(input, { env: currentEnv(runtimeCtx), abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal }).then(wrapLarvaSubagentToolResult);
+      onUpdate?.(progressUpdate(input, "starting"));
+      return larva_subagent(input, { env: currentEnv(runtimeCtx), abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal }).then((result) => {
+        onUpdate?.(progressUpdate(input, result.status, result.task_id));
+        recordRecentSubagentSession(result);
+        return wrapLarvaSubagentToolResult(result);
+      });
     },
+    renderCall: renderLarvaSubagentCall,
+    renderResult: renderLarvaSubagentResult,
+  });
+  const sessionsSchema = {
+    type: "object",
+    properties: { limit: { type: "integer", minimum: 1, maximum: 25, description: "Maximum recent sessions to return (default 10, max 25)." } },
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_subagent_sessions",
+    label: "Larva Subagent Sessions",
+    description: "List recent Larva subagent sessions observed by this parent Pi extension process.",
+    inputSchema: sessionsSchema,
+    parameters: sessionsSchema,
+    handler: async (input: unknown) => larva_subagent_sessions(input),
+    execute: async (_toolCallId, input) => larva_subagent_sessions(input),
   });
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     await initializeSession(withRuntimeEnv(eventCtx ?? ctx, env), pi);
