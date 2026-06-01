@@ -87385,7 +87385,7 @@ phases:
       all commands passed. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_gate_20260601
     name: Gate Pi larva_subagent ToolResult crash fix
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check; protects downstream phases `pi-model-map-runtime-and-autocomplete-2026-06-01`
@@ -87491,3 +87491,5 @@ phases:
     - pi_subagent_toolresult_docs_20260601
     - pi_subagent_toolresult_repo_verify_20260601
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T09:39:34.720852+00:00'
