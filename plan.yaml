@@ -86314,14 +86314,14 @@ phases:
       - Ensure both-files conflict says fail/report, not merge.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Docs name canonical path as default and old path as unsupported unless
+      - [x] Docs name canonical path as default and old path as unsupported unless
       explicitly configured via env.
 
-      - [ ] Docs include one-time migration/conflict operator guidance.
+      - [x] Docs include one-time migration/conflict operator guidance.
 
-      - [ ] Docs contain no remaining legacy fallback wording for Pi tool policy.
+      - [x] Docs contain no remaining legacy fallback wording for Pi tool policy.
 
-      - [ ] Docs do not introduce background migration, compatibility window, or auto-merge.'
+      - [x] Docs do not introduce background migration, compatibility window, or auto-merge.'
     refs:
     - contrib/pi-extension/README.md
     - design/pi-coding-agent-integration.md
