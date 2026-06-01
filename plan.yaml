@@ -8,12 +8,21 @@
 # =============================================================
 version: 1
 project: larva
-strategy_ref: Contract-first, balanced style. Docs and schema first, then core types,
-  core logic, shell adapters, test migration, doc sync, deep review. See ADR-002 and
-  MIGRATION-002.
-context: 'ADR-002 Capability Intent Migration: Rename tools->capabilities, deprecate
-  side_effect_policy, update all layers. Docs/schema FIRST before any code. See ADR-002-capability-intent-without-runtime-policy.md
-  and MIGRATION-002-capability-intent.md.'
+strategy_ref: Commit 4616008 Pi integration docs/spec implementation handoff
+context: 'Work type: new_capability with proof-closure for already-completed Pi phases.
+  Architecture basis in design/pi-coding-agent-integration.md is READY and authoritative.
+  New follow-up phases cover committed docs/spec deltas after the prior Pi plan completed:
+  launcher/config conformance, active-persona editor UX and prompt overlay, subagent
+  session/rendering UX, and final runtime/spec proof.'
+project_guidance: 'Project guidance for Pi integration implementation: preserve opifex
+  authority for PersonaSpec; do not change shared schema, add compatibility aliases,
+  or accept malformed shared input. Respect Core/Shell/Invar rules: Core code needs
+  @pre/@post contracts and doctests before implementation; Shell owns file/network/env/subprocess
+  behavior and returns Result-style errors where applicable. Pi integration authority
+  is design/pi-coding-agent-integration.md and contrib/pi-extension/README.md from
+  commit 4616008. Runtime-surface claims require real/supplemental Pi extension evidence;
+  source-token or mock-only checks are insufficient. Do not edit plan.yaml directly;
+  vectl owns plan state.'
 clipboard:
   author: vectl-orchestrator
   summary: User autonomy directive
