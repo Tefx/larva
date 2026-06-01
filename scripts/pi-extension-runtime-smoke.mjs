@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -14,6 +14,7 @@ const SCENARIOS = [
   "startup-status",
   "failure-path",
   "tool-shape",
+  "tool-result-renderer-shape",
   "tool-call-block",
 ];
 
@@ -153,14 +154,14 @@ async function runPiRpc(evidence, { initialPersona, commands = [] } = {}) {
   return evidence.rpc;
 }
 
-async function runtimeHarness(evidence, { initialPersona = "ok" } = {}) {
+async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = {} } = {}) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const registeredTools = [];
   const handlers = new Map();
   const statuses = [];
   const notifications = [];
   const ctx = {
-    env: runtimeEnv({ LARVA_PI_INITIAL_PERSONA_ID: initialPersona }),
+    env: runtimeEnv({ LARVA_PI_INITIAL_PERSONA_ID: initialPersona, ...envOverrides }),
     ui: {
       setStatus: async (...args) => { statuses.push(args); },
       notify: async (...args) => { notifications.push(args); },
@@ -184,6 +185,11 @@ async function runtimeHarness(evidence, { initialPersona = "ok" } = {}) {
   evidence.runtime.larvaSubagent = registeredTools.find((tool) => tool.name === "larva_subagent") ?? null;
   evidence.runtime.toolCallHandler = handlers.get("tool_call") ?? null;
   return evidence.runtime;
+}
+
+function hasRendererSafeTextContent(result) {
+  return Array.isArray(result?.content)
+    && result.content.some((item) => item?.type === "text" && typeof item.text === "string");
 }
 
 async function main() {
@@ -219,6 +225,50 @@ async function main() {
       hasLarvaSubagent: Boolean(tool),
       hasParameters: Boolean(tool?.parameters && tool.parameters.type === "object"),
       hasExecute: typeof tool?.execute === "function",
+    };
+  } else if (scenario === "tool-result-renderer-shape") {
+    const noActiveRoot = await mkdtemp(join(tmpdir(), "larva-pi-no-active-"));
+    await runtimeHarness(evidence, {
+      initialPersona: null,
+      envOverrides: { LARVA_PI_CHILD_SESSION_DIR: noActiveRoot },
+    });
+    const noActiveTool = evidence.runtime.larvaSubagent;
+    const failedBeforeSession = await noActiveTool.handler({ persona_id: "child", task: "do work" });
+
+    const cancelledRoot = await mkdtemp(join(tmpdir(), "larva-pi-cancelled-"));
+    await runtimeHarness(evidence, {
+      initialPersona: "ok",
+      envOverrides: { LARVA_PI_CHILD_SESSION_DIR: cancelledRoot },
+    });
+    const cancelledTool = evidence.runtime.larvaSubagent;
+    const controller = new AbortController();
+    controller.abort();
+    const cancelled = await cancelledTool.execute("call-cancelled", { persona_id: "child", task: "stop" }, controller.signal);
+
+    const failedAfterRoot = await mkdtemp(join(tmpdir(), "larva-pi-failed-after-"));
+    const failedAfterTaskId = join(failedAfterRoot, "allocated.jsonl");
+    await writeFile(failedAfterTaskId, "", "utf8");
+    await runtimeHarness(evidence, {
+      initialPersona: "ok",
+      envOverrides: { LARVA_PI_CHILD_SESSION_DIR: failedAfterRoot, LARVA_PI_REAL_BIN: "" },
+    });
+    const failedAfterTool = evidence.runtime.larvaSubagent;
+    const failedAfterAllocation = await failedAfterTool.execute("call-failed-after", {
+      persona_id: "child",
+      task: "resume and fail after allocation",
+      task_id: failedAfterTaskId,
+    });
+
+    evidence.runtime.toolResultCases = {
+      failedBeforeSession,
+      cancelled,
+      failedAfterAllocation,
+    };
+    evidence.runtime.assertions = Object.fromEntries(
+      Object.entries(evidence.runtime.toolResultCases).map(([name, result]) => [name, hasRendererSafeTextContent(result)]),
+    );
+    evidence.runtime.infeasible = {
+      success: "EXCLUDED_OR_DEFERRED: deterministic success requires a child Pi RPC process or a product-owned injection seam; this expected-red step is constrained to tests/fixtures and must not change larva.ts.",
     };
   } else if (scenario === "tool-call-block") {
     await runtimeHarness(evidence);

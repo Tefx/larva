@@ -133,6 +133,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "startup-status",
         "failure-path",
         "tool-shape",
+        "tool-result-renderer-shape",
         "tool-call-block",
     ):
         assert scenario in completed.stdout
@@ -216,6 +217,32 @@ def test_runtime_object_registers_larva_subagent_parameters_and_execute() -> Non
         "hasExecute": True,
     }
     assert "larva_subagent" in payload["runtime"]["registeredToolNames"]
+
+
+def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> None:
+    """Expected-red: Pi renderer calls result.content.filter(...) on tool output.
+
+    This invokes the registered ``larva_subagent`` handler/execute functions via
+    the runtime smoke harness and requires a Pi ToolResult-style content array.
+    Current raw LarvaSubagentResult payloads omit ``content`` and are therefore
+    unsafe for Pi's renderer.
+    """
+
+    payload = _run_runtime_scenario("tool-result-renderer-shape")
+    cases = payload["runtime"]["toolResultCases"]
+    assertions = payload["runtime"]["assertions"]
+
+    assert cases["failedBeforeSession"]["status"] == "failed"
+    assert cases["failedBeforeSession"]["error"]["code"] == "LARVA_NO_ACTIVE_PERSONA"
+    assert cases["cancelled"]["status"] == "cancelled"
+    assert cases["failedAfterAllocation"]["status"] == "failed"
+    assert cases["failedAfterAllocation"]["task_id"].endswith("allocated.jsonl")
+
+    assert assertions == {
+        "failedBeforeSession": True,
+        "cancelled": True,
+        "failedAfterAllocation": True,
+    }
 
 
 def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:
