@@ -91052,7 +91052,7 @@ phases:
       gaps_or_blockers: none"
   - id: pi_postspec_launcher_config_runtime_verify_20260602
     name: Verify launcher/config runtime and invar guard
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -91145,6 +91145,60 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T17:03:35.906493+00:00'
+    done_at: '2026-06-01T17:09:53.366394+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation\n- design/pi-coding-agent-integration.md\
+      \ — Verifier read required ref and cited launcher extension loading/no-settings\
+      \ fallback, model-map exact/prefix/conflict/shared resolver, and tool-policy\
+      \ canonical/env override/no implicit legacy fallback rules.\n- contrib/pi-extension/README.md\
+      \ — Verifier read required ref and cited launcher env propagation, child session\
+      \ reuse of launcher values, model-map contract cases, and runtime gate/real-Pi\
+      \ availability evidence requirements.\n\n## Changed Files / No-Change Report\n\
+      - changed_files: none\n- no_change_reason: verifier-only; no product/doc files\
+      \ edited.\n- worktree_status: clean\n- merge_result: `git merge --squash vectl/step-pi_postspec_launcher_config_runtime_verify_20260602`\
+      \ already up to date / nothing to squash.\n\n## Runtime/Test Receipt\n- targeted_tests:\n\
+      \  - worktree: `uv sync --group dev && ./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py\
+      \ tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_extension_tool_policy_static.py\
+      \ -v` → exit 0, 61 passed.\n  - mainline: `uv run --group dev pytest tests/shell/test_pi_launcher_contract.py\
+      \ tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_extension_tool_policy_static.py\
+      \ -q` → exit 0, 61 passed.\n- extension_contract_tests:\n  - worktree: `./.venv/bin/python\
+      \ -m pytest tests/shell/test_pi_extension_contract.py -v` → exit 0, 48 passed.\n\
+      \  - mainline: `uv run --group dev pytest tests/shell/test_pi_extension_contract.py\
+      \ -q` → exit 0, 48 passed.\n- supplemental_runtime:\n  - worktree: `./.venv/bin/python\
+      \ -m pytest tests/shell/test_pi_extension_real_runtime.py -v` → exit 0, 22 passed\
+      \ with real Pi availability and RPC smoke evidence.\n  - mainline: `uv run --group\
+      \ dev pytest tests/shell/test_pi_extension_real_runtime.py -q` → exit 0, 22\
+      \ passed.\n- runtime smoke probes:\n  - worktree and mainline availability probes\
+      \ captured Pi binary available, help exit 0, extensionFlag `-e`, extension path.\n\
+      \  - slash-status probe captured RPC supported, status transition `larva: none`\
+      \ -> `larva: ok`, prompt response success.\n  - tool-shape probe captured `larva_subagent`\
+      \ registered with parameters and execute handler.\n- invar_guard:\n  - worktree:\
+      \ `./.venv/bin/invar guard --changed` → passed, errors=0.\n  - mainline: `uv\
+      \ run --group dev invar guard --changed` → passed, errors=0.\n\n## Behavioral\
+      \ Proof Register\n- launcher extension loading: PROVEN — launcher tests plus\
+      \ runtime availability/slash-status probes prove selected extension flag, forwarded\
+      \ args/env, and no settings fallback behavior.\n- launcher failure preflights:\
+      \ PROVEN — missing/relative config/unsupported extension contract tests passed.\n\
+      - launcher TUI/non-TUI classification: PROVEN — launcher contract matrix passed.\n\
+      - model-map draft/config: PROVEN — draft contract tests passed for conflict,\
+      \ invalid/stale handling, raw JSON stdout.\n- model projection/switching: PROVEN\
+      \ — extension contract tests passed and live RPC status changed to `larva: ok`.\n\
+      - tool-policy default/override/no legacy fallback: PROVEN_WITH_WARN — static/tool-policy\
+      \ tests passed; runtime/env receipts supplement source/static assertions; no\
+      \ blocker.\n- supplemental real Pi runtime: PROVEN — real Pi tests passed with\
+      \ no blocking skip/xfail; availability JSON captured binary and extension flag.\n\
+      - subagent tool registration/runtime shape: PROVEN — runtime smoke returned\
+      \ registered tool, parameters, execute handler.\n- invar guard changed files:\
+      \ PROVEN — guard passed.\n\n## Verification Decision\n- step_intent: post_implementation_verification\n\
+      - expected_result: green\n- observed_result: green\n- failure_alignment: none\n\
+      - verdict: PASS\n- blockers: []\n- gate_open_allowed: true\n- orchestrator_action_hint:\
+      \ COMPLETE\n- uncertainty_sources:\n  - static/source-token tests observed but\
+      \ not treated as primary evidence.\n  - worktree .venv initially lacked pytest;\
+      \ verifier repaired with `uv sync --group dev` after explicit incompleteness\
+      \ verification. Mainline verification used `uv run --group dev` and passed.\n\
+      - gaps_or_blockers: none\n\n## Checklist Receipt\n- refs confirmation: satisfied\n\
+      - changed-files/no-change report and receipts/gaps: satisfied\n- targeted launcher/model-map/tool-policy\
+      \ raw output: satisfied\n- supplemental runtime or availability evidence: satisfied\n\
+      - invar guard raw output: satisfied\n- behavioral proof register: satisfied"
   - id: pi_postspec_launcher_config_gate_20260602
     name: Gate launcher/config post-spec conformance
     status: pending
