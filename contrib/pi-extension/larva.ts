@@ -712,18 +712,21 @@ async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Prom
 }
 
 async function enumerateTools(pi: PiApi): Promise<string[]> {
-  const tools = await safeToolEnumeration(pi);
+  let tools: unknown[];
+  try {
+    tools = await safeToolEnumeration(pi);
+  } catch (caught) {
+    if (isLarvaError(caught)) throw caught;
+    throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi tool enumeration failed.");
+  }
   return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
 }
 
 async function safeToolEnumeration(pi: PiApi): Promise<unknown[]> {
   if (typeof pi.getAllTools !== "function") return [];
-  try {
-    const tools = await pi.getAllTools();
-    return Array.isArray(tools) ? tools : [];
-  } catch {
-    return [];
-  }
+  const tools = await pi.getAllTools();
+  if (!Array.isArray(tools)) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi tool enumeration failed.");
+  return tools;
 }
 
 function toolName(tool: unknown): string | null {
@@ -1179,7 +1182,6 @@ function parseStartupError(stderr: string): LarvaError {
   const match = /larva pi: (LARVA_[A-Z_]+):/.exec(stderr);
   const whitelist: LarvaErrorCode[] = [
     "LARVA_PERSONA_NOT_FOUND",
-    "LARVA_MODEL_MAP_INVALID",
     "LARVA_MODEL_UNAVAILABLE",
     "LARVA_POLICY_INVALID",
     "LARVA_TOOL_ENUMERATION_FAILED",
@@ -1379,6 +1381,10 @@ async function runChildSequence(
     return first;
   } finally {
     abortSignal?.removeEventListener("abort", requestAbort);
+    if (!child.killed) child.kill();
+    child.stdin.destroy();
+    child.stdout.destroy();
+    child.stderr.destroy();
   }
 }
 

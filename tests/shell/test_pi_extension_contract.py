@@ -817,7 +817,9 @@ def test_child_stderr_startup_error_whitelist() -> None:
         "LARVA_TOOL_ENUMERATION_FAILED",
     ):
         assert code in parser_body
-    assert "LARVA_CHILD_START_FAILED" not in re.search(r"const whitelist:[\s\S]*?\];", parser_body).group(0)
+    whitelist_body = re.search(r"const whitelist:[\s\S]*?\];", parser_body).group(0)
+    assert "LARVA_CHILD_START_FAILED" not in whitelist_body
+    assert "LARVA_MODEL_MAP_INVALID" not in whitelist_body
     assert "post-readiness stderr is diagnostic only" in source
     _assert_regex(source, r"larva pi: <ERROR_CODE>|larva pi:", "stderr parser shape is required")
     _assert_regex(source, r"isLarvaError\(sessionFile\)|if \(isLarvaError\(value\)\) return value;", "early diagnostic errors must propagate through state requests without being overridden")
