@@ -83538,23 +83538,23 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|prefix_rules\|LARVA_MODEL_MAP_INVALID\|LARVA_MODEL_UNAVAILABLE\|tool-policy.json\|LARVA_PI_TOOL_POLICY_FILE\|legacy
+      - [x] Run `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|prefix_rules\|LARVA_MODEL_MAP_INVALID\|LARVA_MODEL_UNAVAILABLE\|tool-policy.json\|LARVA_PI_TOOL_POLICY_FILE\|legacy
       fallback\|wildcard\|regex\|fuzzy\|PersonaSpec schema" contrib/pi-extension/README.md
       design/pi-coding-agent-integration.md` and paste raw output.
 
-      - [ ] Run `git diff -- contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      - [x] Run `git diff -- contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
       and summarize documentation-only changes.
 
-      - [ ] Documentation includes a parseable JSON example exactly covering the four
+      - [x] Documentation includes a parseable JSON example exactly covering the four
       confirmed exact mappings and one `openrouter/` prefix rule.
 
-      - [ ] Documentation explicitly states `ollama-cloud/kimi-k2.6:cloud` is not
+      - [x] Documentation explicitly states `ollama-cloud/kimi-k2.6:cloud` is not
       mapped by the example.
 
-      - [ ] Documentation marks `~/.pi/tool-policy.json` as legacy fallback and states
+      - [x] Documentation marks `~/.pi/tool-policy.json` as legacy fallback and states
       no auto-migration/user-file write occurs.
 
-      - [ ] Documentation non-goals explicitly ban wildcard, regex, fuzzy matching,
+      - [x] Documentation non-goals explicitly ban wildcard, regex, fuzzy matching,
       automatic guessing, PersonaSpec schema changes, and Pi-specific PersonaSpec
       fields.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
