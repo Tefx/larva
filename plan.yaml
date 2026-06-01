@@ -86991,7 +86991,7 @@ phases:
       Commit hash(es): none — read-only live CLI proof'
   - id: pi_model_map_draft_spec_guard_20260601
     name: Verify spec conformance and invar guard for model-map draft helper
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -87165,6 +87165,76 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-06-01T11:39:14.412025+00:00'
+    done_at: '2026-06-01T11:56:05.789653+00:00'
+    evidence: "Spec guard completed as blocker-discovery verification after remediation\
+      \ ownership was created.\n\nrefs Read Confirmation:\n- design/pi-model-map-draft-helper.md:\
+      \ lines 18-25 require exact top-level `larva pi-model-map draft`; lines 61-63\
+      \ require `pi --list-models --offline` and fail-closed behavior if unparseable;\
+      \ lines 88-97 require redirect-safe stdout and optional `--json` envelope; lines\
+      \ 333-340 define error codes.\n- src/larva/shell/pi.py: lines 243-292 show `pi_command`\
+      \ remains pass-through launcher that discovers Pi, loads extension, and forwards\
+      \ args via subprocess.\n- src/larva/shell/cli.py: lines 281-299 intercept `argv[0]\
+      \ == \"pi\"` before argparse; lines 330-342 dispatch `pi-model-map` separately\
+      \ through `pi_model_map_command`.\n- contrib/pi-extension/README.md: lines 47-58\
+      \ document exact runtime model-map shape; lines 83-101 are updated helper policy\
+      \ forbidding personal scaffold files/provider preferences and requiring redirect-safe\
+      \ draft behavior.\n- tests/shell/test_pi_launcher_contract.py: lines 43-83 and\
+      \ 367-405 verify launcher env/pass-through behavior.\n- tests/shell/test_pi_extension_contract.py:\
+      \ lines 121-133 require extension packaging; lines 810-823 cover extension startup\
+      \ error whitelist.\n- tests/shell/test_pi_extension_real_runtime.py: lines 210-221\
+      \ and 236-275 collect real Pi/RPC smoke evidence or explicit skip/xfail policy\
+      \ for extension surfaces.\n- INVAR.md: lines 5-7 require Core functions to have\
+      \ @pre/@post/doctest before implementation and guard after changes; lines 11-23\
+      \ require I/O/subprocess/files in Shell and pure logic in Core.\n- AGENTS.md:\
+      \ worktree-local AGENTS.md absent; parent AGENTS.md read and repeats Core contract/Shell\
+      \ I/O and guard requirements.\n\nSpec conformance result:\n- CONFORMS: top-level\
+      \ CLI command/args; default raw JSON stdout and stderr report separation; `--write`\
+      \ JSON-only output; model-map shape; registry source via facade.list; missing/invalid\
+      \ model-map fail-closed behavior; mapping preservation/drop rules; prefix rule\
+      \ validation; stable ordering; candidate discovery without provider preference;\
+      \ malformed/ambiguous source failure; forbidden personal scaffold path absent;\
+      \ no hard-coded provider preferences; Pi extension remains runtime consumer;\
+      \ Core/Shell invariant; contrib/pi-extension README updated to approved helper\
+      \ policy.\n- PARTIAL/DIVERGES: Pi inventory parsing fails the fail-closed parseability\
+      \ invariant; interactive prompt exact shape/once-per-distinct-model lacks dedicated\
+      \ fresh runtime test and is non-blocking debt unless UX prompt is gate-critical;\
+      \ repository default `.venv/bin/invar guard` checked 0 changed files, so a full-scan\
+      \ guard receipt was also collected.\n\nBlocking drift finding:\n- B1_FAIL_CLOSED_UNPARSEABLE_PI_OUTPUT,\
+      \ severity=blocker, location=src/larva/shell/pi_model_map_cli.py:134-148. Evidence:\
+      \ `_parse_pi_inventory` initializes `rows = set()`, skips blank lines, and returns\
+      \ `Success([...])` even when no provider/model rows were parsed; through `_parse_successful_pi_inventory`\
+      \ lines 120-130, empty successful stdout/stderr becomes `Success([])`. Approved\
+      \ design lines 61-63 and 135-136 require fail-closed behavior when Pi output\
+      \ cannot be parsed.\n- Remediation ownership exists before gate: fix step `pi_model_map_draft_fail_closed_inventory_fix_20260601`\
+      \ and retest step `pi_model_map_draft_fail_closed_inventory_retest_20260601`;\
+      \ gate `pi_model_map_draft_gate_20260601` depends on both.\n\nGuard receipt:\n\
+      command: `.venv/bin/invar guard`\nexit_code: 0\nraw_output:\n{\n  \"status\"\
+      : \"passed\",\n  \"static\": {\"passed\": true, \"errors\": 0, \"warnings\"\
+      : 0, \"infos\": 0, \"findings\": []},\n  \"summary\": {\"files_checked\": 0,\
+      \ \"errors\": 0, \"warnings\": 0, \"infos\": 0},\n  \"verification_level\":\
+      \ \"STANDARD\",\n  \"doctest\": {\"passed\": true, \"output\": \"\"},\n  \"\
+      crosshair\": {\"status\": \"skipped\", \"reason\": \"no changed files\"},\n\
+      \  \"property_tests\": {\"status\": \"skipped\", \"reason\": \"no changed files\"\
+      }\n}\nfull-scan guard receipt: invar_invar_guard(changed=false, strict=false,\
+      \ coverage=false, contracts_only=false) run_id=grd_c9bdb2c5caf247f894da83b0\
+      \ final_status=complete report={ok: true, errors: 0, warnings: 5, infos: 7,\
+      \ files_checked: 43, review_suggested: false}.\n\nBehavioral closure fields:\n\
+      step_intent: spec_guard_blocker_discovery\nexpected_result: detect design/code/docs/test\
+      \ drift and require remediation ownership before protected gate\nobserved_result:\
+      \ B1 blocker remains present in current worktree implementation; remediation\
+      \ ownership is documented by planner-created fix and retest steps; README drift\
+      \ appears updated; full invar guard completed ok with warnings.\nfailure_alignment:\
+      \ aligns with approved design fail-closed requirement for Pi inventory parseability\
+      \ and with prior blocker B1\nverdict: PASS_WITH_BLOCKER_DISCOVERY\nblockers:\
+      \ [B1_FAIL_CLOSED_UNPARSEABLE_PI_OUTPUT]\nproduct_implementation_files_modified:\
+      \ false\ngate_open_allowed: false\norchestrator_action_hint: COMPLETE_AFTER_REMEDIATION_OWNERSHIP_EXISTS\n\
+      uncertainty_sources: worktree-local AGENTS.md missing but parent fallback read;\
+      \ full guard output came from MCP guard receipt while default shell guard checked\
+      \ 0 changed files; no fresh pytest run in this supplemental audit.\n\nChecklist\
+      \ receipt: all six checklist items were PROVEN and toggled by orchestrator:\
+      \ refs confirmation, conformance table, drift locations/severity, guard command\
+      \ output, remediation path for DIVERGES/NEEDS_TEST items, and README drift disposition.\n\
+      \nCommit hashes: none — read-only verification/no file changes."
   - id: pi_model_map_draft_gate_20260601
     name: Gate Pi model-map draft helper
     status: pending
