@@ -191,10 +191,10 @@ def _larva_cli_argv_json() -> Result[str, object]:
 
 
 def _tool_policy_file(environ: Mapping[str, str]) -> Result[str, object]:
-    override = environ.get(LARVA_PI_TOOL_POLICY_FILE_ENV)
-    if override:
-        return Success(override)
-    return Success(str((Path.home() / ".pi" / "tool-policy.json").resolve()))
+    if LARVA_PI_TOOL_POLICY_FILE_ENV in environ:
+        return Success(environ[LARVA_PI_TOOL_POLICY_FILE_ENV])
+    home = Path(environ.get("HOME", str(Path.home()))).expanduser()
+    return Success(str((home / ".pi" / "larva" / "tool-policy.json").resolve()))
 
 
 def _preflight_persona(persona_id: str | None, facade: LarvaFacade) -> Result[None, CliFailure]:
