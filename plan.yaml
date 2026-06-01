@@ -87344,18 +87344,18 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites focused tests/smoke and guard policy.
+      - [x] refs confirmation cites focused tests/smoke and guard policy.
 
-      - [ ] Focused Pi extension contract/runtime tests pass with raw stdout/stderr.
+      - [x] Focused Pi extension contract/runtime tests pass with raw stdout/stderr.
 
-      - [ ] Updated Pi extension runtime smoke passes with raw stdout/stderr.
+      - [x] Updated Pi extension runtime smoke passes with raw stdout/stderr.
 
-      - [ ] Repository test command selected by project convention is run or explicit
+      - [x] Repository test command selected by project convention is run or explicit
       scope rationale is provided.
 
-      - [ ] `invar guard` or canonical guard command passes with raw stdout/stderr.
+      - [x] `invar guard` or canonical guard command passes with raw stdout/stderr.
 
-      - [ ] Any failure is reported with provenance and disposition; blocker-class
+      - [x] Any failure is reported with provenance and disposition; blocker-class
       gate intersections have remediation owner.'
     refs:
     - tests/shell/test_pi_extension_contract.py
