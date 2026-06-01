@@ -90743,23 +90743,23 @@ phases:
       semantics.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Matrix cites key passages from both docs/spec refs for every launcher/config
+      - [x] Matrix cites key passages from both docs/spec refs for every launcher/config
       requirement family.
 
-      - [ ] Every commit 4616008 launcher/config requirement is marked OWNED, DEFERRED
+      - [x] Every commit 4616008 launcher/config requirement is marked OWNED, DEFERRED
       with non-intersection, EXCLUDED with authority, or AMBIGUOUS with escalation.
 
-      - [ ] No row uses pre-existing/out-of-scope as a disposition.
+      - [x] No row uses pre-existing/out-of-scope as a disposition.
 
-      - [ ] Matrix identifies which old Pi phases are covered and which residual implementation/proof
+      - [x] Matrix identifies which old Pi phases are covered and which residual implementation/proof
       remains.'
     evidence_template: '## refs Read Confirmation
 
