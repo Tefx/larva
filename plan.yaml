@@ -85029,7 +85029,7 @@ phases:
     agent: gate-reviewer
   - id: pi_model_map_openrouter_prefix_cleanup_20260601
     name: Cleanup redundant OpenRouter Gemini exact model-map entry
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -85152,6 +85152,8 @@ phases:
     depends_on:
     - pi_model_map_runtime_proof_20260601
     agent: general
+    claimed_by: general
+    claimed_at: '2026-06-01T10:08:11.473366+00:00'
   - id: pi_model_map_openrouter_prefix_retest_20260601
     name: Retest OpenRouter Gemini model-map prefix resolution
     status: pending
