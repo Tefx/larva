@@ -833,6 +833,19 @@ function registerLarvaPersonaAutocompleteProvider(ctx: PiContext): void {
   }
 }
 
+function registerCommandCompat(pi: PiApi, name: string, command: CommandOptions): void {
+  if (!pi.registerCommand) return;
+  if (pi.registerCommand.length >= 2) {
+    (pi.registerCommand as (name: string, options: CommandOptions) => void)(name, command);
+    return;
+  }
+  (pi.registerCommand as (command: LegacyCommandDefinition) => void)({
+    name,
+    ...command,
+    complete: command.getArgumentCompletions,
+  });
+}
+
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
   const baseEnv = currentEnv(ctx);
   const command: CommandOptions = {
@@ -848,16 +861,18 @@ function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
       return result;
     },
   };
-  if (!pi.registerCommand) return;
-  if (pi.registerCommand.length >= 2) {
-    (pi.registerCommand as (name: string, options: CommandOptions) => void)("larva-persona", command);
-    return;
-  }
-  (pi.registerCommand as (command: LegacyCommandDefinition) => void)({
-    name: "larva-persona",
-    ...command,
-    complete: command.getArgumentCompletions,
-  });
+  registerCommandCompat(pi, "larva-persona", command);
+}
+
+function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
+  const command: CommandOptions = {
+    description: "Show Larva subagent tool-row log availability",
+    handler: async () => {
+      await notify(ctx, "Larva subagent progress is available in the current tool row; raw JSONL log overlays are not exposed.", "info");
+      return { ok: false, error: error("LARVA_BAD_INPUT", "Larva subagent raw JSONL log overlay is not available; inspect the tool row result instead.") };
+    },
+  };
+  registerCommandCompat(pi, "larva-subagent-log", command);
 }
 
 export function getActiveEnvelope(): PersonaEnvelope | null {
@@ -1486,24 +1501,42 @@ function parseStartupError(stderr: string): LarvaError {
 }
 
 class RpcClient {
-  private readonly pending = new Map<string, (value: unknown) => void>();
+  private readonly pending = new Map<string, (value: unknown | LarvaError) => void>();
   private readonly events: unknown[] = [];
   private readonly child: ChildProcessWithoutNullStreams;
   private stderr = "";
   private rpcReady = false;
   private closed = false;
+  private stdoutClosed = false;
+  private childError: unknown = null;
 
   constructor(child: ChildProcessWithoutNullStreams) {
     this.child = child;
     child.stderr.on("data", (chunk: Buffer) => { this.stderr += chunk.toString("utf8"); });
-    child.once("close", () => { this.closed = true; });
+    child.once("error", (caught: unknown) => {
+      this.childError = caught;
+      this.failPending(this.closedError());
+    });
+    child.once("close", () => {
+      this.closed = true;
+      this.failPending(this.closedError());
+    });
+    child.stdout.once("close", () => {
+      this.stdoutClosed = true;
+      if (!this.closed && this.rpcReady) this.failPending(this.stdoutClosedError());
+    });
     const rl = createInterface({ input: child.stdout });
     rl.on("line", (line) => this.consume(line));
   }
 
   private consume(line: string): void {
     let message: unknown;
-    try { message = JSON.parse(line); } catch { this.events.push({ type: "protocol_error" }); return; }
+    try { message = JSON.parse(line); } catch {
+      const protocolError = error("LARVA_CHILD_PROTOCOL_FAILED", "Child emitted malformed JSONL.");
+      this.events.push({ type: "protocol_error" });
+      this.failPending(protocolError);
+      return;
+    }
     const id = typeof message === "object" && message !== null && "id" in message ? String((message as { id: unknown }).id) : "";
     const waiter = this.pending.get(id);
     if (id && waiter) {
@@ -1514,10 +1547,23 @@ class RpcClient {
     this.events.push(message);
   }
 
+  private failPending(larvaError: LarvaError): void {
+    const waiters = Array.from(this.pending.values());
+    this.pending.clear();
+    for (const waiter of waiters) waiter(larvaError);
+  }
+
   private closedError(): LarvaError {
+    if (this.childError !== null && !this.rpcReady) return error("LARVA_CHILD_START_FAILED", "Child Pi process could not be started.");
     return this.rpcReady
       ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before RPC response; post-readiness stderr is diagnostic only.")
       : parseStartupError(this.stderr);
+  }
+
+  private stdoutClosedError(): LarvaError {
+    return this.rpcReady
+      ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child stdout closed before RPC response.")
+      : error("LARVA_CHILD_START_FAILED", "Child stdout closed before RPC readiness.");
   }
 
   async command(id: string, body: Record<string, unknown>, timeoutMs = 10_000): Promise<unknown | LarvaError> {
@@ -1530,10 +1576,18 @@ class RpcClient {
         clearTimeout(timer);
         this.pending.delete(id);
         this.child.off("close", onClose);
+        this.child.off("error", onError);
+        this.child.stdout.off("close", onStdoutClose);
         resolveCommand(value);
       };
       const onClose = (): void => {
         settle(this.closedError());
+      };
+      const onError = (): void => {
+        settle(this.closedError());
+      };
+      const onStdoutClose = (): void => {
+        if (!this.closed && this.rpcReady) settle(this.stdoutClosedError());
       };
       const timer = setTimeout(() => {
         settle(error("LARVA_CHILD_PROTOCOL_FAILED", "Child RPC command timed out after ten seconds."));
@@ -1543,8 +1597,14 @@ class RpcClient {
         settle(value);
       });
       this.child.once("close", onClose);
-      if (this.closed || this.child.exitCode !== null) {
+      this.child.once("error", onError);
+      this.child.stdout.once("close", onStdoutClose);
+      if (this.closed || this.child.exitCode !== null || this.child.signalCode !== null) {
         settle(this.closedError());
+        return;
+      }
+      if (this.stdoutClosed) {
+        settle(this.stdoutClosedError());
         return;
       }
       try {
@@ -1564,7 +1624,8 @@ class RpcClient {
       if (this.events.some((eventValue) => typeof eventValue === "object" && eventValue !== null && (eventValue as { type?: unknown }).type === "protocol_error")) {
         return error("LARVA_CHILD_PROTOCOL_FAILED", "Child emitted malformed JSONL.");
       }
-      if (this.child.exitCode !== null) {
+      if (this.stdoutClosed && !this.closed) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child stdout closed before agent_end.");
+      if (this.child.exitCode !== null || this.child.signalCode !== null) {
         return this.rpcReady
           ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before agent_end; post-readiness stderr is diagnostic only.")
           : this.closedError();
@@ -1608,6 +1669,38 @@ function finalText(value: unknown): string | LarvaError {
   return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_last_assistant_text data.text was malformed.");
 }
 
+type SubagentLifecycleCallbacks = { onPhase?: (phase: string, taskId?: string | null) => void };
+
+function childStillRunning(child: ChildProcessWithoutNullStreams): boolean {
+  return child.exitCode === null && child.signalCode === null;
+}
+
+async function waitForChildClose(child: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<void> {
+  if (!childStillRunning(child)) return;
+  await new Promise<void>((resolveWait) => {
+    const timer = setTimeout(resolveWait, timeoutMs);
+    child.once("close", () => {
+      clearTimeout(timer);
+      resolveWait();
+    });
+  });
+}
+
+async function cleanupChild(child: ChildProcessWithoutNullStreams): Promise<void> {
+  try { child.stdin.end(); } catch { /* stdin may already be closed */ }
+  if (childStillRunning(child)) {
+    try { child.kill("SIGTERM"); } catch { /* best-effort shutdown */ }
+    await waitForChildClose(child, 5_000);
+  }
+  if (childStillRunning(child)) {
+    try { child.kill("SIGKILL"); } catch { /* best-effort hard kill */ }
+    await waitForChildClose(child, 1_000);
+  }
+  try { child.stdin.destroy(); } catch { /* ignore stream cleanup errors */ }
+  try { child.stdout.destroy(); } catch { /* ignore stream cleanup errors */ }
+  try { child.stderr.destroy(); } catch { /* ignore stream cleanup errors */ }
+}
+
 async function runChildSequence(
   env: RuntimeEnv,
   root: string,
@@ -1615,11 +1708,13 @@ async function runChildSequence(
   task: string,
   taskId: string | null,
   abortSignal?: AbortSignal,
+  callbacks: SubagentLifecycleCallbacks = {},
 ): Promise<LarvaSubagentResult> {
   const child = startChild(env, root, personaId);
   if (isLarvaError(child)) return failed(taskId, personaId, child);
   const rpc = new RpcClient(child);
   let allocatedTaskId = taskId;
+  let freshBusyTaskId: string | null = null;
   let abortStarted = false;
   const abortChild = async (): Promise<LarvaSubagentResult> => {
     abortStarted = true;
@@ -1639,25 +1734,43 @@ async function runChildSequence(
   if (abortSignal?.aborted) requestAbort();
   abortSignal?.addEventListener("abort", requestAbort, { once: true });
   const sequence = async (): Promise<LarvaSubagentResult> => {
+    const isResume = taskId !== null;
     if (taskId) {
       const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId });
       if (!isSuccessResponse(switched) || (switched as { data?: { cancelled?: unknown } }).data?.cancelled === true) {
         child.kill();
         return failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed."));
       }
+      callbacks.onPhase?.("session_ready", taskId);
     } else {
       const stateResult = await rpc.command("state-1", { type: "get_state" });
       const sessionFile = sessionFileFromState(stateResult);
       if (isLarvaError(sessionFile)) { child.kill(); return failed(null, personaId, sessionFile); }
       const canonical = await validateFreshChildSessionFile(sessionFile, root);
       if (isLarvaError(canonical)) { child.kill(); return failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child returned invalid sessionFile.")); }
+      if (activeTaskIds.has(canonical)) { child.kill(); return failed(canonical, personaId, error("LARVA_SESSION_BUSY", "Child session is already active.")); }
+      activeTaskIds.add(canonical);
+      freshBusyTaskId = canonical;
       taskId = canonical;
       allocatedTaskId = canonical;
+      callbacks.onPhase?.("session_ready", canonical);
     }
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: task });
     if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
+    callbacks.onPhase?.("prompt_sent", taskId);
+    callbacks.onPhase?.("waiting_for_child", taskId);
     const ended = await rpc.waitForAgentEnd();
     if (ended) { child.kill(); return failed(taskId, personaId, ended); }
+    if (!isResume && taskId !== null) {
+      const finalSessionPath = await validateTaskId(taskId, root);
+      if (isLarvaError(finalSessionPath)) {
+        child.kill();
+        return failed(taskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile was not available after prompt."));
+      }
+      taskId = finalSessionPath;
+      allocatedTaskId = finalSessionPath;
+    }
+    callbacks.onPhase?.("collecting_final_text", taskId);
     const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
     const text = finalText(last);
     if (isLarvaError(text)) return failed(taskId, personaId, text);
@@ -1674,14 +1787,12 @@ async function runChildSequence(
     return first;
   } finally {
     abortSignal?.removeEventListener("abort", requestAbort);
-    if (!child.killed) child.kill();
-    child.stdin.destroy();
-    child.stdout.destroy();
-    child.stderr.destroy();
+    if (freshBusyTaskId) activeTaskIds.delete(freshBusyTaskId);
+    await cleanupChild(child);
   }
 }
 
-export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: RuntimeEnv; abortSignal?: AbortSignal }): Promise<LarvaSubagentResult> {
+export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void }): Promise<LarvaSubagentResult> {
   const parsed = validateInput(input);
   if ("status" in parsed) return parsed; // public task_id: null on bad input pre-session failures
   const { personaId, task, taskId } = parsed;
@@ -1704,7 +1815,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
 
   try {
     if (ctx?.abortSignal?.aborted) return cancelled(canonicalTaskId, personaId);
-    const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, ctx?.abortSignal);
+    const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, ctx?.abortSignal, { onPhase: ctx?.onPhase });
     return result;
   } finally {
     if (canonicalTaskId) activeTaskIds.delete(canonicalTaskId);
@@ -1724,6 +1835,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
 
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
   const env = currentEnv(ctx);
+  registerLarvaSubagentLogCommand(ctx, pi);
   registerLarvaPersonaCommand(ctx, pi);
   const subagentSchema = {
     type: "object",
@@ -1748,7 +1860,11 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     execute: (_toolCallId, input, signal, onUpdate, toolCtx) => {
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
       onUpdate?.(progressUpdate(input, "starting"));
-      return larva_subagent(input, { env: currentEnv(runtimeCtx), abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal }).then((result) => {
+      return larva_subagent(input, {
+        env: currentEnv(runtimeCtx),
+        abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal,
+        onPhase: (phase, taskId) => onUpdate?.(progressUpdate(input, phase, taskId)),
+      }).then((result) => {
         onUpdate?.(progressUpdate(input, result.status, result.task_id));
         recordRecentSubagentSession(result);
         return wrapLarvaSubagentToolResult(result);

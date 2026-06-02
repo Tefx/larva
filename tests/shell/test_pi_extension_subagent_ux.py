@@ -207,6 +207,208 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
     }
 
 
+def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: Path) -> None:
+    """Pin public resume task_id validation codes before child launch."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { access, chmod, symlink } = await import("node:fs/promises");
+        const marker = join(tmpRoot, "spawned.txt");
+        const childBin = join(tmpRoot, "must-not-spawn.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { writeFile } from "node:fs/promises";
+          await writeFile(process.env.LARVA_FAKE_SPAWN_MARKER, "spawned");
+          setInterval(() => undefined, 1000);
+        `, { mode: 0o755 });
+        const outsideRoot = join(tmpRoot, "outside-root");
+        const outsideFile = join(outsideRoot, "outside.jsonl");
+        await mkdir(outsideRoot, { recursive: true });
+        await writeFile(outsideFile, "{}\\n");
+        const env = baseEnv({
+          LARVA_PI_REAL_BIN: process.execPath,
+          LARVA_PI_EXTENSION_FLAG: childBin,
+          LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+          LARVA_FAKE_SPAWN_MARKER: marker,
+        });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", { env, modelRegistry }, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const wrongSuffix = join(childRoot, "wrong.txt");
+        const missing = join(childRoot, "missing.jsonl");
+        const symlinkEscape = join(childRoot, "escape.jsonl");
+        const directory = join(childRoot, "directory.jsonl");
+        const unreadable = join(childRoot, "unreadable.jsonl");
+        await writeFile(wrongSuffix, "{}\\n");
+        await symlink(outsideFile, symlinkEscape);
+        await mkdir(directory, { recursive: true });
+        await writeFile(unreadable, "{}\\n");
+        await chmod(unreadable, 0o000);
+        async function invoke(task_id) {
+          const result = await subagent.handler({ persona_id: "ok", task: "resume validation", task_id });
+          return { status: result.status, task_id: result.task_id, errorCode: result.error?.code ?? null };
+        }
+        const cases = {
+          relative: await invoke("relative.jsonl"),
+          outsideRoot: await invoke(outsideFile),
+          wrongSuffix: await invoke(wrongSuffix),
+          missing: await invoke(missing),
+          realpathEscape: await invoke(symlinkEscape),
+          nonRegular: await invoke(directory),
+          unreadable: await invoke(unreadable),
+        };
+        await chmod(unreadable, 0o600);
+        let spawned = false;
+        try { await access(marker); spawned = true; } catch (_) { spawned = false; }
+        console.log(JSON.stringify({ cases, spawned }, null, 2));
+        """,
+    )
+
+    assert payload["cases"] == {
+        "relative": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "outsideRoot": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "wrongSuffix": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_INVALID"},
+        "missing": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_NOT_FOUND"},
+        "realpathEscape": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "nonRegular": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_INVALID"},
+        "unreadable": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_INVALID"},
+    }
+    assert payload["spawned"] is False
+
+
+def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tmp_path: Path) -> None:
+    """Pin child RPC lifecycle cleanup across terminal and failure paths."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "lifecycle-child.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const scenario = process.env.LARVA_FAKE_CHILD_SCENARIO || "success";
+          const pidFile = process.env.LARVA_FAKE_CHILD_PID_FILE;
+          if (pidFile) await writeFile(pidFile, String(process.pid));
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, scenario + ".jsonl");
+          const outsideFile = join(process.env.LARVA_FAKE_OUTSIDE_ROOT || root, "outside.jsonl");
+          const keepAlive = () => setInterval(() => undefined, 1000);
+          function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
+          if (scenario === "startup-failure") {
+            process.stderr.write("larva pi: LARVA_MODEL_UNAVAILABLE: unavailable\\\\n");
+            setTimeout(() => process.exit(2), 5);
+          } else if (scenario === "malformed-rpc") {
+            process.stdout.write("{not json\\\\n");
+            keepAlive();
+          } else {
+            const rl = createInterface({ input: process.stdin });
+            rl.on("line", async (line) => {
+              const msg = JSON.parse(line);
+              if (scenario === "stdout-eof-after-prompt" && msg.type === "prompt") {
+                send({ id: msg.id, success: true });
+                process.stdout.end();
+                keepAlive();
+                return;
+              }
+              if (scenario === "timeout" && msg.type === "prompt") {
+                keepAlive();
+                return;
+              }
+              if (msg.type === "get_state") {
+                if (scenario === "new-session-protocol-failure") send({ id: msg.id, success: true, data: { sessionFile: outsideFile } });
+                else { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile } }); }
+              } else if (msg.type === "switch_session") {
+                if (scenario === "resume-failure") { send({ id: msg.id, success: false }); keepAlive(); }
+                else send({ id: msg.id, success: true, data: { cancelled: false } });
+              } else if (msg.type === "prompt") {
+                send({ id: msg.id, success: true });
+                setTimeout(() => send({ type: "agent_end" }), 5);
+              } else if (msg.type === "get_last_assistant_text") {
+                if (scenario === "final-text-failure") send({ id: msg.id, success: true, data: { text: null } });
+                else send({ id: msg.id, success: true, data: { text: "final child output" } });
+                setTimeout(() => process.exit(0), 1);
+              } else if (msg.type === "abort") {
+                send({ id: msg.id, success: true });
+                setTimeout(() => process.exit(0), 1);
+              }
+            });
+          }
+        `, { mode: 0o755 });
+        async function processExists(pidFile) {
+          try {
+            const pid = Number.parseInt(await (await import("node:fs/promises")).readFile(pidFile, "utf8"), 10);
+            process.kill(pid, 0);
+            return true;
+          } catch (_) {
+            return false;
+          }
+        }
+        async function runCase(name, { resume = false, abort = false } = {}) {
+          const caseRoot = join(tmpRoot, "case-" + name);
+          await mkdir(caseRoot, { recursive: true });
+          const pidFile = join(caseRoot, "pid.txt");
+          const outsideRoot = join(caseRoot, "outside");
+          await mkdir(outsideRoot, { recursive: true });
+          const env = baseEnv({
+            LARVA_PI_REAL_BIN: process.execPath,
+            LARVA_PI_EXTENSION_FLAG: childBin,
+            LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+            LARVA_PI_CHILD_SESSION_DIR: caseRoot,
+            LARVA_FAKE_CHILD_SCENARIO: name,
+            LARVA_FAKE_CHILD_PID_FILE: pidFile,
+            LARVA_FAKE_OUTSIDE_ROOT: outsideRoot,
+          });
+          const { tools, ctx } = await registeredTools(env);
+          await mod.commitPersona("ok", { env, modelRegistry }, piBase);
+          const subagent = tools.find((tool) => tool.name === "larva_subagent");
+          const params = { persona_id: "ok", task: "exercise lifecycle" };
+          if (resume) {
+            params.task_id = join(caseRoot, "resume.jsonl");
+            await writeFile(params.task_id, "{}\\n");
+          }
+          if (!abort) {
+            const result = await subagent.execute("case-" + name, params, undefined, () => undefined, ctx);
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            return { status: result.status, errorCode: result.error?.code ?? null, orphan: await processExists(pidFile) };
+          }
+          const controller = new AbortController();
+          const promise = subagent.execute("case-abort", params, controller.signal, () => undefined, ctx);
+          setTimeout(() => controller.abort(), 20);
+          const result = await promise;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          return { status: result.status, errorCode: result.error?.code ?? null, orphan: await processExists(pidFile) };
+        }
+        const cases = {
+          success: await runCase("success"),
+          abort: await runCase("timeout", { abort: true }),
+          startupFailure: await runCase("startup-failure"),
+          timeout: await runCase("timeout"),
+          stdoutEof: await runCase("stdout-eof-after-prompt"),
+          malformedRpc: await runCase("malformed-rpc"),
+          finalTextFailure: await runCase("final-text-failure"),
+          resumeFailure: await runCase("resume-failure", { resume: true }),
+          newSessionProtocolFailure: await runCase("new-session-protocol-failure"),
+        };
+        console.log(JSON.stringify({ cases }, null, 2));
+        """,
+        timeout=25.0,
+    )
+
+    assert payload["cases"]["success"] == {"status": "success", "errorCode": None, "orphan": False}
+    assert payload["cases"]["abort"] == {"status": "cancelled", "errorCode": "LARVA_CHILD_CANCELLED", "orphan": False}
+    assert payload["cases"]["startupFailure"] == {"status": "failed", "errorCode": "LARVA_MODEL_UNAVAILABLE", "orphan": False}
+    assert payload["cases"]["timeout"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["stdoutEof"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["malformedRpc"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["finalTextFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["resumeFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["newSessionProtocolFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+
+
 def test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases(tmp_path: Path) -> None:
     """Pin optional recent-session helper shape, limits, retention, and non-goals."""
 
