@@ -97287,6 +97287,141 @@ phases:
     depends_on:
     - pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     agent: frontend-engineer
+  - id: pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
+    name: Retest abort progress order and post-abort RPC gate
+    status: pending
+    description: 'PROOF ARTIFACT: Independent phase-check retest for gate blocker
+      B1_ABORT_PROGRESS_ORDER_AND_POST_ABORT_RPC. This step protects `pi_impl_child_rpc_20260603.gate`,
+      downstream realtime UI work, runtime conformance, and finalization gates.
+
+
+      VERIFICATION_SCOPE: phase-check.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm the fix. A retest that discovers
+      a remaining abort-order race is successful evidence and must report BLOCKED
+      with exact reproduction output.
+
+
+      REQUIREMENT TRACEABILITY MATRIX REVIEW:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1-abort-terminal-phase | `design/pi-coding-agent-integration.md:768-770`
+      — progress phases end with terminal `success`, `failed`, or `cancelled` | Verify
+      exact phase-order parser proves no phase after terminal `cancelled` when abort
+      wins | `pi_impl_child_rpc_20260603.abort-progress-order-retest-gate` | `Exact
+      phase-order parser proves cancelled is terminal` | `phase_order_parser_raw_output`,
+      `behavioral_proof_register` | OWNED | Blocks gate if UNPROVEN/NEEDS_TEST |
+
+      | B1-no-post-abort-final-text | `design/pi-coding-agent-integration.md:1200-1215`
+      and `design/pi-coding-agent-integration.md:2024-2027` — abort returns cancelled
+      when abort/kill stops child; success only if child completes during grace |
+      Verify txTypes prove no `get_last_assistant_text` after `abort` on abort-wins
+      path | `pi_impl_child_rpc_20260603.abort-progress-order-retest-gate` | `Abort
+      txTypes have no get_last_assistant_text after abort` | `txtype_parser_raw_output`,
+      `behavioral_proof_register` | OWNED | Blocks gate if UNPROVEN/NEEDS_TEST |
+
+      | B1-pytest-35 | `design/pi-coding-agent-integration.md:2024-2027` verification
+      target 35 | Verify pytest coverage for parent abort semantics passes with raw
+      output | `pi_impl_child_rpc_20260603.abort-progress-order-retest-gate` | `pytest
+      verification target 35 passes` | `pytest_35_raw_output` | OWNED | Blocks gate
+      if failing or not run |
+
+      | B1-B4-regression | Existing `pi_impl_child_rpc_20260603.live-child-rpc-retest-gate`
+      B1-B4 obligations | Verify live-child-rpc-proof still reports B1, B2, B3, and
+      B4 PASS after the abort fix | `pi_impl_child_rpc_20260603.abort-progress-order-retest-gate`
+      | `B1-B4 live child RPC proof remains PASS` | `live_child_rpc_proof_raw_output`,
+      `b1_b4_status_table` | OWNED | Blocks gate if any B1-B4 item regresses |
+
+
+      ACCEPTANCE RULES:
+
+      - PASS requires exact phase-order parser output showing abort phases end at
+      terminal `cancelled` with no entries after terminal, txTypes output showing
+      no `get_last_assistant_text` after abort, pytest verification target 35 passing,
+      live-child-rpc-proof run passing, and B1-B4 all PASS.
+
+      - BLOCKED if any proof is narrative-only, missing raw command output, uses fake-child-only
+      evidence, omits the parser facts, or leaves any behavioral obligation `UNPROVEN`,
+      `NEEDS_TEST`, or `UNCERTAIN_BLOCKING`.
+
+      - PASS_WITH_DEBT is not acceptable for B1 abort ordering; non-intersection is
+      unavailable because the issue intersects the current phase gate and downstream
+      runtime/client surfaces.
+
+
+      SIDE_EFFECT_BUDGET: read-only retest. Forbidden: modifying implementation, updating
+      plan state, accepting mock-only proof, or approving parser output that omits
+      txTypes/order details.
+
+
+      RISK_PROBES:
+
+      - Probe whether the parser is reading real live-child-rpc-proof/runtime smoke
+      output rather than executor-written summaries.
+
+      - Probe whether `cancelled` is the last phase in the observed list, not merely
+      present somewhere in the list.
+
+      - Probe whether txTypes are evaluated after the first abort event and fail if
+      any later `get_last_assistant_text` appears.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] refs confirmation cites progress terminal-phase, abort, and verification
+      target 35 passages.
+
+      - [ ] Raw exact phase-order parser output shows abort phases ending at `cancelled`
+      with no entries after terminal.
+
+      - [ ] Raw txTypes parser output shows `abort` and no `get_last_assistant_text`
+      after abort on abort-wins path.
+
+      - [ ] Raw pytest output for verification target 35/focused abort regression
+      passes.
+
+      - [ ] Raw `live-child-rpc-proof` command output is included and B1, B2, B3,
+      and B4 are all PASS.
+
+      - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for B1 abort ordering
+      and B1-B4 regression.'
+    evidence_template: "## Verification Report\n**Tester**: integration-verifier (independent\
+      \ of implementation)\n**Scope**: B1 abort progress ordering and post-abort RPC\
+      \ retest\n**Independence Level**: L2\n**Timestamp**: <ISO 8601>\n\n### refs\
+      \ Read Confirmation (MANDATORY)\nFor each ref in this step:\n- design/pi-coding-agent-integration.md\
+      \ — key passage or \"NOT READ: <reason>\"\n\n### Commands and Raw Output\n-\
+      \ exact_phase_order_parser_command: <exact command>\n- exact_phase_order_parser_raw_stdout:\
+      \ |\n    <paste raw parser output; must include abort phases and terminal-position\
+      \ check>\n- txtype_parser_command: <exact command or same parser command>\n\
+      - txtype_parser_raw_stdout: |\n    <paste raw output; must include txTypes and\
+      \ after-abort check>\n- pytest_35_command: <exact pytest command covering verification\
+      \ target 35>\n- pytest_35_raw_stdout: |\n    <paste raw pytest output>\n- live_child_rpc_proof_command:\
+      \ node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof\
+      \ <args used>\n- live_child_rpc_proof_raw_stdout: |\n    <paste raw output>\n\
+      \n### Required Parsed Facts\n- abort_phases: <list>\n- terminal_phase: <must\
+      \ be cancelled>\n- entries_after_terminal: <must be []>\n- txTypes: <list>\n\
+      - txTypes_after_abort: <list; must not include get_last_assistant_text>\n- B1:\
+      \ PASS|FAIL with evidence_ref\n- B2: PASS|FAIL with evidence_ref\n- B3: PASS|FAIL\
+      \ with evidence_ref\n- B4: PASS|FAIL with evidence_ref\n\n### Behavioral Proof\
+      \ Register\n| requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref\
+      \ | status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- |\
+      \ --- | --- | --- |\n| B1-abort-terminal-phase | cancelled is terminal when\
+      \ abort wins | exact parser raw output | <ref> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED\
+      \ | <path> | <basis> |\n| B1-no-post-abort-final-text | no get_last_assistant_text\
+      \ after abort when abort wins | txTypes parser raw output | <ref> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED\
+      \ | <path> | <basis> |\n| B1-B4-regression | live-child-rpc-proof still passes\
+      \ B1-B4 | smoke raw output | <ref> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path>\
+      \ | <basis> |\n\n### Headline\n- [ ] PASS: B1 abort ordering is proven and B1-B4\
+      \ remain PASS.\n- [ ] BLOCKED: One or more required raw proofs is missing, failing,\
+      \ or unproven.\n\nConfidence: high|medium|low"
+    depends_on:
+    - pi_impl_child_rpc_20260603.abort-progress-order-fix
+    agent: integration-verifier
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
