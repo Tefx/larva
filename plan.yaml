@@ -95706,7 +95706,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_launcher_extension_20260603.vertical-slice-proof
     name: Early Pi vertical slice proof
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: Run one complete path from `larva pi --persona <id>`
       through real extension loading, active persona projection, command completion/status,
       and one safe Pi interaction using real implementations. This is an early vertical
@@ -95742,6 +95742,8 @@ phases:
     - pi_impl_launcher_extension_20260603.launcher-runtime
     - pi_impl_launcher_extension_20260603.extension-persona-policy
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-02T18:26:37.191748+00:00'
   - id: pi_impl_launcher_extension_20260603.gate
     name: Gate launcher and extension runtime
     status: pending
