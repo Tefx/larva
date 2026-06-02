@@ -58,13 +58,16 @@ async function getSuggestions(provider, line, options = { force: true }) {
 
 async function runTab(force) {
   const editorLine = `/larva-persona ${prefix}`;
-  const items = await getSuggestions(installedProvider, editorLine, { force });
+  const result = await getSuggestions(installedProvider, editorLine, { force });
+  const items = result?.items ?? null;
   const values = items?.map((item) => item.value) ?? null;
   return {
     command: registeredCommand.name,
     force,
     prefix,
     editorLine,
+    resultIsObject: result !== null && typeof result === "object" && !Array.isArray(result),
+    prefixFromProvider: result?.prefix ?? null,
     items,
     values,
     allValuesAreStrings: Array.isArray(items) && items.every((item) => typeof item.value === "string"),
@@ -83,9 +86,10 @@ async function runTab(force) {
 
 async function runMentionNamespace() {
   const editorLine = prefix || "@persona:";
-  const items = await getSuggestions(installedProvider, editorLine);
+  const result = await getSuggestions(installedProvider, editorLine);
+  const items = result?.items ?? null;
   const values = items?.map((item) => item.value) ?? null;
-  const applied = installedProvider.applyCompletion([editorLine], 0, editorLine.length, items[0], "");
+  const applied = installedProvider.applyCompletion([editorLine], 0, editorLine.length, items[0], result.prefix);
   const expected = [
     "@persona:vectl-planner",
     "@persona:vectl-reviewer",
@@ -97,6 +101,9 @@ async function runMentionNamespace() {
   return {
     command: registeredCommand.name,
     editorLine,
+    resultIsObject: result !== null && typeof result === "object" && !Array.isArray(result),
+    resultItemsIsArray: Array.isArray(result?.items),
+    prefixFromProvider: result?.prefix ?? null,
     items,
     values,
     expected,

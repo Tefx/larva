@@ -42,6 +42,9 @@ def test_autocomplete_substring_case_and_prefix_first_stable_order_runtime() -> 
     payload = _run_autocomplete_runtime_case("substring-case-ordering", prefix="DEV")
 
     assert payload["providerValues"] == ["DevOps", "devrel", "qa-dev", "backend-dev"]
+    assert payload["providerResultIsObject"] is True
+    assert payload["resultItemsIsArray"] is True
+    assert payload["prefixFromProvider"] == "DEV"
     assert payload["commandValues"] == payload["providerValues"]
     assert payload["substringCaseInsensitive"] is True
     assert payload["prefixFirstStableOrder"] is True
@@ -53,6 +56,9 @@ def test_autocomplete_cache_reuse_and_concurrent_inflight_dedupe_runtime() -> No
 
     assert payload["listInvocationCountDuringOverlap"] == 1
     assert payload["listInvocationCountAfterCacheReuse"] == 1
+    assert payload["providerResultsAreObjects"] is True
+    assert payload["resultItemsAreArrays"] is True
+    assert payload["prefixesFromProvider"] == ["vectl", "vectl", "vectl"]
     assert payload["inFlightDedupeProven"] is True
     assert payload["cacheReuseProven"] is True
 
@@ -89,6 +95,9 @@ def test_autocomplete_fixture_uses_documented_list_json_shape_without_alias_fiel
             },
         ]
     }
+    assert payload["providerResultIsObject"] is True
+    assert payload["resultItemsIsArray"] is True
+    assert payload["prefixFromProvider"] == "vectl"
     assert payload["candidateKeys"] == [["description", "label", "value"], ["description", "label", "value"]]
     assert payload["noAliasFuzzyRegexWildcardFields"] is True
 
@@ -105,6 +114,15 @@ def test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter
         "@persona:backend-dev",
     ]
     assert payload["namespacePartialValues"] == expected
+    assert payload["namespacePartialResultIsObject"] is True
+    assert payload["bareNamespaceResultIsObject"] is True
+    assert payload["queryResultIsObject"] is True
+    assert payload["namespacePartialItemsIsArray"] is True
+    assert payload["bareNamespaceItemsIsArray"] is True
+    assert payload["queryItemsIsArray"] is True
+    assert payload["namespacePartialPrefix"] == "@p"
+    assert payload["bareNamespacePrefix"] == "@persona:"
+    assert payload["queryPrefix"] == "@persona:DEV"
     assert payload["bareNamespaceValues"] == expected
     assert payload["namespacePartialReturnsAllEligible"] is True
     assert payload["bareNamespaceReturnsAllEligible"] is True
@@ -123,6 +141,8 @@ def test_autocomplete_tui_provider_uses_argument_prefix_for_force_modes(case: st
     assert payload["force"] is force
     assert payload["prefix"] == "vectl"
     assert payload["editorLine"] == "/larva-persona vectl"
+    assert payload["resultIsObject"] is True
+    assert payload["prefixFromProvider"] == "vectl"
     assert payload["values"] == ["vectl-planner", "vectl-reviewer"]
     assert payload["allValuesAreStrings"] is True
     assert payload["valuesEqualPersonaIds"] is True
@@ -144,6 +164,9 @@ def test_autocomplete_smoke_mentions_namespace_returns_all_eligible_personas() -
     payload = _run_autocomplete_case("mention-namespace")
 
     assert payload["values"] == payload["expected"]
+    assert payload["resultIsObject"] is True
+    assert payload["resultItemsIsArray"] is True
+    assert payload["prefixFromProvider"] == "@persona:"
     assert payload["allValuesAreStrings"] is True
     assert payload["allValuesArePersonaMentions"] is True
     assert payload["allEligiblePersonaMentionsReturned"] is True

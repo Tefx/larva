@@ -70,8 +70,12 @@ async function readCount(path) {
 
 async function listFixtureEvidence() {
   const { installedProvider } = await makeRuntime();
-  const items = await getSuggestions(installedProvider, "/larva-persona vectl");
+  const result = await getSuggestions(installedProvider, "/larva-persona vectl");
+  const items = result?.items ?? [];
   return {
+    providerResultIsObject: result !== null && typeof result === "object" && !Array.isArray(result),
+    resultItemsIsArray: Array.isArray(result?.items),
+    prefixFromProvider: result?.prefix ?? null,
     exactDocumentedShape: {
       data: items.map((item) => ({
         id: item.value,
@@ -93,7 +97,10 @@ async function mentionNamespaceEvidence() {
   const bareNamespace = await getSuggestions(installedProvider, "@persona:");
   const query = await getSuggestions(installedProvider, "please ask @persona:DEV");
   const delegatedRawShort = await getSuggestions(installedProvider, "@vectl");
-  const applied = installedProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespace[0], "");
+  const namespacePartialItems = namespacePartial?.items ?? [];
+  const bareNamespaceItems = bareNamespace?.items ?? [];
+  const queryItems = query?.items ?? [];
+  const applied = installedProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespaceItems[0], bareNamespace.prefix);
   const expected = [
     "@persona:vectl-planner",
     "@persona:vectl-reviewer",
@@ -103,15 +110,24 @@ async function mentionNamespaceEvidence() {
     "@persona:backend-dev",
   ];
   return {
-    namespacePartialValues: namespacePartial.map((item) => item.value),
-    bareNamespaceValues: bareNamespace.map((item) => item.value),
-    queryValues: query.map((item) => item.value),
+    namespacePartialResultIsObject: namespacePartial !== null && typeof namespacePartial === "object" && !Array.isArray(namespacePartial),
+    bareNamespaceResultIsObject: bareNamespace !== null && typeof bareNamespace === "object" && !Array.isArray(bareNamespace),
+    queryResultIsObject: query !== null && typeof query === "object" && !Array.isArray(query),
+    namespacePartialItemsIsArray: Array.isArray(namespacePartial?.items),
+    bareNamespaceItemsIsArray: Array.isArray(bareNamespace?.items),
+    queryItemsIsArray: Array.isArray(query?.items),
+    namespacePartialPrefix: namespacePartial?.prefix ?? null,
+    bareNamespacePrefix: bareNamespace?.prefix ?? null,
+    queryPrefix: query?.prefix ?? null,
+    namespacePartialValues: namespacePartialItems.map((item) => item.value),
+    bareNamespaceValues: bareNamespaceItems.map((item) => item.value),
+    queryValues: queryItems.map((item) => item.value),
     delegatedRawShort,
     applied,
     expected,
-    namespacePartialReturnsAllEligible: JSON.stringify(namespacePartial.map((item) => item.value)) === JSON.stringify(expected),
-    bareNamespaceReturnsAllEligible: JSON.stringify(bareNamespace.map((item) => item.value)) === JSON.stringify(expected),
-    queryUsesSuffixOnly: JSON.stringify(query.map((item) => item.value)) === JSON.stringify([
+    namespacePartialReturnsAllEligible: JSON.stringify(namespacePartialItems.map((item) => item.value)) === JSON.stringify(expected),
+    bareNamespaceReturnsAllEligible: JSON.stringify(bareNamespaceItems.map((item) => item.value)) === JSON.stringify(expected),
+    queryUsesSuffixOnly: JSON.stringify(queryItems.map((item) => item.value)) === JSON.stringify([
       "@persona:DevOps",
       "@persona:devrel",
       "@persona:qa-dev",
@@ -125,10 +141,14 @@ async function mentionNamespaceEvidence() {
 let output;
 if (scenario === "substring-case-ordering") {
   const { installedProvider, registeredCommand } = await makeRuntime();
-  const providerItems = await getSuggestions(installedProvider, `/larva-persona ${prefix || "DEV"}`);
+  const providerResult = await getSuggestions(installedProvider, `/larva-persona ${prefix || "DEV"}`);
+  const providerItems = providerResult?.items ?? [];
   const commandItems = await registeredCommand.options.getArgumentCompletions(prefix || "DEV");
   output = {
     query: prefix || "DEV",
+    providerResultIsObject: providerResult !== null && typeof providerResult === "object" && !Array.isArray(providerResult),
+    resultItemsIsArray: Array.isArray(providerResult?.items),
+    prefixFromProvider: providerResult?.prefix ?? null,
     providerValues: providerItems.map((item) => item.value),
     commandValues: commandItems.map((item) => item.value),
     substringCaseInsensitive: providerItems.some((item) => item.value === "qa-dev") && providerItems.some((item) => item.value === "DevOps"),
@@ -151,8 +171,11 @@ if (scenario === "substring-case-ordering") {
   const cached = await getSuggestions(installedProvider, "/larva-persona vectl");
   const afterCache = await readCount(countFile);
   output = {
-    concurrentValues: [first.map((item) => item.value), second.map((item) => item.value)],
-    cacheValues: cached.map((item) => item.value),
+    providerResultsAreObjects: [first, second, cached].every((result) => result !== null && typeof result === "object" && !Array.isArray(result)),
+    resultItemsAreArrays: [first, second, cached].every((result) => Array.isArray(result?.items)),
+    prefixesFromProvider: [first?.prefix ?? null, second?.prefix ?? null, cached?.prefix ?? null],
+    concurrentValues: [first.items.map((item) => item.value), second.items.map((item) => item.value)],
+    cacheValues: cached.items.map((item) => item.value),
     listInvocationCountDuringOverlap: afterConcurrent,
     listInvocationCountAfterCacheReuse: afterCache,
     inFlightDedupeProven: afterConcurrent === 1,

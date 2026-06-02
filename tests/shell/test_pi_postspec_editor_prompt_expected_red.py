@@ -213,7 +213,7 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         const rawShort = await suggest("@vectl");
         const fileLike = await suggest("@foo/bar");
         const spacedText = await suggest("@ persona:dev");
-        const applied = mentionProvider ? mentionProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespace[1], "") : null;
+        const applied = mentionProvider ? mentionProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespace.items[1], bareNamespace.prefix) : null;
         const beforeEnvelope = mod.getActiveEnvelope();
         if (mentionProvider) await mentionProvider.getSuggestions(["@persona:ok"], 0, "@persona:ok".length, { force: true });
         const afterEnvelope = mod.getActiveEnvelope();
@@ -223,14 +223,25 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
           installedProviderFactory: typeof installedFactory,
           installedProviderObject: typeof mentionProvider?.getSuggestions,
           hasMentionFactory: typeof mod.createLarvaPersonaMentionAutocompleteProvider,
-          rawAt,
-          namespacePartial,
-          literalPartial,
-          bareNamespace,
-          query,
-          rawShort,
-          fileLike,
-          spacedText,
+          providerResultsAreObjects: [rawAt, namespacePartial, literalPartial, bareNamespace, query, rawShort, fileLike, spacedText]
+            .every((result) => result === null || (typeof result === "object" && !Array.isArray(result))),
+          resultItemsAreArrays: [rawAt, namespacePartial, literalPartial, bareNamespace, query, rawShort, fileLike, spacedText]
+            .every((result) => result === null || Array.isArray(result.items)),
+          prefixes: {
+            rawAt: rawAt?.prefix ?? null,
+            namespacePartial: namespacePartial?.prefix ?? null,
+            literalPartial: literalPartial?.prefix ?? null,
+            bareNamespace: bareNamespace?.prefix ?? null,
+            query: query?.prefix ?? null,
+          },
+          rawAt: rawAt?.items ?? null,
+          namespacePartial: namespacePartial?.items ?? null,
+          literalPartial: literalPartial?.items ?? null,
+          bareNamespace: bareNamespace?.items ?? null,
+          query: query?.items ?? null,
+          rawShort: rawShort?.items ?? null,
+          fileLike: fileLike?.items ?? null,
+          spacedText: spacedText?.items ?? null,
           applied,
           calls,
           beforeEnvelope,
@@ -244,6 +255,15 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     assert payload["hasMentionFactory"] == "function"
     assert payload["installedProviderFactory"] == "function"
     assert payload["installedProviderObject"] == "function"
+    assert payload["providerResultsAreObjects"] is True
+    assert payload["resultItemsAreArrays"] is True
+    assert payload["prefixes"] == {
+        "rawAt": "@",
+        "namespacePartial": "@p",
+        "literalPartial": "@persona",
+        "bareNamespace": "@persona:",
+        "query": "@persona:review",
+    }
     assert [item["value"] for item in payload["rawAt"]] == [
         "./src/app.ts",
         "@persona:vectl-planner",

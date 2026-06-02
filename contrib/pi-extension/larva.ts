@@ -122,10 +122,11 @@ type LegacyCommandDefinition = CommandOptions & {
 };
 export type PiAutocompleteCandidate = { value: string; label: string; description?: string };
 type PiAutocompleteResult = PiAutocompleteCandidate[] | null;
+type PiAutocompleteObjectResult = { items: PiAutocompleteCandidate[]; prefix: string } | null;
 type PiAutocompleteApplyResult = unknown;
 type PiAutocompleteProviderCall = (...args: unknown[]) => PiAutocompleteResult | Promise<PiAutocompleteResult>;
 type PiAutocompleteProviderObject = {
-  getSuggestions: (lines: string[], cursorLine: number, cursorCol: number, options?: Record<string, unknown>) => PiAutocompleteResult | Promise<PiAutocompleteResult>;
+  getSuggestions: (lines: string[], cursorLine: number, cursorCol: number, options?: Record<string, unknown>) => PiAutocompleteObjectResult | Promise<PiAutocompleteObjectResult>;
   applyCompletion: (lines: string[], cursorLine: number, cursorCol: number, item: PiAutocompleteCandidate, prefix?: string) => PiAutocompleteApplyResult;
   shouldTriggerFileCompletion?: (lines: string[], cursorLine: number, cursorCol: number, options?: Record<string, unknown>) => boolean;
 };
@@ -569,7 +570,9 @@ function autocompleteLineFromArgs(args: unknown[]): string | null {
 }
 
 function isAutocompleteProviderObject(value: unknown): value is PiAutocompleteProviderObject {
-  return isRecord(value) && typeof value.getSuggestions === "function" && typeof value.applyCompletion === "function";
+  if ((typeof value !== "object" && typeof value !== "function") || value === null) return false;
+  const candidate = value as { getSuggestions?: unknown; applyCompletion?: unknown };
+  return typeof candidate.getSuggestions === "function" && typeof candidate.applyCompletion === "function";
 }
 
 function autocompleteBaseProviderFromArgs(args: unknown[], fallback?: PiAutocompleteProviderLike): PiAutocompleteProviderLike | undefined {
@@ -590,10 +593,32 @@ async function getDelegateSuggestions(delegate: PiAutocompleteProviderLike | und
   if (!delegate) return null;
   if (typeof delegate === "function") return delegate(...args);
   if (Array.isArray(args[0]) && typeof args[1] === "number" && typeof args[2] === "number") {
-    return delegate.getSuggestions(args[0] as string[], args[1], args[2], isRecord(args[3]) ? args[3] : undefined);
+    const result = await delegate.getSuggestions(args[0] as string[], args[1], args[2], isRecord(args[3]) ? args[3] : undefined);
+    if (Array.isArray(result)) return result;
+    return result?.items ?? null;
   }
   const line = autocompleteLineFromArgs(args) ?? "";
-  return delegate.getSuggestions([line], 0, line.length, isRecord(args[1]) ? args[1] : undefined);
+  const result = await delegate.getSuggestions([line], 0, line.length, isRecord(args[1]) ? args[1] : undefined);
+  if (Array.isArray(result)) return result;
+  return result?.items ?? null;
+}
+
+async function getDelegateSuggestionObject(
+  delegate: PiAutocompleteProviderLike | undefined,
+  lines: string[],
+  cursorLine: number,
+  cursorCol: number,
+  options?: Record<string, unknown>,
+): Promise<PiAutocompleteObjectResult> {
+  if (!delegate) return null;
+  if (isAutocompleteProviderObject(delegate)) {
+    const result = await delegate.getSuggestions(lines, cursorLine, cursorCol, options);
+    if (Array.isArray(result)) return result.length > 0 ? { items: result, prefix: "" } : null;
+    return result && Array.isArray(result.items) ? result : null;
+  }
+  const line = lines[cursorLine] ?? "";
+  const items = await delegate(line.slice(0, Math.max(0, cursorCol)), options ?? {});
+  return items && items.length > 0 ? { items, prefix: "" } : null;
 }
 
 function delegateApplyCompletion(
@@ -604,7 +629,7 @@ function delegateApplyCompletion(
   item: PiAutocompleteCandidate,
   prefix?: string,
 ): PiAutocompleteApplyResult {
-  if (delegate && typeof delegate !== "function") return delegate.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+  if (delegate && isAutocompleteProviderObject(delegate)) return delegate.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
   return { lines, cursorLine, cursorCol };
 }
 
@@ -665,7 +690,15 @@ export function createLarvaPersonaMentionAutocompleteProvider(
     }
   };
   const provider = (async (...args: unknown[]) => getSuggestions(...args)) as PiAutocompleteProvider;
-  provider.getSuggestions = (lines, cursorLine, cursorCol, options) => getSuggestions(lines, cursorLine, cursorCol, options);
+  provider.getSuggestions = async (lines, cursorLine, cursorCol, options) => {
+    const line = autocompleteLineFromArgs([lines, cursorLine, cursorCol, options]);
+    const token = line === null ? null : currentMentionToken(line);
+    if (token === null) return getDelegateSuggestionObject(baseProvider, lines, cursorLine, cursorCol, options);
+    const classification = mentionQuery(token);
+    if (classification.mode === "delegate") return getDelegateSuggestionObject(baseProvider, lines, cursorLine, cursorCol, options);
+    const items = await getSuggestions(lines, cursorLine, cursorCol, options);
+    return items && items.length > 0 ? { items, prefix: token } : null;
+  };
   provider.applyCompletion = (lines, cursorLine, cursorCol, item, prefix) => {
     if (!item.value.startsWith("@persona:")) return delegateApplyCompletion(baseProvider, lines, cursorLine, cursorCol, item, prefix);
     const currentLine = lines[cursorLine] ?? "";
@@ -681,7 +714,7 @@ export function createLarvaPersonaMentionAutocompleteProvider(
     const line = autocompleteLineFromArgs([lines, cursorLine, cursorCol, options]);
     const token = line === null ? null : currentMentionToken(line);
     if (token !== null && mentionQuery(token).mode !== "delegate") return true;
-    if (baseProvider && typeof baseProvider !== "function") return baseProvider.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol, options) ?? false;
+    if (baseProvider && isAutocompleteProviderObject(baseProvider)) return baseProvider.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol, options) ?? false;
     return false;
   };
   return provider;
@@ -706,11 +739,17 @@ export function createLarvaPersonaAutocompleteProvider(
     }
   };
   const provider = (async (...args: unknown[]) => getSuggestions(...args)) as PiAutocompleteProvider;
-  provider.getSuggestions = (lines, cursorLine, cursorCol, options) => getSuggestions(lines, cursorLine, cursorCol, options);
+  provider.getSuggestions = async (lines, cursorLine, cursorCol, options) => {
+    const line = autocompleteLineFromArgs([lines, cursorLine, cursorCol, options]);
+    const prefix = line === null ? null : larvaPersonaArgumentPrefix(line);
+    if (prefix === null) return getDelegateSuggestionObject(baseProvider, lines, cursorLine, cursorCol, options);
+    const items = await getSuggestions(lines, cursorLine, cursorCol, options);
+    return items && items.length > 0 ? { items, prefix } : null;
+  };
   provider.applyCompletion = (lines, cursorLine, cursorCol, item, prefix) => delegateApplyCompletion(baseProvider, lines, cursorLine, cursorCol, item, prefix);
   provider.shouldTriggerFileCompletion = (lines, cursorLine, cursorCol, options) => {
     if (larvaPersonaArgumentPrefix(autocompleteLineFromArgs([lines, cursorLine, cursorCol, options]) ?? "") !== null) return true;
-    if (baseProvider && typeof baseProvider !== "function") return baseProvider.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol, options) ?? false;
+    if (baseProvider && isAutocompleteProviderObject(baseProvider)) return baseProvider.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol, options) ?? false;
     return false;
   };
   return provider;
