@@ -96642,7 +96642,16 @@ phases:
 
       - [ ] B1-B4 live child RPC retest result is PASS, or PASS_WITH_BLOCK includes
       exact hard runtime capability gap and an orchestrator-owned architecture adjudication
-      path before downstream runtime claims.'
+      path before downstream runtime claims.
+
+      - [ ] Abort progress/order retest is PASS with raw phase-order parser output
+      showing `cancelled` terminal and no phases after terminal.
+
+      - [ ] Abort txTypes evidence shows no `get_last_assistant_text` after `abort`
+      on the abort-wins path.
+
+      - [ ] Raw pytest 35 and live-child-rpc-proof outputs are reviewed and show all
+      required checks pass.'
     refs:
     - design/pi-coding-agent-integration.md
     depends_on:
@@ -96651,6 +96660,7 @@ phases:
     - pi_impl_child_rpc_20260603.integration-proof
     - pi_impl_child_rpc_20260603.live-child-rpc-proof-support
     - pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
+    - pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-02T19:47:57.746729+00:00'
