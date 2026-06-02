@@ -99421,7 +99421,7 @@ phases:
     agent: integration-verifier
   - id: retest-shared-spec-conformance
     name: Retest shared spec conformance after remediation and adjudication
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -99480,6 +99480,8 @@ phases:
     - fix-runtime-conformance-blockers
     - adjudicate-subagent-overlay-authority
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-06-02T21:58:14.129073+00:00'
 - id: pi_impl_finalization_20260603
   name: Pi Integration Finalization 2026-06-03
   status: locked
