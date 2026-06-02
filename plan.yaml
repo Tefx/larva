@@ -97157,7 +97157,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.abort-progress-order-fix
     name: Fix abort progress order and post-abort RPC race
-    status: pending
+    status: claimed
     description: 'TARGET STATE: When parent abort wins the child RPC lifecycle race,
       `larva_subagent` emits `cancelled` as the terminal and final progress phase,
       suppresses/cancels the non-winning success/final-text sequence, and performs
@@ -97295,6 +97295,8 @@ phases:
     depends_on:
     - pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T19:54:10.279358+00:00'
   - id: pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
     name: Retest abort progress order and post-abort RPC gate
     status: pending
