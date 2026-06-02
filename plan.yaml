@@ -96932,7 +96932,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     name: Retest gate for live child RPC startup, resume, abort, and cleanup proof
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT: Independent phase-check retest gate for the B1-B4
       failures from `pi_impl_child_rpc_20260603.integration-proof`. This retest decides
       whether the remediation support proves live or controlled-live child RPC startup,
@@ -97062,6 +97062,8 @@ phases:
     depends_on:
     - pi_impl_child_rpc_20260603.live-child-rpc-proof-support
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-02T19:43:46.892269+00:00'
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
