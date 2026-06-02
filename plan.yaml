@@ -94986,6 +94986,170 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-02T17:55:48.950552+00:00'
+  - id: fix-autocomplete-runtime-proof-gate
+    name: Fix autocomplete runtime proof hard gate after blocked Pi contract gate
+    status: pending
+    description: 'TARGET STATE:
+
+      The Pi runtime capability probe no longer reports `runtime.hardGates.uiAutocompleteProvider.supported:
+      true` from a mocked `ctx.ui.addAutocompleteProvider` fixture. Autocomplete support
+      is reported as `supported: true` only when evidence comes from the tested Pi
+      runtime/build exposing the real UI hook; when only the local mock harness exposes
+      the hook, the hard gate reports `supported: false` or an explicit `unknown/unsupported`
+      status with a limitation explaining that live runtime proof is missing.
+
+
+      BOUNDING BOX:
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - `tests/shell/test_pi_extension_subagent_ux.py`
+
+      - `tests/shell/test_pi_postspec_editor_prompt_expected_red.py`
+
+      - `tests/shell/test_pi_extension_real_runtime.py`
+
+
+      UPSTREAM ARTIFACTS:
+
+      - `pi_impl_contract_20260603.traceability-matrix` — requirement ownership and
+      original decision basis are authoritative.
+
+      - `pi_impl_contract_20260603.red-harness-and-runtime-probe` — expected-red/runtime
+      probe remains protected; update it only to prevent mock evidence from becoming
+      positive support evidence.
+
+      - `pi_impl_contract_20260603.gate` — blocked decision basis for B1 remains preserved;
+      do not edit or erase it.
+
+
+      REQUIREMENT TRACEABILITY:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-AUTOCOMPLETE-RUNTIME-HOOK | `design/pi-coding-agent-integration.md` lines
+      172-178 and 243-245: editor autocomplete is available only when Pi interactive
+      TUI runtime exposes `ctx.ui.addAutocompleteProvider`; otherwise Larva leaves
+      editor behavior unchanged | Capability gate must not claim editor autocomplete
+      support from mock-only hook evidence | `pi_impl_contract_20260603.fix-autocomplete-runtime-proof-gate`
+      | `mock-only autocomplete evidence cannot produce supported=true` | `runtime_hard_gate_json.uiAutocompleteProvider`
+      | OWNED | Blocks `pi_impl_contract_20260603.gate` reopening and all downstream
+      Pi implementation phases until retest proves closure |
+
+
+      CONSTRAINTS:
+
+      - Do NOT edit completed vectl evidence or completed steps.
+
+      - Do NOT remove existing expected-red coverage; strengthen it so unsupported/unknown
+      is the result for mock-only evidence.
+
+      - Do NOT claim support for editor autocomplete unless the evidence identifies
+      the tested Pi runtime/build and a non-mock hook source.
+
+      - Preserve command-level `/larva-persona` completion degradation behavior when
+      editor hook is unavailable.
+
+
+      <side_effect_budget>
+
+      Allowed: modify the runtime smoke script and focused pytest expectations/probe
+      assertions needed to classify mock-only autocomplete evidence as unsupported/unknown.
+      Forbidden: changing canonical PersonaSpec contracts, changing unrelated Pi hard
+      gates, masking the B1 failure by deleting the hard-gate field, or weakening
+      downstream implementation requirements.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the support classifier distinguishes real Pi runtime hook evidence
+      from the local `runtimeHarness` mock object.
+
+      - Verify absence of `ctx.ui.addAutocompleteProvider` still preserves command
+      completion and leaves editor behavior unchanged.
+
+      - Verify no `supported: true` field remains paired with text containing `mock
+      runtime` or equivalent mock-only proof.
+
+      </risk_probes>
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only completion is NOT acceptable.
+      The smoke output must vary based on evidence provenance: real runtime hook proof
+      may support autocomplete; mock-only proof must not.
+
+
+      ## Checklist
+
+      - [ ] `scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` emits
+      structured `uiAutocompleteProvider` evidence with provenance/status rather than
+      the current mock-evidence string.
+
+      - [ ] Mock-only autocomplete evidence cannot produce `runtime.hardGates.uiAutocompleteProvider.supported:
+      true`.
+
+      - [ ] Tests assert that real Pi runtime hook proof is required for `supported:
+      true` and that mock-only proof is `false`, `unknown`, or `unsupported` with
+      a limitation.
+
+      - [ ] Command-level `/larva-persona` completion degradation tests remain covered
+      when `ctx.ui.addAutocompleteProvider` is absent.
+
+      - [ ] Evidence records the exact files changed and confirms no completed gate
+      evidence was edited.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] refs confirmation includes key passages for `ctx.ui.addAutocompleteProvider`
+      availability and fallback behavior.
+
+      - [ ] Raw output from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      capability-gates` shows `runtime.hardGates.uiAutocompleteProvider.supported`
+      is not `true` when only mock evidence exists.
+
+      - [ ] Raw pytest output shows focused tests around the runtime probe and editor
+      autocomplete degradation pass.
+
+      - [ ] Main path evidence explains how real Pi runtime hook proof would set `supported:
+      true`.
+
+      - [ ] Failure path evidence shows mock-only evidence yields unsupported/unknown
+      and cannot reopen the gate.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
+      \ <reason>\"\n- scripts/pi-extension-runtime-smoke.mjs — key passage or \"NOT\
+      \ READ: <reason>\"\n- tests/shell/test_pi_extension_subagent_ux.py — key passage\
+      \ or \"NOT READ: <reason>\"\n- tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- tests/shell/test_pi_extension_real_runtime.py\
+      \ — key passage or \"NOT READ: <reason>\"\n\n## B1 Remediation Report\n- blocker:\
+      \ B1 mock-only autocomplete support hard gate\n- changed_files: <list>\n- runtime_hard_gate_json:\
+      \ <paste uiAutocompleteProvider object from node smoke>\n- support_rule: <explain\
+      \ true vs false/unknown provenance rule>\n- no_completed_evidence_edited: true|false\n\
+      \n## Commands\n```bash\nnode scripts/pi-extension-runtime-smoke.mjs --scenario\
+      \ capability-gates\nuv run pytest tests/shell/test_pi_extension_subagent_ux.py::test_runtime_probe_records_pi_package_and_hard_gate_statuses\
+      \ tests/shell/test_pi_postspec_editor_prompt_expected_red.py::test_editor_provider_installation_degrades_without_ui_hook_but_keeps_command_completion\
+      \ -q\n```\n\n## Raw Outputs\n- node_stdout: |\n    <paste raw JSON>\n- pytest_stdout:\
+      \ |\n    <paste raw pytest output>\n- exit_codes: <paste>\n\n## Checklist Receipt\n\
+      - [ ] `scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` emits\
+      \ structured `uiAutocompleteProvider` evidence with provenance/status rather\
+      \ than the current mock-evidence string.\n- [ ] Mock-only autocomplete evidence\
+      \ cannot produce `runtime.hardGates.uiAutocompleteProvider.supported: true`.\n\
+      - [ ] Tests assert that real Pi runtime hook proof is required for `supported:\
+      \ true` and that mock-only proof is `false`, `unknown`, or `unsupported` with\
+      \ a limitation.\n- [ ] Command-level `/larva-persona` completion degradation\
+      \ tests remain covered when `ctx.ui.addAutocompleteProvider` is absent.\n- [\
+      \ ] Evidence records the exact files changed and confirms no completed gate\
+      \ evidence was edited."
+    depends_on:
+    - pi_impl_contract_20260603.gate
+    agent: python-senior
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
   status: locked
