@@ -96145,6 +96145,7 @@ phases:
       \ status recorded: satisfied|failed|blocked|unobserved"
     depends_on:
     - canonical-personaspec-fail-closed-fix
+    agent: gate-reviewer
 - id: pi_impl_child_rpc_20260603
   name: Pi larva_subagent Child RPC Lifecycle 2026-06-03
   status: locked
