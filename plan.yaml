@@ -96493,16 +96493,16 @@ phases:
       - Repeated resumes update one summary by canonical task_id, not duplicate aliases.
 
       - Running entries remain busy for same-process resume until terminal cleanup.'
-    verification: '- [ ] Helper validates limit default/max/invalid cases and returns
+    verification: '- [x] Helper validates limit default/max/invalid cases and returns
       newest-first unique canonical task_id summaries.
 
-      - [ ] Running allocated entries appear before terminal completion and remain
+      - [x] Running allocated entries appear before terminal completion and remain
       busy for same-process resume.
 
-      - [ ] Eviction and reset clear/update derived summaries according to presentation-log
+      - [x] Eviction and reset clear/update derived summaries according to presentation-log
       retention.
 
-      - [ ] Evidence proves helper does not scan child-session directory or parse
+      - [x] Evidence proves helper does not scan child-session directory or parse
       raw JSONL.'
     refs:
     - design/pi-coding-agent-integration.md
