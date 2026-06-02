@@ -95706,7 +95706,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_launcher_extension_20260603.vertical-slice-proof
     name: Early Pi vertical slice proof
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT: Run one complete path from `larva pi --persona <id>`
       through real extension loading, active persona projection, command completion/status,
       and one safe Pi interaction using real implementations. This is an early vertical
@@ -95744,6 +95744,84 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-02T18:26:37.191748+00:00'
+    done_at: '2026-06-02T18:33:00.573228+00:00'
+    evidence: 'PASS: Early Pi vertical slice proof completed with real runtime path.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read; key passages: Larva Pi support
+      is launcher + bundled Pi extension; launcher invokes real Pi with extension
+      flag and absolute extension entry; UI status exposes `larva: <persona-id>`;
+      minimum liveness proof requires Pi session starts with extension loaded and
+      active persona visible.
+
+
+      Runtime Target:
+
+      - launch_command: `.venv/bin/larva pi --persona archimedes -- --mode rpc --no-session
+      --offline --session-dir <temp>`.
+
+      - pi_version: 0.78.0.
+
+      - pi_commit: dd24b116bd4aeedb07012cc8b152239c488eb95b.
+
+      - extension_flag: -e.
+
+      - extension_entry: contrib/pi-extension/larva.ts in isolated worktree.
+
+      - RPC sessionId observed: 019e8999-225d-718b-a560-e3afc31827e3.
+
+
+      Runtime Proof Register:
+
+      - Real larva pi --persona launch path: PROVEN by exact command.
+
+      - Real Pi target/version/commit: PROVEN by `pi --version` and package git rev-parse.
+
+      - Extension loaded through runtime path: PROVEN by `get_commands` showing `larva-persona`
+      from source extension, sourceInfo path contrib/pi-extension/larva.ts, source
+      cli, scope temporary.
+
+      - Active persona user-observable: PROVEN by `extension_ui_request setStatus`
+      with statusKey `larva`, statusText `larva: archimedes`.
+
+      - Active persona projection/model: PROVEN by `get_state` model openrouter/google/gemini-3.1-pro-preview
+      matching archimedes.
+
+      - Safe Pi interaction reaches real entrypoint: PROVEN by RPC prompt `/larva-persona
+      archimedes` success and notify `Larva persona active: archimedes`.
+
+      - No _Runtime/_Stub/_Placeholder production dependency: PROVEN by underscore-token
+      scan on src/larva/shell/pi.py and contrib/pi-extension/larva.ts returning MATCHES:
+      [].
+
+
+      Blocker Ledger: none.
+
+      Gate Decision: verdict PASS, blockers [], orchestrator_action_hint COMPLETE.
+
+
+      Worker evidence commit: b8ffcdb verify pi launcher vertical slice (empty evidence
+      commit).
+
+      Mainline merge: no file delta.
+
+      Mainline final-state verification: `pi --version` -> 0.78.0; package `git rev-parse
+      HEAD` -> dd24b116bd4aeedb07012cc8b152239c488eb95b.
+
+
+      Checklist receipt:
+
+      - Exact launch command/target/session and tested Pi version/commit recorded:
+      true.
+
+      - Extension loaded, active persona visible, safe operation reaches real entrypoint:
+      true.
+
+      - No _Runtime/_Stub/_Placeholder dependency used: true.
+
+      - Not blocked; live Pi target available and verified: true.'
   - id: pi_impl_launcher_extension_20260603.gate
     name: Gate launcher and extension runtime
     status: pending
