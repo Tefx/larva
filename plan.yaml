@@ -97722,7 +97722,7 @@ phases:
   - id: pi_impl_realtime_ui_20260603.complete-ui-target
     name: Complete realtime presentation log, row rendering, expanded rendering, reset
       cleanup, and view-only overlay
-    status: claimed
+    status: done
     description: 'TARGET STATE: Implement the complete realtime/log UI as one target:
       custom tool renderCall, onUpdate partial progress, retained process-local LarvaSubagentPresentationLog
       capped at 25, row-local run_key renderer scratch state, expanded Markdown-capable
@@ -97788,6 +97788,102 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T20:13:04.305180+00:00'
+    done_at: '2026-06-02T20:55:15.473341+00:00'
+    evidence: 'SUCCESS/PASS: realtime presentation log, row rendering, expanded rendering,
+      reset cleanup, view-only overlay, and full suite blocker repair completed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: runtime visibility/result/no-sidecar/progress
+      sections.
+
+      - contrib/pi-extension/larva.ts read/updated.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/test-subagent-sessions-helper.mjs
+
+      - tests/shell/test_pi_extension_subagent_ux.py
+
+      - tests/fixtures/pi/fake-larva-cli.mjs
+
+      - tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+
+
+      Worker commits:
+
+      - 872abf56eab73b5067757355ab7f63704f7d8fe1 (initial UI overlay/support)
+
+      - 570074979aa892e7d8adab75145ae1951bf1cad2 (full pytest fixture blocker repair)
+
+      - 666fd059b28bfc9487a8bb9c855278493d9d4c8b (missing checklist completion)
+
+      Mainline squash commit: 3febb97 [vectl] step-pi_impl_realtime_ui_20260603.complete-ui-target
+      completed.
+
+
+      Checklist proof:
+
+      - Row renderCall: PROVEN via renderLarvaSubagentCall visibleText/boundedVisible/boundedVisibleSuffix
+      and test_larva_subagent_render_hooks_and_visible_preview_bounds; proves persona/mode,
+      bounded preview, abbreviated task_id, ANSI/control/newline cleanup, CJK width
+      fit.
+
+      - onUpdate lifecycle: PROVEN. emitProgress records via upsertSubagentPresentationProgress
+      before safelyEmitSubagentUpdate; safelyEmitSubagentUpdate catches callback exceptions;
+      call_id/presentationCallId is canonical run_key mapping; tests prove throwing/no
+      onUpdate, log-before-callback, terminal before final return.
+
+      - Expanded renderResult: PROVEN. renderLarvaSubagentResult returns markdown-capable
+      PiRenderableText with plain-text fallback; tests prove expanded final/failure
+      fields, markdown property, plain-text fallback, and ToolResult immutability.
+
+      - /larva-subagent-log: PROVEN. handler parses whole trimmed input as exact task_id,
+      opens newest/exact retained run, replaces overlay generation, returns stable
+      LARVA_SUBAGENT_LOG_NOT_OBSERVED/LARVA_SUBAGENT_LOG_UI_UNAVAILABLE, closes overlay
+      on reset/not-observed, view-only.
+
+      - resetExtensionUI/new-session/shutdown cleanup: PROVEN. resetExtensionUI aborts/kills/reaps
+      activeSubagentChildren via cleanupChild, clears activeTaskIds, overlay, presentation
+      log; wired to session_start plus shutdown/session_end/exit hooks when Pi emits
+      them; live B3/B4 proof remains PASS.
+
+      - Recent-session helper: PROVEN. larva_subagent_sessions derives from retainedSubagentPresentationLog
+      via recentSessionsFromPresentationLog; tests prove newest-first, retention cap/eviction,
+      reset, no filesystem scan/raw JSONL, no separate store.
+
+
+      Worker verification:
+
+      - `uv run --group dev pytest -q` -> 715 passed in 60.81s.
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> PASS for
+      limit/newest-first/retention/view-only overlay/running allocation/safe onUpdate/exact
+      task_id/reset cleanup/no filesystem scan.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> controlledLive_status PASS; B1/B2/B3/B4 PASS.
+
+      - `uv run invar guard --changed` -> passed; errors=0 warnings=0.
+
+
+      Mainline final-state verification:
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS
+      including safe onUpdate, exact task_id overlay command/stable errors, resetExtensionUI
+      cleanup.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> controlledLive PASS; B1/B2/B3/B4 all PASS.
+
+      - `pytest -q` -> 715 passed in 58.96s.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_realtime_ui_20260603.client-runtime-proof
     name: Client runtime proof for Pi realtime/log UI
     status: pending
