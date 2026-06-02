@@ -98258,6 +98258,142 @@ phases:
     depends_on:
     - pi_impl_realtime_ui_20260603.wiring-audit
     agent: frontend-engineer
+  - id: larva-pi-launched-wiring-retest
+    name: Retest W6 wiring audit after LARVA_PI_LAUNCHED fix
+    status: pending
+    description: 'CONFORMANCE ARTIFACT: Independent retest gate for W6-LARVA-PI-LAUNCHED-WRITE-ONLY
+      after the remediation step. This retest must verify the specific W6 blocker
+      is closed and rerun the existing realtime/log UI wiring matrix so the final
+      phase gate receives a fresh wiring decision.
+
+
+      Verification scope declaration: phase-check. Protects `pi_impl_realtime_ui_20260603.gate`
+      and specifically guards the launcher env contract, runtime surface reachability,
+      and write-only-field matrix for this phase.
+
+
+      SIDE_EFFECT_BUDGET: read-only audit. Forbidden: product code edits, plan lifecycle
+      changes, or accepting symbol/type declarations as consumption proof.
+
+
+      RISK_PROBES:
+
+      - W6 closure must show an actual read/consumer path or a documented waiver/removal
+      with equivalent launcher-safety proof.
+
+      - Existing wiring matrix must still cover larva_subagent, larva_subagent_sessions,
+      renderCall/renderResult/onUpdate, /larva-subagent-log, resetExtensionUI, and
+      overlay/autocomplete registration.
+
+      - Final gate must not open if W6 is merely reclassified as pre-existing/out-of-scope
+      without non-intersection evidence.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | W6-R1 | design/pi-coding-agent-integration.md:1331-1332 — `LARVA_PI_LAUNCHED`:
+      literal `1`, used only to prevent accidental recursive launcher execution |
+      Retest must prove the env field is no longer write-only and launcher safety
+      is preserved | pi_impl_realtime_ui_20260603.larva-pi-launched-wiring-retest
+      | `- [ ] W6-LARVA-PI-LAUNCHED-WRITE-ONLY is retested and has PASS/BLOCKED disposition
+      with file:line evidence.` | `w6_disposition` | OWNED | N/A |
+
+      | W6-R2 | Existing wiring-audit matrix for realtime/log UI public surfaces |
+      Retest must rerun the full matrix, not only W6 | pi_impl_realtime_ui_20260603.larva-pi-launched-wiring-retest
+      | `- [ ] Existing wiring matrix checks are rerun with fresh evidence.` | `wiring_matrix`
+      | OWNED | N/A |'
+    verification: '- [ ] W6-LARVA-PI-LAUNCHED-WRITE-ONLY is retested and has PASS/BLOCKED
+      disposition with file:line evidence.
+
+      - [ ] Existing wiring matrix checks are rerun with fresh evidence.
+
+      - [ ] larva_subagent and larva_subagent_sessions registration/reachability remain
+      proven.
+
+      - [ ] renderCall/renderResult/onUpdate, /larva-subagent-log, resetExtensionUI,
+      and overlay/autocomplete registration checks remain covered.
+
+      - [ ] No dead public symbol, unregistered command, write-only config/env field,
+      or stub-only implementation remains in the phase scope.
+
+      - [ ] Final headline is PASS only if W6 and all matrix rows have positive evidence;
+      otherwise BLOCKED with exact remediation owner.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/larva.ts — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_pi_extension_contract.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_pi_extension_subagent_ux.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_pi_launcher_contract.py — key passage or "NOT READ: <reason>"
+
+
+      ## W6 Retest Disposition
+
+      - w6_disposition: PASS | BLOCKED
+
+      - env_contract_file_lines: <file:line anchors showing consumption or formal
+      waiver/removal>
+
+      - launcher_safety_evidence: <test/static/runtime proof>
+
+      - write_only_scan: <grep/static audit output for LARVA_PI_LAUNCHED declarations
+      vs consumers>
+
+
+      ## Existing Wiring Matrix Retest
+
+      | matrix_row | evidence_ref | status | notes |
+
+      | --- | --- | --- | --- |
+
+      | larva_subagent registration/reachability | <file:line/test> | PASS/BLOCKED
+      | <notes> |
+
+      | larva_subagent_sessions registration/reachability | <file:line/test> | PASS/BLOCKED
+      | <notes> |
+
+      | renderCall/renderResult/onUpdate | <file:line/test> | PASS/BLOCKED | <notes>
+      |
+
+      | /larva-subagent-log command | <file:line/test> | PASS/BLOCKED | <notes> |
+
+      | resetExtensionUI lifecycle/test hook | <file:line/test> | PASS/BLOCKED | <notes>
+      |
+
+      | overlay/autocomplete registration | <file:line/test> | PASS/BLOCKED | <notes>
+      |
+
+      | write-only config/env fields | <scan output> | PASS/BLOCKED | <notes> |
+
+
+      ## Commands / Artifacts
+
+      - commands: <exact command(s) or grep/static audit invocations>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+
+      ## Headline
+
+      - [ ] PASS: W6 closed and full wiring matrix remains green.
+
+      - [ ] BLOCKED: W6 or any matrix row still lacks positive proof.'
+    depends_on:
+    - larva-pi-launched-env-fix
+    agent: wiring-auditor
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
   status: locked
