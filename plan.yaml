@@ -94779,6 +94779,8 @@ phases:
       blockers.'
     refs:
     - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_contract_20260603.traceability-matrix
     agent: python-executor
   - id: pi_impl_contract_20260603.gate
     name: Gate Pi contract harness
