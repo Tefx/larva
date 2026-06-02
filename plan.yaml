@@ -95555,17 +95555,17 @@ phases:
       failure.
 
       - `@persona:<id>` mention remains mention-only and preserves Pi file references.'
-    verification: '- [ ] Persona switching and startup commit prove pre-side-effect
+    verification: '- [x] Persona switching and startup commit prove pre-side-effect
       validation, setModel then setActiveTools ordering, rollback/fail-safe behavior,
       and status strings.
 
-      - [ ] Tool policy path validation, no legacy fallback, allow/deny filtering,
+      - [x] Tool policy path validation, no legacy fallback, allow/deny filtering,
       tool_call interception, and Larva-owned custom tool registration are tested.
 
-      - [ ] Persona autocomplete/mentions prove canonical @persona:<id>, cache TTL/reset/in-flight
+      - [x] Persona autocomplete/mentions prove canonical @persona:<id>, cache TTL/reset/in-flight
       sharing, selector mode gating, and Pi file-reference preservation.
 
-      - [ ] Shared contract evidence confirms PersonaSpec meaning is consumed from
+      - [x] Shared contract evidence confirms PersonaSpec meaning is consumed from
       opifex without local aliases or schema mutation.'
     refs:
     - design/pi-coding-agent-integration.md
