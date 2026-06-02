@@ -96647,6 +96647,189 @@ phases:
     - pi_impl_child_rpc_20260603.sessions-helper
     - pi_impl_child_rpc_20260603.integration-proof
     agent: gate-reviewer
+  - id: pi_impl_child_rpc_20260603.live-child-rpc-proof-support
+    name: Add live child RPC proof support for startup, resume, abort, and cleanup
+    status: pending
+    description: 'TARGET STATE: Provide real or controlled-live proof support for
+      the failed child RPC lifecycle evidence gaps B1-B4 from `pi_impl_child_rpc_20260603.integration-proof`.
+      This step may add or adjust Pi extension runtime smoke/proof harness support
+      so a verifier can exercise actual `larva_subagent` child process behavior through
+      Pi RPC rather than fake-child or mock-only pipelines.
+
+
+      WORK_TYPE: proof_closure remediation with implementation only where proof support
+      is missing.
+
+
+      BOUNDING BOX:
+
+      - `contrib/pi-extension/larva.ts`
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - Pi child-session temp root controlled by `LARVA_PI_CHILD_SESSION_DIR`
+
+      - Any adjacent Pi extension runtime test helpers needed to expose real RPC command/response
+      evidence
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1-startup | `design/pi-coding-agent-integration.md > Subagent spawning >
+      Child startup`: startup sends `get_state`, validates `sessionFile`, sends `prompt`,
+      waits for `agent_end`, calls `get_last_assistant_text` | Prove live child startup/session_ready/prompt/agent_end/final
+      assistant text through Pi RPC | `pi_impl_child_rpc_20260603.live-child-rpc-proof-support`
+      | `B1 startup proof support is real/controlled-live and records all required
+      RPC events` | `b1_startup_command_output`, `b1_rpc_event_trace`, `b1_task_id_session_file`
+      | OWNED | none |
+
+      | B2-resume | `design/pi-coding-agent-integration.md > Subagent spawning > Resume`:
+      resume uses `switch_session`, then appends new `task` via `prompt` | Prove live
+      resume via `switch_session`, not prior output replay | `pi_impl_child_rpc_20260603.live-child-rpc-proof-support`
+      | `B2 resume proof support records switch_session and resumed output` | `b2_resume_command_output`,
+      `b2_switch_session_trace`, `b2_resumed_task_output` | OWNED | none |
+
+      | B3-abort | `design/pi-coding-agent-integration.md > Subagent spawning > Abort`:
+      parent abort forwards RPC `abort`, then may kill after grace | Prove abort propagation
+      reaches child cleanup path, or produce exact hard runtime capability block and
+      architecture decision need | `pi_impl_child_rpc_20260603.live-child-rpc-proof-support`
+      | `B3 abort proof support proves propagation or records a hard capability block`
+      | `b3_abort_rpc_trace`, `b3_child_exit_cleanup`, `b3_hard_block_decision_if_any`
+      | OWNED | If live Pi RPC abort cannot be triggered by available host APIs, document
+      exact missing API/command and required architecture owner before retest can
+      PASS_WITH_BLOCK |
+
+      | B4-orphans | `design/pi-coding-agent-integration.md > Verification targets
+      #35` and Child startup cleanup rules | Prove child process cleanup/orphan absence
+      against real process lifecycle, not fake-child-only evidence | `pi_impl_child_rpc_20260603.live-child-rpc-proof-support`
+      | `B4 orphan cleanup proof support records PID lifecycle and post-run orphan
+      scan` | `b4_pid_lifecycle`, `b4_orphan_scan_before_after`, `b4_cleanup_failures`
+      | OWNED | none |
+
+
+      CONTROLLED-LIVE DEFINITION:
+
+      A controlled-live child is acceptable only if it starts a real Pi child RPC
+      process through the extension entrypoint and observes JSONL RPC command/response/event
+      frames plus OS process lifecycle. Fake child objects, pure unit mocks, or pipeline-only
+      simulations do not satisfy this step.
+
+
+      HARD-BLOCK ESCALATION RULE:
+
+      If B3 abort cannot be proven because the current Pi runtime exposes no usable
+      live abort dispatch path despite the live RPC abort command existing, do not
+      fabricate proof. Produce an architecture decision record with: exact unavailable
+      capability, command/API tried, observed output, why no equivalent proof is possible,
+      and the concrete downstream design decision needed. B1, B2, and B4 must still
+      be proven or independently blocked with exact runtime capability gaps.
+
+
+      SIDE_EFFECT_BUDGET:
+
+      Allowed: mutate runtime smoke/proof harness files, Pi extension instrumentation
+      that is test-only or bounded to proof visibility, and focused tests needed to
+      capture live command output. Forbidden: weakening `larva_subagent` semantics,
+      accepting fake-child-only evidence, adding sidecar session metadata, changing
+      public `LarvaSubagentResult` shape, bypassing `LARVA_PI_REAL_BIN`/extension-entry
+      invocation, or marking mock cleanup as live cleanup.
+
+
+      KNOWN RISKS / GATE PREVIEW:
+
+      - The gate WILL reject proof that uses fake child processes or stubs instead
+      of real Pi RPC child startup.
+
+      - The gate WILL reject resume proof that does not show `switch_session` followed
+      by a new `prompt` and new output.
+
+      - The gate WILL reject abort claims that only prove the RPC command exists;
+      propagation to child cleanup must be observed or a hard capability block must
+      be documented.
+
+      - The gate WILL reject orphan cleanup evidence without before/after PID or process-handle
+      evidence tied to the live child.
+
+
+      RISK_PROBES:
+
+      - Confirm `task_id` is the real child session `.jsonl` path under `LARVA_PI_CHILD_SESSION_DIR`,
+      not a fabricated identifier.
+
+      - Confirm no result is returned while the child process is still alive unless
+      the hard-block decision explicitly says why state is unknowable and blocks pass.
+
+      - Confirm child cleanup is exercised for success, resume, and abort/kill paths,
+      not only happy-path completion.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is a REMEDIATION / PROOF-HARNESS step. Stub-only completion is NOT acceptable.
+      Any new harness must exercise live or controlled-live Pi child RPC behavior
+      with outputs that vary based on real child RPC events.'
+    verification: '- [ ] B1 startup proof support is real/controlled-live and records
+      `get_state`/session file allocation, `prompt`, `agent_end`, and `get_last_assistant_text`
+      with exact command output.
+
+      - [ ] B2 resume proof support records `switch_session`, reused `task_id`, new
+      `prompt`, and resumed output that is not prior raw JSONL replay.
+
+      - [ ] B3 abort proof support proves live abort propagation to child cleanup,
+      or emits an explicit hard runtime capability block with exact missing API/command,
+      attempted proof commands, and required architecture decision.
+
+      - [ ] B4 orphan cleanup proof support records child PID/process lifecycle and
+      before/after orphan-process checks for success/resume/abort paths.
+
+      - [ ] Evidence distinguishes real/controlled-live proof from fake-child, unit
+      mock, and pipeline-only tests.
+
+      - [ ] No completed plan steps are edited and no public `LarvaSubagentResult`
+      contract is changed.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- `design/pi-coding-agent-integration.md` — key passages for Child\
+      \ startup, Resume, Abort, Child RPC contract, and Verification targets #26/#28/#35,\
+      \ or `NOT READ: <reason>`\n- `scripts/pi-extension-runtime-smoke.mjs` — key\
+      \ passage for the live/proof harness entry point, or `NOT READ: <reason>`\n\
+      - `contrib/pi-extension/larva.ts` — key passage for `larva_subagent` child process/RPC/cleanup\
+      \ implementation, or `NOT READ: <reason>`\n\n## Controlled-Live Proof Support\
+      \ Receipt\n- changed_files: <paths>\n- live_or_controlled_live_definition_satisfied:\
+      \ true|false\n- fake_child_or_mock_only_used: true|false (must be false for\
+      \ PASS unless documenting a hard block)\n\n## B1 Startup Evidence Support\n\
+      - command: <exact command added/run to prove startup>\n- raw_stdout_stderr:\
+      \ |\n  <paste exact output>\n- child_session_root: <absolute path>\n- child_task_id_session_file:\
+      \ <absolute .jsonl path>\n- session_ids_task_ids: <ids/paths>\n- rpc_event_trace:\
+      \ <get_state/session_ready or sessionFile, prompt, agent_end, get_last_assistant_text>\n\
+      \n## B2 Resume Evidence Support\n- command: <exact command added/run to prove\
+      \ resume>\n- original_task_id: <path>\n- resumed_task_id: <path, should match\
+      \ original when applicable>\n- switch_session_trace: <raw frame/log excerpt>\n\
+      - resumed_prompt_trace: <raw frame/log excerpt>\n- resumed_output: <final text\
+      \ proving new task appended>\n\n## B3 Abort Propagation Evidence Support\n-\
+      \ command: <exact command added/run to prove abort>\n- parent_abort_trigger:\
+      \ <Pi abort API/RPC/command used>\n- child_abort_rpc_observed: true|false\n\
+      - child_exit_or_kill_observed: true|false\n- cleanup_result: <cancelled/success/failed\
+      \ with code>\n- hard_block_decision_if_any:\n  - capability_gap: <exact missing\
+      \ live runtime capability or NONE>\n  - commands_tried: <commands/APIs and outputs>\n\
+      \  - architecture_decision_needed: <decision owner/scope or NONE>\n\n## B4 Orphan\
+      \ Cleanup Evidence Support\n- pid_lifecycle: <child pid(s), start time, exit/kill\
+      \ time, exit code/signal>\n- orphan_scan_before: <command + output>\n- orphan_scan_after:\
+      \ <command + output>\n- orphan_scan_scope: <how child processes were identified>\n\
+      - cleanup_failures: <none or details>\n\n## Contract Preservation\n- result_contract_changed:\
+      \ false|<explain deviation>\n- no_sidecar_added: true|false\n- no_fake_cleanup_accepted:\
+      \ true|false\n\n## Headline\n- [ ] PASS: B1-B4 live/controlled-live proof support\
+      \ exists and is ready for independent retest\n- [ ] PASS_WITH_BLOCK: Only a\
+      \ true hard runtime capability block remains, with exact capability gap and\
+      \ architecture decision record\n- [ ] FAIL: proof support is still mock-only,\
+      \ incomplete, or contract-mutating"
+    depends_on:
+    - pi_impl_child_rpc_20260603.sessions-helper
+    agent: frontend-engineer
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
