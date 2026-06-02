@@ -94671,6 +94671,148 @@ phases:
   depends_on:
   - pi-postspec-finalization-2026-06-02
   - meta.gate
+  steps:
+  - id: pi_impl_contract_20260603.traceability-matrix
+    name: Build Pi integration requirement-to-checklist matrix
+    status: pending
+    description: 'ACCEPTED CONTRACT ARTIFACT: Extract implementation obligations from
+      the approved design and opifex shared contracts into one requirement-to-checklist
+      matrix embedded in step evidence. Scope covers launcher/runtime, Pi extension
+      integration, persona switching/tool policy, larva_subagent lifecycle, realtime
+      presentation log, /larva-subagent-log overlay, UX/runtime proof, shared contract
+      conformance, and final verification. Non-scope: no implementation code, no duplicate
+      design doc, no design edits.
+
+
+      REQUIRED MATRIX COLUMNS: requirement_id | source_ref + key passage | obligation
+      | owning_step_id | checklist_item | evidence_field | status | non_intersection_or_escalation.
+
+
+      SIDE_EFFECT_BUDGET: may add/update tests/proof harness files only in downstream
+      harness step; this step is planning/evidence only. Forbidden: product code changes,
+      plan.yaml direct edits, design duplication.
+
+
+      RISK_PROBES:
+
+      - Verify every material UI rule from realtime/log UI delta maps to the single
+      complete UI target, not phased deferral.
+
+      - Verify opifex shared-surface rules are pinned but not reinterpreted locally.
+
+      - Verify no excluded behavior (filesystem scan, raw JSONL parse, sidecar, alias,
+      non-view overlay mutation) is left without an owning negative checklist.'
+    verification: '- [ ] Matrix cites key passages from design/pi-coding-agent-integration.md
+      architecture basis, implementation handoff, verification targets, realtime UI
+      delta, and UI fixtures.
+
+      - [ ] Matrix cites opifex shared contract refs for shared PersonaSpec/surface
+      obligations.
+
+      - [ ] Every authoritative requirement is OWNED, DEFERRED with non-intersection,
+      EXCLUDED by authority, or AMBIGUOUS with escalation.
+
+      - [ ] No realtime/log UI obligation is split into P1/P2/P3 or deferred.
+
+      - [ ] Evidence includes explicit negative requirements for no scan/raw JSONL/sidecar/alias
+      behavior and view-only overlay.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    agent: software-architect
+  - id: pi_impl_contract_20260603.red-harness-and-runtime-probe
+    name: Define expected-red Pi harness and runtime capability probe
+    status: pending
+    description: 'PROOF ARTIFACT: Add or update pre-implementation tests/probes that
+      expose gaps before product implementation. Scope: tests/shell/test_pi_extension_contract.py,
+      tests/shell/test_pi_extension_real_runtime.py, tests/shell/test_pi_extension_subagent_ux.py
+      or conversion/replacement of tests/shell/test_pi_postspec_subagent_ux_expected_red.py,
+      scripts/pi-extension-runtime-smoke.mjs, scripts/pi-extension-autocomplete-smoke.mjs,
+      contrib/pi-extension/test-autocomplete-runtime.mjs. Non-scope: no product implementation
+      in src/ or contrib/pi-extension/larva.ts except test fixtures/mocks if strictly
+      needed.
+
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      SPEC-FIXTURE CONFORMANCE: fixtures must use exact documented launcher env, Pi
+      command, tool result, policy, model-map, and overlay formats; no convenience-only
+      fields may hide parsing bugs.
+
+
+      SIDE_EFFECT_BUDGET: allowed to mutate tests/scripts/fixtures only. Forbidden:
+      product implementation, Pi settings writes, filesystem sidecars, raw JSONL overlay
+      parsing.
+
+
+      RISK_PROBES:
+
+      - Probe hard Pi runtime capabilities before treating realtime progress as implementable.
+
+      - Ensure red tests fail for absence of /larva-subagent-log overlay and not for
+      missing live credentials.
+
+      - Ensure tests separate mockable pipeline behavior from live Pi proof to avoid
+      deadlock.'
+    verification: '- [ ] Expected-red tests expose launcher/runtime, persona/policy,
+      child RPC, realtime/log UI, and overlay gaps without product code changes.
+
+      - [ ] Runtime probe records tested Pi package version/commit and hard-gate capability
+      statuses when runnable.
+
+      - [ ] tests/shell/test_pi_postspec_subagent_ux_expected_red.py is converted,
+      renamed, or explicitly superseded by tests/shell/test_pi_extension_subagent_ux.py
+      before final green gate.
+
+      - [ ] Fixtures include exact documented external formats and negative fixtures
+      for no raw JSONL/sidecar/alias behavior.
+
+      - [ ] Evidence states which failures are expected-red and which are environment
+      blockers.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    agent: python-executor
+  - id: pi_impl_contract_20260603.gate
+    name: Gate Pi contract harness
+    status: pending
+    description: 'DECISION ARTIFACT: Gate review for the contract/harness phase. Scope
+      is local-check and phase-check protecting all downstream Pi implementation gates.
+      Independence: gate-reviewer is independent from software-architect and python-executor
+      implementation/test-definition work.
+
+
+      SIDE_EFFECT_BUDGET: read-only review. Forbidden: product code changes, plan
+      mutation, accepting orphan requirements.
+
+
+      RISK_PROBES:
+
+      - Confirm runtime proof gates are not replaced by mocks.
+
+      - Confirm matrix owns every hard user constraint.
+
+      - Confirm implementation phases cannot bypass this contract gate.'
+    verification: '- [ ] Requirement-to-checklist matrix has no orphan requirements.
+
+      - [ ] Expected-red harness and runtime probe evidence is sufficient to guide
+      implementation.
+
+      - [ ] Gate decision basis maps every OWNED requirement to downstream checklist
+      and evidence field.
+
+      - [ ] OPEN only if unresolved items have explicit non-intersection or escalation;
+      otherwise BLOCKED.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    agent: gate-reviewer
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
   status: locked
