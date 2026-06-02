@@ -98099,17 +98099,17 @@ phases:
       - Gate rejects runtime liveness gaps and design/user-visible evidence substitutions.
 
       - Gate rejects semantic result drift and overlay mutability.'
-    verification: '- [ ] Row progress, retained presentation log, expanded rendering,
+    verification: '- [x] Row progress, retained presentation log, expanded rendering,
       derived sessions helper, reset cleanup, and view-only /larva-subagent-log overlay
       are all proven together.
 
-      - [ ] Gate decision basis reviews runtime artifacts, wiring audit, and forbidden-behavior
+      - [x] Gate decision basis reviews runtime artifacts, wiring audit, and forbidden-behavior
       probes.
 
-      - [ ] Every unresolved runtime/UI obligation blocks or has explicit architecture
+      - [x] Every unresolved runtime/UI obligation blocks or has explicit architecture
       re-adjudication path.
 
-      - [ ] OPEN only if onUpdate and abort hard-gate capabilities are proven for
+      - [x] OPEN only if onUpdate and abort hard-gate capabilities are proven for
       supported mode or appropriate architecture re-adjudication blocks completion.'
     refs:
     - design/pi-coding-agent-integration.md
