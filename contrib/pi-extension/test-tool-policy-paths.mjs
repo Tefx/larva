@@ -32,6 +32,7 @@ const [, , command, personaId, jsonFlag] = process.argv;
 if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
 process.stdout.write(JSON.stringify({ data: {
   id: personaId,
+  description: "Persona " + personaId,
   prompt: "Prompt for " + personaId,
   model: "provider/model",
   capabilities: {},

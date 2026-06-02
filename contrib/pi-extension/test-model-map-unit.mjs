@@ -20,6 +20,7 @@ const models = JSON.parse(process.env.PERSONA_MODELS || "{}");
 const model = models[personaId] || models.default || "provider/model";
 process.stdout.write(JSON.stringify({ data: {
   id: personaId,
+  description: "Persona " + personaId,
   prompt: "Prompt for " + personaId,
   model,
   capabilities: {},

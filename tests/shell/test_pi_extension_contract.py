@@ -498,6 +498,7 @@ def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_sw
             process.stdout.write(JSON.stringify({
               data: {
                 id: personaId,
+                description: `Persona ${personaId}`,
                 prompt: `Prompt for ${personaId}`,
                 model: "provider/model",
                 capabilities: {},
@@ -590,6 +591,7 @@ def test_initial_unsupported_tool_enumerator_uses_empty_baseline_but_switch_fail
             process.stdout.write(JSON.stringify({
               data: {
                 id: personaId,
+                description: `Persona ${personaId}`,
                 prompt: `Prompt for ${personaId}`,
                 model: "provider/model",
                 capabilities: {},
@@ -674,6 +676,7 @@ def test_startup_registers_larva_tools_before_policy_baseline_filtering(tmp_path
             process.stdout.write(JSON.stringify({
               data: {
                 id: personaId,
+                description: `Persona ${personaId}`,
                 prompt: `Prompt for ${personaId}`,
                 model: "provider/model",
                 capabilities: {},
@@ -746,6 +749,7 @@ def test_persona_commit_prevalidates_then_sets_model_before_active_tools(tmp_pat
             process.stdout.write(JSON.stringify({
               data: {
                 id: personaId,
+                description: `Persona ${personaId}`,
                 prompt: `Prompt for ${personaId}`,
                 model: "provider/model",
                 capabilities: {},
@@ -1015,8 +1019,50 @@ def test_persona_resolve_bridge_uses_larva_cli_argv_json_and_fallback_rules() ->
     )
     _assert_regex(source, r"timeout|AbortSignal|setTimeout", "bridge must time out")
     _assert_regex(source, r"JSON\.parse[\s\S]+LARVA_PERSONA_NOT_FOUND", "malformed output maps to persona-not-found")
-    assert "isRecord(value.capabilities)" in is_persona_spec_body
-    assert 'typeof value.spec_version === "string"' in is_persona_spec_body
+    assert "hasOnlyPersonaSpecKeys(value)" in is_persona_spec_body
+    assert 'typeof value.description === "string"' in is_persona_spec_body
+    assert "value.description.length > 0" in is_persona_spec_body
+    assert "isCanonicalCapabilities(value.capabilities)" in is_persona_spec_body
+    assert 'value.spec_version === "0.1.0"' in is_persona_spec_body
+
+
+def test_persona_resolve_payload_is_canonical_personaspec_fail_closed_runtime_probe() -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for PersonaSpec fail-closed runtime probe")
+    completed = subprocess.run(
+        [node, "contrib/pi-extension/test-personaspec-fail-closed.mjs"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5.0,
+    )
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(completed.stdout)
+
+    assert result["positive"]["persona_id"] == "ok"
+    assert result["positive"]["calls"] == ["find", "getAllTools", "setModel", "setActiveTools"]
+    failures = {entry["id"]: entry for entry in result["negatives"]}
+    for case_id in (
+        "missing-description",
+        "bad-spec-version",
+        "bad-posture",
+        "legacy-tools",
+        "legacy-side-effect-policy",
+        "legacy-variables",
+        "legacy-variant",
+        "legacy-registry",
+        "legacy-active",
+        "extra-key",
+    ):
+        assert failures[case_id]["ok"] is False
+        assert failures[case_id]["code"] == "LARVA_PERSONA_NOT_FOUND"
+        assert failures[case_id]["before"] == "ok"
+        assert failures[case_id]["after"] == "ok"
+        assert failures[case_id]["sideEffects"] == []
+        assert failures[case_id]["statuses"] == []
+    assert result["finalEnvelope"]["persona_id"] == "ok"
 
 
 def test_persona_list_bridge_uses_larva_cli_argv_json_for_completion_and_selector() -> None:

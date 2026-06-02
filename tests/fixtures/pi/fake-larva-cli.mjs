@@ -62,8 +62,8 @@ if (command === "resolve" && maybeFlag === "--json") {
       prompt: `You are fake persona ${idOrFlag}.`,
       model: "openai/gpt-5.5",
       capabilities: {},
-      spec_version: "1.0.0",
-      spec_digest: `digest-${idOrFlag}`,
+      spec_version: "0.1.0",
+      spec_digest: `sha256:${idOrFlag}`,
       can_spawn: true,
     },
   });

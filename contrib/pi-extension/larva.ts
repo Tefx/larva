@@ -55,15 +55,19 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_LAUNCHED?: string;
 };
 
+type CapabilityPosture = "none" | "read_only" | "read_write" | "destructive";
+
 export type PersonaSpec = {
   id: string;
-  description?: string;
+  description: string;
   prompt: string;
   model: string;
-  capabilities: Record<string, unknown>;
-  spec_version: string;
-  spec_digest?: string;
+  capabilities: Record<string, CapabilityPosture>;
+  model_params?: Record<string, unknown>;
   can_spawn?: boolean | string[];
+  compaction_prompt?: string;
+  spec_version: "0.1.0";
+  spec_digest?: string;
 };
 
 export type PersonaEnvelope = {
@@ -427,16 +431,64 @@ export async function resolvePersona(id: string, ctx?: { env?: RuntimeEnv }): Pr
   throw error("LARVA_PERSONA_NOT_FOUND", `Invalid persona payload for ${id}`);
 }
 
+const PERSONA_SPEC_KEYS = new Set([
+  "id",
+  "description",
+  "prompt",
+  "model",
+  "capabilities",
+  "model_params",
+  "can_spawn",
+  "compaction_prompt",
+  "spec_version",
+  "spec_digest",
+]);
+const CAPABILITY_POSTURES = new Set<string>(["none", "read_only", "read_write", "destructive"]);
+const PERSONA_ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+function hasOnlyPersonaSpecKeys(value: Record<string, unknown>): boolean {
+  return Object.keys(value).every((key) => PERSONA_SPEC_KEYS.has(key));
+}
+
+function isCanonicalCapabilities(value: unknown): value is Record<string, CapabilityPosture> {
+  return isRecord(value) && Object.values(value).every((posture) => typeof posture === "string" && CAPABILITY_POSTURES.has(posture));
+}
+
+function isCanonicalCanSpawn(value: unknown): value is boolean | string[] | undefined {
+  if (value === undefined) return true;
+  if (typeof value === "boolean") return true;
+  if (!Array.isArray(value) || value.length > 100) return false;
+  return value.every((entry) => typeof entry === "string" && entry.length > 0) && new Set(value).size === value.length;
+}
+
+function isCanonicalModelParams(value: unknown): value is Record<string, unknown> | undefined {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  const { temperature, top_p, top_k, max_tokens } = value;
+  if (temperature !== undefined && (typeof temperature !== "number" || temperature < 0 || temperature > 2)) return false;
+  if (top_p !== undefined && (typeof top_p !== "number" || top_p < 0 || top_p > 1)) return false;
+  if (top_k !== undefined && (typeof top_k !== "number" || !Number.isInteger(top_k) || top_k < 1)) return false;
+  if (max_tokens !== undefined && (typeof max_tokens !== "number" || !Number.isInteger(max_tokens) || max_tokens < 1)) return false;
+  return true;
+}
+
 function isPersonaSpec(value: unknown): value is PersonaSpec {
+  if (!isRecord(value) || !hasOnlyPersonaSpecKeys(value)) return false;
   return (
-    isRecord(value) &&
     typeof value.id === "string" &&
-    value.id.length > 0 &&
+    PERSONA_ID_RE.test(value.id) &&
+    typeof value.description === "string" &&
+    value.description.length > 0 &&
     typeof value.prompt === "string" &&
+    value.prompt.length > 0 &&
     typeof value.model === "string" &&
-    isRecord(value.capabilities) &&
-    typeof value.spec_version === "string" &&
-    value.spec_version.length > 0
+    value.model.length > 0 &&
+    isCanonicalCapabilities(value.capabilities) &&
+    isCanonicalModelParams(value.model_params) &&
+    isCanonicalCanSpawn(value.can_spawn) &&
+    (value.compaction_prompt === undefined || typeof value.compaction_prompt === "string") &&
+    value.spec_version === "0.1.0" &&
+    (value.spec_digest === undefined || typeof value.spec_digest === "string")
   );
 }
 
