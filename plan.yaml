@@ -95471,7 +95471,7 @@ phases:
       - gate_decision_basis includes all required fields: true.'
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
-  status: pending
+  status: in_progress
   gate: Launcher and extension/persona/policy runtime are implemented with live entrypoint
     proof and no shared-contract drift.
   depends_on:
@@ -95524,7 +95524,7 @@ phases:
     agent: python-executor
   - id: pi_impl_launcher_extension_20260603.extension-persona-policy
     name: Complete Pi extension persona projection and adapter-local tool policy
-    status: pending
+    status: claimed
     description: 'TARGET STATE: The bundled Pi extension commits active personas atomically,
       projects prompt/model state through Pi-supported hooks, enforces adapter-local
       tool policy from canonical config paths only, preserves canonical PersonaSpec
@@ -95574,6 +95574,8 @@ phases:
     - contrib/pi-extension/larva.ts
     - contrib/pi-extension/README.md
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T18:13:44.783733+00:00'
   - id: pi_impl_launcher_extension_20260603.vertical-slice-proof
     name: Early Pi vertical slice proof
     status: pending
