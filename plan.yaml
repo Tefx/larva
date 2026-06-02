@@ -94685,3 +94685,10 @@ phases:
     with cleanup and failure-path evidence.
   depends_on:
   - pi_impl_launcher_extension_20260603
+- id: pi_impl_realtime_ui_20260603
+  name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
+  status: locked
+  gate: Realtime/log UI is shipped as one complete target with launched-surface proof;
+    no P1/P2/P3 deferral.
+  depends_on:
+  - pi_impl_child_rpc_20260603
