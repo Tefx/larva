@@ -94702,19 +94702,19 @@ phases:
 
       - Verify no excluded behavior (filesystem scan, raw JSONL parse, sidecar, alias,
       non-view overlay mutation) is left without an owning negative checklist.'
-    verification: '- [x] Matrix cites key passages from design/pi-coding-agent-integration.md
+    verification: '- [ ] Matrix cites key passages from design/pi-coding-agent-integration.md
       architecture basis, implementation handoff, verification targets, realtime UI
       delta, and UI fixtures.
 
-      - [x] Matrix cites opifex shared contract refs for shared PersonaSpec/surface
+      - [ ] Matrix cites opifex shared contract refs for shared PersonaSpec/surface
       obligations.
 
-      - [x] Every authoritative requirement is OWNED, DEFERRED with non-intersection,
+      - [ ] Every authoritative requirement is OWNED, DEFERRED with non-intersection,
       EXCLUDED by authority, or AMBIGUOUS with escalation.
 
-      - [x] No realtime/log UI obligation is split into P1/P2/P3 or deferred.
+      - [ ] No realtime/log UI obligation is split into P1/P2/P3 or deferred.
 
-      - [x] Evidence includes explicit negative requirements for no scan/raw JSONL/sidecar/alias
+      - [ ] Evidence includes explicit negative requirements for no scan/raw JSONL/sidecar/alias
       behavior and view-only overlay.'
     refs:
     - design/pi-coding-agent-integration.md
