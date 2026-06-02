@@ -95866,7 +95866,7 @@ phases:
     skipped_reason: absorbed
   - id: canonical-personaspec-fail-closed-fix
     name: Fix canonical PersonaSpec fail-closed validation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -96028,6 +96028,123 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T18:43:06.517302+00:00'
+    done_at: '2026-06-02T18:52:44.951982+00:00'
+    evidence: 'SUCCESS: canonical PersonaSpec fail-closed validation implemented and
+      verified.
+
+
+      refs Read Confirmation:
+
+      - ../opifex/design/final-canonical-contract.md read: PersonaSpec requires description/prompt/model/capabilities/spec_version;
+      postures exactly none/read_only/read_write/destructive; tools/side_effect_policy/variables/variant/_registry/active
+      invalid.
+
+      - ../opifex/contracts/persona_spec.schema.json read: required fields include
+      description; spec_version const 0.1.0; additionalProperties=false.
+
+      - ../opifex/conformance/shared_surfaces.yaml read: required_fields_exact, forbidden_legacy_fields_absent,
+      additional_properties_false; larva resolve must fail closed.
+
+      - design/pi-coding-agent-integration.md read: resolve data must satisfy canonical
+      PersonaSpec before PersonaEnvelope; malformed fields map to LARVA_PERSONA_NOT_FOUND
+      and switch remains atomic before model/status/tool side effects.
+
+      - contrib/pi-extension/larva.ts, tests/shell/test_pi_extension_contract.py,
+      scripts/pi-extension-runtime-smoke.mjs, tests/fixtures/pi/fake-larva-cli.mjs
+      read/inspected.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/test-personaspec-fail-closed.mjs
+
+      - contrib/pi-extension/test-model-map-runtime.mjs
+
+      - contrib/pi-extension/test-model-map-unit.mjs
+
+      - contrib/pi-extension/test-tool-policy-paths.mjs
+
+      - tests/fixtures/pi/fake-larva-cli.mjs
+
+      - tests/shell/test_pi_extension_contract.py
+
+
+      B1 Requirement Proof Matrix:
+
+      - R1 description required/non-empty: PASS; TypeScript type/guard require description;
+      missing-description runtime probe fails LARVA_PERSONA_NOT_FOUND with no side
+      effects.
+
+      - R2 spec_version const 0.1.0: PASS; guard enforces const; bad-spec-version
+      runtime probe fails closed.
+
+      - R3 capability posture enum: PASS; guard enforces none/read_only/read_write/destructive;
+      bad-posture probe fails closed.
+
+      - R4 additionalProperties=false/legacy aliases rejected: PASS; canonical key
+      set only; tools/side_effect_policy/variables/variant/_registry/active/extra-key
+      probes fail closed.
+
+      - R5 runtime fail-closed before side effects: PASS; test-personaspec-fail-closed.mjs
+      proves all malformed cases return LARVA_PERSONA_NOT_FOUND, finalEnvelope remains
+      ok, sideEffects=[], statuses=[]; positive canonical spec switches.
+
+
+      Worker commit: 3483329f27d935611114efe5fae89e514fa3ca6d.
+
+      Mainline squash commit: 18b27ed [vectl] step-canonical-personaspec-fail-closed-fix
+      completed.
+
+
+      Mainline verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py -q` -> 52 passed in 1.78s.
+
+      - `node contrib/pi-extension/test-model-map-unit.mjs` -> model-map unit PASS.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs` -> model-map runtime
+      PASS.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs` -> tool-policy paths
+      PASS.
+
+      - `node contrib/pi-extension/test-personaspec-fail-closed.mjs` -> positive ok;
+      negatives missing-description/bad-spec-version/bad-posture/legacy/extra-key
+      all LARVA_PERSONA_NOT_FOUND, after=ok, sideEffects=[], statuses=[].
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case substring-case-ordering|cache-inflight|delegation-failure|fixture-shape|mention-namespace|registration-lifecycle`
+      -> all PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario availability` -> exit
+      0, pi 0.78.0, commit dd24b116bd4aeedb07012cc8b152239c488eb95b.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-shape` -> assertions
+      true.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-call-block` ->
+      block true, reason LARVA_TOOL_DENIED.
+
+      - `git diff --check HEAD~1 HEAD` before merge -> exit 0.
+
+
+      Checklist receipt:
+
+      - TypeScript type and runtime guard require description, spec_version const,
+      posture enum, additionalProperties=false: true.
+
+      - Runtime negative probes prove malformed payloads fail closed before envelope/active-state
+      mutation: true.
+
+      - Positive canonical minimal PersonaSpec still switches: true.
+
+      - Existing affected tests rerun with no regressions: true.
+
+      - Evidence maps each B1 row to proof artifact: true.
+
+
+      Deviation Records: none.'
   - id: canonical-personaspec-gate-retest
     name: Retest gate for canonical PersonaSpec validation
     status: pending
