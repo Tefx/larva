@@ -170,6 +170,10 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     assert "notifyPersonaSwitchResult(runtimeCtx, result)" in command_body
 
     assert 'on?.("session_start", async' in body
+    session_body = re.search(r"on\?\.\(\"session_start\", async \(_payload: unknown, eventCtx\?: PiContext\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
+    assert session_body is not None
+    assert "registerLarvaPersonaAutocompleteProvider(runtimeCtx)" in session_body.group("body")
+    assert session_body.group("body").index("registerLarvaPersonaAutocompleteProvider(runtimeCtx)") < session_body.group("body").index("initializeSession(runtimeCtx, pi)")
     assert 'on?.("before_agent_start", (payload: unknown) => before_agent_start(payload))' in body
     tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None

@@ -197,6 +197,31 @@ function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isRenderableTextComponent(value) {
+  if (!value || typeof value !== "object") return false;
+  if (typeof value.text !== "string") return false;
+  if (typeof value.render !== "function") return false;
+  return renderedLinesFit(value, 40);
+}
+
+function terminalVisibleWidth(value) {
+  let width = 0;
+  for (const char of Array.from(String(value ?? ""))) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) continue;
+    width += codePoint >= 0x20 && codePoint <= 0x7e ? 1 : 2;
+  }
+  return width;
+}
+
+function renderedLinesFit(value, width) {
+  if (!value || typeof value.render !== "function") return false;
+  const rendered = value.render(width);
+  return Array.isArray(rendered)
+    && rendered.every((line) => typeof line === "string" && terminalVisibleWidth(line) <= width);
+}
+
 function assertLarvaSubagentToolResultShape(name, result) {
   const failures = [];
   if (!Array.isArray(result?.content)) {
@@ -305,10 +330,20 @@ async function main() {
   } else if (scenario === "tool-shape") {
     await runtimeHarness(evidence);
     const tool = evidence.runtime.larvaSubagent;
+    const wideTask = "这是一个用于测试 subagent 功能的长时间任务。".repeat(8);
+    const callComponent = tool?.renderCall?.({ persona_id: "child", task: wideTask });
+    const resultComponent = tool?.renderResult?.({
+      content: [{ type: "text", text: "child completed" }],
+      details: { task_id: null, persona_id: "child", status: "success", result_text: wideTask, error: null },
+    }, { expanded: true, input: { persona_id: "child", task: wideTask } });
     evidence.runtime.assertions = {
       hasLarvaSubagent: Boolean(tool),
       hasParameters: Boolean(tool?.parameters && tool.parameters.type === "object"),
       hasExecute: typeof tool?.execute === "function",
+      hasRenderableCall: isRenderableTextComponent(callComponent),
+      hasRenderableResult: isRenderableTextComponent(resultComponent),
+      wideCallLinesFit: renderedLinesFit(callComponent, 40),
+      wideResultLinesFit: renderedLinesFit(resultComponent, 40),
     };
   } else if (scenario === "tool-result-renderer-shape") {
     const noActiveRoot = await mkdtemp(join(tmpdir(), "larva-pi-no-active-"));

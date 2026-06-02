@@ -286,10 +286,18 @@ def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) 
         + """
         const { tools } = await registeredTools();
         const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const cjkTask = "这是一个用于测试 subagent 功能的长时间任务。".repeat(8);
         const ansiUnicodeTask = "\\u001b[31mCafe\\u0301\\u001b[0m\\n" + "x".repeat(180) + "\\u0007tail";
         const longTaskId = join(childRoot, "nested", "segment", "with", "very", "long", "resume-session-name-that-must-be-abbreviated.jsonl");
         const callNew = subagent?.renderCall?.({ persona_id: "turing", task: ansiUnicodeTask });
         const callResume = subagent?.renderCall?.({ persona_id: "turing", task: ansiUnicodeTask, task_id: longTaskId });
+        const cjkCall = subagent?.renderCall?.({ persona_id: "turing", task: cjkTask });
+        const visibleWidth = (line) => Array.from(String(line)).reduce((width, char) => {
+          const codePoint = char.codePointAt(0);
+          if (codePoint === undefined || codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return width;
+          return width + (codePoint >= 0x20 && codePoint <= 0x7e ? 1 : 2);
+        }, 0);
+        const cjkLines = typeof cjkCall?.render === "function" ? cjkCall.render(40) : [];
         const updates = [];
         if (subagent?.execute) {
           try {
@@ -299,6 +307,7 @@ def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) 
         const previewText = String(callNew?.text ?? callNew ?? "");
         const resumeText = String(callResume?.text ?? callResume ?? "");
         const updateTexts = updates.map((update) => String(update?.text ?? update?.content ?? update));
+        const updateContentSafe = updates.length > 0 && updates.every((update) => Array.isArray(update?.content) && update.content.some((item) => item?.type === "text" && typeof item.text === "string"));
         const normalized = "Café " + "x".repeat(180) + " tail";
         console.log(JSON.stringify({
           hookTypes: {
@@ -306,21 +315,29 @@ def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) 
             renderResult: typeof subagent?.renderResult,
             executeHasOnUpdateArity: (subagent?.execute?.length ?? 0) >= 4,
           },
+          componentShapes: {
+            callNewRenderable: typeof callNew?.render === "function" && Array.isArray(callNew.render(80)),
+            callResumeRenderable: typeof callResume?.render === "function" && Array.isArray(callResume.render(80)),
+            cjkLinesFit: cjkLines.length > 0 && cjkLines.every((line) => visibleWidth(line) <= 40),
+          },
           callNew: previewText,
           callResume: resumeText,
           updateTexts,
           newPreviewBounded: previewText.includes("Café") && !previewText.includes("\\u001b") && !previewText.includes("\\n") && previewText.length <= 120 && previewText.includes("…"),
           resumeIdBounded: /task_id: .{1,80}/.test(resumeText) && !resumeText.includes(longTaskId),
           updateBounded: updateTexts.length > 0 && updateTexts.every((text) => !text.includes("\\u001b") && !text.includes("\\n") && text.length <= 200),
+          updateContentSafe,
           noFullTranscriptStreaming: updateTexts.every((text) => !text.includes(normalized)),
         }, null, 2));
         """,
     )
 
     assert payload["hookTypes"] == {"renderCall": "function", "renderResult": "function", "executeHasOnUpdateArity": True}
+    assert payload["componentShapes"] == {"callNewRenderable": True, "callResumeRenderable": True, "cjkLinesFit": True}
     assert payload["newPreviewBounded"] is True
     assert payload["resumeIdBounded"] is True
     assert payload["updateBounded"] is True
+    assert payload["updateContentSafe"] is True
     assert payload["noFullTranscriptStreaming"] is True
 
 
@@ -359,6 +376,10 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
         const collapsedText = String(collapsed?.text ?? collapsed ?? "");
         const expandedText = String(expanded?.text ?? expanded ?? "");
         console.log(JSON.stringify({
+          componentShapes: {
+            collapsedRenderable: typeof collapsed?.render === "function" && Array.isArray(collapsed.render(80)),
+            expandedRenderable: typeof expanded?.render === "function" && Array.isArray(expanded.render(80)),
+          },
           collapsedText,
           expandedText,
           statuses,
@@ -379,6 +400,7 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
         """,
     )
 
+    assert payload["componentShapes"] == {"collapsedRenderable": True, "expandedRenderable": True}
     assert payload["collapsedHasPersonaAndTerminalState"] is True
     assert payload["expandedHasIndependentFields"] is True
     assert payload["parentFooterPreserved"] is True

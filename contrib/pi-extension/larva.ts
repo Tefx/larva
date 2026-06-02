@@ -109,6 +109,12 @@ type LarvaSubagentSessionsResult = {
   };
   isError: boolean;
 };
+type LarvaSubagentProgressUpdate = {
+  text: string;
+  content: PiTextContent[];
+  details: Record<string, string | null>;
+  isError: false;
+};
 
 type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
 type CommandOptions = {
@@ -147,9 +153,11 @@ type ToolDefinition<Input, Output> = {
     onUpdate?: (update: unknown) => void,
     ctx?: PiContext,
   ) => Promise<Output>;
-  renderCall?: (input: Input) => string | { text: string };
-  renderResult?: (result: Output, options?: { expanded?: boolean; input?: Input }) => string | { text: string };
+  renderCall?: (input: Input) => PiRenderableComponent;
+  renderResult?: (result: Output, options?: { expanded?: boolean; input?: Input }) => PiRenderableComponent;
 };
+type PiRenderableComponent = { render: (width: number) => string[]; invalidate?: () => void };
+type PiRenderableText = PiRenderableComponent & { text: string };
 type SelectorOption = { id: string; label: string; description?: string };
 type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string };
 type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
@@ -755,7 +763,10 @@ export function createLarvaPersonaAutocompleteProvider(
   return provider;
 }
 
+let larvaPersonaAutocompleteProviderRegistered = false;
+
 function registerLarvaPersonaAutocompleteProvider(ctx: PiContext): void {
+  if (larvaPersonaAutocompleteProviderRegistered) return;
   const addProvider = ctx.ui?.addAutocompleteProvider;
   if (typeof addProvider !== "function") return;
   try {
@@ -763,6 +774,7 @@ function registerLarvaPersonaAutocompleteProvider(ctx: PiContext): void {
       const personaProvider = createLarvaPersonaAutocompleteProvider(ctx, baseProvider);
       return createLarvaPersonaMentionAutocompleteProvider(ctx, personaProvider);
     });
+    larvaPersonaAutocompleteProviderRegistered = true;
   } catch {
     // Non-TUI or partially compatible Pi UI contexts may expose the field without
     // accepting editor providers; keep /larva-persona command completion alive.
@@ -1159,20 +1171,62 @@ function subagentMode(input: LarvaSubagentInput): "new" | "resume" {
   return typeof input.task_id === "string" && input.task_id.trim().length > 0 ? "resume" : "new";
 }
 
-function renderLarvaSubagentCall(input: LarvaSubagentInput): { text: string } {
+function renderTextComponent(text: string): PiRenderableText {
+  return {
+    text,
+    invalidate: () => undefined,
+    render: (width: number): string[] => {
+      const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+      const lines: string[] = [];
+      for (const rawLine of text.split(/\r?\n/)) {
+        const safeLine = visibleText(rawLine.replace(/\t/g, "   "));
+        if (rawLine.length === 0) {
+          lines.push("");
+          continue;
+        }
+        let currentLine = "";
+        let currentWidth = 0;
+        for (const char of Array.from(safeLine)) {
+          const charWidth = terminalCharWidth(char);
+          const safeChar = charWidth > contentWidth ? "?" : char;
+          const safeCharWidth = charWidth > contentWidth ? 1 : charWidth;
+          if (currentWidth > 0 && currentWidth + safeCharWidth > contentWidth) {
+            lines.push(currentLine);
+            currentLine = "";
+            currentWidth = 0;
+          }
+          currentLine += safeChar;
+          currentWidth += safeCharWidth;
+        }
+        lines.push(currentLine);
+      }
+      return lines;
+    },
+  };
+}
+
+function terminalCharWidth(char: string): number {
+  if (char.length === 0) return 0;
+  const codePoint = char.codePointAt(0);
+  if (codePoint === undefined) return 0;
+  if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return 0;
+  return codePoint >= 0x20 && codePoint <= 0x7e ? 1 : 2;
+}
+
+function renderLarvaSubagentCall(input: LarvaSubagentInput): PiRenderableText {
   const personaId = typeof input.persona_id === "string" && input.persona_id.trim().length > 0 ? visibleText(input.persona_id) : "";
   const task = typeof input.task === "string" ? input.task : "";
   const mode = subagentMode(input);
   const header = `larva_subagent -> ${personaId} [${mode}]`;
   if (mode === "resume" && typeof input.task_id === "string") {
-    return { text: `${header}\ntask_id: ${boundedVisibleSuffix(input.task_id, 80)}\n${boundedVisible(task, 120)}` };
+    return renderTextComponent(`${header}\ntask_id: ${boundedVisibleSuffix(input.task_id, 80)}\n${boundedVisible(task, 120)}`);
   }
   const separator = " ";
   const availableForTask = Math.max(1, 120 - Array.from(header).length - separator.length);
-  return { text: `${header}${separator}${boundedVisible(task, availableForTask)}` };
+  return renderTextComponent(`${header}${separator}${boundedVisible(task, availableForTask)}`);
 }
 
-function progressUpdate(input: LarvaSubagentInput, phase: string, taskId?: string | null): { text: string; details: Record<string, string | null> } {
+function progressUpdate(input: LarvaSubagentInput, phase: string, taskId?: string | null): LarvaSubagentProgressUpdate {
   const personaId = typeof input.persona_id === "string" ? visibleText(input.persona_id) : "";
   const taskPreview = boundedVisible(typeof input.task === "string" ? input.task : "", 120);
   const details = {
@@ -1182,16 +1236,23 @@ function progressUpdate(input: LarvaSubagentInput, phase: string, taskId?: strin
     phase,
     task_id: taskId ?? (typeof input.task_id === "string" ? input.task_id : null),
   };
+  const text = boundedVisible(`larva_subagent ${phase}: ${personaId} [${details.mode}] ${taskPreview}`, 200);
   return {
-    text: boundedVisible(`larva_subagent ${phase}: ${personaId} [${details.mode}] ${taskPreview}`, 200),
+    text,
+    content: [{ type: "text", text }],
     details,
+    isError: false,
   };
 }
 
-function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { expanded?: boolean; input?: LarvaSubagentInput }): { text: string } {
+function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { expanded?: boolean; input?: LarvaSubagentInput }): PiRenderableText {
   const details = result.details ?? result;
+  if (isRecord(details) && typeof details.phase === "string") {
+    const textItem = Array.isArray(result.content) ? result.content.find((item) => item.type === "text") : undefined;
+    return renderTextComponent(textItem?.text ?? `${details.persona_id ?? ""} ${details.phase}`.trim());
+  }
   const terminal = details.status === "success" ? "completed" : details.status;
-  if (!options?.expanded) return { text: `${details.persona_id} ${terminal}` };
+  if (!options?.expanded) return renderTextComponent(`${details.persona_id} ${terminal}`);
   const input = options.input ?? {};
   const mode = subagentMode(input);
   const lines = [
@@ -1205,7 +1266,7 @@ function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { 
   lines.push(`output: ${details.result_text}`);
   const footer = resumeFooter(details);
   if (footer.length > 0) lines.push(footer);
-  return { text: lines.join("\n") };
+  return renderTextComponent(lines.join("\n"));
 }
 
 function normalizeString(value: unknown): string | null {
@@ -1611,7 +1672,6 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     required: ["persona_id", "task"],
     additionalProperties: false,
   };
-  registerLarvaPersonaAutocompleteProvider(ctx);
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",
@@ -1649,7 +1709,9 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     execute: async (_toolCallId, input) => larva_subagent_sessions(input),
   });
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
-    await initializeSession(withRuntimeEnv(eventCtx ?? ctx, env), pi);
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    registerLarvaPersonaAutocompleteProvider(runtimeCtx);
+    await initializeSession(runtimeCtx, pi);
   });
   pi.on?.("before_agent_start", (payload: unknown) => before_agent_start(payload));
   pi.on?.("tool_call", (payload: unknown) => {

@@ -18,6 +18,7 @@ const fakeCli = join(root, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
 
 let installedFactory = null;
 let registeredCommand = null;
+const handlers = {};
 const env = {
   LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
 };
@@ -35,7 +36,9 @@ const pi = {
     registeredCommand = { name, options };
   },
   registerTool: () => undefined,
-  on: () => undefined,
+  on: (event, handler) => {
+    handlers[event] = handler;
+  },
 };
 
 await mod.initializeExtension(ctx, pi);
@@ -43,6 +46,9 @@ if (registeredCommand?.name !== "larva-persona") throw new Error("larva-persona 
 if (typeof registeredCommand.options?.getArgumentCompletions !== "function") {
   throw new Error("command argument completer was not preserved");
 }
+if (typeof installedFactory === "function") throw new Error("autocomplete provider factory must not install during factory initialization");
+if (typeof handlers.session_start !== "function") throw new Error("session_start handler was not registered");
+await handlers.session_start({ reason: "runtime" }, ctx);
 if (typeof installedFactory !== "function") throw new Error("autocomplete provider factory was not installed");
 const baseProvider = {
   getSuggestions: async () => null,

@@ -153,14 +153,21 @@ def test_editor_provider_installation_degrades_without_ui_hook_but_keeps_command
         + """
         mod.resetPersonaCompletionCache();
         let registered = null;
+        const handlers = {};
         const ctx = { env: baseEnv(), ui: { setStatus: () => undefined }, modelRegistry };
-        await mod.initializeExtension(ctx, { ...pi, registerCommand: (name, options) => { registered = { name, options }; } });
+        await mod.initializeExtension(ctx, {
+          ...pi,
+          registerCommand: (name, options) => { registered = { name, options }; },
+          on: (event, handler) => { handlers[event] = handler; },
+        });
+        await handlers.session_start({ reason: "runtime" }, ctx);
         const completions = await registered.options.getArgumentCompletions("vectl");
         console.log(JSON.stringify({
           registeredName: registered?.name,
           hasCommandCompleter: typeof registered?.options?.getArgumentCompletions === "function",
           commandValues: completions?.map((item) => item.value) ?? null,
           addAutocompleteProviderType: typeof ctx.ui.addAutocompleteProvider,
+          hasSessionStart: typeof handlers.session_start === "function",
         }, null, 2));
         """,
     )
@@ -170,6 +177,7 @@ def test_editor_provider_installation_degrades_without_ui_hook_but_keeps_command
         "hasCommandCompleter": True,
         "commandValues": ["vectl-planner", "vectl-reviewer"],
         "addAutocompleteProviderType": "undefined",
+        "hasSessionStart": True,
     }
 
 
@@ -183,6 +191,7 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         mod.resetPersonaCompletionCache();
         const calls = [];
         let installedFactory = null;
+        const handlers = {};
         const status = [];
         const ctx = {
           env: baseEnv(),
@@ -193,7 +202,13 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
             notify: () => undefined,
           },
         };
-        await mod.initializeExtension(ctx, { ...pi, registerCommand: () => undefined });
+        await mod.initializeExtension(ctx, {
+          ...pi,
+          registerCommand: () => undefined,
+          on: (event, handler) => { handlers[event] = handler; },
+        });
+        const installedAfterFactory = typeof installedFactory;
+        await handlers.session_start({ reason: "runtime" }, ctx);
         const baseItems = [
           { value: "./src/app.ts", label: "./src/app.ts", description: "Pi file reference" },
           { value: "@persona:vectl-planner", label: "Pi duplicate wins" },
@@ -221,7 +236,9 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
 
         console.log(JSON.stringify({
           installedProviderFactory: typeof installedFactory,
+          installedAfterFactory,
           installedProviderObject: typeof mentionProvider?.getSuggestions,
+          hasSessionStart: typeof handlers.session_start,
           hasMentionFactory: typeof mod.createLarvaPersonaMentionAutocompleteProvider,
           providerResultsAreObjects: [rawAt, namespacePartial, literalPartial, bareNamespace, query, rawShort, fileLike, spacedText]
             .every((result) => result === null || (typeof result === "object" && !Array.isArray(result))),
@@ -253,6 +270,8 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     )
 
     assert payload["hasMentionFactory"] == "function"
+    assert payload["hasSessionStart"] == "function"
+    assert payload["installedAfterFactory"] == "object"
     assert payload["installedProviderFactory"] == "function"
     assert payload["installedProviderObject"] == "function"
     assert payload["providerResultsAreObjects"] is True

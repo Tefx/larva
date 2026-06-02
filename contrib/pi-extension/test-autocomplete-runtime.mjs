@@ -29,6 +29,7 @@ async function makeRuntime(env = baseEnv()) {
   mod.resetPersonaCompletionCache();
   let installedFactory = null;
   let registeredCommand = null;
+  const handlers = {};
   const ctx = {
     env,
     ui: {
@@ -39,11 +40,14 @@ async function makeRuntime(env = baseEnv()) {
   const pi = {
     registerCommand: (name, options) => { registeredCommand = { name, options }; },
     registerTool: () => undefined,
-    on: () => undefined,
+    on: (event, handler) => { handlers[event] = handler; },
   };
   await mod.initializeExtension(ctx, pi);
   if (registeredCommand?.name !== "larva-persona") throw new Error("larva-persona command was not preserved");
   if (typeof registeredCommand.options?.getArgumentCompletions !== "function") throw new Error("command completer missing");
+  if (typeof installedFactory === "function") throw new Error("autocomplete provider factory must not install during factory initialization");
+  if (typeof handlers.session_start !== "function") throw new Error("session_start handler missing");
+  await handlers.session_start({ reason: "runtime" }, ctx);
   if (typeof installedFactory !== "function") throw new Error("autocomplete provider factory missing");
   const baseProvider = {
     getSuggestions: async () => null,
@@ -53,7 +57,38 @@ async function makeRuntime(env = baseEnv()) {
   const installedProvider = installedFactory(baseProvider);
   if (typeof installedProvider?.getSuggestions !== "function") throw new Error("autocomplete provider object missing getSuggestions");
   if (typeof installedProvider?.applyCompletion !== "function") throw new Error("autocomplete provider object missing applyCompletion");
-  return { ctx, installedProvider, registeredCommand };
+  return { ctx, installedProvider, registeredCommand, handlers };
+}
+
+async function registrationLifecycleEvidence() {
+  let installCount = 0;
+  let registeredCommand = null;
+  const handlers = {};
+  const factoryCtx = { env: baseEnv() };
+  const runtimeCtx = {
+    env: baseEnv(),
+    ui: {
+      setStatus: async () => undefined,
+      addAutocompleteProvider: () => { installCount += 1; },
+    },
+  };
+  const pi = {
+    registerCommand: (name, options) => { registeredCommand = { name, options }; },
+    registerTool: () => undefined,
+    on: (event, handler) => { handlers[event] = handler; },
+  };
+  await mod.initializeExtension(factoryCtx, pi);
+  const afterFactory = installCount;
+  await handlers.session_start({ reason: "first" }, runtimeCtx);
+  const afterFirstSession = installCount;
+  await handlers.session_start({ reason: "second" }, runtimeCtx);
+  return {
+    afterFactory,
+    afterFirstSession,
+    afterSecondSession: installCount,
+    hasSessionStart: typeof handlers.session_start === "function",
+    registeredName: registeredCommand?.name ?? null,
+  };
 }
 
 async function getSuggestions(provider, line, options = { force: true }) {
@@ -209,6 +244,8 @@ if (scenario === "substring-case-ordering") {
   output = await listFixtureEvidence();
 } else if (scenario === "mention-namespace") {
   output = await mentionNamespaceEvidence();
+} else if (scenario === "registration-lifecycle") {
+  output = await registrationLifecycleEvidence();
 } else {
   throw new Error(`unknown --case ${scenario}`);
 }

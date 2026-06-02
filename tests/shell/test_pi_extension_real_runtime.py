@@ -133,6 +133,16 @@ def test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter
     assert payload["applyCompletionInsertedMention"] is True
 
 
+def test_autocomplete_registration_defers_to_session_context_and_dedupes_runtime() -> None:
+    payload = _run_autocomplete_runtime_case("registration-lifecycle")
+
+    assert payload["registeredName"] == "larva-persona"
+    assert payload["hasSessionStart"] is True
+    assert payload["afterFactory"] == 0
+    assert payload["afterFirstSession"] == 1
+    assert payload["afterSecondSession"] == 1
+
+
 @pytest.mark.parametrize("case,force", [("tab-force", True), ("tab-regular", False)])
 def test_autocomplete_tui_provider_uses_argument_prefix_for_force_modes(case: str, force: bool) -> None:
     payload = _run_autocomplete_case(case, prefix="vectl")
@@ -339,6 +349,10 @@ def test_runtime_object_registers_larva_subagent_parameters_and_execute() -> Non
         "hasLarvaSubagent": True,
         "hasParameters": True,
         "hasExecute": True,
+        "hasRenderableCall": True,
+        "hasRenderableResult": True,
+        "wideCallLinesFit": True,
+        "wideResultLinesFit": True,
     }
     assert "larva_subagent" in payload["runtime"]["registeredToolNames"]
 
