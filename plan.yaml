@@ -8,21 +8,21 @@
 # =============================================================
 version: 1
 project: larva
-strategy_ref: Commit 4616008 Pi integration docs/spec implementation handoff
-context: 'Work type: new_capability with proof-closure for already-completed Pi phases.
-  Architecture basis in design/pi-coding-agent-integration.md is READY and authoritative.
-  New follow-up phases cover committed docs/spec deltas after the prior Pi plan completed:
-  launcher/config conformance, active-persona editor UX and prompt overlay, subagent
-  session/rendering UX, and final runtime/spec proof.'
-project_guidance: 'Project guidance for Pi integration implementation: preserve opifex
-  authority for PersonaSpec; do not change shared schema, add compatibility aliases,
-  or accept malformed shared input. Respect Core/Shell/Invar rules: Core code needs
-  @pre/@post contracts and doctests before implementation; Shell owns file/network/env/subprocess
-  behavior and returns Result-style errors where applicable. Pi integration authority
-  is design/pi-coding-agent-integration.md and contrib/pi-extension/README.md from
-  commit 4616008. Runtime-surface claims require real/supplemental Pi extension evidence;
-  source-token or mock-only checks are insufficient. Do not edit plan.yaml directly;
-  vectl owns plan state.'
+strategy_ref: design/pi-coding-agent-integration.md#architecture-basis
+context: Approved Larva Pi coding-agent integration implementation plan based on Iteration
+  20 PASS design review; no planner-owned git operations.
+project_guidance: 'Larva Pi integration planning guidance: preserve design/pi-coding-agent-integration.md
+  as the sole canonical Larva Pi design source; do not create duplicate design authority.
+  Shared contract meaning remains in ../opifex; shared-surface steps must cite ../opifex/design/final-canonical-contract.md,
+  ../opifex/contracts/persona_spec.schema.json, ../opifex/conformance/shared_surfaces.yaml,
+  and ../opifex/conformance/case_matrix/larva/*. Invar constraints apply: **/core/**
+  requires @pre/@post contracts and doctests before implementation; **/shell/** handles
+  I/O and returns Result[T,E]. Preserve core/shell separation and the design''s explicit
+  state ownership. Hard Pi constraints: realtime/log UI is one complete target; /larva-subagent-log
+  [task_id?] is fixed and view-only; no filesystem scan, raw JSONL parse, sidecar,
+  alias behavior, or Pi settings fallback; overlay uses Pi extension custom overlay
+  APIs only. Runtime proof must record tested Pi version/commit and must block PASS
+  if required hard-gate Pi capabilities are absent.'
 clipboard:
   author: vectl-orchestrator
   summary: User autonomy directive
