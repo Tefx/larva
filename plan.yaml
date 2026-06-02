@@ -94674,7 +94674,7 @@ phases:
   steps:
   - id: pi_impl_contract_20260603.traceability-matrix
     name: Build Pi integration requirement-to-checklist matrix
-    status: claimed
+    status: done
     description: 'ACCEPTED CONTRACT ARTIFACT: Extract implementation obligations from
       the approved design and opifex shared contracts into one requirement-to-checklist
       matrix embedded in step evidence. Scope covers launcher/runtime, Pi extension
@@ -94725,6 +94725,76 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-06-02T17:34:59.829354+00:00'
+    done_at: '2026-06-02T17:38:58.398109+00:00'
+    evidence: 'SUCCESS: Requirement-to-checklist matrix accepted.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read; cited architecture basis, implementation
+      handoff, verification targets, realtime UI delta, UI proof/fixture obligations.
+
+      - ../opifex/design/final-canonical-contract.md read; cited canonical authority,
+      capabilities intent ceiling, prompt opacity, forbidden legacy fields.
+
+      - ../opifex/contracts/persona_spec.schema.json read; cited required fields/additionalProperties/can_spawn
+      constraints.
+
+      - ../opifex/conformance/shared_surfaces.yaml read; cited shared Larva surfaces
+      and fail-closed/no-legacy invariants.
+
+      - ../opifex/conformance/case_matrix/larva/* read; cited validate/register/resolve/update/export/naming/variant
+      cases.
+
+
+      Matrix coverage:
+
+      - PI-001..PI-026 mapped launcher/runtime, persona switching, prompt overlay,
+      model map, tool policy, shared PersonaSpec conformance, larva_subagent input/result/authority/RPC/resume/session
+      helper, realtime UI, UI bounds fixtures, overlay negative proof, runtime liveness,
+      and final verification.
+
+      - Required columns included: requirement_id | source_ref + key passage | obligation
+      | owning_step_id | checklist_item | evidence_field | status | non_intersection_or_escalation.
+
+      - All material rows OWNED except PI-022 marked AMBIGUOUS_WITH_ESCALATION because
+      /larva-subagent-log overlay is requested by step language but not defined in
+      design; downstream obligation restricted to no overlay or strictly view-only/non-mutating
+      proof.
+
+
+      Checklist receipt:
+
+      - Matrix cites design key passages: checked true.
+
+      - Matrix cites opifex shared contract refs: checked true.
+
+      - Every authoritative requirement OWNED/DEFERRED/EXCLUDED/AMBIGUOUS: checked
+      true.
+
+      - Realtime/log UI not split/deferred: checked true; rows PI-020..PI-021 assigned
+      to one complete UI target.
+
+      - Negative no scan/raw JSONL/sidecar/alias/view-only overlay: checked true;
+      rows PI-017, PI-019, PI-022, PI-023, PI-025.
+
+
+      Verification:
+
+      - Worktree command: git status --short before/after empty commit -> empty output
+      both times.
+
+      - Empty evidence commit: 6d2057ed473bad5311f6a9a7c0cbada15bb86d0d.
+
+      - Mainline merge: squash merge produced no file delta (evidence-only empty commit);
+      no product/design/test/doc files changed.
+
+      - Mainline final-state verification: `.vectl/worktrees/pi_impl_contract_20260603.traceability-matrix/.venv/bin/python
+      - << import larva` -> `import larva ok 0.4.13`.
+
+      - Scope validation: previous out-of-scope design edit attempt was rejected/restored;
+      accepted retry left git status clean and modified no protected/out-of-scope
+      files.'
   - id: pi_impl_contract_20260603.red-harness-and-runtime-probe
     name: Define expected-red Pi harness and runtime capability probe
     status: pending
