@@ -97147,6 +97147,146 @@ phases:
       run.
 
       Deviation Records: none.'
+  - id: pi_impl_child_rpc_20260603.abort-progress-order-fix
+    name: Fix abort progress order and post-abort RPC race
+    status: pending
+    description: 'TARGET STATE: When parent abort wins the child RPC lifecycle race,
+      `larva_subagent` emits `cancelled` as the terminal and final progress phase,
+      suppresses/cancels the non-winning success/final-text sequence, and performs
+      no `get_last_assistant_text` RPC or `collecting_final_text` progress update
+      after the winning abort path.
+
+
+      WORK_TYPE: defect_repair remediation for gate blocker B1_ABORT_PROGRESS_ORDER_AND_POST_ABORT_RPC.
+
+
+      BOUNDING BOX:
+
+      - `contrib/pi-extension/larva.ts`
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - `tests/shell/test_pi_extension_real_runtime.py`
+
+      - Adjacent Pi extension tests/harnesses that assert child RPC transaction ordering
+      and progress phases
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1-abort-terminal-phase | `design/pi-coding-agent-integration.md:768-770`
+      — progress phases are `starting`, `session_ready`, `prompt_sent`, `waiting_for_child`,
+      `collecting_final_text`, then terminal `success`, `failed`, or `cancelled` |
+      After abort wins, `cancelled` is terminal and no later progress phase is emitted
+      | `pi_impl_child_rpc_20260603.abort-progress-order-fix` | `Abort-wins progress
+      sequence ends at cancelled with no entries after terminal` | `abort_phase_order_raw_output`
+      | OWNED | none |
+
+      | B1-no-post-abort-final-text | `design/pi-coding-agent-integration.md:1200-1215`
+      — abort forwards RPC `abort`; abort or kill returns cancelled; success only
+      if child completes during grace | Suppress final-text collection when abort/kill
+      is the winning terminal path; only a child-completed-during-grace success path
+      may collect final text | `pi_impl_child_rpc_20260603.abort-progress-order-fix`
+      | `Abort-wins RPC transaction list has no get_last_assistant_text after abort`
+      | `abort_txtype_order_raw_output` | OWNED | none |
+
+      | B1-regression-b1-b4 | Existing `pi_impl_child_rpc_20260603.live-child-rpc-retest-gate`
+      B1-B4 matrix | Preserve startup, resume, abort propagation, and orphan cleanup
+      proofs while fixing the abort ordering race | `pi_impl_child_rpc_20260603.abort-progress-order-fix`
+      | `B1-B4 live child RPC proof remains PASS after race fix` | `b1_b4_retest_raw_output`
+      | OWNED | none |
+
+
+      CONSTRAINTS:
+
+      - Do not change public `LarvaSubagentResult` shape, result status vocabulary,
+      task_id semantics, or resume alias behavior.
+
+      - Do not weaken child cleanup/orphan handling, active-task busy-state release,
+      child process abort/kill cleanup, or existing B1-B4 proof scenarios.
+
+      - Do not solve by hiding progress output from the proof parser; fix the lifecycle
+      ordering/race semantics.
+
+      - Do not accept mock-only proof for this blocker; controlled-live child RPC
+      evidence remains required.
+
+
+      SIDE_EFFECT_BUDGET: Allowed to mutate Pi extension child RPC lifecycle implementation,
+      controlled-live proof harness, and focused tests/parser assertions for abort
+      ordering. Forbidden: shared contract schema changes, filesystem sidecars/locks,
+      fake-child-only replacement, or broad unrelated refactors.
+
+
+      KNOWN RISKS / GATE PREVIEW:
+
+      - The gate WILL reject an abort trace where `cancelled` is followed by `collecting_final_text`
+      or any other progress phase.
+
+      - The gate WILL reject an abort txTypes sequence where any `get_last_assistant_text`
+      occurs after `abort` on the abort-wins path.
+
+      - The gate WILL reject fixes that make B1-B4 previously passing live-child-rpc
+      scenarios regress.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      fix must contain substantive race/sequence-control logic whose output varies
+      according to whether child completion or parent abort wins.
+
+
+      RISK_PROBES:
+
+      - Confirm concurrent abort and child completion cannot both drive final progress/result
+      emission.
+
+      - Confirm cleanup still runs exactly once and active task state is cleared after
+      cancelled/failed/success paths.
+
+      - Confirm a legitimate child-completed-during-grace success path still follows
+      the documented final-text collection rules.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] refs confirmation cites abort/progress/final-text passages from `design/pi-coding-agent-integration.md`.
+
+      - [ ] Raw phase-order parser output shows abort phases end with terminal `cancelled`
+      and have no entries after that terminal phase.
+
+      - [ ] Raw txTypes/order output shows `abort` occurs and no `get_last_assistant_text`
+      occurs after abort on the abort-wins path.
+
+      - [ ] Raw pytest output for the focused abort-order regression and the existing
+      35 parent-abort verification target passes.
+
+      - [ ] Raw live-child-rpc-proof output shows B1, B2, B3, and B4 still PASS after
+      the fix.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
+      \ <reason>\"\n\n## Receipt\n- changed_files: <files changed>\n- focused_abort_order_command:\
+      \ <exact command>\n- focused_abort_order_raw_stdout: |\n    <paste raw output,\
+      \ including phases and txTypes>\n- pytest_35_command: <exact pytest command\
+      \ covering verification target 35>\n- pytest_35_raw_stdout: |\n    <paste raw\
+      \ pytest output>\n- live_child_rpc_proof_command: node scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario live-child-rpc-proof <args used>\n- live_child_rpc_proof_raw_stdout:\
+      \ |\n    <paste raw output proving B1-B4 status>\n\n## Required Parser Facts\n\
+      - abort_phases: <list>\n- entries_after_terminal_cancelled: <must be []>\n-\
+      \ txTypes_after_abort: <list; must not include get_last_assistant_text>\n- b1_b4_status:\
+      \ <PASS/PASS_WITH_BLOCK/FAIL with details>\n\n## Checklist Receipt\n- [ ] Abort\
+      \ phases end at cancelled with no later phase.\n- [ ] No get_last_assistant_text\
+      \ after abort when abort wins.\n- [ ] pytest 35 / focused abort regression passed.\n\
+      - [ ] live-child-rpc-proof B1-B4 remained PASS.\n- [ ] No public result contract\
+      \ drift."
+    depends_on:
+    - pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
+    agent: frontend-engineer
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
