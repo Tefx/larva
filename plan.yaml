@@ -94950,7 +94950,7 @@ phases:
       blockers observed.'
   - id: pi_impl_contract_20260603.gate
     name: Gate Pi contract harness
-    status: pending
+    status: skipped
     description: 'DECISION ARTIFACT: Gate review for the contract/harness phase. Scope
       is local-check and phase-check protecting all downstream Pi implementation gates.
       Independence: gate-reviewer is independent from software-architect and python-executor
@@ -94984,6 +94984,7 @@ phases:
     - pi_impl_contract_20260603.traceability-matrix
     - pi_impl_contract_20260603.red-harness-and-runtime-probe
     agent: gate-reviewer
+    skipped_reason: absorbed
   - id: fix-autocomplete-runtime-proof-gate
     name: Fix autocomplete runtime proof hard gate after blocked Pi contract gate
     status: pending
