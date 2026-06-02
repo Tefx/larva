@@ -94663,3 +94663,11 @@ phases:
       \ returned `Already up to date. (nothing to squash)` because retest was read-only.\n\
       \  - mainline verification: `uv run --group dev invar guard --changed` passed\
       \ with no changed files.\ngaps: []"
+- id: pi_impl_contract_20260603
+  name: Pi Integration Contract Harness 2026-06-03
+  status: pending
+  gate: Architecture basis and proof harness are complete enough to unlock implementation
+    without duplicate design authority.
+  depends_on:
+  - pi-postspec-finalization-2026-06-02
+  - meta.gate
