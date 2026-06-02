@@ -96778,24 +96778,24 @@ phases:
       This is a REMEDIATION / PROOF-HARNESS step. Stub-only completion is NOT acceptable.
       Any new harness must exercise live or controlled-live Pi child RPC behavior
       with outputs that vary based on real child RPC events.'
-    verification: '- [ ] B1 startup proof support is real/controlled-live and records
+    verification: '- [x] B1 startup proof support is real/controlled-live and records
       `get_state`/session file allocation, `prompt`, `agent_end`, and `get_last_assistant_text`
       with exact command output.
 
-      - [ ] B2 resume proof support records `switch_session`, reused `task_id`, new
+      - [x] B2 resume proof support records `switch_session`, reused `task_id`, new
       `prompt`, and resumed output that is not prior raw JSONL replay.
 
-      - [ ] B3 abort proof support proves live abort propagation to child cleanup,
+      - [x] B3 abort proof support proves live abort propagation to child cleanup,
       or emits an explicit hard runtime capability block with exact missing API/command,
       attempted proof commands, and required architecture decision.
 
-      - [ ] B4 orphan cleanup proof support records child PID/process lifecycle and
+      - [x] B4 orphan cleanup proof support records child PID/process lifecycle and
       before/after orphan-process checks for success/resume/abort paths.
 
-      - [ ] Evidence distinguishes real/controlled-live proof from fake-child, unit
+      - [x] Evidence distinguishes real/controlled-live proof from fake-child, unit
       mock, and pipeline-only tests.
 
-      - [ ] No completed plan steps are edited and no public `LarvaSubagentResult`
+      - [x] No completed plan steps are edited and no public `LarvaSubagentResult`
       contract is changed.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- `design/pi-coding-agent-integration.md` — key passages for Child\
