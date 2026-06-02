@@ -96408,7 +96408,7 @@ phases:
     claimed_at: '2026-06-02T19:01:34.937926+00:00'
   - id: pi_impl_child_rpc_20260603.sessions-helper
     name: Complete required larva_subagent_sessions helper
-    status: pending
+    status: claimed
     description: 'TARGET STATE: `larva_subagent_sessions(limit?)` returns newest-first
       read-only recent-session summaries derived only from retained presentation-log
       entries with non-null task_id, including running allocated entries before terminal
@@ -96449,6 +96449,8 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/larva.ts
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T19:01:43.392053+00:00'
   - id: pi_impl_child_rpc_20260603.integration-proof
     name: Child RPC integration and cleanup proof
     status: pending
