@@ -97906,19 +97906,19 @@ phases:
 
       - If Pi UI is unavailable, proof must show documented ui_unavailable behavior
       and not claim overlay PASS.'
-    verification: '- [ ] Exact launch command/target/session and tested Pi version/commit
+    verification: '- [x] Exact launch command/target/session and tested Pi version/commit
       are recorded.
 
-      - [ ] Runtime artifact shows row progress and expanded result with meaningful
+      - [x] Runtime artifact shows row progress and expanded result with meaningful
       content.
 
-      - [ ] Runtime artifact shows /larva-subagent-log newest and exact task_id overlay
+      - [x] Runtime artifact shows /larva-subagent-log newest and exact task_id overlay
       or documented ui_unavailable/not_observed behavior.
 
-      - [ ] One safe interaction opens/replaces/closes overlay and restores focus
+      - [x] One safe interaction opens/replaces/closes overlay and restores focus
       or records exact blocker.
 
-      - [ ] View-only probes show no persona switch, subagent invocation, tool approval,
+      - [x] View-only probes show no persona switch, subagent invocation, tool approval,
       session file mutation, raw JSONL parse, sidecar write, or alias creation.'
     refs:
     - design/pi-coding-agent-integration.md
