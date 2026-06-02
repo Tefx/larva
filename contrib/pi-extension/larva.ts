@@ -1839,12 +1839,21 @@ async function runChildSequence(
       abortPromise.then((result) => resolveAbortRace?.(result));
     }
   };
+  const abortResultIfRequested = async (): Promise<LarvaSubagentResult | null> => {
+    if (abortSignal?.aborted) requestAbort();
+    if (!abortStarted) return null;
+    return abortPromise ? await abortPromise : cancelled(allocatedTaskId, personaId);
+  };
   if (abortSignal?.aborted) requestAbort();
   abortSignal?.addEventListener("abort", requestAbort, { once: true });
   const sequence = async (): Promise<LarvaSubagentResult> => {
     const isResume = taskId !== null;
+    const alreadyAborting = await abortResultIfRequested();
+    if (alreadyAborting) return alreadyAborting;
     if (taskId) {
       const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId });
+      const switchAbort = await abortResultIfRequested();
+      if (switchAbort) return switchAbort;
       if (!isSuccessResponse(switched) || (switched as { data?: { cancelled?: unknown } }).data?.cancelled === true) {
         child.kill();
         return failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed."));
@@ -1852,6 +1861,8 @@ async function runChildSequence(
       callbacks.onPhase?.("session_ready", taskId);
     } else {
       const stateResult = await rpc.command("state-1", { type: "get_state" });
+      const stateAbort = await abortResultIfRequested();
+      if (stateAbort) return stateAbort;
       const sessionFile = sessionFileFromState(stateResult);
       if (isLarvaError(sessionFile)) { child.kill(); return failed(null, personaId, sessionFile); }
       const canonical = await validateFreshChildSessionFile(sessionFile, root);
@@ -1864,11 +1875,17 @@ async function runChildSequence(
       callbacks.onTaskAllocated?.(canonical);
       callbacks.onPhase?.("session_ready", canonical);
     }
+    const beforePromptAbort = await abortResultIfRequested();
+    if (beforePromptAbort) return beforePromptAbort;
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: task });
+    const promptAbort = await abortResultIfRequested();
+    if (promptAbort) return promptAbort;
     if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
     callbacks.onPhase?.("prompt_sent", taskId);
     callbacks.onPhase?.("waiting_for_child", taskId);
     const ended = await rpc.waitForAgentEnd();
+    const endedAbort = await abortResultIfRequested();
+    if (endedAbort) return endedAbort;
     if (ended) { child.kill(); return failed(taskId, personaId, ended); }
     if (!isResume && taskId !== null) {
       const finalSessionPath = await validateTaskId(taskId, root);
@@ -1879,6 +1896,8 @@ async function runChildSequence(
       taskId = finalSessionPath;
       allocatedTaskId = finalSessionPath;
     }
+    const finalTextAbort = await abortResultIfRequested();
+    if (finalTextAbort) return finalTextAbort;
     callbacks.onPhase?.("collecting_final_text", taskId);
     const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
     const text = finalText(last);
