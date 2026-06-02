@@ -99059,18 +99059,18 @@ phases:
 
       - Verify autocomplete capability provenance distinguishes live Pi runtime from
       runtimeHarness.mock and degraded behavior remains observable when unsupported.'
-    verification: '- [ ] addAutocompleteProvider live/degraded path resolved with
+    verification: '- [x] addAutocompleteProvider live/degraded path resolved with
       provenance distinguishing live Pi runtime from `runtimeHarness.mock`.
 
-      - [ ] fatal startup is nonzero/stderr before prompt for unavailable initial
+      - [x] fatal startup is nonzero/stderr before prompt for unavailable initial
       `--persona` model/policy/persona cases.
 
-      - [ ] id-only selector/mention population works for empty-query mention candidates
+      - [x] id-only selector/mention population works for empty-query mention candidates
       and no longer requires `persona.spec_digest`.
 
-      - [ ] Previously passing runtime capability matrix rows remain non-regressed.
+      - [x] Previously passing runtime capability matrix rows remain non-regressed.
 
-      - [ ] Evidence includes raw command output for focused tests or smoke probes
+      - [x] Evidence includes raw command output for focused tests or smoke probes
       covering all three owned blockers.'
     refs:
     - design/pi-coding-agent-integration.md
