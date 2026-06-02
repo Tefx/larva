@@ -50,6 +50,7 @@ def _node_prelude(tmp_path: Path) -> str:
         const baseEnv = (extra = {{}}) => ({{
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
           LARVA_PI_INITIAL_PERSONA_ID: "",
+          LARVA_PI_LAUNCHED: "0",
           HOME: {json.dumps(str(tmp_path))},
           ...extra,
         }});
@@ -287,6 +288,9 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     assert [item["value"] for item in payload["rawAt"]] == [
         "./src/app.ts",
         "@persona:vectl-planner",
+        "@persona:ok",
+        "@persona:startup",
+        "@persona:child",
         "@persona:vectl-reviewer",
         "@persona:qa-dev",
         "@persona:DevOps",
@@ -296,6 +300,9 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     expected_merged_empty_namespace = [
         "./src/app.ts",
         "@persona:vectl-planner",
+        "@persona:ok",
+        "@persona:startup",
+        "@persona:child",
         "@persona:vectl-reviewer",
         "@persona:qa-dev",
         "@persona:DevOps",

@@ -21,6 +21,8 @@ let registeredCommand = null;
 const handlers = {};
 const env = {
   LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+  LARVA_PI_INITIAL_PERSONA_ID: "",
+  LARVA_PI_LAUNCHED: "0",
 };
 const ctx = {
   env,
@@ -97,6 +99,9 @@ async function runMentionNamespace() {
   const values = items?.map((item) => item.value) ?? null;
   const applied = installedProvider.applyCompletion([editorLine], 0, editorLine.length, items[0], result.prefix);
   const expected = [
+    "@persona:ok",
+    "@persona:startup",
+    "@persona:child",
     "@persona:vectl-planner",
     "@persona:vectl-reviewer",
     "@persona:qa-dev",
@@ -116,7 +121,7 @@ async function runMentionNamespace() {
     allValuesAreStrings: Array.isArray(items) && items.every((item) => typeof item.value === "string"),
     allValuesArePersonaMentions: Array.isArray(values) && values.every((value) => value.startsWith("@persona:")),
     allEligiblePersonaMentionsReturned: JSON.stringify(values) === JSON.stringify(expected),
-    applyCompletionInsertedMention: applied.lines?.[0] === "@persona:vectl-planner",
+    applyCompletionInsertedMention: applied.lines?.[0] === "@persona:ok",
   };
 }
 

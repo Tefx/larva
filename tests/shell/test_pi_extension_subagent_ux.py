@@ -56,6 +56,7 @@ def _node_prelude(tmp_path: Path) -> str:
           LARVA_PI_EXTENSION_FLAG: "-e",
           LARVA_PI_EXTENSION_ENTRY: "fake-extension-entry.ts",
           LARVA_PI_LAUNCHED: "1",
+          LARVA_PI_INITIAL_PERSONA_ID: "",
           LARVA_PI_CHILD_SESSION_DIR: childRoot,
           HOME: tmpRoot,
           ...extra,

@@ -12,6 +12,7 @@ const SCENARIOS = [
   "get-commands",
   "slash-status",
   "startup-status",
+  "startup-fatal",
   "failure-path",
   "tool-shape",
   "tool-result-renderer-shape",
@@ -102,11 +103,12 @@ function runtimeEnv(overrides = {}) {
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,
     LARVA_PI_LAUNCHED: "1",
+    LARVA_PI_INITIAL_PERSONA_ID: "",
     ...overrides,
   };
 }
 
-async function runPiRpc(evidence, { initialPersona, commands = [] } = {}) {
+async function runPiRpc(evidence, { initialPersona, commands = [], envOverrides = {} } = {}) {
   await piAvailability(evidence);
   evidence.rpc.attempted = true;
   if (!evidence.pi.available || !evidence.pi.extensionFlag) {
@@ -125,7 +127,7 @@ async function runPiRpc(evidence, { initialPersona, commands = [] } = {}) {
     "--session-dir",
     sessionDir,
   ];
-  const env = runtimeEnv(initialPersona ? { LARVA_PI_INITIAL_PERSONA_ID: initialPersona } : {});
+  const env = runtimeEnv({ ...(initialPersona ? { LARVA_PI_INITIAL_PERSONA_ID: initialPersona } : {}), ...envOverrides });
   const child = spawn(evidence.pi.binary, args, { env, cwd: root, stdio: ["pipe", "pipe", "pipe"] });
   const rl = createInterface({ input: child.stdout });
   const pending = new Map();
@@ -166,6 +168,55 @@ async function runPiRpc(evidence, { initialPersona, commands = [] } = {}) {
     evidence.rpc.loadFailure = false;
     evidence.rpc.limitation = "Current Pi RPC did not expose extension UI/custom command surfaces during this smoke run.";
   }
+  return evidence.rpc;
+}
+
+async function runPiFatalStartup(evidence, args) {
+  await piAvailability(evidence);
+  evidence.rpc.attempted = true;
+  evidence.rpc.fatalStartup = { status: "not-run", firstPromptSent: false };
+  if (!evidence.pi.available || !evidence.pi.extensionFlag) {
+    evidence.rpc.supported = false;
+    evidence.rpc.limitation = "Pi binary or extension flag is unavailable.";
+    evidence.rpc.fatalStartup.status = "blocked";
+    return evidence.rpc;
+  }
+  const sessionDir = await mkdtemp(join(tmpdir(), "larva-pi-fatal-startup-session-"));
+  const mode = args.get("fatal-mode") || "bad-model";
+  const envOverrides = mode === "bad-policy"
+    ? { LARVA_PI_TOOL_POLICY_FILE: join(sessionDir, "bad-policy.json") }
+    : { FAKE_LARVA_MODEL: "not-a-valid-pi-model" };
+  if (mode === "bad-policy") await writeFile(envOverrides.LARVA_PI_TOOL_POLICY_FILE, "{not json", "utf8");
+  const env = runtimeEnv({ LARVA_PI_INITIAL_PERSONA_ID: args.get("persona") || "ok", ...envOverrides });
+  const child = spawn(evidence.pi.binary, [
+    evidence.pi.extensionFlag,
+    extensionPath,
+    "--mode",
+    "rpc",
+    "--no-session",
+    "--offline",
+    "--session-dir",
+    sessionDir,
+  ], { env, cwd: root, stdio: ["pipe", "pipe", "pipe"] });
+  child.stdout.on("data", (chunk) => { evidence.rpc.stdout = `${evidence.rpc.stdout || ""}${chunk.toString("utf8")}`; });
+  child.stderr.on("data", (chunk) => { evidence.rpc.stderr += chunk.toString("utf8"); });
+  const exit = await new Promise((resolveClose) => {
+    const timer = setTimeout(() => { child.kill("SIGTERM"); resolveClose({ timeout: true }); }, 5_000);
+    child.once("close", (code, signal) => { clearTimeout(timer); resolveClose({ code, signal }); });
+    child.once("error", (error) => { clearTimeout(timer); resolveClose({ code: null, error: error.message }); });
+  });
+  evidence.rpc.exit = exit;
+  evidence.rpc.supported = true;
+  const nonzeroBeforePrompt = typeof exit?.code === "number" && exit.code !== 0;
+  const stderrHasLarvaStartupError = /larva pi: LARVA_(MODEL_UNAVAILABLE|POLICY_INVALID): initial persona/.test(evidence.rpc.stderr);
+  evidence.rpc.fatalStartup = {
+    status: nonzeroBeforePrompt && stderrHasLarvaStartupError ? "PASS" : "FAIL",
+    mode,
+    firstPromptSent: false,
+    nonzeroBeforePrompt,
+    stderrHasLarvaStartupError,
+    stderr: evidence.rpc.stderr,
+  };
   return evidence.rpc;
 }
 
@@ -588,6 +639,8 @@ async function main() {
     await runPiRpc(evidence, { commands: [{ id: "prompt-1", body: { type: "prompt", message: `/larva-persona ${persona ?? "ok"}` }, timeoutMs: 2_000 }] });
   } else if (scenario === "startup-status") {
     await runPiRpc(evidence, { initialPersona: persona ?? "startup", commands: [{ id: "state-1", body: { type: "get_state" } }] });
+  } else if (scenario === "startup-fatal") {
+    await runPiFatalStartup(evidence, args);
   } else if (scenario === "failure-path") {
     const missingPersona = persona ?? "missing";
     await runPiRpc(evidence, {

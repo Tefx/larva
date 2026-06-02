@@ -8,6 +8,7 @@ tests only: no production Pi extension code is implemented in this step.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -83,6 +84,7 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
         capture_output=True,
         text=True,
         timeout=timeout,
+        env={**os.environ, "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0"},
     )
     assert completed.returncode == 0, completed.stderr
     return json.loads(completed.stdout)
@@ -354,6 +356,74 @@ def test_current_pi_factory_uses_event_context_for_startup_status_and_commands(t
     assert result["notifications"][-1] == {"message": "Larva persona active: ok", "notifyType": "info"}
     assert result["switchResult"]["ok"] is True
     assert result["finalEnvelope"]["persona_id"] == "ok"
+
+
+def test_launched_initial_persona_invalid_model_exits_before_prompt(tmp_path: Path) -> None:
+    """`larva pi --persona` startup failures must be process-fatal before a prompt."""
+
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        let exitCode = null;
+        let stderr = "";
+        const originalExit = process.exit;
+        const originalWrite = process.stderr.write;
+        process.exit = (code) => {{ exitCode = code; throw new Error("PROCESS_EXIT"); }};
+        process.stderr.write = (chunk) => {{ stderr += String(chunk); return true; }};
+        const pi = {{
+          getAllTools: async () => ["read"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+        try {{
+          await mod.initializeExtension({{
+            env: {{
+              LARVA_PI_LAUNCHED: "1",
+              LARVA_PI_INITIAL_PERSONA_ID: "startup",
+              LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            }},
+            ui: {{ setStatus: () => undefined, notify: () => undefined }},
+          }}, pi);
+        }} catch (error) {{
+          if (error.message !== "PROCESS_EXIT") throw error;
+        }} finally {{
+          process.exit = originalExit;
+          process.stderr.write = originalWrite;
+        }}
+        console.log(JSON.stringify({{ exitCode, stderr, envelope: mod.getActiveEnvelope(), beforeAgent: mod.before_agent_start({{ systemPrompt: "base" }}) }}));
+        """,
+    )
+
+    assert result["exitCode"] == 1
+    assert "larva pi: LARVA_MODEL_UNAVAILABLE: initial persona 'startup' failed before first prompt/model turn" in result["stderr"]
+    assert result["envelope"] is None
+    assert result["beforeAgent"] is None
 
 
 def test_persona_switch_commits_envelope_model_and_status() -> None:

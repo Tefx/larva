@@ -21,6 +21,8 @@ const mod = await import(extensionUrl);
 function baseEnv(overrides = {}) {
   return {
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+    LARVA_PI_INITIAL_PERSONA_ID: "",
+    LARVA_PI_LAUNCHED: "0",
     ...overrides,
   };
 }
@@ -137,6 +139,9 @@ async function mentionNamespaceEvidence() {
   const queryItems = query?.items ?? [];
   const applied = installedProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespaceItems[0], bareNamespace.prefix);
   const expected = [
+    "@persona:ok",
+    "@persona:startup",
+    "@persona:child",
     "@persona:vectl-planner",
     "@persona:vectl-reviewer",
     "@persona:qa-dev",
@@ -169,7 +174,7 @@ async function mentionNamespaceEvidence() {
       "@persona:backend-dev",
     ]),
     rawShortDelegatesOnly: delegatedRawShort === null,
-    applyCompletionInsertedMention: applied.lines?.[0] === "please ask @persona:vectl-planner" && applied.cursorCol === "please ask @persona:vectl-planner".length,
+    applyCompletionInsertedMention: applied.lines?.[0] === "please ask @persona:ok" && applied.cursorCol === "please ask @persona:ok".length,
   };
 }
 

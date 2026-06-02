@@ -61,7 +61,7 @@ if (command === "resolve" && maybeFlag === "--json") {
       id: idOrFlag,
       description: `Fake persona ${idOrFlag}`,
       prompt: `You are fake persona ${idOrFlag}.`,
-      model: "openai/gpt-5.5",
+      model: process.env.FAKE_LARVA_MODEL || "openai/gpt-5.5",
       capabilities: {},
       spec_version: "0.1.0",
       spec_digest: idOrFlag === "ok" ? "digest-ok" : `sha256:${idOrFlag}`,

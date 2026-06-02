@@ -622,8 +622,7 @@ async function completePersonaMentionIds(prefix = "", ctx?: { env?: RuntimeEnv }
   const personas = await cachedPersonaList(ctx);
   if (personas === null) return null;
   const query = prefix.toLocaleLowerCase();
-  const source = query.length === 0 ? personas.filter((persona) => persona.spec_digest !== undefined) : personas;
-  const ranked = source
+  const ranked = personas
     .map((persona, index) => ({ persona, index, idLower: persona.id.toLocaleLowerCase() }))
     .filter((entry) => entry.idLower.includes(query))
     .sort((left, right) => {
@@ -940,6 +939,21 @@ async function setStatus(ctx: PiContext): Promise<void> {
 
 async function setStartupUnavailableStatus(ctx: PiContext, personaId: string, larvaError: LarvaError): Promise<void> {
   await setLarvaStatus(ctx, `larva: ${personaId} unavailable (${larvaError.code})`);
+}
+
+function startupFailureStderr(personaId: string, larvaError: LarvaError): string {
+  return `larva pi: ${larvaError.code}: initial persona '${personaId}' failed before first prompt/model turn: ${larvaError.message}\n`;
+}
+
+function shouldFatalInitialPersonaStartup(env: RuntimeEnv): boolean {
+  return env.LARVA_PI_LAUNCHED === "1" && typeof env.LARVA_PI_INITIAL_PERSONA_ID === "string" && env.LARVA_PI_INITIAL_PERSONA_ID.length > 0;
+}
+
+function fatalInitialPersonaStartup(env: RuntimeEnv, personaId: string, larvaError: LarvaError): never | null {
+  if (!shouldFatalInitialPersonaStartup(env)) return null;
+  process.stderr.write(startupFailureStderr(personaId, larvaError));
+  process.exit(1);
+  throw larvaError;
 }
 
 async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchResult): Promise<void> {
@@ -2250,6 +2264,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   if (env.LARVA_PI_INITIAL_PERSONA_ID) {
     const committed = await commitPersonaWithOptions(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi, { toolBaseline: startupToolBaseline });
     if (!committed.ok) {
+      fatalInitialPersonaStartup(env, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
       await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
       await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
     }

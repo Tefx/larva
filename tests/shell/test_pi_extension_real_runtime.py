@@ -106,6 +106,9 @@ def test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter
     payload = _run_autocomplete_runtime_case("mention-namespace")
 
     expected = [
+        "@persona:ok",
+        "@persona:startup",
+        "@persona:child",
         "@persona:vectl-planner",
         "@persona:vectl-reviewer",
         "@persona:qa-dev",
@@ -264,6 +267,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "get-commands",
         "slash-status",
         "startup-status",
+        "startup-fatal",
         "failure-path",
         "tool-shape",
         "tool-result-renderer-shape",
@@ -330,6 +334,18 @@ def test_real_pi_startup_status_commits_startup_persona() -> None:
         and request.get("statusText") == "larva: startup"
         for request in payload["rpc"].get("uiRequests", [])
     )
+
+
+def test_real_pi_initial_persona_invalid_model_fails_nonzero_before_prompt() -> None:
+    payload = _run_runtime_scenario("startup-fatal")
+    _skip_if_pi_absent(payload)
+
+    fatal = payload["rpc"]["fatalStartup"]
+    assert fatal["status"] == "PASS"
+    assert fatal["firstPromptSent"] is False
+    assert fatal["nonzeroBeforePrompt"] is True
+    assert fatal["stderrHasLarvaStartupError"] is True
+    assert "LARVA_MODEL_UNAVAILABLE" in fatal["stderr"]
 
 
 def test_real_pi_failure_path_uses_slash_command_topology() -> None:
