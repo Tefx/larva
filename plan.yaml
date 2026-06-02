@@ -95536,3 +95536,158 @@ phases:
   gate: Documentation, wiring, conformance, and final deep review all PASS.
   depends_on:
   - pi_impl_runtime_conformance_20260603
+  steps:
+  - id: pi_impl_finalization_20260603.docs-sync
+    name: Sync Pi integration documentation to implemented behavior
+    status: pending
+    description: 'TARGET STATE: Update existing project documentation only to reflect
+      the implemented Pi behavior. Scope: contrib/pi-extension/README.md and existing
+      relevant docs; design/pi-coding-agent-integration.md remains canonical design
+      authority and must not be duplicated. Non-scope: no implementation code, no
+      duplicate design source, no unimplemented feature claims.
+
+
+      SIDE_EFFECT_BUDGET: docs-only. Forbidden: product code changes, duplicate design
+      docs, rewriting opifex shared contract meaning.
+
+
+      RISK_PROBES:
+
+      - README examples must match actual `larva pi`, `/larva-persona`, `larva_subagent`,
+      and `/larva-subagent-log [task_id?]` behavior.
+
+      - Operator docs must explicitly state no legacy policy fallback and no filesystem/raw
+      JSONL/sidecar/alias overlay behavior.
+
+      - Runtime proof limitations must be documented without implying PASS when hard
+      gate is absent.'
+    verification: '- [ ] Documentation describes launcher env/args, persona switching,
+      tool policy paths, child RPC, sessions helper, realtime/log UI, overlay trigger,
+      reset cleanup, and verification commands.
+
+      - [ ] Docs preserve view-only overlay and no-scan/no-raw-JSONL/no-sidecar/no-alias
+      constraints.
+
+      - [ ] Docs do not duplicate or supersede design/pi-coding-agent-integration.md.
+
+      - [ ] Docs match actual implemented commands and evidence from runtime conformance
+      phase.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    - README.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    agent: doc-reviewer
+  - id: pi_impl_finalization_20260603.deep-wiring-audit
+    name: Deep wiring audit for Pi integration
+    status: pending
+    description: 'CONFORMANCE ARTIFACT: Full-system wiring audit focused on Pi integration.
+      Verify public exports, CLI registration, extension packaging hook, custom tools,
+      slash commands, reset hook, runtime smoke scripts, and no stubs/dead paths.
+
+
+      SIDE_EFFECT_BUDGET: read-only audit. Forbidden: code edits or approving dead
+      paths.
+
+
+      RISK_PROBES:
+
+      - Ensure launcher actually packages/points to bundled extension entry.
+
+      - Ensure every public Pi surface has a runtime caller/registration.
+
+      - Ensure no `_Runtime*`, `_Stub*`, or `_Placeholder*` production path stands
+      in for real implementation.'
+    verification: '- [ ] Export/CLI/packaging traces show `larva pi` and bundled Pi
+      extension are reachable.
+
+      - [ ] Tool/command/helper/render/reset registrations are reachable from runtime
+      entrypoints.
+
+      - [ ] No NotImplementedError/stub-only/private placeholder production dependency
+      remains.
+
+      - [ ] No write-only config field or unconsumed env variable relevant to Pi integration
+      remains.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - src/larva/shell/pi.py
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    agent: wiring-auditor
+  - id: pi_impl_finalization_20260603.plan-readiness-review
+    name: Fresh plan readiness/spec conformance review
+    status: pending
+    description: 'DECISION ARTIFACT: Read-only fresh review of the executed plan shape
+      and evidence readiness for the Pi integration target. This is the in-plan counterpart
+      to external review/fix loop: audit step specificity, evidence completeness,
+      dependency correctness, runtime proof gates, and user hard constraints.
+
+
+      SIDE_EFFECT_BUDGET: read-only review. Forbidden: implementation edits or plan
+      mutation by reviewer.
+
+
+      RISK_PROBES:
+
+      - Ensure no plan step allowed realtime/log UI to ship partially.
+
+      - Ensure every verification/gate step produced structured behavioral proof register
+      or equivalent.
+
+      - Ensure no architecture basis conflict was hidden inside implementation evidence.'
+    verification: '- [ ] Plan/evidence readiness review verdict is PASS or CHANGES_REQUESTED
+      with exact blockers.
+
+      - [ ] Review covers the whole Pi target, not only recent fixes.
+
+      - [ ] Any changes requested include concrete owning step/fix recommendation.
+
+      - [ ] PASS contains no conditional fixes or unresolved blocker-class gaps.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    agent: plan-readiness-auditor
+  - id: pi_impl_finalization_20260603.final-gate
+    name: Final Pi integration deep review gate
+    status: pending
+    description: 'DECISION ARTIFACT: Final deep review gate for the complete Larva
+      Pi coding-agent integration target. review_depth: THOROUGH. Gate opens only
+      when documentation sync, deep wiring audit, plan readiness review, runtime conformance,
+      full guard, and all prior phase gates are complete and blocker-free.
+
+
+      SIDE_EFFECT_BUDGET: read-only final review. Forbidden: approving with unresolved
+      hard runtime capability gaps, missing launched client evidence, or forbidden
+      overlay/session behaviors.
+
+
+      RISK_PROBES:
+
+      - Confirm all final reviewer classes agree: documentation, spec conformance,
+      engineering readiness, runtime liveness, and wiring.
+
+      - Confirm no old expected-red tests remain as accepted final proof.
+
+      - Confirm plan.yaml state was mutated only through vectl and not directly edited.'
+    verification: '- [ ] All prior Pi implementation gates are OPEN with complete
+      decision bases.
+
+      - [ ] Documentation sync and deep wiring audit PASS or have non-blocking dispositions
+      with non-intersection evidence.
+
+      - [ ] Fresh plan readiness review PASS is clean with no conditional fixes.
+
+      - [ ] Final decision basis maps every requirement matrix row to positive proof
+      or blocking remediation.
+
+      - [ ] OPEN only if there are no unresolved blockers/open questions for the approved
+      target.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_finalization_20260603.docs-sync
+    - pi_impl_finalization_20260603.deep-wiring-audit
+    - pi_impl_finalization_20260603.plan-readiness-review
+    agent: gate-reviewer
