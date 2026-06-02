@@ -94834,20 +94834,20 @@ phases:
 
       - Ensure tests separate mockable pipeline behavior from live Pi proof to avoid
       deadlock.'
-    verification: '- [ ] Expected-red tests expose launcher/runtime, persona/policy,
+    verification: '- [x] Expected-red tests expose launcher/runtime, persona/policy,
       child RPC, realtime/log UI, and overlay gaps without product code changes.
 
-      - [ ] Runtime probe records tested Pi package version/commit and hard-gate capability
+      - [x] Runtime probe records tested Pi package version/commit and hard-gate capability
       statuses when runnable.
 
-      - [ ] tests/shell/test_pi_postspec_subagent_ux_expected_red.py is converted,
+      - [x] tests/shell/test_pi_postspec_subagent_ux_expected_red.py is converted,
       renamed, or explicitly superseded by tests/shell/test_pi_extension_subagent_ux.py
       before final green gate.
 
-      - [ ] Fixtures include exact documented external formats and negative fixtures
+      - [x] Fixtures include exact documented external formats and negative fixtures
       for no raw JSONL/sidecar/alias behavior.
 
-      - [ ] Evidence states which failures are expected-red and which are environment
+      - [x] Evidence states which failures are expected-red and which are environment
       blockers.'
     refs:
     - design/pi-coding-agent-integration.md
