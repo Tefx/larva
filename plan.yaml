@@ -97761,24 +97761,24 @@ phases:
 
       - reset/new-session/shutdown during running child must abort/kill/reap child
       before clearing UI state.'
-    verification: '- [ ] Row renderCall shows persona, new/resume mode, bounded task
+    verification: '- [x] Row renderCall shows persona, new/resume mode, bounded task
       preview, and abbreviated task_id for resumes using documented Unicode cleanup/caps.
 
-      - [ ] onUpdate lifecycle allocates run_key/log entry before first partial, updates
+      - [x] onUpdate lifecycle allocates run_key/log entry before first partial, updates
       log before callback, records terminal progress before final return, and remains
       valid when onUpdate is absent or throws.
 
-      - [ ] Expanded renderResult displays Markdown-capable final output/failure with
+      - [x] Expanded renderResult displays Markdown-capable final output/failure with
       safe plain-text fallback and never mutates ToolResult semantic fields.
 
-      - [ ] /larva-subagent-log parses whole trimmed remainder as exact task_id, opens
+      - [x] /larva-subagent-log parses whole trimmed remainder as exact task_id, opens
       newest/exact retained run, replaces existing overlay, closes on supported triggers,
       returns stable not-observed/ui-unavailable errors, and remains view-only.
 
-      - [ ] resetExtensionUI/new-session/shutdown aborts/kills/reaps active child
+      - [x] resetExtensionUI/new-session/shutdown aborts/kills/reaps active child
       work, clears busy markers, closes overlays, and then clears presentation state.
 
-      - [ ] Recent-session helper remains derived from retained presentation log and
+      - [x] Recent-session helper remains derived from retained presentation log and
       no separate store.'
     refs:
     - design/pi-coding-agent-integration.md
