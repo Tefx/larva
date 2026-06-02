@@ -96830,6 +96830,138 @@ phases:
     depends_on:
     - pi_impl_child_rpc_20260603.sessions-helper
     agent: frontend-engineer
+  - id: pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
+    name: Retest gate for live child RPC startup, resume, abort, and cleanup proof
+    status: pending
+    description: 'DECISION ARTIFACT: Independent phase-check retest gate for the B1-B4
+      failures from `pi_impl_child_rpc_20260603.integration-proof`. This retest decides
+      whether the remediation support proves live or controlled-live child RPC startup,
+      resume, abort propagation, and cleanup; or whether execution is blocked by a
+      true runtime capability gap requiring architecture adjudication.
+
+
+      VERIFICATION_SCOPE: phase-check. Protects `pi_impl_child_rpc_20260603.gate`,
+      all downstream realtime UI work, runtime conformance, and finalization gates.
+
+
+      REQUIREMENT TRACEABILITY MATRIX REVIEW:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1-startup | Child startup and Child RPC contract require live `get_state`/sessionFile,
+      `prompt`, `agent_end`, `get_last_assistant_text` | Verify positive live/controlled-live
+      proof exists | `pi_impl_child_rpc_20260603.live-child-rpc-retest-gate` | `B1
+      live startup proof reviewed and accepted/rejected` | `b1_startup_verdict` |
+      OWNED | Blocks downstream if not PROVEN |
+
+      | B2-resume | Resume requires `switch_session` then new `prompt` using existing
+      session file | Verify positive live resume proof exists | `pi_impl_child_rpc_20260603.live-child-rpc-retest-gate`
+      | `B2 live resume proof reviewed and accepted/rejected` | `b2_resume_verdict`
+      | OWNED | Blocks downstream if not PROVEN |
+
+      | B3-abort | Abort requires forwarded RPC abort and cleanup/kill semantics |
+      Verify live propagation proof or exact hard-block decision | `pi_impl_child_rpc_20260603.live-child-rpc-retest-gate`
+      | `B3 abort proof or hard-block decision reviewed` | `b3_abort_verdict`, `b3_hard_block_decision`
+      | OWNED | If not PROVEN, downstream may proceed only after explicit architecture
+      adjudication step is created by orchestrator |
+
+      | B4-orphans | Verification targets require cleanup/orphan evidence for live
+      child lifecycle | Verify before/after orphan-process proof tied to real child
+      PID(s) | `pi_impl_child_rpc_20260603.live-child-rpc-retest-gate` | `B4 live
+      orphan cleanup proof reviewed and accepted/rejected` | `b4_orphan_cleanup_verdict`
+      | OWNED | Blocks downstream if not PROVEN |
+
+
+      ACCEPTANCE RULES:
+
+      - PASS requires B1, B2, B3, and B4 all PROVEN with live or controlled-live evidence.
+
+      - PASS_WITH_BLOCK is allowed only if B3 (or another item) is blocked by a true
+      runtime capability gap, the exact missing API/command is documented, B1/B2/B4
+      are independently proven or separately hard-blocked, and the retest outputs
+      the architecture decision that must be planned before downstream runtime claims.
+
+      - FAIL/BLOCKED if evidence is fake-child-only, mock-only, missing raw command
+      output, missing task_id/session ids, missing child process lifecycle, or missing
+      orphan scan.
+
+
+      SIDE_EFFECT_BUDGET: read-only retest. Forbidden: modifying implementation, accepting
+      narrative-only evidence, or approving a hard-block claim without exact command/API
+      attempts and outputs.
+
+
+      RISK_PROBES:
+
+      - Probe whether the supposed live proof actually starts a child Pi process with
+      `LARVA_PI_REAL_BIN` and bundled extension entry.
+
+      - Probe whether resume output depends on the new prompt and includes `switch_session`
+      evidence.
+
+      - Probe whether abort and orphan cleanup are observable at OS process/RPC level,
+      not inferred from returned status text only.'
+    verification: '- [ ] B1 live startup proof reviewed: exact command output includes
+      session id/task_id, child session file, `prompt`, `agent_end`, and `get_last_assistant_text`.
+
+      - [ ] B2 live resume proof reviewed: exact command output includes `switch_session`,
+      same canonical task_id/session path, new prompt, and new resumed output.
+
+      - [ ] B3 abort proof reviewed: exact command output proves abort signal propagation
+      through child cleanup, or a hard-block decision lists the exact missing Pi runtime
+      capability, commands tried, and architecture decision needed.
+
+      - [ ] B4 orphan cleanup proof reviewed: before/after process scan and child
+      PID lifecycle demonstrate no orphan child process remains for success/resume/abort
+      paths.
+
+      - [ ] Behavioral proof register marks each B1-B4 obligation `PROVEN`, `BLOCKED_WITH_DECISION`,
+      or `UNPROVEN`, with closure path and gate decision basis.
+
+      - [ ] Downstream realtime UI/runtime/finalization remains blocked unless this
+      retest is PASS or outputs a hard-block architecture decision for orchestrator
+      planning.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- `design/pi-coding-agent-integration.md` — key passages for Child\
+      \ startup, Resume, Abort, Child RPC contract, and Verification targets #26/#28/#35,\
+      \ or `NOT READ: <reason>`\n- `scripts/pi-extension-runtime-smoke.mjs` — key\
+      \ passage for live/proof harness commands, or `NOT READ: <reason>`\n- `contrib/pi-extension/larva.ts`\
+      \ — key passage for child RPC process lifecycle/cleanup code, or `NOT READ:\
+      \ <reason>`\n\n## Retest Execution\n- tester: integration-verifier\n- commands_executed:\
+      \ |\n  <paste exact commands>\n- raw_stdout_stderr: |\n  <paste exact output>\n\
+      - exit_codes: <codes>\n\n## Behavioral Proof Register\n| requirement_ref | behavior_claim\
+      \ | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- |\n| B1-startup | live child\
+      \ startup/session_ready/prompt/agent_end/final text works | command output +\
+      \ RPC frame trace + session file path | <artifact> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <basis> |\n| B2-resume | live resume uses switch_session and appends\
+      \ new task | command output + switch_session frame + resumed output | <artifact>\
+      \ | PROVEN/UNPROVEN/BLOCKED | <path> | <basis> |\n| B3-abort | parent abort\
+      \ propagates to child abort/kill cleanup | abort trigger + child RPC abort frame\
+      \ + PID exit/kill evidence | <artifact> | PROVEN/UNPROVEN/BLOCKED_WITH_DECISION\
+      \ | <path> | <basis> |\n| B4-orphans | no live child orphan remains | before/after\
+      \ process scan + PID lifecycle | <artifact> | PROVEN/UNPROVEN/BLOCKED | <path>\
+      \ | <basis> |\n\n## Exact Evidence Fields\n- b1_startup_verdict: <PASS/FAIL\
+      \ with evidence refs>\n- b1_session_ids_task_ids: <ids/paths>\n- b1_rpc_trace:\
+      \ <frame/log excerpt>\n- b2_resume_verdict: <PASS/FAIL with evidence refs>\n\
+      - b2_switch_session_trace: <frame/log excerpt>\n- b2_resumed_output: <text>\n\
+      - b3_abort_verdict: <PASS/FAIL/BLOCKED_WITH_DECISION>\n- b3_abort_signal_propagation:\
+      \ <frame/log/process evidence>\n- b3_hard_block_decision:\n  - capability_gap:\
+      \ <exact missing command/API or NONE>\n  - commands_tried: <commands/APIs and\
+      \ outputs>\n  - architecture_decision_needed: <exact decision or NONE>\n- b4_orphan_cleanup_verdict:\
+      \ <PASS/FAIL>\n- b4_pid_lifecycle: <pid start/exit/kill evidence>\n- b4_orphan_scan_before_after:\
+      \ <commands + output>\n\n## Gate Decision\n- [ ] PASS: B1-B4 are all PROVEN\
+      \ with live/controlled-live evidence.\n- [ ] PASS_WITH_BLOCK: A true hard runtime\
+      \ capability gap is documented with exact architecture decision needed; downstream\
+      \ implementation remains blocked until orchestrator creates adjudication/remediation.\n\
+      - [ ] BLOCKED: Any B1-B4 item is UNPROVEN without an accepted hard-block decision,\
+      \ or evidence is mock-only/fake-child-only/narrative-only."
+    depends_on:
+    - pi_impl_child_rpc_20260603.live-child-rpc-proof-support
+    agent: integration-verifier
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
