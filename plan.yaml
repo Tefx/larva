@@ -95148,7 +95148,7 @@ phases:
       \ ] Evidence records the exact files changed and confirms no completed gate\
       \ evidence was edited."
     depends_on:
-    - pi_impl_contract_20260603.gate
+    - pi_impl_contract_20260603.red-harness-and-runtime-probe
     agent: python-senior
   - id: retest-autocomplete-runtime-proof-gate
     name: Retest blocked Pi contract gate after autocomplete runtime proof fix
