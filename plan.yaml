@@ -96467,7 +96467,7 @@ phases:
       added. Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.sessions-helper
     name: Complete required larva_subagent_sessions helper
-    status: claimed
+    status: done
     description: 'TARGET STATE: `larva_subagent_sessions(limit?)` returns newest-first
       read-only recent-session summaries derived only from retained presentation-log
       entries with non-null task_id, including running allocated entries before terminal
@@ -96510,6 +96510,69 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T19:01:43.392053+00:00'
+    done_at: '2026-06-02T19:25:33.172959+00:00'
+    evidence: 'SUCCESS/PASS: larva_subagent_sessions helper implemented and merged
+      via conflict resolver.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read; helper is process-local, newest-first,
+      capped, no filesystem scan/raw JSONL/sidecar/alias, and derived from presentation/session
+      state.
+
+      - contrib/pi-extension/larva.ts read/updated.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/test-subagent-sessions-helper.mjs
+
+
+      Worker commit: 92d8f0d86262a7d3b56367bc482a7107694e3d1e.
+
+      Merge conflict: detected in contrib/pi-extension/larva.ts after lifecycle step
+      merge. Resolved by conflict-resolver preserving both lifecycle cleanup/busy/path/progress
+      behavior and presentation-log-derived sessions helper behavior.
+
+      Mainline resolver commit: 3339898 [vectl] step-pi_impl_child_rpc_20260603.sessions-helper
+      completed.
+
+
+      Verification:
+
+      - Worker: `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> PASS;
+      model-map/tool-policy/personaspec tests passed; guard passed.
+
+      - Resolver: `pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed; `node contrib/pi-extension/test-subagent-sessions-helper.mjs`
+      -> PASS; no conflict markers; clean tree.
+
+      - Mainline final-state verification after resolver: `pytest tests/shell/test_pi_extension_subagent_ux.py
+      tests/shell/test_pi_extension_real_runtime.py -q` -> 35 passed in 46.87s; `node
+      contrib/pi-extension/test-subagent-sessions-helper.mjs` -> limit validation/newest-first/retention/running
+      allocation/no scan PASS.
+
+
+      Checklist receipt:
+
+      - Helper validates limit default/max/invalid and returns newest-first unique
+      canonical task_id summaries: true.
+
+      - Running allocated entries appear before terminal completion and remain busy
+      for same-process resume: true.
+
+      - Eviction/reset clear/update derived summaries according to presentation-log
+      retention: true.
+
+      - Helper does not scan child-session directory or parse raw JSONL: true; static
+      assertion rejects readdir/opendir/glob/readFile/realpath/stat/lstat/JSON.parse
+      usage in helper body.
+
+
+      Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.integration-proof
     name: Child RPC integration and cleanup proof
     status: pending
