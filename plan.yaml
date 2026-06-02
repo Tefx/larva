@@ -96359,7 +96359,7 @@ phases:
   steps:
   - id: pi_impl_child_rpc_20260603.lifecycle-implementation
     name: Complete larva_subagent child RPC lifecycle
-    status: claimed
+    status: done
     description: 'TARGET STATE: `larva_subagent(persona_id, task, task_id?)` starts
       or resumes one child Pi RPC process per invocation using launcher-provided real
       Pi binary, extension flag, and extension entry; validates public task_id paths;
@@ -96406,6 +96406,65 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T19:01:34.937926+00:00'
+    done_at: '2026-06-02T19:17:41.233443+00:00'
+    evidence: 'SUCCESS/PASS: larva_subagent child RPC lifecycle implemented.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read; child RPC must use launcher-provided
+      real Pi binary/extension flag/entry, validate public task_id paths, avoid sidecars/locks/raw
+      JSONL overlay parsing, and return documented LarvaSubagentResult/ToolResult
+      after cleanup.
+
+      - contrib/pi-extension/larva.ts read/updated.
+
+      - tests/shell/test_pi_extension_subagent_ux.py read/updated; old tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      absent due prior rename.
+
+      - tests/shell/test_pi_extension_real_runtime.py read/verified.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - tests/shell/test_pi_extension_subagent_ux.py
+
+
+      Worker commit: 78c0cd05a1eaf82c79ca4edc3d86d92f7303833f.
+
+      Mainline squash commit: 518d48c [vectl] step-pi_impl_child_rpc_20260603.lifecycle-implementation
+      completed.
+
+
+      Verification:
+
+      - Worker: `uv run pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed in 48.47s; guard passed.
+
+      - Mainline: `pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed in 47.03s.
+
+      - `git diff --check HEAD~1 HEAD` before merge -> exit 0.
+
+
+      Checklist receipt:
+
+      - New/resume calls validate canonical task text before launch/allocation/busy:
+      true.
+
+      - Path validation maps outside-root/wrong suffix/missing/realpath escape/non-regular/unreadable
+      to documented codes: true.
+
+      - Normal completion/abort/startup failure/timeout/stdout EOF/malformed RPC/final-text
+      failure/resume failure/new-session protocol failure leave no orphan child: true.
+
+      - LarvaSubagentResult and ToolResult mirrors preserve semantics/caps: true.
+
+
+      Forbidden non-goals: scheduler/worktrees/sidecars/locks/raw JSONL overlay not
+      added. Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.sessions-helper
     name: Complete required larva_subagent_sessions helper
     status: claimed
