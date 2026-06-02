@@ -96026,6 +96026,124 @@ phases:
       \n## Residual Risk\n- blockers_remaining: <none or list>"
     depends_on:
     - pi_impl_launcher_extension_20260603.vertical-slice-proof
+  - id: canonical-personaspec-gate-retest
+    name: Retest gate for canonical PersonaSpec validation
+    status: pending
+    description: 'step_type: gate
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: project
+
+
+      DECISION ARTIFACT: Phase-check retest gate for blocker B1 from `pi_impl_launcher_extension_20260603.gate`.
+      This step protects downstream phases `pi_impl_child_rpc_20260603`, `pi_impl_realtime_ui_20260603`,
+      `pi_impl_runtime_conformance_20260603`, and `pi_impl_finalization_20260603`;
+      downstream must remain blocked until this retest records `gate_open_allowed=true`
+      with no blockers.
+
+
+      SCOPE:
+
+      - Re-run the negative shared-contract probe added by `canonical-personaspec-fail-closed-fix`.
+
+      - Re-run the existing phase gate command family / evidence set for launcher
+      and extension runtime, including the Pi extension contract tests, tool-policy/model-map/autocomplete
+      runtime tests, and live Pi vertical-slice proof or an exact equivalent real-entrypoint
+      proof.
+
+      - Review B1 closure only plus regression risk around shared PersonaSpec validation
+      and Pi extension persona switching.
+
+
+      GATE DECISION BASIS REQUIREMENTS:
+
+      - Every B1 requirement row from the fix step must have positive proof (`PROVEN`)
+      or this gate is BLOCKED.
+
+      - `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` for description, spec_version,
+      capability posture enum, or additionalProperties=false is BLOCKING.
+
+      - Build/type/source inspection alone is insufficient; runtime malformed-payload
+      evidence is required.
+
+      - Approving from sampled evidence is forbidden; the negative probe must cover
+      missing_required, bad_enum, extra_key/legacy_alias, and success parity.
+
+
+      SIDE_EFFECT_BUDGET: read-only retest and gate review. Forbidden: modifying code,
+      accepting narrative-only evidence, or reopening downstream phases without a
+      PASS gate decision.
+
+
+      RISK_PROBES:
+
+      - Confirm malformed payloads fail before `PersonaEnvelope` creation and before
+      active state changes.
+
+      - Confirm canonical success fixtures use `spec_version: "0.1.0"` and required
+      `description`, so the test harness is not preserving the prior bug.
+
+      - Confirm no local PersonaSpec reinterpretation conflicts with opifex schema
+      or final canonical contract.'
+    verification: '- [ ] Negative shared-contract probe rerun from a fresh checkout/workspace
+      state and raw output proves missing `description`, wrong `spec_version`, bad
+      capability posture, and extra/legacy top-level keys all fail closed.
+
+      - [ ] Existing phase gate commands/equivalents rerun with raw stdout/stderr:
+      `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      tests/shell/test_pi_extension_real_runtime.py -q`; `node contrib/pi-extension/test-tool-policy-paths.mjs`;
+      `node contrib/pi-extension/test-autocomplete-runtime.mjs --case mention-namespace`;
+      `node contrib/pi-extension/test-autocomplete-runtime.mjs --case cache-inflight`;
+      `node contrib/pi-extension/test-model-map-runtime.mjs`; and live Pi vertical-slice
+      proof or exact equivalent real-entrypoint proof.
+
+      - [ ] Gate decision basis maps B1.R1-B1.R5 to `PROVEN` with evidence refs and
+      reports `gate_open_allowed=true`.
+
+      - [ ] Blocker ledger is empty: `blockers=[]`, no residual B1, no new shared-contract
+      drift, no handler-only/mock-only runtime proof substitution.
+
+      - [ ] Checklist receipt states downstream phases remain blocked unless this
+      retest gate is complete and passing.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- ../opifex/design/final-canonical-contract.md — <key PersonaSpec forbidden-field/posture\
+      \ passage or NOT READ: reason>\n- ../opifex/contracts/persona_spec.schema.json\
+      \ — <key required/const/enum/additionalProperties passage or NOT READ: reason>\n\
+      - ../opifex/conformance/shared_surfaces.yaml — <key case coverage/gate policy\
+      \ passage or NOT READ: reason>\n- design/pi-coding-agent-integration.md — <key\
+      \ Pi runtime/resolve shared-contract passage or NOT READ: reason>\n- contrib/pi-extension/larva.ts\
+      \ — <key validation/envelope passage or NOT READ: reason>\n- tests/shell/test_pi_extension_contract.py\
+      \ — <key test harness passage or NOT READ: reason>\n- scripts/pi-extension-runtime-smoke.mjs\
+      \ — <key runtime probe passage or NOT READ: reason>\n- tests/fixtures/pi/fake-larva-cli.mjs\
+      \ — <key fixture passage or NOT READ: reason>\n\n## Retest Command Evidence\n\
+      ### Negative Shared-Contract Probe\n- command: <exact command>\n- raw_stdout_stderr:\
+      \ |\n    <paste raw output>\n- exit_code: <code>\n- cases_proven:\n  - missing_description:\
+      \ PROVEN|UNPROVEN|BLOCKED\n  - bad_spec_version: PROVEN|UNPROVEN|BLOCKED\n \
+      \ - bad_capability_posture: PROVEN|UNPROVEN|BLOCKED\n  - extra_or_legacy_key:\
+      \ PROVEN|UNPROVEN|BLOCKED\n  - canonical_success_parity: PROVEN|UNPROVEN|BLOCKED\n\
+      \n### Existing Phase Gate Commands / Equivalents\n- pytest_contracts: <raw command\
+      \ + output>\n- tool_policy_paths: <raw command + output>\n- autocomplete_mention_namespace:\
+      \ <raw command + output>\n- autocomplete_cache_inflight: <raw command + output>\n\
+      - model_map_runtime: <raw command + output>\n- live_vertical_slice_or_equivalent:\
+      \ <exact launch command, Pi version/commit, extension loaded evidence, active\
+      \ persona proof, safe operation proof>\n\n## B1 Gate Decision Basis\n| requirement_id\
+      \ | evidence_ref | status | gate_decision_basis |\n| --- | --- | --- | --- |\n\
+      | B1.R1 | <artifact> | PROVEN/UNPROVEN/BLOCKED | <basis> |\n| B1.R2 | <artifact>\
+      \ | PROVEN/UNPROVEN/BLOCKED | <basis> |\n| B1.R3 | <artifact> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <basis> |\n| B1.R4 | <artifact> | PROVEN/UNPROVEN/BLOCKED | <basis> |\n\
+      | B1.R5 | <artifact> | PROVEN/UNPROVEN/BLOCKED | <basis> |\n\n## Gate Verdict\n\
+      - gate_open_allowed: true|false\n- blockers: []\n- should_fix: []\n- downstream_block_status:\
+      \ <blocked_until_this_retest_done | unexpected_unblocked_with_explanation>\n\
+      - final_recommendation: OPEN|BLOCKED\n\n## Checklist Receipt\n- negative shared-contract\
+      \ probe rerun: satisfied|failed|blocked|unobserved\n- existing phase gate commands/equivalents\
+      \ rerun: satisfied|failed|blocked|unobserved\n- B1.R1-B1.R5 all PROVEN: satisfied|failed|blocked|unobserved\n\
+      - blocker ledger empty: satisfied|failed|blocked|unobserved\n- downstream block\
+      \ status recorded: satisfied|failed|blocked|unobserved"
+    depends_on:
+    - canonical-personaspec-fail-closed-fix
 - id: pi_impl_child_rpc_20260603
   name: Pi larva_subagent Child RPC Lifecycle 2026-06-03
   status: locked
