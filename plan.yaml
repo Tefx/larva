@@ -94665,7 +94665,7 @@ phases:
       \ with no changed files.\ngaps: []"
 - id: pi_impl_contract_20260603
   name: Pi Integration Contract Harness 2026-06-03
-  status: in_progress
+  status: done
   gate: Architecture basis and proof harness are complete enough to unlock implementation
     without duplicate design authority.
   depends_on:
@@ -95243,7 +95243,7 @@ phases:
       - Failure path mock-only unsupported cannot reopen gate: true.'
   - id: retest-autocomplete-runtime-proof-gate
     name: Retest blocked Pi contract gate after autocomplete runtime proof fix
-    status: claimed
+    status: done
     description: 'DECISION ARTIFACT:
 
       Independent retest/gate review for B1 after `fix-autocomplete-runtime-proof-gate`.
@@ -95377,9 +95377,101 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-02T18:09:20.189914+00:00'
+    done_at: '2026-06-02T18:13:15.403131+00:00'
+    evidence: 'PASS / GATE OPEN: B1 retest closed the blocked autocomplete runtime
+      proof gate.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md — editor autocomplete is available only
+      for Pi interactive TUI when ctx.ui.addAutocompleteProvider exists; missing hook
+      keeps command-level /larva-persona completion only.
+
+      - scripts/pi-extension-runtime-smoke.mjs — classifyUiAutocompleteProviderGate
+      supports true only for source `pi.interactiveTuiRuntime`; mock hook returns
+      supported=false.
+
+      - tests/shell/test_pi_extension_subagent_ux.py — runtime probe asserts autocomplete
+      gate supported is false for mock-only evidence.
+
+      - tests/shell/test_pi_postspec_editor_prompt_expected_red.py — degradation test
+      asserts missing ctx.ui.addAutocompleteProvider preserves command completer.
+
+      - tests/shell/test_pi_extension_real_runtime.py — runtime capability test rejects
+      mock-only autocomplete support.
+
+
+      Raw Evidence / Mainline verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0. Raw JSON included in gate evidence; mainline parsed `runtime.hardGates.uiAutocompleteProvider.supported=False`,
+      `provenance=runtimeHarness.mock`, `status=unsupported`.
+
+      - Focused pytest: `pytest tests/shell/test_pi_extension_subagent_ux.py::test_runtime_probe_records_pi_package_and_hard_gate_statuses
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py::test_editor_provider_installation_degrades_without_ui_hook_but_keeps_command_completion
+      tests/shell/test_pi_extension_real_runtime.py::test_runtime_smoke_help_lists_all_required_scenarios
+      tests/shell/test_pi_extension_real_runtime.py::test_runtime_capability_gate_rejects_mock_only_autocomplete_support
+      -q` -> `4 passed in 2.22s`.
+
+      - Empty evidence commit in worktree: 72c9945 evidence: retest autocomplete runtime
+      proof gate.
+
+      - Mainline squash merge had no file delta (read-only gate evidence).
+
+
+      Blocker Ledger:
+
+      - B1 prior blocker: CLOSED. Node smoke reports supported=false/provenance=runtimeHarness.mock/limitation
+      live Pi proof missing; pytest includes explicit mock-only rejection and degradation
+      tests.
+
+      - N1 note: subagentLogOverlayCommand remains false but is unrelated to PI-AUTOCOMPLETE-RUNTIME-HOOK
+      retest scope and remains expected downstream overlay gap/non-blocking for this
+      retest.
+
+
+      Gate Decision Basis:
+
+      - requirement_ref: PI-AUTOCOMPLETE-RUNTIME-HOOK.
+
+      - behavior_claim: autocomplete only when live Pi interactive TUI exposes ctx.ui.addAutocompleteProvider;
+      without hook, editor autocomplete unsupported and command completion remains
+      available.
+
+      - runtime_proof_expected: supported=true requires non-mock pi.interactiveTuiRuntime
+      hook evidence; mock/local harness evidence must be unsupported/unknown and not
+      count as editor autocomplete support.
+
+      - evidence_ref: node capability-gates JSON + 4 focused pytest tests.
+
+      - status: CLOSED.
+
+      - gate_decision: GATE OPEN.
+
+      - gate_open_allowed: true.
+
+      - blockers: [].
+
+      - orchestrator_action_hint: COMPLETE.
+
+
+      Checklist receipt:
+
+      - Node raw JSON rerun and pasted: true.
+
+      - Focused pytest raw output rerun and pasted: true.
+
+      - uiAutocompleteProvider.supported not true from mock-only evidence: true.
+
+      - B1 absent from blockers/no new blockers: true.
+
+      - gate_open_allowed=true only with no blockers and passing basis: true.
+
+      - gate_decision_basis includes all required fields: true.'
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
-  status: locked
+  status: pending
   gate: Launcher and extension/persona/policy runtime are implemented with live entrypoint
     proof and no shared-contract drift.
   depends_on:
