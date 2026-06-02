@@ -95824,7 +95824,7 @@ phases:
       - Not blocked; live Pi target available and verified: true.'
   - id: pi_impl_launcher_extension_20260603.gate
     name: Gate launcher and extension runtime
-    status: pending
+    status: skipped
     description: 'DECISION ARTIFACT: Phase-check gate for launcher and extension/persona/policy
       runtime. Protects downstream child RPC and realtime UI gates. review_depth:
       THOROUGH because this phase touches CLI, Pi extension runtime, shared contracts,
@@ -95863,6 +95863,7 @@ phases:
     - pi_impl_launcher_extension_20260603.extension-persona-policy
     - pi_impl_launcher_extension_20260603.vertical-slice-proof
     agent: gate-reviewer
+    skipped_reason: absorbed
   - id: canonical-personaspec-fail-closed-fix
     name: Fix canonical PersonaSpec fail-closed validation
     status: pending
