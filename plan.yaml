@@ -99196,7 +99196,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: adjudicate-subagent-overlay-authority
     name: Adjudicate subagent overlay design authority conflict
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       ACCEPTED CONTRACT ARTIFACT:
@@ -99289,6 +99289,78 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-06-02T21:43:35.479052+00:00'
+    done_at: '2026-06-02T21:58:00.340563+00:00'
+    evidence: 'SUCCESS/PASS: overlay authority adjudication completed; authority_decision=AUTHORIZED.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read and updated.
+
+      - ../opifex/design/final-canonical-contract.md read; shared contract authority
+      concerns PersonaSpec/shared surfaces and does not prohibit Pi user-visible view-only
+      overlays.
+
+      - ../opifex/conformance/shared_surfaces.yaml read; no shared-surface rule bars
+      Pi UI presentation overlays when they do not alter shared PersonaSpec/tool-policy
+      semantics.
+
+
+      Decision:
+
+      - `/larva-subagent-log` view-only overlay is authorized as a user-visible, in-memory
+      presentation-log UI surface.
+
+      - It does not alter model-visible persona identity, tool policy, PersonaSpec
+      admission, child session state, raw JSONL authority, or shared contract meaning.
+
+      - Design/verification expectations were aligned so future spec audits treat
+      the overlay as an authorized UI surface, not drift from older tool-row-only
+      wording.
+
+      - REJECTED/AMBIGUOUS branch is N/A because disposition is AUTHORIZED; no downstream
+      remediation blocker remains.
+
+
+      Files changed:
+
+      - design/pi-coding-agent-integration.md
+
+
+      Worker commit: 725e6220018b6387ddb2a230fa6ea1a21ef9e0ac.
+
+      Mainline squash commit: 99468fd [vectl] step-adjudicate-subagent-overlay-authority
+      completed.
+
+
+      Verification:
+
+      - Worker: python doc consistency check -> passed; `git diff --check` -> passed;
+      `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -q` -> 10 passed;
+      `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` ->
+      subagentLogOverlayCommand supported=true; invar changed guard -> passed.
+
+      - Mainline: doc consistency check -> passed; `git diff --check HEAD~1 HEAD`
+      -> passed; `pytest tests/shell/test_pi_extension_subagent_ux.py -q` -> 10 passed
+      in 18.29s; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0; runtime.hardGates.subagentLogOverlayCommand.supported=true.
+
+
+      Checklist receipt:
+
+      - overlay authority decision recorded with disposition AUTHORIZED and cited
+      key passages: true.
+
+      - design/verification expectations aligned so `/larva-subagent-log` view-only
+      overlay is not flagged as drift: true.
+
+      - REJECTED/AMBIGUOUS remediation path explicit: N/A, authorized; no spec conformance
+      block remains.
+
+      - No completed plan steps edited or reinterpreted without citations: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: retest-full-runtime-smoke
     name: Retest full Pi runtime smoke after remediation
     status: pending
