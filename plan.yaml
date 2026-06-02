@@ -96639,13 +96639,19 @@ phases:
       - [ ] Sessions helper is derived-only, read-only, and not an overlay render
       data authority.
 
-      - [ ] Result contract has no mode field or undocumented resume alias behavior.'
+      - [ ] Result contract has no mode field or undocumented resume alias behavior.
+
+      - [ ] B1-B4 live child RPC retest result is PASS, or PASS_WITH_BLOCK includes
+      exact hard runtime capability gap and an orchestrator-owned architecture adjudication
+      path before downstream runtime claims.'
     refs:
     - design/pi-coding-agent-integration.md
     depends_on:
     - pi_impl_child_rpc_20260603.lifecycle-implementation
     - pi_impl_child_rpc_20260603.sessions-helper
     - pi_impl_child_rpc_20260603.integration-proof
+    - pi_impl_child_rpc_20260603.live-child-rpc-proof-support
+    - pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     agent: gate-reviewer
   - id: pi_impl_child_rpc_20260603.live-child-rpc-proof-support
     name: Add live child RPC proof support for startup, resume, abort, and cleanup
