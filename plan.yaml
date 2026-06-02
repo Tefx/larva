@@ -96630,27 +96630,27 @@ phases:
       - Gate rejects child lifecycle evidence missing one documented failure path.
 
       - Gate rejects semantic result shape drift such as adding mode to LarvaSubagentResult.'
-    verification: '- [ ] Every child RPC lifecycle checklist item is satisfied or
+    verification: '- [x] Every child RPC lifecycle checklist item is satisfied or
       has blocking remediation.
 
-      - [ ] Gate decision basis maps cleanup/orphan proof for all documented modes.
+      - [x] Gate decision basis maps cleanup/orphan proof for all documented modes.
 
-      - [ ] Sessions helper is derived-only, read-only, and not an overlay render
+      - [x] Sessions helper is derived-only, read-only, and not an overlay render
       data authority.
 
-      - [ ] Result contract has no mode field or undocumented resume alias behavior.
+      - [x] Result contract has no mode field or undocumented resume alias behavior.
 
-      - [ ] B1-B4 live child RPC retest result is PASS, or PASS_WITH_BLOCK includes
+      - [x] B1-B4 live child RPC retest result is PASS, or PASS_WITH_BLOCK includes
       exact hard runtime capability gap and an orchestrator-owned architecture adjudication
       path before downstream runtime claims.
 
-      - [ ] Abort progress/order retest is PASS with raw phase-order parser output
+      - [x] Abort progress/order retest is PASS with raw phase-order parser output
       showing `cancelled` terminal and no phases after terminal.
 
-      - [ ] Abort txTypes evidence shows no `get_last_assistant_text` after `abort`
+      - [x] Abort txTypes evidence shows no `get_last_assistant_text` after `abort`
       on the abort-wins path.
 
-      - [ ] Raw pytest 35 and live-child-rpc-proof outputs are reviewed and show all
+      - [x] Raw pytest 35 and live-child-rpc-proof outputs are reviewed and show all
       required checks pass.'
     refs:
     - design/pi-coding-agent-integration.md
