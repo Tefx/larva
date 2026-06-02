@@ -95479,7 +95479,7 @@ phases:
   steps:
   - id: pi_impl_launcher_extension_20260603.launcher-runtime
     name: Complete larva pi launcher runtime contract
-    status: pending
+    status: claimed
     description: 'TARGET STATE: `larva pi [--persona <id>] [--] <pi args...>` discovers
       the real Pi executable, selects `-e` or `--extension`, forwards user Pi args
       unchanged, passes the documented Larva env, preflights missing `--persona` without
@@ -95522,6 +95522,8 @@ phases:
     - tests/shell/test_pi_launcher_contract.py
     - tests/shell/test_pi_extension_contract.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-02T18:14:05.038954+00:00'
   - id: pi_impl_launcher_extension_20260603.extension-persona-policy
     name: Complete Pi extension persona projection and adapter-local tool policy
     status: claimed
