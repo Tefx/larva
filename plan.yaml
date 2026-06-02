@@ -98300,12 +98300,12 @@ phases:
       | W6-R1 | design/pi-coding-agent-integration.md:1331-1332 — `LARVA_PI_LAUNCHED`:
       literal `1`, used only to prevent accidental recursive launcher execution |
       Retest must prove the env field is no longer write-only and launcher safety
-      is preserved | pi_impl_realtime_ui_20260603.larva-pi-launched-wiring-retest
-      | `- [ ] W6-LARVA-PI-LAUNCHED-WRITE-ONLY is retested and has PASS/BLOCKED disposition
-      with file:line evidence.` | `w6_disposition` | OWNED | N/A |
+      is preserved | larva-pi-launched-wiring-retest | `- [ ] W6-LARVA-PI-LAUNCHED-WRITE-ONLY
+      is retested and has PASS/BLOCKED disposition with file:line evidence.` | `w6_disposition`
+      | OWNED | N/A |
 
       | W6-R2 | Existing wiring-audit matrix for realtime/log UI public surfaces |
-      Retest must rerun the full matrix, not only W6 | pi_impl_realtime_ui_20260603.larva-pi-launched-wiring-retest
+      Retest must rerun the full matrix, not only W6 | larva-pi-launched-wiring-retest
       | `- [ ] Existing wiring matrix checks are rerun with fresh evidence.` | `wiring_matrix`
       | OWNED | N/A |'
     verification: '- [ ] W6-LARVA-PI-LAUNCHED-WRITE-ONLY is retested and has PASS/BLOCKED
