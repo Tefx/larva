@@ -99363,7 +99363,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: retest-full-runtime-smoke
     name: Retest full Pi runtime smoke after remediation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -99419,6 +99419,8 @@ phases:
     depends_on:
     - fix-runtime-conformance-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-02T21:58:26.790815+00:00'
   - id: retest-shared-spec-conformance
     name: Retest shared spec conformance after remediation and adjudication
     status: claimed
