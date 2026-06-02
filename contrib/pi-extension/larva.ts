@@ -184,7 +184,7 @@ type PiContext = PiApi & {
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
 };
-type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string> };
+type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null };
 type ParsedModel = { provider: string; modelId: string };
 type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
@@ -202,7 +202,7 @@ const LARVA_ACTIVE_PERSONA_BEGIN = "<!-- larva:active-persona:begin -->";
 const LARVA_ACTIVE_PERSONA_END = "<!-- larva:active-persona:end -->";
 const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona):begin -->[\s\S]*?<!-- larva:(?:identity-policy|active-persona):end -->\n?/g;
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
-const state: ActiveState = { envelope: null, activeTools: new Set<string>() };
+const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 const activeTaskIds: Set<string> = new Set<string>();
 const recentSubagentSessions: RecentSubagentSession[] = [];
 let recentSubagentSessionSequence = 0;
@@ -830,13 +830,16 @@ async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchRe
   await notify(ctx, `Larva persona switch failed: ${result.error.code}: ${result.error.message}`, "error");
 }
 
-async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Promise<unknown> {
+async function validateModel(spec: PersonaSpec, ctx: PiContext): Promise<unknown> {
   const lookup = await resolvePiModel(spec, currentEnv(ctx));
   const model = await ctx.modelRegistry?.find?.(lookup.provider, lookup.modelId);
   if (!model) throw error("LARVA_MODEL_UNAVAILABLE", `Model unavailable ${spec.model}`);
-  const accepted = await pi.setModel?.(model);
-  if (accepted === false) throw error("LARVA_MODEL_UNAVAILABLE", `Pi rejected model ${spec.model}`);
   return model;
+}
+
+async function setPiModel(pi: PiApi, model: unknown, specModel: string): Promise<void> {
+  const accepted = await pi.setModel?.(model);
+  if (accepted === false) throw error("LARVA_MODEL_UNAVAILABLE", `Pi rejected model ${specModel}`);
 }
 
 function toolEnumerationFailed(message = "Pi tool enumeration failed."): LarvaError {
@@ -901,14 +904,20 @@ async function commitPersonaInternal(
 ): Promise<PersonaSwitchResult> {
   const previousEnvelope = state.envelope;
   const previousActiveTools = new Set(state.activeTools);
+  const previousPiModel = state.piModel;
   let rollbackTools: string[] | null = null;
+  let modelUpdated = false;
   let activeToolsUpdated = false;
   try {
     const spec = await resolvePersona(personaId, ctx);
+    const model = await validateModel(spec, ctx);
     const baseline = await toolBaseline(pi);
     rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
     const activeTools = filterPolicyTools(baseline, tool_policy);
+
+    await setPiModel(pi, model, spec.model);
+    modelUpdated = true;
     let applied: boolean | void | undefined;
     try {
       applied = await pi.setActiveTools?.(activeTools);
@@ -917,7 +926,7 @@ async function commitPersonaInternal(
     }
     if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
     activeToolsUpdated = true;
-    await validateModel(spec, ctx, pi);
+
     const envelope: PersonaEnvelope = {
       persona_id: spec.id,
       spec_digest: spec.spec_digest ?? "",
@@ -928,14 +937,19 @@ async function commitPersonaInternal(
     };
     state.envelope = envelope;
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
+    state.piModel = model;
     await setStatus(ctx);
     return { ok: true, envelope };
   } catch (caught) {
     if (activeToolsUpdated && rollbackTools) {
       try { await pi.setActiveTools?.(rollbackTools); } catch { /* preserve previous active tool rules best-effort */ }
     }
-    state.envelope = previousEnvelope; // previousEnvelope rollback preserves model-facing state.
+    if (modelUpdated && previousPiModel !== null) {
+      try { await pi.setModel?.(previousPiModel); } catch { /* fail-safe: do not report a false active persona after model rollback failure */ }
+    }
+    state.envelope = previousEnvelope; // previousEnvelope rollback preserves user-visible persona state.
     state.activeTools = previousActiveTools;
+    state.piModel = previousPiModel;
     const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
     return { ok: false, error: larvaError };
   }
@@ -1658,9 +1672,6 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
 
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
   const env = currentEnv(ctx);
-  if (pi !== ctx) {
-    await initializeSession(withRuntimeEnv(ctx, env), pi);
-  }
   registerLarvaPersonaCommand(ctx, pi);
   const subagentSchema = {
     type: "object",
@@ -1708,6 +1719,9 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     handler: async (input: unknown) => larva_subagent_sessions(input),
     execute: async (_toolCallId, input) => larva_subagent_sessions(input),
   });
+  if (pi !== ctx) {
+    await initializeSession(withRuntimeEnv(ctx, env), pi);
+  }
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     registerLarvaPersonaAutocompleteProvider(runtimeCtx);

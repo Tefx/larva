@@ -158,6 +158,7 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     assert "initializeSession(withRuntimeEnv(ctx, env), pi)" in body
     assert 'on?.("session_start"' in body
     assert body.index("registerLarvaPersonaCommand") < body.index('on?.("before_agent_start"')
+    assert body.index("registerTool") < body.index("initializeSession(withRuntimeEnv(ctx, env), pi)")
     assert body.index("registerTool") < body.index('on?.("tool_call"')
 
     assert "registerLarvaPersonaCommand(ctx, pi)" in body
@@ -659,6 +660,147 @@ def test_initial_unsupported_tool_enumerator_uses_empty_baseline_but_switch_fail
     assert result["switched"]["ok"] is False
     assert result["switched"]["error"]["code"] == "LARVA_TOOL_ENUMERATION_FAILED"
     assert result["finalEnvelope"]["persona_id"] == "startup"
+
+
+def test_startup_registers_larva_tools_before_policy_baseline_filtering(tmp_path: Path) -> None:
+    """Startup policy baseline must include Larva-owned custom tools."""
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    policy = tmp_path / "tool-policy.json"
+    policy.write_text(
+        json.dumps({"personas": {"startup": {"allow": ["larva_subagent"]}}}),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const registeredToolNames = [];
+        const activeToolCalls = [];
+        const ctx = {{
+          env: {{
+            LARVA_PI_INITIAL_PERSONA_ID: "startup",
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_TOOL_POLICY_FILE: {json.dumps(str(policy))},
+          }},
+          ui: {{ setStatus: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => [...registeredToolNames, "read", "bash"],
+          setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: (tool) => registeredToolNames.push(tool.name),
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        console.log(JSON.stringify({{
+          registeredToolNames,
+          activeToolCalls,
+          activeEnvelope: mod.getActiveEnvelope(),
+          subagentAllowed: mod.decideToolCall("larva_subagent"),
+          bashDenied: mod.decideToolCall("bash"),
+        }}));
+        """,
+    )
+
+    assert result["registeredToolNames"][:2] == ["larva_subagent", "larva_subagent_sessions"]
+    assert result["activeToolCalls"] == [["larva_subagent"]]
+    assert result["activeEnvelope"]["persona_id"] == "startup"
+    assert result["subagentAllowed"] == {"action": "allow"}
+    assert result["bashDenied"]["action"] == "deny"
+    assert result["bashDenied"]["error"]["code"] == "LARVA_TOOL_DENIED"
+
+
+def test_persona_commit_prevalidates_then_sets_model_before_active_tools(tmp_path: Path) -> None:
+    """Persona commit must avoid side effects until validation, then set model before tools."""
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    policy = tmp_path / "tool-policy.json"
+    policy.write_text(
+        json.dumps({"personas": {"ok": {"deny": ["bash"]}, "bad-policy": {"allow": [1]}}}),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const calls = [];
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_TOOL_POLICY_FILE: {json.dumps(str(policy))},
+          }},
+          ui: {{ setStatus: async () => undefined }},
+          modelRegistry: {{ find: async (...args) => {{ calls.push(["find", ...args]); return {{ id: "model" }}; }} }},
+        }};
+        const pi = {{
+          getAllTools: async () => {{ calls.push(["getAllTools"]); return ["read", "bash"]; }},
+          setModel: async () => {{ calls.push(["setModel"]); return true; }},
+          setActiveTools: async (tools) => {{ calls.push(["setActiveTools", tools]); return true; }},
+        }};
+        const ok = await mod.commitPersona("ok", ctx, pi);
+        const afterOkCalls = [...calls];
+        calls.length = 0;
+        const badPolicy = await mod.commitPersona("bad-policy", ctx, pi);
+        console.log(JSON.stringify({{ ok, afterOkCalls, badPolicy, afterBadCalls: calls, finalEnvelope: mod.getActiveEnvelope() }}));
+        """,
+    )
+
+    assert result["ok"]["ok"] is True
+    assert result["afterOkCalls"] == [
+        ["find", "provider", "model"],
+        ["getAllTools"],
+        ["setModel"],
+        ["setActiveTools", ["read"]],
+    ]
+    assert result["badPolicy"]["ok"] is False
+    assert result["badPolicy"]["error"]["code"] == "LARVA_POLICY_INVALID"
+    assert result["afterBadCalls"] == [["find", "provider", "model"], ["getAllTools"]]
+    assert result["finalEnvelope"]["persona_id"] == "ok"
 
 
 def test_subagent_spawn_authority_false_or_omitted() -> None:
