@@ -95179,6 +95179,198 @@ phases:
     no P1/P2/P3 deferral.
   depends_on:
   - pi_impl_child_rpc_20260603
+  steps:
+  - id: pi_impl_realtime_ui_20260603.complete-ui-target
+    name: Complete realtime presentation log, row rendering, expanded rendering, reset
+      cleanup, and view-only overlay
+    status: pending
+    description: 'TARGET STATE: Implement the complete realtime/log UI as one target:
+      custom tool renderCall, onUpdate partial progress, retained process-local LarvaSubagentPresentationLog
+      capped at 25, row-local run_key renderer scratch state, expanded Markdown-capable
+      renderResult fallback, derived recent-session helper view, resetExtensionUI
+      cleanup, and fixed `/larva-subagent-log [task_id?]` view-only Pi custom overlay.
+      Scope: contrib/pi-extension/larva.ts, Pi extension runtime tests, smoke scripts.
+      Non-scope: no P1/P2/P3 deferral, no filesystem scan, no raw JSONL parsing, no
+      sidecar, no aliases, no persona switch/tool approval/session mutation from overlay,
+      no Larva-private terminal overlay.
+
+
+      ## Client Surface Completion Criteria (runtime output required)
+
+      Completion requires logic correctness and observable Pi TUI/terminal output:
+      row progress, expanded output, and overlay must be observable with terminal
+      capture/screenshot/snapshot or equivalent.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      SIDE_EFFECT_BUDGET: may mutate Pi extension UI/runtime code and tests. Forbidden:
+      semantic ToolResult mutation by renderers, adding mode to LarvaSubagentResult,
+      child session JSONL reads, sidecar writes, overlay actions beyond view/close.
+
+
+      RISK_PROBES:
+
+      - Runtime proof must show execute(..., onUpdate, ...) exists before realtime
+      PASS.
+
+      - onUpdate absence/throw must not change final semantic ToolResult or corrupt
+      retained UI state.
+
+      - reset/new-session/shutdown during running child must abort/kill/reap child
+      before clearing UI state.'
+    verification: '- [ ] Row renderCall shows persona, new/resume mode, bounded task
+      preview, and abbreviated task_id for resumes using documented Unicode cleanup/caps.
+
+      - [ ] onUpdate lifecycle allocates run_key/log entry before first partial, updates
+      log before callback, records terminal progress before final return, and remains
+      valid when onUpdate is absent or throws.
+
+      - [ ] Expanded renderResult displays Markdown-capable final output/failure with
+      safe plain-text fallback and never mutates ToolResult semantic fields.
+
+      - [ ] /larva-subagent-log parses whole trimmed remainder as exact task_id, opens
+      newest/exact retained run, replaces existing overlay, closes on supported triggers,
+      returns stable not-observed/ui-unavailable errors, and remains view-only.
+
+      - [ ] resetExtensionUI/new-session/shutdown aborts/kills/reaps active child
+      work, clears busy markers, closes overlays, and then clears presentation state.
+
+      - [ ] Recent-session helper remains derived from retained presentation log and
+      no separate store.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
+    agent: frontend-engineer
+  - id: pi_impl_realtime_ui_20260603.client-runtime-proof
+    name: Client runtime proof for Pi realtime/log UI
+    status: pending
+    description: 'PROOF ARTIFACT: Launch or harness the actual Pi TUI/client surface
+      and prove realtime/log UI is observable, non-blank, view-only, and minimally
+      interactive. Surface class: TUI/CLI client runtime. This is separate from design
+      conformance and unit tests.
+
+
+      SIDE_EFFECT_BUDGET: read-only runtime verification. Forbidden: source edits,
+      replacing runtime proof with build/type/static evidence.
+
+
+      RISK_PROBES:
+
+      - Overlay must use ctx.ui.custom(..., { overlay: true }) and not a Larva-private
+      terminal overlay.
+
+      - Runtime proof must cover row progress + expanded rendering + overlay together.
+
+      - If Pi UI is unavailable, proof must show documented ui_unavailable behavior
+      and not claim overlay PASS.'
+    verification: '- [ ] Exact launch command/target/session and tested Pi version/commit
+      are recorded.
+
+      - [ ] Runtime artifact shows row progress and expanded result with meaningful
+      content.
+
+      - [ ] Runtime artifact shows /larva-subagent-log newest and exact task_id overlay
+      or documented ui_unavailable/not_observed behavior.
+
+      - [ ] One safe interaction opens/replaces/closes overlay and restores focus
+      or records exact blocker.
+
+      - [ ] View-only probes show no persona switch, subagent invocation, tool approval,
+      session file mutation, raw JSONL parse, sidecar write, or alias creation.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_realtime_ui_20260603.complete-ui-target
+    agent: client-runtime-verifier
+  - id: pi_impl_realtime_ui_20260603.wiring-audit
+    name: Wiring audit for realtime/log UI public surfaces
+    status: pending
+    description: 'CONFORMANCE ARTIFACT: Verify every new public command/tool/helper/render
+      surface is reachable at runtime: larva_subagent, required larva_subagent_sessions,
+      renderCall/renderResult, execute onUpdate handling, /larva-subagent-log slash
+      command, resetExtensionUI test/lifecycle hook, and autocomplete/overlay registration
+      where supported.
+
+
+      SIDE_EFFECT_BUDGET: read-only audit. Forbidden: code edits or assuming reachability
+      from symbol existence alone.
+
+
+      RISK_PROBES:
+
+      - Public symbols must have runtime callers/registrations outside their defining
+      helper.
+
+      - UI reset hook must be mapped to available reset/new-session/shutdown events
+      or direct test harness invocation.
+
+      - Overlay registration and overlay opening gates must be distinct.'
+    verification: '- [ ] Import/registration traces show larva_subagent and larva_subagent_sessions
+      are registered before policy filtering or in deterministic Larva baseline.
+
+      - [ ] Slash command registration for /larva-subagent-log is reachable when Pi
+      exposes command registration.
+
+      - [ ] renderCall/renderResult/onUpdate paths are reachable from Pi custom tool
+      execution.
+
+      - [ ] resetExtensionUI cleanup path is reachable from runtime lifecycle or direct
+      test harness.
+
+      - [ ] No dead public symbol, unregistered command, write-only config field,
+      or stub-only implementation remains.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    depends_on:
+    - pi_impl_realtime_ui_20260603.complete-ui-target
+    agent: wiring-auditor
+  - id: pi_impl_realtime_ui_20260603.gate
+    name: Gate complete realtime/log UI target
+    status: pending
+    description: 'DECISION ARTIFACT: Phase-check gate for the complete realtime/log
+      UI target. review_depth: THOROUGH. Gate must reject partial progress rows without
+      retained log/overlay, overlay without row progress, design deferral, mock-only
+      proof, or any forbidden side-effect behavior.
+
+
+      SIDE_EFFECT_BUDGET: read-only review. Forbidden: accepting P1/P2/P3 split or
+      follow-on deferral for realtime/log UI.
+
+
+      RISK_PROBES:
+
+      - Gate consumes the requirement-to-checklist matrix and verifies positive proof
+      for every OWNED UI row.
+
+      - Gate rejects runtime liveness gaps and design/user-visible evidence substitutions.
+
+      - Gate rejects semantic result drift and overlay mutability.'
+    verification: '- [ ] Row progress, retained presentation log, expanded rendering,
+      derived sessions helper, reset cleanup, and view-only /larva-subagent-log overlay
+      are all proven together.
+
+      - [ ] Gate decision basis reviews runtime artifacts, wiring audit, and forbidden-behavior
+      probes.
+
+      - [ ] Every unresolved runtime/UI obligation blocks or has explicit architecture
+      re-adjudication path.
+
+      - [ ] OPEN only if onUpdate and abort hard-gate capabilities are proven for
+      supported mode or appropriate architecture re-adjudication blocks completion.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_realtime_ui_20260603.complete-ui-target
+    - pi_impl_realtime_ui_20260603.client-runtime-proof
+    - pi_impl_realtime_ui_20260603.wiring-audit
+    agent: gate-reviewer
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
   status: locked
