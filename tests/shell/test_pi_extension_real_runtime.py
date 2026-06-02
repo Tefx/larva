@@ -269,6 +269,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "tool-result-renderer-shape",
         "fresh-session-validation",
         "tool-call-block",
+        "capability-gates",
     ):
         assert scenario in completed.stdout
 
@@ -339,6 +340,19 @@ def test_real_pi_failure_path_uses_slash_command_topology() -> None:
     messages = [request.get("message") for request in payload["rpc"].get("uiRequests", [])]
     assert "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Unable to resolve persona missing" in messages
     assert "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Invalid persona payload for unparseable" in messages
+
+
+def test_runtime_capability_gate_rejects_mock_only_autocomplete_support() -> None:
+    payload = _run_runtime_scenario("capability-gates")
+    gate = payload["runtime"]["hardGates"]["uiAutocompleteProvider"]
+
+    assert gate["supported"] is False
+    assert gate["status"] in {"unsupported", "unknown"}
+    assert gate["provenance"] == "runtimeHarness.mock"
+    assert gate["evidence"]["hook"]["hookType"] == "function"
+    assert gate["evidence"]["hook"]["source"] == "runtimeHarness.mock"
+    assert "live Pi interactive TUI runtime hook proof is missing" in gate["limitation"]
+    assert "true requires non-mock Pi interactive TUI runtime/build provenance" in gate["supportRule"]
 
 
 def test_runtime_object_registers_larva_subagent_parameters_and_execute() -> None:

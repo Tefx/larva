@@ -436,6 +436,13 @@ def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
         "abort",
     ]
     assert payload["runtime"]["hardGates"]["subagentToolRowProgress"]["supported"] is True
+    autocomplete_gate = payload["runtime"]["hardGates"]["uiAutocompleteProvider"]
+    assert autocomplete_gate["supported"] is False
+    assert autocomplete_gate["status"] in {"unsupported", "unknown"}
+    assert autocomplete_gate["provenance"] != "pi.interactiveTuiRuntime"
+    assert autocomplete_gate["evidence"]["hook"]["source"] == "runtimeHarness.mock"
+    assert "live Pi interactive TUI runtime hook proof is missing" in autocomplete_gate["limitation"]
+    assert "mock/local harness hook evidence is never sufficient" in autocomplete_gate["supportRule"]
 
 
 def test_subagent_log_overlay_command_expected_red_without_live_credentials() -> None:

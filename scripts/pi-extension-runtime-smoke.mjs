@@ -174,12 +174,13 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
   const handlers = new Map();
   const statuses = [];
   const notifications = [];
+  const autocompleteProviders = [];
   const ctx = {
     env: runtimeEnv({ LARVA_PI_INITIAL_PERSONA_ID: initialPersona, ...envOverrides }),
     ui: {
       setStatus: async (...args) => { statuses.push(args); },
       notify: async (...args) => { notifications.push(args); },
-      addAutocompleteProvider: () => undefined,
+      addAutocompleteProvider: (providerFactory) => { autocompleteProviders.push(providerFactory); return undefined; },
     },
     modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
   };
@@ -200,9 +201,53 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
   evidence.runtime.notifications = notifications;
   evidence.runtime.registeredToolNames = registeredTools.map((tool) => tool.name);
   evidence.runtime.handlers = Array.from(handlers.keys());
+  evidence.runtime.autocompleteProvider = {
+    hookType: typeof ctx.ui.addAutocompleteProvider,
+    source: "runtimeHarness.mock",
+    installedProviderCount: autocompleteProviders.length,
+    limitation: "Local smoke runtime injects a mock ctx.ui.addAutocompleteProvider fixture; this is not live Pi interactive TUI runtime proof.",
+  };
   evidence.runtime.larvaSubagent = registeredTools.find((tool) => tool.name === "larva_subagent") ?? null;
   evidence.runtime.toolCallHandler = handlers.get("tool_call") ?? null;
   return evidence.runtime;
+}
+
+function classifyUiAutocompleteProviderGate(evidence) {
+  const mockHook = evidence.runtime?.autocompleteProvider ?? null;
+  const realHook = evidence.runtime?.realUiAutocompleteProvider ?? null;
+  const piBuildEvidence = {
+    binary: evidence.pi?.binary ?? null,
+    helpExitCode: evidence.pi?.helpExitCode ?? null,
+    versionCommand: evidence.package?.versionCommand ?? null,
+    versionExitCode: evidence.package?.versionExitCode ?? null,
+    versionText: evidence.package?.versionText ?? null,
+    packageRoot: evidence.package?.packageRoot ?? null,
+    commit: evidence.package?.commit ?? null,
+    commitExitCode: evidence.package?.commitExitCode ?? null,
+  };
+  const realHookProven = realHook?.source === "pi.interactiveTuiRuntime"
+    && realHook?.hookType === "function"
+    && (typeof piBuildEvidence.versionText === "string" || typeof piBuildEvidence.commit === "string");
+  if (realHookProven) {
+    return {
+      supported: true,
+      status: "supported",
+      provenance: "pi.interactiveTuiRuntime",
+      evidence: { piBuild: piBuildEvidence, hook: realHook },
+      limitation: null,
+      supportRule: "supported is true only for a non-mock ctx.ui.addAutocompleteProvider observed from the tested Pi interactive TUI runtime/build.",
+    };
+  }
+  return {
+    supported: false,
+    status: mockHook?.hookType === "function" ? "unsupported" : "unknown",
+    provenance: mockHook?.source ?? "not-observed",
+    evidence: { piBuild: piBuildEvidence, hook: mockHook },
+    limitation: mockHook?.hookType === "function"
+      ? "Only the local runtimeHarness mock object exposed ctx.ui.addAutocompleteProvider; live Pi interactive TUI runtime hook proof is missing."
+      : "ctx.ui.addAutocompleteProvider was not observed in this smoke run; live Pi interactive TUI runtime hook proof is missing.",
+    supportRule: "mock/local harness hook evidence is never sufficient for supported: true; true requires non-mock Pi interactive TUI runtime/build provenance.",
+  };
 }
 
 function hasRendererSafeTextContent(result) {
@@ -540,10 +585,7 @@ async function main() {
         supported: evidence.pi.available === true,
         evidence: { mode: "rpc", commands: ["get_state", "prompt", "switch_session", "get_last_assistant_text", "abort"] },
       },
-      uiAutocompleteProvider: {
-        supported: true,
-        evidence: "mock runtime exposes ctx.ui.addAutocompleteProvider and initializeExtension installs during session_start only",
-      },
+      uiAutocompleteProvider: classifyUiAutocompleteProviderGate(evidence),
       subagentToolRowProgress: {
         supported: typeof tool?.renderCall === "function" && typeof tool?.renderResult === "function" && typeof tool?.execute === "function",
         evidence: { hasRenderCall: typeof tool?.renderCall, hasRenderResult: typeof tool?.renderResult, hasExecute: typeof tool?.execute },
