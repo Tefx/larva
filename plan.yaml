@@ -98121,7 +98121,7 @@ phases:
     agent: gate-reviewer
   - id: larva-pi-launched-env-fix
     name: Fix LARVA_PI_LAUNCHED runtime consumption
-    status: pending
+    status: claimed
     description: 'TARGET STATE: `contrib/pi-extension/larva.ts` no longer treats `LARVA_PI_LAUNCHED`
       as a write-only launcher contract field. The extension consumes the flag in
       runtime initialization or an equivalent formally documented contract path so
@@ -98258,6 +98258,8 @@ phases:
     depends_on:
     - pi_impl_realtime_ui_20260603.wiring-audit
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T21:06:59.525397+00:00'
   - id: larva-pi-launched-wiring-retest
     name: Retest W6 wiring audit after LARVA_PI_LAUNCHED fix
     status: pending
