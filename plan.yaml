@@ -99085,7 +99085,7 @@ phases:
     claimed_at: '2026-06-02T21:43:12.616124+00:00'
   - id: adjudicate-subagent-overlay-authority
     name: Adjudicate subagent overlay design authority conflict
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       ACCEPTED CONTRACT ARTIFACT:
@@ -99176,6 +99176,8 @@ phases:
     depends_on:
     - pi_impl_runtime_conformance_20260603.shared-spec-conformance
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-06-02T21:43:35.479052+00:00'
   - id: retest-full-runtime-smoke
     name: Retest full Pi runtime smoke after remediation
     status: pending
