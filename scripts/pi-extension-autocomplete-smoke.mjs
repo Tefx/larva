@@ -16,7 +16,7 @@ const extensionUrl = pathToFileURL(join(root, "contrib", "pi-extension", "larva.
 const mod = await import(extensionUrl);
 const fakeCli = join(root, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
 
-let installedProvider = null;
+let installedFactory = null;
 let registeredCommand = null;
 const env = {
   LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
@@ -25,8 +25,8 @@ const ctx = {
   env,
   ui: {
     setStatus: async () => undefined,
-    addAutocompleteProvider: (provider) => {
-      installedProvider = provider;
+    addAutocompleteProvider: (factory) => {
+      installedFactory = factory;
     },
   },
 };
@@ -43,11 +43,22 @@ if (registeredCommand?.name !== "larva-persona") throw new Error("larva-persona 
 if (typeof registeredCommand.options?.getArgumentCompletions !== "function") {
   throw new Error("command argument completer was not preserved");
 }
-if (typeof installedProvider !== "function") throw new Error("autocomplete provider was not installed");
+if (typeof installedFactory !== "function") throw new Error("autocomplete provider factory was not installed");
+const baseProvider = {
+  getSuggestions: async () => null,
+  applyCompletion: (lines, cursorLine, cursorCol) => ({ lines, cursorLine, cursorCol, delegated: true }),
+  shouldTriggerFileCompletion: () => false,
+};
+const installedProvider = installedFactory(baseProvider);
+if (typeof installedProvider?.getSuggestions !== "function") throw new Error("autocomplete provider object was not installed");
+
+async function getSuggestions(provider, line, options = { force: true }) {
+  return provider.getSuggestions([line], 0, line.length, options);
+}
 
 async function runTab(force) {
   const editorLine = `/larva-persona ${prefix}`;
-  const items = await installedProvider(editorLine, { force });
+  const items = await getSuggestions(installedProvider, editorLine, { force });
   const values = items?.map((item) => item.value) ?? null;
   return {
     command: registeredCommand.name,
@@ -71,8 +82,10 @@ async function runTab(force) {
 }
 
 async function runMentionNamespace() {
-  const items = await installedProvider(prefix || "@persona:", { force: true });
+  const editorLine = prefix || "@persona:";
+  const items = await getSuggestions(installedProvider, editorLine);
   const values = items?.map((item) => item.value) ?? null;
+  const applied = installedProvider.applyCompletion([editorLine], 0, editorLine.length, items[0], "");
   const expected = [
     "@persona:vectl-planner",
     "@persona:vectl-reviewer",
@@ -83,13 +96,14 @@ async function runMentionNamespace() {
   ];
   return {
     command: registeredCommand.name,
-    editorLine: prefix || "@persona:",
+    editorLine,
     items,
     values,
     expected,
     allValuesAreStrings: Array.isArray(items) && items.every((item) => typeof item.value === "string"),
     allValuesArePersonaMentions: Array.isArray(values) && values.every((value) => value.startsWith("@persona:")),
     allEligiblePersonaMentionsReturned: JSON.stringify(values) === JSON.stringify(expected),
+    applyCompletionInsertedMention: applied.lines?.[0] === "@persona:vectl-planner",
   };
 }
 
@@ -109,9 +123,9 @@ if (scenario === "tab-force") {
   output = { calls, items, delegated: items === baseResult };
 } else if (scenario === "list-failure") {
   process.env.FAKE_LARVA_SCENARIO = "list-exit";
-  const failed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: true });
+  const failed = await getSuggestions(installedProvider, `/larva-persona ${prefix || "vectl"}`);
   process.env.FAKE_LARVA_SCENARIO = "list-malformed";
-  const malformed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: false });
+  const malformed = await getSuggestions(installedProvider, `/larva-persona ${prefix || "vectl"}`, { force: false });
   output = { failed, malformed, noCrash: failed === null && malformed === null };
 } else if (scenario === "mention-namespace") {
   output = await runMentionNamespace();

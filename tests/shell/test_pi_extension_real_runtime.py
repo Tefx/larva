@@ -112,6 +112,7 @@ def test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter
     assert payload["queryUsesSuffixOnly"] is True
     assert payload["delegatedRawShort"] is None
     assert payload["rawShortDelegatesOnly"] is True
+    assert payload["applyCompletionInsertedMention"] is True
 
 
 @pytest.mark.parametrize("case,force", [("tab-force", True), ("tab-regular", False)])
@@ -146,6 +147,7 @@ def test_autocomplete_smoke_mentions_namespace_returns_all_eligible_personas() -
     assert payload["allValuesAreStrings"] is True
     assert payload["allValuesArePersonaMentions"] is True
     assert payload["allEligiblePersonaMentionsReturned"] is True
+    assert payload["applyCompletionInsertedMention"] is True
 
 
 def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash() -> None:

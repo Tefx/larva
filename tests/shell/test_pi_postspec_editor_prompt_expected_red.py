@@ -182,14 +182,14 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         + """
         mod.resetPersonaCompletionCache();
         const calls = [];
-        let installed = null;
+        let installedFactory = null;
         const status = [];
         const ctx = {
           env: baseEnv(),
           modelRegistry,
           ui: {
             setStatus: (key, value) => status.push([key, value]),
-            addAutocompleteProvider: (provider) => { installed = provider; },
+            addAutocompleteProvider: (factory) => { installedFactory = factory; },
             notify: () => undefined,
           },
         };
@@ -198,23 +198,30 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
           { value: "./src/app.ts", label: "./src/app.ts", description: "Pi file reference" },
           { value: "@persona:vectl-planner", label: "Pi duplicate wins" },
         ];
-        const baseProvider = (...args) => { calls.push(args.map((arg) => typeof arg === "string" ? arg : typeof arg)); return baseItems; };
-        const mentionProvider = mod.createLarvaPersonaMentionAutocompleteProvider?.({ env: baseEnv() }, baseProvider);
-        const rawAt = mentionProvider ? await mentionProvider("@", { force: true }) : null;
-        const namespacePartial = mentionProvider ? await mentionProvider("@p", { force: true }) : null;
-        const literalPartial = mentionProvider ? await mentionProvider("@persona", { force: true }) : null;
-        const bareNamespace = mentionProvider ? await mentionProvider("@persona:", { force: true }) : null;
-        const query = mentionProvider ? await mentionProvider("please ask @persona:review", { force: true }) : null;
-        const rawShort = mentionProvider ? await mentionProvider("@vectl", { force: true }) : null;
-        const fileLike = mentionProvider ? await mentionProvider("@foo/bar", { force: true }) : null;
-        const spacedText = mentionProvider ? await mentionProvider("@ persona:dev", { force: true }) : null;
+        const baseProvider = {
+          getSuggestions: (...args) => { calls.push(args.map((arg) => Array.isArray(arg) ? "array" : typeof arg)); return baseItems; },
+          applyCompletion: (lines, cursorLine, cursorCol, item, prefix) => ({ lines, cursorLine, cursorCol, item, prefix, delegated: true }),
+          shouldTriggerFileCompletion: () => false,
+        };
+        const mentionProvider = installedFactory ? installedFactory(baseProvider) : null;
+        const suggest = (line) => mentionProvider ? mentionProvider.getSuggestions([line], 0, line.length, { force: true }) : null;
+        const rawAt = await suggest("@");
+        const namespacePartial = await suggest("@p");
+        const literalPartial = await suggest("@persona");
+        const bareNamespace = await suggest("@persona:");
+        const query = await suggest("please ask @persona:review");
+        const rawShort = await suggest("@vectl");
+        const fileLike = await suggest("@foo/bar");
+        const spacedText = await suggest("@ persona:dev");
+        const applied = mentionProvider ? mentionProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespace[1], "") : null;
         const beforeEnvelope = mod.getActiveEnvelope();
-        if (mentionProvider) await mentionProvider("@persona:ok", { force: true });
+        if (mentionProvider) await mentionProvider.getSuggestions(["@persona:ok"], 0, "@persona:ok".length, { force: true });
         const afterEnvelope = mod.getActiveEnvelope();
         const promptAfterMention = mod.before_agent_start({ systemPrompt: "Pi prompt" });
 
         console.log(JSON.stringify({
-          installedProvider: typeof installed,
+          installedProviderFactory: typeof installedFactory,
+          installedProviderObject: typeof mentionProvider?.getSuggestions,
           hasMentionFactory: typeof mod.createLarvaPersonaMentionAutocompleteProvider,
           rawAt,
           namespacePartial,
@@ -224,6 +231,7 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
           rawShort,
           fileLike,
           spacedText,
+          applied,
           calls,
           beforeEnvelope,
           afterEnvelope,
@@ -234,7 +242,8 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     )
 
     assert payload["hasMentionFactory"] == "function"
-    assert payload["installedProvider"] == "function"
+    assert payload["installedProviderFactory"] == "function"
+    assert payload["installedProviderObject"] == "function"
     assert [item["value"] for item in payload["rawAt"]] == [
         "./src/app.ts",
         "@persona:vectl-planner",
@@ -263,6 +272,11 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     ]
     assert payload["fileLike"] == payload["rawShort"]
     assert payload["spacedText"] == payload["rawShort"]
+    assert payload["applied"] == {
+        "lines": ["please ask @persona:vectl-planner"],
+        "cursorLine": 0,
+        "cursorCol": len("please ask @persona:vectl-planner"),
+    }
     assert payload["beforeEnvelope"] is None
     assert payload["afterEnvelope"] is None
     assert payload["promptAfterMention"] is None

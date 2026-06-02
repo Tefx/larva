@@ -27,13 +27,13 @@ function baseEnv(overrides = {}) {
 
 async function makeRuntime(env = baseEnv()) {
   mod.resetPersonaCompletionCache();
-  let installedProvider = null;
+  let installedFactory = null;
   let registeredCommand = null;
   const ctx = {
     env,
     ui: {
       setStatus: async () => undefined,
-      addAutocompleteProvider: (provider) => { installedProvider = provider; },
+      addAutocompleteProvider: (factory) => { installedFactory = factory; },
     },
   };
   const pi = {
@@ -44,8 +44,20 @@ async function makeRuntime(env = baseEnv()) {
   await mod.initializeExtension(ctx, pi);
   if (registeredCommand?.name !== "larva-persona") throw new Error("larva-persona command was not preserved");
   if (typeof registeredCommand.options?.getArgumentCompletions !== "function") throw new Error("command completer missing");
-  if (typeof installedProvider !== "function") throw new Error("autocomplete provider missing");
+  if (typeof installedFactory !== "function") throw new Error("autocomplete provider factory missing");
+  const baseProvider = {
+    getSuggestions: async () => null,
+    applyCompletion: (lines, cursorLine, cursorCol) => ({ lines, cursorLine, cursorCol, delegated: true }),
+    shouldTriggerFileCompletion: () => false,
+  };
+  const installedProvider = installedFactory(baseProvider);
+  if (typeof installedProvider?.getSuggestions !== "function") throw new Error("autocomplete provider object missing getSuggestions");
+  if (typeof installedProvider?.applyCompletion !== "function") throw new Error("autocomplete provider object missing applyCompletion");
   return { ctx, installedProvider, registeredCommand };
+}
+
+async function getSuggestions(provider, line, options = { force: true }) {
+  return provider.getSuggestions([line], 0, line.length, options);
 }
 
 async function readCount(path) {
@@ -58,7 +70,7 @@ async function readCount(path) {
 
 async function listFixtureEvidence() {
   const { installedProvider } = await makeRuntime();
-  const items = await installedProvider("/larva-persona vectl", { force: true });
+  const items = await getSuggestions(installedProvider, "/larva-persona vectl");
   return {
     exactDocumentedShape: {
       data: items.map((item) => ({
@@ -77,10 +89,11 @@ async function listFixtureEvidence() {
 
 async function mentionNamespaceEvidence() {
   const { installedProvider } = await makeRuntime();
-  const namespacePartial = await installedProvider("@p", { force: true });
-  const bareNamespace = await installedProvider("@persona:", { force: true });
-  const query = await installedProvider("please ask @persona:DEV", { force: true });
-  const delegatedRawShort = await installedProvider("@vectl", { force: true });
+  const namespacePartial = await getSuggestions(installedProvider, "@p");
+  const bareNamespace = await getSuggestions(installedProvider, "@persona:");
+  const query = await getSuggestions(installedProvider, "please ask @persona:DEV");
+  const delegatedRawShort = await getSuggestions(installedProvider, "@vectl");
+  const applied = installedProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespace[0], "");
   const expected = [
     "@persona:vectl-planner",
     "@persona:vectl-reviewer",
@@ -94,6 +107,7 @@ async function mentionNamespaceEvidence() {
     bareNamespaceValues: bareNamespace.map((item) => item.value),
     queryValues: query.map((item) => item.value),
     delegatedRawShort,
+    applied,
     expected,
     namespacePartialReturnsAllEligible: JSON.stringify(namespacePartial.map((item) => item.value)) === JSON.stringify(expected),
     bareNamespaceReturnsAllEligible: JSON.stringify(bareNamespace.map((item) => item.value)) === JSON.stringify(expected),
@@ -104,13 +118,14 @@ async function mentionNamespaceEvidence() {
       "@persona:backend-dev",
     ]),
     rawShortDelegatesOnly: delegatedRawShort === null,
+    applyCompletionInsertedMention: applied.lines?.[0] === "please ask @persona:vectl-planner" && applied.cursorCol === "please ask @persona:vectl-planner".length,
   };
 }
 
 let output;
 if (scenario === "substring-case-ordering") {
   const { installedProvider, registeredCommand } = await makeRuntime();
-  const providerItems = await installedProvider(`/larva-persona ${prefix || "DEV"}`, { force: true });
+  const providerItems = await getSuggestions(installedProvider, `/larva-persona ${prefix || "DEV"}`);
   const commandItems = await registeredCommand.options.getArgumentCompletions(prefix || "DEV");
   output = {
     query: prefix || "DEV",
@@ -129,11 +144,11 @@ if (scenario === "substring-case-ordering") {
     FAKE_LARVA_LIST_DELAY_MS: "150",
   }));
   const [first, second] = await Promise.all([
-    installedProvider("/larva-persona vectl", { force: true }),
-    installedProvider("/larva-persona vectl", { force: false }),
+    getSuggestions(installedProvider, "/larva-persona vectl", { force: true }),
+    getSuggestions(installedProvider, "/larva-persona vectl", { force: false }),
   ]);
   const afterConcurrent = await readCount(countFile);
-  const cached = await installedProvider("/larva-persona vectl", { force: true });
+  const cached = await getSuggestions(installedProvider, "/larva-persona vectl");
   const afterCache = await readCount(countFile);
   output = {
     concurrentValues: [first.map((item) => item.value), second.map((item) => item.value)],
@@ -154,10 +169,10 @@ if (scenario === "substring-case-ordering") {
   const delegatedItems = await delegatedProvider("/not-larva vectl", { force: true });
   process.env.FAKE_LARVA_SCENARIO = "list-exit";
   mod.resetPersonaCompletionCache();
-  const failed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: true });
+  const failed = await getSuggestions(installedProvider, `/larva-persona ${prefix || "vectl"}`);
   process.env.FAKE_LARVA_SCENARIO = "list-malformed";
   mod.resetPersonaCompletionCache();
-  const malformed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: false });
+  const malformed = await getSuggestions(installedProvider, `/larva-persona ${prefix || "vectl"}`, { force: false });
   delete process.env.FAKE_LARVA_SCENARIO;
   output = {
     delegated: delegatedItems === baseResult,
