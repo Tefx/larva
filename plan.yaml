@@ -94692,3 +94692,9 @@ phases:
     no P1/P2/P3 deferral.
   depends_on:
   - pi_impl_child_rpc_20260603
+- id: pi_impl_runtime_conformance_20260603
+  name: Pi Runtime Liveness and Spec Conformance 2026-06-03
+  status: locked
+  gate: Runtime, UI, and shared-contract proof registers are complete and blocker-free.
+  depends_on:
+  - pi_impl_realtime_ui_20260603
