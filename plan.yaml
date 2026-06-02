@@ -98956,7 +98956,7 @@ phases:
     agent: gate-reviewer
   - id: fix-runtime-conformance-blockers
     name: Fix runtime conformance blockers from smoke and spec audits
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       TARGET STATE:
@@ -99083,6 +99083,117 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T21:43:12.616124+00:00'
+    done_at: '2026-06-02T21:56:52.004490+00:00'
+    evidence: 'SUCCESS/PASS: runtime conformance blockers fixed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md and scripts read for fatal startup,
+      autocomplete/degraded capability behavior, and selector/mention expectations.
+
+      - opifex canonical refs and Pi extension docs read as applicable.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/test-autocomplete-runtime.mjs
+
+      - scripts/pi-extension-autocomplete-smoke.mjs
+
+      - scripts/pi-extension-runtime-smoke.mjs
+
+      - tests/fixtures/pi/fake-larva-cli.mjs
+
+      - tests/shell/test_pi_extension_contract.py
+
+      - tests/shell/test_pi_extension_real_runtime.py
+
+      - tests/shell/test_pi_extension_subagent_ux.py
+
+      - tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+
+
+      Worker commit: 9596844a3f273975c08a6274d2cc4c14b11a572f.
+
+      Mainline squash commit: 9f7b3bb [vectl] step-fix-runtime-conformance-blockers
+      completed.
+
+
+      Resolved blockers:
+
+      - fatal_startup: launched initial persona model/policy failures write stderr
+      and exit nonzero before prompt.
+
+      - id_only_mentions: mention candidates no longer require spec_digest; non-empty
+      data[].id is sufficient.
+
+      - autocomplete_capability_gate: runtime smoke keeps supported=false for mock-only
+      addAutocompleteProvider proof and documents live Pi limitation instead of false
+      support.
+
+
+      Worker verification:
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case mention-namespace`
+      -> exit 0; @persona:ok/startup/child plus digest-bearing ids; allEligiblePersonaMentionsReturned=true.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl` -> exit 0; values=[vectl-planner,vectl-reviewer]; exactShape=true.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure --prefix
+      vectl` -> exit 0; failed=null; malformed=null; noCrash=true.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0; uiAutocompleteProvider.supported=false; provenance=runtimeHarness.mock;
+      limitation says live Pi TUI hook proof missing.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0; child exit code=1; stderr has LARVA_MODEL_UNAVAILABLE; firstPromptSent=false.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal --fatal-mode
+      bad-policy` -> exit 0; child exit code=1; stderr has LARVA_POLICY_INVALID; firstPromptSent=false.
+
+      - `uv run pytest tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py -q` -> 86 passed.
+
+      - `uv run pytest -q` -> 718 passed in 60.41s.
+
+      - invar changed guard -> passed.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal --fatal-mode
+      bad-policy` -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `pytest tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py -q` -> 86 passed
+      in 33.13s.
+
+
+      Checklist receipt:
+
+      - addAutocompleteProvider live/degraded path resolved with provenance: true.
+
+      - fatal startup nonzero/stderr before prompt: true.
+
+      - id-only selector/mention population works without spec_digest: true.
+
+      - previous runtime matrix rows non-regressed: true.
+
+      - raw command output covers all owned blockers: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: adjudicate-subagent-overlay-authority
     name: Adjudicate subagent overlay design authority conflict
     status: claimed
