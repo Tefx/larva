@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { access, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { access, appendFile, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -53,6 +53,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_CLI_ARGV_JSON?: string;
   LARVA_PI_INTERACTIVE_TUI?: string;
   LARVA_PI_LAUNCHED?: string;
+  LARVA_PI_CHILD_RPC_TRACE_FILE?: string;
 };
 
 type CapabilityPosture = "none" | "read_only" | "read_write" | "destructive";
@@ -223,6 +224,23 @@ let personaCompletionClock: () => number = () => Date.now();
 let toolEnumerationMode: ToolEnumerationMode = "strict";
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
+
+type ChildRpcTraceFields = Record<string, unknown>;
+
+function childRpcTraceFile(env: RuntimeEnv): string | null {
+  const traceFile = env.LARVA_PI_CHILD_RPC_TRACE_FILE;
+  return typeof traceFile === "string" && traceFile.length > 0 ? traceFile : null;
+}
+
+async function traceChildRpc(env: RuntimeEnv, event: string, fields: ChildRpcTraceFields = {}): Promise<void> {
+  const traceFile = childRpcTraceFile(env);
+  if (traceFile === null) return;
+  try {
+    await appendFile(traceFile, `${JSON.stringify({ ts: new Date().toISOString(), event, ...fields })}\n`, "utf8");
+  } catch {
+    // Trace instrumentation is proof-only and must never change child runtime behavior.
+  }
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -1528,8 +1546,9 @@ function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProc
   const prefix = launcherArgs(env);
   if (!Array.isArray(prefix)) return prefix;
   const [realBin, flag, entry, ...tail] = prefix;
+  const args = [flag, entry, ...tail, root];
   try {
-    return spawn(realBin, [flag, entry, ...tail, root], {
+    const child = spawn(realBin, args, {
       env: {
         ...process.env,
         ...env,
@@ -1539,7 +1558,10 @@ function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProc
       },
       stdio: ["pipe", "pipe", "pipe"],
     });
+    void traceChildRpc(env, "child_spawn", { pid: child.pid ?? null, command: realBin, args, root, persona_id: personaId });
+    return child;
   } catch {
+    void traceChildRpc(env, "child_spawn_error", { command: realBin, args, root, persona_id: personaId });
     return error("LARVA_CHILD_START_FAILED", "Child Pi process could not be started.");
   }
 }
@@ -1567,20 +1589,29 @@ class RpcClient {
   private closed = false;
   private stdoutClosed = false;
   private childError: unknown = null;
+  private readonly traceEnv: RuntimeEnv;
 
-  constructor(child: ChildProcessWithoutNullStreams) {
+  constructor(child: ChildProcessWithoutNullStreams, traceEnv: RuntimeEnv) {
     this.child = child;
-    child.stderr.on("data", (chunk: Buffer) => { this.stderr += chunk.toString("utf8"); });
+    this.traceEnv = traceEnv;
+    child.stderr.on("data", (chunk: Buffer) => {
+      const text = chunk.toString("utf8");
+      this.stderr += text;
+      void traceChildRpc(this.traceEnv, "child_stderr", { pid: this.child.pid ?? null, text });
+    });
     child.once("error", (caught: unknown) => {
       this.childError = caught;
+      void traceChildRpc(this.traceEnv, "child_error", { pid: this.child.pid ?? null, message: caught instanceof Error ? caught.message : String(caught) });
       this.failPending(this.closedError());
     });
-    child.once("close", () => {
+    child.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
       this.closed = true;
+      void traceChildRpc(this.traceEnv, "child_exit", { pid: this.child.pid ?? null, code, signal });
       this.failPending(this.closedError());
     });
     child.stdout.once("close", () => {
       this.stdoutClosed = true;
+      void traceChildRpc(this.traceEnv, "child_stdout_close", { pid: this.child.pid ?? null });
       if (!this.closed && this.rpcReady) this.failPending(this.stdoutClosedError());
     });
     const rl = createInterface({ input: child.stdout });
@@ -1590,11 +1621,13 @@ class RpcClient {
   private consume(line: string): void {
     let message: unknown;
     try { message = JSON.parse(line); } catch {
+      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, line });
       const protocolError = error("LARVA_CHILD_PROTOCOL_FAILED", "Child emitted malformed JSONL.");
       this.events.push({ type: "protocol_error" });
       this.failPending(protocolError);
       return;
     }
+    void traceChildRpc(this.traceEnv, "rpc_rx", { pid: this.child.pid ?? null, frame: message });
     const id = typeof message === "object" && message !== null && "id" in message ? String((message as { id: unknown }).id) : "";
     const waiter = this.pending.get(id);
     if (id && waiter) {
@@ -1625,7 +1658,9 @@ class RpcClient {
   }
 
   async command(id: string, body: Record<string, unknown>, timeoutMs = 10_000): Promise<unknown | LarvaError> {
-    const message = JSON.stringify({ id, ...body });
+    const frame = { id, ...body };
+    const message = JSON.stringify(frame);
+    void traceChildRpc(this.traceEnv, "rpc_tx", { pid: this.child.pid ?? null, frame });
     return await new Promise((resolveCommand) => {
       let settled = false;
       const settle = (value: unknown | LarvaError): void => {
@@ -1695,12 +1730,16 @@ class RpcClient {
   startupError(): LarvaError { return parseStartupError(this.stderr); }
 
   async abort(): Promise<"success" | "cancelled" | "unknowable"> {
+    void traceChildRpc(this.traceEnv, "abort_start", { pid: this.child.pid ?? null });
     const aborted = await this.command("abort-1", { type: "abort" }, 5_000);
+    void traceChildRpc(this.traceEnv, "abort_rpc_result", { pid: this.child.pid ?? null, result: aborted });
     if (isSuccessResponse(aborted)) return "cancelled";
     try {
       const killed = this.child.kill();
+      void traceChildRpc(this.traceEnv, "abort_kill", { pid: this.child.pid ?? null, killed });
       return killed ? "cancelled" : "unknowable";
     } catch {
+      void traceChildRpc(this.traceEnv, "abort_kill_error", { pid: this.child.pid ?? null });
       return "unknowable";
     }
   }
@@ -1747,19 +1786,27 @@ async function waitForChildClose(child: ChildProcessWithoutNullStreams, timeoutM
   });
 }
 
-async function cleanupChild(child: ChildProcessWithoutNullStreams): Promise<void> {
+async function cleanupChild(child: ChildProcessWithoutNullStreams, env: RuntimeEnv): Promise<void> {
+  void traceChildRpc(env, "cleanup_start", { pid: child.pid ?? null, running: childStillRunning(child) });
   try { child.stdin.end(); } catch { /* stdin may already be closed */ }
   if (childStillRunning(child)) {
-    try { child.kill("SIGTERM"); } catch { /* best-effort shutdown */ }
+    try {
+      const killed = child.kill("SIGTERM");
+      void traceChildRpc(env, "cleanup_sigterm", { pid: child.pid ?? null, killed });
+    } catch { /* best-effort shutdown */ }
     await waitForChildClose(child, 5_000);
   }
   if (childStillRunning(child)) {
-    try { child.kill("SIGKILL"); } catch { /* best-effort hard kill */ }
+    try {
+      const killed = child.kill("SIGKILL");
+      void traceChildRpc(env, "cleanup_sigkill", { pid: child.pid ?? null, killed });
+    } catch { /* best-effort hard kill */ }
     await waitForChildClose(child, 1_000);
   }
   try { child.stdin.destroy(); } catch { /* ignore stream cleanup errors */ }
   try { child.stdout.destroy(); } catch { /* ignore stream cleanup errors */ }
   try { child.stderr.destroy(); } catch { /* ignore stream cleanup errors */ }
+  void traceChildRpc(env, "cleanup_end", { pid: child.pid ?? null, running: childStillRunning(child), exitCode: child.exitCode, signalCode: child.signalCode });
 }
 
 async function runChildSequence(
@@ -1773,7 +1820,7 @@ async function runChildSequence(
 ): Promise<LarvaSubagentResult> {
   const child = startChild(env, root, personaId);
   if (isLarvaError(child)) return failed(taskId, personaId, child);
-  const rpc = new RpcClient(child);
+  const rpc = new RpcClient(child, env);
   let allocatedTaskId = taskId;
   let freshBusyTaskId: string | null = null;
   let abortStarted = false;
@@ -1850,7 +1897,7 @@ async function runChildSequence(
   } finally {
     abortSignal?.removeEventListener("abort", requestAbort);
     if (freshBusyTaskId) activeTaskIds.delete(freshBusyTaskId);
-    await cleanupChild(child);
+    await cleanupChild(child, env);
   }
 }
 

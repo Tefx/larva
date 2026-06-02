@@ -6,6 +6,7 @@ const scenario = process.env.FAKE_LARVA_SCENARIO || "ok";
 const personas = [
   { id: "ok", description: "Deterministic success persona", model: "openai/gpt-5.5" },
   { id: "startup", description: "Deterministic startup persona", model: "openai/gpt-5.5" },
+  { id: "child", description: "Deterministic child persona", model: "openai/gpt-5.5" },
   { id: "vectl-planner", description: "Plan with vectl", spec_digest: "sha256:vectl-planner", model: "openai/gpt-5.5" },
   { id: "vectl-reviewer", description: "Review with vectl", spec_digest: "sha256:vectl-reviewer", model: "openai/gpt-5.5" },
   { id: "qa-dev", description: "Non-prefix developer match", spec_digest: "sha256:qa-dev", model: "openai/gpt-5.5" },

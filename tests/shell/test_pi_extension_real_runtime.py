@@ -270,6 +270,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "fresh-session-validation",
         "tool-call-block",
         "capability-gates",
+        "live-child-rpc-proof",
     ):
         assert scenario in completed.stdout
 

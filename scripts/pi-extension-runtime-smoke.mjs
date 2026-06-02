@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { access, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -18,6 +18,7 @@ const SCENARIOS = [
   "fresh-session-validation",
   "tool-call-block",
   "capability-gates",
+  "live-child-rpc-proof",
 ];
 
 function usage() {
@@ -363,6 +364,211 @@ async function writeFakeSubagentChild(scriptPath, { sessionFile, finalText = "fr
   `, "utf8");
 }
 
+async function readJsonlTrace(traceFile) {
+  try {
+    const raw = await readFile(traceFile, "utf8");
+    return raw.split(/\r?\n/).filter(Boolean).map((line) => {
+      try { return JSON.parse(line); } catch { return { event: "trace_parse_error", line }; }
+    });
+  } catch {
+    return [];
+  }
+}
+
+function processAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function uniqueChildPids(events) {
+  return Array.from(new Set(events
+    .filter((event) => event?.event === "child_spawn" && Number.isInteger(event.pid))
+    .map((event) => event.pid)));
+}
+
+function scanPids(events) {
+  const pids = uniqueChildPids(events);
+  return Object.fromEntries(pids.map((pid) => [String(pid), processAlive(pid)]));
+}
+
+function summarizeFrames(events) {
+  const tx = events.filter((event) => event?.event === "rpc_tx").map((event) => event.frame ?? null);
+  const rx = events.filter((event) => event?.event === "rpc_rx").map((event) => event.frame ?? null);
+  return {
+    eventNames: events.map((event) => event.event),
+    txTypes: tx.map((frame) => frame?.type ?? null),
+    txPrompts: tx.filter((frame) => frame?.type === "prompt").map((frame) => frame.message),
+    switchSessionPaths: tx.filter((frame) => frame?.type === "switch_session").map((frame) => frame.sessionPath),
+    rxTypes: rx.map((frame) => frame?.type ?? frame?.command ?? null),
+    agentEndCount: rx.filter((frame) => frame?.type === "agent_end").length,
+    sessionFiles: rx
+      .filter((frame) => frame?.id === "state-1" && typeof frame?.data?.sessionFile === "string")
+      .map((frame) => frame.data.sessionFile),
+    assistantTexts: rx
+      .filter((frame) => frame?.id === "last-1" && typeof frame?.data?.text === "string")
+      .map((frame) => frame.data.text),
+    childExitCount: events.filter((event) => event?.event === "child_exit").length,
+    cleanupEndCount: events.filter((event) => event?.event === "cleanup_end").length,
+    abortEvents: events.filter((event) => typeof event?.event === "string" && event.event.startsWith("abort_")).map((event) => event.event),
+  };
+}
+
+async function executeWithTimeout(tool, callId, input, timeoutMs, onUpdate) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await tool.execute(callId, input, controller.signal, onUpdate);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function controlledLiveChildRpcProof(evidence, args) {
+  await piAvailability(evidence);
+  evidence.runtime.controlledLive = {
+    status: "not-run",
+    basis: "Starts child through registered larva_subagent execute path; child process command is the real Pi binary plus bundled extension entrypoint in RPC mode.",
+  };
+  if (!evidence.pi.available || !evidence.pi.extensionFlag) {
+    evidence.runtime.controlledLive.status = "blocked";
+    evidence.runtime.controlledLive.blocker = "Pi binary or extension flag unavailable.";
+    return;
+  }
+
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-pi-live-child-sessions-"));
+  const traceFile = join(sessionRoot, "child-rpc-trace.jsonl");
+  const timeoutMs = Number.parseInt(args.get("live-timeout-ms") || "90000", 10);
+  await runtimeHarness(evidence, {
+    initialPersona: "ok",
+    envOverrides: {
+      LARVA_PI_CHILD_SESSION_DIR: sessionRoot,
+      LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+      LARVA_PI_REAL_BIN: evidence.pi.binary,
+      LARVA_PI_EXTENSION_FLAG: evidence.pi.extensionFlag,
+      LARVA_PI_EXTENSION_ENTRY: extensionPath,
+    },
+  });
+  const tool = evidence.runtime.larvaSubagent;
+  const calls = [];
+  const runCall = async (name, input, options = {}) => {
+    const beforeEvents = await readJsonlTrace(traceFile);
+    const beforePidAlive = scanPids(beforeEvents);
+    const updates = [];
+    const result = await executeWithTimeout(tool, `live-${name}`, input, timeoutMs, (update) => {
+      updates.push(update);
+      if (options.abortOnWaitingForChild && update?.details?.phase === "waiting_for_child") {
+        setTimeout(() => options.controller?.abort(), 100);
+      }
+    });
+    await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+    const afterEvents = await readJsonlTrace(traceFile);
+    const newEvents = afterEvents.slice(beforeEvents.length);
+    const afterPidAlive = scanPids(afterEvents);
+    const newPids = uniqueChildPids(newEvents);
+    const newPidAlive = Object.fromEntries(newPids.map((pid) => [String(pid), processAlive(pid)]));
+    const receipt = {
+      name,
+      input,
+      result,
+      updates,
+      trace: summarizeFrames(newEvents),
+      beforePidAlive,
+      afterPidAlive,
+      newPidAlive,
+      orphanFree: Object.values(newPidAlive).every((alive) => alive === false),
+    };
+    calls.push(receipt);
+    return receipt;
+  };
+
+  const first = await runCall("fresh", {
+    persona_id: "child",
+    task: args.get("live-task") || "Reply exactly with B1_CHILD_RPC_OK and no extra words.",
+  });
+  let resume = null;
+  if (first.result?.status === "success" && typeof first.result?.task_id === "string") {
+    resume = await runCall("resume", {
+      persona_id: "child",
+      task: args.get("live-resume-task") || "Reply exactly with B2_RESUME_RPC_OK and no extra words.",
+      task_id: first.result.task_id,
+    });
+  }
+
+  const abortController = new AbortController();
+  const beforeAbortEvents = await readJsonlTrace(traceFile);
+  const abortUpdates = [];
+  const abortPromise = tool.execute("live-abort", {
+    persona_id: "child",
+    task: args.get("live-abort-task") || "Think silently for a while, then reply B3_ABORT_SHOULD_NOT_FINISH.",
+  }, abortController.signal, (update) => {
+    abortUpdates.push(update);
+    if (update?.details?.phase === "waiting_for_child") setTimeout(() => abortController.abort(), 100);
+  });
+  setTimeout(() => abortController.abort(), 5_000);
+  const abortResult = await abortPromise;
+  await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+  const afterAbortEvents = await readJsonlTrace(traceFile);
+  const abortNewEvents = afterAbortEvents.slice(beforeAbortEvents.length);
+  const abortPids = uniqueChildPids(abortNewEvents);
+  const abortNewPidAlive = Object.fromEntries(abortPids.map((pid) => [String(pid), processAlive(pid)]));
+  const abort = {
+    name: "abort",
+    result: abortResult,
+    updates: abortUpdates,
+    trace: summarizeFrames(abortNewEvents),
+    newPidAlive: abortNewPidAlive,
+    orphanFree: Object.values(abortNewPidAlive).every((alive) => alive === false),
+  };
+  calls.push(abort);
+
+  const allEvents = await readJsonlTrace(traceFile);
+  const b1 = {
+    status: first.result?.status === "success" ? "PASS" : "FAIL",
+    task_id: first.result?.task_id ?? null,
+    startupSessionFileObserved: first.trace.sessionFiles.includes(first.result?.task_id),
+    promptObserved: first.trace.txPrompts.includes(first.input.task),
+    agentEndObserved: first.trace.agentEndCount >= 1,
+    getLastAssistantTextObserved: first.trace.txTypes.includes("get_last_assistant_text") && first.trace.assistantTexts.length >= 1,
+  };
+  const b2 = resume === null ? { status: "BLOCKED", blocker: "Fresh run did not produce reusable task_id." } : {
+    status: resume.result?.status === "success" && resume.result?.task_id === first.result?.task_id ? "PASS" : "FAIL",
+    reusedTaskId: resume.result?.task_id ?? null,
+    switchSessionObserved: resume.trace.switchSessionPaths.includes(first.result.task_id),
+    promptObserved: resume.trace.txPrompts.includes(resume.input.task),
+    resumedOutputObserved: typeof resume.result?.result_text === "string" && resume.result.result_text.length >= 0,
+  };
+  const abortTrace = abort.trace;
+  const b3 = {
+    status: abort.result?.status === "cancelled" && abortTrace.abortEvents.length > 0 && abort.orphanFree ? "PASS" : "FAIL",
+    resultStatus: abort.result?.status ?? null,
+    abortEvents: abortTrace.abortEvents,
+    cleanupObserved: abortTrace.cleanupEndCount >= 1,
+    orphanFree: abort.orphanFree,
+    hardBlock: abortTrace.abortEvents.length === 0 ? "Pi abort propagation was not observed in child trace; inspect trace/runtime for missing abort signal surface." : null,
+  };
+  const b4 = {
+    status: calls.every((call) => call.orphanFree) ? "PASS" : "FAIL",
+    beforeAfterScans: calls.map((call) => ({ name: call.name, beforePidAlive: call.beforePidAlive ?? {}, afterPidAlive: call.afterPidAlive ?? call.newPidAlive, newPidAlive: call.newPidAlive, orphanFree: call.orphanFree })),
+    lifecycleEvents: summarizeFrames(allEvents).eventNames.filter((name) => ["child_spawn", "child_exit", "cleanup_start", "cleanup_sigterm", "cleanup_sigkill", "cleanup_end"].includes(name)),
+  };
+  evidence.runtime.controlledLive = {
+    status: [b1.status, b2.status, b3.status, b4.status].every((status) => status === "PASS") ? "PASS" : "FAIL",
+    sessionRoot,
+    traceFile,
+    calls,
+    traceSummary: summarizeFrames(allEvents),
+    B1_startup: b1,
+    B2_resume: b2,
+    B3_abort: b3,
+    B4_orphans: b4,
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -595,6 +801,8 @@ async function main() {
         evidence: { requiredCommand: "larva-subagent-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
       },
     };
+  } else if (scenario === "live-child-rpc-proof") {
+    await controlledLiveChildRpcProof(evidence, args);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
