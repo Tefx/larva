@@ -95087,39 +95087,39 @@ phases:
 
       ## Checklist
 
-      - [ ] `scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` emits
+      - [x] `scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` emits
       structured `uiAutocompleteProvider` evidence with provenance/status rather than
       the current mock-evidence string.
 
-      - [ ] Mock-only autocomplete evidence cannot produce `runtime.hardGates.uiAutocompleteProvider.supported:
+      - [x] Mock-only autocomplete evidence cannot produce `runtime.hardGates.uiAutocompleteProvider.supported:
       true`.
 
-      - [ ] Tests assert that real Pi runtime hook proof is required for `supported:
+      - [x] Tests assert that real Pi runtime hook proof is required for `supported:
       true` and that mock-only proof is `false`, `unknown`, or `unsupported` with
       a limitation.
 
-      - [ ] Command-level `/larva-persona` completion degradation tests remain covered
+      - [x] Command-level `/larva-persona` completion degradation tests remain covered
       when `ctx.ui.addAutocompleteProvider` is absent.
 
-      - [ ] Evidence records the exact files changed and confirms no completed gate
+      - [x] Evidence records the exact files changed and confirms no completed gate
       evidence was edited.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       will be rejected):
 
-      - [ ] refs confirmation includes key passages for `ctx.ui.addAutocompleteProvider`
+      - [x] refs confirmation includes key passages for `ctx.ui.addAutocompleteProvider`
       availability and fallback behavior.
 
-      - [ ] Raw output from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      - [x] Raw output from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       capability-gates` shows `runtime.hardGates.uiAutocompleteProvider.supported`
       is not `true` when only mock evidence exists.
 
-      - [ ] Raw pytest output shows focused tests around the runtime probe and editor
+      - [x] Raw pytest output shows focused tests around the runtime probe and editor
       autocomplete degradation pass.
 
-      - [ ] Main path evidence explains how real Pi runtime hook proof would set `supported:
+      - [x] Main path evidence explains how real Pi runtime hook proof would set `supported:
       true`.
 
-      - [ ] Failure path evidence shows mock-only evidence yields unsupported/unknown
+      - [x] Failure path evidence shows mock-only evidence yields unsupported/unknown
       and cannot reopen the gate.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
