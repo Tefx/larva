@@ -98119,6 +98119,145 @@ phases:
     - pi_impl_realtime_ui_20260603.client-runtime-proof
     - pi_impl_realtime_ui_20260603.wiring-audit
     agent: gate-reviewer
+  - id: larva-pi-launched-env-fix
+    name: Fix LARVA_PI_LAUNCHED runtime consumption
+    status: pending
+    description: 'TARGET STATE: `contrib/pi-extension/larva.ts` no longer treats `LARVA_PI_LAUNCHED`
+      as a write-only launcher contract field. The extension consumes the flag in
+      runtime initialization or an equivalent formally documented contract path so
+      launcher safety is preserved and accidental recursive launcher execution is
+      prevented.
+
+
+      BOUNDING BOX:
+
+      - Primary implementation surface: `contrib/pi-extension/larva.ts` (`RuntimeEnv`,
+      `currentEnv`, `initializeExtension`, launcher/extension startup helpers).
+
+      - Regression harness surfaces: `tests/shell/test_pi_extension_contract.py`,
+      `tests/shell/test_pi_extension_subagent_ux.py`, `tests/shell/test_pi_launcher_contract.py`.
+
+      - Authority: `design/pi-coding-agent-integration.md` lines declaring `LARVA_PI_LAUNCHED`
+      is literal `1` and used only to prevent accidental recursive launcher execution.
+
+
+      CONSTRAINTS:
+
+      - Prefer consuming `LARVA_PI_LAUNCHED === "1"` for recursion-prevention semantics
+      in extension startup/launcher-facing initialization.
+
+      - Do NOT remove, ignore, or weaken launcher recursion safety.
+
+      - Do NOT change completed realtime/log UI behavior, slash-command registration,
+      subagent tool registration, or view-only overlay semantics except as required
+      by env contract alignment.
+
+      - If implementation chooses formal waiver/removal instead of consumption, it
+      must update the authoritative env contract and prove launcher safety remains
+      equivalent; silent removal is forbidden.
+
+
+      SIDE_EFFECT_BUDGET:
+
+      - Allowed: modify `contrib/pi-extension/larva.ts` and focused tests/docs needed
+      to close W6.
+
+      - Forbidden: plan-state edits, unrelated UI behavior changes, weakening child
+      spawn policy, or dropping `LARVA_PI_LAUNCHED` from launcher env without an equivalent
+      approved safety contract.
+
+
+      RISK_PROBES:
+
+      - Verify the flag is read from the same merged runtime env surface (`currentEnv(ctx)`)
+      used by extension initialization, not only declared in a type.
+
+      - Verify recursive-launch prevention is observable through tests or static/runtime
+      trace, not inferred from comments.
+
+      - Verify `LARVA_PI_LAUNCHED` remains consistent with documented launcher env
+      propagation and child-session behavior.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      fix must contain substantive logic or formally authoritative contract alignment
+      that changes the W6 write-only disposition.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | W6-R1 | design/pi-coding-agent-integration.md:1331-1332 — `LARVA_PI_LAUNCHED`:
+      literal `1`, used only to prevent accidental recursive launcher execution |
+      The extension must consume or formally waive/remove the env field without weakening
+      launcher safety | pi_impl_realtime_ui_20260603.larva-pi-launched-env-fix | `-
+      [ ] LARVA_PI_LAUNCHED is consumed or formally waived with equivalent launcher
+      safety proof.` | `w6_resolution` | OWNED | N/A |
+
+      | W6-R2 | design/pi-coding-agent-integration.md:1559-1563 — extension initialization
+      reads launcher env including `LARVA_PI_LAUNCHED` | Initialization path must
+      no longer leave the field write-only | pi_impl_realtime_ui_20260603.larva-pi-launched-env-fix
+      | `- [ ] Extension initialization evidence shows the merged runtime env reads
+      LARVA_PI_LAUNCHED.` | `initialization_read_trace` | OWNED | N/A |'
+    verification: '- [ ] LARVA_PI_LAUNCHED is consumed or formally waived with equivalent
+      launcher safety proof.
+
+      - [ ] Extension initialization evidence shows the merged runtime env reads LARVA_PI_LAUNCHED.
+
+      - [ ] Focused regression proof covers the W6 write-only failure path and launcher-recursion
+      safety contract.
+
+      - [ ] Existing realtime/log UI registration, subagent tools, and overlay behavior
+      remain non-regressed.
+
+      - [ ] No completed plan step is edited or re-opened by this remediation.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/larva.ts — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_pi_extension_contract.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_pi_launcher_contract.py — key passage or "NOT READ: <reason>"
+
+
+      ## W6 Resolution Evidence
+
+      - w6_resolution: <consume|formal-waiver/remove-with-equivalent-safety> with
+      file:line anchors
+
+      - initialization_read_trace: <file:line evidence that currentEnv/initializeExtension
+      or equivalent startup path reads LARVA_PI_LAUNCHED>
+
+      - launcher_safety_proof: <test/static/runtime proof that accidental recursive
+      launcher execution remains prevented>
+
+      - regression_command: <exact command(s) run>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+
+      ## Non-Regression Notes
+
+      - realtime_ui_surfaces_preserved: <evidence>
+
+      - subagent_tool_registration_preserved: <evidence>
+
+      - deviations_or_waivers: <none or exact authoritative contract changes>'
+    depends_on:
+    - pi_impl_realtime_ui_20260603.wiring-audit
+    agent: frontend-engineer
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
   status: locked
