@@ -98819,7 +98819,7 @@ phases:
     claimed_at: '2026-06-02T21:30:37.360021+00:00'
   - id: pi_impl_runtime_conformance_20260603.full-invar-guard
     name: Full repo invar guard and regression proof
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT: Run the authoritative full verification command
       after all Pi implementation phases. Scope: full repo static/contracts/tests
       via `uvx invar-tools guard --all` plus any command-family failures intersecting
@@ -98852,6 +98852,64 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-02T21:30:04.623534+00:00'
+    done_at: '2026-06-02T21:37:58.504481+00:00'
+    evidence: 'SUCCESS/PASS: full repo invar guard and regression proof passed.
+
+
+      refs Read Confirmation:
+
+      - AGENTS.md read: Core requires @pre/@post + doctest; Shell handles I/O and
+      returns Result; run invar guard after changes; plan.yaml managed by vectl.
+
+      - INVAR.md read: guard usage, Core/Shell boundaries, contract syntax, escape
+      hatch requirements.
+
+
+      Worker evidence commit: 1fb34d3a93596a8e78711e705891807774e5bf54.
+
+      Mainline squash commit: 91c84ca [vectl] step-pi_impl_runtime_conformance_20260603.full-invar-guard
+      completed.
+
+
+      Worker verification:
+
+      - `uvx invar-tools guard --all` -> exit 0; status=passed; static errors=0 warnings=5
+      infos=7; files_checked=43; doctest passed; CrossHair verified 8 files; property_tests
+      passed 12/12 functions, 1200 examples.
+
+      - `uv run pytest` -> exit 0; collected 716 items; 716 passed in 65.12s.
+
+
+      Mainline final-state verification:
+
+      - `invar_invar_guard(path=''.'', changed=false)` run_id grd_4a9d7a43a80c4198925ec096
+      -> complete; ok=true; errors=0; warnings=5; infos=7; files_checked=43.
+
+
+      Issue disposition:
+
+      - Guard warnings: non-blocking; guard status passed with errors=0.
+
+      - Worktree root AGENTS.md absence: non-blocking; effective .agents/instructions.md
+      and main checkout AGENTS.md read.
+
+      - Suspicious green cleared: pytest collected 716 and passed all.
+
+
+      Checklist receipt:
+
+      - Raw `uvx invar-tools guard --all` output included: true.
+
+      - Any failure disposition/owner/gate intersection: no failures; warnings non-blocking.
+
+      - Final green gate uses tests/shell/test_pi_extension_subagent_ux.py via full
+      pytest, not unresolved expected-red proof: true.
+
+      - No uncontracted core code or shell Result/I/O boundary violation introduced:
+      true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_runtime_conformance_20260603.gate
     name: Gate runtime conformance and full verification
     status: pending
