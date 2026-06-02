@@ -96026,6 +96026,7 @@ phases:
       \n## Residual Risk\n- blockers_remaining: <none or list>"
     depends_on:
     - pi_impl_launcher_extension_20260603.vertical-slice-proof
+    agent: frontend-engineer
   - id: canonical-personaspec-gate-retest
     name: Retest gate for canonical PersonaSpec validation
     status: pending
