@@ -98197,15 +98197,15 @@ phases:
       | W6-R1 | design/pi-coding-agent-integration.md:1331-1332 — `LARVA_PI_LAUNCHED`:
       literal `1`, used only to prevent accidental recursive launcher execution |
       The extension must consume or formally waive/remove the env field without weakening
-      launcher safety | pi_impl_realtime_ui_20260603.larva-pi-launched-env-fix | `-
-      [ ] LARVA_PI_LAUNCHED is consumed or formally waived with equivalent launcher
-      safety proof.` | `w6_resolution` | OWNED | N/A |
+      launcher safety | larva-pi-launched-env-fix | `- [ ] LARVA_PI_LAUNCHED is consumed
+      or formally waived with equivalent launcher safety proof.` | `w6_resolution`
+      | OWNED | N/A |
 
       | W6-R2 | design/pi-coding-agent-integration.md:1559-1563 — extension initialization
       reads launcher env including `LARVA_PI_LAUNCHED` | Initialization path must
-      no longer leave the field write-only | pi_impl_realtime_ui_20260603.larva-pi-launched-env-fix
-      | `- [ ] Extension initialization evidence shows the merged runtime env reads
-      LARVA_PI_LAUNCHED.` | `initialization_read_trace` | OWNED | N/A |'
+      no longer leave the field write-only | larva-pi-launched-env-fix | `- [ ] Extension
+      initialization evidence shows the merged runtime env reads LARVA_PI_LAUNCHED.`
+      | `initialization_read_trace` | OWNED | N/A |'
     verification: '- [ ] LARVA_PI_LAUNCHED is consumed or formally waived with equivalent
       launcher safety proof.
 
