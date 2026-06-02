@@ -97886,7 +97886,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_realtime_ui_20260603.client-runtime-proof
     name: Client runtime proof for Pi realtime/log UI
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT: Launch or harness the actual Pi TUI/client surface
       and prove realtime/log UI is observable, non-blank, view-only, and minimally
       interactive. Surface class: TUI/CLI client runtime. This is separate from design
@@ -97927,6 +97927,113 @@ phases:
     agent: client-runtime-verifier
     claimed_by: client-runtime-verifier
     claimed_at: '2026-06-02T20:55:58.337388+00:00'
+    done_at: '2026-06-02T21:03:13.979674+00:00'
+    evidence: 'SUCCESS/PASS_WITH_DEBT accepted as non-blocking per step allowance
+      for documented ui_unavailable/not_observed behavior: actual Pi client/runtime
+      surface was verified; true interactive TUI slash-command output was attempted
+      but not captured before pty timeout, so full true-TUI overlay PASS is not claimed.
+      Runtime extension probe proves view-only overlay open/replace/close, newest/exact
+      selection, stable not_observed/ui_unavailable behavior, row progress, expanded
+      results, and no mutations.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: runtime visibility P0/P1/P2 renderCall/onUpdate/renderResult/no
+      dashboard; targets 44-46; /larva-subagent-log view-only in-memory/no raw JSONL
+      authority/no sidecar.
+
+      - contrib/pi-extension/larva.ts read: registerLarvaSubagentLogCommand, larva_subagent_log,
+      renderSubagentPresentationOverlay, renderLarvaSubagentCall/renderLarvaSubagentResult,
+      larva_subagent registration renderCall/renderResult/execute.
+
+      - tests/shell/test_pi_extension_subagent_ux.py read: overlay/render tests.
+
+
+      Runtime target:
+
+      - Pi binary: /opt/homebrew/bin/pi; version 0.78.0; package commit dd24b116bd4aeedb07012cc8b152239c488eb95b;
+      extension flag -e; extension entry .vectl/worktrees/pi_impl_realtime_ui_20260603.client-runtime-proof/contrib/pi-extension/larva.ts;
+      observed RPC session id 019e8a20-ef5f-7e11-a7b9-426635e4b64d.
+
+
+      Commands / artifacts:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario availability` -> exit
+      0; available=true; extensionFlag=-e; version 0.78.0; commit dd24b116bd4aeedb07012cc8b152239c488eb95b.
+
+      - `uv run larva pi -- --version` -> exit 0; stderr contained Pi version 0.78.0
+      after uv VIRTUAL_ENV warning.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status --persona
+      ok` -> exit 0; extension_ui_request setStatus larva: ok; get_state success=true;
+      sessionId recorded.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands` with
+      Larva env unset -> exit 0; commands include larva-subagent-log and larva-persona.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0; subagentToolRowProgress.supported=true; subagentLogOverlayCommand.supported=true;
+      uiAutocompleteProvider.supported=false because only runtimeHarness.mock exposed
+      addAutocompleteProvider.
+
+      - `node /tmp/larva-pi-view-only-probe.mjs` -> exit 0; newestSelectsLatestNonNull,
+      exactSelectsRequestedTask, openReplaceClose, notObservedStableError, compactRowsShowProgress,
+      expandedOverlayShowsDetails, renderCallObservable, renderResultCollapsedExpandedObservable,
+      noSessionIndexMutationFromOverlay all true.
+
+      - `node /tmp/larva-pi-ui-unavailable-probe.mjs` -> exit 0; LARVA_SUBAGENT_LOG_UI_UNAVAILABLE
+      stable error.
+
+      - true TUI open capture via `script ... pi -e <extension> --offline --no-session`
+      -> exit 0; non-blank Pi TUI frame rendered.
+
+      - true TUI `/larva-subagent-log` attempt -> timeout 124; command output not
+      observed before timeout; recorded as non-blocking gap because documented runtime
+      fallback/probe behavior was proven and overlay PASS was not overclaimed.
+
+
+      Runtime proof register:
+
+      - row_progress: PROVEN; compact overlay rows show active/final/error progress
+      waiting_for_child/success/failed.
+
+      - expanded_result: PROVEN; expanded text includes persona_id, mode, task, task_id,
+      status, error, output, resume footer.
+
+      - newest_overlay: PROVEN; selected latest non-null task_id.
+
+      - exact_task_id_overlay: PROVEN; selected requested exact task_id.
+
+      - stable_not_observed_error: PROVEN; LARVA_SUBAGENT_LOG_NOT_OBSERVED.
+
+      - stable_ui_unavailable_error: PROVEN; LARVA_SUBAGENT_LOG_UI_UNAVAILABLE.
+
+      - true_tui_non_blank: PROVEN; /tmp/larva-pi-tui-open.typescript.
+
+      - true_tui_overlay_interaction: NOT CLAIMED; pty command attempt timed out;
+      nonblocking because exact documented behavior verified via runtime extension
+      probe.
+
+
+      Checklist receipt:
+
+      - exact launch command/target/session/Pi version/commit recorded: true.
+
+      - runtime artifact shows row progress and expanded result: true.
+
+      - runtime artifact shows newest/exact task_id overlay or documented ui_unavailable/not_observed
+      behavior: true.
+
+      - safe interaction opens/replaces/closes overlay via runtime probe; true TUI
+      pty attempt recorded gap: true.
+
+      - view-only probes show no persona switch/subagent invocation/tool approval/session
+      mutation/raw JSONL parse/sidecar/alias: true.
+
+
+      Blockers: none. Nonblocking proof gap: true interactive TUI slash command output
+      not captured; overlay PASS not claimed.'
   - id: pi_impl_realtime_ui_20260603.wiring-audit
     name: Wiring audit for realtime/log UI public surfaces
     status: claimed
