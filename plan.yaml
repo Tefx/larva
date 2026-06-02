@@ -95009,6 +95009,169 @@ phases:
     with cleanup and failure-path evidence.
   depends_on:
   - pi_impl_launcher_extension_20260603
+  steps:
+  - id: pi_impl_child_rpc_20260603.lifecycle-implementation
+    name: Complete larva_subagent child RPC lifecycle
+    status: pending
+    description: 'TARGET STATE: `larva_subagent(persona_id, task, task_id?)` starts
+      or resumes one child Pi RPC process per invocation using launcher-provided real
+      Pi binary, extension flag, and extension entry; validates public task_id paths;
+      manages active-task busy state; drains, aborts/kills, closes, and reaps child
+      processes on every terminal/failure/reset path; returns documented LarvaSubagentResult/ToolResult
+      wrapper only after no adapter-owned child can remain live. Scope: contrib/pi-extension/larva.ts
+      and child RPC tests. Non-scope: no job scheduler, no worktree isolation, no
+      sidecar metadata, no filesystem locks, no raw child JSONL overlay parsing.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      SIDE_EFFECT_BUDGET: may mutate Pi extension and child lifecycle tests. Forbidden:
+      core PersonaSpec changes, filesystem sidecars/locks, alias resume handles.
+
+
+      RISK_PROBES:
+
+      - Prove new and resumed task_id busy state is cleared only after terminal cleanup.
+
+      - Prove outside-root/wrong-suffix/missing/unreadable taxonomy before child launch.
+
+      - Prove child final text caps and NFC normalization across all mirrored fields.'
+    verification: '- [ ] New and resume calls validate canonical task text before
+      child launch/task_id allocation/busy marking.
+
+      - [ ] Path validation maps outside-root, wrong suffix, missing, realpath escape,
+      non-regular, and unreadable cases to documented error codes.
+
+      - [ ] Normal completion, abort, startup failure, timeout, stdout EOF, malformed
+      RPC, final-text failure, resume failure, and new-session protocol failure leave
+      no orphan child.
+
+      - [ ] LarvaSubagentResult and ToolResult top-level/details mirrors preserve
+      documented semantics and caps.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    agent: frontend-engineer
+  - id: pi_impl_child_rpc_20260603.sessions-helper
+    name: Complete required larva_subagent_sessions helper
+    status: pending
+    description: 'TARGET STATE: `larva_subagent_sessions(limit?)` returns newest-first
+      read-only recent-session summaries derived only from retained presentation-log
+      entries with non-null task_id, including running allocated entries before terminal
+      completion; invalid limit returns LARVA_BAD_INPUT; no top-level sessions field
+      and no separate authoritative store. Scope: contrib/pi-extension/larva.ts helper
+      registration/tests. Non-scope: no filesystem scan, raw JSONL parse, sidecar
+      metadata, aliases, provenance proof, or independent store.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      SIDE_EFFECT_BUDGET: may mutate Pi extension helper and tests. Forbidden: independent
+      storage or raw session file parsing.
+
+
+      RISK_PROBES:
+
+      - Eviction updates/removes summaries from retained presentation log only.
+
+      - Repeated resumes update one summary by canonical task_id, not duplicate aliases.
+
+      - Running entries remain busy for same-process resume until terminal cleanup.'
+    verification: '- [ ] Helper validates limit default/max/invalid cases and returns
+      newest-first unique canonical task_id summaries.
+
+      - [ ] Running allocated entries appear before terminal completion and remain
+      busy for same-process resume.
+
+      - [ ] Eviction and reset clear/update derived summaries according to presentation-log
+      retention.
+
+      - [ ] Evidence proves helper does not scan child-session directory or parse
+      raw JSONL.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    agent: frontend-engineer
+  - id: pi_impl_child_rpc_20260603.integration-proof
+    name: Child RPC integration and cleanup proof
+    status: pending
+    description: 'PROOF ARTIFACT: Independent phase-check proving real or harnessed
+      child RPC paths through the Pi extension, with cleanup/orphan evidence and exact
+      command output. This protects realtime UI and final runtime gates.
+
+
+      SIDE_EFFECT_BUDGET: read-only verification. Forbidden: accepting mock-only proof
+      for child process cleanup.
+
+
+      RISK_PROBES:
+
+      - Verify no LarvaSubagentResult is returned while child may still be live.
+
+      - Verify abort delivery is actually observable before exposing larva_subagent
+      in the mode.
+
+      - Verify child inherited model-map/tool-policy override values are forwarded
+      unchanged and child-validates relative paths.'
+    verification: '- [ ] Exact command/output proves child startup, session_ready,
+      prompt, final text, resume, abort, and cleanup paths.
+
+      - [ ] Orphan-process check is recorded for every required failure mode.
+
+      - [ ] Abort-signal/control-channel capability is proven or blocks PASS with
+      architecture re-adjudication.
+
+      - [ ] Evidence distinguishes pipeline tests from live Pi proof.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - scripts/pi-extension-runtime-smoke.mjs
+    depends_on:
+    - pi_impl_child_rpc_20260603.lifecycle-implementation
+    - pi_impl_child_rpc_20260603.sessions-helper
+    agent: integration-verifier
+  - id: pi_impl_child_rpc_20260603.gate
+    name: Gate child RPC lifecycle
+    status: pending
+    description: 'DECISION ARTIFACT: Phase-check gate for child RPC lifecycle, sessions
+      helper, cleanup, and result contracts. review_depth: THOROUGH due child processes,
+      concurrency/busy state, and externally visible task_id behavior.
+
+
+      SIDE_EFFECT_BUDGET: read-only review. Forbidden: approving any path with orphan
+      risk or missing abort capability proof.
+
+
+      RISK_PROBES:
+
+      - Gate rejects a helper backed by anything except retained presentation log.
+
+      - Gate rejects child lifecycle evidence missing one documented failure path.
+
+      - Gate rejects semantic result shape drift such as adding mode to LarvaSubagentResult.'
+    verification: '- [ ] Every child RPC lifecycle checklist item is satisfied or
+      has blocking remediation.
+
+      - [ ] Gate decision basis maps cleanup/orphan proof for all documented modes.
+
+      - [ ] Sessions helper is derived-only, read-only, and not an overlay render
+      data authority.
+
+      - [ ] Result contract has no mode field or undocumented resume alias behavior.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_child_rpc_20260603.lifecycle-implementation
+    - pi_impl_child_rpc_20260603.sessions-helper
+    - pi_impl_child_rpc_20260603.integration-proof
+    agent: gate-reviewer
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
