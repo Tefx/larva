@@ -95312,36 +95312,36 @@ phases:
 
       ## Checklist
 
-      - [ ] Rerun `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      - [x] Rerun `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
       and paste raw JSON.
 
-      - [ ] Rerun focused pytest for runtime probe and editor autocomplete degradation
+      - [x] Rerun focused pytest for runtime probe and editor autocomplete degradation
       and paste raw output.
 
-      - [ ] Confirm `runtime.hardGates.uiAutocompleteProvider.supported` is not `true`
+      - [x] Confirm `runtime.hardGates.uiAutocompleteProvider.supported` is not `true`
       from mock-only evidence.
 
-      - [ ] Confirm B1 is absent from blockers and no new blockers are introduced
+      - [x] Confirm B1 is absent from blockers and no new blockers are introduced
       by the remediation.
 
-      - [ ] Produce `gate_open_allowed=true` only if the original gate decision basis
+      - [x] Produce `gate_open_allowed=true` only if the original gate decision basis
       now passes; otherwise report `gate_open_allowed=false` with blockers.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       will be rejected):
 
-      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      - [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
       raw JSON included.
 
-      - [ ] Focused pytest raw output included for runtime probe and editor autocomplete
+      - [x] Focused pytest raw output included for runtime probe and editor autocomplete
       degradation tests.
 
-      - [ ] `gate_decision_basis` includes requirement_ref, behavior_claim, runtime_proof_expected,
+      - [x] `gate_decision_basis` includes requirement_ref, behavior_claim, runtime_proof_expected,
       evidence_ref, status, closure_path, and gate_decision_basis for B1.
 
-      - [ ] `gate_open_allowed=true` appears only with no blockers and a passing original
+      - [x] `gate_open_allowed=true` appears only with no blockers and a passing original
       gate decision basis.
 
-      - [ ] If any blocker remains, the report lists exact remediation/retest closure
+      - [x] If any blocker remains, the report lists exact remediation/retest closure
       path and keeps downstream phases blocked.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
