@@ -95150,6 +95150,140 @@ phases:
     depends_on:
     - pi_impl_contract_20260603.gate
     agent: python-senior
+  - id: retest-autocomplete-runtime-proof-gate
+    name: Retest blocked Pi contract gate after autocomplete runtime proof fix
+    status: pending
+    description: 'DECISION ARTIFACT:
+
+      Independent retest/gate review for B1 after `fix-autocomplete-runtime-proof-gate`.
+      This step determines whether the previously blocked `pi_impl_contract_20260603.gate`
+      decision basis may be considered reopened by remediation evidence. It must not
+      rubber-stamp the fix; it must rerun the relevant node and pytest commands and
+      produce an explicit gate decision basis.
+
+
+      VERIFICATION SCOPE: phase-check protecting `pi_impl_contract_20260603.gate`
+      and all downstream phases that depend on `pi_impl_contract_20260603`.
+
+
+      REQUIREMENT TRACEABILITY:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-AUTOCOMPLETE-RUNTIME-HOOK | `design/pi-coding-agent-integration.md` lines
+      172-178 and 243-245: autocomplete only when the interactive TUI runtime exposes
+      `ctx.ui.addAutocompleteProvider`; otherwise no editor autocomplete | Retest
+      must prove B1 is closed and the original gate decision basis can pass with `gate_open_allowed=true`
+      | `retest-autocomplete-runtime-proof-gate` | `gate_open_allowed=true and no
+      blockers` | `gate_decision_basis` | OWNED | Blocks all downstream Pi implementation
+      phases until this retest/gate is complete |
+
+
+      REVIEW RULES:
+
+      - Treat finding a remaining blocker as a valid review outcome; report it rather
+      than approving.
+
+      - `gate_open_allowed=true` is allowed only when no blocker remains and the original
+      gate decision basis passes with the new evidence.
+
+      - If `runtime.hardGates.uiAutocompleteProvider.supported` is `true`, the evidence
+      must identify real tested Pi runtime/build hook proof, not the local mock harness.
+
+      - If real hook proof is unavailable, the correct status is unsupported/unknown
+      and this must not be counted as editor autocomplete support.
+
+
+      <side_effect_budget>
+
+      Allowed: read code/evidence, rerun commands, and report a gate decision basis.
+      Forbidden: modifying source code, editing prior gate evidence, completing/claiming
+      vectl state, or treating mock-only proof as support.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Inspect the node JSON for provenance: `supported: true` with mock-only evidence
+      remains a blocker.
+
+      - Confirm focused pytest coverage catches the mock-only support regression.
+
+      - Confirm the decision basis maps B1 to closed/open status and does not bypass
+      unresolved runtime proof obligations.
+
+      </risk_probes>
+
+
+      ## Checklist
+
+      - [ ] Rerun `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      and paste raw JSON.
+
+      - [ ] Rerun focused pytest for runtime probe and editor autocomplete degradation
+      and paste raw output.
+
+      - [ ] Confirm `runtime.hardGates.uiAutocompleteProvider.supported` is not `true`
+      from mock-only evidence.
+
+      - [ ] Confirm B1 is absent from blockers and no new blockers are introduced
+      by the remediation.
+
+      - [ ] Produce `gate_open_allowed=true` only if the original gate decision basis
+      now passes; otherwise report `gate_open_allowed=false` with blockers.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      raw JSON included.
+
+      - [ ] Focused pytest raw output included for runtime probe and editor autocomplete
+      degradation tests.
+
+      - [ ] `gate_decision_basis` includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for B1.
+
+      - [ ] `gate_open_allowed=true` appears only with no blockers and a passing original
+      gate decision basis.
+
+      - [ ] If any blocker remains, the report lists exact remediation/retest closure
+      path and keeps downstream phases blocked.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
+      \ <reason>\"\n- scripts/pi-extension-runtime-smoke.mjs — key passage or \"NOT\
+      \ READ: <reason>\"\n- tests/shell/test_pi_extension_subagent_ux.py — key passage\
+      \ or \"NOT READ: <reason>\"\n- tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ — key passage or \"NOT READ: <reason>\"\n- tests/shell/test_pi_extension_real_runtime.py\
+      \ — key passage or \"NOT READ: <reason>\"\n\n## Commands Rerun\n```bash\nnode\
+      \ scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates\nuv run\
+      \ pytest tests/shell/test_pi_extension_subagent_ux.py::test_runtime_probe_records_pi_package_and_hard_gate_statuses\
+      \ tests/shell/test_pi_postspec_editor_prompt_expected_red.py::test_editor_provider_installation_degrades_without_ui_hook_but_keeps_command_completion\
+      \ -q\n```\n\n## Raw Evidence\n- node_stdout: |\n    <paste raw JSON>\n- pytest_stdout:\
+      \ |\n    <paste raw pytest output>\n- exit_codes: <paste>\n\n## Behavioral Proof\
+      \ Register\n| requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref\
+      \ | status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- |\
+      \ --- | --- | --- |\n| PI-AUTOCOMPLETE-RUNTIME-HOOK | Mock-only evidence cannot\
+      \ claim editor autocomplete support | Real tested Pi runtime/build exposes `ctx.ui.addAutocompleteProvider`,\
+      \ or status is unsupported/unknown | <node_stdout path/field> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <closed or next remediation> | <why gate may/may not open> |\n\n## Gate\
+      \ Retest Decision\n- gate_open_allowed: true|false\n- blockers: <list; must\
+      \ be [] for true>\n- original_gate_decision_basis_passes: true|false\n- downstream_bypass_risk:\
+      \ <explain why downstream phases still depend on this phase/retest>\n\n## Checklist\
+      \ Receipt\n- [ ] Rerun `node scripts/pi-extension-runtime-smoke.mjs --scenario\
+      \ capability-gates` and paste raw JSON.\n- [ ] Rerun focused pytest for runtime\
+      \ probe and editor autocomplete degradation and paste raw output.\n- [ ] Confirm\
+      \ `runtime.hardGates.uiAutocompleteProvider.supported` is not `true` from mock-only\
+      \ evidence.\n- [ ] Confirm B1 is absent from blockers and no new blockers are\
+      \ introduced by the remediation.\n- [ ] Produce `gate_open_allowed=true` only\
+      \ if the original gate decision basis now passes; otherwise report `gate_open_allowed=false`\
+      \ with blockers."
+    depends_on:
+    - fix-autocomplete-runtime-proof-gate
+    agent: gate-reviewer
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
   status: locked
