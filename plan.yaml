@@ -98080,7 +98080,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_impl_realtime_ui_20260603.gate
     name: Gate complete realtime/log UI target
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT: Phase-check gate for the complete realtime/log
       UI target. review_depth: THOROUGH. Gate must reject partial progress rows without
       retained log/overlay, overlay without row progress, design deferral, mock-only
@@ -98119,6 +98119,8 @@ phases:
     - pi_impl_realtime_ui_20260603.wiring-audit
     - larva-pi-launched-wiring-retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-02T21:20:45.972792+00:00'
   - id: larva-pi-launched-env-fix
     name: Fix LARVA_PI_LAUNCHED runtime consumption
     status: done
