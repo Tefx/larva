@@ -94671,3 +94671,10 @@ phases:
   depends_on:
   - pi-postspec-finalization-2026-06-02
   - meta.gate
+- id: pi_impl_launcher_extension_20260603
+  name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
+  status: locked
+  gate: Launcher and extension/persona/policy runtime are implemented with live entrypoint
+    proof and no shared-contract drift.
+  depends_on:
+  - pi_impl_contract_20260603
