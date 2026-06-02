@@ -98121,7 +98121,7 @@ phases:
     agent: gate-reviewer
   - id: larva-pi-launched-env-fix
     name: Fix LARVA_PI_LAUNCHED runtime consumption
-    status: claimed
+    status: done
     description: 'TARGET STATE: `contrib/pi-extension/larva.ts` no longer treats `LARVA_PI_LAUNCHED`
       as a write-only launcher contract field. The extension consumes the flag in
       runtime initialization or an equivalent formally documented contract path so
@@ -98260,6 +98260,107 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T21:06:59.525397+00:00'
+    done_at: '2026-06-02T21:12:57.356598+00:00'
+    evidence: 'SUCCESS/PASS: W6 LARVA_PI_LAUNCHED write-only blocker closed by consuming
+      the sentinel in the Pi extension before trusting launcher-provided child spawn
+      fields. Non-`1` launched state fails closed with LARVA_CHILD_START_FAILED; valid
+      child launches explicitly propagate LARVA_PI_LAUNCHED=1.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: LARVA_PI_LAUNCHED is used to prevent
+      accidental recursive launcher execution and is listed among env fields extension
+      initialization reads.
+
+      - contrib/pi-extension/larva.ts read/updated: child startup/env handling now
+      consumes LARVA_PI_LAUNCHED.
+
+      - tests/shell/test_pi_extension_contract.py read/updated: focused W6 regression.
+
+      - tests/shell/test_pi_launcher_contract.py read: launcher safety contract and
+      env propagation.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/test-subagent-sessions-helper.mjs
+
+      - design/pi-coding-agent-integration.md
+
+      - scripts/pi-extension-runtime-smoke.mjs
+
+      - tests/shell/test_pi_extension_contract.py
+
+      - tests/shell/test_pi_extension_subagent_ux.py
+
+
+      Worker commit: bf10815 Fix Larva Pi launched sentinel consumption.
+
+      Mainline squash commit: d77d104 [vectl] step-larva-pi-launched-env-fix completed.
+
+
+      W6 Resolution Evidence:
+
+      - w6_resolution=consume. LARVA_PI_LAUNCHED is consumed before trusting launcher-provided
+      child spawn fields; invalid/non-1 sentinel fails closed.
+
+      - initialization_read_trace: contrib/pi-extension/larva.ts child spawn/env path
+      reads LARVA_PI_LAUNCHED in runtime env.
+
+      - launcher_safety_proof: src/larva/shell/pi.py launcher discovery/preflight
+      still skips larva shim, resolves real Pi binary, prepends extension flag/path,
+      sets LARVA_PI_LAUNCHED=1; launcher tests cover this contract.
+
+
+      Worker verification:
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py::test_child_process_requires_launched_sentinel_before_launcher_env_spawn
+      -q` -> 1 passed.
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py -q` -> 100 passed in 21.16s.
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape
+      --json` -> PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --json` -> PASS; B1/B2/B3/B4 PASS.
+
+      - invar changed guard -> passed, errors=0 warnings=0.
+
+
+      Mainline final-state verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py -q` -> 100 passed in 20.50s.
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS
+      including overlay, onUpdate, exact task_id, reset cleanup, no raw JSONL.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> controlledLive PASS; B1/B2/B3/B4 all PASS.
+
+
+      Checklist receipt:
+
+      - LARVA_PI_LAUNCHED consumed/equivalent safety proof: true.
+
+      - Extension initialization evidence reads LARVA_PI_LAUNCHED: true.
+
+      - Focused regression covers W6 and launcher-recursion safety: true.
+
+      - Realtime/log UI registration, subagent tools, overlay behavior non-regressed:
+      true.
+
+      - No completed plan step edited/re-opened by remediation: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: larva-pi-launched-wiring-retest
     name: Retest W6 wiring audit after LARVA_PI_LAUNCHED fix
     status: pending
