@@ -98410,21 +98410,21 @@ phases:
       Retest must rerun the full matrix, not only W6 | larva-pi-launched-wiring-retest
       | `- [ ] Existing wiring matrix checks are rerun with fresh evidence.` | `wiring_matrix`
       | OWNED | N/A |'
-    verification: '- [ ] W6-LARVA-PI-LAUNCHED-WRITE-ONLY is retested and has PASS/BLOCKED
+    verification: '- [x] W6-LARVA-PI-LAUNCHED-WRITE-ONLY is retested and has PASS/BLOCKED
       disposition with file:line evidence.
 
-      - [ ] Existing wiring matrix checks are rerun with fresh evidence.
+      - [x] Existing wiring matrix checks are rerun with fresh evidence.
 
-      - [ ] larva_subagent and larva_subagent_sessions registration/reachability remain
+      - [x] larva_subagent and larva_subagent_sessions registration/reachability remain
       proven.
 
-      - [ ] renderCall/renderResult/onUpdate, /larva-subagent-log, resetExtensionUI,
+      - [x] renderCall/renderResult/onUpdate, /larva-subagent-log, resetExtensionUI,
       and overlay/autocomplete registration checks remain covered.
 
-      - [ ] No dead public symbol, unregistered command, write-only config/env field,
+      - [x] No dead public symbol, unregistered command, write-only config/env field,
       or stub-only implementation remains in the phase scope.
 
-      - [ ] Final headline is PASS only if W6 and all matrix rows have positive evidence;
+      - [x] Final headline is PASS only if W6 and all matrix rows have positive evidence;
       otherwise BLOCKED with exact remediation owner.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
