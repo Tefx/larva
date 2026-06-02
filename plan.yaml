@@ -96575,7 +96575,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.integration-proof
     name: Child RPC integration and cleanup proof
-    status: claimed
+    status: pending
     description: 'PROOF ARTIFACT: Independent phase-check proving real or harnessed
       child RPC paths through the Pi extension, with cleanup/orphan evidence and exact
       command output. This protects realtime UI and final runtime gates.
@@ -96610,8 +96610,6 @@ phases:
     - pi_impl_child_rpc_20260603.lifecycle-implementation
     - pi_impl_child_rpc_20260603.sessions-helper
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-06-02T19:25:46.994517+00:00'
   - id: pi_impl_child_rpc_20260603.gate
     name: Gate child RPC lifecycle
     status: pending
