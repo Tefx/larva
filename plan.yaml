@@ -98947,6 +98947,345 @@ phases:
     - pi_impl_runtime_conformance_20260603.shared-spec-conformance
     - pi_impl_runtime_conformance_20260603.full-invar-guard
     agent: gate-reviewer
+  - id: fix-runtime-conformance-blockers
+    name: Fix runtime conformance blockers from smoke and spec audits
+    status: pending
+    description: 'step_type: implementation
+
+      TARGET STATE:
+
+      Runtime conformance blocker remediation is batched for the current Pi runtime
+      conformance phase. The live Pi interactive TUI autocomplete path is either proven
+      and wired through `ctx.ui.addAutocompleteProvider` against a real supported
+      Pi runtime, or the true runtime capability limitation is documented and implemented
+      as design-aligned degraded behavior. Initial `--persona` startup failures for
+      unavailable models/policies/personas fail fatally with stderr and nonzero exit
+      before first prompt/model turn. Empty-query persona mention/selector population
+      accepts id-only `data[]` rows when `data[].id` is non-empty and does not require
+      `persona.spec_digest` for mention candidates.
+
+
+      BOUNDING BOX:
+
+      - `contrib/pi-extension/`
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - `scripts/pi-extension-autocomplete-smoke.mjs`
+
+      - `contrib/pi-extension/test-autocomplete-runtime.mjs`
+
+      - `tests/shell/test_pi_extension_contract.py`
+
+      - `tests/shell/test_pi_extension_real_runtime.py`
+
+      - `tests/shell/test_pi_extension_subagent_ux.py`
+
+
+      REQUIREMENT-TO-CHECKLIST TRACEABILITY:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | RT-B1-AUTOCOMPLETE | `pi_impl_runtime_conformance_20260603.full-runtime-smoke`
+      finding B1; `design/pi-coding-agent-integration.md` Pi TUI autocomplete behavior
+      | Prove live addAutocompleteProvider path or implement documented design-aligned
+      degraded behavior for unsupported Pi runtime capability | pi_impl_runtime_conformance_20260603.fix-runtime-conformance-blockers
+      | `addAutocompleteProvider live/degraded path resolved` | `autocomplete_capability_resolution`
+      | OWNED | Intersects runtime conformance gate; cannot defer |
+
+      | SPEC-B1-FATAL-STARTUP | `pi_impl_runtime_conformance_20260603.shared-spec-conformance`
+      finding B1; `design/pi-coding-agent-integration.md` fatal startup contract |
+      Initial `--persona` model/policy startup failure emits stderr and exits nonzero
+      before prompt/model turn | pi_impl_runtime_conformance_20260603.fix-runtime-conformance-blockers
+      | `fatal startup is nonzero/stderr before prompt` | `fatal_startup_probe` |
+      OWNED | Intersects runtime and spec conformance gates; cannot defer |
+
+      | SPEC-B2-ID-ONLY-MENTION | `pi_impl_runtime_conformance_20260603.shared-spec-conformance`
+      finding B2; design completion/selector population contract | Empty-query mention
+      candidates require only non-empty `data[].id`; no `spec_digest` gate for candidate
+      population | pi_impl_runtime_conformance_20260603.fix-runtime-conformance-blockers
+      | `id-only selector/mention population works` | `id_only_completion_probe` |
+      OWNED | Intersects spec conformance gate; cannot defer |
+
+
+      CONSTRAINTS:
+
+      - Do not remove the current `/larva-subagent-log` overlay or change B3 overlay
+      disposition in this implementation step; that authority conflict is owned by
+      the adjudication step.
+
+      - Do not weaken previously passing runtime checks from the capability matrix.
+
+      - If addAutocompleteProvider is not actually supported by the live Pi runtime,
+      preserve user-observable degraded behavior and make the limitation explicit
+      in design-aligned evidence rather than faking PASS through mocks.
+
+      - Do not treat `runtimeHarness.mock` provenance as live runtime proof.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive runtime behavior that processes real inputs
+      and produces outputs that vary based on those inputs.
+
+
+      <side_effect_budget>
+
+      Allowed: modify Pi extension/runtime scripts, frontend/TUI integration code,
+      smoke harnesses, and focused tests needed for the three owned blockers. Forbidden:
+      editing completed plan steps, removing the subagent overlay before adjudication,
+      bypassing fatal startup by only changing status text, or marking mocked autocomplete
+      capability as live support.
+
+
+      <risk_probes>
+
+      - Verify fatal startup exits before any prompt/model turn, not merely after
+      status notification.
+
+      - Verify empty-query mention candidates are populated from id-only rows while
+      slash command values remain intact.
+
+      - Verify autocomplete capability provenance distinguishes live Pi runtime from
+      runtimeHarness.mock and degraded behavior remains observable when unsupported.'
+    verification: '- [ ] addAutocompleteProvider live/degraded path resolved with
+      provenance distinguishing live Pi runtime from `runtimeHarness.mock`.
+
+      - [ ] fatal startup is nonzero/stderr before prompt for unavailable initial
+      `--persona` model/policy/persona cases.
+
+      - [ ] id-only selector/mention population works for empty-query mention candidates
+      and no longer requires `persona.spec_digest`.
+
+      - [ ] Previously passing runtime capability matrix rows remain non-regressed.
+
+      - [ ] Evidence includes raw command output for focused tests or smoke probes
+      covering all three owned blockers.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - scripts/pi-extension-runtime-smoke.mjs
+    - scripts/pi-extension-autocomplete-smoke.mjs
+    - contrib/pi-extension/test-autocomplete-runtime.mjs
+    depends_on:
+    - pi_impl_runtime_conformance_20260603.full-runtime-smoke
+    - pi_impl_runtime_conformance_20260603.shared-spec-conformance
+    agent: frontend-engineer
+  - id: adjudicate-subagent-overlay-authority
+    name: Adjudicate subagent overlay design authority conflict
+    status: pending
+    description: 'step_type: contract
+
+      ACCEPTED CONTRACT ARTIFACT:
+
+      Resolve the B3 conflict from shared-spec-conformance without editing completed
+      steps: determine whether the recent `/larva-subagent-log` view-only overlay
+      is now an intentional, authorized design behavior or whether the original tool-row-only
+      visibility rule remains authoritative. If the overlay is authorized, align design/verification
+      expectations so future spec conformance audits do not report the current overlay
+      as drift. If it is not authorized, produce a precise remediation contract for
+      downstream implementation; do not silently remove behavior in this adjudication
+      step.
+
+
+      BOUNDING BOX:
+
+      - `design/pi-coding-agent-integration.md`
+
+      - prior Pi realtime/subagent overlay phase evidence in `plan.yaml` via vectl
+      step details
+
+      - shared PersonaSpec/opifex contract refs only where they speak to model-visible
+      persona or tool visibility semantics
+
+
+      REQUIREMENT-TO-CHECKLIST TRACEABILITY:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | SPEC-B3-OVERLAY-AUTHORITY | `pi_impl_runtime_conformance_20260603.shared-spec-conformance`
+      finding B3; `design/pi-coding-agent-integration.md`; recent overlay plan/phase
+      gate evidence | Decide authoritative stance for `/larva-subagent-log` overlay
+      versus tool-row-only visibility and update expectations only if current overlay
+      is intentionally allowed | pi_impl_runtime_conformance_20260603.adjudicate-subagent-overlay-authority
+      | `overlay authority decision recorded` | `authority_decision` | OWNED | Intersects
+      spec conformance gate; cannot defer |
+
+
+      CONSTRAINTS:
+
+      - Do not edit or reopen completed steps.
+
+      - Do not remove the overlay unless the accepted contract explicitly rejects
+      it and a separate implementation remediation is created later.
+
+      - Do not let shared-surface meaning be locally invented; cite the exact design/shared-contract
+      passages used.
+
+      - If design and completed-plan evidence conflict, record `AMBIGUOUS_SPEC` or
+      `SPEC_POSSIBLY_STALE` with a closure path rather than forcing a pass.
+
+
+      <side_effect_budget>
+
+      Allowed: update design/verification expectation documents if and only if the
+      adjudication concludes the overlay is authorized; produce an authority decision
+      artifact. Forbidden: product-code changes, completed-step edits, lifecycle changes,
+      or silent behavior removal.
+
+
+      <risk_probes>
+
+      - Confirm whether overlay visibility is user-observable only and does not alter
+      model/tool policy visibility.
+
+      - Confirm whether shared-contract surfaces say anything authoritative about
+      Pi UI overlays or only PersonaSpec admission/tool rows.
+
+      - Confirm downstream spec-verifier expectations consume the adjudicated decision
+      rather than re-litigating stale text.'
+    verification: '- [ ] overlay authority decision recorded with cited key passages
+      and disposition: AUTHORIZED, REJECTED, or AMBIGUOUS_BLOCKING.
+
+      - [ ] If AUTHORIZED, design/verification expectations are aligned so `/larva-subagent-log`
+      view-only overlay is not flagged as drift.
+
+      - [ ] If REJECTED or AMBIGUOUS_BLOCKING, downstream remediation requirement
+      is explicit and spec conformance remains blocked.
+
+      - [ ] No completed plan steps are edited or reinterpreted without citations.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/conformance/shared_surfaces.yaml
+    depends_on:
+    - pi_impl_runtime_conformance_20260603.shared-spec-conformance
+    agent: software-architect
+  - id: retest-full-runtime-smoke
+    name: Retest full Pi runtime smoke after remediation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      PROOF ARTIFACT: Re-run the Pi runtime smoke and capability matrix after remediation
+      from `fix-runtime-conformance-blockers`. This is a full-plan-check protecting
+      finalization; it must prove either live `ctx.ui.addAutocompleteProvider` support
+      or design-aligned degraded behavior with honest runtime provenance.
+
+
+      VERIFICATION SCOPE DECLARATION: full-plan-check protecting `pi_impl_runtime_conformance_20260603.gate`
+      and downstream finalization.
+
+
+      <side_effect_budget>
+
+      Allowed: read-only runtime verification and temporary probe execution. Forbidden:
+      code modifications, changing specs, accepting mock provenance as live runtime
+      support, or omitting previously failed rows from the matrix.
+
+
+      <risk_probes>
+
+      - Retest must include raw smoke output for the addAutocompleteProvider row and
+      provenance.
+
+      - Retest must include fatal startup fixture evidence after fix.
+
+      - Retest must state whether degraded behavior is user-observable if live Pi
+      support is unavailable.'
+    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs` raw output
+      is included with tested Pi package version/commit.
+
+      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs` and `node contrib/pi-extension/test-autocomplete-runtime.mjs`
+      raw outputs are included.
+
+      - [ ] Capability matrix addAutocompleteProvider row is PASS with live provenance
+      or documented design-aligned degraded behavior with unsupported live capability
+      provenance.
+
+      - [ ] Fatal startup fixtures prove MODEL_MAP_INVALID, POLICY_INVALID, PERSONA_NOT_FOUND,
+      and MODEL_UNAVAILABLE stop Pi nonzero before first prompt/model turn.
+
+      - [ ] Previously passing runtime checks remain passing or have explicit new
+      blocker rows.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - scripts/pi-extension-runtime-smoke.mjs
+    - scripts/pi-extension-autocomplete-smoke.mjs
+    - contrib/pi-extension/test-autocomplete-runtime.mjs
+    depends_on:
+    - fix-runtime-conformance-blockers
+    agent: integration-verifier
+  - id: retest-shared-spec-conformance
+    name: Retest shared spec conformance after remediation and adjudication
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      CONFORMANCE ARTIFACT: Re-run the shared contract and Pi design spec conformance
+      audit after runtime blocker fixes and overlay authority adjudication. This retest
+      must verify B1 fatal startup behavior, B2 id-only selector/mention population,
+      and B3 overlay disposition against the adjudicated authority rather than stale
+      assumptions.
+
+
+      VERIFICATION SCOPE DECLARATION: full-plan-check protecting `pi_impl_runtime_conformance_20260603.gate`
+      and downstream finalization.
+
+
+      <side_effect_budget>
+
+      Allowed: read-only conformance verification. Forbidden: modifying code/docs,
+      approving unresolved behavioral runtime obligations, or treating B3 as non-blocking
+      without cited authority/non-intersection.
+
+
+      <risk_probes>
+
+      - Verify fatal startup semantics with runtime/test evidence, not just static
+      code reading.
+
+      - Verify id-only mention candidate behavior with a minimal fixture containing
+      only non-empty `data[].id`.
+
+      - Verify B3 overlay outcome uses the adjudication artifact and flags any remaining
+      authority conflict as blocking.'
+    verification: '- [ ] Requirements register rechecks B1 fatal startup, B2 id-only
+      mention population, and B3 overlay authority disposition.
+
+      - [ ] Fatal startup divergence is CONFORMS with runtime evidence or remains
+      DIVERGES with blocker closure path.
+
+      - [ ] Id-only completion fixture uses minimal non-empty `data[].id` without
+      `spec_digest` and produces mention candidates.
+
+      - [ ] Overlay visibility verdict cites the adjudication artifact and does not
+      silently remove or approve current behavior.
+
+      - [ ] No shared surface drift, duplicate design authority, or unresolved forbidden
+      behavior remains unowned.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    depends_on:
+    - fix-runtime-conformance-blockers
+    - adjudicate-subagent-overlay-authority
+    agent: spec-verifier
 - id: pi_impl_finalization_20260603
   name: Pi Integration Finalization 2026-06-03
   status: locked
