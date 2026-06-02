@@ -97392,7 +97392,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
     name: Retest abort progress order and post-abort RPC gate
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT: Independent phase-check retest for gate blocker
       B1_ABORT_PROGRESS_ORDER_AND_POST_ABORT_RPC. This step protects `pi_impl_child_rpc_20260603.gate`,
       downstream realtime UI work, runtime conformance, and finalization gates.
@@ -97527,6 +97527,89 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-02T20:01:09.225695+00:00'
+    done_at: '2026-06-02T20:06:13.243791+00:00'
+    evidence: 'SUCCESS/PASS: independent abort progress ordering retest gate passed;
+      gate_open_allowed=true; blockers=[].
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: runtime visibility phases include
+      starting/session_ready/prompt_sent/waiting_for_child/collecting_final_text then
+      terminal success|failed|cancelled; startup sequence requests get_last_assistant_text
+      only for normal completion; parent abort returns cancelled/LARVA_CHILD_CANCELLED.
+
+      - contrib/pi-extension/larva.ts read: RpcClient.abort, runChildSequence, progress
+      update emission.
+
+      - scripts/pi-extension-runtime-smoke.mjs read: controlledLiveChildRpcProof.
+
+      - tests/shell/test_pi_extension_subagent_ux.py and tests/shell/test_pi_extension_real_runtime.py
+      read.
+
+
+      Worker evidence commit: 43039fbaf90e0777f5b39739b4250677ff05c3f0.
+
+      Mainline squash commit: 674044e [vectl] step-pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
+      completed.
+
+
+      Worker verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0; controlledLive_status PASS; B1 PASS; B2
+      PASS; B3 PASS; B4 PASS; abort_result_status cancelled; abort_phases [starting,session_ready,prompt_sent,waiting_for_child,cancelled];
+      entries_after_terminal []; abort_txTypes [get_state,prompt,abort]; txTypes_after_abort
+      []; collecting_final_text_after_abort=false; abort_assistantTexts=[].
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed in 48.68s.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0; controlledLive PASS; B1/B2/B3/B4 all PASS;
+      abort_phases [starting,session_ready,prompt_sent,waiting_for_child,cancelled];
+      entries_after_terminal []; abort_txTypes [get_state,prompt,abort]; txTypes_after_abort
+      [].
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed in 46.58s.
+
+
+      Behavioral Proof Register:
+
+      - abort_phases_end_terminal_cancelled: PROVEN; entries_after_terminal=[].
+
+      - abort_rpc_sent_no_final_text_request_after_abort: PROVEN; txTypes_after_abort=[]
+      excludes get_last_assistant_text.
+
+      - no_collecting_final_text_after_abort: PROVEN.
+
+      - live_child_rpc_B1_B2_B3_B4: PROVEN; controlledLive/B1/B2/B3/B4 PASS.
+
+      - pytest_target_suite: PROVEN; 35 passed.
+
+
+      Checklist receipt:
+
+      - progress terminal-phase/abort/target 35 refs cited: PASS.
+
+      - raw phase-order parser abort phases end at cancelled with no entries after
+      terminal: PASS.
+
+      - raw txTypes parser shows abort and no get_last_assistant_text after abort:
+      PASS.
+
+      - raw pytest target 35/focused abort regression passes: PASS.
+
+      - raw live-child-rpc-proof output included and B1-B4 PASS: PASS.
+
+      - behavioral proof register covers B1 abort ordering and B1-B4 regression: PASS.
+
+
+      Blockers: none. Deviation Records: none.'
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
