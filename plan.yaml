@@ -96386,17 +96386,17 @@ phases:
       - Prove outside-root/wrong-suffix/missing/unreadable taxonomy before child launch.
 
       - Prove child final text caps and NFC normalization across all mirrored fields.'
-    verification: '- [ ] New and resume calls validate canonical task text before
+    verification: '- [x] New and resume calls validate canonical task text before
       child launch/task_id allocation/busy marking.
 
-      - [ ] Path validation maps outside-root, wrong suffix, missing, realpath escape,
+      - [x] Path validation maps outside-root, wrong suffix, missing, realpath escape,
       non-regular, and unreadable cases to documented error codes.
 
-      - [ ] Normal completion, abort, startup failure, timeout, stdout EOF, malformed
+      - [x] Normal completion, abort, startup failure, timeout, stdout EOF, malformed
       RPC, final-text failure, resume failure, and new-session protocol failure leave
       no orphan child.
 
-      - [ ] LarvaSubagentResult and ToolResult top-level/details mirrors preserve
+      - [x] LarvaSubagentResult and ToolResult top-level/details mirrors preserve
       documented semantics and caps.'
     refs:
     - design/pi-coding-agent-integration.md
