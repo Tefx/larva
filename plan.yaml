@@ -95377,6 +95377,159 @@ phases:
   gate: Runtime, UI, and shared-contract proof registers are complete and blocker-free.
   depends_on:
   - pi_impl_realtime_ui_20260603
+  steps:
+  - id: pi_impl_runtime_conformance_20260603.full-runtime-smoke
+    name: Full Pi runtime smoke and capability matrix
+    status: pending
+    description: 'PROOF ARTIFACT: Execute full runtime smoke commands and produce
+      a supported Pi capability matrix. Scope: launcher, persona, tool policy, child
+      RPC, realtime row, retained log, overlay, reset, fatal startup validation, and
+      cleanup. This is a full-plan-check protecting finalization.
+
+
+      SIDE_EFFECT_BUDGET: read-only verification. Forbidden: modifying code, treating
+      environment blocker as PASS.
+
+
+      RISK_PROBES:
+
+      - Fatal startup validation must stop before first prompt/model turn.
+
+      - Realtime progress must prove execute(..., onUpdate, ...) in supported Pi build.
+
+      - Child cleanup must prove no orphan across all documented failure modes.'
+    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs` raw output
+      is included with tested Pi package version/commit.
+
+      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs` and `node contrib/pi-extension/test-autocomplete-runtime.mjs`
+      raw outputs are included.
+
+      - [ ] `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      tests/shell/test_pi_extension_subagent_ux.py` raw output is included.
+
+      - [ ] Capability matrix covers model registry/find, setModel, tool registration,
+      renderCall/renderResult, tool_call interception, RPC commands, child agent_end,
+      execute onUpdate, abort channel, ui.custom, addAutocompleteProvider, and degraded
+      behavior.
+
+      - [ ] Fatal startup fixtures prove MODEL_MAP_INVALID, POLICY_INVALID, PERSONA_NOT_FOUND,
+      and MODEL_UNAVAILABLE stop Pi non-zero before first prompt/model turn.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - scripts/pi-extension-runtime-smoke.mjs
+    - scripts/pi-extension-autocomplete-smoke.mjs
+    - contrib/pi-extension/test-autocomplete-runtime.mjs
+    agent: integration-verifier
+  - id: pi_impl_runtime_conformance_20260603.shared-spec-conformance
+    name: Shared contract and Pi design spec conformance audit
+    status: pending
+    description: 'CONFORMANCE ARTIFACT: Adversarial divergence audit comparing implementation
+      against design/pi-coding-agent-integration.md and opifex shared contract sources.
+      Scope: shared PersonaSpec consumption, launcher/env contracts, Pi extension
+      runtime behavior, UX/output formats, tool policy, child RPC, overlay, and forbidden
+      behaviors. Non-scope: changing implementation.
+
+
+      SIDE_EFFECT_BUDGET: read-only audit. Forbidden: approving untested behavioral
+      precedence claims as CONFORMS without evidence.
+
+
+      RISK_PROBES:
+
+      - Find local aliases or accept-and-clean behavior on shared surfaces.
+
+      - Find omission drift for exact command `/larva-subagent-log [task_id?]`.
+
+      - Find format drift in errors, caps, status strings, ToolResult mirrors, and
+      task_id parsing.'
+    verification: '- [ ] Requirements register covers all touched design and opifex
+      shared-surface sections.
+
+      - [ ] Evidence table uses verdicts CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST,
+      NOT_FOUND, AMBIGUOUS_SPEC, or SPEC_POSSIBLY_STALE.
+
+      - [ ] Behavioral precedence claims are PROVEN by runtime/test evidence or marked
+      NEEDS_TEST with closure path.
+
+      - [ ] No shared surface drift, no duplicate design authority, and no forbidden
+      behavior remains unowned.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    agent: spec-verifier
+  - id: pi_impl_runtime_conformance_20260603.full-invar-guard
+    name: Full repo invar guard and regression proof
+    status: pending
+    description: 'PROOF ARTIFACT: Run the authoritative full verification command
+      after all Pi implementation phases. Scope: full repo static/contracts/tests
+      via `uvx invar-tools guard --all` plus any command-family failures intersecting
+      Pi gates.
+
+
+      SIDE_EFFECT_BUDGET: read-only verification. Forbidden: editing code or dismissing
+      failures as pre-existing without gate non-intersection evidence.
+
+
+      RISK_PROBES:
+
+      - Any broad verifier failure intersects final gates unless proven otherwise.
+
+      - Shell/core boundary violations from launcher helpers must be blocking.
+
+      - New tests must not leave expected-red files in the final green gate.'
+    verification: '- [ ] Raw output from `uvx invar-tools guard --all` is included.
+
+      - [ ] Any failure has explicit blocker disposition, owner, and gate intersection
+      analysis.
+
+      - [ ] Final green gate uses tests/shell/test_pi_extension_subagent_ux.py, not
+      unresolved expected-red proof.
+
+      - [ ] No uncontracted core code or shell Result/I/O boundary violation is introduced.'
+    refs:
+    - AGENTS.md
+    - INVAR.md
+    agent: integration-verifier
+  - id: pi_impl_runtime_conformance_20260603.gate
+    name: Gate runtime conformance and full verification
+    status: pending
+    description: 'DECISION ARTIFACT: Full-plan-check gate for Pi runtime liveness,
+      shared spec conformance, and full verification. review_depth: THOROUGH.
+
+
+      SIDE_EFFECT_BUDGET: read-only review. Forbidden: opening gate with NEEDS_TEST/UNPROVEN
+      blocker-class runtime obligations.
+
+
+      RISK_PROBES:
+
+      - Gate rejects sampled evidence when requirement matrix rows remain unproven.
+
+      - Gate rejects build/type/source evidence as substitute for launched client/runtime
+      proof.
+
+      - Gate requires remediation path for any broad verifier failure that intersects
+      finalization.'
+    verification: '- [ ] Runtime smoke, spec conformance, and full guard evidence
+      are reviewed with a structured decision basis.
+
+      - [ ] Every OWNED requirement is PROVEN or has blocking remediation; unresolved
+      non-blockers include non-intersection evidence.
+
+      - [ ] Hard Pi capability gaps block PASS and require architecture re-adjudication.
+
+      - [ ] OPEN only if finalization can proceed without bypassing behavioral/runtime
+      obligations.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_runtime_conformance_20260603.full-runtime-smoke
+    - pi_impl_runtime_conformance_20260603.shared-spec-conformance
+    - pi_impl_runtime_conformance_20260603.full-invar-guard
+    agent: gate-reviewer
 - id: pi_impl_finalization_20260603
   name: Pi Integration Finalization 2026-06-03
   status: locked
