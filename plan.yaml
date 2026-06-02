@@ -94987,7 +94987,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-autocomplete-runtime-proof-gate
     name: Fix autocomplete runtime proof hard gate after blocked Pi contract gate
-    status: claimed
+    status: done
     description: 'TARGET STATE:
 
       The Pi runtime capability probe no longer reports `runtime.hardGates.uiAutocompleteProvider.supported:
@@ -95151,6 +95151,96 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-02T18:03:54.958308+00:00'
+    done_at: '2026-06-02T18:09:06.936538+00:00'
+    evidence: 'SUCCESS: B1 remediation implemented.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md — runtime verification must prove the
+      tested supported Pi build exposes ctx.ui.addAutocompleteProvider before claiming
+      editor-autocomplete support; unavailable hook keeps command-level completer
+      and omits editor autocomplete.
+
+      - scripts/pi-extension-runtime-smoke.mjs — capability-gates now classifies uiAutocompleteProvider
+      with provenance/status/limitation via runtime hook evidence; mock runtimeHarness
+      hook is source `runtimeHarness.mock`.
+
+      - tests/shell/test_pi_extension_subagent_ux.py — runtime probe test asserts
+      uiAutocompleteProvider.supported is false for mock-only evidence with missing-live-proof
+      limitation.
+
+      - tests/shell/test_pi_postspec_editor_prompt_expected_red.py — degradation test
+      asserts unsupported ctx.ui.addAutocompleteProvider keeps /larva-persona command
+      completer and leaves addAutocompleteProvider undefined.
+
+      - tests/shell/test_pi_extension_real_runtime.py — runtime capability gate test
+      requires mock-only autocomplete gate supported false/unsupported-or-unknown
+      with limitation.
+
+
+      B1 Remediation Report:
+
+      - blocker: B1 mock-only autocomplete support hard gate.
+
+      - changed_files: scripts/pi-extension-runtime-smoke.mjs; tests/shell/test_pi_extension_real_runtime.py;
+      tests/shell/test_pi_extension_subagent_ux.py.
+
+      - runtime_hard_gate_json after merge: supported=false, status=unsupported, provenance=runtimeHarness.mock,
+      limitation=`Only the local runtimeHarness mock object exposed ctx.ui.addAutocompleteProvider;
+      live Pi interactive TUI runtime hook proof is missing.`, supportRule=`mock/local
+      harness hook evidence is never sufficient for supported: true; true requires
+      non-mock Pi interactive TUI runtime/build provenance.`
+
+      - support_rule: supported true only with non-mock ctx.ui.addAutocompleteProvider
+      observed from tested Pi interactive TUI runtime/build; mock-only evidence is
+      false/unsupported or unknown.
+
+      - no_completed_evidence_edited: true.
+
+
+      Worker commit: 2e0369638754d1ba4701bb2821a0e2b888d46f78.
+
+      Mainline merge commit: 5164c49 [vectl] step-fix-autocomplete-runtime-proof-gate
+      completed.
+
+
+      Mainline verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0; parsed `runtime.hardGates.uiAutocompleteProvider.supported is not
+      True` and provenance `runtimeHarness.mock`.
+
+      - Focused pytest: `pytest tests/shell/test_pi_extension_subagent_ux.py::test_runtime_probe_records_pi_package_and_hard_gate_statuses
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py::test_editor_provider_installation_degrades_without_ui_hook_but_keeps_command_completion
+      tests/shell/test_pi_extension_real_runtime.py::test_runtime_smoke_help_lists_all_required_scenarios
+      tests/shell/test_pi_extension_real_runtime.py::test_runtime_capability_gate_rejects_mock_only_autocomplete_support
+      -q` -> `4 passed in 2.24s`.
+
+      - `git diff --check HEAD~1 HEAD` before merge -> exit 0.
+
+
+      Checklist receipt:
+
+      - Structured uiAutocompleteProvider evidence with provenance/status: true.
+
+      - Mock-only autocomplete evidence cannot produce supported=true: true.
+
+      - Tests assert real hook proof required and mock-only false/unsupported: true.
+
+      - Command-level /larva-persona degradation remains covered: true.
+
+      - Exact files changed and no completed gate evidence edited: true.
+
+      - refs confirmation included key passages: true.
+
+      - Raw node output shows supported not true for mock evidence: true.
+
+      - Raw pytest focused tests pass: true.
+
+      - Main path true support rule explained: true.
+
+      - Failure path mock-only unsupported cannot reopen gate: true.'
   - id: retest-autocomplete-runtime-proof-gate
     name: Retest blocked Pi contract gate after autocomplete runtime proof fix
     status: pending
