@@ -98363,7 +98363,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: larva-pi-launched-wiring-retest
     name: Retest W6 wiring audit after LARVA_PI_LAUNCHED fix
-    status: pending
+    status: claimed
     description: 'CONFORMANCE ARTIFACT: Independent retest gate for W6-LARVA-PI-LAUNCHED-WRITE-ONLY
       after the remediation step. This retest must verify the specific W6 blocker
       is closed and rerun the existing realtime/log UI wiring matrix so the final
@@ -98497,6 +98497,8 @@ phases:
     depends_on:
     - larva-pi-launched-env-fix
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-06-02T21:13:10.108746+00:00'
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
   status: locked
