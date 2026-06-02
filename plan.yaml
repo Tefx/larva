@@ -94797,7 +94797,7 @@ phases:
       files.'
   - id: pi_impl_contract_20260603.red-harness-and-runtime-probe
     name: Define expected-red Pi harness and runtime capability probe
-    status: claimed
+    status: pending
     description: 'PROOF ARTIFACT: Add or update pre-implementation tests/probes that
       expose gaps before product implementation. Scope: tests/shell/test_pi_extension_contract.py,
       tests/shell/test_pi_extension_real_runtime.py, tests/shell/test_pi_extension_subagent_ux.py
@@ -94854,8 +94854,6 @@ phases:
     depends_on:
     - pi_impl_contract_20260603.traceability-matrix
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-06-02T17:39:12.766614+00:00'
   - id: pi_impl_contract_20260603.gate
     name: Gate Pi contract harness
     status: pending
