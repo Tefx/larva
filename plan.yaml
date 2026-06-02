@@ -97713,7 +97713,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
-  status: in_progress
+  status: done
   gate: Realtime/log UI is shipped as one complete target with launched-surface proof;
     no P1/P2/P3 deferral.
   depends_on:
@@ -98080,7 +98080,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_impl_realtime_ui_20260603.gate
     name: Gate complete realtime/log UI target
-    status: claimed
+    status: done
     description: 'DECISION ARTIFACT: Phase-check gate for the complete realtime/log
       UI target. review_depth: THOROUGH. Gate must reject partial progress rows without
       retained log/overlay, overlay without row progress, design deferral, mock-only
@@ -98121,6 +98121,111 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-02T21:20:45.972792+00:00'
+    done_at: '2026-06-02T21:29:40.295224+00:00'
+    evidence: 'SUCCESS/PASS: Pi realtime/log UI phase gate approved; gate_open_allowed=true;
+      blockers=[]; empty PASS evidence commit f7b0028e0995151e0c45343a96e06d7f019c5378;
+      mainline squash commit 42f0a6f.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: recent sessions helper contract,
+      runtime visibility, result contract/resume footer, LARVA_PI_LAUNCHED sentinel,
+      VT43-VT46.
+
+      - contrib/pi-extension/larva.ts read: visible text bounding/resume footer, recent
+      sessions derived from retained log, view-only larva_subagent_log overlay, reset
+      state, LARVA_PI_LAUNCHED consumption/reassertion, safe onUpdate/execute lifecycle/renderCall/renderResult
+      registration, larva_subagent_sessions registration.
+
+      - tests/shell/test_pi_extension_subagent_ux.py read: sessions helper, presentation
+      log exact/newest/view-only/reset, renderCall/onUpdate bounds, renderResult expanded/collapsed/footer
+      isolation, capability-gates runtime proof.
+
+      - tests/shell/test_pi_extension_contract.py read: W6 LARVA_PI_LAUNCHED regression.
+
+
+      Behavioral Proof Register:
+
+      - renderCall row persona/mode/preview/task_id bounds: PROVEN.
+
+      - execute/onUpdate lifecycle with bounded progress/no transcript streaming:
+      PROVEN.
+
+      - renderResult collapsed/expanded final views and parent footer isolation: PROVEN.
+
+      - /larva-subagent-log newest/exact view-only overlay without mutating sessions:
+      PROVEN.
+
+      - reset cleanup clears presentation log/overlay/busy state/active child: PROVEN.
+
+      - derived sessions helper shape/limits/newest-first/no aliases/no filesystem:
+      PROVEN.
+
+      - client-runtime proof accepted with nonblocking true-TUI slash gap and runtime
+      view-only probes: PROVEN_WITH_WARNING; capability-gates prevents false support
+      claims.
+
+      - W6 LARVA_PI_LAUNCHED retest: PROVEN.
+
+      - no blockers/dead public surfaces/stub-only implementation: PROVEN.
+
+
+      Worker commands:
+
+      - `pytest -q` -> 716 passed in 61.89s.
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> subagentToolRowProgress and subagentLogOverlayCommand supported; uiAutocompleteProvider
+      unsupported/mock-only documented.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> controlledLive PASS; B1/B2/B3/B4 PASS.
+
+      - focused W6 pytest -> 1 passed.
+
+      - static scan for LARVA_PI_LAUNCHED/write-only and raw JSONL/sidecar -> PASS.
+
+      - invar full scan -> ok true, errors 0, warnings 5.
+
+
+      Mainline final-state verification:
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> live PASS; B1/B2/B3/B4 PASS.
+
+      - `pytest -q` -> 716 passed in 59.22s.
+
+
+      Checklist receipt:
+
+      - Row progress, retained presentation log, expanded rendering, derived sessions
+      helper, reset cleanup, view-only overlay proven together: PASS.
+
+      - Gate basis reviews runtime artifacts, wiring audit, forbidden-behavior probes:
+      PASS.
+
+      - Unresolved runtime/UI obligations: only true interactive TUI slash hook gap,
+      documented nonblocking; no blocker requiring adjudication.
+
+      - OPEN only after onUpdate and abort hard-gate capabilities proven: PASS.
+
+
+      Warnings:
+
+      - W-TUI-SLASH-GAP: live Pi interactive TUI autocomplete/slash hook proof remains
+      unsupported/mock-only; nonblocking because command registration and view-only
+      runtime probes passed, and capability-gates documents mock-only provenance.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: larva-pi-launched-env-fix
     name: Fix LARVA_PI_LAUNCHED runtime consumption
     status: done
@@ -98621,7 +98726,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
-  status: locked
+  status: pending
   gate: Runtime, UI, and shared-contract proof registers are complete and blocker-free.
   depends_on:
   - pi_impl_realtime_ui_20260603
