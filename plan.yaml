@@ -94797,7 +94797,7 @@ phases:
       files.'
   - id: pi_impl_contract_20260603.red-harness-and-runtime-probe
     name: Define expected-red Pi harness and runtime capability probe
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT: Add or update pre-implementation tests/probes that
       expose gaps before product implementation. Scope: tests/shell/test_pi_extension_contract.py,
       tests/shell/test_pi_extension_real_runtime.py, tests/shell/test_pi_extension_subagent_ux.py
@@ -94856,6 +94856,98 @@ phases:
     agent: python-executor
     claimed_by: python-senior
     claimed_at: '2026-06-02T17:47:44.542376+00:00'
+    done_at: '2026-06-02T17:55:32.200832+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED: Added/updated expected-red Pi harness and runtime
+      capability probe.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read; key requirements used: child RPC
+      must use launcher env and JSONL protocol, no sidecar metadata/raw JSONL result,
+      row-local renderCall/onUpdate/renderResult, exact ToolResult wrappers, and runtime
+      proof must record Pi capabilities before claiming support.
+
+
+      Files changed:
+
+      - scripts/pi-extension-runtime-smoke.mjs — added capability-gates probe recording
+      Pi version/commit and hard-gate statuses, including subagentLogOverlayCommand
+      required command evidence.
+
+      - tests/shell/test_pi_extension_subagent_ux.py — renamed/converted from tests/shell/test_pi_postspec_subagent_ux_expected_red.py;
+      added runtime probe assertions, expected-red /larva-subagent-log gap assertion,
+      and documented-format/negative fixture proof.
+
+      - tests/shell/test_pi_postspec_subagent_ux_expected_red.py — removed by rename.
+
+
+      Expected-red semantic report:
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red via `pytest tests/shell/test_pi_extension_subagent_ux.py
+      -q`.
+
+      - failure_alignment: only failing assertion is intended product gap: `test_subagent_log_overlay_command_expected_red_without_live_credentials`
+      asserts `gate["supported"] is True` for required `/larva-subagent-log`, while
+      runtime probe evidence shows registered commands are only `["larva-persona"]`;
+      independent of live credentials/Pi absence.
+
+      - product_implementation_files_modified: no (`src/` and contrib/pi-extension/larva.ts
+      untouched).
+
+      - verdict: PASS, blockers: []
+
+
+      Worker commit:
+
+      - c1b17f9 test: add pi subagent expected-red runtime probe (isolated worktree)
+
+
+      Mainline merge:
+
+      - Squash commit: 0c83726 [vectl] step-pi_impl_contract_20260603.red-harness-and-runtime-probe
+      completed.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0; output included versionText `0.78.0`, commit `dd24b116bd4aeedb07012cc8b152239c488eb95b`,
+      extensionLoading/rpcJsonl/subagentToolRowProgress supported true, subagentLogOverlayCommand
+      supported false with requiredCommand `larva-subagent-log` and registeredCommandNames
+      `["larva-persona"]`.
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py::test_runtime_probe_records_pi_package_and_hard_gate_statuses
+      tests/shell/test_pi_extension_subagent_ux.py::test_documented_external_format_fixtures_and_negative_non_goals
+      -q` -> exit 0; `2 passed in 1.05s`.
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py -q` -> exit 1 expected
+      red; `1 failed, 6 passed`, failure exactly `test_subagent_log_overlay_command_expected_red_without_live_credentials`,
+      assertion `assert False is True` on overlay hard gate.
+
+      - `git diff --check HEAD~1 HEAD` before merge -> exit 0.
+
+
+      Checklist receipt:
+
+      - Expected-red tests expose launcher/runtime, persona/policy, child RPC, realtime/log
+      UI, and overlay gaps without product code changes: true.
+
+      - Runtime probe records tested Pi package version/commit and hard-gate capability
+      statuses: true.
+
+      - old expected-red file converted/renamed to tests/shell/test_pi_extension_subagent_ux.py:
+      true.
+
+      - Fixtures include exact documented external formats and negative fixtures for
+      no raw JSONL/sidecar/alias behavior: true.
+
+      - Evidence states expected-red failures and environment blockers: true; no environment
+      blockers observed.'
   - id: pi_impl_contract_20260603.gate
     name: Gate Pi contract harness
     status: pending
