@@ -94812,6 +94812,9 @@ phases:
       otherwise BLOCKED.'
     refs:
     - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_contract_20260603.traceability-matrix
+    - pi_impl_contract_20260603.red-harness-and-runtime-probe
     agent: gate-reviewer
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
