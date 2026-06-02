@@ -96351,7 +96351,7 @@ phases:
       true; this completion opens the phase gate.'
 - id: pi_impl_child_rpc_20260603
   name: Pi larva_subagent Child RPC Lifecycle 2026-06-03
-  status: pending
+  status: in_progress
   gate: larva_subagent lifecycle and public task_id behavior are implemented and proven
     with cleanup and failure-path evidence.
   depends_on:
@@ -96359,7 +96359,7 @@ phases:
   steps:
   - id: pi_impl_child_rpc_20260603.lifecycle-implementation
     name: Complete larva_subagent child RPC lifecycle
-    status: pending
+    status: claimed
     description: 'TARGET STATE: `larva_subagent(persona_id, task, task_id?)` starts
       or resumes one child Pi RPC process per invocation using launcher-provided real
       Pi binary, extension flag, and extension entry; validates public task_id paths;
@@ -96404,6 +96404,8 @@ phases:
     - tests/shell/test_pi_postspec_subagent_ux_expected_red.py
     - tests/shell/test_pi_extension_real_runtime.py
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T19:01:34.937926+00:00'
   - id: pi_impl_child_rpc_20260603.sessions-helper
     name: Complete required larva_subagent_sessions helper
     status: pending
