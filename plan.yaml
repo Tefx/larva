@@ -97004,24 +97004,24 @@ phases:
 
       - Probe whether abort and orphan cleanup are observable at OS process/RPC level,
       not inferred from returned status text only.'
-    verification: '- [ ] B1 live startup proof reviewed: exact command output includes
+    verification: '- [x] B1 live startup proof reviewed: exact command output includes
       session id/task_id, child session file, `prompt`, `agent_end`, and `get_last_assistant_text`.
 
-      - [ ] B2 live resume proof reviewed: exact command output includes `switch_session`,
+      - [x] B2 live resume proof reviewed: exact command output includes `switch_session`,
       same canonical task_id/session path, new prompt, and new resumed output.
 
-      - [ ] B3 abort proof reviewed: exact command output proves abort signal propagation
+      - [x] B3 abort proof reviewed: exact command output proves abort signal propagation
       through child cleanup, or a hard-block decision lists the exact missing Pi runtime
       capability, commands tried, and architecture decision needed.
 
-      - [ ] B4 orphan cleanup proof reviewed: before/after process scan and child
+      - [x] B4 orphan cleanup proof reviewed: before/after process scan and child
       PID lifecycle demonstrate no orphan child process remains for success/resume/abort
       paths.
 
-      - [ ] Behavioral proof register marks each B1-B4 obligation `PROVEN`, `BLOCKED_WITH_DECISION`,
+      - [x] Behavioral proof register marks each B1-B4 obligation `PROVEN`, `BLOCKED_WITH_DECISION`,
       or `UNPROVEN`, with closure path and gate decision basis.
 
-      - [ ] Downstream realtime UI/runtime/finalization remains blocked unless this
+      - [x] Downstream realtime UI/runtime/finalization remains blocked unless this
       retest is PASS or outputs a hard-block architecture decision for orchestrator
       planning.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
