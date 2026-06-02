@@ -95243,7 +95243,7 @@ phases:
       - Failure path mock-only unsupported cannot reopen gate: true.'
   - id: retest-autocomplete-runtime-proof-gate
     name: Retest blocked Pi contract gate after autocomplete runtime proof fix
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT:
 
       Independent retest/gate review for B1 after `fix-autocomplete-runtime-proof-gate`.
@@ -95375,6 +95375,8 @@ phases:
     depends_on:
     - fix-autocomplete-runtime-proof-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-02T18:09:20.189914+00:00'
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
   status: locked
