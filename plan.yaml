@@ -97157,7 +97157,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.abort-progress-order-fix
     name: Fix abort progress order and post-abort RPC race
-    status: claimed
+    status: done
     description: 'TARGET STATE: When parent abort wins the child RPC lifecycle race,
       `larva_subagent` emits `cancelled` as the terminal and final progress phase,
       suppresses/cancels the non-winning success/final-text sequence, and performs
@@ -97297,6 +97297,99 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T19:54:10.279358+00:00'
+    done_at: '2026-06-02T20:00:59.259772+00:00'
+    evidence: 'SUCCESS/PASS: abort progress ordering race fixed. When abort wins,
+      cancelled is terminal/final progress phase; no collecting_final_text and no
+      get_last_assistant_text RPC occurs after abort. Legitimate B1/B2 success paths
+      and B1-B4 live proof remain PASS.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: progress phases end in terminal
+      success/failed/cancelled; abort forwards child RPC abort and returns cancelled
+      on stopped child.
+
+      - contrib/pi-extension/larva.ts read/updated: child sequence abort race handling.
+
+      - scripts/pi-extension-runtime-smoke.mjs read: live-child-rpc-proof B1-B4.
+
+      - tests/shell/test_pi_extension_real_runtime.py read: runtime smoke assertions.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+
+      Worker commit: e28df9717c947c3ab888c923d6dadea82d5f9f0d.
+
+      Mainline squash commit: 44439db [vectl] step-pi_impl_child_rpc_20260603.abort-progress-order-fix
+      completed.
+
+
+      Parser facts:
+
+      - abort_phases: [starting, session_ready, prompt_sent, waiting_for_child, cancelled]
+
+      - terminal_phase: cancelled
+
+      - entries_after_terminal: []
+
+      - txTypes: [get_state, prompt, abort]
+
+      - txTypes_after_abort: []
+
+      - get_last_assistant_text_after_abort: false
+
+      - collecting_final_text_after_abort: false
+
+
+      Worker verification:
+
+      - focused_abort_phase_order_parser -> exit 0; assertions cancelled_terminal=true,
+      entries_after_terminal_empty=true, no_get_last_assistant_text_after_abort=true,
+      no_collecting_final_text_after_abort=true.
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed in 48.37s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0; controlledLive.status PASS; B1/B2/B3/B4
+      PASS; abort call txTypes [get_state,prompt,abort]; abort call updates ended
+      with cancelled.
+
+      - `invar guard --changed` -> passed.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0; controlledLive.status PASS; B1 PASS; B2
+      PASS; B3 PASS; B4 PASS; abort phases [starting,session_ready,prompt_sent,waiting_for_child,cancelled];
+      entries_after_terminal []; txTypes [get_state,prompt,abort]; txTypes_after_abort
+      [].
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py
+      -q` -> 35 passed in 46.57s.
+
+
+      Checklist receipt:
+
+      - refs confirmation cites abort/progress/final-text passages: true.
+
+      - Raw phase-order parser shows abort phases end with terminal cancelled and
+      no entries after terminal: true.
+
+      - Raw txTypes/order shows abort occurs and no get_last_assistant_text after
+      abort: true.
+
+      - Raw pytest output for focused abort-order/verification target 35 passes: true.
+
+      - Raw live-child-rpc-proof output shows B1-B4 PASS after fix: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
     name: Retest abort progress order and post-abort RPC gate
     status: pending
