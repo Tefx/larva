@@ -95526,7 +95526,7 @@ phases:
     claimed_at: '2026-06-02T18:14:05.038954+00:00'
   - id: pi_impl_launcher_extension_20260603.extension-persona-policy
     name: Complete Pi extension persona projection and adapter-local tool policy
-    status: claimed
+    status: done
     description: 'TARGET STATE: The bundled Pi extension commits active personas atomically,
       projects prompt/model state through Pi-supported hooks, enforces adapter-local
       tool policy from canonical config paths only, preserves canonical PersonaSpec
@@ -95578,6 +95578,79 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T18:13:44.783733+00:00'
+    done_at: '2026-06-02T18:25:27.336371+00:00'
+    evidence: 'SUCCESS: Pi extension persona projection and adapter-local tool policy
+      implemented.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read; used atomic persona switch, adapter-local
+      tool policy path, mention-only @persona:<id>, Pi file ref preservation, and
+      Larva tool registration before baseline filtering requirements.
+
+      - ../opifex/design/final-canonical-contract.md read; PersonaSpec requires capabilities;
+      tools/side_effect_policy invalid; downstream consumes canonical meaning.
+
+      - ../opifex/contracts/persona_spec.schema.json read; required id/description/prompt/model/capabilities/spec_version
+      and additionalProperties=false.
+
+      - ../opifex/conformance/shared_surfaces.yaml and ../opifex/conformance/case_matrix/larva/*
+      read; reject legacy aliases/variant metadata, snake_case names, prompt opacity.
+
+      - contrib/pi-extension/larva.ts and README read.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - tests/shell/test_pi_extension_contract.py
+
+
+      Worker commit: a755a1008ff87321966f3da58e13ef12fd7e84d4.
+
+      Mainline squash commit: 00a7859 [vectl] step-pi_impl_launcher_extension_20260603.extension-persona-policy
+      completed.
+
+
+      Mainline verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      tests/shell/test_pi_extension_real_runtime.py -q` -> 82 passed in 30.26s.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs` -> all policy path
+      cases PASS, including legacy ignored and relative env rejected.
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case mention-namespace`
+      -> canonical @persona namespace, raw-short delegation, insertion proof all true.
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case cache-inflight`
+      -> inFlightDedupeProven=true, cacheReuseProven=true.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs` -> model-map runtime
+      PASS.
+
+      - `git diff --check HEAD~1 HEAD` before merge -> exit 0.
+
+
+      Checklist receipt:
+
+      - Persona switching/startup commit ordering, rollback/fail-safe/status strings:
+      true; pytest includes prevalidation and setModel-before-active-tools tests.
+
+      - Tool policy canonical path/no legacy/allow-deny/interception/custom tool registration:
+      true; pytest + node tool-policy path proof.
+
+      - Persona autocomplete/mentions @persona:<id>, cache TTL/reset/in-flight, selector
+      gating, file-reference preservation: true; pytest + node autocomplete runtime
+      proof.
+
+      - Shared contract evidence consumed from opifex without aliases/schema mutation:
+      true; only adapter/tests changed, no opifex/schema/core shared files modified.
+
+
+      Deviation Records: none.'
   - id: pi_impl_launcher_extension_20260603.vertical-slice-proof
     name: Early Pi vertical slice proof
     status: pending
