@@ -96932,7 +96932,7 @@ phases:
       Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     name: Retest gate for live child RPC startup, resume, abort, and cleanup proof
-    status: claimed
+    status: done
     description: 'DECISION ARTIFACT: Independent phase-check retest gate for the B1-B4
       failures from `pi_impl_child_rpc_20260603.integration-proof`. This retest decides
       whether the remediation support proves live or controlled-live child RPC startup,
@@ -97064,6 +97064,87 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-02T19:43:46.892269+00:00'
+    done_at: '2026-06-02T19:47:47.527831+00:00'
+    evidence: 'SUCCESS/PASS: Independent retest gate accepted live child RPC proof;
+      gate_open_allowed=true; orchestrator_action_hint=COMPLETE.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: startup must use get_state/prompt/agent_end/get_last_assistant_text;
+      resume must use switch_session then new prompt; abort must forward RPC abort
+      and cleanup/kill; verification targets include child lifecycle/no orphan proof.
+
+      - scripts/pi-extension-runtime-smoke.mjs read: live-child-rpc-proof controlledLiveChildRpcProof
+      emits B1_startup/B2_resume/B3_abort/B4_orphans.
+
+      - contrib/pi-extension/larva.ts read: startChild uses LARVA_PI_REAL_BIN and
+      extension entry; runChildSequence sends get_state/switch_session/prompt, waits
+      agent_end, gets assistant text; RpcClient.abort sends abort RPC; cleanupChild
+      terminates child and traces cleanup_end.
+
+
+      Worker evidence commit: 6382561faeeaf99a33325d181e8dede665166baa.
+
+      Mainline squash commit: 21f492a [vectl] step-pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
+      completed.
+
+
+      Behavioral Proof Register:
+
+      - B1: PROVEN/PASS. Live proof includes task_id/session path, prompt B1_CHILD_RPC_OK,
+      tx get_state/prompt/get_last_assistant_text, agent_end observed, assistant_text
+      B1_CHILD_RPC_OK, child_pid_alive=false.
+
+      - B2: PROVEN/PASS. Same canonical task_id reused, switch_session observed, new
+      prompt B2_RESUME_RPC_OK, assistant_text B2_RESUME_RPC_OK, child_pid_alive=false.
+
+      - B3: PROVEN/PASS. result_status=cancelled, error_code=LARVA_CHILD_CANCELLED,
+      abort RPC tx observed, abort_start/abort_rpc_result events, cleanup observed,
+      child_pid_alive=false.
+
+      - B4: PROVEN/PASS. Fresh/resume/abort child PIDs all dead; child_exit_count=3;
+      cleanup_end_count=3; external after scan no Pi RPC child rows except wrapper/grep.
+
+
+      Commands:
+
+      - Worker: `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0; controlledLive.status PASS; B1/B2/B3/B4
+      PASS; assistant texts B1_CHILD_RPC_OK and B2_RESUME_RPC_OK.
+
+      - Worker assertion parse + `ps -p <pids>` -> exit 0; b1_get_last/b2_switch_session/b2_new_output/b3_abort_tx/b3_abort_events/b4_all_new_pids_dead/b4_child_lifecycle
+      true; ps returned header only.
+
+      - Mainline final-state verification: `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario live-child-rpc-proof --live-timeout-ms 90000` -> exit 0; controlledLive.status
+      PASS; B1 PASS; B2 PASS; B3 PASS; B4 PASS.
+
+
+      Checklist receipt:
+
+      - B1 exact output includes session/task id, child session file, prompt, agent_end,
+      get_last_assistant_text: PASS.
+
+      - B2 exact output includes switch_session, same task_id/session path, new prompt,
+      new resumed output: PASS.
+
+      - B3 abort propagation through child cleanup: PASS.
+
+      - B4 before/after process scan/PID lifecycle no orphan: PASS.
+
+      - Behavioral proof register marks B1-B4 PROVEN with closure path/gate basis:
+      PASS.
+
+      - Downstream remains blocked unless this retest PASS or hard-block decision:
+      PASS; retest PASS opens this blocker.
+
+
+      Blockers: none. Warnings: PID scans can miss late grandchildren, but direct
+      child PIDs were not alive and external scan found no Pi RPC child process after
+      run.
+
+      Deviation Records: none.'
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
