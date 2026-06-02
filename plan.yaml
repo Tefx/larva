@@ -94987,7 +94987,7 @@ phases:
     skipped_reason: absorbed
   - id: fix-autocomplete-runtime-proof-gate
     name: Fix autocomplete runtime proof hard gate after blocked Pi contract gate
-    status: pending
+    status: claimed
     description: 'TARGET STATE:
 
       The Pi runtime capability probe no longer reports `runtime.hardGates.uiAutocompleteProvider.supported:
@@ -95149,6 +95149,8 @@ phases:
     depends_on:
     - pi_impl_contract_20260603.red-harness-and-runtime-probe
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-06-02T18:03:54.958308+00:00'
   - id: retest-autocomplete-runtime-proof-gate
     name: Retest blocked Pi contract gate after autocomplete runtime proof fix
     status: pending
