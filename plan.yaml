@@ -96654,7 +96654,7 @@ phases:
     agent: gate-reviewer
   - id: pi_impl_child_rpc_20260603.live-child-rpc-proof-support
     name: Add live child RPC proof support for startup, resume, abort, and cleanup
-    status: pending
+    status: claimed
     description: 'TARGET STATE: Provide real or controlled-live proof support for
       the failed child RPC lifecycle evidence gaps B1-B4 from `pi_impl_child_rpc_20260603.integration-proof`.
       This step may add or adjust Pi extension runtime smoke/proof harness support
@@ -96835,6 +96835,8 @@ phases:
     depends_on:
     - pi_impl_child_rpc_20260603.sessions-helper
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T19:32:45.182349+00:00'
   - id: pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     name: Retest gate for live child RPC startup, resume, abort, and cleanup proof
     status: pending
