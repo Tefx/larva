@@ -98956,7 +98956,7 @@ phases:
     agent: gate-reviewer
   - id: fix-runtime-conformance-blockers
     name: Fix runtime conformance blockers from smoke and spec audits
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       TARGET STATE:
@@ -99081,6 +99081,8 @@ phases:
     - pi_impl_runtime_conformance_20260603.full-runtime-smoke
     - pi_impl_runtime_conformance_20260603.shared-spec-conformance
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T21:43:12.616124+00:00'
   - id: adjudicate-subagent-overlay-authority
     name: Adjudicate subagent overlay design authority conflict
     status: pending
