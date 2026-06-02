@@ -75,6 +75,38 @@ async function listFixtureEvidence() {
   };
 }
 
+async function mentionNamespaceEvidence() {
+  const { installedProvider } = await makeRuntime();
+  const namespacePartial = await installedProvider("@p", { force: true });
+  const bareNamespace = await installedProvider("@persona:", { force: true });
+  const query = await installedProvider("please ask @persona:DEV", { force: true });
+  const delegatedRawShort = await installedProvider("@vectl", { force: true });
+  const expected = [
+    "@persona:vectl-planner",
+    "@persona:vectl-reviewer",
+    "@persona:qa-dev",
+    "@persona:DevOps",
+    "@persona:devrel",
+    "@persona:backend-dev",
+  ];
+  return {
+    namespacePartialValues: namespacePartial.map((item) => item.value),
+    bareNamespaceValues: bareNamespace.map((item) => item.value),
+    queryValues: query.map((item) => item.value),
+    delegatedRawShort,
+    expected,
+    namespacePartialReturnsAllEligible: JSON.stringify(namespacePartial.map((item) => item.value)) === JSON.stringify(expected),
+    bareNamespaceReturnsAllEligible: JSON.stringify(bareNamespace.map((item) => item.value)) === JSON.stringify(expected),
+    queryUsesSuffixOnly: JSON.stringify(query.map((item) => item.value)) === JSON.stringify([
+      "@persona:DevOps",
+      "@persona:devrel",
+      "@persona:qa-dev",
+      "@persona:backend-dev",
+    ]),
+    rawShortDelegatesOnly: delegatedRawShort === null,
+  };
+}
+
 let output;
 if (scenario === "substring-case-ordering") {
   const { installedProvider, registeredCommand } = await makeRuntime();
@@ -137,6 +169,8 @@ if (scenario === "substring-case-ordering") {
   };
 } else if (scenario === "fixture-shape") {
   output = await listFixtureEvidence();
+} else if (scenario === "mention-namespace") {
+  output = await mentionNamespaceEvidence();
 } else {
   throw new Error(`unknown --case ${scenario}`);
 }

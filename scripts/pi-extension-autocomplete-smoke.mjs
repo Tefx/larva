@@ -70,6 +70,29 @@ async function runTab(force) {
   };
 }
 
+async function runMentionNamespace() {
+  const items = await installedProvider(prefix || "@persona:", { force: true });
+  const values = items?.map((item) => item.value) ?? null;
+  const expected = [
+    "@persona:vectl-planner",
+    "@persona:vectl-reviewer",
+    "@persona:qa-dev",
+    "@persona:DevOps",
+    "@persona:devrel",
+    "@persona:backend-dev",
+  ];
+  return {
+    command: registeredCommand.name,
+    editorLine: prefix || "@persona:",
+    items,
+    values,
+    expected,
+    allValuesAreStrings: Array.isArray(items) && items.every((item) => typeof item.value === "string"),
+    allValuesArePersonaMentions: Array.isArray(values) && values.every((value) => value.startsWith("@persona:")),
+    allEligiblePersonaMentionsReturned: JSON.stringify(values) === JSON.stringify(expected),
+  };
+}
+
 let output;
 if (scenario === "tab-force") {
   output = await runTab(true);
@@ -90,6 +113,8 @@ if (scenario === "tab-force") {
   process.env.FAKE_LARVA_SCENARIO = "list-malformed";
   const malformed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: false });
   output = { failed, malformed, noCrash: failed === null && malformed === null };
+} else if (scenario === "mention-namespace") {
+  output = await runMentionNamespace();
 } else {
   throw new Error(`unknown --case ${scenario}`);
 }

@@ -576,7 +576,7 @@ function currentMentionToken(line: string): string | null {
 
 function mentionQuery(token: string): { mode: "merge" | "persona-only" | "delegate"; query: string } {
   if (token === "@") return { mode: "merge", query: "" };
-  if ("@persona:".startsWith(token) && token.length > 1) return { mode: "merge", query: "vectl" };
+  if ("@persona:".startsWith(token) && token.length > 1) return { mode: "merge", query: "" };
   if (token.startsWith("@persona:")) return { mode: "persona-only", query: token.slice("@persona:".length) };
   return { mode: "delegate", query: "" };
 }

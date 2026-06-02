@@ -93,6 +93,27 @@ def test_autocomplete_fixture_uses_documented_list_json_shape_without_alias_fiel
     assert payload["noAliasFuzzyRegexWildcardFields"] is True
 
 
+def test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter_runtime() -> None:
+    payload = _run_autocomplete_runtime_case("mention-namespace")
+
+    expected = [
+        "@persona:vectl-planner",
+        "@persona:vectl-reviewer",
+        "@persona:qa-dev",
+        "@persona:DevOps",
+        "@persona:devrel",
+        "@persona:backend-dev",
+    ]
+    assert payload["namespacePartialValues"] == expected
+    assert payload["bareNamespaceValues"] == expected
+    assert payload["namespacePartialReturnsAllEligible"] is True
+    assert payload["bareNamespaceReturnsAllEligible"] is True
+    assert payload["queryValues"] == ["@persona:DevOps", "@persona:devrel", "@persona:qa-dev", "@persona:backend-dev"]
+    assert payload["queryUsesSuffixOnly"] is True
+    assert payload["delegatedRawShort"] is None
+    assert payload["rawShortDelegatesOnly"] is True
+
+
 @pytest.mark.parametrize("case,force", [("tab-force", True), ("tab-regular", False)])
 def test_autocomplete_tui_provider_uses_argument_prefix_for_force_modes(case: str, force: bool) -> None:
     payload = _run_autocomplete_case(case, prefix="vectl")
@@ -116,6 +137,15 @@ def test_autocomplete_delegates_non_larva_persona_input_to_base_provider() -> No
         {"value": "file.txt", "label": "file.txt", "description": "base file completion"}
     ]
     assert payload["calls"] == [["/not-larva vectl", "object"]]
+
+
+def test_autocomplete_smoke_mentions_namespace_returns_all_eligible_personas() -> None:
+    payload = _run_autocomplete_case("mention-namespace")
+
+    assert payload["values"] == payload["expected"]
+    assert payload["allValuesAreStrings"] is True
+    assert payload["allValuesArePersonaMentions"] is True
+    assert payload["allEligiblePersonaMentionsReturned"] is True
 
 
 def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash() -> None:

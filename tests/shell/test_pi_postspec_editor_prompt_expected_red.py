@@ -203,9 +203,11 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         const rawAt = mentionProvider ? await mentionProvider("@", { force: true }) : null;
         const namespacePartial = mentionProvider ? await mentionProvider("@p", { force: true }) : null;
         const literalPartial = mentionProvider ? await mentionProvider("@persona", { force: true }) : null;
+        const bareNamespace = mentionProvider ? await mentionProvider("@persona:", { force: true }) : null;
         const query = mentionProvider ? await mentionProvider("please ask @persona:review", { force: true }) : null;
         const rawShort = mentionProvider ? await mentionProvider("@vectl", { force: true }) : null;
         const fileLike = mentionProvider ? await mentionProvider("@foo/bar", { force: true }) : null;
+        const spacedText = mentionProvider ? await mentionProvider("@ persona:dev", { force: true }) : null;
         const beforeEnvelope = mod.getActiveEnvelope();
         if (mentionProvider) await mentionProvider("@persona:ok", { force: true });
         const afterEnvelope = mod.getActiveEnvelope();
@@ -217,9 +219,11 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
           rawAt,
           namespacePartial,
           literalPartial,
+          bareNamespace,
           query,
           rawShort,
           fileLike,
+          spacedText,
           calls,
           beforeEnvelope,
           afterEnvelope,
@@ -240,20 +244,25 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         "@persona:devrel",
         "@persona:backend-dev",
     ]
-    assert [item["value"] for item in payload["namespacePartial"]][-2:] == [
+    expected_merged_empty_namespace = [
+        "./src/app.ts",
         "@persona:vectl-planner",
         "@persona:vectl-reviewer",
+        "@persona:qa-dev",
+        "@persona:DevOps",
+        "@persona:devrel",
+        "@persona:backend-dev",
     ]
-    assert [item["value"] for item in payload["literalPartial"]][-2:] == [
-        "@persona:vectl-planner",
-        "@persona:vectl-reviewer",
-    ]
+    assert [item["value"] for item in payload["namespacePartial"]] == expected_merged_empty_namespace
+    assert [item["value"] for item in payload["literalPartial"]] == expected_merged_empty_namespace
+    assert [item["value"] for item in payload["bareNamespace"]] == expected_merged_empty_namespace
     assert [item["value"] for item in payload["query"]] == ["@persona:vectl-reviewer"]
     assert payload["rawShort"] == [
         {"value": "./src/app.ts", "label": "./src/app.ts", "description": "Pi file reference"},
         {"value": "@persona:vectl-planner", "label": "Pi duplicate wins"},
     ]
     assert payload["fileLike"] == payload["rawShort"]
+    assert payload["spacedText"] == payload["rawShort"]
     assert payload["beforeEnvelope"] is None
     assert payload["afterEnvelope"] is None
     assert payload["promptAfterMention"] is None
