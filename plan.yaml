@@ -96613,7 +96613,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_impl_child_rpc_20260603.gate
     name: Gate child RPC lifecycle
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT: Phase-check gate for child RPC lifecycle, sessions
       helper, cleanup, and result contracts. review_depth: THOROUGH due child processes,
       concurrency/busy state, and externally visible task_id behavior.
@@ -96662,6 +96662,8 @@ phases:
     - pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     - pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-02T20:06:23.176472+00:00'
   - id: pi_impl_child_rpc_20260603.live-child-rpc-proof-support
     name: Add live child RPC proof support for startup, resume, abort, and cleanup
     status: done
