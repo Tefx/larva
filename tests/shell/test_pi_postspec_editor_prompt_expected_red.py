@@ -49,6 +49,7 @@ def _node_prelude(tmp_path: Path) -> str:
         const fakeCli = {json.dumps(str(FAKE_CLI))};
         const baseEnv = (extra = {{}}) => ({{
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+          LARVA_PI_INITIAL_PERSONA_ID: "",
           HOME: {json.dumps(str(tmp_path))},
           ...extra,
         }});

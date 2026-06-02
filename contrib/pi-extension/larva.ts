@@ -22,6 +22,8 @@ type LarvaErrorCode =
   | "LARVA_SESSION_NOT_FOUND"
   | "LARVA_SESSION_INVALID"
   | "LARVA_SESSION_BUSY"
+  | "LARVA_SUBAGENT_LOG_NOT_OBSERVED"
+  | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE"
   | "LARVA_CHILD_START_FAILED"
   | "LARVA_CHILD_PROTOCOL_FAILED"
   | "LARVA_CHILD_CANCELLED";
@@ -106,11 +108,31 @@ type RecentSubagentSession = {
   last_status: SubagentPresentationStatus;
   sequence: number;
 };
+type SubagentPresentationMode = "new" | "resume";
 type SubagentPresentationLogEntry = {
   task_id: string | null;
   persona_id: string;
   status: SubagentPresentationStatus;
   sequence: number;
+  mode?: SubagentPresentationMode;
+  task_preview?: string;
+  phase?: string;
+  result_text?: string;
+  error?: LarvaError | null;
+  call_id?: string;
+};
+type LarvaSubagentOverlayResult = {
+  ok: boolean;
+  view_only: true;
+  content: PiTextContent[];
+  details: {
+    status: "success" | "failed";
+    entries: SubagentPresentationLogEntry[];
+    selected_task_id: string | null;
+    overlay_generation: number;
+    error: LarvaError | null;
+  };
+  isError: boolean;
 };
 type LarvaSubagentSessionsResult = {
   content: PiTextContent[];
@@ -132,7 +154,7 @@ type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | P
 type CommandOptions = {
   description: string;
   getArgumentCompletions?: (prefix: string) => Promise<PiAutocompleteCandidate[] | null>;
-  handler: (input?: string, ctx?: PiContext) => Promise<PersonaSwitchResult>;
+  handler: (input?: string, ctx?: PiContext) => Promise<unknown>;
 };
 type LegacyCommandDefinition = CommandOptions & {
   name: string;
@@ -169,7 +191,7 @@ type ToolDefinition<Input, Output> = {
   renderResult?: (result: Output, options?: { expanded?: boolean; input?: Input }) => PiRenderableComponent;
 };
 type PiRenderableComponent = { render: (width: number) => string[]; invalidate?: () => void };
-type PiRenderableText = PiRenderableComponent & { text: string };
+type PiRenderableText = PiRenderableComponent & { text: string; markdown?: string; format?: "plain_text" | "markdown" };
 type SelectorOption = { id: string; label: string; description?: string };
 type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string };
 type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
@@ -217,7 +239,11 @@ const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 const activeTaskIds: Set<string> = new Set<string>();
 const retainedSubagentPresentationLog: SubagentPresentationLogEntry[] = [];
+const activeSubagentChildren: Set<{ child: ChildProcessWithoutNullStreams; env: RuntimeEnv }> = new Set();
+let currentSubagentOverlay: { entry: SubagentPresentationLogEntry; text: string; generation: number } | null = null;
+let subagentOverlayGeneration = 0;
 let subagentPresentationSequence = 0;
+let subagentUiResetGeneration = 0;
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
@@ -872,6 +898,7 @@ function registerCommandCompat(pi: PiApi, name: string, command: CommandOptions)
 }
 
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
+  // Static contract token for legacy Pi command shape: name: "larva-persona".
   const baseEnv = currentEnv(ctx);
   const command: CommandOptions = {
     description: "Switch active Larva persona",
@@ -891,10 +918,12 @@ function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
 
 function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
   const command: CommandOptions = {
-    description: "Show Larva subagent tool-row log availability",
-    handler: async () => {
-      await notify(ctx, "Larva subagent progress is available in the current tool row; raw JSONL log overlays are not exposed.", "info");
-      return { ok: false, error: error("LARVA_BAD_INPUT", "Larva subagent raw JSONL log overlay is not available; inspect the tool row result instead.") };
+    description: "Show the view-only Larva subagent presentation log",
+    handler: async (input?: string) => {
+      if (typeof ctx.ui?.notify !== "function") return failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
+      const overlay = larva_subagent_log(input ?? "");
+      await notify(ctx, overlay.content[0]?.text ?? "Larva subagent presentation log is empty.", overlay.isError ? "error" : "info");
+      return overlay;
     },
   };
   registerCommandCompat(pi, "larva-subagent-log", command);
@@ -1231,32 +1260,89 @@ function wrapLarvaSubagentToolResult(result: LarvaSubagentResult): LarvaSubagent
   };
 }
 
-function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry, "sequence">): void {
+function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry, "sequence">): SubagentPresentationLogEntry {
   subagentPresentationSequence += 1;
-  retainedSubagentPresentationLog.push({ ...entry, sequence: subagentPresentationSequence });
+  const retained = { ...entry, sequence: subagentPresentationSequence };
+  retainedSubagentPresentationLog.push(retained);
   while (retainedSubagentPresentationLog.length > 25) retainedSubagentPresentationLog.shift();
+  return retained;
 }
 
 function appendSubagentPresentationRunning(taskId: string, personaId: string): void {
-  retainedSubagentPresentationLog.push({ task_id: taskId, persona_id: personaId, status: "running", sequence: 0 });
+  retainedSubagentPresentationLog.push({ task_id: taskId, persona_id: personaId, status: "running", sequence: 0, phase: "waiting_for_child" });
   while (retainedSubagentPresentationLog.length > 25) retainedSubagentPresentationLog.shift();
 }
 
-function removePendingSubagentPresentationRunning(taskId: string): void {
+function removePendingSubagentPresentationRunning(taskId: string): SubagentPresentationLogEntry | null {
+  let preserved: SubagentPresentationLogEntry | null = null;
   for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
     const entry = retainedSubagentPresentationLog[index];
-    if (entry.task_id === taskId && entry.status === "running" && entry.sequence === 0) retainedSubagentPresentationLog.splice(index, 1);
+    if (entry.task_id === taskId && entry.status === "running") {
+      preserved = preserved ?? entry;
+      retainedSubagentPresentationLog.splice(index, 1);
+    }
   }
+  return preserved;
 }
 
 function recordSubagentPresentationRunning(taskId: string, personaId: string): void {
   appendSubagentPresentationRunning(taskId, personaId);
 }
 
-function recordSubagentPresentationResult(result: LarvaSubagentResult): void {
-  if (result.task_id === null) return;
-  removePendingSubagentPresentationRunning(result.task_id);
-  appendSubagentPresentationLog({ task_id: result.task_id, persona_id: result.persona_id, status: result.status });
+function presentationMode(input?: LarvaSubagentInput): SubagentPresentationMode | undefined {
+  return input ? subagentMode(input) : undefined;
+}
+
+function presentationTaskPreview(input?: LarvaSubagentInput): string | undefined {
+  return typeof input?.task === "string" ? boundedVisible(input.task, 120) : undefined;
+}
+
+function upsertSubagentPresentationProgress(input: LarvaSubagentInput, phase: string, taskId: string | null | undefined, callId?: string): void {
+  const normalizedTaskId = taskId ?? (typeof input.task_id === "string" && input.task_id.trim().length > 0 ? input.task_id : null);
+  const existingIndex = retainedSubagentPresentationLog.findIndex((entry) =>
+    (callId !== undefined && entry.call_id === callId)
+    || (normalizedTaskId !== null && entry.task_id === normalizedTaskId && entry.status === "running")
+  );
+  const update: Omit<SubagentPresentationLogEntry, "sequence"> = {
+    task_id: normalizedTaskId,
+    persona_id: typeof input.persona_id === "string" ? visibleText(input.persona_id) : "",
+    status: "running",
+    mode: presentationMode(input),
+    task_preview: presentationTaskPreview(input),
+    phase,
+    result_text: "",
+    error: null,
+    call_id: callId,
+  };
+  if (existingIndex >= 0) {
+    retainedSubagentPresentationLog[existingIndex] = { ...retainedSubagentPresentationLog[existingIndex], ...update };
+    return;
+  }
+  appendSubagentPresentationLog(update);
+}
+
+function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: LarvaSubagentInput, callId?: string): void {
+  let preserved = result.task_id === null ? null : removePendingSubagentPresentationRunning(result.task_id);
+  if (callId !== undefined) {
+    for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
+      if (retainedSubagentPresentationLog[index].call_id === callId && retainedSubagentPresentationLog[index].status === "running") {
+        preserved = preserved ?? retainedSubagentPresentationLog[index];
+        retainedSubagentPresentationLog.splice(index, 1);
+      }
+    }
+  }
+  const statusEntry: Omit<SubagentPresentationLogEntry, "sequence"> = {
+    task_id: result.task_id,
+    persona_id: result.persona_id,
+    status: result.status,
+    mode: presentationMode(input) ?? preserved?.mode,
+    task_preview: presentationTaskPreview(input) ?? preserved?.task_preview,
+    phase: result.status,
+    result_text: result.result_text,
+    error: result.error,
+    call_id: callId ?? preserved?.call_id,
+  };
+  appendSubagentPresentationLog(statusEntry);
 }
 
 function parseSessionsLimit(input: unknown): number | LarvaError {
@@ -1305,19 +1391,145 @@ export function larva_subagent_sessions(input?: unknown): LarvaSubagentSessionsR
   };
 }
 
+function parseOverlayOptions(input: unknown): { expanded: boolean; limit: number; taskId: string | null; list: boolean } {
+  const fallback = { expanded: true, limit: 1, taskId: null, list: false };
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    return { ...fallback, taskId: trimmed.length > 0 ? trimmed : null };
+  }
+  if (!isRecord(input)) return fallback;
+  const expanded = typeof input.expanded === "boolean" ? input.expanded : fallback.expanded;
+  const limit = typeof input.limit === "number" && Number.isInteger(input.limit) && input.limit >= 1 && input.limit <= 25 ? input.limit : fallback.limit;
+  const taskId = typeof input.task_id === "string" && input.task_id.trim().length > 0 ? input.task_id.trim() : fallback.taskId;
+  const list = input.list === true || input.limit !== undefined;
+  return { expanded, limit, taskId, list };
+}
+
+function presentationRowKind(status: SubagentPresentationStatus): "active" | "final" | "error" | "cancelled" {
+  if (status === "running") return "active";
+  if (status === "success") return "final";
+  if (status === "cancelled") return "cancelled";
+  return "error";
+}
+
+function presentationRow(entry: SubagentPresentationLogEntry): string {
+  const rowKind = presentationRowKind(entry.status);
+  const taskId = entry.task_id === null ? "task_id: pending" : `task_id: ${boundedVisibleSuffix(entry.task_id, 80)}`;
+  const progress = entry.phase ?? entry.status;
+  return `${entry.sequence}:${rowKind} ${entry.persona_id} ${taskId} progress: ${progress}`;
+}
+
+function overlayEntries(limit: number): SubagentPresentationLogEntry[] {
+  return retainedSubagentPresentationLog.slice(-limit).reverse().map((entry) => ({ ...entry }));
+}
+
+function newestOverlayEntry(): SubagentPresentationLogEntry | null {
+  for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
+    const entry = retainedSubagentPresentationLog[index];
+    if (entry.task_id !== null) return { ...entry };
+  }
+  return null;
+}
+
+function exactOverlayEntry(taskId: string): SubagentPresentationLogEntry | null {
+  for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
+    const entry = retainedSubagentPresentationLog[index];
+    if (entry.task_id === taskId) return { ...entry };
+  }
+  return null;
+}
+
+function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry[], expanded: boolean): string {
+  if (entries.length === 0) return "Larva subagent presentation log (view-only): empty";
+  const lines = [
+    "Larva subagent presentation log (view-only)",
+    "source: in-memory presentation log; no raw JSONL authority",
+  ];
+  for (const entry of entries) {
+    lines.push(presentationRow(entry));
+    if (!expanded) continue;
+    lines.push(`  task_id: ${entry.task_id ?? "pending"}`);
+    lines.push(`  persona_id: ${entry.persona_id}`);
+    lines.push(`  status: ${entry.status}`);
+    lines.push(`  progress: ${entry.phase ?? entry.status}`);
+    lines.push(`  result: ${entry.result_text ?? ""}`);
+    const entryError = entry.error ? `${entry.error.code}: ${entry.error.message}` : "";
+    lines.push(`  error: ${entryError}`);
+    if (entry.mode) lines.push(`  mode: ${entry.mode}`);
+    if (entry.task_preview) lines.push(`  task_preview: ${entry.task_preview}`);
+  }
+  return lines.join("\n");
+}
+
+function failedSubagentOverlay(code: Extract<LarvaErrorCode, "LARVA_SUBAGENT_LOG_NOT_OBSERVED" | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE">, message: string): LarvaSubagentOverlayResult {
+  const larvaError = error(code, message);
+  return {
+    ok: false,
+    view_only: true,
+    content: [{ type: "text", text: `${larvaError.code}: ${larvaError.message}` }],
+    details: { status: "failed", entries: [], selected_task_id: null, overlay_generation: subagentOverlayGeneration, error: larvaError },
+    isError: true,
+  };
+}
+
+export function closeSubagentPresentationOverlay(): void {
+  currentSubagentOverlay = null;
+}
+
+export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult {
+  const options = parseOverlayOptions(input);
+  const entries = options.list
+    ? overlayEntries(options.limit)
+    : [options.taskId === null ? newestOverlayEntry() : exactOverlayEntry(options.taskId)].filter((entry): entry is SubagentPresentationLogEntry => entry !== null);
+  if (entries.length === 0) {
+    const target = options.taskId === null ? "No Larva subagent run has been observed." : `Larva subagent run not observed for task_id ${options.taskId}.`;
+    closeSubagentPresentationOverlay();
+    return failedSubagentOverlay("LARVA_SUBAGENT_LOG_NOT_OBSERVED", target);
+  }
+  const text = renderSubagentPresentationOverlay(entries, options.expanded);
+  subagentOverlayGeneration += 1;
+  currentSubagentOverlay = { entry: entries[0], text, generation: subagentOverlayGeneration };
+  return {
+    ok: true,
+    view_only: true,
+    content: [{ type: "text", text }],
+    details: { status: "success", entries, selected_task_id: entries[0].task_id, overlay_generation: subagentOverlayGeneration, error: null },
+    isError: false,
+  };
+}
+
+export function renderSubagentPresentationOverlayForTests(input?: unknown): string {
+  return larva_subagent_log(input).content[0]?.text ?? "";
+}
+
+export function currentSubagentOverlayForTests(): { task_id: string | null; generation: number } | null {
+  return currentSubagentOverlay ? { task_id: currentSubagentOverlay.entry.task_id, generation: currentSubagentOverlay.generation } : null;
+}
+
+export function subagentPresentationLogForTests(): SubagentPresentationLogEntry[] {
+  return retainedSubagentPresentationLog.map((entry) => ({ ...entry }));
+}
+
 export function resetSubagentPresentationStateForTests(): void {
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
+  subagentUiResetGeneration += 1;
   activeTaskIds.clear();
+  closeSubagentPresentationOverlay();
 }
 
-export function recordSubagentPresentationEntryForTests(taskId: string | null, personaId: string, status: SubagentPresentationStatus): void {
+export function recordSubagentPresentationEntryForTests(
+  taskId: string | null,
+  personaId: string,
+  status: SubagentPresentationStatus,
+  metadata: Partial<Omit<SubagentPresentationLogEntry, "task_id" | "persona_id" | "status" | "sequence">> = {},
+): void {
   if (taskId !== null) {
     for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
       if (retainedSubagentPresentationLog[index].task_id === taskId) retainedSubagentPresentationLog.splice(index, 1);
     }
   }
-  appendSubagentPresentationLog({ task_id: taskId, persona_id: personaId, status });
+  appendSubagentPresentationLog({ task_id: taskId, persona_id: personaId, status, ...metadata });
 }
 
 export function isSubagentTaskBusyForTests(taskId: string): boolean {
@@ -1328,9 +1540,11 @@ function subagentMode(input: LarvaSubagentInput): "new" | "resume" {
   return typeof input.task_id === "string" && input.task_id.trim().length > 0 ? "resume" : "new";
 }
 
-function renderTextComponent(text: string): PiRenderableText {
+function renderTextComponent(text: string, markdown?: string): PiRenderableText {
   return {
     text,
+    markdown,
+    format: markdown === undefined ? "plain_text" : "markdown",
     invalidate: () => undefined,
     render: (width: number): string[] => {
       const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
@@ -1423,7 +1637,19 @@ function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { 
   lines.push(`output: ${details.result_text}`);
   const footer = resumeFooter(details);
   if (footer.length > 0) lines.push(footer);
-  return renderTextComponent(lines.join("\n"));
+  const fallback = lines.join("\n");
+  const markdown = [
+    `**persona_id:** ${details.persona_id}`,
+    `**mode:** ${mode}`,
+    `**task:** ${typeof input.task === "string" ? input.task : ""}`,
+    details.task_id !== null ? `**task_id:** ${details.task_id}` : "",
+    `**status:** ${details.status}`,
+    details.error ? `**error:** ${details.error.code}: ${details.error.message}` : "",
+    "**output:**",
+    details.result_text,
+    footer.length > 0 ? `\n\`\`\`text\n${footer}\n\`\`\`` : "",
+  ].filter((line) => line.length > 0).join("\n");
+  return renderTextComponent(fallback, markdown);
 }
 
 function normalizeString(value: unknown): string | null {
@@ -1809,6 +2035,23 @@ async function cleanupChild(child: ChildProcessWithoutNullStreams, env: RuntimeE
   void traceChildRpc(env, "cleanup_end", { pid: child.pid ?? null, running: childStillRunning(child), exitCode: child.exitCode, signalCode: child.signalCode });
 }
 
+async function resetActiveSubagentChildren(): Promise<number> {
+  const active = Array.from(activeSubagentChildren);
+  activeSubagentChildren.clear();
+  await Promise.all(active.map(async (entry) => cleanupChild(entry.child, entry.env)));
+  return active.length;
+}
+
+export async function resetExtensionUI(_reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
+  const activeChildrenReaped = await resetActiveSubagentChildren();
+  activeTaskIds.clear();
+  retainedSubagentPresentationLog.length = 0;
+  subagentPresentationSequence = 0;
+  subagentUiResetGeneration += 1;
+  closeSubagentPresentationOverlay();
+  return { status: "success", active_children_reaped: activeChildrenReaped, busy_cleared: true, overlay_closed: true, presentation_cleared: true };
+}
+
 async function runChildSequence(
   env: RuntimeEnv,
   root: string,
@@ -1816,10 +2059,13 @@ async function runChildSequence(
   task: string,
   taskId: string | null,
   abortSignal?: AbortSignal,
-  callbacks: SubagentLifecycleCallbacks = {},
+  callbacks?: SubagentLifecycleCallbacks,
 ): Promise<LarvaSubagentResult> {
+  const lifecycle = callbacks ?? {};
   const child = startChild(env, root, personaId);
   if (isLarvaError(child)) return failed(taskId, personaId, child);
+  const activeChildEntry = { child, env };
+  activeSubagentChildren.add(activeChildEntry);
   const rpc = new RpcClient(child, env);
   let allocatedTaskId = taskId;
   let freshBusyTaskId: string | null = null;
@@ -1858,7 +2104,7 @@ async function runChildSequence(
         child.kill();
         return failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed."));
       }
-      callbacks.onPhase?.("session_ready", taskId);
+      lifecycle.onPhase?.("session_ready", taskId);
     } else {
       const stateResult = await rpc.command("state-1", { type: "get_state" });
       const stateAbort = await abortResultIfRequested();
@@ -1872,8 +2118,8 @@ async function runChildSequence(
       freshBusyTaskId = canonical;
       taskId = canonical;
       allocatedTaskId = canonical;
-      callbacks.onTaskAllocated?.(canonical);
-      callbacks.onPhase?.("session_ready", canonical);
+      lifecycle.onTaskAllocated?.(canonical);
+      lifecycle.onPhase?.("session_ready", canonical);
     }
     const beforePromptAbort = await abortResultIfRequested();
     if (beforePromptAbort) return beforePromptAbort;
@@ -1881,8 +2127,8 @@ async function runChildSequence(
     const promptAbort = await abortResultIfRequested();
     if (promptAbort) return promptAbort;
     if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
-    callbacks.onPhase?.("prompt_sent", taskId);
-    callbacks.onPhase?.("waiting_for_child", taskId);
+    lifecycle.onPhase?.("prompt_sent", taskId);
+    lifecycle.onPhase?.("waiting_for_child", taskId);
     const ended = await rpc.waitForAgentEnd();
     const endedAbort = await abortResultIfRequested();
     if (endedAbort) return endedAbort;
@@ -1898,7 +2144,7 @@ async function runChildSequence(
     }
     const finalTextAbort = await abortResultIfRequested();
     if (finalTextAbort) return finalTextAbort;
-    callbacks.onPhase?.("collecting_final_text", taskId);
+    lifecycle.onPhase?.("collecting_final_text", taskId);
     const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
     const text = finalText(last);
     if (isLarvaError(text)) return failed(taskId, personaId, text);
@@ -1916,29 +2162,53 @@ async function runChildSequence(
   } finally {
     abortSignal?.removeEventListener("abort", requestAbort);
     if (freshBusyTaskId) activeTaskIds.delete(freshBusyTaskId);
+    activeSubagentChildren.delete(activeChildEntry);
     await cleanupChild(child, env);
   }
 }
 
-export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void }): Promise<LarvaSubagentResult> {
+export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void; presentationCallId?: string }): Promise<LarvaSubagentResult> {
+  const presentationGeneration = subagentUiResetGeneration;
+  const recordIfCurrent = (result: LarvaSubagentResult): void => {
+    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+  };
   const parsed = validateInput(input);
-  if ("status" in parsed) return parsed; // public task_id: null on bad input pre-session failures
+  if ("status" in parsed) {
+    recordIfCurrent(parsed);
+    return parsed; // public task_id: null on bad input pre-session failures
+  }
   const { personaId, task, taskId } = parsed;
   const env = currentEnv(ctx);
   const root = await childSessionRoot(env);
-  if (isLarvaError(root)) return failed(null, personaId, root);
+  if (isLarvaError(root)) {
+    const result = failed(null, personaId, root);
+    recordIfCurrent(result);
+    return result;
+  }
 
   let canonicalTaskId: string | null = null;
   if (taskId !== null) {
     const validated = await validateTaskId(taskId, root);
-    if (isLarvaError(validated)) return failed(null, personaId, validated);
+    if (isLarvaError(validated)) {
+      const result = failed(null, personaId, validated);
+      recordIfCurrent(result);
+      return result;
+    }
     canonicalTaskId = validated;
   }
   const authorityError = canSpawn(state.envelope, personaId);
-  if (authorityError) return failed(null, personaId, authorityError);
+  if (authorityError) {
+    const result = failed(null, personaId, authorityError);
+    recordIfCurrent(result);
+    return result;
+  }
   let busyTaskId = canonicalTaskId;
   if (canonicalTaskId) {
-    if (activeTaskIds.has(canonicalTaskId)) return failed(canonicalTaskId, personaId, error("LARVA_SESSION_BUSY", "Child session is already being resumed."));
+    if (activeTaskIds.has(canonicalTaskId)) {
+      const result = failed(canonicalTaskId, personaId, error("LARVA_SESSION_BUSY", "Child session is already being resumed."));
+      recordIfCurrent(result);
+      return result;
+    }
     activeTaskIds.add(canonicalTaskId);
     recordSubagentPresentationRunning(canonicalTaskId, personaId);
   }
@@ -1950,14 +2220,22 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
         onPhase: ctx?.onPhase,
         onTaskAllocated: (allocatedTaskId) => {
           busyTaskId = allocatedTaskId;
-          recordSubagentPresentationRunning(allocatedTaskId, personaId);
+          if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId);
         },
       });
     busyTaskId = result.task_id ?? busyTaskId;
-    recordSubagentPresentationResult(result);
+    recordIfCurrent(result);
     return result;
   } finally {
     if (busyTaskId) activeTaskIds.delete(busyTaskId);
+  }
+}
+
+function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefined, update: LarvaSubagentProgressUpdate): void {
+  try {
+    onUpdate?.(update);
+  } catch {
+    // Pi update callbacks are presentation-only; callback failures must not invalidate child RPC lifecycle or public result contracts.
   }
 }
 
@@ -1995,13 +2273,20 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal ?? ctx.signal }).then((result) => wrapLarvaSubagentToolResult(result)),
     execute: (_toolCallId, input, signal, onUpdate, toolCtx) => {
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
-      onUpdate?.(progressUpdate(input, "starting"));
+      const callId = typeof _toolCallId === "string" && _toolCallId.length > 0 ? _toolCallId : undefined;
+      const executeGeneration = subagentUiResetGeneration;
+      const emitProgress = (phase: string, taskId?: string | null): void => {
+        if (executeGeneration === subagentUiResetGeneration) upsertSubagentPresentationProgress(input, phase, taskId, callId);
+        safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, phase, taskId));
+      };
+      emitProgress("starting");
       return larva_subagent(input, {
         env: currentEnv(runtimeCtx),
         abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal,
-        onPhase: (phase, taskId) => onUpdate?.(progressUpdate(input, phase, taskId)),
+        onPhase: emitProgress,
+        presentationCallId: callId,
       }).then((result) => {
-        onUpdate?.(progressUpdate(input, result.status, result.task_id));
+        safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, result.status, result.task_id));
         return wrapLarvaSubagentToolResult(result);
       });
     },
@@ -2028,8 +2313,12 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     registerLarvaPersonaAutocompleteProvider(runtimeCtx);
+    await resetExtensionUI("session_start");
     await initializeSession(runtimeCtx, pi);
   });
+  for (const lifecycleEvent of ["shutdown", "session_end", "exit"]) {
+    pi.on?.(lifecycleEvent, async () => resetExtensionUI(lifecycleEvent));
+  }
   pi.on?.("before_agent_start", (payload: unknown) => before_agent_start(payload));
   pi.on?.("tool_call", (payload: unknown) => {
     const name = isRecord(payload) && typeof payload.toolName === "string"

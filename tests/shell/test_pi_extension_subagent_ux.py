@@ -480,6 +480,50 @@ def test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases(tmp
     ] * 5
 
 
+def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path: Path) -> None:
+    """Pin view-only presentation overlay rows, expanded details, and reset cleanup."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        mod.resetSubagentPresentationStateForTests();
+        mod.recordSubagentPresentationEntryForTests("/tmp/active.jsonl", "alpha", "running", { phase: "waiting_for_child", mode: "new", task_preview: "active task" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/final.jsonl", "beta", "success", { result_text: "final child output", phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/error.jsonl", "gamma", "failed", { error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "boom" }, phase: "failed" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/cancelled.jsonl", "delta", "cancelled", { error: { code: "LARVA_CHILD_CANCELLED", message: "stopped" }, phase: "cancelled" });
+        const compact = mod.larva_subagent_log({ limit: 4 });
+        const expanded = mod.larva_subagent_log({ expanded: true, limit: 4 });
+        const beforeSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
+        const commandNotifications = [];
+        const commandResults = [];
+        await mod.initializeExtension(
+          { env: baseEnv(), modelRegistry, ui: { notify: (...args) => commandNotifications.push(args), setStatus: () => undefined } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent-log") commandResults.push(command.handler()); } },
+        );
+        const commandResult = await commandResults[0];
+        const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
+        mod.resetSubagentPresentationStateForTests();
+        console.log(JSON.stringify({
+          compactText: compact.content[0].text,
+          expandedText: expanded.content[0].text,
+          viewOnlyShape: { ok: compact.ok, view_only: compact.view_only, isError: compact.isError, noTaskId: !("task_id" in compact), noResultText: !("result_text" in compact) },
+          detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child"].every((needle) => expanded.content[0].text.includes(needle)),
+          rowStatesPresent: ["active alpha", "final beta", "error gamma", "cancelled delta"].every((needle) => compact.content[0].text.includes(needle)),
+          viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true && commandNotifications.some(([message]) => String(message).includes("Larva subagent presentation log (view-only)")),
+          resetEmpty: mod.larva_subagent_sessions({ limit: 10 }).details.sessions.length === 0 && mod.larva_subagent_log({ expanded: true }).details.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
+        }, null, 2));
+        """,
+    )
+
+    assert "source: in-memory presentation log" in payload["compactText"]
+    assert payload["viewOnlyShape"] == {"ok": True, "view_only": True, "isError": False, "noTaskId": True, "noResultText": True}
+    assert payload["rowStatesPresent"] is True
+    assert payload["detailFieldsPresent"] is True
+    assert payload["viewOnlyNoMutation"] is True
+    assert payload["resetEmpty"] is True
+
+
 def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) -> None:
     """Pin row-local renderCall/onUpdate hooks and deterministic preview bounds."""
 
@@ -574,14 +618,17 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
           isError: true,
         };
         const call = { persona_id: "turing", task: "full task text", task_id: finalResult.task_id };
+        const beforeRenderResult = JSON.stringify(finalResult);
         const collapsed = subagent?.renderResult?.(finalResult, { expanded: false, input: call });
         const expanded = subagent?.renderResult?.(finalResult, { expanded: true, input: call });
+        const afterRenderResult = JSON.stringify(finalResult);
         const collapsedText = String(collapsed?.text ?? collapsed ?? "");
         const expandedText = String(expanded?.text ?? expanded ?? "");
         console.log(JSON.stringify({
           componentShapes: {
             collapsedRenderable: typeof collapsed?.render === "function" && Array.isArray(collapsed.render(80)),
             expandedRenderable: typeof expanded?.render === "function" && Array.isArray(expanded.render(80)),
+            expandedMarkdownCapable: expanded?.format === "markdown" && typeof expanded?.markdown === "string" && expanded.markdown.includes("**output:**"),
           },
           collapsedText,
           expandedText,
@@ -599,15 +646,19 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
           ].every((needle) => expandedText.includes(needle)),
           parentFooterPreserved: statuses.some(([key, value]) => key === "larva" && value === "ok"),
           noWidgetDashboard: !/dashboard|widget/i.test(`${collapsedText}\\n${expandedText}`),
+          immutableToolResult: beforeRenderResult === afterRenderResult,
+          plainTextFallbackPreserved: expandedText.includes("output: final output body"),
         }, null, 2));
         """,
     )
 
-    assert payload["componentShapes"] == {"collapsedRenderable": True, "expandedRenderable": True}
+    assert payload["componentShapes"] == {"collapsedRenderable": True, "expandedRenderable": True, "expandedMarkdownCapable": True}
     assert payload["collapsedHasPersonaAndTerminalState"] is True
     assert payload["expandedHasIndependentFields"] is True
     assert payload["parentFooterPreserved"] is True
     assert payload["noWidgetDashboard"] is True
+    assert payload["immutableToolResult"] is True
+    assert payload["plainTextFallbackPreserved"] is True
 
 
 def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:

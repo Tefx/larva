@@ -64,7 +64,7 @@ if (command === "resolve" && maybeFlag === "--json") {
       model: "openai/gpt-5.5",
       capabilities: {},
       spec_version: "0.1.0",
-      spec_digest: `sha256:${idOrFlag}`,
+      spec_digest: idOrFlag === "ok" ? "digest-ok" : `sha256:${idOrFlag}`,
       can_spawn: true,
     },
   });
