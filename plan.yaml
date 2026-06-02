@@ -94950,7 +94950,7 @@ phases:
       blockers observed.'
   - id: pi_impl_contract_20260603.gate
     name: Gate Pi contract harness
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT: Gate review for the contract/harness phase. Scope
       is local-check and phase-check protecting all downstream Pi implementation gates.
       Independence: gate-reviewer is independent from software-architect and python-executor
@@ -94984,6 +94984,8 @@ phases:
     - pi_impl_contract_20260603.traceability-matrix
     - pi_impl_contract_20260603.red-harness-and-runtime-probe
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-02T17:55:48.950552+00:00'
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
   status: locked
