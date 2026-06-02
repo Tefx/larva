@@ -97263,18 +97263,18 @@ phases:
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       will be rejected):
 
-      - [ ] refs confirmation cites abort/progress/final-text passages from `design/pi-coding-agent-integration.md`.
+      - [x] refs confirmation cites abort/progress/final-text passages from `design/pi-coding-agent-integration.md`.
 
-      - [ ] Raw phase-order parser output shows abort phases end with terminal `cancelled`
+      - [x] Raw phase-order parser output shows abort phases end with terminal `cancelled`
       and have no entries after that terminal phase.
 
-      - [ ] Raw txTypes/order output shows `abort` occurs and no `get_last_assistant_text`
+      - [x] Raw txTypes/order output shows `abort` occurs and no `get_last_assistant_text`
       occurs after abort on the abort-wins path.
 
-      - [ ] Raw pytest output for the focused abort-order regression and the existing
+      - [x] Raw pytest output for the focused abort-order regression and the existing
       35 parent-abort verification target passes.
 
-      - [ ] Raw live-child-rpc-proof output shows B1, B2, B3, and B4 still PASS after
+      - [x] Raw live-child-rpc-proof output shows B1, B2, B3, and B4 still PASS after
       the fix.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
