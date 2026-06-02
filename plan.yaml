@@ -97392,7 +97392,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.abort-progress-order-retest-gate
     name: Retest abort progress order and post-abort RPC gate
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: Independent phase-check retest for gate blocker
       B1_ABORT_PROGRESS_ORDER_AND_POST_ABORT_RPC. This step protects `pi_impl_child_rpc_20260603.gate`,
       downstream realtime UI work, runtime conformance, and finalization gates.
@@ -97525,6 +97525,8 @@ phases:
     depends_on:
     - pi_impl_child_rpc_20260603.abort-progress-order-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-02T20:01:09.225695+00:00'
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
   status: locked
