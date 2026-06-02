@@ -94825,6 +94825,183 @@ phases:
     proof and no shared-contract drift.
   depends_on:
   - pi_impl_contract_20260603
+  steps:
+  - id: pi_impl_launcher_extension_20260603.launcher-runtime
+    name: Complete larva pi launcher runtime contract
+    status: pending
+    description: 'TARGET STATE: `larva pi [--persona <id>] [--] <pi args...>` discovers
+      the real Pi executable, selects `-e` or `--extension`, forwards user Pi args
+      unchanged, passes the documented Larva env, preflights missing `--persona` without
+      starting Pi, and leaves model-map/tool-policy content validation to the Pi extension.
+      Scope: src/larva/shell/pi.py, launcher tests. Non-scope: no Pi settings writes,
+      no policy/model-map parsing in launcher, no core semantics changes.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      SIDE_EFFECT_BUDGET: may mutate src/larva/shell/pi.py and launcher tests. Forbidden:
+      **/core/** changes unless a separate contracted helper is created, Pi settings
+      writes, duplicate design docs.
+
+
+      RISK_PROBES:
+
+      - Validate non-interactive mode detector conflict/malformed cases.
+
+      - Prove relative user override env values are forwarded for extension-owned
+      validation, not launcher-rejected.
+
+      - Prove fatal launcher errors exit before Pi starts.'
+    verification: '- [ ] Launcher env includes LARVA_PI_REAL_BIN, LARVA_PI_EXTENSION_FLAG,
+      LARVA_PI_EXTENSION_ENTRY, LARVA_CLI_ARGV_JSON, LARVA_PI_INTERACTIVE_TUI, LARVA_PI_LAUNCHED,
+      and explicit override values as documented.
+
+      - [ ] Missing/invalid Pi binary, unsupported extension flag, missing extension,
+      bad args, and missing --persona preflight emit documented errors before Pi starts.
+
+      - [ ] User Pi args are preserved after Larva-owned extension flag/entry insertion.
+
+      - [ ] Shell Result/I/O boundary and invar constraints are preserved.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - src/larva/shell/pi.py
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    agent: python-executor
+  - id: pi_impl_launcher_extension_20260603.extension-persona-policy
+    name: Complete Pi extension persona projection and adapter-local tool policy
+    status: pending
+    description: 'TARGET STATE: The bundled Pi extension commits active personas atomically,
+      projects prompt/model state through Pi-supported hooks, enforces adapter-local
+      tool policy from canonical config paths only, preserves canonical PersonaSpec
+      meaning from opifex, supports persona command/mention UX, and registers Larva
+      tools before baseline filtering. Scope: contrib/pi-extension/larva.ts, contrib/pi-extension
+      tests/docs. Non-scope: no PersonaSpec schema changes, no compatibility aliases,
+      no legacy ~/.pi/tool-policy.json fallback, no prompt registry dump.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      SIDE_EFFECT_BUDGET: may mutate contrib/pi-extension/larva.ts, contrib/pi-extension
+      tests, and README snippets. Forbidden: src/larva/core shared schema changes,
+      opifex contract changes, local reinterpretation of shared fields.
+
+
+      RISK_PROBES:
+
+      - Restrictive-to-permissive switches restore from startup unfiltered baseline,
+      not current filtered tools.
+
+      - Fail-safe unavailable state cannot falsely show an active persona after rollback
+      failure.
+
+      - `@persona:<id>` mention remains mention-only and preserves Pi file references.'
+    verification: '- [ ] Persona switching and startup commit prove pre-side-effect
+      validation, setModel then setActiveTools ordering, rollback/fail-safe behavior,
+      and status strings.
+
+      - [ ] Tool policy path validation, no legacy fallback, allow/deny filtering,
+      tool_call interception, and Larva-owned custom tool registration are tested.
+
+      - [ ] Persona autocomplete/mentions prove canonical @persona:<id>, cache TTL/reset/in-flight
+      sharing, selector mode gating, and Pi file-reference preservation.
+
+      - [ ] Shared contract evidence confirms PersonaSpec meaning is consumed from
+      opifex without local aliases or schema mutation.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    agent: frontend-engineer
+  - id: pi_impl_launcher_extension_20260603.vertical-slice-proof
+    name: Early Pi vertical slice proof
+    status: pending
+    description: 'PROOF ARTIFACT: Run one complete path from `larva pi --persona <id>`
+      through real extension loading, active persona projection, command completion/status,
+      and one safe Pi interaction using real implementations. This is an early vertical
+      slice and must not use stubs at layer boundaries.
+
+
+      SIDE_EFFECT_BUDGET: read-only verification. Forbidden: modifying code, substituting
+      mock-only proof for runtime proof.
+
+
+      RISK_PROBES:
+
+      - Confirm the selected extension flag and extension entry are the actual runtime
+      path.
+
+      - Confirm active persona status is user-observable, not just internal state.
+
+      - Confirm missing live Pi target is reported as environment blocker with exact
+      command/target.'
+    verification: '- [ ] Exact launch command/target/URL/session and tested Pi version/commit
+      are recorded.
+
+      - [ ] Evidence shows extension loaded, active persona visible, and one safe
+      operation reaches the real entrypoint path.
+
+      - [ ] No _Runtime/_Stub/_Placeholder production dependency is used in the path.
+
+      - [ ] If blocked, evidence identifies exact missing Pi target/capability without
+      claiming PASS.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_impl_launcher_extension_20260603.launcher-runtime
+    - pi_impl_launcher_extension_20260603.extension-persona-policy
+    agent: integration-verifier
+  - id: pi_impl_launcher_extension_20260603.gate
+    name: Gate launcher and extension runtime
+    status: pending
+    description: 'DECISION ARTIFACT: Phase-check gate for launcher and extension/persona/policy
+      runtime. Protects downstream child RPC and realtime UI gates. review_depth:
+      THOROUGH because this phase touches CLI, Pi extension runtime, shared contracts,
+      tool policy, and user-visible UX.
+
+
+      SIDE_EFFECT_BUDGET: read-only review. Forbidden: approving handler-only or mock-only
+      runtime evidence for runnable surfaces.
+
+
+      RISK_PROBES:
+
+      - Gate rejects schema drift from opifex and adapter-local policy leaking into
+      PersonaSpec.
+
+      - Gate rejects runtime proof that lacks actual launched entrypoint evidence.
+
+      - Gate rejects legacy fallback or alias behavior.'
+    verification: '- [ ] All phase implementation and vertical-slice steps have complete
+      checklist receipts.
+
+      - [ ] Gate decision basis proves every OWNED launcher/persona/policy requirement
+      or blocks with remediation.
+
+      - [ ] Runtime evidence identifies startup path, exact launch command, extension
+      loading, and active persona observability.
+
+      - [ ] Shared contract conformance evidence cites opifex refs and has no local
+      reinterpretation.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    depends_on:
+    - pi_impl_launcher_extension_20260603.launcher-runtime
+    - pi_impl_launcher_extension_20260603.extension-persona-policy
+    - pi_impl_launcher_extension_20260603.vertical-slice-proof
+    agent: gate-reviewer
 - id: pi_impl_child_rpc_20260603
   name: Pi larva_subagent Child RPC Lifecycle 2026-06-03
   status: locked
