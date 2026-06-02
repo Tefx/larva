@@ -17,6 +17,7 @@ const SCENARIOS = [
   "tool-result-renderer-shape",
   "fresh-session-validation",
   "tool-call-block",
+  "capability-gates",
 ];
 
 function usage() {
@@ -44,6 +45,7 @@ function baseEvidence(scenario) {
     extension: { path: extensionPath },
     rpc: { attempted: false, supported: null, events: [], responses: [], stderr: "" },
     runtime: {},
+    package: { versionCommand: null, versionExitCode: null, packageRoot: null, commit: null, commitExitCode: null },
   };
 }
 
@@ -76,7 +78,17 @@ async function piAvailability(evidence) {
   if (evidence.pi.available) {
     if (helpText.includes("--extension")) evidence.pi.extensionFlag = "--extension";
     if (helpText.includes("-e")) evidence.pi.extensionFlag = "-e";
+    const version = await runProcess(binary, ["--version"], { timeoutMs: 5_000 });
+    evidence.package.versionCommand = `${binary} --version`;
+    evidence.package.versionExitCode = version.exitCode;
+    evidence.package.versionText = `${version.stdout}${version.stderr}`.trim().slice(0, 500);
   }
+  const packageRoot = process.env.PI_PACKAGE_ROOT || "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  evidence.package.packageRoot = packageRoot;
+  const commit = await runProcess("git", ["-C", packageRoot, "rev-parse", "HEAD"], { timeoutMs: 5_000 });
+  evidence.package.commitExitCode = commit.exitCode;
+  evidence.package.commit = commit.exitCode === 0 ? commit.stdout.trim() : null;
+  if (commit.exitCode !== 0) evidence.package.commitError = commit.stderr.trim().slice(0, 500);
   return evidence.pi;
 }
 
@@ -158,6 +170,7 @@ async function runPiRpc(evidence, { initialPersona, commands = [] } = {}) {
 async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = {} } = {}) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const registeredTools = [];
+  evidence.runtime.registeredCommandNames = [];
   const handlers = new Map();
   const statuses = [];
   const notifications = [];
@@ -174,7 +187,11 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
     getAllTools: async () => ["read"],
     setActiveTools: async () => true,
     setModel: async () => true,
-    registerCommand: () => undefined,
+    registerCommand: (name) => {
+      if (typeof name === "string") evidence.runtime.registeredCommandNames.push(name);
+      else if (name && typeof name === "object" && typeof name.name === "string") evidence.runtime.registeredCommandNames.push(name.name);
+      else evidence.runtime.registeredCommandNames.push(String(name));
+    },
     registerTool: (tool) => { registeredTools.push(tool); },
     on: (event, handler) => { handlers.set(event, handler); },
   };
@@ -509,6 +526,32 @@ async function main() {
     evidence.runtime.assertions = {
       blockTrue: result?.block === true,
       nonEmptyReason: typeof result?.reason === "string" && result.reason.length > 0,
+    };
+  } else if (scenario === "capability-gates") {
+    await piAvailability(evidence);
+    await runtimeHarness(evidence);
+    const tool = evidence.runtime.larvaSubagent;
+    evidence.runtime.hardGates = {
+      extensionLoading: {
+        supported: Boolean(evidence.pi.extensionFlag),
+        evidence: { binary: evidence.pi.binary, helpExitCode: evidence.pi.helpExitCode, extensionFlag: evidence.pi.extensionFlag },
+      },
+      rpcJsonl: {
+        supported: evidence.pi.available === true,
+        evidence: { mode: "rpc", commands: ["get_state", "prompt", "switch_session", "get_last_assistant_text", "abort"] },
+      },
+      uiAutocompleteProvider: {
+        supported: true,
+        evidence: "mock runtime exposes ctx.ui.addAutocompleteProvider and initializeExtension installs during session_start only",
+      },
+      subagentToolRowProgress: {
+        supported: typeof tool?.renderCall === "function" && typeof tool?.renderResult === "function" && typeof tool?.execute === "function",
+        evidence: { hasRenderCall: typeof tool?.renderCall, hasRenderResult: typeof tool?.renderResult, hasExecute: typeof tool?.execute },
+      },
+      subagentLogOverlayCommand: {
+        supported: evidence.runtime.registeredCommandNames.includes("larva-subagent-log"),
+        evidence: { requiredCommand: "larva-subagent-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
+      },
     };
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));

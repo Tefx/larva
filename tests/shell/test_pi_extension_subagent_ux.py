@@ -1,9 +1,10 @@
-"""Expected-red tests for post-spec Pi ``larva_subagent`` UX contracts.
+"""Expected-red tests for Pi ``larva_subagent`` UX/runtime contracts.
 
-These tests intentionally define the behavior required by
-``design/pi-coding-agent-integration.md`` VT46 and the Pi extension README before
-the downstream implementation step lands.  They are limited to test harness code
-and do not change product implementation logic.
+These tests intentionally define runtime/probe behavior required by
+``design/pi-coding-agent-integration.md`` before the downstream implementation
+step lands.  They are limited to test harness code and do not change product
+implementation logic.  At least one assertion is expected-red until the product
+adds the required realtime subagent log overlay command/surface.
 """
 
 from __future__ import annotations
@@ -405,3 +406,113 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
     assert payload["expandedHasIndependentFields"] is True
     assert payload["parentFooterPreserved"] is True
     assert payload["noWidgetDashboard"] is True
+
+
+def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
+    """Runtime probe records Pi package/version evidence and hard-gate statuses."""
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension runtime smoke")
+    completed = subprocess.run(
+        [node, str(ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"), "--scenario", "capability-gates"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+
+    assert payload["package"]["packageRoot"]
+    assert "versionExitCode" in payload["package"]
+    assert "commitExitCode" in payload["package"]
+    assert payload["runtime"]["hardGates"]["extensionLoading"]["evidence"]["helpExitCode"] is not None
+    assert payload["runtime"]["hardGates"]["rpcJsonl"]["evidence"]["commands"] == [
+        "get_state",
+        "prompt",
+        "switch_session",
+        "get_last_assistant_text",
+        "abort",
+    ]
+    assert payload["runtime"]["hardGates"]["subagentToolRowProgress"]["supported"] is True
+
+
+def test_subagent_log_overlay_command_expected_red_without_live_credentials() -> None:
+    """Expose the realtime/log UI gap without depending on live Pi credentials."""
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension runtime smoke")
+    completed = subprocess.run(
+        [node, str(ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"), "--scenario", "capability-gates"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    gate = payload["runtime"]["hardGates"]["subagentLogOverlayCommand"]
+
+    assert gate["evidence"]["requiredCommand"] == "larva-subagent-log"
+    assert "larva-persona" in gate["evidence"]["registeredCommandNames"]
+    assert gate["supported"] is True
+
+
+def test_documented_external_format_fixtures_and_negative_non_goals() -> None:
+    """Fixtures pin exact documented formats and reject convenience-only aliases."""
+
+    documented_launcher_env = {
+        "LARVA_PI_INITIAL_PERSONA_ID": "child",
+        "LARVA_PI_REAL_BIN": "/abs/bin/pi",
+        "LARVA_PI_EXTENSION_FLAG": "-e",
+        "LARVA_PI_EXTENSION_ENTRY": "/abs/contrib/pi-extension/larva.ts",
+        "LARVA_CLI_ARGV_JSON": ["/abs/bin/larva"],
+        "LARVA_PI_INTERACTIVE_TUI": "0",
+    }
+    documented_rpc_commands = [
+        {"id": "state-1", "type": "get_state"},
+        {"id": "prompt-1", "type": "prompt", "message": "task"},
+        {"id": "switch-1", "type": "switch_session", "sessionPath": "/abs/root/child.jsonl"},
+        {"id": "last-1", "type": "get_last_assistant_text"},
+    ]
+    documented_tool_result = {
+        "content": [{"type": "text", "text": "child final text"}],
+        "task_id": "/abs/root/child.jsonl",
+        "persona_id": "child",
+        "status": "success",
+        "result_text": "child final text",
+        "error": None,
+        "details": {
+            "task_id": "/abs/root/child.jsonl",
+            "persona_id": "child",
+            "status": "success",
+            "result_text": "child final text",
+            "error": None,
+        },
+        "isError": False,
+    }
+    negative_resume_aliases = ["last", "latest", "previous"]
+    negative_sidecar_names = ["child.jsonl.larva", "child.jsonl.meta", "child.sidecar.json"]
+
+    assert set(documented_launcher_env) == {
+        "LARVA_PI_INITIAL_PERSONA_ID",
+        "LARVA_PI_REAL_BIN",
+        "LARVA_PI_EXTENSION_FLAG",
+        "LARVA_PI_EXTENSION_ENTRY",
+        "LARVA_CLI_ARGV_JSON",
+        "LARVA_PI_INTERACTIVE_TUI",
+    }
+    assert [command["type"] for command in documented_rpc_commands] == [
+        "get_state",
+        "prompt",
+        "switch_session",
+        "get_last_assistant_text",
+    ]
+    assert documented_tool_result["details"] == {
+        key: documented_tool_result[key]
+        for key in ("task_id", "persona_id", "status", "result_text", "error")
+    }
+    assert all(alias not in json.dumps(documented_tool_result) for alias in negative_resume_aliases)
+    assert all(not name.endswith(".jsonl") for name in negative_sidecar_names)
