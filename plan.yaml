@@ -98914,11 +98914,13 @@ phases:
     name: Gate runtime conformance and full verification
     status: pending
     description: 'DECISION ARTIFACT: Full-plan-check gate for Pi runtime liveness,
-      shared spec conformance, and full verification. review_depth: THOROUGH.
+      shared spec conformance, runtime remediation retests, overlay authority adjudication,
+      and full verification. review_depth: THOROUGH.
 
 
       SIDE_EFFECT_BUDGET: read-only review. Forbidden: opening gate with NEEDS_TEST/UNPROVEN
-      blocker-class runtime obligations.
+      blocker-class runtime obligations, accepting mock provenance as live Pi capability
+      evidence, or bypassing the B3 overlay authority decision.
 
 
       RISK_PROBES:
@@ -98929,23 +98931,30 @@ phases:
       proof.
 
       - Gate requires remediation path for any broad verifier failure that intersects
-      finalization.'
-    verification: '- [ ] Runtime smoke, spec conformance, and full guard evidence
-      are reviewed with a structured decision basis.
+      finalization.
+
+      - Gate verifies retest evidence supersedes the original runtime/spec blocker
+      findings before finalization proceeds.'
+    verification: '- [ ] Runtime smoke retest, spec conformance retest, overlay adjudication,
+      and full guard evidence are reviewed with a structured decision basis.
 
       - [ ] Every OWNED requirement is PROVEN or has blocking remediation; unresolved
       non-blockers include non-intersection evidence.
 
-      - [ ] Hard Pi capability gaps block PASS and require architecture re-adjudication.
+      - [ ] Hard Pi capability gaps block PASS unless design-aligned degraded behavior
+      is explicitly authorized and proven user-observable.
+
+      - [ ] B3 overlay disposition is AUTHORIZED with aligned expectations, or REJECTED/AMBIGUOUS_BLOCKING
+      with downstream remediation ownership.
 
       - [ ] OPEN only if finalization can proceed without bypassing behavioral/runtime
       obligations.'
     refs:
     - design/pi-coding-agent-integration.md
     depends_on:
-    - pi_impl_runtime_conformance_20260603.full-runtime-smoke
-    - pi_impl_runtime_conformance_20260603.shared-spec-conformance
     - pi_impl_runtime_conformance_20260603.full-invar-guard
+    - retest-full-runtime-smoke
+    - retest-shared-spec-conformance
     agent: gate-reviewer
   - id: fix-runtime-conformance-blockers
     name: Fix runtime conformance blockers from smoke and spec audits
