@@ -94678,3 +94678,10 @@ phases:
     proof and no shared-contract drift.
   depends_on:
   - pi_impl_contract_20260603
+- id: pi_impl_child_rpc_20260603
+  name: Pi larva_subagent Child RPC Lifecycle 2026-06-03
+  status: locked
+  gate: larva_subagent lifecycle and public task_id behavior are implemented and proven
+    with cleanup and failure-path evidence.
+  depends_on:
+  - pi_impl_launcher_extension_20260603
