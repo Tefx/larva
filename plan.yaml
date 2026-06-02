@@ -94665,7 +94665,7 @@ phases:
       \ with no changed files.\ngaps: []"
 - id: pi_impl_contract_20260603
   name: Pi Integration Contract Harness 2026-06-03
-  status: pending
+  status: in_progress
   gate: Architecture basis and proof harness are complete enough to unlock implementation
     without duplicate design authority.
   depends_on:
@@ -94674,7 +94674,7 @@ phases:
   steps:
   - id: pi_impl_contract_20260603.traceability-matrix
     name: Build Pi integration requirement-to-checklist matrix
-    status: pending
+    status: claimed
     description: 'ACCEPTED CONTRACT ARTIFACT: Extract implementation obligations from
       the approved design and opifex shared contracts into one requirement-to-checklist
       matrix embedded in step evidence. Scope covers launcher/runtime, Pi extension
@@ -94723,6 +94723,8 @@ phases:
     - ../opifex/conformance/shared_surfaces.yaml
     - ../opifex/conformance/case_matrix/larva/*
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-06-02T17:29:07.089786+00:00'
   - id: pi_impl_contract_20260603.red-harness-and-runtime-probe
     name: Define expected-red Pi harness and runtime capability probe
     status: pending
