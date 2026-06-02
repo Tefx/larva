@@ -96207,11 +96207,11 @@ phases:
 
       - Confirm no local PersonaSpec reinterpretation conflicts with opifex schema
       or final canonical contract.'
-    verification: '- [ ] Negative shared-contract probe rerun from a fresh checkout/workspace
+    verification: '- [x] Negative shared-contract probe rerun from a fresh checkout/workspace
       state and raw output proves missing `description`, wrong `spec_version`, bad
       capability posture, and extra/legacy top-level keys all fail closed.
 
-      - [ ] Existing phase gate commands/equivalents rerun with raw stdout/stderr:
+      - [x] Existing phase gate commands/equivalents rerun with raw stdout/stderr:
       `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
       tests/shell/test_pi_extension_real_runtime.py -q`; `node contrib/pi-extension/test-tool-policy-paths.mjs`;
       `node contrib/pi-extension/test-autocomplete-runtime.mjs --case mention-namespace`;
@@ -96219,13 +96219,13 @@ phases:
       `node contrib/pi-extension/test-model-map-runtime.mjs`; and live Pi vertical-slice
       proof or exact equivalent real-entrypoint proof.
 
-      - [ ] Gate decision basis maps B1.R1-B1.R5 to `PROVEN` with evidence refs and
+      - [x] Gate decision basis maps B1.R1-B1.R5 to `PROVEN` with evidence refs and
       reports `gate_open_allowed=true`.
 
-      - [ ] Blocker ledger is empty: `blockers=[]`, no residual B1, no new shared-contract
+      - [x] Blocker ledger is empty: `blockers=[]`, no residual B1, no new shared-contract
       drift, no handler-only/mock-only runtime proof substitution.
 
-      - [ ] Checklist receipt states downstream phases remain blocked unless this
+      - [x] Checklist receipt states downstream phases remain blocked unless this
       retest gate is complete and passing.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- ../opifex/design/final-canonical-contract.md — <key PersonaSpec forbidden-field/posture\
