@@ -95471,7 +95471,7 @@ phases:
       - gate_decision_basis includes all required fields: true.'
 - id: pi_impl_launcher_extension_20260603
   name: Pi Launcher, Extension, Persona, and Policy Runtime 2026-06-03
-  status: in_progress
+  status: done
   gate: Launcher and extension/persona/policy runtime are implemented with live entrypoint
     proof and no shared-contract drift.
   depends_on:
@@ -96147,7 +96147,7 @@ phases:
       Deviation Records: none.'
   - id: canonical-personaspec-gate-retest
     name: Retest gate for canonical PersonaSpec validation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -96266,9 +96266,92 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-02T18:52:55.948578+00:00'
+    done_at: '2026-06-02T19:01:00.820805+00:00'
+    evidence: 'PASS / GATE OPEN: canonical PersonaSpec validation retest completed.
+
+
+      refs Read Confirmation:
+
+      - ../opifex/design/final-canonical-contract.md read: PersonaSpec requires capabilities
+      and exact postures; tools/side_effect_policy/variables/variant/_registry/active
+      invalid.
+
+      - ../opifex/contracts/persona_spec.schema.json read: description required/minLength
+      1, spec_version const 0.1.0, capability enum, additionalProperties=false.
+
+      - ../opifex/conformance/shared_surfaces.yaml read: minimum coverage missing_required,
+      extra_key, legacy_alias, bad_enum; fail-closed canonical behavior.
+
+      - design/pi-coding-agent-integration.md read: resolve output must satisfy canonical
+      PersonaSpec before PersonaEnvelope construction.
+
+      - contrib/pi-extension/larva.ts, tests/shell/test_pi_extension_contract.py,
+      scripts/pi-extension-runtime-smoke.mjs, tests/fixtures/pi/fake-larva-cli.mjs
+      inspected.
+
+
+      Retest Commands / Mainline verification:
+
+      - `node contrib/pi-extension/test-personaspec-fail-closed.mjs` -> exit 0; positive
+      canonical spec ok; negatives missing-description, bad-spec-version, bad-posture,
+      legacy-tools, legacy-side-effect-policy, legacy-variables, legacy-variant, legacy-registry,
+      legacy-active, extra-key all ok=false code=LARVA_PERSONA_NOT_FOUND before=ok
+      after=ok sideEffects=[] statuses=[].
+
+      - `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      tests/shell/test_pi_extension_real_runtime.py -q` -> 83 passed in 30.54s.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs` -> tool-policy paths
+      PASS.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs` -> model-map runtime
+      PASS.
+
+      - Gate evidence also reran autocomplete mention/cache and live Pi vertical slice/RPC
+      smoke: pi 0.78.0, commit dd24b116bd4aeedb07012cc8b152239c488eb95b, extension
+      flag -e, setStatus larva startup/ok, prompt success.
+
+      - Empty evidence commit: a3bfcb2 gate: canonical personaspec retest evidence.
+
+      - Mainline squash merge had no file delta.
+
+
+      B1 Gate Matrix:
+
+      - B1.R1 description required/non-empty: PROVEN.
+
+      - B1.R2 spec_version const: PROVEN.
+
+      - B1.R3 capability posture enum: PROVEN.
+
+      - B1.R4 additionalProperties=false and legacy keys rejected: PROVEN.
+
+      - B1.R5 runtime malformed shared payload probes: PROVEN.
+
+
+      Blocker Ledger: none; blockers=[].
+
+      Gate Decision: verdict PASS, gate_decision GATE OPEN, gate_open_allowed=true,
+      orchestrator_action_hint COMPLETE.
+
+
+      Checklist receipt:
+
+      - Negative shared-contract probe rerun fresh and raw output proves malformed
+      cases fail closed: true.
+
+      - Existing phase gate commands/equivalents rerun with raw stdout/stderr: true.
+
+      - Gate decision basis maps B1.R1-B1.R5 to PROVEN and gate_open_allowed=true:
+      true.
+
+      - Blocker ledger empty, no residual B1/new drift/mock-only substitution: true.
+
+      - Downstream phases remain blocked unless this retest gate complete and passing:
+      true; this completion opens the phase gate.'
 - id: pi_impl_child_rpc_20260603
   name: Pi larva_subagent Child RPC Lifecycle 2026-06-03
-  status: locked
+  status: pending
   gate: larva_subagent lifecycle and public task_id behavior are implemented and proven
     with cleanup and failure-path evidence.
   depends_on:
