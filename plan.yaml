@@ -95974,23 +95974,23 @@ phases:
       - Fixture repairs must not mask the bug by using convenience-only or non-canonical
       success fixtures; at least one success fixture must be minimal canonical opifex
       shape.'
-    verification: '- [ ] `PersonaSpec` TypeScript type and runtime guard require non-empty
+    verification: '- [x] `PersonaSpec` TypeScript type and runtime guard require non-empty
       `description`, const `spec_version === "0.1.0"`, canonical capability posture
       enum values, and top-level additionalProperties=false.
 
-      - [ ] Runtime negative shared-contract probes prove missing `description`, bad
+      - [x] Runtime negative shared-contract probes prove missing `description`, bad
       `spec_version`, bad capability posture, and extra/legacy keys (`tools`, `side_effect_policy`,
       or equivalent) fail closed before `PersonaEnvelope` construction or active-state
       mutation.
 
-      - [ ] Positive runtime probe proves a canonical minimal PersonaSpec with `description`,
+      - [x] Positive runtime probe proves a canonical minimal PersonaSpec with `description`,
       `prompt`, `model`, `capabilities`, and `spec_version: "0.1.0"` still switches
       successfully.
 
-      - [ ] Existing Pi extension contract/tool-policy/model-map/autocomplete/runtime
+      - [x] Existing Pi extension contract/tool-policy/model-map/autocomplete/runtime
       tests affected by the change are rerun with raw stdout/stderr and no regressions.
 
-      - [ ] Evidence includes a checklist receipt mapping each B1 requirement-matrix
+      - [x] Evidence includes a checklist receipt mapping each B1 requirement-matrix
       row to a passing proof artifact.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- ../opifex/design/final-canonical-contract.md — <key PersonaSpec forbidden-field/posture\
