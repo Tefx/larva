@@ -98036,7 +98036,7 @@ phases:
       not captured; overlay PASS not claimed.'
   - id: pi_impl_realtime_ui_20260603.wiring-audit
     name: Wiring audit for realtime/log UI public surfaces
-    status: claimed
+    status: pending
     description: 'CONFORMANCE ARTIFACT: Verify every new public command/tool/helper/render
       surface is reachable at runtime: larva_subagent, required larva_subagent_sessions,
       renderCall/renderResult, execute onUpdate handling, /larva-subagent-log slash
@@ -98077,8 +98077,6 @@ phases:
     depends_on:
     - pi_impl_realtime_ui_20260603.complete-ui-target
     agent: wiring-auditor
-    claimed_by: wiring-auditor
-    claimed_at: '2026-06-02T20:55:33.757569+00:00'
   - id: pi_impl_realtime_ui_20260603.gate
     name: Gate complete realtime/log UI target
     status: pending
