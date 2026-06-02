@@ -95866,7 +95866,7 @@ phases:
     skipped_reason: absorbed
   - id: canonical-personaspec-fail-closed-fix
     name: Fix canonical PersonaSpec fail-closed validation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -96026,6 +96026,8 @@ phases:
     depends_on:
     - pi_impl_launcher_extension_20260603.vertical-slice-proof
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T18:43:06.517302+00:00'
   - id: canonical-personaspec-gate-retest
     name: Retest gate for canonical PersonaSpec validation
     status: pending
