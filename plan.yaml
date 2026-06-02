@@ -96654,7 +96654,7 @@ phases:
     agent: gate-reviewer
   - id: pi_impl_child_rpc_20260603.live-child-rpc-proof-support
     name: Add live child RPC proof support for startup, resume, abort, and cleanup
-    status: claimed
+    status: done
     description: 'TARGET STATE: Provide real or controlled-live proof support for
       the failed child RPC lifecycle evidence gaps B1-B4 from `pi_impl_child_rpc_20260603.integration-proof`.
       This step may add or adjust Pi extension runtime smoke/proof harness support
@@ -96837,6 +96837,99 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-02T19:32:45.182349+00:00'
+    done_at: '2026-06-02T19:43:32.980211+00:00'
+    evidence: 'SUCCESS/PASS: live/controlled-live child RPC proof support added.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: child startup/resume/abort/cleanup
+      obligations and verification targets for child RPC/no-orphan proof.
+
+      - scripts/pi-extension-runtime-smoke.mjs read/updated: added live-child-rpc-proof
+      scenario.
+
+      - contrib/pi-extension/larva.ts read/updated: child process/RPC/cleanup implementation
+      and proof instrumentation.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - scripts/pi-extension-runtime-smoke.mjs
+
+      - tests/fixtures/pi/fake-larva-cli.mjs
+
+      - tests/shell/test_pi_extension_real_runtime.py
+
+
+      Worker commit: b9c7b1afa4707f5adbe663c93faa12af0dcd2266.
+
+      Mainline squash commit: 5af12e6 [vectl] step-pi_impl_child_rpc_20260603.live-child-rpc-proof-support
+      completed.
+
+
+      Controlled-live proof support receipt:
+
+      - Pi binary: pi; version 0.78.0; commit dd24b116bd4aeedb07012cc8b152239c488eb95b;
+      extension flag -e; extension entry contrib/pi-extension/larva.ts.
+
+      - Scenario: `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000`.
+
+      - Mainline output: controlledLive.status=PASS; trace file under temp child session
+      root.
+
+
+      B1 startup: PASS; live child spawn through real pi -e extension --mode rpc --session-dir,
+      get_state sessionFile, prompt, agent_end, get_last_assistant_text, result_text
+      B1_CHILD_RPC_OK.
+
+      B2 resume: PASS; reused task_id, switch_session, new prompt, agent_end, get_last_assistant_text,
+      result_text B2_RESUME_RPC_OK.
+
+      B3 abort: PASS; abort_start, abort RPC frame, abort_rpc_result, cleanup_end,
+      child not alive after cleanup, result_status cancelled.
+
+      B4 orphans: PASS; PID lifecycle for fresh/resume/abort recorded with after_alive=false;
+      cleanup events child_spawn/child_exit/cleanup_start/cleanup_sigterm/cleanup_end.
+
+
+      Mainline verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0; controlledLive.status PASS and B1-B4 live
+      proof data.
+
+      - `pytest tests/shell/test_pi_extension_real_runtime.py -q` -> 26 passed in
+      28.57s.
+
+      - `pytest tests/shell/test_pi_extension_subagent_ux.py -q` -> 9 passed in 17.96s.
+
+      - `git diff --check HEAD~1 HEAD` before merge -> exit 0.
+
+
+      Checklist receipt:
+
+      - B1 startup support real/controlled-live with get_state/session file/prompt/agent_end/get_last_assistant_text:
+      true.
+
+      - B2 resume support with switch_session/reused task_id/new prompt/resumed output:
+      true.
+
+      - B3 abort propagation to child cleanup: true.
+
+      - B4 orphan cleanup with PID lifecycle and before/after checks: true.
+
+      - Evidence distinguishes real/controlled-live from fake/mock/pipeline-only:
+      true; fake_child_or_pure_unit_evidence_used_for_closure=false.
+
+      - No completed plan steps edited and public LarvaSubagentResult contract unchanged:
+      true.
+
+
+      Deviation Records: none.'
   - id: pi_impl_child_rpc_20260603.live-child-rpc-retest-gate
     name: Retest gate for live child RPC startup, resume, abort, and cleanup proof
     status: pending
