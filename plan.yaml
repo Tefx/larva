@@ -98776,7 +98776,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_impl_runtime_conformance_20260603.shared-spec-conformance
     name: Shared contract and Pi design spec conformance audit
-    status: claimed
+    status: pending
     description: 'CONFORMANCE ARTIFACT: Adversarial divergence audit comparing implementation
       against design/pi-coding-agent-integration.md and opifex shared contract sources.
       Scope: shared PersonaSpec consumption, launcher/env contracts, Pi extension
@@ -98814,8 +98814,6 @@ phases:
     - ../opifex/conformance/shared_surfaces.yaml
     - ../opifex/conformance/case_matrix/larva/*
     agent: spec-verifier
-    claimed_by: spec-verifier
-    claimed_at: '2026-06-02T21:30:37.360021+00:00'
   - id: pi_impl_runtime_conformance_20260603.full-invar-guard
     name: Full repo invar guard and regression proof
     status: done
