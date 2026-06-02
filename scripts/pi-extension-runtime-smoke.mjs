@@ -101,6 +101,7 @@ function runtimeEnv(overrides = {}) {
     LARVA_PI_REAL_BIN: process.env.PI_BIN || "pi",
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,
+    LARVA_PI_LAUNCHED: "1",
     ...overrides,
   };
 }

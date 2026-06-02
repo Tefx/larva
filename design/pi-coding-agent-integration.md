@@ -1329,7 +1329,10 @@ Internal launcher-to-extension environment:
   forwarded Pi args as interactive TUI; `0` for RPC, print, JSON, SDK, malformed
   mode, unknown mode, or conflicting mode/print markers.
 - `LARVA_PI_LAUNCHED`: literal `1`, used only to prevent accidental recursive
-  launcher execution.
+  launcher execution. The extension consumes this sentinel before using
+  launcher-provided child process fields; without it, child/RPC spawning fails
+  closed with `LARVA_CHILD_START_FAILED` rather than executing a possibly
+  recursive launcher path.
 
 Real Pi executable discovery:
 
@@ -1560,7 +1563,9 @@ Command and hook contracts:
   `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
   `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
   `LARVA_PI_INTERACTIVE_TUI`, and `LARVA_PI_LAUNCHED` from the launcher
-  environment.
+  environment. `LARVA_PI_LAUNCHED` is consumed as the recursion-prevention
+  sentinel for child Pi launches before the extension trusts `LARVA_PI_REAL_BIN`,
+  `LARVA_PI_EXTENSION_FLAG`, or `LARVA_PI_EXTENSION_ENTRY`.
 - Child sessions expose `larva_subagent` only when the child persona's own
   `can_spawn` and child tool policy allow it. Nested spawning is not special-cased.
 

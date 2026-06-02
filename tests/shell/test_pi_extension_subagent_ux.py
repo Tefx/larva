@@ -55,6 +55,7 @@ def _node_prelude(tmp_path: Path) -> str:
           LARVA_PI_REAL_BIN: process.execPath,
           LARVA_PI_EXTENSION_FLAG: "-e",
           LARVA_PI_EXTENSION_ENTRY: "fake-extension-entry.ts",
+          LARVA_PI_LAUNCHED: "1",
           LARVA_PI_CHILD_SESSION_DIR: childRoot,
           HOME: tmpRoot,
           ...extra,
@@ -728,6 +729,7 @@ def test_documented_external_format_fixtures_and_negative_non_goals() -> None:
         "LARVA_PI_REAL_BIN": "/abs/bin/pi",
         "LARVA_PI_EXTENSION_FLAG": "-e",
         "LARVA_PI_EXTENSION_ENTRY": "/abs/contrib/pi-extension/larva.ts",
+        "LARVA_PI_LAUNCHED": "1",
         "LARVA_CLI_ARGV_JSON": ["/abs/bin/larva"],
         "LARVA_PI_INTERACTIVE_TUI": "0",
     }
@@ -761,6 +763,7 @@ def test_documented_external_format_fixtures_and_negative_non_goals() -> None:
         "LARVA_PI_REAL_BIN",
         "LARVA_PI_EXTENSION_FLAG",
         "LARVA_PI_EXTENSION_ENTRY",
+        "LARVA_PI_LAUNCHED",
         "LARVA_CLI_ARGV_JSON",
         "LARVA_PI_INTERACTIVE_TUI",
     }

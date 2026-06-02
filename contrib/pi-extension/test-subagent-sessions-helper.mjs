@@ -177,6 +177,7 @@ const env = {
   LARVA_PI_REAL_BIN: fakePi,
   LARVA_PI_EXTENSION_FLAG: "-e",
   LARVA_PI_EXTENSION_ENTRY: join(runtimeDir, "extension.ts"),
+  LARVA_PI_LAUNCHED: "1",
   LARVA_PI_CHILD_SESSION_DIR: sessionDir,
   LARVA_TEST_RELEASE_FILE: releaseFile,
 };

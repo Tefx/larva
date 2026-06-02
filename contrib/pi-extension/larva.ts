@@ -1760,11 +1760,16 @@ async function validateFreshChildSessionFile(sessionFile: string, root: string):
   return sessionPath;
 }
 
+function isLarvaPiLaunched(env: RuntimeEnv): boolean {
+  return env.LARVA_PI_LAUNCHED === "1";
+}
+
 function launcherArgs(env: RuntimeEnv): string[] | LarvaError {
+  const launched = isLarvaPiLaunched(env);
   const realBin = normalizeString(env.LARVA_PI_REAL_BIN);
   const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG);
   const entry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
-  if (!realBin || !flag || !entry) return error("LARVA_CHILD_START_FAILED", "Launcher Pi child environment is incomplete.");
+  if (!launched || !realBin || !flag || !entry) return error("LARVA_CHILD_START_FAILED", "Launcher Pi child environment is incomplete.");
   return [realBin, flag, entry, "--mode", "rpc", "--session-dir"];
 }
 
@@ -1781,6 +1786,7 @@ function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProc
         LARVA_PI_INITIAL_PERSONA_ID: personaId,
         LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
         LARVA_PI_INTERACTIVE_TUI: "0",
+        LARVA_PI_LAUNCHED: "1",
       },
       stdio: ["pipe", "pipe", "pipe"],
     });

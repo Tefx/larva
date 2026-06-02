@@ -870,6 +870,89 @@ def test_child_process_uses_launcher_env_and_rpc_sequence() -> None:
     assert "bare pi" not in source.lower()
 
 
+def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_path: Path) -> None:
+    """The extension consumes ``LARVA_PI_LAUNCHED`` as a child-spawn recursion guard."""
+    source = _source()
+    launcher_body = _function_body(source, "function launcherArgs")
+    _assert_tokens(source, "isLarvaPiLaunched", "LARVA_PI_LAUNCHED")
+    assert launcher_body.index("isLarvaPiLaunched(env)") < launcher_body.index("LARVA_PI_REAL_BIN")
+    assert "!launched" in launcher_body
+    start_child_body = _function_body(source, "function startChild")
+    assert 'LARVA_PI_LAUNCHED: "1"' in start_child_body
+
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    spawn_marker = tmp_path / "spawned.txt"
+    fake_pi = tmp_path / "fake-recursive-pi.mjs"
+    fake_pi.write_text(
+        textwrap.dedent(
+            f"""
+            import {{ writeFileSync }} from "node:fs";
+            writeFileSync({json.dumps(str(spawn_marker))}, "spawned");
+            process.exit(0);
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{
+          LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          LARVA_PI_REAL_BIN: process.execPath,
+          LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
+          LARVA_PI_EXTENSION_ENTRY: "would-be-extension.ts",
+          LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(tmp_path))},
+          LARVA_PI_LAUNCHED: "0",
+          HOME: {json.dumps(str(tmp_path))},
+        }};
+        const ctx = {{
+          env,
+          ui: {{ setStatus: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerTool: () => undefined,
+          registerCommand: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("parent", ctx, pi);
+        const denied = await mod.larva_subagent({{ persona_id: "child", task: "must not spawn recursively" }}, {{ env }});
+        console.log(JSON.stringify({{ denied, markerExists: await import("node:fs").then(fs => fs.existsSync({json.dumps(str(spawn_marker))})) }}));
+        """,
+    )
+
+    assert result["denied"]["status"] == "failed"
+    assert result["denied"]["error"]["code"] == "LARVA_CHILD_START_FAILED"
+    assert result["markerExists"] is False
+
+
 def test_no_sidecar_resume_contract() -> None:
     source = _source()
     assert "sidecar" not in source.lower()
