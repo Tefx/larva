@@ -97886,7 +97886,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_realtime_ui_20260603.client-runtime-proof
     name: Client runtime proof for Pi realtime/log UI
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: Launch or harness the actual Pi TUI/client surface
       and prove realtime/log UI is observable, non-blank, view-only, and minimally
       interactive. Surface class: TUI/CLI client runtime. This is separate from design
@@ -97925,6 +97925,8 @@ phases:
     depends_on:
     - pi_impl_realtime_ui_20260603.complete-ui-target
     agent: client-runtime-verifier
+    claimed_by: client-runtime-verifier
+    claimed_at: '2026-06-02T20:55:58.337388+00:00'
   - id: pi_impl_realtime_ui_20260603.wiring-audit
     name: Wiring audit for realtime/log UI public surfaces
     status: claimed
