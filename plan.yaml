@@ -95726,15 +95726,15 @@ phases:
 
       - Confirm missing live Pi target is reported as environment blocker with exact
       command/target.'
-    verification: '- [ ] Exact launch command/target/URL/session and tested Pi version/commit
+    verification: '- [x] Exact launch command/target/URL/session and tested Pi version/commit
       are recorded.
 
-      - [ ] Evidence shows extension loaded, active persona visible, and one safe
+      - [x] Evidence shows extension loaded, active persona visible, and one safe
       operation reaches the real entrypoint path.
 
-      - [ ] No _Runtime/_Stub/_Placeholder production dependency is used in the path.
+      - [x] No _Runtime/_Stub/_Placeholder production dependency is used in the path.
 
-      - [ ] If blocked, evidence identifies exact missing Pi target/capability without
+      - [x] If blocked, evidence identifies exact missing Pi target/capability without
       claiming PASS.'
     refs:
     - design/pi-coding-agent-integration.md
