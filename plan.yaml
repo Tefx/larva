@@ -95245,7 +95245,7 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/larva.ts
     - scripts/pi-extension-runtime-smoke.mjs
-    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_pi_postspec_subagent_ux_expected_red.py
     agent: frontend-engineer
   - id: pi_impl_realtime_ui_20260603.client-runtime-proof
     name: Client runtime proof for Pi realtime/log UI
