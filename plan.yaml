@@ -98363,7 +98363,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: larva-pi-launched-wiring-retest
     name: Retest W6 wiring audit after LARVA_PI_LAUNCHED fix
-    status: claimed
+    status: done
     description: 'CONFORMANCE ARTIFACT: Independent retest gate for W6-LARVA-PI-LAUNCHED-WRITE-ONLY
       after the remediation step. This retest must verify the specific W6 blocker
       is closed and rerun the existing realtime/log UI wiring matrix so the final
@@ -98499,6 +98499,124 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-06-02T21:13:10.108746+00:00'
+    done_at: '2026-06-02T21:20:35.037886+00:00'
+    evidence: 'SUCCESS/PASS: W6 LARVA_PI_LAUNCHED wiring retest and existing wiring
+      matrix passed; gate_open_allowed=true; blockers=[].
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: LARVA_PI_LAUNCHED env contract,
+      sentinel consumed before trusting launcher fields, wiring matrix, sessions/renderCall/onUpdate/renderResult
+      notes.
+
+      - contrib/pi-extension/larva.ts read: env field declaration, sentinel check
+      before launcher fields, child env reassertion, /larva-subagent-log registration,
+      larva_subagent_sessions export/registration, larva_subagent export/tool registration,
+      onUpdate emission, renderCall/renderResult, resetExtensionUI.
+
+      - tests/shell/test_pi_extension_contract.py, tests/shell/test_pi_extension_subagent_ux.py,
+      tests/shell/test_pi_launcher_contract.py read.
+
+
+      Worker evidence commit: d98194b2bf6e9cb9503b1d3312842ce671365caa.
+
+      Mainline squash commit: f1dabce [vectl] step-larva-pi-launched-wiring-retest
+      completed.
+
+
+      W6 disposition: PASS.
+
+      - launcher sets parent env sentinel: src/larva/shell/pi.py LARVA_PI_LAUNCHED=1.
+
+      - extension declares sentinel: contrib/pi-extension/larva.ts RuntimeEnv.
+
+      - extension consumes before trusting launcher fields: contrib/pi-extension/larva.ts
+      sentinel check precedes launcher field reads.
+
+      - extension reasserts child env sentinel: contrib/pi-extension/larva.ts child
+      env sets LARVA_PI_LAUNCHED=1.
+
+      - no_write_only_scan: extension occurrences and launcher occurrences include
+      declarations plus consumers/setters.
+
+
+      Wiring matrix:
+
+      - larva_subagent_registration: PASS/PROVEN.
+
+      - larva_subagent_sessions: PASS/PROVEN.
+
+      - slash_larva_subagent_log: PASS/PROVEN.
+
+      - renderCall_renderResult_onUpdate: PASS/PROVEN.
+
+      - resetExtensionUI: PASS/PROVEN.
+
+      - launcher_safety: PASS/PROVEN.
+
+      - live_child_rpc_proof: PASS/PROVEN.
+
+      - no_dead_public_symbols_or_stubs: PASS/PROVEN.
+
+
+      Worker verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py -q` -> 100 passed in 21.15s.
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> registered larva-subagent-log/larva-persona and larva_subagent/larva_subagent_sessions;
+      hard gates extensionLoading/subagentToolRowProgress/subagentLogOverlayCommand
+      supported.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+      -> renderer-safe ToolResult cases.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> controlledLive PASS; B1/B2/B3/B4 PASS.
+
+      - W6 focused Python static scan -> PASS.
+
+
+      Mainline final-state verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py -q` -> 100 passed in 20.18s.
+
+      - `node contrib/pi-extension/test-subagent-sessions-helper.mjs` -> all PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> live PASS; B1/B2/B3/B4 PASS.
+
+
+      Checklist receipt:
+
+      - W6 retested with PASS/file-line evidence: true.
+
+      - Existing wiring matrix rerun with fresh evidence: true.
+
+      - larva_subagent and larva_subagent_sessions registration/reachability proven:
+      true.
+
+      - renderCall/renderResult/onUpdate, /larva-subagent-log, resetExtensionUI, overlay/autocomplete
+      checks covered: true.
+
+      - No dead public symbol, unregistered command, write-only config/env field,
+      or stub-only implementation remains: true.
+
+      - Final headline PASS only after W6 and matrix rows positive: true.
+
+
+      Blockers: none. Deviation Records: none.'
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
   status: locked
