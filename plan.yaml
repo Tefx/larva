@@ -99270,16 +99270,16 @@ phases:
 
       - Confirm downstream spec-verifier expectations consume the adjudicated decision
       rather than re-litigating stale text.'
-    verification: '- [ ] overlay authority decision recorded with cited key passages
+    verification: '- [x] overlay authority decision recorded with cited key passages
       and disposition: AUTHORIZED, REJECTED, or AMBIGUOUS_BLOCKING.
 
-      - [ ] If AUTHORIZED, design/verification expectations are aligned so `/larva-subagent-log`
+      - [x] If AUTHORIZED, design/verification expectations are aligned so `/larva-subagent-log`
       view-only overlay is not flagged as drift.
 
-      - [ ] If REJECTED or AMBIGUOUS_BLOCKING, downstream remediation requirement
+      - [x] If REJECTED or AMBIGUOUS_BLOCKING, downstream remediation requirement
       is explicit and spec conformance remains blocked.
 
-      - [ ] No completed plan steps are edited or reinterpreted without citations.'
+      - [x] No completed plan steps are edited or reinterpreted without citations.'
     refs:
     - design/pi-coding-agent-integration.md
     - ../opifex/design/final-canonical-contract.md
