@@ -97713,7 +97713,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_realtime_ui_20260603
   name: Pi Realtime Presentation Log and View-Only Overlay 2026-06-03
-  status: pending
+  status: in_progress
   gate: Realtime/log UI is shipped as one complete target with launched-surface proof;
     no P1/P2/P3 deferral.
   depends_on:
@@ -97722,7 +97722,7 @@ phases:
   - id: pi_impl_realtime_ui_20260603.complete-ui-target
     name: Complete realtime presentation log, row rendering, expanded rendering, reset
       cleanup, and view-only overlay
-    status: pending
+    status: claimed
     description: 'TARGET STATE: Implement the complete realtime/log UI as one target:
       custom tool renderCall, onUpdate partial progress, retained process-local LarvaSubagentPresentationLog
       capped at 25, row-local run_key renderer scratch state, expanded Markdown-capable
@@ -97786,6 +97786,8 @@ phases:
     - scripts/pi-extension-runtime-smoke.mjs
     - tests/shell/test_pi_postspec_subagent_ux_expected_red.py
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-02T20:13:04.305180+00:00'
   - id: pi_impl_realtime_ui_20260603.client-runtime-proof
     name: Client runtime proof for Pi realtime/log UI
     status: pending
