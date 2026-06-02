@@ -98726,7 +98726,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
-  status: pending
+  status: in_progress
   gate: Runtime, UI, and shared-contract proof registers are complete and blocker-free.
   depends_on:
   - pi_impl_realtime_ui_20260603
@@ -98815,7 +98815,7 @@ phases:
     agent: spec-verifier
   - id: pi_impl_runtime_conformance_20260603.full-invar-guard
     name: Full repo invar guard and regression proof
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT: Run the authoritative full verification command
       after all Pi implementation phases. Scope: full repo static/contracts/tests
       via `uvx invar-tools guard --all` plus any command-family failures intersecting
@@ -98846,6 +98846,8 @@ phases:
     - AGENTS.md
     - INVAR.md
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-02T21:30:04.623534+00:00'
   - id: pi_impl_runtime_conformance_20260603.gate
     name: Gate runtime conformance and full verification
     status: pending
