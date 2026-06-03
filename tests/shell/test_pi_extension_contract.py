@@ -600,6 +600,10 @@ def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_m
         "SelectList",
         "LarvaPersonaSelector",
         "openEnhancedPersonaSelector",
+        "registerShortcut",
+        "Key.ctrlAlt(\"p\")",
+        "Open Larva persona selector",
+        "available when Pi is idle",
         "rankPersonasForSelector",
         "Type to filter persona ids/descriptions.",
         "Capabilities",
@@ -627,6 +631,10 @@ def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_m
 
     open_body = _function_body(source, "export async function openPersonaSelector")
     assert open_body.index("openEnhancedPersonaSelector") < open_body.index("ctx.ui?.select")
+    persona_command_body = _function_body(source, "function registerLarvaPersonaCommand")
+    assert "runPersonaSelectorCommand" in persona_command_body
+    assert "registerShortcut?.(Key.ctrlAlt(\"p\")" in persona_command_body
+    assert "isIdle" in persona_command_body
     handle_body = _function_body(source, "export async function handlePersonaCommand")
     assert handle_body.index("LARVA_PI_INTERACTIVE_TUI") < handle_body.index("openPersonaSelector")
 
@@ -640,6 +648,9 @@ def test_enhanced_persona_selector_runtime_harness() -> None:
         "detailPanelHasCapabilitiesAndDigest": True,
         "filteringRankingDeterministic": True,
         "enterCommitsThroughCommand": True,
+        "ctrlAltPShortcutRegistered": True,
+        "ctrlAltPShortcutOpensSelectorAndCommits": True,
+        "ctrlAltPShortcutNonIdlePreservesState": True,
         "escCancelPreservesActiveState": True,
         "fallbackPreserved": True,
         "mouseClickUnsupportedNoOp": True,
@@ -662,6 +673,10 @@ def test_enhanced_persona_selector_runtime_harness() -> None:
     assert payload["detail"]["enterResult"] == "devrel"
     assert payload["commit"]["envelopePersona"] == "vectl-planner"
     assert payload["commit"]["selectedByCustom"] == "vectl-planner"
+    assert payload["shortcut"]["registeredShortcut"] == "ctrl+alt+p"
+    assert payload["shortcut"]["activePersona"] == "vectl-planner"
+    assert payload["shortcutNonIdle"]["activePersonaAfterShortcut"] == "ok"
+    assert payload["shortcutNonIdle"]["warningShown"] is True
     assert payload["cancel"]["activePersonaAfterCancel"] == "ok"
     assert payload["fallback"]["nonInteractiveCalls"] == {"custom": 0, "select": 0, "openSelector": 0}
     assert payload["adaptive"]["tallListViewportRows"] > payload["adaptive"]["smallListViewportRows"]
@@ -681,6 +696,10 @@ def test_persona_selector_surface_layout_shadow_docs_are_synchronized() -> None:
             "adaptive list viewport",
             "terminal-compatible drop shadow",
             "frame height remains stable",
+            "ctrl+alt+p",
+            "conflict-screened",
+            "extension shortcut",
+            "not a `keybindings.json` command alias",
             "mouse click",
         )
     _assert_tokens(
@@ -688,6 +707,7 @@ def test_persona_selector_surface_layout_shadow_docs_are_synchronized() -> None:
         "selectorSurfaceDistinct",
         "selectorAdaptiveHeightUtilization",
         "selectorDropShadow",
+        "ctrlAltPShortcutRegistered",
     )
 
 

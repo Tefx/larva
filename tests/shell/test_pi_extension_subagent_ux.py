@@ -952,6 +952,12 @@ def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
         "abort",
     ]
     assert payload["runtime"]["hardGates"]["subagentToolRowProgress"]["supported"] is True
+    persona_shortcut_gate = payload["runtime"]["hardGates"]["personaSelectorShortcut"]
+    assert persona_shortcut_gate["supported"] is True
+    assert persona_shortcut_gate["evidence"]["requiredShortcut"] == "ctrl+alt+p"
+    assert persona_shortcut_gate["evidence"]["registeredShortcuts"] == [
+        {"shortcut": "ctrl+alt+p", "description": "Open Larva persona selector"}
+    ]
     autocomplete_gate = payload["runtime"]["hardGates"]["uiAutocompleteProvider"]
     assert autocomplete_gate["supported"] is False
     assert autocomplete_gate["status"] in {"unsupported", "unknown"}

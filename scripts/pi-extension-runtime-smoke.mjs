@@ -305,6 +305,7 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
   const mod = await import(pathToFileURL(extensionPath).href);
   const registeredTools = [];
   evidence.runtime.registeredCommandNames = [];
+  evidence.runtime.registeredShortcuts = [];
   const handlers = new Map();
   const statuses = [];
   const notifications = [];
@@ -326,6 +327,9 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
       if (typeof name === "string") evidence.runtime.registeredCommandNames.push(name);
       else if (name && typeof name === "object" && typeof name.name === "string") evidence.runtime.registeredCommandNames.push(name.name);
       else evidence.runtime.registeredCommandNames.push(String(name));
+    },
+    registerShortcut: (shortcut, options) => {
+      evidence.runtime.registeredShortcuts.push({ shortcut, description: options?.description });
     },
     registerTool: (tool) => { registeredTools.push(tool); },
     on: (event, handler) => { handlers.set(event, handler); },
@@ -939,6 +943,10 @@ async function main() {
       subagentLogOverlayCommand: {
         supported: evidence.runtime.registeredCommandNames.includes("larva-subagent-log"),
         evidence: { requiredCommand: "larva-subagent-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
+      },
+      personaSelectorShortcut: {
+        supported: evidence.runtime.registeredShortcuts.some((entry) => entry.shortcut === "ctrl+alt+p" && entry.description === "Open Larva persona selector"),
+        evidence: { requiredShortcut: "ctrl+alt+p", registeredShortcuts: evidence.runtime.registeredShortcuts },
       },
     };
   } else if (scenario === "live-child-rpc-proof") {

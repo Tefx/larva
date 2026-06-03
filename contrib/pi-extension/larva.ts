@@ -195,6 +195,7 @@ type PiRenderableComponent = { render: (width: number) => string[]; invalidate?:
 type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string) => void; dispose?: () => void };
 type PiKeybindings = { matches?: (data: string, keybindingId: string) => boolean };
 type PiOverlayHandle = { focus?: () => void };
+type PiShortcutContext = PiContext & { isIdle?: () => boolean };
 type PiTui = { requestRender?: () => void; terminal?: { write?: (data: string) => void; rows?: number; columns?: number } };
 type PiCustomFactory = (
   tui: PiTui,
@@ -218,6 +219,7 @@ type PiApi = {
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
+  registerShortcut?: (shortcut: string, options: { description?: string; handler: (ctx: PiShortcutContext) => void | Promise<void> }) => void;
   registerTool?: <Input, Output>(tool: ToolDefinition<Input, Output>) => void;
   on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown) => void;
 };
@@ -1741,20 +1743,32 @@ function registerCommandCompat(pi: PiApi, name: string, command: CommandOptions)
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
   // Static contract token for legacy Pi command shape: name: "larva-persona".
   const baseEnv = currentEnv(ctx);
+  const runPersonaSelectorCommand = async (input: string | undefined, commandCtx?: PiContext): Promise<PersonaSwitchResult> => {
+    const runtimeCtx = withRuntimeEnv(commandCtx ?? ctx, baseEnv);
+    const result = await handlePersonaCommand(input, runtimeCtx, pi);
+    await notifyPersonaSwitchResult(runtimeCtx, result);
+    return result;
+  };
   const command: CommandOptions = {
     description: "Switch active Larva persona",
     getArgumentCompletions: async (prefix: string) => {
       const candidates = await completePersonaIds(prefix, withRuntimeEnv(ctx, baseEnv));
       return candidates && candidates.length > 0 ? candidates : null;
     },
-    handler: async (input?: string, commandCtx?: PiContext) => {
-      const runtimeCtx = withRuntimeEnv(commandCtx ?? ctx, baseEnv);
-      const result = await handlePersonaCommand(input, runtimeCtx, pi);
-      await notifyPersonaSwitchResult(runtimeCtx, result);
-      return result;
-    },
+    handler: (input?: string, commandCtx?: PiContext) => runPersonaSelectorCommand(input, commandCtx),
   };
   registerCommandCompat(pi, "larva-persona", command);
+  pi.registerShortcut?.(Key.ctrlAlt("p"), {
+    description: "Open Larva persona selector",
+    handler: async (shortcutCtx: PiShortcutContext) => {
+      const runtimeCtx = withRuntimeEnv(shortcutCtx ?? ctx, baseEnv);
+      if (typeof runtimeCtx.isIdle === "function" && !runtimeCtx.isIdle()) {
+        await notify(runtimeCtx, "Larva persona selector shortcut is available when Pi is idle.", "warning");
+        return;
+      }
+      await runPersonaSelectorCommand("", runtimeCtx);
+    },
+  });
 }
 
 function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {

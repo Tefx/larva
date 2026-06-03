@@ -119,6 +119,11 @@ function makePiRecorder(env, custom) {
     models: [],
     activeTools: [],
     statuses: [],
+    notifications: [],
+    commands: [],
+    shortcuts: [],
+    tools: [],
+    handlers: [],
     modelFinds: [],
     customCalls: 0,
     selectCalls: 0,
@@ -148,8 +153,22 @@ function makePiRecorder(env, custom) {
       setStatus(key, status) {
         calls.statuses.push([key, status]);
       },
-      notify() {},
+      notify(message, notifyType) {
+        calls.notifications.push([message, notifyType]);
+      },
       custom,
+    },
+    registerCommand(name, options) {
+      calls.commands.push([name, options]);
+    },
+    registerShortcut(shortcut, options) {
+      calls.shortcuts.push([shortcut, options]);
+    },
+    registerTool(tool) {
+      calls.tools.push(tool);
+    },
+    on(event, handler) {
+      calls.handlers.push([event, handler]);
     },
   };
   return { ctx, calls };
@@ -300,6 +319,70 @@ async function commitThroughCommandEvidence() {
   };
 }
 
+async function shortcutEvidence() {
+  mod.resetPersonaCompletionCache();
+  const env = baseEnv(await tempHome(), "1");
+  let componentName = null;
+  let selectedByCustom = null;
+  const { ctx, calls } = makePiRecorder(env, async (factory) => {
+    calls.customCalls += 1;
+    let doneValue = null;
+    const component = factory({ requestRender() {} }, theme, keybindings, (value) => { doneValue = value; });
+    componentName = component.constructor.name;
+    component.handleInput("vectl");
+    component.handleInput("enter");
+    selectedByCustom = doneValue;
+    return doneValue;
+  });
+  await mod.initializeExtension(ctx, ctx);
+  const shortcut = calls.shortcuts.find(([key]) => key === "ctrl+alt+p");
+  await shortcut?.[1]?.handler?.({
+    ui: ctx.ui,
+    modelRegistry: ctx.modelRegistry,
+    isIdle: () => true,
+  });
+  return {
+    registeredShortcut: shortcut?.[0] ?? null,
+    description: shortcut?.[1]?.description ?? null,
+    commandRegistered: calls.commands.some(([name]) => name === "larva-persona"),
+    componentName,
+    selectedByCustom,
+    activePersona: mod.getActiveEnvelope()?.persona_id ?? null,
+    customCalls: calls.customCalls,
+    modelSetCount: calls.models.length,
+    activeToolsSetCount: calls.activeTools.length,
+    statusUpdated: calls.statuses.some((status) => status.includes("larva: vectl-planner") || status.includes("vectl-planner")),
+  };
+}
+
+async function shortcutNonIdleEvidence() {
+  mod.resetPersonaCompletionCache();
+  const env = baseEnv(await tempHome(), "1");
+  const { ctx, calls } = makePiRecorder(env, async () => {
+    calls.customCalls += 1;
+    throw new Error("selector should not open while non-idle");
+  });
+  await mod.initializeExtension(ctx, ctx);
+  const initial = await mod.commitPersona("ok", ctx, ctx);
+  const modelCountAfterInitial = calls.models.length;
+  const toolCountAfterInitial = calls.activeTools.length;
+  const shortcut = calls.shortcuts.find(([key]) => key === "ctrl+alt+p");
+  await shortcut?.[1]?.handler?.({
+    ui: ctx.ui,
+    modelRegistry: ctx.modelRegistry,
+    isIdle: () => false,
+  });
+  return {
+    initialOk: initial.ok,
+    registeredShortcut: shortcut?.[0] ?? null,
+    activePersonaAfterShortcut: mod.getActiveEnvelope()?.persona_id ?? null,
+    customCalls: calls.customCalls,
+    noAdditionalModelSet: calls.models.length === modelCountAfterInitial,
+    noAdditionalToolSet: calls.activeTools.length === toolCountAfterInitial,
+    warningShown: calls.notifications.some(([message, notifyType]) => notifyType === "warning" && String(message).includes("available when Pi is idle")),
+  };
+}
+
 async function cancelEvidence() {
   mod.resetPersonaCompletionCache();
   const env = baseEnv(await tempHome(), "1");
@@ -386,6 +469,8 @@ async function fallbackEvidence() {
 const detail = selectorComponentEvidence();
 const adaptive = adaptiveSelectorEvidence();
 const commit = await commitThroughCommandEvidence();
+const shortcut = await shortcutEvidence();
+const shortcutNonIdle = await shortcutNonIdleEvidence();
 const cancel = await cancelEvidence();
 const fallback = await fallbackEvidence();
 
@@ -393,6 +478,8 @@ console.log(JSON.stringify({
   detail,
   adaptive,
   commit,
+  shortcut,
+  shortcutNonIdle,
   cancel,
   fallback,
   assertions: {
@@ -400,6 +487,9 @@ console.log(JSON.stringify({
     detailPanelHasCapabilitiesAndDigest: detail.capabilitySummaryShown && detail.digestShown,
     filteringRankingDeterministic: JSON.stringify(detail.filteredOrder) === JSON.stringify(["DevOps", "devrel", "qa-dev", "backend-dev"]),
     enterCommitsThroughCommand: commit.ok && commit.envelopePersona === "vectl-planner" && commit.selectedByCustom === "vectl-planner" && commit.modelSetCount >= 1 && commit.activeToolsSetCount >= 1,
+    ctrlAltPShortcutRegistered: shortcut.registeredShortcut === "ctrl+alt+p" && shortcut.description === "Open Larva persona selector" && shortcut.commandRegistered,
+    ctrlAltPShortcutOpensSelectorAndCommits: shortcut.componentName === "LarvaPersonaSelector" && shortcut.selectedByCustom === "vectl-planner" && shortcut.activePersona === "vectl-planner" && shortcut.customCalls === 1 && shortcut.modelSetCount >= 1 && shortcut.activeToolsSetCount >= 1 && shortcut.statusUpdated,
+    ctrlAltPShortcutNonIdlePreservesState: shortcutNonIdle.initialOk && shortcutNonIdle.registeredShortcut === "ctrl+alt+p" && shortcutNonIdle.activePersonaAfterShortcut === "ok" && shortcutNonIdle.customCalls === 0 && shortcutNonIdle.noAdditionalModelSet && shortcutNonIdle.noAdditionalToolSet && shortcutNonIdle.warningShown,
     escCancelPreservesActiveState: cancel.initialOk && !cancel.cancelledOk && cancel.cancelCode === "LARVA_BAD_INPUT" && cancel.activePersonaAfterCancel === "ok" && cancel.noAdditionalModelSet && cancel.noAdditionalToolSet,
     fallbackPreserved: fallback.uiSelectResult === "ok" && fallback.customThrowFallsBackToSelect === "startup" && fallback.openSelectorResult === "child" && !fallback.nonInteractiveOk && fallback.nonInteractiveCode === "LARVA_BAD_INPUT" && fallback.nonInteractiveCalls.custom === 0 && fallback.nonInteractiveCalls.select === 0 && fallback.nonInteractiveCalls.openSelector === 0 && !fallback.missingUiOk && fallback.missingUiCode === "LARVA_BAD_INPUT",
     mouseClickUnsupportedNoOp: detail.clickNoOp,

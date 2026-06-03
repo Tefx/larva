@@ -242,11 +242,17 @@ solid ANSI background, adaptive list viewport that expands to available terminal
 height while keeping detail/footer bounded, and terminal-compatible drop shadow;
 its frame height remains stable across filter, navigation, and width-safe render
 states. `Enter` confirms and `Esc` cancels. Mouse clicks are intentionally
-unsupported no-ops. If the enhanced custom UI cannot be opened but Pi's simpler
-selector API is available, the command may fall back to that selector. In RPC,
-print, JSON, SDK, malformed mode, unknown mode, or other non-interactive
-launcher classifications, the command returns an input error and leaves active
-state unchanged. The Pi status line shows:
+unsupported no-ops.
+
+Interactive TUI mode also registers `ctrl+alt+p` as a conflict-screened Pi
+extension shortcut for opening the same no-argument selector path. The shortcut
+is intentionally an extension shortcut, not a `keybindings.json` command alias;
+if Pi is not idle it shows a warning and leaves active state unchanged. If the
+enhanced custom UI cannot be opened but Pi's simpler selector API is available,
+the command or shortcut may fall back to that selector. In RPC, print, JSON, SDK,
+malformed mode, unknown mode, or other non-interactive launcher classifications,
+the command returns an input error and leaves active state unchanged. The Pi
+status line shows:
 
 ```text
 larva: <id>
@@ -477,6 +483,10 @@ UI rendering rules:
 - Persona selector layouts should allocate fixed/bounded space for filter,
   detail, and footer rows, then give remaining rows to an adaptive list viewport
   so tall terminals show more candidates instead of unused bottom padding.
+- Adapter-local shortcuts should use `pi.registerShortcut` and conflict-screened
+  key combinations. The persona selector shortcut is `ctrl+alt+p` (`p` for
+  persona); it reuses the `/larva-persona` no-argument selector path and is not a
+  `keybindings.json` command alias.
 - Mouse wheel is supported by overlay-scoped SGR mouse reporting. Mouse click is
   intentionally unsupported for this target.
 

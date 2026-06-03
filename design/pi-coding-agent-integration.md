@@ -206,7 +206,10 @@ No-argument behavior:
   bounded, and terminal-compatible drop shadow; frame height remains stable
   across filter, navigation, and width-safe render states. `Enter` confirms,
   `Esc` cancels, and mouse-click SGR events are intentionally unsupported
-  no-ops.
+  no-ops. Interactive TUI mode also registers `ctrl+alt+p` as a conflict-screened
+  Pi extension shortcut for opening the same no-argument selector path. The
+  shortcut is not a `keybindings.json` command alias; when Pi is not idle it
+  warns and leaves active state unchanged.
 - If the enhanced custom UI cannot be opened but Pi's simpler selector API is
   available, the command may fall back to that selector without changing the
   non-interactive contract.
@@ -353,7 +356,10 @@ height, and optional right/bottom terminal-compatible drop shadow that remains
 within the supplied render width. Persona selector layouts should reserve
 fixed/bounded rows for filter, detail, and footer content, then give remaining
 vertical capacity to an adaptive list viewport so tall terminals show additional
-persona candidates rather than unused bottom padding.
+persona candidates rather than unused bottom padding. Adapter-local shortcuts
+must use `pi.registerShortcut` with conflict-screened key combinations; the
+persona selector shortcut is `ctrl+alt+p` (`p` for persona), reuses the
+`/larva-persona` selector path, and is not a `keybindings.json` command alias.
 
 Mouse wheel support is allowed for scrollable overlays by enabling SGR mouse
 reporting while the overlay is open and disabling it on dispose. Mouse click
@@ -2358,7 +2364,9 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
     cover an accent-colored border, solid ANSI background, adaptive list
     viewport/full-height utilization, terminal-compatible drop shadow, stable
     frame height during filter/navigation, visible width `<= width`, and mouse
-    click no-op behavior. Non-interactive mode, missing UI, and fallback selector
+    click no-op behavior. It must also prove `ctrl+alt+p` extension shortcut
+    registration, same-path selector commit behavior, and non-idle no-state-change
+    warning behavior. Non-interactive mode, missing UI, and fallback selector
     behavior remain as specified earlier in this section.
 
 ## Implementation handoff
