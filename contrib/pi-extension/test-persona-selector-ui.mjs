@@ -44,12 +44,25 @@ async function tempHome() {
   return mkdtemp(join(tmpdir(), "larva-persona-selector-"));
 }
 
+function stripSelectorFrame(line) {
+  if (line.startsWith("│ ") && line.endsWith(" │")) return line.slice(2, -2).trimEnd();
+  return line;
+}
+
 function linesContaining(lines, tokens) {
-  return lines.filter((line) => tokens.some((token) => line.includes(token)));
+  return lines.map(stripSelectorFrame).filter((line) => tokens.some((token) => line.includes(token)));
 }
 
 function allLinesFit(lines, width) {
   return lines.every((line) => visibleWidth(line) <= width);
+}
+
+function selectorLinesBoxed(lines, width) {
+  return lines.length >= 3
+    && lines[0].startsWith("╭─ Select Larva persona")
+    && lines.at(-1).startsWith("╰")
+    && lines.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │"))
+    && allLinesFit(lines, width);
 }
 
 function makePiRecorder(env, custom) {
@@ -128,6 +141,7 @@ function selectorComponentEvidence() {
   const tui = { renderRequests: 0, requestRender() { this.renderRequests += 1; } };
   const selector = new mod.LarvaPersonaSelector({ personas, theme, keybindings, tui, done: (value) => { doneValue = value; } });
   const initial = selector.render(96);
+  const narrowInitial = selector.render(40);
   selector.handleInput("dev");
   const filtered = selector.render(96);
   const afterFilterDetail = linesContaining(filtered, ["ID:", "Model:", "Description:", "Capabilities:", "Digest:"]);
@@ -147,7 +161,8 @@ function selectorComponentEvidence() {
     clickNoOp: JSON.stringify(afterClick) === JSON.stringify(afterDown),
     enterResult: doneValue,
     renderRequests: tui.renderRequests,
-    allLinesFit: [initial, filtered, afterDown, afterClick].every((lines) => allLinesFit(lines, 96)),
+    allLinesFit: [initial, filtered, afterDown, afterClick].every((lines) => allLinesFit(lines, 96)) && allLinesFit(narrowInitial, 40),
+    selectorBoxed: [initial, filtered, afterDown, afterClick].every((lines) => selectorLinesBoxed(lines, 96)) && selectorLinesBoxed(narrowInitial, 40),
     capabilitySummaryShown: afterFilterDetail.some((line) => line.includes("deploy:read_write") || line.includes("shell:read_only")),
     digestShown: afterFilterDetail.some((line) => line.includes("sha256:DevOps")),
   };
@@ -292,5 +307,6 @@ console.log(JSON.stringify({
     fallbackPreserved: fallback.uiSelectResult === "ok" && fallback.customThrowFallsBackToSelect === "startup" && fallback.openSelectorResult === "child" && !fallback.nonInteractiveOk && fallback.nonInteractiveCode === "LARVA_BAD_INPUT" && fallback.nonInteractiveCalls.custom === 0 && fallback.nonInteractiveCalls.select === 0 && fallback.nonInteractiveCalls.openSelector === 0 && !fallback.missingUiOk && fallback.missingUiCode === "LARVA_BAD_INPUT",
     mouseClickUnsupportedNoOp: detail.clickNoOp,
     renderLinesWithinWidth: detail.allLinesFit,
+    selectorOverlayBordered: detail.selectorBoxed,
   },
 }, null, 2));

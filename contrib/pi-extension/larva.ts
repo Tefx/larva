@@ -580,23 +580,31 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
 
   render(width: number): string[] {
     const renderWidth = Math.max(1, width);
+    if (renderWidth < 4) return [selectorLine("Select Larva persona", renderWidth)];
+    const contentWidth = renderWidth - 4;
     const filterPrefix = "Filter: ";
-    const inputWidth = Math.max(1, renderWidth - visibleWidth(filterPrefix));
+    const inputWidth = Math.max(1, contentWidth - visibleWidth(filterPrefix));
     const inputLine = this.input.render(inputWidth)[0] ?? "";
-    const listLines = this.selectList.render(renderWidth).map((line) => selectorLine(line, renderWidth));
+    const listLines = this.selectList.render(contentWidth).map((line) => selectorLine(line, contentWidth));
     const lines = [
-      selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Select Larva persona")), renderWidth),
-      selectorLine(`${filterPrefix}${inputLine}`, renderWidth),
-      selectorLine(selectorThemeFg(this.theme, "dim", "Type to filter persona ids/descriptions."), renderWidth),
+      selectorLine(`${filterPrefix}${inputLine}`, contentWidth),
+      selectorLine(selectorThemeFg(this.theme, "dim", "Type to filter persona ids/descriptions."), contentWidth),
       "",
       ...listLines,
       "",
-      selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Detail")), renderWidth),
-      ...this.renderDetail(renderWidth),
+      selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Detail")), contentWidth),
+      ...this.renderDetail(contentWidth),
       "",
-      selectorLine(selectorThemeFg(this.theme, "dim", "↑↓ navigate • enter confirm • esc cancel • mouse click unsupported"), renderWidth),
+      selectorLine(selectorThemeFg(this.theme, "dim", "↑↓ navigate • enter confirm • esc cancel • mouse click unsupported"), contentWidth),
     ];
-    return lines.map((line) => selectorLine(line, renderWidth));
+    const title = selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Select Larva persona"));
+    const topTitle = overlayTruncateLine(`─ ${title} `, renderWidth - 2);
+    const top = `╭${topTitle}${"─".repeat(Math.max(0, renderWidth - 2 - overlayDisplayWidth(topTitle)))}╮`;
+    return [
+      top,
+      ...lines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
+      `╰${"─".repeat(renderWidth - 2)}╯`,
+    ];
   }
 
   invalidate(): void {

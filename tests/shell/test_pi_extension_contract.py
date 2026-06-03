@@ -604,12 +604,17 @@ def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_m
         "Capabilities",
         "Digest",
         "Mouse click/press/release SGR events are intentionally unsupported no-ops",
+        "╭",
+        "╰",
+        "overlayPadLine",
     )
     selector_body = _function_body(source, "export class LarvaPersonaSelector")
     assert "new TuiInput()" in selector_body
     assert "new SelectList" in selector_body
     assert "renderDetailRow" in selector_body
     assert "handleInput(data: string)" in selector_body
+    assert "overlayPadLine" in selector_body
+    assert "renderWidth - 4" in selector_body
     assert "ENABLE_MOUSE_REPORTING" not in selector_body
     assert "mouseWheelScrollDelta" not in selector_body
 
@@ -632,6 +637,7 @@ def test_enhanced_persona_selector_runtime_harness() -> None:
         "fallbackPreserved": True,
         "mouseClickUnsupportedNoOp": True,
         "renderLinesWithinWidth": True,
+        "selectorOverlayBordered": True,
     }
     assert payload["detail"]["afterFilterDetail"] == [
         "ID: DevOps",
