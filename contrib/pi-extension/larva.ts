@@ -2747,10 +2747,11 @@ function continuationMessage(fromPersona: string, toPersona: string, reason: str
 export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: PiContext, pi: PiApi = ctx): Promise<AgentPersonaSwitchToolResult> {
   const mode = agentPersonaSwitchMode;
   const fromPersona = state.envelope?.persona_id ?? null;
-  const personaId = boundedOptionalString(input.persona_id, 200);
-  const reason = boundedOptionalString(input.reason, 1_000);
-  const handoff = boundedOptionalString(input.handoff, 2_000);
-  const continueTask = input.continue_task === true;
+  const request = isRecord(input) ? input : {};
+  const personaId = boundedOptionalString(request.persona_id, 200);
+  const reason = boundedOptionalString(request.reason, 1_000);
+  const handoff = boundedOptionalString(request.handoff, 2_000);
+  const continueTask = request.continue_task === true;
   const auditBase = {
     source: "tool",
     mode,
@@ -2785,7 +2786,15 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   let approved = mode === "auto";
   if (mode === "ask") {
     const confirm = ctx.ui?.confirm;
-    approved = typeof confirm === "function" ? await confirm(`Switch Larva persona from ${fromPersona ?? "none"} to ${personaId}?\nReason: ${reason}`, { persona_id: personaId, reason, handoff }) === true : false;
+    if (typeof confirm === "function") {
+      try {
+        approved = await confirm(`Switch Larva persona from ${fromPersona ?? "none"} to ${personaId}?\nReason: ${reason}`, { persona_id: personaId, reason, handoff }) === true;
+      } catch {
+        approved = false;
+      }
+    } else {
+      approved = false;
+    }
   }
   if (!approved) {
     const larvaError = error("LARVA_BAD_INPUT", "Larva persona switch was not approved.");
@@ -3418,6 +3427,33 @@ function subagentMode(input: LarvaSubagentInput): "new" | "resume" {
   return typeof input.task_id === "string" && input.task_id.trim().length > 0 ? "resume" : "new";
 }
 
+function terminalSafeCellWidth(value: string): number {
+  let width = 0;
+  for (const char of Array.from(value)) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) continue;
+    width += codePoint >= 0x20 && codePoint <= 0x7e ? 1 : 2;
+  }
+  return width;
+}
+
+function terminalSafeFitLine(value: string, maxWidth: number): string {
+  const limit = Math.max(0, maxWidth);
+  let width = 0;
+  let rendered = "";
+  for (const char of Array.from(value)) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    const charWidth = codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f) ? 0 : codePoint >= 0x20 && codePoint <= 0x7e ? 1 : 2;
+    if (width + charWidth > limit) break;
+    rendered += char;
+    width += charWidth;
+  }
+  while (terminalSafeCellWidth(rendered) > limit && rendered.length > 0) rendered = Array.from(rendered).slice(0, -1).join("");
+  return rendered;
+}
+
 function renderTextComponent(text: string, markdown?: string): PiRenderableText {
   return {
     text,
@@ -3426,9 +3462,10 @@ function renderTextComponent(text: string, markdown?: string): PiRenderableText 
     invalidate: () => undefined,
     render: (width: number): string[] => {
       const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
-      return markdown === undefined
+      const lines = markdown === undefined
         ? renderRendererSafePlainLines(text, contentWidth)
         : renderMarkdownLines(markdown, contentWidth);
+      return lines.map((line) => terminalSafeFitLine(line, contentWidth));
     },
   };
 }

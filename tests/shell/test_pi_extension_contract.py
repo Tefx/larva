@@ -1892,6 +1892,64 @@ def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: P
     assert payload["directOff"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
 
 
+def test_agent_persona_switch_ask_approval_rejection_no_ui_and_cancel_preserve_state_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const approvedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { confirmResult: true });
+        const approvedTool = approvedHarness.tools["larva_persona_switch"];
+        const approved = await (approvedTool.execute ?? approvedTool.handler)("call-approved", { persona_id: "python", reason: "implementation required" }, undefined, undefined, approvedHarness.ctx);
+        const approvedEnvelope = approvedHarness.mod.getActiveEnvelope();
+
+        const rejectedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { confirmResult: false });
+        const rejectedTool = rejectedHarness.tools["larva_persona_switch"];
+        const rejected = await (rejectedTool.execute ?? rejectedTool.handler)("call-rejected", { persona_id: "python", reason: "implementation required" }, undefined, undefined, rejectedHarness.ctx);
+        const rejectedEnvelope = rejectedHarness.mod.getActiveEnvelope();
+
+        const noUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        delete noUiHarness.ctx.ui.confirm;
+        const noUiTool = noUiHarness.tools["larva_persona_switch"];
+        const noUi = await (noUiTool.execute ?? noUiTool.handler)("call-no-ui", { persona_id: "python", reason: "implementation required" }, undefined, undefined, noUiHarness.ctx);
+        const noUiEnvelope = noUiHarness.mod.getActiveEnvelope();
+
+        const cancelledHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        cancelledHarness.ctx.ui.confirm = async () => { throw new Error("dialog cancelled or timed out"); };
+        const cancelledTool = cancelledHarness.tools["larva_persona_switch"];
+        const cancelled = await (cancelledTool.execute ?? cancelledTool.handler)("call-cancelled", { persona_id: "python", reason: "implementation required" }, undefined, undefined, cancelledHarness.ctx);
+        const cancelledEnvelope = cancelledHarness.mod.getActiveEnvelope();
+
+        console.log(JSON.stringify({
+          approved,
+          approvedEnvelope,
+          approvedConfirmations: approvedHarness.confirmations,
+          rejected,
+          rejectedEnvelope,
+          noUi,
+          noUiEnvelope,
+          cancelled,
+          cancelledEnvelope,
+          rejectedAudit: rejectedHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          noUiAudit: noUiHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          cancelledAudit: cancelledHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+        }));
+        """,
+    )
+
+    assert payload["approved"]["status"] == "success"
+    assert payload["approved"].get("terminate") is True
+    assert payload["approvedEnvelope"]["persona_id"] == "python"
+    assert len(payload["approvedConfirmations"]) == 1
+    for key in ("rejected", "noUi", "cancelled"):
+        assert payload[key]["status"] == "failed"
+        assert payload[key]["error"]["code"] == "LARVA_BAD_INPUT"
+    for key in ("rejectedEnvelope", "noUiEnvelope", "cancelledEnvelope"):
+        assert payload[key]["persona_id"] == "architect"
+    for key in ("rejectedAudit", "noUiAudit", "cancelledAudit"):
+        assert payload[key]
+        assert payload[key][-1]["details"]["approved"] is False
+        assert payload[key][-1]["details"]["committed"] is False
+
+
 def test_agent_persona_switch_reason_required_before_commit_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
@@ -1907,6 +1965,41 @@ def test_agent_persona_switch_reason_required_before_commit_behavior(tmp_path: P
     assert payload["result"]["status"] == "failed"
     assert payload["result"]["error"]["code"] == "LARVA_BAD_INPUT"
     assert payload["finalEnvelope"]["persona_id"] == "architect"
+
+
+def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const invalidHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const invalid = await invalidHarness.mod.larva_persona_switch(null, invalidHarness.ctx, invalidHarness.pi);
+        const invalidEnvelope = invalidHarness.mod.getActiveEnvelope();
+
+        const handoffHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const longHandoff = "h".repeat(2500);
+        const tool = handoffHarness.tools["larva_persona_switch"];
+        const bounded = await (tool.execute ?? tool.handler)("call-bounded", { persona_id: "python", reason: "implementation required", handoff: longHandoff }, undefined, undefined, handoffHarness.ctx);
+        const boundedEnvelope = handoffHarness.mod.getActiveEnvelope();
+        const audit = handoffHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit").at(-1);
+
+        console.log(JSON.stringify({
+          invalid,
+          invalidEnvelope,
+          invalidAudit: invalidHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          bounded,
+          boundedEnvelope,
+          auditHandoffLength: audit?.details?.handoff?.length ?? null,
+        }));
+        """,
+    )
+
+    assert payload["invalid"]["status"] == "failed"
+    assert payload["invalid"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert payload["invalidEnvelope"]["persona_id"] == "architect"
+    assert payload["invalidAudit"][-1]["details"]["committed"] is False
+    assert payload["bounded"]["status"] == "success"
+    assert payload["boundedEnvelope"]["persona_id"] == "python"
+    assert payload["auditHandoffLength"] == 2000
 
 
 def test_agent_persona_switch_same_persona_no_op_no_termination_or_extra_commit_behavior(tmp_path: Path) -> None:
