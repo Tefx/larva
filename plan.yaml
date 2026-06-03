@@ -99915,7 +99915,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_impl_finalization_20260603.plan-readiness-review
     name: Fresh plan readiness/spec conformance review
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT: Read-only fresh review of the executed plan shape
       and evidence readiness for the Pi integration target. This is the in-plan counterpart
       to external review/fix loop: audit step specificity, evidence completeness,
@@ -99945,6 +99945,8 @@ phases:
     refs:
     - design/pi-coding-agent-integration.md
     agent: plan-readiness-auditor
+    claimed_by: plan-readiness-auditor
+    claimed_at: '2026-06-03T04:14:13.284145+00:00'
   - id: pi_impl_finalization_20260603.final-gate
     name: Final Pi integration deep review gate
     status: pending
