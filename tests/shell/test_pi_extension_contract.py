@@ -19,9 +19,19 @@ from typing import Any, Final
 import pytest
 
 ROOT: Final = Path(__file__).resolve().parents[2]
+CI_WORKFLOW: Final = ROOT / ".github" / "workflows" / "ci.yml"
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 PI_EXTENSION_README: Final = ROOT / "contrib" / "pi-extension" / "README.md"
 PYPROJECT: Final = ROOT / "pyproject.toml"
+PI_EXTENSION_NPM_CI_COMMAND: Final = "npm --prefix contrib/pi-extension ci"
+PI_EXTENSION_RUNTIME_GATE_COMMAND: Final = (
+    "uv run pytest tests/shell/test_pi_extension_contract.py "
+    "tests/shell/test_pi_extension_real_runtime.py -v"
+)
+REPO_LOCAL_GATE_TEST_COMMAND: Final = "uv run pytest -q tests/shell/test_repo_local_ci_gate.py"
+SHARED_SURFACE_GATE_COMMAND: Final = (
+    "uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root opifex"
+)
 
 
 REQUIREMENT_TRACEABILITY: Final[dict[int, tuple[str, ...]]] = {
@@ -70,6 +80,24 @@ def _source() -> str:
         f"{EXTENSION.relative_to(ROOT)}"
     )
     return EXTENSION.read_text(encoding="utf-8")
+
+
+def _workflow_step_containing(workflow: str, token: str) -> str:
+    token_index = workflow.index(token)
+    step_start = workflow.rfind("\n      - name:", 0, token_index)
+    if step_start == -1:
+        step_start = 0
+    next_step = workflow.find("\n      - name:", token_index)
+    if next_step == -1:
+        next_step = len(workflow)
+    return workflow[step_start:next_step]
+
+
+def _assert_required_workflow_step(workflow: str, token: str) -> None:
+    step = _workflow_step_containing(workflow, token)
+    lower_step = step.lower()
+    assert "continue-on-error" not in lower_step
+    assert "|| true" not in step
 
 
 def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str, Any]:
@@ -134,6 +162,26 @@ def test_pi_extension_packaged_path_force_includes_source_extension() -> None:
         '"contrib/pi-extension/larva.ts" = "larva/shell/pi_extension/larva.ts"'
         in pyproject
     )
+
+
+def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
+    """CI must hydrate the repo-local Pi extension dependencies before UI/runtime gates."""
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+
+    assert PI_EXTENSION_NPM_CI_COMMAND in workflow
+    assert PI_EXTENSION_RUNTIME_GATE_COMMAND in workflow
+    assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(
+        PI_EXTENSION_RUNTIME_GATE_COMMAND
+    )
+
+    _assert_required_workflow_step(workflow, PI_EXTENSION_NPM_CI_COMMAND)
+    for retained_gate in (
+        REPO_LOCAL_GATE_TEST_COMMAND,
+        PI_EXTENSION_RUNTIME_GATE_COMMAND,
+        SHARED_SURFACE_GATE_COMMAND,
+    ):
+        assert retained_gate in workflow
+        _assert_required_workflow_step(workflow, retained_gate)
 
 
 def test_initial_persona_commit_is_before_user_visible_none_state() -> None:

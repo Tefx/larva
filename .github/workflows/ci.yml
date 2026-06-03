@@ -89,6 +89,9 @@ jobs:
       - name: Sync dependencies
         run: uv sync --group dev
 
+      - name: Install Pi extension npm dependencies
+        run: npm --prefix contrib/pi-extension ci
+
       - name: Verify repo-local gate script tests
         run: uv run pytest -q tests/shell/test_repo_local_ci_gate.py
 
