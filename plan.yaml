@@ -99990,3 +99990,83 @@ phases:
     - pi_impl_finalization_20260603.deep-wiring-audit
     - pi_impl_finalization_20260603.plan-readiness-review
     agent: gate-reviewer
+  - id: pi_impl_finalization_20260603.wiring-blocker-fix
+    name: Fix final wiring audit blockers
+    status: pending
+    description: 'TARGET STATE: Resolve blockers from `pi_impl_finalization_20260603.deep-wiring-audit`.
+
+
+      OWNED BLOCKERS:
+
+      - B1: Startup setActiveTools failure must degrade to startup-unavailable/no
+      active persona instead of process exit. Spec refs: design/pi-coding-agent-integration.md
+      startup unavailable/tool enumeration expectations and contrib/pi-extension/README.md
+      startup unavailable docs.
+
+      - B2: No-active-persona startup/session_start must set `larva: none` status.
+
+      - B3: `LARVA_PI_CHILD_RPC_TRACE_FILE` trace env/write effect path must either
+      be documented/authorized in the design whitelist as a test/proof trace path,
+      or removed/hidden behind an accepted test-only/proof-only contract so no undocumented
+      sidecar/effect path remains.
+
+
+      CONSTRAINTS:
+
+      - Preserve fatal startup behavior for initial persona model/policy/persona invalid/unavailable
+      cases.
+
+      - Preserve child RPC live proof, overlay, reset, sessions helper, and runtime
+      conformance.
+
+      - Do not weaken no raw JSONL/sidecar authority for user-facing helpers.
+
+      - If B3 is kept, document it as proof trace artifact only and ensure it is not
+      session metadata authority.
+
+
+      <side_effect_budget>
+
+      Allowed: Pi extension/harness/docs/tests needed to resolve these final wiring
+      blockers. Forbidden: broad unrelated refactors, completed-step edits, or changing
+      shared PersonaSpec contract meaning.'
+    verification: '- [ ] setActiveTools failure startup probe exits 0/degrades with
+      no active persona and startup-unavailable evidence, not fatal process exit.
+
+      - [ ] no initial persona session_start emits `larva: none` status.
+
+      - [ ] child RPC trace env/file-write path is documented/authorized as proof
+      trace only or removed, with no raw JSONL/sidecar authority for helpers.
+
+      - [ ] targeted runtime smokes and relevant pytest pass.
+
+      - [ ] previous fatal startup nonzero-before-prompt behavior for model/policy/persona
+      failures remains passing.'
+    depends_on:
+    - pi_impl_finalization_20260603.docs-sync
+    agent: frontend-engineer
+  - id: pi_impl_finalization_20260603.wiring-blocker-retest
+    name: Retest final wiring audit blockers
+    status: pending
+    description: 'Independent retest for final wiring audit blockers B1-B3. Verify
+      B1 startup tool enumeration failure degrades rather than exits, B2 no-active-persona
+      session_start sets `larva: none`, and B3 child RPC trace env/file-write path
+      is documented/authorized or removed without creating raw JSONL/sidecar authority.
+      Also verify previously passing Pi runtime and docs/spec contract checks remain
+      passing.'
+    verification: '- [ ] B1 setActiveTools failure degradation is proven with raw
+      command/probe output.
+
+      - [ ] B2 `larva: none` no-active-persona session_start status is proven with
+      raw output.
+
+      - [ ] B3 trace env/file-write disposition is PASS with citations and no helper
+      authority drift.
+
+      - [ ] child RPC live proof, capability-gates, startup-fatal, and relevant pytest
+      remain passing.
+
+      - [ ] final verdict PASS only if no wiring blockers remain.'
+    depends_on:
+    - pi_impl_finalization_20260603.wiring-blocker-fix
+    agent: wiring-auditor
