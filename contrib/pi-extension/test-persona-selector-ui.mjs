@@ -65,6 +65,12 @@ function selectorLinesBoxed(lines, width) {
     && allLinesFit(lines, width);
 }
 
+function selectorFrameStable(renderedStates) {
+  const [first, ...rest] = renderedStates;
+  return Boolean(first)
+    && rest.every((lines) => lines.length === first.length && lines[0] === first[0] && lines.at(-1) === first.at(-1));
+}
+
 function makePiRecorder(env, custom) {
   const calls = {
     models: [],
@@ -144,10 +150,15 @@ function selectorComponentEvidence() {
   const narrowInitial = selector.render(40);
   selector.handleInput("dev");
   const filtered = selector.render(96);
+  const narrowFiltered = selector.render(40);
   const afterFilterDetail = linesContaining(filtered, ["ID:", "Model:", "Description:", "Capabilities:", "Digest:"]);
   selector.handleInput("down");
   const afterDown = selector.render(96);
+  const narrowAfterDown = selector.render(40);
   const afterDownDetail = linesContaining(afterDown, ["ID:", "Model:", "Description:", "Capabilities:", "Digest:"]);
+  selector.handleInput("up");
+  const afterUp = selector.render(96);
+  selector.handleInput("down");
   selector.handleInput("\x1b[<0;12;4M");
   const afterClick = selector.render(96);
   selector.handleInput("enter");
@@ -162,7 +173,10 @@ function selectorComponentEvidence() {
     enterResult: doneValue,
     renderRequests: tui.renderRequests,
     allLinesFit: [initial, filtered, afterDown, afterClick].every((lines) => allLinesFit(lines, 96)) && allLinesFit(narrowInitial, 40),
-    selectorBoxed: [initial, filtered, afterDown, afterClick].every((lines) => selectorLinesBoxed(lines, 96)) && selectorLinesBoxed(narrowInitial, 40),
+    selectorBoxed: [initial, filtered, afterDown, afterUp, afterClick].every((lines) => selectorLinesBoxed(lines, 96)) && [narrowInitial, narrowFiltered, narrowAfterDown].every((lines) => selectorLinesBoxed(lines, 40)),
+    selectorFrameStable: selectorFrameStable([initial, filtered, afterDown, afterUp, afterClick]) && selectorFrameStable([narrowInitial, narrowFiltered, narrowAfterDown]),
+    renderedLineCounts: [initial, filtered, afterDown, afterUp, afterClick].map((lines) => lines.length),
+    narrowRenderedLineCounts: [narrowInitial, narrowFiltered, narrowAfterDown].map((lines) => lines.length),
     capabilitySummaryShown: afterFilterDetail.some((line) => line.includes("deploy:read_write") || line.includes("shell:read_only")),
     digestShown: afterFilterDetail.some((line) => line.includes("sha256:DevOps")),
   };
@@ -308,5 +322,6 @@ console.log(JSON.stringify({
     mouseClickUnsupportedNoOp: detail.clickNoOp,
     renderLinesWithinWidth: detail.allLinesFit,
     selectorOverlayBordered: detail.selectorBoxed,
+    selectorFrameStableDuringNavigation: detail.selectorFrameStable,
   },
 }, null, 2));

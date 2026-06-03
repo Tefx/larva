@@ -581,6 +581,12 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         mod.resetSubagentPresentationStateForTests();
+        const overlayStateKeys = ["rendered", "outputTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
+        const overlayReferenceFrame = commandCustomCalls[0].rendered;
+        const overlayFrameStable = overlayStateKeys.every((key) => {
+          const lines = commandCustomCalls[0][key];
+          return lines.length === overlayReferenceFrame.length && lines[0] === overlayReferenceFrame[0] && lines.at(-1) === overlayReferenceFrame.at(-1);
+        });
         console.log(JSON.stringify({
           compactText: compact.content[0].text,
           expandedText: expanded.content[0].text,
@@ -592,7 +598,8 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           overlayRenderedLines: commandCustomCalls[0].rendered,
           overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
           overlayBoxed: commandCustomCalls[0].rendered[0].startsWith("╭─ Larva subagent presentation log") && commandCustomCalls[0].rendered.at(-1).startsWith("╰") && commandCustomCalls[0].rendered.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │") && piTui.visibleWidth(line) <= 80),
-          allOverlayLinesFit: ["rendered", "outputTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"].every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
+          allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
+          overlayFrameStable,
           overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Output") && line.includes("○ 3 Metadata")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
           outputMarkdownPane: commandCustomCalls[0].outputTab.some((line) => line.includes("Markdown Heading")) && commandCustomCalls[0].outputTab.some((line) => line.includes("bullet one")) && commandCustomCalls[0].outputTab.some((line) => line.includes("fenced code output")),
           emptyOutputFallback: commandCustomCalls[0].emptyOutputTab.some((line) => line.includes("No final subagent output")),
@@ -614,6 +621,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["overlayOpened"] is True
     assert payload["overlayBoxed"] is True
     assert payload["allOverlayLinesFit"] is True
+    assert payload["overlayFrameStable"] is True
     assert payload["overlayTabs"] is True
     assert payload["outputMarkdownPane"] is True
     assert payload["emptyOutputFallback"] is True
@@ -661,7 +669,13 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
           text: mixedLines,
           title: "Width Proof",
           tui: { requestRender: () => { requestRenderCount += 1; }, terminal: { write: (data) => terminalWrites.push(data) } },
-          keybindings: { matches: (data, keybindingId) => data === "LIVE_END" && keybindingId === "tui.editor.cursorLineEnd" },
+          keybindings: { matches: (data, keybindingId) => ({
+            "LIVE_DOWN": ["tui.select.down", "tui.editor.cursorDown"],
+            "LIVE_UP": ["tui.select.up", "tui.editor.cursorUp"],
+            "LIVE_PAGEDOWN": ["tui.select.pageDown", "tui.editor.pageDown"],
+            "LIVE_HOME": ["tui.editor.cursorLineStart"],
+            "LIVE_END": ["tui.editor.cursorLineEnd"],
+          }[data] ?? []).includes(keybindingId) },
           done: (value) => doneValues.push(value),
         });
         const widths = [3, 20, 40, 80];
@@ -671,8 +685,18 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
         const afterClick = component.render(40);
         component.handleInput("\\x1b[<65;10;10M");
         const afterWheel = component.render(40);
+        component.handleInput("LIVE_DOWN");
+        const afterLiveDown = component.render(40);
+        component.handleInput("LIVE_UP");
+        const afterLiveUp = component.render(40);
+        component.handleInput("LIVE_PAGEDOWN");
+        const afterLivePageDown = component.render(40);
+        component.handleInput("LIVE_HOME");
+        const afterLiveHome = component.render(40);
         component.handleInput("LIVE_END");
         const afterInjectedEnd = component.render(40);
+        const scrollFrames = [beforeClick, afterClick, afterWheel, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, afterInjectedEnd];
+        const scrollFrameStable = scrollFrames.every((lines) => lines.length === beforeClick.length && lines[0] === beforeClick[0] && lines.at(-1) === beforeClick.at(-1));
         component.handleInput("\\r");
         const doneAfterEnter = doneValues.length;
         component.handleInput("q");
@@ -695,6 +719,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
           clickNoop: JSON.stringify(beforeClick) === JSON.stringify(afterClick),
           wheelScrolls: JSON.stringify(beforeClick) !== JSON.stringify(afterWheel),
           injectedKeyScrolls: JSON.stringify(afterWheel) !== JSON.stringify(afterInjectedEnd),
+          scrollFrameStable,
           enterNoClose: doneAfterEnter === 0,
           qCloses: doneAfterQ === 1,
           mouseLifecycle: terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
@@ -727,6 +752,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
     assert payload["clickNoop"] is True
     assert payload["wheelScrolls"] is True
     assert payload["injectedKeyScrolls"] is True
+    assert payload["scrollFrameStable"] is True
     assert payload["enterNoClose"] is True
     assert payload["qCloses"] is True
     assert payload["mouseLifecycle"] is True

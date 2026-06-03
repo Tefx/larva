@@ -404,6 +404,9 @@ function mouseWheelScrollDelta(data: string): number | null {
 
 type PersonaSelectorTheme = { fg?: (token: string, text: string) => string; bold?: (text: string) => string };
 
+const PERSONA_SELECTOR_LIST_LINES = 9;
+const PERSONA_SELECTOR_DETAIL_LINES = 8;
+
 type LarvaPersonaSelectorOptions = {
   personas: BridgeListItem[];
   theme: PersonaSelectorTheme;
@@ -430,6 +433,16 @@ function selectorThemeBold(theme: PersonaSelectorTheme, text: string): string {
 
 function selectorLine(value: string, width: number): string {
   return truncateToWidth(value, Math.max(0, width), "");
+}
+
+function selectorFixedViewportLines(lines: string[], width: number, count: number): string[] {
+  const viewportLineCount = Math.max(0, count);
+  const result = lines.slice(0, viewportLineCount).map((line) => selectorLine(line, width));
+  if (lines.length > viewportLineCount && viewportLineCount > 0) {
+    result[viewportLineCount - 1] = selectorLine("…", width);
+  }
+  while (result.length < viewportLineCount) result.push("");
+  return result;
 }
 
 function selectorDescription(persona: BridgeListItem): string | undefined {
@@ -503,7 +516,7 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
   }
 
   private createSelectList(items: SelectItem[]): SelectList {
-    const selectList = new SelectList(items, Math.min(Math.max(items.length, 1), 8), {
+    const selectList = new SelectList(items, Math.max(1, PERSONA_SELECTOR_LIST_LINES - 1), {
       selectedPrefix: (text) => selectorThemeFg(this.theme, "accent", text),
       selectedText: (text) => selectorThemeFg(this.theme, "accent", text),
       description: (text) => selectorThemeFg(this.theme, "muted", text),
@@ -585,7 +598,12 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
     const filterPrefix = "Filter: ";
     const inputWidth = Math.max(1, contentWidth - visibleWidth(filterPrefix));
     const inputLine = this.input.render(inputWidth)[0] ?? "";
-    const listLines = this.selectList.render(contentWidth).map((line) => selectorLine(line, contentWidth));
+    const listLines = selectorFixedViewportLines(
+      this.selectList.render(contentWidth).map((line) => selectorLine(line, contentWidth)),
+      contentWidth,
+      PERSONA_SELECTOR_LIST_LINES,
+    );
+    const detailLines = selectorFixedViewportLines(this.renderDetail(contentWidth), contentWidth, PERSONA_SELECTOR_DETAIL_LINES);
     const lines = [
       selectorLine(`${filterPrefix}${inputLine}`, contentWidth),
       selectorLine(selectorThemeFg(this.theme, "dim", "Type to filter persona ids/descriptions."), contentWidth),
@@ -593,7 +611,7 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
       ...listLines,
       "",
       selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Detail")), contentWidth),
-      ...this.renderDetail(contentWidth),
+      ...detailLines,
       "",
       selectorLine(selectorThemeFg(this.theme, "dim", "↑↓ navigate • enter confirm • esc cancel • mouse click unsupported"), contentWidth),
     ];
@@ -722,7 +740,7 @@ export class BorderedScrollableText implements PiOverlayComponent {
     this.lastMaxOffset = Math.max(0, innerLines.length - viewportLines);
     this.scrollOffset = Math.max(0, Math.min(this.lastMaxOffset, this.scrollOffset));
     const visibleLines = innerLines.slice(this.scrollOffset, this.scrollOffset + viewportLines);
-    while (visibleLines.length < Math.min(viewportLines, innerLines.length || 1)) visibleLines.push("");
+    while (visibleLines.length < viewportLines) visibleLines.push("");
     const start = innerLines.length === 0 ? 0 : this.scrollOffset + 1;
     const end = Math.min(innerLines.length, this.scrollOffset + viewportLines);
     const scrollInfo = innerLines.length > viewportLines ? `Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close • ${start}-${end}/${innerLines.length}` : "Esc/q close";
@@ -977,7 +995,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.lastMaxOffsets[tab] = Math.max(0, innerLines.length - viewportLines);
     this.scrollOffsets[tab] = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab]));
     const visibleLines = innerLines.slice(this.scrollOffsets[tab], this.scrollOffsets[tab] + viewportLines);
-    while (visibleLines.length < Math.min(viewportLines, innerLines.length || 1)) visibleLines.push("");
+    while (visibleLines.length < viewportLines) visibleLines.push("");
     const start = innerLines.length === 0 ? 0 : this.scrollOffsets[tab] + 1;
     const end = Math.min(innerLines.length, this.scrollOffsets[tab] + viewportLines);
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";

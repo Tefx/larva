@@ -638,6 +638,7 @@ def test_enhanced_persona_selector_runtime_harness() -> None:
         "mouseClickUnsupportedNoOp": True,
         "renderLinesWithinWidth": True,
         "selectorOverlayBordered": True,
+        "selectorFrameStableDuringNavigation": True,
     }
     assert payload["detail"]["afterFilterDetail"] == [
         "ID: DevOps",
