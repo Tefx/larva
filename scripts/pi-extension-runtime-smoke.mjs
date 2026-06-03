@@ -715,6 +715,194 @@ async function controlledLiveChildRpcProof(evidence, args) {
   };
 }
 
+async function waitForSmokeCondition(predicate, { label = "condition", timeoutMs = 2_000, intervalMs = 10 } = {}) {
+  const startedAt = Date.now();
+  let lastValue = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    lastValue = await predicate();
+    if (lastValue) return lastValue;
+    await new Promise((resolveWait) => setTimeout(resolveWait, intervalMs));
+  }
+  throw new Error(`timed out waiting for ${label}`);
+}
+
+async function writeStreamingSubagentChild(scriptPath, sessionFile) {
+  await writeFile(scriptPath, `
+    import { createInterface } from "node:readline";
+    import { mkdir, writeFile } from "node:fs/promises";
+    import { dirname } from "node:path";
+    const sessionFile = ${JSON.stringify(sessionFile)};
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    await mkdir(dirname(sessionFile), { recursive: true });
+    const rl = createInterface({ input: process.stdin });
+    const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+    rl.on("line", async (line) => {
+      const message = JSON.parse(line);
+      if (message.type === "get_state") {
+        await writeFile(sessionFile, "{}\\n", "utf8");
+        send({ id: message.id, success: true, data: { sessionFile } });
+      } else if (message.type === "switch_session") {
+        send({ id: message.id, success: true, data: { cancelled: false } });
+      } else if (message.type === "prompt") {
+        send({ id: message.id, success: true });
+        await sleep(80);
+        send({ type: "message_update", channel: "assistant", text: "RPC_ASSISTANT_DELTA_VISIBLE", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        await sleep(10);
+        send({ type: "message_update", channel: "thinking_delta", text: "THINKING_SECRET_SHOULD_NOT_RENDER" });
+        await sleep(10);
+        send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", name: "bash", args: "echo rpc", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        send({ type: "tool_execution_update", toolCallId: "rpc-tool-1", name: "bash", output: "RPC_TOOL_OUTPUT_CHUNK", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        send({ type: "tool_execution_end", toolCallId: "rpc-tool-1", name: "bash", success: true, output: "RPC_TOOL_OUTPUT_FINAL", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        await sleep(180);
+        send({ type: "agent_end" });
+      } else if (message.type === "get_last_assistant_text") {
+        send({ id: message.id, success: true, data: { text: "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" } });
+        setTimeout(() => process.exit(0), 5);
+      } else if (message.type === "abort") {
+        send({ id: message.id, success: true });
+        process.exit(0);
+      }
+    });
+  `, "utf8");
+}
+
+async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-subagent-rpc-stream-"));
+  const cacheFile = join(sessionRoot, "subagent-presentation-log.json");
+  const childScript = join(sessionRoot, "streaming-child.mjs");
+  const sessionFile = join(sessionRoot, "child-sessions", "rpc-stream.jsonl");
+  await writeStreamingSubagentChild(childScript, sessionFile);
+  mod.resetSubagentPresentationStateForTests();
+
+  const env = runtimeEnv({
+    HOME: sessionRoot,
+    LARVA_PI_CHILD_SESSION_DIR: join(sessionRoot, "child-sessions"),
+    LARVA_PI_SUBAGENT_LOG_FILE: cacheFile,
+    LARVA_PI_REAL_BIN: process.execPath,
+    LARVA_PI_EXTENSION_FLAG: childScript,
+    LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+  });
+  const commands = new Map();
+  const tools = [];
+  const ctx = {
+    env,
+    modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
+    ui: { setStatus: async () => undefined },
+  };
+  const pi = {
+    getAllTools: async () => ["read", "grep", "larva_subagent"],
+    setActiveTools: async () => true,
+    setModel: async () => true,
+    on: () => undefined,
+    registerTool: (tool) => { tools.push(tool); },
+    registerCommand: (name, command) => {
+      if (typeof name === "string") commands.set(name, command);
+      else if (name && typeof name === "object") commands.set(name.name, name);
+    },
+  };
+  await mod.initializeExtension(ctx, pi);
+  await mod.commitPersona("ok", ctx, pi);
+  const subagent = tools.find((tool) => tool.name === "larva_subagent");
+  const command = commands.get("larva-subagent-log");
+  if (!subagent || typeof subagent.execute !== "function" || !command) throw new Error("runtime proof setup missing subagent tool or log command");
+
+  let component = null;
+  const requestRenderEvents = [];
+  const doneValues = [];
+  const terminalWrites = [];
+  const commandUi = {
+    notify: () => undefined,
+    setStatus: () => undefined,
+    custom: async (factory, options) => {
+      options?.onHandle?.({ focus: () => undefined });
+      component = factory(
+        { requestRender: () => requestRenderEvents.push({ index: requestRenderEvents.length + 1 }), terminal: { rows: 60, write: (data) => terminalWrites.push(data) } },
+        { fg: (_token, text) => text, bold: (text) => text },
+        { matches: () => false },
+        (value) => doneValues.push(value),
+      );
+      component.handleInput?.("3");
+      return null;
+    },
+  };
+
+  const updates = [];
+  const execution = subagent.execute("rpc-stream-call", { persona_id: "child", task: "stream child RPC frames into overlay" }, undefined, (update) => updates.push(update), ctx);
+  await waitForSmokeCondition(
+    () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "running"),
+    { label: "running presentation entry" },
+  );
+  const commandResult = await command.handler("", { env, modelRegistry: ctx.modelRegistry, ui: commandUi });
+  if (component === null || commandResult?.ok !== true) throw new Error("subagent log overlay did not open during RPC stream proof");
+  const rendersBeforeLive = requestRenderEvents.length;
+  const liveEntry = await waitForSmokeCondition(
+    () => mod.subagentPresentationLogForTests().find((entry) =>
+      entry.call_id === "rpc-stream-call"
+      && entry.live_assistant_preview?.includes("RPC_ASSISTANT_DELTA_VISIBLE")
+      && entry.live_thinking_hidden === true
+      && entry.tool_snapshots?.some((snapshot) => snapshot.toolCallId === "rpc-tool-1" && snapshot.status === "success" && snapshot.output_preview?.includes("RPC_TOOL_OUTPUT_FINAL"))),
+    { label: "normalized child RPC presentation mutation" },
+  );
+  const rendersAfterLive = requestRenderEvents.length;
+  const outputDuringPlain = renderedPlainText(component.render(100));
+  component.handleInput?.("4");
+  const eventsDuringPlain = renderedPlainText(component.render(100));
+  const cacheDuringLive = JSON.parse(await readFile(cacheFile, "utf8"));
+  const cacheDuringLiveText = JSON.stringify(cacheDuringLive);
+  const result = await execution;
+  await waitForSmokeCondition(
+    () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "success"),
+    { label: "final presentation entry" },
+  );
+  const eventsAfterFinalPlain = renderedPlainText(component.render(100));
+  component.handleInput?.("3");
+  const outputAfterFinalPlain = renderedPlainText(component.render(100));
+  const finalCacheText = JSON.stringify(JSON.parse(await readFile(cacheFile, "utf8")));
+  const combinedVisible = [outputDuringPlain, eventsDuringPlain, eventsAfterFinalPlain, outputAfterFinalPlain].join("\n");
+  const currentAfterFinal = mod.currentSubagentOverlayForTests();
+  const resetResult = await mod.resetExtensionUI("subagent-log-selector-streaming-smoke");
+  const afterReset = mod.larva_subagent_log("/tmp/does-not-exist.jsonl");
+
+  const toolIdCount = (eventsDuringPlain.match(/rpc-tool-1/g) ?? []).length;
+  return {
+    status: "PASS",
+    sessionRoot,
+    cacheFile,
+    path_exercised: [
+      "fake child stdout RPC frame",
+      "RpcClient.consume -> normalizeSubagentChildStreamEventForPresentation",
+      "applyNormalizedSubagentStreamEvent(call_id=rpc-stream-call)",
+      "retainedSubagentPresentationLog mutation",
+      "notifySubagentPresentationOverlay -> refreshFromPresentationLog",
+      "tui.requestRender",
+      "selected entry re-read in SubagentPresentationLogOverlay.render",
+    ],
+    selectedTaskId: commandResult.details?.selected_task_id ?? null,
+    currentAfterFinal,
+    sessionFile,
+    liveEntryKeys: Object.keys(liveEntry),
+    updatePhases: updates.map((update) => update?.details?.phase ?? null),
+    renderRequests: { beforeLive: rendersBeforeLive, afterLive: rendersAfterLive, afterFinal: requestRenderEvents.length },
+    terminalWrites,
+    samples: {
+      outputDuring: outputDuringPlain.slice(0, 400),
+      eventsDuring: eventsDuringPlain.slice(0, 400),
+      outputAfterFinal: outputAfterFinalPlain.slice(0, 400),
+    },
+    assertions: {
+      childRpcEventsDroveOverlayRenderRequest: rendersAfterLive > rendersBeforeLive,
+      assistantDeltaRenderedFromRpc: outputDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE"),
+      thinkingContentHidden: !combinedVisible.includes("THINKING_SECRET_SHOULD_NOT_RENDER") && combinedVisible.includes("thinking hidden"),
+      toolEventsGroupedByToolCallId: toolIdCount === 1 && eventsDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && eventsDuringPlain.includes("success"),
+      rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET"),
+      liveStateNotPersisted: !cacheDuringLiveText.includes("RPC_ASSISTANT_DELTA_VISIBLE") && !cacheDuringLiveText.includes("RPC_TOOL_OUTPUT_FINAL"),
+      finalOutputAuthorityPreserved: result?.details?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
+      activeTabAndSelectionPreservedAcrossRefresh: eventsAfterFinalPlain.includes("● 4 Events") && currentAfterFinal?.task_id === result?.details?.task_id,
+      resetCleanupClosedAndCleared: resetResult.overlay_closed === true && resetResult.presentation_cleared === true && afterReset.details?.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED" && terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
+    },
+  };
+}
+
 async function subagentLogSelectorStreamingExpectedRed(evidence) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const extensionRequire = createRequire(pathToFileURL(extensionPath).href);
@@ -856,6 +1044,8 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
       stableFrameAcrossSelectorTabsScroll: [selectorFrame, outputFrame, fourthTabFrame, fifthTabFrame].every((lines) => lines.length === detailFrame.length && lines[0] === detailFrame[0] && lines.at(-1) === detailFrame.at(-1)),
     },
   };
+  const actualChildRpcPipeline = await runSubagentLogSelectorStreamingRpcPipelineProof(mod);
+  assertions.R12_childRpcPipeline = actualChildRpcPipeline.assertions;
   const flattened = Object.values(assertions).flatMap((group) => Object.values(group));
   evidence.runtime.subagentLogSelectorStreaming = {
     status: flattened.every(Boolean) ? "PASS" : "EXPECTED_RED",
@@ -870,6 +1060,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     terminalRows: { short: 24, tall: 100, shortRenderedLines: shortLines.length, tallRenderedLines: tallLines.length },
     tabPlainSamples: { detail: detailPlain.slice(0, 500), selector: selectorPlain.slice(0, 500), output: outputPlain.slice(0, 500), fourth: fourthTabPlain.slice(0, 500), fifth: fifthTabPlain.slice(0, 500) },
     cacheKeysForLiveEntry: Object.keys(liveCachedEntry),
+    actualChildRpcPipeline,
     assertions,
   };
 }

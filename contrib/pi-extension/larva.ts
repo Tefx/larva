@@ -2655,17 +2655,29 @@ function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry,
 }
 
 function appendSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
-  retainedSubagentPresentationLog.push(withSubagentEntryTimestamp({
+  const existingIndex = callId === undefined
+    ? -1
+    : retainedSubagentPresentationLog.findIndex((entry) => entry.call_id === callId && entry.status === "running");
+  const runningEntry: Omit<SubagentPresentationLogEntry, "sequence"> = {
     task_id: taskId,
     persona_id: personaId,
     status: "running",
-    sequence: 0,
     mode: presentationMode(input),
     task_preview: presentationTaskPreview(input),
     task_prompt: presentationTaskPrompt(input),
     phase: "waiting_for_child",
     call_id: callId,
-  }));
+  };
+  if (existingIndex >= 0) {
+    retainedSubagentPresentationLog[existingIndex] = withSubagentEntryTimestamp({
+      ...retainedSubagentPresentationLog[existingIndex],
+      ...runningEntry,
+    });
+    persistSubagentPresentationCache();
+    notifySubagentPresentationOverlay();
+    return;
+  }
+  retainedSubagentPresentationLog.push(withSubagentEntryTimestamp({ ...runningEntry, sequence: 0 }));
   while (retainedSubagentPresentationLog.length > 25) retainedSubagentPresentationLog.shift();
   persistSubagentPresentationCache();
   notifySubagentPresentationOverlay();

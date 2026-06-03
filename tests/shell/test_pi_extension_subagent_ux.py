@@ -1393,6 +1393,17 @@ def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> 
         "noRawJsonlOrSidecarShortcutInSourcePath": True,
         "noModelVisibleStreamOrSharedSchemaLeak": True,
     }
+    assert assertions["R12_childRpcPipeline"] == {
+        "childRpcEventsDroveOverlayRenderRequest": True,
+        "assistantDeltaRenderedFromRpc": True,
+        "thinkingContentHidden": True,
+        "toolEventsGroupedByToolCallId": True,
+        "rawPayloadNeverRenderedOrPersisted": True,
+        "liveStateNotPersisted": True,
+        "finalOutputAuthorityPreserved": True,
+        "activeTabAndSelectionPreservedAcrossRefresh": True,
+        "resetCleanupClosedAndCleared": True,
+    }
 
 
 def test_expected_red_larva_subagent_log_chrome_mouse_and_tall_terminal_frame() -> None:
