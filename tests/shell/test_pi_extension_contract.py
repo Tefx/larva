@@ -20,6 +20,7 @@ import pytest
 
 ROOT: Final = Path(__file__).resolve().parents[2]
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
+PI_EXTENSION_README: Final = ROOT / "contrib" / "pi-extension" / "README.md"
 PYPROJECT: Final = ROOT / "pyproject.toml"
 
 
@@ -440,8 +441,30 @@ def test_persona_switch_commits_envelope_model_and_status() -> None:
     )
 
 
-def test_no_active_persona_sets_none_status() -> None:
+def test_no_active_persona_sets_none_status(tmp_path: Path) -> None:
     _assert_tokens(_source(), "larva: none", "setLarvaStatus")
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const statuses = [];
+        const handlers = {{}};
+        const ctx = {{
+          env: {{}},
+          ui: {{ setStatus: async (status) => statuses.push(status) }},
+        }};
+        const pi = {{
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.session_start?.({{}});
+        console.log(JSON.stringify({{ statuses, envelope: mod.getActiveEnvelope() }}));
+        """,
+    )
+    assert result["envelope"] is None
+    assert result["statuses"] == ["larva: none", "larva: none"]
 
 
 def test_prompt_watermark_composes_replaces_and_never_dumps_catalogue() -> None:
@@ -595,8 +618,15 @@ def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_sw
         const activeToolCalls = [];
         let commandHandler = null;
         let setActiveToolsAttempts = 0;
+        let exitCode = null;
+        let stderr = "";
+        const originalExit = process.exit;
+        const originalWrite = process.stderr.write;
+        process.exit = (code) => {{ exitCode = code; throw new Error("PROCESS_EXIT"); }};
+        process.stderr.write = (chunk) => {{ stderr += String(chunk); return true; }};
         const ctx = {{
           env: {{
+            LARVA_PI_LAUNCHED: "1",
             LARVA_PI_INITIAL_PERSONA_ID: "startup",
             LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             LARVA_PI_TOOL_POLICY_FILE: {json.dumps(str(policy))},
@@ -618,7 +648,12 @@ def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_sw
           on: () => undefined,
         }};
 
-        await mod.initializeExtension(ctx, pi);
+        try {{
+          await mod.initializeExtension(ctx, pi);
+        }} finally {{
+          process.exit = originalExit;
+          process.stderr.write = originalWrite;
+        }}
         const degradedEnvelope = mod.getActiveEnvelope();
         const degradedPrompt = mod.before_agent_start({{ systemPrompt: "base" }});
         const switched = await commandHandler("ok");
@@ -627,6 +662,8 @@ def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_sw
         console.log(JSON.stringify({{
           statuses,
           activeToolCalls,
+          exitCode,
+          stderr,
           degradedEnvelope,
           degradedPrompt: degradedPrompt ?? null,
           switched,
@@ -637,6 +674,8 @@ def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_sw
         """,
     )
 
+    assert result["exitCode"] is None
+    assert result["stderr"] == ""
     assert result["degradedEnvelope"] is None
     assert result["degradedPrompt"] is None
     assert result["statuses"][0] == "larva: startup unavailable (LARVA_TOOL_ENUMERATION_FAILED)"
@@ -1027,6 +1066,21 @@ def test_no_sidecar_resume_contract() -> None:
     source = _source()
     assert "sidecar" not in source.lower()
     _assert_tokens(source, "task_id", ".jsonl", "persona_id")
+
+
+def test_child_rpc_trace_file_is_documented_as_proof_only_not_authority() -> None:
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+    _assert_tokens(
+        readme,
+        "LARVA_PI_CHILD_RPC_TRACE_FILE",
+        "runtime proof probes only",
+        "model-facing helper",
+        "not a public resume handle",
+        "not a provenance record",
+        "sidecar metadata",
+        "not authority for `larva_subagent_sessions`",
+        "Trace write failures are ignored",
+    )
 
 
 def test_resume_switches_session_appends_task_and_uses_new_output() -> None:

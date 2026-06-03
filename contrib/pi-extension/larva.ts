@@ -949,8 +949,17 @@ function shouldFatalInitialPersonaStartup(env: RuntimeEnv): boolean {
   return env.LARVA_PI_LAUNCHED === "1" && typeof env.LARVA_PI_INITIAL_PERSONA_ID === "string" && env.LARVA_PI_INITIAL_PERSONA_ID.length > 0;
 }
 
+function isFatalInitialPersonaStartupError(larvaError: LarvaError): boolean {
+  return [
+    "LARVA_PERSONA_NOT_FOUND",
+    "LARVA_MODEL_MAP_INVALID",
+    "LARVA_MODEL_UNAVAILABLE",
+    "LARVA_POLICY_INVALID",
+  ].includes(larvaError.code);
+}
+
 function fatalInitialPersonaStartup(env: RuntimeEnv, personaId: string, larvaError: LarvaError): never | null {
-  if (!shouldFatalInitialPersonaStartup(env)) return null;
+  if (!shouldFatalInitialPersonaStartup(env) || !isFatalInitialPersonaStartupError(larvaError)) return null;
   process.stderr.write(startupFailureStderr(personaId, larvaError));
   process.exit(1);
   throw larvaError;
@@ -2261,13 +2270,15 @@ function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefi
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
-  if (env.LARVA_PI_INITIAL_PERSONA_ID) {
-    const committed = await commitPersonaWithOptions(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi, { toolBaseline: startupToolBaseline });
-    if (!committed.ok) {
-      fatalInitialPersonaStartup(env, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
-      await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
-      await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
-    }
+  if (!env.LARVA_PI_INITIAL_PERSONA_ID) {
+    await setStatus(ctx);
+    return;
+  }
+  const committed = await commitPersonaWithOptions(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi, { toolBaseline: startupToolBaseline });
+  if (!committed.ok) {
+    fatalInitialPersonaStartup(env, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
+    await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
+    await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
   }
 }
 

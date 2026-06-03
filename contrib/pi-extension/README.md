@@ -529,6 +529,15 @@ The child session root defaults to:
 ~/.pi/larva/child-sessions
 ```
 
+For runtime proof probes only, tests may set `LARVA_PI_CHILD_RPC_TRACE_FILE` to
+an explicit trace path. When set, the extension appends best-effort diagnostic
+JSONL events for child spawn/RPC/cleanup observations. This trace is not a
+model-facing helper, not a public resume handle, not a provenance record, not
+sidecar metadata, and not authority for `larva_subagent_sessions` or
+`/larva-subagent-log`; production operators should leave it unset unless
+collecting temporary integration proof. Trace write failures are ignored and must
+never change child runtime behavior.
+
 The public `task_id` is the child Pi `.jsonl` session file path under that root.
 It is the only durable public resume handle. A resume call validates that the
 supplied path is a readable `.jsonl` file under the child session root, starts a
