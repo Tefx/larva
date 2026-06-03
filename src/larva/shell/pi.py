@@ -48,15 +48,16 @@ def _launcher_failure(
 
 
 # @shell_complexity: launcher flag parsing preserves pass-through Pi argv semantics
-def _parse_launcher_args(args: Sequence[str]) -> Result[tuple[str | None, list[str]], CliFailure]:
+def _parse_launcher_args(args: Sequence[str]) -> Result[tuple[str | None, str | None, list[str]], CliFailure]:
     persona_id: str | None = None
+    agent_persona_switch: str | None = None
     forwarded: list[str] = []
     index = 0
     while index < len(args):
         token = args[index]
         if token == "--":
             forwarded.extend(args[index + 1 :])
-            return Success((persona_id, forwarded))
+            return Success((persona_id, agent_persona_switch, forwarded))
         if token == "--persona":
             if persona_id is not None or index + 1 >= len(args) or args[index + 1] == "--":
                 return Failure(
@@ -65,9 +66,21 @@ def _parse_launcher_args(args: Sequence[str]) -> Result[tuple[str | None, list[s
             persona_id = args[index + 1]
             index += 2
             continue
+        if token == "--agent-persona-switch":
+            if agent_persona_switch is not None or index + 1 >= len(args) or args[index + 1] == "--":
+                return Failure(
+                    _launcher_failure("LARVA_PI_BAD_ARGS", "invalid --agent-persona-switch usage").unwrap()
+                )
+            agent_persona_switch = args[index + 1]
+            if agent_persona_switch not in {"off", "ask", "auto"}:
+                return Failure(
+                    _launcher_failure("LARVA_PI_BAD_ARGS", "invalid --agent-persona-switch value").unwrap()
+                )
+            index += 2
+            continue
         forwarded.append(token)
         index += 1
-    return Success((persona_id, forwarded))
+    return Success((persona_id, agent_persona_switch, forwarded))
 
 
 def _is_executable_file(path: Path) -> Result[bool, object]:
@@ -240,6 +253,7 @@ def _build_child_env(
     environ: Mapping[str, str],
     *,
     persona_id: str | None,
+    agent_persona_switch: str | None,
     pi_bin: str,
     extension_flag: str,
     extension_entry: Path,
@@ -248,6 +262,8 @@ def _build_child_env(
     child_env = dict(environ)
     if persona_id is not None:
         child_env["LARVA_PI_INITIAL_PERSONA_ID"] = persona_id
+    if agent_persona_switch is not None:
+        child_env["LARVA_PI_AGENT_PERSONA_SWITCH"] = agent_persona_switch
     child_env["LARVA_PI_REAL_BIN"] = pi_bin
     child_env["LARVA_PI_EXTENSION_FLAG"] = extension_flag
     child_env["LARVA_PI_EXTENSION_ENTRY"] = str(extension_entry)
@@ -268,7 +284,7 @@ def pi_command(
     parse_result = _parse_launcher_args(launcher_args)
     if isinstance(parse_result, Failure):
         return Failure(parse_result.failure())
-    persona_id, pi_args = parse_result.unwrap()
+    persona_id, agent_persona_switch, pi_args = parse_result.unwrap()
 
     pi_result = _discover_pi(active_environ)
     if isinstance(pi_result, Failure):
@@ -292,6 +308,7 @@ def pi_command(
     child_env = _build_child_env(
         active_environ,
         persona_id=persona_id,
+        agent_persona_switch=agent_persona_switch,
         pi_bin=pi_bin,
         extension_flag=extension_flag,
         extension_entry=extension_entry,

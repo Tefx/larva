@@ -484,3 +484,23 @@ def test_launcher_propagates_extension_fatal_startup_errors(mock_shutil_which, m
     # The launcher should exit non-zero and preserve the error
     assert code != 0
     assert "larva pi: LARVA_MODEL_UNAVAILABLE:" in stderr.getvalue()
+
+def test_launcher_agent_persona_switch_flag(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    
+    code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", "auto", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+    
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == "auto"
+
+def test_launcher_agent_persona_switch_invalid_value(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    
+    code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", "invalid"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code != 0
+    assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()

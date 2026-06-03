@@ -46,6 +46,7 @@ type PiModelMapConfig = {
 };
 
 type RuntimeEnv = Record<string, string | undefined> & {
+  LARVA_PI_AGENT_PERSONA_SWITCH?: string;
   LARVA_PI_INITIAL_PERSONA_ID?: string;
   LARVA_PI_MODEL_MAP_FILE?: string;
   LARVA_PI_TOOL_POLICY_FILE?: string;
@@ -76,7 +77,9 @@ export type PersonaSpec = {
   spec_digest?: string;
 };
 
-export type PersonaEnvelope = {
+export type AgentPersonaSwitchMode = "off" | "ask" | "auto";
+
+type PersonaEnvelope = {
   persona_id: string;
   spec_digest: string;
   model: string;
