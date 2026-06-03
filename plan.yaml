@@ -100613,16 +100613,16 @@ phases:
       dependency authority.
 
       </risk_probes>'
-    verification: '- [ ] `contrib/pi-extension/package.json` declares `@earendil-works/pi-tui`
+    verification: '- [x] `contrib/pi-extension/package.json` declares `@earendil-works/pi-tui`
       exactly as `0.78.0`.
 
-      - [ ] `contrib/pi-extension/package-lock.json` exists and records the same exact
+      - [x] `contrib/pi-extension/package-lock.json` exists and records the same exact
       version.
 
-      - [ ] No root-level npm manifest or Python dependency entry is introduced for
+      - [x] No root-level npm manifest or Python dependency entry is introduced for
       Pi TUI.
 
-      - [ ] Mouse click support is not introduced by dependency metadata or scripts.'
+      - [x] Mouse click support is not introduced by dependency metadata or scripts.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       - contrib/pi-extension/README.md — <key passage from Pi TUI dependency policy>
