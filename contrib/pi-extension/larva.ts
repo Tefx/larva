@@ -26,6 +26,8 @@ type LarvaErrorCode =
   | "LARVA_SUBAGENT_LOG_NOT_OBSERVED"
   | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE"
   | "LARVA_SUBAGENT_LOG_CONFIG_INVALID"
+  | "LARVA_AGENT_PERSONA_SWITCH_OFF"
+  | "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
   | "LARVA_CHILD_START_FAILED"
   | "LARVA_CHILD_PROTOCOL_FAILED"
   | "LARVA_CHILD_CANCELLED";
@@ -235,6 +237,7 @@ type PiUi = {
   setStatus?: StatusSetter;
   addAutocompleteProvider?: (provider: PiAutocompleteProviderFactory) => unknown;
   notify?: (message: string, notifyType?: "info" | "warning" | "error") => void | Promise<void>;
+  confirm?: (message: string, options?: Record<string, unknown>) => boolean | Promise<boolean>;
   custom?: (factory: PiCustomFactory, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
 };
@@ -251,12 +254,29 @@ type PiContext = PiApi & {
   env?: RuntimeEnv;
   ui?: PiUi;
   modelRegistry?: ModelRegistry;
+  session?: {
+    entries?: unknown[];
+    getEntries?: () => unknown[];
+    appendEntry?: (entry: unknown) => unknown;
+    addEntry?: (entry: unknown) => unknown;
+    addCustomEntry?: (entry: unknown) => unknown;
+  };
+  sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   hasUI?: boolean;
   openSelector?: (options: SelectorOption[]) => Promise<string | null>;
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
 };
 type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null };
+type PersonaSwitchToolInput = { persona_id?: unknown; reason?: unknown; handoff?: unknown; continue_task?: unknown };
+type AgentPersonaSwitchToolResult = {
+  status: "success" | "failed";
+  content: PiTextContent[];
+  isError: boolean;
+  error?: LarvaError;
+  terminate?: boolean;
+  details: Record<string, unknown>;
+};
 type ParsedModel = { provider: string; modelId: string };
 type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
@@ -333,6 +353,9 @@ let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
 let toolEnumerationMode: ToolEnumerationMode = "strict";
+let agentPersonaSwitchMode: AgentPersonaSwitchMode = "off";
+let agentPersonaSwitchSucceededInChain = false;
+let agentPersonaSwitchToolsRegistered = false;
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
@@ -2263,6 +2286,89 @@ function registerCommandCompat(pi: PiApi, name: string, command: CommandOptions)
   });
 }
 
+function isAgentPersonaSwitchMode(value: unknown): value is AgentPersonaSwitchMode {
+  return value === "off" || value === "ask" || value === "auto";
+}
+
+function sessionEntries(ctx: PiContext): unknown[] {
+  const getter = ctx.session?.getEntries;
+  if (typeof getter === "function") {
+    const entries = getter();
+    return Array.isArray(entries) ? entries : [];
+  }
+  return Array.isArray(ctx.session?.entries) ? ctx.session.entries : [];
+}
+
+function latestStoredAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode | null {
+  const entries = sessionEntries(ctx);
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (!isRecord(entry) || entry.customType !== "larva-agent-persona-switch-mode" || !isRecord(entry.details)) continue;
+    const mode = entry.details.mode;
+    if (isAgentPersonaSwitchMode(mode)) return mode;
+  }
+  return null;
+}
+
+function resolveAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode {
+  const stored = latestStoredAgentPersonaSwitchMode(ctx);
+  if (stored !== null) return stored;
+  const envMode = currentEnv(ctx).LARVA_PI_AGENT_PERSONA_SWITCH;
+  return isAgentPersonaSwitchMode(envMode) ? envMode : "off";
+}
+
+function appendSessionCustomEntry(ctx: PiContext, entry: unknown): void {
+  const session = ctx.session;
+  if (!session) return;
+  if (typeof session.appendEntry === "function") { session.appendEntry(entry); return; }
+  if (typeof session.addEntry === "function") { session.addEntry(entry); return; }
+  if (typeof session.addCustomEntry === "function") { session.addCustomEntry(entry); return; }
+  if (Array.isArray(session.entries)) session.entries.push(entry);
+}
+
+function setAgentPersonaSwitchMode(mode: AgentPersonaSwitchMode): void {
+  agentPersonaSwitchMode = mode;
+  agentPersonaSwitchSucceededInChain = false;
+}
+
+function agentPersonaToolsAllowed(): boolean {
+  return agentPersonaSwitchMode === "ask" || agentPersonaSwitchMode === "auto";
+}
+
+function applyAgentPersonaToolExposure(tools: string[]): string[] {
+  const agentTools = new Set(["larva_persona_switch", "larva_personas"]);
+  if (agentPersonaToolsAllowed()) return tools;
+  return tools.filter((tool) => !agentTools.has(tool));
+}
+
+function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void {
+  const command: CommandOptions = {
+    description: "Set Larva agent persona self-switch mode: off, ask, or auto.",
+    getArgumentCompletions: async (prefix: string) => {
+      const items = (["off", "ask", "auto"] as AgentPersonaSwitchMode[])
+        .filter((mode) => mode.startsWith(prefix.trim()))
+        .map((mode) => ({ value: mode, label: mode, description: `Agent persona self-switch mode: ${mode}` }));
+      return items.length > 0 ? items : null;
+    },
+    handler: async (input?: string, commandCtx?: PiContext) => {
+      const runtimeCtx = commandCtx ?? ctx;
+      const mode = input?.trim();
+      if (!isAgentPersonaSwitchMode(mode)) {
+        return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-agent-persona-switch off|ask|auto") };
+      }
+      setAgentPersonaSwitchMode(mode);
+      appendSessionCustomEntry(runtimeCtx, {
+        customType: "larva-agent-persona-switch-mode",
+        details: { mode, source: "slash-command" },
+      });
+      if (agentPersonaToolsAllowed()) registerAgentPersonaSwitchTools(runtimeCtx, pi);
+      await notify(runtimeCtx, `Larva agent persona self-switch mode: ${mode}`, "info");
+      return { ok: true, mode };
+    },
+  };
+  registerCommandCompat(pi, "larva-agent-persona-switch", command);
+}
+
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
   // Static contract token for legacy Pi command shape: name: "larva-persona".
   const baseEnv = currentEnv(ctx);
@@ -2451,7 +2557,7 @@ async function commitPersonaInternal(
     const baseline = await toolBaseline(pi);
     rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
-    const activeTools = filterPolicyTools(baseline, tool_policy);
+    const activeTools = applyAgentPersonaToolExposure(filterPolicyTools(baseline, tool_policy));
 
     await setPiModel(pi, model, spec.model);
     modelUpdated = true;
@@ -2604,6 +2710,140 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
   return commitPersona(selected, ctx, pi);
 }
 
+function switchToolText(text: string): PiTextContent[] {
+  return [{ type: "text", text }];
+}
+
+function switchToolFailure(larvaError: LarvaError): AgentPersonaSwitchToolResult {
+  return { status: "failed", content: switchToolText(`${larvaError.code}: ${larvaError.message}`), isError: true, error: larvaError, details: { error: larvaError } };
+}
+
+function switchToolSuccess(text: string, details: Record<string, unknown>, terminate: boolean): AgentPersonaSwitchToolResult {
+  return { status: "success", content: switchToolText(text), isError: false, terminate, details };
+}
+
+function boundedOptionalString(value: unknown, limit: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  return Array.from(trimmed).slice(0, limit).join("");
+}
+
+function appendPersonaSwitchAudit(ctx: PiContext, details: Record<string, unknown>): void {
+  appendSessionCustomEntry(ctx, { customType: "larva-agent-persona-switch-audit", details });
+}
+
+function continuationMessage(fromPersona: string, toPersona: string, reason: string, handoff: string | undefined): string {
+  return [
+    "[Larva-generated continuation after persona switch]",
+    `Switched from ${fromPersona} to ${toPersona}.`,
+    `Reason: ${reason}`,
+    `Handoff: ${handoff ?? ""}`,
+    "Continue the user's original task under the new persona.",
+    "Do not switch again unless newly justified.",
+  ].join("\n");
+}
+
+export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: PiContext, pi: PiApi = ctx): Promise<AgentPersonaSwitchToolResult> {
+  const mode = agentPersonaSwitchMode;
+  const fromPersona = state.envelope?.persona_id ?? null;
+  const personaId = boundedOptionalString(input.persona_id, 200);
+  const reason = boundedOptionalString(input.reason, 1_000);
+  const handoff = boundedOptionalString(input.handoff, 2_000);
+  const continueTask = input.continue_task === true;
+  const auditBase = {
+    source: "tool",
+    mode,
+    from_persona_id: fromPersona,
+    to_persona_id: personaId ?? null,
+    reason: reason ?? "",
+    handoff: handoff ?? "",
+    approved: false,
+    committed: false,
+    error_code: null,
+    continue_task: continueTask,
+  };
+  if (mode === "off") {
+    const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_OFF", "Larva agent persona self-switch mode is off.");
+    appendPersonaSwitchAudit(ctx, { ...auditBase, error_code: larvaError.code });
+    return switchToolFailure(larvaError);
+  }
+  if (!personaId || !reason) {
+    const larvaError = error("LARVA_BAD_INPUT", "larva_persona_switch requires persona_id and a non-empty reason.");
+    appendPersonaSwitchAudit(ctx, { ...auditBase, error_code: larvaError.code });
+    return switchToolFailure(larvaError);
+  }
+  if (agentPersonaSwitchSucceededInChain) {
+    const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_LIMIT", "At most one successful self-switch is allowed for one user request chain.");
+    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", error_code: larvaError.code });
+    return switchToolFailure(larvaError);
+  }
+  if (fromPersona === personaId) {
+    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: false });
+    return switchToolSuccess(`Larva persona already active: ${personaId}`, { persona_id: personaId, committed: false }, false);
+  }
+  let approved = mode === "auto";
+  if (mode === "ask") {
+    const confirm = ctx.ui?.confirm;
+    approved = typeof confirm === "function" ? await confirm(`Switch Larva persona from ${fromPersona ?? "none"} to ${personaId}?\nReason: ${reason}`, { persona_id: personaId, reason, handoff }) === true : false;
+  }
+  if (!approved) {
+    const larvaError = error("LARVA_BAD_INPUT", "Larva persona switch was not approved.");
+    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: larvaError.code });
+    return switchToolFailure(larvaError);
+  }
+  const committed = await commitPersona(personaId, ctx, pi);
+  if (!committed.ok) {
+    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, error_code: committed.error.code });
+    return switchToolFailure(committed.error);
+  }
+  agentPersonaSwitchSucceededInChain = true;
+  appendPersonaSwitchAudit(ctx, {
+    source: "tool",
+    mode,
+    from_persona_id: fromPersona,
+    to_persona_id: personaId,
+    reason,
+    handoff: handoff ?? "",
+    approved: true,
+    committed: true,
+    error_code: null,
+    continue_task: continueTask,
+  });
+  const sendUserMessage = ctx.sendUserMessage ?? (pi as PiContext).sendUserMessage;
+  if (continueTask && typeof sendUserMessage === "function") {
+    await sendUserMessage(continuationMessage(fromPersona ?? "none", personaId, reason, handoff), { deliverAs: "followUp" });
+  }
+  return switchToolSuccess(`Larva persona switched to ${personaId}`, { persona_id: personaId, committed: true }, true);
+}
+
+export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ content: PiTextContent[]; details: { status: "success" | "failed"; personas: BridgeListItem[]; error: LarvaError | null }; isError: boolean }> {
+  if (!agentPersonaToolsAllowed()) {
+    const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_OFF", "Larva persona discovery is unavailable when self-switch mode is off.");
+    return { content: switchToolText(`${larvaError.code}: ${larvaError.message}`), details: { status: "failed", personas: [], error: larvaError }, isError: true };
+  }
+  const record = isRecord(input) ? input : {};
+  const query = typeof record.query === "string" ? record.query.trim().toLocaleLowerCase() : "";
+  const requestedLimit = typeof record.limit === "number" && Number.isFinite(record.limit) ? Math.floor(record.limit) : 10;
+  const limit = Math.max(1, Math.min(25, requestedLimit));
+  const personas = (await listPersonas(ctx))
+    .filter((persona) => query.length === 0 || persona.id.toLocaleLowerCase().includes(query) || (persona.description ?? "").toLocaleLowerCase().includes(query))
+    .slice(0, limit)
+    .map((persona) => ({ ...persona, prompt: undefined } as BridgeListItem));
+  const text = personas.map((persona) => `${persona.id}${persona.description ? ` — ${persona.description}` : ""}`).join("\n") || "No matching Larva personas.";
+  return { content: switchToolText(text), details: { status: "success", personas, error: null }, isError: false };
+}
+
+function agentPersonaSwitchPromptGuidance(): string | null {
+  if (agentPersonaSwitchMode === "auto") {
+    return "If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason and handoff. Do not call other tools in the same assistant message when switching persona. Do not switch for minor style mismatch. At most one self-switch may happen for one user request chain unless the user explicitly asks otherwise.";
+  }
+  if (agentPersonaSwitchMode === "ask") {
+    return "You may request a persona switch with larva_persona_switch when another registered Larva persona is clearly better suited. Call larva_persona_switch alone. Do not call other tools in the same assistant message when switching persona. The user must approve before the switch is committed.";
+  }
+  return null;
+}
+
 export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnvelope): string {
   const cleanPrompt = systemPrompt
     .replace(LARVA_MANAGED_BLOCK_RE, "\n")
@@ -2614,10 +2854,12 @@ export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnv
     "Active Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.",
     LARVA_IDENTITY_POLICY_END,
   ].join("\n");
+  const guidance = agentPersonaSwitchPromptGuidance();
   const activePersona = [
     LARVA_ACTIVE_PERSONA_BEGIN,
     `<!-- larva-spec: ${envelope.persona_id}@${envelope.spec_digest} -->`,
     envelope.prompt,
+    ...(guidance === null ? [] : [guidance]),
     "Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.",
     LARVA_ACTIVE_PERSONA_END,
   ].join("\n");
@@ -2630,6 +2872,9 @@ export function before_agent_start(event: unknown): { systemPrompt: string } | n
 }
 
 export function decideToolCall(tool: string): ToolPolicyDecision {
+  if ((tool === "larva_persona_switch" || tool === "larva_personas") && !agentPersonaToolsAllowed()) {
+    return { action: "deny", error: error("LARVA_AGENT_PERSONA_SWITCH_OFF", `Larva agent persona self-switch mode is off; ${tool} is unavailable`) };
+  }
   if (!state.envelope || state.activeTools.has(tool)) return { action: "allow" };
   return { action: "deny", error: error("LARVA_TOOL_DENIED", `Larva policy denied ${tool}`) };
 }
@@ -3402,6 +3647,7 @@ function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProc
         LARVA_PI_INITIAL_PERSONA_ID: personaId,
         LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
         LARVA_PI_INTERACTIVE_TUI: "0",
+        LARVA_PI_AGENT_PERSONA_SWITCH: "off",
         LARVA_PI_LAUNCHED: "1",
       },
       stdio: ["pipe", "pipe", "pipe"],
@@ -3871,6 +4117,7 @@ function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefi
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
+  setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   if (!env.LARVA_PI_INITIAL_PERSONA_ID) {
     await setStatus(ctx);
     return;
@@ -3883,10 +4130,55 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   }
 }
 
+function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
+  if (!agentPersonaToolsAllowed() || agentPersonaSwitchToolsRegistered) return;
+  agentPersonaSwitchToolsRegistered = true;
+  const switchSchema = {
+    type: "object",
+    properties: {
+      persona_id: { type: "string", description: "Target Larva persona id." },
+      reason: { type: "string", description: "Required concise reason for switching persona." },
+      handoff: { type: "string", description: "Optional bounded handoff for the next persona." },
+      continue_task: { type: "boolean", description: "Queue a Larva-generated continuation after a successful switch." },
+    },
+    required: ["persona_id", "reason"],
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_persona_switch",
+    label: "Larva Persona Switch",
+    description: "Request an autonomous Larva persona switch. Call larva_persona_switch alone; do not call other tools in the same assistant message when switching persona.",
+    inputSchema: switchSchema,
+    parameters: switchSchema,
+    handler: (input: PersonaSwitchToolInput) => larva_persona_switch(input, ctx, pi),
+    execute: (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_persona_switch(input, toolCtx ?? ctx, pi),
+  });
+  const personasSchema = {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Optional bounded filter over persona id and description." },
+      limit: { type: "integer", minimum: 1, maximum: 25, description: "Maximum personas to return; capped at 25." },
+    },
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_personas",
+    label: "Larva Personas",
+    description: "Read-only bounded Larva persona discovery for choosing a better-suited persona. It does not include persona prompts.",
+    inputSchema: personasSchema,
+    parameters: personasSchema,
+    handler: (input: unknown) => larva_personas(input, ctx),
+    execute: (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_personas(input, toolCtx ?? ctx),
+  });
+}
+
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
   const env = currentEnv(ctx);
+  agentPersonaSwitchToolsRegistered = false;
+  setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   loadSubagentPresentationCache(env);
   registerLarvaSubagentLogCommand(ctx, pi);
+  registerLarvaAgentPersonaSwitchCommand(ctx, pi);
   registerLarvaPersonaCommand(ctx, pi);
   const subagentSchema = {
     type: "object",
@@ -3941,6 +4233,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     handler: async (input: unknown) => larva_subagent_sessions(input),
     execute: async (_toolCallId, input) => larva_subagent_sessions(input),
   });
+  registerAgentPersonaSwitchTools(ctx, pi);
   if (pi !== ctx) {
     await initializeSession(withRuntimeEnv(ctx, env), pi);
   }

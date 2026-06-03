@@ -1776,6 +1776,27 @@ def test_agent_persona_switch_tool_exposure_ask_auto_vs_off_behavior(tmp_path: P
     assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "autoTools")
 
 
+def test_agent_persona_switch_invalid_stored_mode_falls_back_to_env_then_off_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const envAskHarness = await buildHarness(
+          { LARVA_PI_AGENT_PERSONA_SWITCH: "ask" },
+          { sessionEntries: [{ customType: "larva-agent-persona-switch-mode", details: { mode: "bogus", source: "slash-command" } }] }
+        );
+        const invalidEnvHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "bogus" });
+        console.log(JSON.stringify({
+          envAskTools: Object.keys(envAskHarness.tools),
+          invalidEnvTools: Object.keys(invalidEnvHarness.tools),
+        }));
+        """,
+    )
+
+    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "envAskTools")
+    assert "larva_persona_switch" not in _registered_names(payload, "invalidEnvTools")
+    assert "larva_personas" not in _registered_names(payload, "invalidEnvTools")
+
+
 def test_agent_persona_switch_stale_off_rejects_forged_tool_call_without_commit_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
@@ -1821,6 +1842,54 @@ def test_agent_persona_switch_manual_larva_persona_preserved_in_off_ask_auto_beh
         assert case["finalEnvelope"]["persona_id"] == "python"
     off_case = next(case for case in payload["results"] if case["mode"] == "off")
     assert "larva_persona_switch" not in off_case["toolNames"]
+
+
+def test_agent_persona_switch_prompt_guidance_only_for_ask_auto_without_catalogue_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const prompt = (harness) => harness.mod.before_agent_start({ systemPrompt: "base" })?.systemPrompt ?? "";
+        const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const offPrompt = prompt(offHarness);
+        const askHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const askPrompt = prompt(askHarness);
+        const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const autoPrompt = prompt(autoHarness);
+        console.log(JSON.stringify({ offPrompt, askPrompt, autoPrompt }));
+        """,
+    )
+
+    assert "larva_persona_switch" not in payload["offPrompt"]
+    for key in ("askPrompt", "autoPrompt"):
+        assert "larva_persona_switch alone" in payload[key]
+        assert "Do not call other tools in the same assistant message" in payload[key]
+        assert "Python persona" not in payload[key]
+        assert "Architecture persona" not in payload[key]
+
+
+def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+        const tool = autoHarness.tools["larva_personas"];
+        const result = tool ? await (tool.execute ?? tool.handler)("call-1", { limit: 100 }, undefined, undefined, autoHarness.ctx) : null;
+        const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
+        const directOff = await offHarness.mod.larva_personas({ limit: 100 }, offHarness.ctx);
+        console.log(JSON.stringify({
+          offTools: Object.keys(offHarness.tools),
+          result,
+          directOff,
+        }));
+        """,
+    )
+
+    assert "larva_personas" not in _registered_names(payload, "offTools")
+    assert payload["result"]["details"]["status"] == "success"
+    assert len(payload["result"]["details"]["personas"]) <= 25
+    assert "prompt" not in payload["result"]["details"]["personas"][0]
+    assert payload["directOff"]["isError"] is True
+    assert payload["directOff"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
 
 
 def test_agent_persona_switch_reason_required_before_commit_behavior(tmp_path: Path) -> None:
