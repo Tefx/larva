@@ -99458,19 +99458,19 @@ phases:
 
       - Verify B3 overlay outcome uses the adjudication artifact and flags any remaining
       authority conflict as blocking.'
-    verification: '- [ ] Requirements register rechecks B1 fatal startup, B2 id-only
+    verification: '- [x] Requirements register rechecks B1 fatal startup, B2 id-only
       mention population, and B3 overlay authority disposition.
 
-      - [ ] Fatal startup divergence is CONFORMS with runtime evidence or remains
+      - [x] Fatal startup divergence is CONFORMS with runtime evidence or remains
       DIVERGES with blocker closure path.
 
-      - [ ] Id-only completion fixture uses minimal non-empty `data[].id` without
+      - [x] Id-only completion fixture uses minimal non-empty `data[].id` without
       `spec_digest` and produces mention candidates.
 
-      - [ ] Overlay visibility verdict cites the adjudication artifact and does not
+      - [x] Overlay visibility verdict cites the adjudication artifact and does not
       silently remove or approve current behavior.
 
-      - [ ] No shared surface drift, duplicate design authority, or unresolved forbidden
+      - [x] No shared surface drift, duplicate design authority, or unresolved forbidden
       behavior remains unowned.'
     refs:
     - design/pi-coding-agent-integration.md
