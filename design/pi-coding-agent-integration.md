@@ -198,6 +198,13 @@ No-argument behavior:
 
 - In interactive TUI mode only, the extension opens a selector populated through
   the Larva CLI bridge list command.
+- When Pi custom UI is available, the selector is a Pi TUI component using
+  `Input` for filtering, `SelectList` for candidates, and a detail panel showing
+  id, model, description, capabilities, and digest. `Enter` confirms, `Esc`
+  cancels, and mouse-click SGR events are intentionally unsupported no-ops.
+- If the enhanced custom UI cannot be opened but Pi's simpler selector API is
+  available, the command may fall back to that selector without changing the
+  non-interactive contract.
 - RPC `ctx.hasUI` is not enough to open the selector. In RPC, print, or JSON mode,
   no argument returns `ok: false` with `LARVA_BAD_INPUT` and leaves active state
   unchanged.
@@ -303,16 +310,24 @@ user-visible overlay. Neither surface replaces this footer status:
 ### Pi TUI dependency and reusable UI components
 
 The bundled Pi extension is a Node/TypeScript runtime surface and formally
-depends on `@earendil-works/pi-tui` for terminal UI correctness. This is an
-adapter-local runtime dependency, not a Larva/opifex shared-surface dependency.
-The dependency is declared under `contrib/pi-extension` and installed with:
+depends on exact `@earendil-works/pi-tui@0.78.0` for terminal UI correctness.
+This is an adapter-local runtime dependency, not a Larva/opifex shared-surface
+dependency. The exact version is declared under `contrib/pi-extension` in both
+`package.json` and `package-lock.json`, and installed with:
 
 ```bash
 npm --prefix contrib/pi-extension ci
 ```
 
+Version governance: keep `@earendil-works/pi-tui` pinned to exactly `0.78.0` for
+this integration target. Do not switch to a semver range until live Pi runtime
+compatibility is proven; Pi upgrades must update both package and lock files in
+the same pass and rerun the Pi-extension UI/runtime gates.
+
 The adapter must prefer Pi TUI primitives over handwritten terminal UI code:
 
+- Import primitives directly from `@earendil-works/pi-tui`; host-global module
+  resolution and local text-width shims are not acceptable for this target.
 - `visibleWidth`, `truncateToWidth`, and `wrapTextWithAnsi` own display-width,
   wrapping, and truncation behavior.
 - `matchesKey`/`Key` plus injected Pi keybindings own keyboard matching.
@@ -1954,20 +1969,21 @@ architecture_basis:
 Pi TUI formal dependency and enhanced UI delta:
 
 - `contrib/pi-extension` is a Node/TypeScript runtime surface with a formal
-  dependency on `@earendil-works/pi-tui`; local development and CI must install
-  it with `npm --prefix contrib/pi-extension ci` before Pi-extension UI work.
+  dependency on exact `@earendil-works/pi-tui@0.78.0`; local development and CI
+  must install it with `npm --prefix contrib/pi-extension ci` before Pi-extension
+  UI work.
 - Pi TUI owns display width, wrapping, truncation, keyboard matching, Markdown
   rendering, selector/input primitives, and basic layout containers.
 - Larva owns only adapter-specific UI state: subagent log overlay selection,
   scroll offset, keyboard tab state, view-only overlay result shape, and
   mouse-reporting lifecycle cleanup.
-- Expanded subagent results should render as Markdown UI when expanded, while
-  collapsed rows remain compact renderer-safe text.
-- `/larva-subagent-log` should become a keyboard-tabbed Pi TUI overlay with
-  Summary, Output, and Metadata panes; Output uses Markdown rendering.
-- `/larva-persona` no-argument interactive selection may be upgraded from a plain
-  list to a Pi TUI selector using `Input`, `SelectList`, and a detail panel,
-  while preserving non-interactive fallback behavior.
+- Expanded subagent results render as Markdown UI when expanded, while collapsed
+  rows remain compact renderer-safe text.
+- `/larva-subagent-log` is a keyboard-tabbed Pi TUI overlay with Summary, Output,
+  and Metadata panes; Output uses Markdown rendering.
+- `/larva-persona` no-argument interactive selection uses a Pi TUI selector with
+  `Input`, `SelectList`, and a detail panel when custom UI is available, while
+  preserving non-interactive and fallback selector behavior.
 - Mouse wheel remains supported for scrollable overlays. Mouse click is a
   non-goal for this target.
 
@@ -2065,6 +2081,7 @@ link here rather than redefining the contracts.
 | Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw short forms such as `@python-senior` remain delegated. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
 | `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
 | `/larva-subagent-log` overlay | The authorized slash command is view-only, user-visible, adapter-local, and backed only by the parent extension's in-memory presentation log. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k presentation_log_overlay -v` |
+| Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.78.0`; custom components satisfy visible-width rendering; `/larva-subagent-log` has Summary/Output/Metadata tabs with Markdown output; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
 | Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
 | Subagent row/progress rendering | `larva_subagent` exposes `renderCall`, `execute` progress updates, and `renderResult` with bounded visible text; this is row-local and does not replace the parent `larva:` footer. | Harness proof is sufficient for renderer contract shape and deterministic bounds; live Pi rendering remains a UI runtime concern. | `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'render_hooks or vt46' -v` |
 | Runtime hard gates | Extension loading, Pi RPC command inventory, autocomplete hook provenance, subagent row progress, and subagent log overlay command are reported together. | The matrix is data/provenance, not a fallback authority for behavior. Unsupported or mock-only items must be shown as unsupported/unknown rather than claimed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
@@ -2301,8 +2318,9 @@ Implementation gates must prove these observable behaviors:
 
 Additional gates for the formal Pi TUI dependency and enhanced UI target:
 
-1. `npm --prefix contrib/pi-extension ci` succeeds and installs the pinned
-   `@earendil-works/pi-tui` version used by this integration target.
+1. `npm --prefix contrib/pi-extension ci` succeeds and installs exact
+   `@earendil-works/pi-tui@0.78.0` from the `contrib/pi-extension` package and
+   lock files.
 2. The Pi extension can import Pi TUI primitives from the formal dependency path
    without relying on host-global module resolution.
 3. All `/larva-subagent-log` custom-component render lines satisfy visible width

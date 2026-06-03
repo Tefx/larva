@@ -235,9 +235,14 @@ rules, and commits the persona atomically. If any step fails, the previous
 persona, model, and tool rules remain active.
 
 With no argument, `/larva-persona` opens a selector only in interactive TUI mode.
-In RPC, print, JSON, SDK, malformed mode, unknown mode, or other non-interactive
-launcher classifications, the command returns an input error and leaves active
-state unchanged. The Pi status line shows:
+When Pi exposes custom UI, the selector uses Pi TUI `Input` plus `SelectList`
+with a detail panel showing id, model, description, capabilities, and digest;
+`Enter` confirms and `Esc` cancels. Mouse clicks are intentionally unsupported
+no-ops. If the enhanced custom UI cannot be opened but Pi's simpler selector API
+is available, the command may fall back to that selector. In RPC, print, JSON,
+SDK, malformed mode, unknown mode, or other non-interactive launcher
+classifications, the command returns an input error and leaves active state
+unchanged. The Pi status line shows:
 
 ```text
 larva: <id>
@@ -436,20 +441,25 @@ unavailable, the proof is blocked rather than silently passed.
 ## Pi TUI dependency and UI component policy
 
 The Pi extension is a Node/TypeScript runtime surface and formally depends on
-`@earendil-works/pi-tui` for terminal UI correctness. Local development and CI
-must install the extension dependency set before Pi-extension UI work:
+exact `@earendil-works/pi-tui@0.78.0` for terminal UI correctness. That exact
+version is declared in `contrib/pi-extension/package.json` and locked by
+`contrib/pi-extension/package-lock.json`. Local development and CI must install
+the extension dependency set before Pi-extension UI work:
 
 ```bash
 npm --prefix contrib/pi-extension ci
 ```
 
-Initial policy: pin `@earendil-works/pi-tui` to the Pi runtime-compatible version
-used by this integration target. Do not use a semver range until compatibility is
-proven against the live Pi runtime. When Pi is upgraded, update the Pi TUI version
-in the same implementation pass and rerun the Pi-extension UI/runtime gates.
+Version governance: keep `@earendil-works/pi-tui` pinned to exactly `0.78.0` for
+this integration target. Do not use a semver range until compatibility is proven
+against the live Pi runtime. When Pi is upgraded, update both the package file and
+lockfile in the same implementation pass and rerun the Pi-extension UI/runtime
+gates.
 
 UI rendering rules:
 
+- Import Pi TUI primitives directly from `@earendil-works/pi-tui`; do not rely on
+  host-global module resolution or local text-width shims for this target.
 - Use Pi TUI `visibleWidth`, `truncateToWidth`, and `wrapTextWithAnsi` for all
   width-sensitive text, border rows, wrapping, and truncation.
 - Use Pi TUI `matchesKey`/`Key` and injected Pi keybindings for keyboard input;
@@ -463,6 +473,13 @@ UI rendering rules:
 The extension should keep custom code only for adapter-specific state and layout
 that Pi TUI does not provide directly, such as subagent presentation-log scroll
 state, tab state, and mouse-reporting lifecycle cleanup.
+
+Enhanced UI proof is split between deterministic component harnesses and runtime
+smoke provenance. Harnesses prove direct Pi TUI imports, width-safe rendering,
+Markdown output, overlay tabs, selector detail behavior, and mouse-click no-op
+behavior. `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+records runtime hard-gate provenance; mock-only or unavailable Pi/TUI evidence
+must be reported as unsupported or blocked rather than as live support.
 
 ## `larva_subagent` custom tool
 
@@ -542,9 +559,11 @@ space. If text is truncated, the ellipsis is included inside the stated bound.
 They do not count display columns or grapheme clusters.
 
 The final rendered result supports collapsed and expanded views. Collapsed view
-shows a compact status such as `turing completed`, `turing cancelled`, or
-`turing failed`. Expanded view shows persona id, mode, full task, `task_id` when
-known, final status, error if any, final output, and the same resume footer. This
+shows a compact renderer-safe status such as `turing completed`, `turing
+cancelled`, or `turing failed`. Expanded view renders Markdown UI sections for
+Summary, Task, Output, Error, and Resume while preserving persona id, mode, full
+task, `task_id` when known, final status, error if any, final output, the same
+resume footer, and the semantic `LarvaSubagentResult`/ToolResult metadata. This
 uses Pi custom rendering only; it does not overwrite the parent `larva: <id>`
 footer status or create a separate widget dashboard.
 
@@ -706,5 +725,9 @@ Do not infer these guarantees from `larva pi` or this extension:
 - No batch subagent tool or job scheduler.
 - No subagent catalogue dumped into the system prompt.
 - No Larva sidecar metadata or provenance file for child sessions.
+- No model-visible overlay log stream; `/larva-subagent-log` is user-visible,
+  view-only, in-memory presentation state only.
+- No mouse click support for this target; keyboard controls and overlay mouse
+  wheel scrolling are the supported TUI interactions.
 - No MCP transport implementation inside this integration; users may install a Pi
   MCP bridge separately.
