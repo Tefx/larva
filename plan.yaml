@@ -99396,20 +99396,20 @@ phases:
 
       - Retest must state whether degraded behavior is user-observable if live Pi
       support is unavailable.'
-    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs` raw output
+    verification: '- [x] `node scripts/pi-extension-runtime-smoke.mjs` raw output
       is included with tested Pi package version/commit.
 
-      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs` and `node contrib/pi-extension/test-autocomplete-runtime.mjs`
+      - [x] `node scripts/pi-extension-autocomplete-smoke.mjs` and `node contrib/pi-extension/test-autocomplete-runtime.mjs`
       raw outputs are included.
 
-      - [ ] Capability matrix addAutocompleteProvider row is PASS with live provenance
+      - [x] Capability matrix addAutocompleteProvider row is PASS with live provenance
       or documented design-aligned degraded behavior with unsupported live capability
       provenance.
 
-      - [ ] Fatal startup fixtures prove MODEL_MAP_INVALID, POLICY_INVALID, PERSONA_NOT_FOUND,
+      - [x] Fatal startup fixtures prove MODEL_MAP_INVALID, POLICY_INVALID, PERSONA_NOT_FOUND,
       and MODEL_UNAVAILABLE stop Pi nonzero before first prompt/model turn.
 
-      - [ ] Previously passing runtime checks remain passing or have explicit new
+      - [x] Previously passing runtime checks remain passing or have explicit new
       blocker rows.'
     refs:
     - design/pi-coding-agent-integration.md
