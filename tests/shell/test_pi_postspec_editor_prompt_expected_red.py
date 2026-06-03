@@ -1,9 +1,8 @@
-"""Expected-red tests for Pi editor autocomplete and prompt overlay contracts.
+"""Green regression tests for Pi editor autocomplete and prompt overlay contracts.
 
-These tests define the post-commit-4616008 UX contract before the residual
-implementation lands.  They intentionally exercise only the public/test-facing
-Pi extension runtime and fixtures; production extension logic is not changed in
-this step.
+These tests verify the post-commit-4616008 UX contract against the implemented
+Pi extension runtime.  They intentionally exercise only public/test-facing
+runtime surfaces and fixtures; production extension logic is not changed here.
 """
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ from typing import Any, Final
 
 import pytest
 
-
 ROOT: Final = Path(__file__).resolve().parents[2]
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 FAKE_CLI: Final = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
@@ -26,7 +24,7 @@ FAKE_CLI: Final = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 def _run_node(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
-        pytest.skip("node is required for Pi extension expected-red runtime tests")
+        pytest.skip("node is required for Pi extension runtime regression tests")
     script_path = tmp_path / "scenario.mjs"
     script_path.write_text(textwrap.dedent(script), encoding="utf-8")
     completed = subprocess.run(

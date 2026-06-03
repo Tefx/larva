@@ -1,10 +1,9 @@
-"""Expected-red tests for Pi ``larva_subagent`` UX/runtime contracts.
+"""Green regression tests for Pi ``larva_subagent`` UX/runtime contracts.
 
-These tests intentionally define runtime/probe behavior required by
-``design/pi-coding-agent-integration.md`` before the downstream implementation
-step lands.  They are limited to test harness code and do not change product
-implementation logic.  At least one assertion is expected-red until the product
-adds the required realtime subagent log overlay command/surface.
+These tests verify runtime/probe behavior required by
+``design/pi-coding-agent-integration.md`` against the implemented Pi extension.
+They remain test-harness only and cover the subagent result, resume, lifecycle,
+and realtime log overlay surfaces without changing product logic.
 """
 
 from __future__ import annotations
@@ -18,7 +17,6 @@ from typing import Any, Final
 
 import pytest
 
-
 ROOT: Final = Path(__file__).resolve().parents[2]
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 FAKE_CLI: Final = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
@@ -27,7 +25,7 @@ FAKE_CLI: Final = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 def _run_node(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
-        pytest.skip("node is required for Pi extension expected-red runtime tests")
+        pytest.skip("node is required for Pi extension runtime regression tests")
     script_path = tmp_path / "scenario.mjs"
     script_path.write_text(textwrap.dedent(script), encoding="utf-8")
     completed = subprocess.run(
@@ -700,7 +698,7 @@ def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
     assert "mock/local harness hook evidence is never sufficient" in autocomplete_gate["supportRule"]
 
 
-def test_subagent_log_overlay_command_expected_red_without_live_credentials() -> None:
+def test_subagent_log_overlay_command_green_without_live_credentials() -> None:
     """Expose the realtime/log UI gap without depending on live Pi credentials."""
 
     node = shutil.which("node")

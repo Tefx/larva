@@ -1,8 +1,8 @@
-"""Expected-red contract tests for the bundled Pi extension.
+"""Regression and conformance tests for the bundled Pi extension.
 
-These tests intentionally pin the TypeScript extension contract before the
-``contrib/pi-extension`` implementation exists.  They are source/harness-level
-tests only: no production Pi extension code is implemented in this step.
+These tests pin the implemented TypeScript extension contract for
+``contrib/pi-extension``.  They combine source-level checks with focused runtime
+probes so final green proof reflects the shipped Pi extension behavior.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ REQUIREMENT_TRACEABILITY: Final[dict[int, tuple[str, ...]]] = {
 
 def _source() -> str:
     assert EXTENSION.exists(), (
-        "expected-red: bundled Pi extension contract target is missing at "
+        "bundled Pi extension contract target is missing at "
         f"{EXTENSION.relative_to(ROOT)}"
     )
     return EXTENSION.read_text(encoding="utf-8")
@@ -122,7 +122,7 @@ def _function_body(source: str, signature: str) -> str:
 
 
 def test_requirement_traceability_covers_verification_targets_6_through_41() -> None:
-    """The expected-red harness maps every owned design target to a test."""
+    """The green conformance harness maps every owned design target to a test."""
     assert sorted(REQUIREMENT_TRACEABILITY) == list(range(6, 42))
 
 
