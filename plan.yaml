@@ -101283,16 +101283,16 @@ phases:
       - Is CI install ordering before Pi UI/runtime tests explicit and non-optional?
 
       </risk_probes>'
-    verification: '- [ ] All P0 steps are complete with refs-read evidence.
+    verification: '- [x] All P0 steps are complete with refs-read evidence.
 
-      - [ ] Package manifest and lockfile pin `@earendil-works/pi-tui@0.78.0` exactly.
+      - [x] Package manifest and lockfile pin `@earendil-works/pi-tui@0.78.0` exactly.
 
-      - [ ] `npm --prefix contrib/pi-extension ci` and direct import/version proof
+      - [x] `npm --prefix contrib/pi-extension ci` and direct import/version proof
       are present.
 
-      - [ ] CI/local gate expectation is present and does not weaken existing checks.
+      - [x] CI/local gate expectation is present and does not weaken existing checks.
 
-      - [ ] Gate decision basis is OPEN or BLOCKED with explicit unresolved statuses
+      - [x] Gate decision basis is OPEN or BLOCKED with explicit unresolved statuses
       and closure paths.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
