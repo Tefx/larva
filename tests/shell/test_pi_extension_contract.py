@@ -1578,3 +1578,27 @@ def test_fake_contract_scenarios_are_documented_for_future_runtime_harness() -> 
     }
 
     assert json.loads(json.dumps(scenarios)) == scenarios
+
+
+def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() -> None:
+    """Expected-red source contract for `/larva-subagent-log` selector + streaming delta."""
+
+    source = _source()
+    assert '"--select"' in source
+    assert '"events"' in source and "Events" in source
+    assert "toolCallId" in source
+    assert "message_update" in source
+    assert "tool_execution_start" in source
+    assert "tool_execution_update" in source
+    assert "tool_execution_end" in source
+    assert "live_assistant" in source or "liveAssistant" in source
+    assert "thinking hidden" in source
+    assert "sanitizeSubagentPresentationCacheEntry" in source
+    sanitizer = _function_body(source, "function sanitizeSubagentPresentationCacheEntry")
+    for forbidden_live_field in (
+        "live_assistant_preview",
+        "tool_snapshots",
+        "active_tool_state",
+        "raw_rpc_events",
+    ):
+        assert forbidden_live_field in sanitizer

@@ -408,6 +408,60 @@ async function cancelEvidence() {
   };
 }
 
+function subagentLogOverlayExpectedRedEvidence() {
+  mod.resetSubagentPresentationStateForTests();
+  mod.recordSubagentPresentationEntryForTests("/tmp/ui-running.jsonl", "runner", "running", {
+    phase: "waiting_for_child",
+    task_preview: "wide selector row ".repeat(40),
+    task_prompt: "full prompt must stay out of selector row",
+    updated_at: "2026-06-03T00:00:00.000Z",
+  });
+  mod.recordSubagentPresentationEntryForTests("/tmp/ui-final.jsonl", "finisher", "success", {
+    phase: "success",
+    result_text: "final output must stay out of selector row",
+    task_preview: "newest final",
+    updated_at: "2026-06-04T00:00:00.000Z",
+  });
+  const list = mod.larva_subagent_log({ list: true, limit: 5 });
+  const component = new mod.SubagentPresentationLogOverlay({
+    entry: list.details.entries[0],
+    generation: 1,
+    tui: { terminal: { rows: 100 } },
+  });
+  const detail = component.render(96);
+  component.handleInput("s");
+  const selector = component.render(96);
+  component.handleInput("4");
+  const fourthTab = component.render(96);
+  component.handleInput("5");
+  const fifthTab = component.render(96);
+  const beforeClick = component.render(96);
+  component.handleInput("\x1b[<0;12;4M");
+  const afterClick = component.render(96);
+  component.dispose?.();
+  const small = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } }).render(96);
+  const tall = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 1, tui: { terminal: { rows: 100 } } }).render(96);
+  const plain = (lines) => lines.map(stripAnsi).join("\n");
+  const detailPlain = plain(detail);
+  const selectorPlain = plain(selector);
+  const fourthPlain = plain(fourthTab);
+  const fifthPlain = plain(fifthTab);
+  return {
+    renderedLineCounts: { small: small.length, tall: tall.length, detail: detail.length, selector: selector.length, fourthTab: fourthTab.length, fifthTab: fifthTab.length },
+    assertions: {
+      selectorModeViaS: /selector|select subagent/i.test(selectorPlain) && !selectorPlain.includes("● 1 Summary"),
+      runningFirstOrdering: list.details.entries[0]?.status === "running",
+      tabOrderIncludesEvents: /1 Summary.*2 Prompt.*3 Output.*4 Events.*5 Metadata/s.test(detailPlain),
+      fourthTabIsEvents: fourthPlain.includes("● 4 Events"),
+      fifthTabIsMetadata: fifthPlain.includes("● 5 Metadata"),
+      tallTerminalUsesNinetyPercent: tall.length >= 85 && tall.length <= 91,
+      stableFrameAcrossSelectorAndTabs: [selector, fourthTab, fifthTab].every((lines) => lines.length === detail.length && lines[0] === detail[0] && lines.at(-1) === detail.at(-1)),
+      mouseClickNoop: JSON.stringify(beforeClick) === JSON.stringify(afterClick),
+      allLinesFit: [detail, selector, fourthTab, fifthTab, small, tall].every((lines) => lines.every((line) => visibleWidth(line) <= 96)),
+    },
+  };
+}
+
 async function fallbackEvidence() {
   mod.resetPersonaCompletionCache();
   const env = baseEnv(await tempHome(), "1");
@@ -468,6 +522,7 @@ async function fallbackEvidence() {
 
 const detail = selectorComponentEvidence();
 const adaptive = adaptiveSelectorEvidence();
+const subagentLogExpectedRed = subagentLogOverlayExpectedRedEvidence();
 const commit = await commitThroughCommandEvidence();
 const shortcut = await shortcutEvidence();
 const shortcutNonIdle = await shortcutNonIdleEvidence();
@@ -477,6 +532,7 @@ const fallback = await fallbackEvidence();
 console.log(JSON.stringify({
   detail,
   adaptive,
+  subagentLogExpectedRed,
   commit,
   shortcut,
   shortcutNonIdle,

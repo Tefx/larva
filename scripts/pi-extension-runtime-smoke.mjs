@@ -21,6 +21,7 @@ const SCENARIOS = [
   "tool-call-block",
   "capability-gates",
   "live-child-rpc-proof",
+  "subagent-log-selector-streaming",
 ];
 
 function usage() {
@@ -565,6 +566,14 @@ async function executeWithTimeout(tool, callId, input, timeoutMs, onUpdate) {
   }
 }
 
+function stripAnsiForSmoke(line) {
+  return String(line ?? "").replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function renderedPlainText(lines) {
+  return Array.isArray(lines) ? lines.map(stripAnsiForSmoke).join("\n") : "";
+}
+
 async function controlledLiveChildRpcProof(evidence, args) {
   await piAvailability(evidence);
   evidence.runtime.controlledLive = {
@@ -703,6 +712,164 @@ async function controlledLiveChildRpcProof(evidence, args) {
     B2_resume: b2,
     B3_abort: b3,
     B4_orphans: b4,
+  };
+}
+
+async function subagentLogSelectorStreamingExpectedRed(evidence) {
+  const mod = await import(pathToFileURL(extensionPath).href);
+  const extensionRequire = createRequire(pathToFileURL(extensionPath).href);
+  const piTui = await import(pathToFileURL(extensionRequire.resolve("@earendil-works/pi-tui")).href);
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-subagent-log-selector-streaming-"));
+  const cacheFile = join(sessionRoot, "subagent-presentation-log.json");
+  const env = runtimeEnv({ HOME: sessionRoot, LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
+  await mod.initializeExtension(
+    { env, modelRegistry: { find: async () => ({ id: "model" }) }, ui: { setStatus: async () => undefined } },
+    { registerTool: () => undefined, registerCommand: () => undefined, on: () => undefined },
+  );
+  mod.resetSubagentPresentationStateForTests();
+
+  const overlongTask = `${"selector row prompt ".repeat(40)}这是🧪`;
+  const overlongToolOutput = `${"tool output chunk ".repeat(80)}SECRET_TOOL_TAIL`;
+  mod.recordSubagentPresentationEntryForTests("/tmp/running-old.jsonl", "runner", "running", {
+    phase: "waiting_for_child",
+    task_preview: overlongTask,
+    task_prompt: `running prompt ${overlongTask}`,
+    updated_at: "2026-06-03T00:00:00.000Z",
+  });
+  mod.recordSubagentPresentationEntryForTests("/tmp/final-newest.jsonl", "finisher", "success", {
+    phase: "success",
+    task_preview: "final task",
+    task_prompt: "final prompt",
+    result_text: "FINAL_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT",
+    updated_at: "2026-06-04T00:00:00.000Z",
+  });
+  const defaultDetail = mod.larva_subagent_log("");
+  const trimmedExact = mod.larva_subagent_log("  /tmp/final-newest.jsonl  ");
+  const selectFlag = mod.larva_subagent_log("--select");
+  const noLastAlias = mod.larva_subagent_log("last");
+  const noFuzzyAlias = mod.larva_subagent_log("/tmp/final");
+  const list = mod.larva_subagent_log({ list: true, limit: 5 });
+  const listText = list.content?.[0]?.text ?? "";
+
+  mod.recordSubagentPresentationEntryForTests("/tmp/live-running.jsonl", "streamer", "running", {
+    phase: "waiting_for_child",
+    task_preview: overlongTask,
+    task_prompt: "streaming task prompt",
+    result_text: "thinking_delta_secret SHOULD_NOT_RENDER",
+    updated_at: "2026-06-04T01:00:00.000Z",
+    live_assistant_preview: "LIVE_ASSISTANT_PREVIEW_VISIBLE_WHILE_RUNNING",
+    tool_snapshots: [{ toolCallId: "tool-1", name: "bash", status: "running", args_preview: "echo hi", output_preview: overlongToolOutput }],
+    active_tool_state: { toolCallId: "tool-1" },
+    raw_rpc_events: [{ type: "tool_execution_update", payload: "rawRpcSecret" }],
+  });
+  const cached = JSON.parse(await readFile(cacheFile, "utf8"));
+  const liveCachedEntry = cached.entries.find((entry) => entry.task_id === "/tmp/live-running.jsonl") ?? {};
+
+  const terminalWrites = [];
+  const component = new mod.SubagentPresentationLogOverlay({
+    entry: mod.larva_subagent_log("/tmp/live-running.jsonl").details.entries[0],
+    generation: 999,
+    tui: { terminal: { rows: 100, write: (data) => terminalWrites.push(data) }, requestRender: () => undefined },
+  });
+  const detailFrame = component.render(100);
+  const detailPlain = renderedPlainText(detailFrame);
+  component.handleInput?.("s");
+  const selectorFrame = component.render(100);
+  const selectorPlain = renderedPlainText(selectorFrame);
+  component.handleInput?.("3");
+  const outputFrame = component.render(100);
+  const outputPlain = renderedPlainText(outputFrame);
+  component.handleInput?.("4");
+  const fourthTabFrame = component.render(100);
+  const fourthTabPlain = renderedPlainText(fourthTabFrame);
+  component.handleInput?.("5");
+  const fifthTabFrame = component.render(100);
+  const fifthTabPlain = renderedPlainText(fifthTabFrame);
+  component.handleInput?.("\x1b[<0;10;10M");
+  const afterClickFrame = component.render(100);
+  component.dispose?.();
+
+  const shortTerminalComponent = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } });
+  const tallTerminalComponent = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 1, tui: { terminal: { rows: 100 } } });
+  const shortLines = shortTerminalComponent.render(100);
+  const tallLines = tallTerminalComponent.render(100);
+  shortTerminalComponent.dispose?.();
+  tallTerminalComponent.dispose?.();
+
+  const source = await readFile(extensionPath, "utf8");
+  const allFrames = [detailFrame, selectorFrame, outputFrame, fourthTabFrame, fifthTabFrame, afterClickFrame, shortLines, tallLines];
+  const assertions = {
+    R1_selector_entrypoints: {
+      defaultOpensNewestDetail: defaultDetail.details?.selected_task_id === "/tmp/final-newest.jsonl" && defaultDetail.ok === true,
+      sEntersSelector: /selector|select subagent/i.test(selectorPlain) && !/● 1 Summary/.test(selectorPlain),
+      selectFlagOpensSelector: selectFlag.ok === true && /selector|select subagent/i.test(selectFlag.content?.[0]?.text ?? ""),
+    },
+    R2_selector_ordering_rows: {
+      runningFirstThenNewestThenSequence: list.details?.entries?.[0]?.status === "running",
+      rowsContainRequiredBoundedFields: /runner/.test(listText) && /waiting_for_child/.test(listText) && /task_id: .*running-old\.jsonl/.test(listText) && /…|\.\.\./.test(listText),
+      rowsExcludeFullPromptOutputRawPayloads: !listText.includes("running prompt") && !listText.includes("FINAL_AUTHORITY") && !listText.includes("rawRpcSecret"),
+      allRenderedLinesFit: allFrames.every((lines) => lines.every((line) => piTui.visibleWidth(line) <= 100)),
+    },
+    R3_processLocalLiveState_cacheSanitizer: {
+      liveAssistantPreviewNotPersisted: !("live_assistant_preview" in liveCachedEntry),
+      toolSnapshotsNotPersisted: !("tool_snapshots" in liveCachedEntry),
+      activeToolStateNotPersisted: !("active_tool_state" in liveCachedEntry),
+      rawRpcEventsNotPersisted: !("raw_rpc_events" in liveCachedEntry) && JSON.stringify(cached).includes("rawRpcSecret") === false,
+    },
+    R4_groupedToolEvents: {
+      eventsTabExists: /Events/.test(detailPlain) && /● 4 Events/.test(fourthTabPlain),
+      groupedByToolCallId: (fourthTabPlain.match(/tool-1/g) ?? []).length === 1,
+      toolOutputOnlyBoundedEventsPreview: fourthTabPlain.includes("SECRET_TOOL_TAIL") === false && /truncated|…|\.\.\./i.test(fourthTabPlain) && outputPlain.includes("SECRET_TOOL_TAIL") === false,
+    },
+    R5_outputLiveAndFinalAuthority: {
+      liveAssistantShownWhileRunning: outputPlain.includes("LIVE_ASSISTANT_PREVIEW_VISIBLE_WHILE_RUNNING"),
+      finalAuthorityStillGetLastAssistantText: mod.larva_subagent_log("/tmp/final-newest.jsonl").content[0].text.includes("FINAL_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
+      outputPaneNotToolPane: outputPlain.includes("tool-1") === false && outputPlain.includes("SECRET_TOOL_TAIL") === false,
+    },
+    R6_boundsAndThinkingHidden: {
+      thinkingContentHidden: !outputPlain.includes("thinking_delta_secret") && /thinking hidden|No final subagent output/i.test(outputPlain),
+      overlongContentTruncated: /truncated|…|\.\.\./i.test(selectorPlain) && !selectorPlain.includes(overlongTask) && !fourthTabPlain.includes(overlongToolOutput),
+    },
+    R7_chromeTabsAndInput: {
+      tabOrderSummaryPromptOutputEventsMetadata: /1 Summary.*2 Prompt.*3 Output.*4 Events.*5 Metadata/s.test(detailPlain),
+      stableFrameAcrossSelectorTabsScroll: [selectorFrame, outputFrame, fourthTabFrame, fifthTabFrame].every((lines) => lines.length === detailFrame.length && lines[0] === detailFrame[0] && lines.at(-1) === detailFrame.at(-1)),
+      keyboardMouseClickNoop: JSON.stringify(fourthTabFrame) === JSON.stringify(afterClickFrame),
+    },
+    R8_negativeBoundaries: {
+      noRawJsonlOrSidecarShortcutInSourcePath: !/larva_subagent_log[\s\S]{0,2000}(readFile|lstat|realpath|sidecar|\.jsonl\.meta)/.test(source),
+      noModelVisibleStreamOrSharedSchemaLeak: !JSON.stringify(defaultDetail).includes("result_text\"") && !JSON.stringify(cached).includes("rawRpcSecret"),
+    },
+    R9_taskIdArgumentSemantics: {
+      trimmedExactTaskIdSelects: trimmedExact.ok === true && trimmedExact.details?.selected_task_id === "/tmp/final-newest.jsonl",
+      selectNotTreatedAsTaskId: selectFlag.details?.error?.code !== "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
+      noLastAlias: noLastAlias.details?.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
+      noFuzzyAlias: noFuzzyAlias.details?.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
+    },
+    R10_mouseReportingLifecycle: {
+      enabledOnlyWhileOpen: terminalWrites[0] === "\x1b[?1000h\x1b[?1006h",
+      disabledOnDispose: terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
+    },
+    R11_tallTerminal90PercentStableFrame: {
+      tallUsesNinetyPercentMaxHeight: tallLines.length >= 85 && tallLines.length <= 91,
+      tallGreaterThanShort: tallLines.length > shortLines.length,
+      stableFrameAcrossSelectorTabsScroll: [selectorFrame, outputFrame, fourthTabFrame, fifthTabFrame].every((lines) => lines.length === detailFrame.length && lines[0] === detailFrame[0] && lines.at(-1) === detailFrame.at(-1)),
+    },
+  };
+  const flattened = Object.values(assertions).flatMap((group) => Object.values(group));
+  evidence.runtime.subagentLogSelectorStreaming = {
+    status: flattened.every(Boolean) ? "PASS" : "EXPECTED_RED",
+    cacheFile,
+    selectedTaskIds: {
+      defaultDetail: defaultDetail.details?.selected_task_id ?? null,
+      trimmedExact: trimmedExact.details?.selected_task_id ?? null,
+      selectFlagError: selectFlag.details?.error?.code ?? null,
+      lastError: noLastAlias.details?.error?.code ?? null,
+      fuzzyError: noFuzzyAlias.details?.error?.code ?? null,
+    },
+    terminalRows: { short: 24, tall: 100, shortRenderedLines: shortLines.length, tallRenderedLines: tallLines.length },
+    tabPlainSamples: { detail: detailPlain.slice(0, 500), selector: selectorPlain.slice(0, 500), output: outputPlain.slice(0, 500), fourth: fourthTabPlain.slice(0, 500), fifth: fifthTabPlain.slice(0, 500) },
+    cacheKeysForLiveEntry: Object.keys(liveCachedEntry),
+    assertions,
   };
 }
 
@@ -951,10 +1118,15 @@ async function main() {
     };
   } else if (scenario === "live-child-rpc-proof") {
     await controlledLiveChildRpcProof(evidence, args);
+  } else if (scenario === "subagent-log-selector-streaming") {
+    await subagentLogSelectorStreamingExpectedRed(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
   if (scenario === "capability-gates" && evidence.package.piTuiDependency?.hardGateStatus !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "subagent-log-selector-streaming" && evidence.runtime.subagentLogSelectorStreaming?.status !== "PASS") {
     process.exitCode = 1;
   }
 }

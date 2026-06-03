@@ -1312,3 +1312,103 @@ def test_documented_external_format_fixtures_and_negative_non_goals() -> None:
     }
     assert all(alias not in json.dumps(documented_tool_result) for alias in negative_resume_aliases)
     assert all(not name.endswith(".jsonl") for name in negative_sidecar_names)
+
+
+def _run_runtime_smoke_allow_expected_red(scenario: str) -> tuple[dict[str, Any], int, str]:
+    """Run a smoke scenario and parse JSON even when expected-red exits non-zero."""
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension runtime smoke")
+    completed = subprocess.run(
+        [node, str(ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"), "--scenario", scenario],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=12,
+    )
+    assert completed.stdout.strip(), completed.stderr
+    return json.loads(completed.stdout), completed.returncode, completed.stderr
+
+
+def _subagent_selector_streaming_payload() -> dict[str, Any]:
+    payload, _returncode, _stderr = _run_runtime_smoke_allow_expected_red(
+        "subagent-log-selector-streaming"
+    )
+    return payload["runtime"]["subagentLogSelectorStreaming"]["assertions"]
+
+
+def test_expected_red_larva_subagent_log_selector_modes_ordering_and_task_id_args() -> None:
+    """Expected-red R1/R2/R9: selector entrypoints, ordering, rows, exact args."""
+
+    assertions = _subagent_selector_streaming_payload()
+
+    assert assertions["R1_selector_entrypoints"] == {
+        "defaultOpensNewestDetail": True,
+        "sEntersSelector": True,
+        "selectFlagOpensSelector": True,
+    }
+    assert assertions["R2_selector_ordering_rows"] == {
+        "runningFirstThenNewestThenSequence": True,
+        "rowsContainRequiredBoundedFields": True,
+        "rowsExcludeFullPromptOutputRawPayloads": True,
+        "allRenderedLinesFit": True,
+    }
+    assert assertions["R9_taskIdArgumentSemantics"] == {
+        "trimmedExactTaskIdSelects": True,
+        "selectNotTreatedAsTaskId": True,
+        "noLastAlias": True,
+        "noFuzzyAlias": True,
+    }
+
+
+def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> None:
+    """Expected-red R3-R8: live process state, cache sanitizer, events, bounds."""
+
+    assertions = _subagent_selector_streaming_payload()
+
+    assert assertions["R3_processLocalLiveState_cacheSanitizer"] == {
+        "liveAssistantPreviewNotPersisted": True,
+        "toolSnapshotsNotPersisted": True,
+        "activeToolStateNotPersisted": True,
+        "rawRpcEventsNotPersisted": True,
+    }
+    assert assertions["R4_groupedToolEvents"] == {
+        "eventsTabExists": True,
+        "groupedByToolCallId": True,
+        "toolOutputOnlyBoundedEventsPreview": True,
+    }
+    assert assertions["R5_outputLiveAndFinalAuthority"] == {
+        "liveAssistantShownWhileRunning": True,
+        "finalAuthorityStillGetLastAssistantText": True,
+        "outputPaneNotToolPane": True,
+    }
+    assert assertions["R6_boundsAndThinkingHidden"] == {
+        "thinkingContentHidden": True,
+        "overlongContentTruncated": True,
+    }
+    assert assertions["R8_negativeBoundaries"] == {
+        "noRawJsonlOrSidecarShortcutInSourcePath": True,
+        "noModelVisibleStreamOrSharedSchemaLeak": True,
+    }
+
+
+def test_expected_red_larva_subagent_log_chrome_mouse_and_tall_terminal_frame() -> None:
+    """Expected-red R7/R10/R11: tab order, input lifecycle, mouse, tall rows."""
+
+    assertions = _subagent_selector_streaming_payload()
+
+    assert assertions["R7_chromeTabsAndInput"] == {
+        "tabOrderSummaryPromptOutputEventsMetadata": True,
+        "stableFrameAcrossSelectorTabsScroll": True,
+        "keyboardMouseClickNoop": True,
+    }
+    assert assertions["R10_mouseReportingLifecycle"] == {
+        "enabledOnlyWhileOpen": True,
+        "disabledOnDispose": True,
+    }
+    assert assertions["R11_tallTerminal90PercentStableFrame"] == {
+        "tallUsesNinetyPercentMaxHeight": True,
+        "tallGreaterThanShort": True,
+        "stableFrameAcrossSelectorTabsScroll": True,
+    }
