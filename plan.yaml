@@ -100304,7 +100304,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.expected-red-label-cleanup
     name: Clean stale expected-red labels from final Pi proof set
-    status: claimed
+    status: done
     description: 'TARGET STATE: Remove or clearly reclassify stale expected-red labels/docstrings
       in Pi proof files so final green proof does not rely on contradictory expected-red
       wording. Gate failure B1 found expected-red labels/docstrings in tests/shell
@@ -100339,6 +100339,91 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-03T04:30:37.092618+00:00'
+    done_at: '2026-06-03T04:44:41.974253+00:00'
+    evidence: 'SUCCESS/PASS: stale expected-red labels/docstrings cleaned from final
+      Pi proof set; verification-failure regression repaired without weakening B2
+      `larva: none` behavior.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read for final green Pi proof expectations.
+
+      - cited Pi proof test files inspected: tests/shell/test_pi_extension_contract.py,
+      tests/shell/test_pi_extension_subagent_ux.py, tests/shell/test_pi_postspec_editor_prompt_expected_red.py,
+      tests/shell/test_pi_reported_failures_expected_red.py.
+
+
+      Files changed:
+
+      - tests/shell/test_pi_extension_contract.py
+
+      - tests/shell/test_pi_extension_subagent_ux.py
+
+      - tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+
+      - tests/shell/test_pi_reported_failures_expected_red.py
+
+
+      Worker commits:
+
+      - fc296475f21fc52d373784da936478f5631291c9 (expected-red cleanup)
+
+      - 0bc62feef405f0a62163b44f91b6226daba6e745 (test status baseline fix)
+
+      Mainline commits:
+
+      - d5b449e [vectl] step-pi_impl_finalization_20260603.expected-red-label-cleanup
+      completed
+
+      - 0eb6320 [vectl] step-pi_impl_finalization_20260603.expected-red-label-cleanup
+      verification fix
+
+
+      Worker verification:
+
+      - grep expected-red scan on cited files -> PASS, no matches.
+
+      - `uv run --group dev pytest -q` -> 719 passed.
+
+      - runtime smokes capability-gates, startup-fatal, live-child-rpc-proof -> PASS.
+
+      - invar guard changed/full -> PASS.
+
+      - Follow-up: targeted mention autocomplete test PASS; full pytest PASS; expected-red
+      grep scan PASS.
+
+
+      Mainline final-state verification:
+
+      - grep/static scan `expected-red|expected_red` on cited Pi proof files -> no
+      matches.
+
+      - `pytest -q` -> 719 passed in 57.02s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0.
+
+
+      Checklist receipt:
+
+      - grep/static scan shows no stale expected-red labels/docstrings in final Pi
+      proof files: true.
+
+      - full pytest passes: true.
+
+      - runtime smoke capability-gates/startup-fatal/live-child-rpc-proof pass: true.
+
+      - invar guard changed/full passes: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.final-gate-retest
     name: Retest final Pi integration deep review gate after expected-red cleanup
     status: pending
