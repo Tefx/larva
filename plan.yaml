@@ -99877,7 +99877,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.deep-wiring-audit
     name: Deep wiring audit for Pi integration
-    status: pending
+    status: skipped
     description: 'CONFORMANCE ARTIFACT: Full-system wiring audit focused on Pi integration.
       Verify public exports, CLI registration, extension packaging hook, custom tools,
       slash commands, reset hook, runtime smoke scripts, and no stubs/dead paths.
@@ -99912,6 +99912,7 @@ phases:
     - contrib/pi-extension/larva.ts
     - contrib/pi-extension/README.md
     agent: wiring-auditor
+    skipped_reason: absorbed
   - id: pi_impl_finalization_20260603.plan-readiness-review
     name: Fresh plan readiness/spec conformance review
     status: claimed
