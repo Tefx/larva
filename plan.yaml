@@ -101419,6 +101419,94 @@ phases:
       - output_markdown_and_empty_fallback: satisfied|failed|blocked\n- controls_and_mouse_cleanup:\
       \ satisfied|failed|blocked\n- view_only_safety: satisfied|failed|blocked"
     agent: frontend-engineer
+  - id: pi_tui_subagent_markdown_overlay_20260603.client-runtime-proof
+    name: Prove subagent Markdown overlay runtime liveness
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      PROOF ARTIFACT:
+
+      Launch or harness the Pi TUI/client surface and prove the subagent final-view
+      and `/larva-subagent-log` overlay surfaces are observable, non-blank, width-safe,
+      and minimally interactive. Source/build evidence alone is insufficient.
+
+
+      This check protects `pi_tui_subagent_markdown_overlay_20260603.gate` and final
+      P3 runtime smoke.
+
+
+      Required launched-surface evidence fields: surface class (`tui`), exact command/target,
+      rendered terminal capture or structured component snapshot, tab interactions,
+      scroll interactions, Markdown output evidence, mouse cleanup evidence, unobserved
+      states/blockers.
+
+
+      <side_effect_budget>
+
+      Allowed: run real Pi runtime smoke or closest existing TUI/component harness;
+      capture logs/snapshots. Forbidden: modifying code or accepting mock-only evidence
+      as live Pi support without BLOCKED/PARTIAL classification.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Attempt both a final subagent result expansion and `/larva-subagent-log` command
+      path.
+
+      - Capture tab transitions Summary -> Output -> Metadata and back.
+
+      - Verify no state mutation after overlay open/tab/scroll/close by comparing
+      state snapshots when harness supports it.
+
+      </risk_probes>'
+    verification: '- [ ] Runtime evidence shows expanded `larva_subagent` final view
+      renders Markdown UI with required sections.
+
+      - [ ] Runtime evidence shows `/larva-subagent-log` opens and displays Summary,
+      Output, and Metadata tabs with meaningful content or documented empty fallback.
+
+      - [ ] Tab, scroll, close, Enter-no-close, mouse-wheel, and mouse-click-no-op/non-goal
+      behavior are exercised.
+
+      - [ ] Rendered output evidence demonstrates visible width `<= width` for representative
+      wide/ANSI/Markdown content.
+
+      - [ ] If real Pi TUI proof is blocked, evidence states exact missing binary/hook/target
+      and whether product work or environment is blocking.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - scripts/pi-extension-runtime-smoke.mjs — <relevant scenario passage>\n- tests/shell/test_pi_extension_subagent_ux.py\
+      \ — <relevant harness passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <key passage>\n\n## Runtime Evidence\n- surface_class: tui\n- command_or_harness:\
+      \ <exact command>\n- launch_context: <Pi binary/version or harness provenance>\n\
+      - terminal_capture_or_snapshot: |\n    <paste rendered capture/snapshot>\n-\
+      \ tab_interactions: <Summary/Output/Metadata evidence>\n- scroll_interactions:\
+      \ <up/down/page/home/end/wheel evidence>\n- close_and_enter_behavior: <Esc/q\
+      \ close, Enter does not close>\n- click_non_goal: <click-shaped input ignored/no-op,\
+      \ or no click handler evidence>\n- width_table: <render width measurements>\n\
+      - state_snapshot_before_after: <forbidden state unchanged evidence>\n\n## Behavioral\
+      \ Proof Register\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | ---\
+      \ | --- | --- | --- | --- | --- |\n| P2-SUB-001 | expanded Markdown final view\
+      \ | launched/harness capture | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision>\
+      \ |\n| P2-SUB-002 | keyboard tabs | interaction capture | <ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n| P2-SUB-003 | Markdown Output pane | capture | <ref>\
+      \ | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n| P2-SUB-004 | view-only\
+      \ safety | state snapshot | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision>\
+      \ |\n| P2-SUB-005 | controls/mouse cleanup/no click | interaction logs | <ref>\
+      \ | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n\n## Checklist Receipt\n\
+      - launched_surface_observed: satisfied|failed|blocked\n- tabs_proven: satisfied|failed|blocked\n\
+      - markdown_output_proven: satisfied|failed|blocked\n- width_proven: satisfied|failed|blocked\n\
+      - safety_proven: satisfied|failed|blocked"
+    depends_on:
+    - pi_tui_subagent_markdown_overlay_20260603.markdown-tabs-implementation
+    agent: client-runtime-verifier
 - id: pi_tui_persona_selector_20260603
   name: P2 Persona Selector Enhancement 2026-06-03
   status: locked
