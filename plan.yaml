@@ -100126,7 +100126,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.wiring-blocker-retest
     name: Retest final wiring audit blockers
-    status: pending
+    status: claimed
     description: 'Independent retest for final wiring audit blockers B1-B3. Verify
       B1 startup tool enumeration failure degrades rather than exits, B2 no-active-persona
       session_start sets `larva: none`, and B3 child RPC trace env/file-write path
@@ -100149,3 +100149,5 @@ phases:
     depends_on:
     - pi_impl_finalization_20260603.wiring-blocker-fix
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-06-03T04:07:38.586503+00:00'
