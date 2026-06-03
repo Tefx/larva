@@ -98933,19 +98933,19 @@ phases:
 
       - Gate verifies retest evidence supersedes the original runtime/spec blocker
       findings before finalization proceeds.'
-    verification: '- [ ] Runtime smoke retest, spec conformance retest, overlay adjudication,
+    verification: '- [x] Runtime smoke retest, spec conformance retest, overlay adjudication,
       and full guard evidence are reviewed with a structured decision basis.
 
-      - [ ] Every OWNED requirement is PROVEN or has blocking remediation; unresolved
+      - [x] Every OWNED requirement is PROVEN or has blocking remediation; unresolved
       non-blockers include non-intersection evidence.
 
-      - [ ] Hard Pi capability gaps block PASS unless design-aligned degraded behavior
+      - [x] Hard Pi capability gaps block PASS unless design-aligned degraded behavior
       is explicitly authorized and proven user-observable.
 
-      - [ ] B3 overlay disposition is AUTHORIZED with aligned expectations, or REJECTED/AMBIGUOUS_BLOCKING
+      - [x] B3 overlay disposition is AUTHORIZED with aligned expectations, or REJECTED/AMBIGUOUS_BLOCKING
       with downstream remediation ownership.
 
-      - [ ] OPEN only if finalization can proceed without bypassing behavioral/runtime
+      - [x] OPEN only if finalization can proceed without bypassing behavioral/runtime
       obligations.'
     refs:
     - design/pi-coding-agent-integration.md
