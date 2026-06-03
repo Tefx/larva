@@ -877,10 +877,12 @@ Overlay selection contract:
 - Pressing `s` while the overlay is open enters an in-overlay subagent selector.
   `/larva-subagent-log --select` may open directly into that selector. The
   selector does not replace the command's default newest-detail behavior.
-- Selector rows are single-line, width-safe summaries containing status, persona
-  id, phase/status, bounded task preview, and bounded `task_id` suffix. Metadata
-  such as sequence and updated time may appear when width allows, but full task
-  prompts, full outputs, and raw child event payloads must stay out of selector
+- Selector rows are single-line, width-safe summaries containing local started
+  time (`HH:MM:SS`), status token, persona id, short task label, phase/status,
+  and bounded task preview. Absolute local time is used instead of relative age
+  because the overlay is event-driven rather than timer-polled, so relative age
+  would become stale while idle. Full task paths, full task prompts, full outputs,
+  internal call/frame IDs, and raw child event payloads must stay out of selector
   rows.
 - Selector ordering is deterministic: running entries first, then newest
   `updated_at` first, then highest `sequence` first as a tie-breaker. This keeps
@@ -2229,8 +2231,11 @@ Prompt identity overlay delta:
   presentation entries and loaded adapter-cache entries only; it does not scan
   child session files, parse raw JSONL, or create resume authority.
 - Selector ordering is running entries first, then newest `updated_at`, then
-  highest `sequence`. Selector rows are width-safe one-line summaries and must not
-  include full prompts, full outputs, raw tool output, or raw child RPC payloads.
+  highest `sequence`. Selector rows are width-safe one-line summaries with local
+  started time and must not include full prompts, full outputs, raw tool output,
+  raw child RPC payloads, full task paths, or internal call/frame IDs. Event-driven
+  refresh must allow newly launched subagents to appear without stealing cursor
+  focus from the currently selected entry when that entry still exists.
 - Live assistant output and tool-call activity are process-local presentation
   state fed by child Pi RPC events. Authorized inputs are normalized
   `message_update`, `tool_execution_start`, `tool_execution_update`,
@@ -2536,8 +2541,9 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
     truncated.
 11. Selector proof covers default newest-detail open, `s` to enter selector,
     deterministic ordering (running first, then newest `updated_at`, then highest
-    `sequence`), single-line bounded rows, keyboard navigation, `Enter` selecting
-    without closing, and `Esc`/`q` close behavior.
+    `sequence`), single-line bounded rows with local started time and no full path
+    or internal IDs, event-driven refresh without cursor theft, keyboard
+    navigation, `Enter` selecting without closing, and `Esc`/`q` close behavior.
 12. Streaming state is process-local only for this target. Cache roundtrip proof
     must show live assistant previews, grouped tool snapshots, active tool state,
     and raw child RPC event payloads are not persisted.
