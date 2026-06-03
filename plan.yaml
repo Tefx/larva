@@ -99736,7 +99736,7 @@ phases:
   steps:
   - id: pi_impl_finalization_20260603.docs-sync
     name: Sync Pi integration documentation to implemented behavior
-    status: claimed
+    status: done
     description: 'TARGET STATE: Update existing project documentation only to reflect
       the implemented Pi behavior. Scope: contrib/pi-extension/README.md and existing
       relevant docs; design/pi-coding-agent-integration.md remains canonical design
@@ -99779,6 +99779,102 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-03T03:44:32.944038+00:00'
+    done_at: '2026-06-03T03:58:56.745253+00:00'
+    evidence: 'SUCCESS/PASS: Pi integration documentation synchronized to implemented
+      behavior while preserving design/pi-coding-agent-integration.md as sole canonical
+      design authority.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: canonical Pi integration design
+      authority and implemented runtime behavior.
+
+      - contrib/pi-extension/README.md read/updated.
+
+
+      Files changed:
+
+      - README.md
+
+      - contrib/pi-extension/README.md
+
+      - design/pi-coding-agent-integration.md
+
+
+      Worker commit: 65944e4715d5273965a0bbcd853bec499e1431c2.
+
+      Mainline squash commit: bba1273 [vectl] step-pi_impl_finalization_20260603.docs-sync
+      completed.
+
+
+      Documentation coverage:
+
+      - fatal startup documented.
+
+      - id-only mentions documented.
+
+      - addAutocompleteProvider degraded provenance documented.
+
+      - authorized view-only /larva-subagent-log overlay documented.
+
+      - child RPC live proof documented/run.
+
+      - LARVA_PI_LAUNCHED sentinel documented.
+
+      - runtime capability matrix added as design authority.
+
+
+      Worker verification:
+
+      - invar guard changed=true -> passed.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> passed; autocomplete provenance runtimeHarness.mock unsupported; overlay
+      supported.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      PASS.
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case <all cases>`
+      -> passed.
+
+      - docs consistency/static grep checks -> passed.
+
+      - invar full_scan -> ok; warnings=5.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 30000` -> PASS B1/B2/B3/B4.
+
+      - `git diff --check` -> passed.
+
+
+      Mainline final-state verification:
+
+      - `git diff --check HEAD~1 HEAD` -> passed.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+
+      Checklist receipt:
+
+      - Documentation describes launcher env/args, persona switching, tool policy
+      paths, child RPC, sessions helper, realtime/log UI, overlay trigger, reset cleanup,
+      verification commands: true.
+
+      - Docs preserve view-only overlay and no-scan/no-raw-JSONL/no-sidecar/no-alias
+      constraints: true.
+
+      - Docs do not duplicate/supersede design/pi-coding-agent-integration.md: true.
+
+      - Docs match actual runtime conformance phase behavior/evidence: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.deep-wiring-audit
     name: Deep wiring audit for Pi integration
     status: claimed
