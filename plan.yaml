@@ -99729,7 +99729,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_finalization_20260603
   name: Pi Integration Finalization 2026-06-03
-  status: in_progress
+  status: done
   gate: Documentation, wiring, conformance, and final deep review all PASS.
   depends_on:
   - pi_impl_runtime_conformance_20260603
@@ -100426,7 +100426,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.final-gate-retest
     name: Retest final Pi integration deep review gate after expected-red cleanup
-    status: claimed
+    status: done
     description: Independent retest of final Pi integration deep review after stale
       expected-red label cleanup. Verify all prior final gate criteria plus no stale
       expected-red proof labels remain as accepted final proof.
@@ -100445,3 +100445,97 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-03T04:45:02.861591+00:00'
+    done_at: '2026-06-03T04:53:08.362343+00:00'
+    evidence: 'SUCCESS/PASS: final Pi integration deep review gate retest passed after
+      expected-red cleanup; verdict=PASS; blockers=[]; gate_open_allowed=true.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read/used as canonical Pi integration
+      design authority.
+
+      - Final Pi proof files scanned for stale expected-red labels.
+
+
+      Worker evidence commit: eb03f7961801035da9b00826c795f6ee4f5f2b2b.
+
+      Mainline squash commit: deff18b [vectl] step-pi_impl_finalization_20260603.final-gate-retest
+      completed.
+
+
+      Worker verification:
+
+      - invar_guard full_scan -> ok=true, errors=0, warnings=5.
+
+      - `uv run --group dev pytest -q` -> 719 passed.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> PASS.
+
+      - git grep expected-red/static scans on final Pi proof files/surfaces -> PASS,
+      no matches.
+
+      - git diff --check -> PASS.
+
+
+      Behavioral proof register:
+
+      - full_guard_pytest: PASS.
+
+      - runtime_capability_gates: PASS.
+
+      - fatal_startup: PASS.
+
+      - live_child_rpc: PASS (fresh B1_CHILD_RPC_OK, resume B2_RESUME_RPC_OK, abort
+      LARVA_CHILD_CANCELLED, orphan_cleanup PASS).
+
+      - docs_runtime_matrix: PASS.
+
+      - final_wiring_blockers_B1_B2_B3: PASS.
+
+      - stale_expected_red_labels: PASS.
+
+
+      Mainline final-state verification:
+
+      - `pytest -q` -> 719 passed in 57.50s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0.
+
+      - `git grep -n "expected-red\|expected_red" -- tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+      tests/shell/test_pi_reported_failures_expected_red.py` -> no matches.
+
+      - invar full scan run grd_9bbe955347ff4dcd9a15c555 -> ok=true, errors=0, warnings=5,
+      files_checked=43.
+
+
+      Checklist receipt:
+
+      - full guard/pytest evidence is green: true.
+
+      - runtime smoke/capability/fatal startup/live child RPC proof is green: true.
+
+      - docs/runtime matrix/final wiring blockers are green: true.
+
+      - expected-red cleanup verified with grep/static scan and no stale final proof
+      contradiction remains: true.
+
+      - final verdict PASS only if blockers=[] and gate_open_allowed=true: true.
+
+
+      Blockers: none. Deviation Records: none.'
