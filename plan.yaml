@@ -100027,17 +100027,17 @@ phases:
       Allowed: Pi extension/harness/docs/tests needed to resolve these final wiring
       blockers. Forbidden: broad unrelated refactors, completed-step edits, or changing
       shared PersonaSpec contract meaning.'
-    verification: '- [ ] setActiveTools failure startup probe exits 0/degrades with
+    verification: '- [x] setActiveTools failure startup probe exits 0/degrades with
       no active persona and startup-unavailable evidence, not fatal process exit.
 
-      - [ ] no initial persona session_start emits `larva: none` status.
+      - [x] no initial persona session_start emits `larva: none` status.
 
-      - [ ] child RPC trace env/file-write path is documented/authorized as proof
+      - [x] child RPC trace env/file-write path is documented/authorized as proof
       trace only or removed, with no raw JSONL/sidecar authority for helpers.
 
-      - [ ] targeted runtime smokes and relevant pytest pass.
+      - [x] targeted runtime smokes and relevant pytest pass.
 
-      - [ ] previous fatal startup nonzero-before-prompt behavior for model/policy/persona
+      - [x] previous fatal startup nonzero-before-prompt behavior for model/policy/persona
       failures remains passing.'
     depends_on:
     - pi_impl_finalization_20260603.docs-sync
