@@ -101633,6 +101633,138 @@ phases:
     behavior.
   depends_on:
   - pi_tui_subagent_markdown_overlay_20260603
+  steps:
+  - id: pi_tui_persona_selector_20260603.input-selectlist-detail-implementation
+    name: Enhance /larva-persona selector with Input SelectList detail panel
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      `/larva-persona` no-argument interactive TUI mode opens a Pi TUI selector using
+      `Input`, `SelectList`, and a detail panel. The selector filters persona ids/descriptions,
+      shows model/description/capability summary and digest detail for the highlighted
+      persona, confirms with Enter, cancels with Esc, and preserves all existing fallback/error
+      behavior for non-interactive, missing UI, and legacy selector paths.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `contrib/pi-extension/larva.ts`, `tests/shell/test_pi_extension_contract.py`,
+      `tests/shell/test_pi_extension_real_runtime.py` or Node selector harness as
+      needed
+
+      - spec_refs: `design > Runtime UX > Persona switching`; `design > Architecture
+      basis change notes > Pi TUI formal dependency and enhanced UI delta`; `design
+      > Verification targets > Pi TUI enhanced UI verification addendum`; Pi docs
+      `Focusable/Input`, `SelectList`, `Pattern 1: Selection Dialog`, `Line Width`
+
+      - harness_refs: existing persona command/selector tests in `tests/shell/test_pi_extension_contract.py`
+
+      - authoritative_interface: no-argument selector only in interactive TUI; selecting
+      persona is equivalent to `/larva-persona <id>`; cancelling returns `LARVA_BAD_INPUT`;
+      fallback behavior remains
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P2-SEL-001 | addendum target 10 | interactive no-argument selector uses Input
+      + SelectList + detail panel | pi_tui_persona_selector_20260603.input-selectlist-detail-implementation
+      | enhanced selector implemented | selector_snippet | OWNED | n/a |
+
+      | P2-SEL-002 | persona switching no-argument behavior | non-interactive/RPC/missing
+      UI fallback preserved | same | fallback preserved | fallback_matrix | OWNED
+      | n/a |
+
+      | P2-SEL-003 | selector details target | show model/description/capability summary
+      and digest detail | same | detail panel content | detail_panel_snapshot | OWNED
+      | n/a |
+
+      | P2-SEL-004 | selector interaction target | Enter confirm, Esc cancel; no mouse
+      click support | same | interactions implemented | selector_input_matrix | OWNED
+      | n/a |
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Selector only uses plain `ctx.ui.select` when interactive Pi TUI custom UI
+      is available.
+
+      2. Missing UI/RPC/JSON mode starts opening a selector or mutates active persona
+      state.
+
+      3. Detail panel omits model/description/capability summary or digest detail.
+
+      4. Selection/cancel behavior bypasses existing atomic `commitPersona` semantics.
+
+      5. Mouse click selection is introduced.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      selector must filter real persona data and update detail/list output based on
+      input and highlighted item.
+
+
+      <side_effect_budget>
+
+      Allowed: modify Pi extension selector UI and focused tests. Forbidden: changing
+      persona resolution semantics, model-map/tool-policy commit order, prompt injection,
+      command autocomplete behavior, PersonaSpec schema, or adding mouse click support.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the enhanced selector is only used when interactive TUI custom UI is
+      available and safe.
+
+      - Verify fallback behavior remains for `ctx.ui.select`, `ctx.openSelector`,
+      missing UI, RPC/print/JSON modes as applicable.
+
+      - Verify filter input does not prefetch/write persona cache files or inject
+      persona catalogue into prompts.
+
+      </risk_probes>'
+    verification: '- [ ] Interactive TUI no-argument `/larva-persona` path uses Pi
+      TUI `Input`, `SelectList`, and a detail panel.
+
+      - [ ] Detail panel shows selected persona id, model, description, capability
+      summary, and digest detail when available.
+
+      - [ ] Filtering/search updates list/detail deterministically and preserves existing
+      list order/ranking semantics where applicable.
+
+      - [ ] Enter confirm commits through existing atomic `commitPersona`; Esc cancel
+      returns `LARVA_BAD_INPUT` and leaves active persona/model/tool policy unchanged.
+
+      - [ ] Non-interactive/RPC/missing UI/fallback selector behavior remains as documented.
+
+      - [ ] Mouse click selection is not implemented; keyboard remains the supported
+      selection path.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - contrib/pi-extension/larva.ts — <pre/post selector passage>\n- tests/shell/test_pi_extension_contract.py\
+      \ — <selector test passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <Input/SelectList/Focusable/key passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/examples/extensions/preset.ts\
+      \ — <SelectList selector passage>\n\n## Implementation Evidence\n- selector_snippet:\
+      \ <paste custom selector construction with Input/SelectList/detail panel>\n\
+      - detail_panel_snapshot: <rendered or structured snapshot showing id/model/description/capabilities/digest>\n\
+      - fallback_matrix: <non-interactive/missing UI/legacy selector behavior table>\n\
+      - selector_input_matrix: <Enter/Esc/filter/arrows/click-shaped input behavior\
+      \ table>\n\n## Test Evidence\n- command: <focused selector tests>\n- raw_stdout:\
+      \ |\n    <paste raw output>\n- exit_code: <code>\n\n## Checklist Receipt\n-\
+      \ enhanced_selector: satisfied|failed|blocked\n- details_complete: satisfied|failed|blocked\n\
+      - atomic_commit_preserved: satisfied|failed|blocked\n- fallback_preserved: satisfied|failed|blocked\n\
+      - no_mouse_click_selection: satisfied|failed|blocked"
+    agent: frontend-engineer
 - id: pi_tui_verification_docs_20260603
   name: P3 Pi TUI Verification, CI, and Docs Closure 2026-06-03
   status: locked
