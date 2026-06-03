@@ -1428,16 +1428,17 @@ function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
     description: "Show the view-only Larva subagent presentation log",
     handler: async (input?: string, commandCtx?: PiContext) => {
       const runtimeCtx = commandCtx ?? ctx;
-      if (typeof runtimeCtx.ui?.custom !== "function") {
-        const unavailable = failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
-        await notify(runtimeCtx, unavailable.content[0]?.text ?? unavailable.details.error?.message ?? "Larva subagent log UI is unavailable.", "error");
-        return unavailable;
-      }
       const overlay = larva_subagent_log(input ?? "");
       const text = overlay.content[0]?.text ?? "Larva subagent presentation log is empty.";
       if (overlay.isError) {
         await notify(runtimeCtx, text, "error");
         return overlay;
+      }
+      if (typeof runtimeCtx.ui?.custom !== "function") {
+        if (runtimeCtx.ui !== undefined) return overlay;
+        const unavailable = failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
+        await notify(runtimeCtx, unavailable.content[0]?.text ?? unavailable.details.error?.message ?? "Larva subagent log UI is unavailable.", "error");
+        return unavailable;
       }
       if (await openSubagentPresentationOverlay(runtimeCtx, overlay)) return overlay;
       const unavailable = failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
