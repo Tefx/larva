@@ -1630,7 +1630,9 @@ def test_agent_persona_switch_tool_and_slash_command() -> None:
     """
     source = _source()
     _assert_tokens(source, "larva_persona_switch", "persona_id", "reason", "handoff", "continue_task")
+    _assert_tokens(source, "larva_personas", "query", "limit")
     _assert_tokens(source, "/larva-agent-persona-switch")
+    _assert_tokens(source, "/larva-persona")
 
 
 def test_agent_persona_switch_audit_entry_shape() -> None:
@@ -1650,7 +1652,7 @@ def test_child_subagent_default_switch_mode() -> None:
     child policy is added.
     """
     # The source should contain logic that sets default off for child requests
-    # Though it might be tricky to token-assert exactly, 
+    # Though it might be tricky to token-assert exactly,
     # we expect subagent spawn to at least not pass ask/auto through implicitly.
     source = _source()
     _assert_tokens(source, "LARVA_PI_AGENT_PERSONA_SWITCH", "off", "spawn")
