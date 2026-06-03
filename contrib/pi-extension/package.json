@@ -1,0 +1,9 @@
+{
+  "name": "@larva/pi-extension",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@earendil-works/pi-tui": "0.78.0"
+  }
+}
