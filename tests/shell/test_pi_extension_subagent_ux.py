@@ -44,6 +44,8 @@ def _node_prelude(tmp_path: Path) -> str:
     return f"""
         import {{ mkdir, writeFile }} from "node:fs/promises";
         import {{ join }} from "node:path";
+        import {{ createRequire }} from "node:module";
+        const piTuiRequire = createRequire({json.dumps(EXTENSION.as_uri())});
         const mod = await import({json.dumps(EXTENSION.as_uri())});
         const fakeCli = {json.dumps(str(FAKE_CLI))};
         const tmpRoot = {json.dumps(str(tmp_path))};
@@ -593,6 +595,93 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["overlayScrollable"] is True
     assert payload["noNotifyWhenOverlayAvailable"] is True
     assert payload["resetEmpty"] is True
+
+
+def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_path: Path) -> None:
+    """Pin formal Pi TUI imports, width-safe reusable scroll component, and no click support."""
+
+    source = EXTENSION.read_text(encoding="utf-8")
+    assert 'from "@earendil-works/pi-tui"' in source
+    for required in ["visibleWidth", "truncateToWidth", "wrapTextWithAnsi", "matchesKey", "Key"]:
+        assert required in source
+    for removed in ["createRequire", "loadPiTuiTextHelpers", "PI_TUI_TEXT_HELPERS", "terminalCharWidth"]:
+        assert removed not in source
+    assert "class BorderedScrollableText" in source
+    assert "Mouse click/press/release SGR events are intentionally unsupported no-ops" in source
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
+        const mixedLines = [
+          "CJK: 这是一个宽字符测试".repeat(3),
+          "Emoji: 🧪🚀✨ with skin-tone-ish output".repeat(2),
+          "ANSI-stripped: \\u001b[31mred text that should not leak ANSI width\\u001b[0m".repeat(2),
+          "Markdown: **bold** `code` [link](https://example.invalid/very/long/path)".repeat(2),
+          `task_id: ${join(childRoot, "nested", "segment", "with", "very", "long", "resume-session-name-that-must-be-width-safe.jsonl")}`,
+          ...Array.from({ length: 60 }, (_, index) => `scroll line ${index} 这是 🧪 /very/long/path/${index}`),
+        ].join("\\n");
+        const terminalWrites = [];
+        let requestRenderCount = 0;
+        const doneValues = [];
+        const component = new mod.BorderedScrollableText({
+          text: mixedLines,
+          title: "Width Proof",
+          tui: { requestRender: () => { requestRenderCount += 1; }, terminal: { write: (data) => terminalWrites.push(data) } },
+          keybindings: { matches: (data, keybindingId) => data === "LIVE_END" && keybindingId === "tui.editor.cursorLineEnd" },
+          done: (value) => doneValues.push(value),
+        });
+        const widths = [3, 20, 40, 80];
+        const renderedByWidth = widths.map((width) => ({ width, lines: component.render(width) }));
+        const beforeClick = component.render(40);
+        component.handleInput("\\x1b[<0;10;10M");
+        const afterClick = component.render(40);
+        component.handleInput("\\x1b[<65;10;10M");
+        const afterWheel = component.render(40);
+        component.handleInput("LIVE_END");
+        const afterInjectedEnd = component.render(40);
+        component.handleInput("\\r");
+        const doneAfterEnter = doneValues.length;
+        component.handleInput("q");
+        const doneAfterQ = doneValues.length;
+        component.dispose();
+        console.log(JSON.stringify({
+          directImportProbe: {
+            visibleWidth: typeof piTui.visibleWidth,
+            truncateToWidth: typeof piTui.truncateToWidth,
+            wrapTextWithAnsi: typeof piTui.wrapTextWithAnsi,
+            matchesKey: typeof piTui.matchesKey,
+            keyUp: piTui.Key?.up,
+          },
+          widthSafe: renderedByWidth.every(({ width, lines }) => lines.every((line) => piTui.visibleWidth(line) <= width)),
+          renderedByWidth,
+          clickNoop: JSON.stringify(beforeClick) === JSON.stringify(afterClick),
+          wheelScrolls: JSON.stringify(beforeClick) !== JSON.stringify(afterWheel),
+          injectedKeyScrolls: JSON.stringify(afterWheel) !== JSON.stringify(afterInjectedEnd),
+          enterNoClose: doneAfterEnter === 0,
+          qCloses: doneAfterQ === 1,
+          mouseLifecycle: terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
+          requestRenderCount,
+        }, null, 2));
+        """,
+    )
+
+    assert payload["directImportProbe"] == {
+        "visibleWidth": "function",
+        "truncateToWidth": "function",
+        "wrapTextWithAnsi": "function",
+        "matchesKey": "function",
+        "keyUp": "up",
+    }
+    assert payload["widthSafe"] is True
+    assert payload["clickNoop"] is True
+    assert payload["wheelScrolls"] is True
+    assert payload["injectedKeyScrolls"] is True
+    assert payload["enterNoClose"] is True
+    assert payload["qCloses"] is True
+    assert payload["mouseLifecycle"] is True
+    assert payload["requestRenderCount"] >= 2
 
 
 def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) -> None:

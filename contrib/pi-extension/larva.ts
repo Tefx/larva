@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createRequire } from "node:module";
+import { Key, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { access, appendFile, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
@@ -193,11 +193,6 @@ type ToolDefinition<Input, Output> = {
 };
 type PiRenderableComponent = { render: (width: number) => string[]; invalidate?: () => void };
 type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string) => void; dispose?: () => void };
-type PiTuiTextHelpers = {
-  visibleWidth: (value: string) => number;
-  truncateToWidth: (value: string, maxWidth: number, ellipsis?: string, pad?: boolean) => string;
-  wrapTextWithAnsi: (value: string, width: number) => string[];
-};
 type PiKeybindings = { matches?: (data: string, keybindingId: string) => boolean };
 type PiOverlayHandle = { focus?: () => void };
 type PiTui = { requestRender?: () => void; terminal?: { write?: (data: string) => void } };
@@ -255,7 +250,6 @@ const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona)
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const ENABLE_MOUSE_REPORTING = "\x1b[?1000h\x1b[?1006h";
 const DISABLE_MOUSE_REPORTING = "\x1b[?1006l\x1b[?1000l";
-const PI_TUI_TEXT_HELPERS = loadPiTuiTextHelpers();
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 const activeTaskIds: Set<string> = new Set<string>();
 const retainedSubagentPresentationLog: SubagentPresentationLogEntry[] = [];
@@ -319,88 +313,27 @@ async function notify(ctx: PiContext, message: string, notifyType: "info" | "war
   await ctx.ui?.notify?.(message, notifyType);
 }
 
-function loadPiTuiTextHelpers(): PiTuiTextHelpers | null {
-  const requireCandidates = [createRequire(import.meta.url)];
-  if (typeof process.argv[1] === "string" && process.argv[1].length > 0) {
-    try {
-      requireCandidates.push(createRequire(process.argv[1]));
-    } catch {
-      // Ignore non-file argv values in test harnesses.
-    }
-  }
-  for (const requireCandidate of requireCandidates) {
-    try {
-      const candidate = requireCandidate("@earendil-works/pi-tui") as Partial<PiTuiTextHelpers>;
-      if (
-        typeof candidate.visibleWidth === "function"
-        && typeof candidate.truncateToWidth === "function"
-        && typeof candidate.wrapTextWithAnsi === "function"
-      ) {
-        return {
-          visibleWidth: candidate.visibleWidth,
-          truncateToWidth: candidate.truncateToWidth,
-          wrapTextWithAnsi: candidate.wrapTextWithAnsi,
-        };
-      }
-    } catch {
-      // Optional dependency: available in Pi runtime, absent in this Python repo's local Node test harness.
-    }
-  }
-  return null;
-}
-
 function overlaySafeLine(value: string): string {
   return value.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(CONTROL_RE, " ").replace(/\t/g, "   ").trimEnd();
 }
 
 function overlayDisplayWidth(value: string): number {
-  return PI_TUI_TEXT_HELPERS?.visibleWidth(value) ?? Array.from(value).reduce((total, char) => total + terminalCharWidth(char), 0);
+  return visibleWidth(value);
 }
 
-function overlayTruncateLine(value: string, contentWidth: number): string {
-  if (PI_TUI_TEXT_HELPERS) return PI_TUI_TEXT_HELPERS.truncateToWidth(value, contentWidth, "");
-  let line = "";
-  let width = 0;
-  for (const char of Array.from(value)) {
-    const charWidth = terminalCharWidth(char);
-    const safeChar = charWidth > contentWidth ? "?" : char;
-    const safeCharWidth = charWidth > contentWidth ? 1 : charWidth;
-    if (width + safeCharWidth > contentWidth) break;
-    line += safeChar;
-    width += safeCharWidth;
-  }
-  return line;
+function overlayTruncateLine(value: string, contentWidth: number, pad = false): string {
+  return truncateToWidth(value, Math.max(0, contentWidth), "", pad);
 }
 
 function overlayWrapLine(value: string, contentWidth: number): string[] {
   const safeLine = overlaySafeLine(value);
   if (safeLine.length === 0) return [""];
-  if (PI_TUI_TEXT_HELPERS) {
-    const wrapped = PI_TUI_TEXT_HELPERS.wrapTextWithAnsi(safeLine, contentWidth);
-    return (wrapped.length > 0 ? wrapped : [""]).map((line) => overlayTruncateLine(line, contentWidth));
-  }
-  const lines: string[] = [];
-  let currentLine = "";
-  let currentWidth = 0;
-  for (const char of Array.from(safeLine)) {
-    const charWidth = terminalCharWidth(char);
-    const safeChar = charWidth > contentWidth ? "?" : char;
-    const safeCharWidth = charWidth > contentWidth ? 1 : charWidth;
-    if (currentWidth > 0 && currentWidth + safeCharWidth > contentWidth) {
-      lines.push(overlayTruncateLine(currentLine, contentWidth));
-      currentLine = "";
-      currentWidth = 0;
-    }
-    currentLine += safeChar;
-    currentWidth += safeCharWidth;
-  }
-  lines.push(overlayTruncateLine(currentLine, contentWidth));
-  return lines;
+  const wrapped = wrapTextWithAnsi(safeLine, Math.max(1, contentWidth));
+  return (wrapped.length > 0 ? wrapped : [""]).map((line) => overlayTruncateLine(line, contentWidth));
 }
 
 function overlayPadLine(value: string, contentWidth: number): string {
-  const clipped = overlayTruncateLine(value, contentWidth);
-  return `${clipped}${" ".repeat(Math.max(0, contentWidth - overlayDisplayWidth(clipped)))}`;
+  return overlayTruncateLine(value, contentWidth, true);
 }
 
 function keybindingsMatch(keybindings: PiKeybindings | undefined, data: string, keybindingIds: string[]): boolean {
@@ -414,15 +347,30 @@ function keybindingsMatch(keybindings: PiKeybindings | undefined, data: string, 
   });
 }
 
-function isSubagentOverlayCloseKey(data: string, keybindings?: PiKeybindings): boolean {
+function matchesInputKey(
+  keybindings: PiKeybindings | undefined,
+  data: string,
+  keybindingIds: string[],
+  keys: string[],
+  rawFallbacks: string[] = [],
+  namedFallbacks: string[] = [],
+): boolean {
   const lowered = data.toLowerCase();
-  return keybindingsMatch(keybindings, data, ["tui.select.cancel", "app.interrupt"])
-    || lowered === "escape"
-    || data === "\x1b"
+  return keybindingsMatch(keybindings, data, keybindingIds)
+    || keys.some((key) => matchesKey(data, key))
+    || rawFallbacks.includes(data)
+    || namedFallbacks.includes(lowered);
+}
+
+function isSubagentOverlayCloseKey(data: string, keybindings?: PiKeybindings): boolean {
+  return matchesInputKey(keybindings, data, ["tui.select.cancel", "app.interrupt"], [Key.escape, Key.ctrl("c"), "q"], [], ["escape"])
     || /^\x1b\[27;\d+;27~$/.test(data)
     || /^\x1b\[27;\d+;27u$/.test(data)
-    || /^\x1b\[27u$/.test(data)
-    || lowered === "q";
+    || /^\x1b\[27u$/.test(data);
+}
+
+function isSgrMouseEvent(data: string): boolean {
+  return /^\x1b\[<\d+;\d+;\d+[Mm]$/.test(data);
 }
 
 function mouseWheelScrollDelta(data: string): number | null {
@@ -436,79 +384,128 @@ function mouseWheelScrollDelta(data: string): number | null {
   return null;
 }
 
-function renderBoxedSubagentOverlay(text: string, keybindings?: PiKeybindings): PiOverlayComponent {
-  let scrollOffset = 0;
-  let lastMaxOffset = 0;
-  const maxBoxLines = 22;
-  const viewportLines = maxBoxLines - 3; // top border + footer + bottom border.
-  const scrollBy = (delta: number): void => {
-    scrollOffset = Math.max(0, Math.min(lastMaxOffset, scrollOffset + delta));
-  };
-  const matches = (data: string, keybindingIds: string[], rawFallbacks: string[], namedFallbacks: string[] = []): boolean => {
-    const lowered = data.toLowerCase();
-    return keybindingsMatch(keybindings, data, keybindingIds)
-      || rawFallbacks.includes(data)
-      || namedFallbacks.includes(lowered);
-  };
-  return {
-    invalidate: () => undefined,
-    render: (width: number): string[] => {
-      const availableWidth = Number.isFinite(width) ? Math.max(32, Math.floor(width)) : 80;
-      const boxWidth = Math.max(32, Math.min(availableWidth, 100));
-      const contentWidth = boxWidth - 4;
-      const title = "Larva subagent presentation log";
-      const topTitle = `─ ${title} `;
-      const top = `╭${topTitle}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(topTitle)))}╮`;
-      const innerLines = text.split(/\r?\n/).flatMap((line) => overlayWrapLine(line, contentWidth));
-      lastMaxOffset = Math.max(0, innerLines.length - viewportLines);
-      scrollOffset = Math.max(0, Math.min(lastMaxOffset, scrollOffset));
-      const visibleLines = innerLines.slice(scrollOffset, scrollOffset + viewportLines);
-      while (visibleLines.length < Math.min(viewportLines, innerLines.length || 1)) visibleLines.push("");
-      const start = innerLines.length === 0 ? 0 : scrollOffset + 1;
-      const end = Math.min(innerLines.length, scrollOffset + viewportLines);
-      const scrollInfo = innerLines.length > viewportLines ? `Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close • ${start}-${end}/${innerLines.length}` : "Esc/q close";
-      return [
-        top,
-        ...visibleLines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
-        `│ ${overlayPadLine(scrollInfo, contentWidth)} │`,
-        `╰${"─".repeat(boxWidth - 2)}╯`,
-      ];
-    },
-    handleInput: (data: string) => {
-      const wheelDelta = mouseWheelScrollDelta(data);
-      if (wheelDelta !== null) scrollBy(wheelDelta);
-      else if (matches(data, ["tui.select.down", "tui.editor.cursorDown"], ["\x1b[B"], ["arrowdown", "down"])) scrollBy(1);
-      else if (matches(data, ["tui.select.up", "tui.editor.cursorUp"], ["\x1b[A"], ["arrowup", "up"])) scrollBy(-1);
-      else if (matches(data, ["tui.select.pageDown", "tui.editor.pageDown"], ["\x1b[6~"], ["pagedown"])) scrollBy(viewportLines);
-      else if (matches(data, ["tui.select.pageUp", "tui.editor.pageUp"], ["\x1b[5~"], ["pageup"])) scrollBy(-viewportLines);
-      else if (matches(data, ["tui.editor.cursorLineStart"], ["\x1b[H", "\x1b[1~"], ["home"])) scrollOffset = 0;
-      else if (matches(data, ["tui.editor.cursorLineEnd"], ["\x1b[F", "\x1b[4~"], ["end"])) scrollOffset = lastMaxOffset;
-    },
-  };
+type BorderedScrollableTextOptions = {
+  text: string;
+  title?: string;
+  keybindings?: PiKeybindings;
+  tui?: PiTui;
+  done?: (result: unknown) => void;
+  maxBoxLines?: number;
+  maxWidth?: number;
+};
+
+export class BorderedScrollableText implements PiOverlayComponent {
+  private scrollOffset = 0;
+  private lastMaxOffset = 0;
+  private mouseReportingEnabled = false;
+  private readonly text: string;
+  private readonly title: string;
+  private readonly keybindings?: PiKeybindings;
+  private readonly tui?: PiTui;
+  private readonly done?: (result: unknown) => void;
+  private readonly maxBoxLines: number;
+  private readonly maxWidth: number;
+
+  constructor(options: BorderedScrollableTextOptions) {
+    this.text = options.text;
+    this.title = options.title ?? "Scrollable text";
+    this.keybindings = options.keybindings;
+    this.tui = options.tui;
+    this.done = options.done;
+    this.maxBoxLines = Math.max(4, Math.floor(options.maxBoxLines ?? 22));
+    this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? 100));
+    if (this.tui?.terminal?.write) {
+      this.tui.terminal.write(ENABLE_MOUSE_REPORTING);
+      this.mouseReportingEnabled = true;
+    }
+  }
+
+  invalidate(): void {}
+
+  dispose(): void {
+    if (!this.mouseReportingEnabled) return;
+    this.tui?.terminal?.write?.(DISABLE_MOUSE_REPORTING);
+    this.mouseReportingEnabled = false;
+  }
+
+  private viewportLines(): number {
+    return Math.max(1, this.maxBoxLines - 3);
+  }
+
+  private requestRender(): void {
+    this.tui?.requestRender?.();
+  }
+
+  private scrollBy(delta: number): void {
+    const next = Math.max(0, Math.min(this.lastMaxOffset, this.scrollOffset + delta));
+    if (next === this.scrollOffset) return;
+    this.scrollOffset = next;
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private jumpTo(offset: number): void {
+    const next = Math.max(0, Math.min(this.lastMaxOffset, offset));
+    if (next === this.scrollOffset) return;
+    this.scrollOffset = next;
+    this.invalidate();
+    this.requestRender();
+  }
+
+  render(width: number): string[] {
+    const renderWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+    const boxWidth = Math.min(renderWidth, this.maxWidth);
+    if (boxWidth < 4) return [truncateToWidth(this.title, boxWidth, "")];
+    const contentWidth = boxWidth - 4;
+    const viewportLines = this.viewportLines();
+    const topTitle = overlayTruncateLine(`─ ${this.title} `, boxWidth - 2);
+    const top = `╭${topTitle}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(topTitle)))}╮`;
+    const innerLines = this.text.split(/\r?\n/).flatMap((line) => overlayWrapLine(line, contentWidth));
+    this.lastMaxOffset = Math.max(0, innerLines.length - viewportLines);
+    this.scrollOffset = Math.max(0, Math.min(this.lastMaxOffset, this.scrollOffset));
+    const visibleLines = innerLines.slice(this.scrollOffset, this.scrollOffset + viewportLines);
+    while (visibleLines.length < Math.min(viewportLines, innerLines.length || 1)) visibleLines.push("");
+    const start = innerLines.length === 0 ? 0 : this.scrollOffset + 1;
+    const end = Math.min(innerLines.length, this.scrollOffset + viewportLines);
+    const scrollInfo = innerLines.length > viewportLines ? `Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close • ${start}-${end}/${innerLines.length}` : "Esc/q close";
+    return [
+      top,
+      ...visibleLines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
+      `│ ${overlayPadLine(scrollInfo, contentWidth)} │`,
+      `╰${"─".repeat(boxWidth - 2)}╯`,
+    ];
+  }
+
+  handleInput(data: string): void {
+    if (isSubagentOverlayCloseKey(data, this.keybindings)) {
+      this.done?.(null);
+      return;
+    }
+    const wheelDelta = mouseWheelScrollDelta(data);
+    if (wheelDelta !== null) {
+      this.scrollBy(wheelDelta);
+      return;
+    }
+    if (isSgrMouseEvent(data)) return; // Mouse click/press/release SGR events are intentionally unsupported no-ops.
+    if (matchesInputKey(this.keybindings, data, ["tui.select.down", "tui.editor.cursorDown"], [Key.down], [], ["arrowdown", "down"])) this.scrollBy(1);
+    else if (matchesInputKey(this.keybindings, data, ["tui.select.up", "tui.editor.cursorUp"], [Key.up], [], ["arrowup", "up"])) this.scrollBy(-1);
+    else if (matchesInputKey(this.keybindings, data, ["tui.select.pageDown", "tui.editor.pageDown"], [Key.pageDown], [], ["pagedown"])) this.scrollBy(this.viewportLines());
+    else if (matchesInputKey(this.keybindings, data, ["tui.select.pageUp", "tui.editor.pageUp"], [Key.pageUp], [], ["pageup"])) this.scrollBy(-this.viewportLines());
+    else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineStart"], [Key.home], ["\x1b[1~"], ["home"])) this.jumpTo(0);
+    else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineEnd"], [Key.end], ["\x1b[4~"], ["end"])) this.jumpTo(this.lastMaxOffset);
+  }
 }
 
 async function openSubagentPresentationOverlay(ctx: PiContext, text: string): Promise<boolean> {
   const custom = ctx.ui?.custom;
   if (typeof custom !== "function") return false;
-  await custom((tui, _theme, keybindings, done) => {
-    tui.terminal?.write?.(ENABLE_MOUSE_REPORTING);
-    const component = renderBoxedSubagentOverlay(text, keybindings);
-    return {
-      render: component.render,
-      invalidate: component.invalidate,
-      dispose: () => {
-        tui.terminal?.write?.(DISABLE_MOUSE_REPORTING);
-      },
-      handleInput: (data: string) => {
-        if (isSubagentOverlayCloseKey(data, keybindings)) {
-          done(null);
-          return;
-        }
-        component.handleInput?.(data);
-        tui.requestRender?.();
-      },
-    };
-  }, {
+  await custom((tui, _theme, keybindings, done) => new BorderedScrollableText({
+    text,
+    title: "Larva subagent presentation log",
+    keybindings,
+    tui,
+    done,
+  }), {
     overlay: true,
     overlayOptions: { width: "90%", maxHeight: "80%", anchor: "center", margin: 1 },
     onHandle: (handle: PiOverlayHandle) => handle.focus?.(),
@@ -1795,83 +1792,16 @@ function renderTextComponent(text: string, markdown?: string): PiRenderableText 
       const lines: string[] = [];
       for (const rawLine of text.split(/\r?\n/)) {
         const safeLine = visibleText(rawLine.replace(/\t/g, "   "));
-        if (rawLine.length === 0) {
+        if (safeLine.length === 0) {
           lines.push("");
           continue;
         }
-        let currentLine = "";
-        let currentWidth = 0;
-        for (const char of Array.from(safeLine)) {
-          const charWidth = terminalCharWidth(char);
-          const safeChar = charWidth > contentWidth ? "?" : char;
-          const safeCharWidth = charWidth > contentWidth ? 1 : charWidth;
-          if (currentWidth > 0 && currentWidth + safeCharWidth > contentWidth) {
-            lines.push(currentLine);
-            currentLine = "";
-            currentWidth = 0;
-          }
-          currentLine += safeChar;
-          currentWidth += safeCharWidth;
-        }
-        lines.push(currentLine);
+        const wrapped = wrapTextWithAnsi(safeLine, contentWidth);
+        lines.push(...(wrapped.length > 0 ? wrapped : [""]).map((line) => truncateToWidth(line, contentWidth, "")));
       }
       return lines;
     },
   };
-}
-
-function terminalCharWidth(char: string): number {
-  if (char.length === 0) return 0;
-  const codePoint = char.codePointAt(0);
-  if (codePoint === undefined) return 0;
-  if (codePoint === 0 || codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return 0;
-  if (
-    (codePoint >= 0x0300 && codePoint <= 0x036f)
-    || (codePoint >= 0x0483 && codePoint <= 0x0489)
-    || (codePoint >= 0x0591 && codePoint <= 0x05bd)
-    || codePoint === 0x05bf
-    || (codePoint >= 0x05c1 && codePoint <= 0x05c2)
-    || (codePoint >= 0x05c4 && codePoint <= 0x05c5)
-    || codePoint === 0x05c7
-    || (codePoint >= 0x0610 && codePoint <= 0x061a)
-    || (codePoint >= 0x064b && codePoint <= 0x065f)
-    || codePoint === 0x0670
-    || (codePoint >= 0x06d6 && codePoint <= 0x06dc)
-    || (codePoint >= 0x06df && codePoint <= 0x06e4)
-    || (codePoint >= 0x06e7 && codePoint <= 0x06e8)
-    || (codePoint >= 0x06ea && codePoint <= 0x06ed)
-    || (codePoint >= 0x0711 && codePoint <= 0x0711)
-    || (codePoint >= 0x0730 && codePoint <= 0x074a)
-    || (codePoint >= 0x07a6 && codePoint <= 0x07b0)
-    || (codePoint >= 0x07eb && codePoint <= 0x07f3)
-    || (codePoint >= 0x0816 && codePoint <= 0x0819)
-    || (codePoint >= 0x081b && codePoint <= 0x0823)
-    || (codePoint >= 0x0825 && codePoint <= 0x0827)
-    || (codePoint >= 0x0829 && codePoint <= 0x082d)
-    || (codePoint >= 0x0859 && codePoint <= 0x085b)
-    || (codePoint >= 0x08d3 && codePoint <= 0x08e1)
-    || (codePoint >= 0x08e3 && codePoint <= 0x0903)
-    || (codePoint >= 0xfe00 && codePoint <= 0xfe0f)
-    || (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
-    || codePoint === 0x200d
-  ) return 0;
-  if (
-    codePoint >= 0x1100 && (
-      codePoint <= 0x115f
-      || codePoint === 0x2329
-      || codePoint === 0x232a
-      || (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f)
-      || (codePoint >= 0xac00 && codePoint <= 0xd7a3)
-      || (codePoint >= 0xf900 && codePoint <= 0xfaff)
-      || (codePoint >= 0xfe10 && codePoint <= 0xfe19)
-      || (codePoint >= 0xfe30 && codePoint <= 0xfe6f)
-      || (codePoint >= 0xff00 && codePoint <= 0xff60)
-      || (codePoint >= 0xffe0 && codePoint <= 0xffe6)
-      || (codePoint >= 0x1f300 && codePoint <= 0x1faff)
-      || (codePoint >= 0x20000 && codePoint <= 0x3fffd)
-    )
-  ) return 2;
-  return 1;
 }
 
 function renderLarvaSubagentCall(input: LarvaSubagentInput): PiRenderableText {
