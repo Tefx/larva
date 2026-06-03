@@ -98726,7 +98726,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_runtime_conformance_20260603
   name: Pi Runtime Liveness and Spec Conformance 2026-06-03
-  status: in_progress
+  status: done
   gate: Runtime, UI, and shared-contract proof registers are complete and blocker-free.
   depends_on:
   - pi_impl_realtime_ui_20260603
@@ -98910,7 +98910,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_runtime_conformance_20260603.gate
     name: Gate runtime conformance and full verification
-    status: claimed
+    status: done
     description: 'DECISION ARTIFACT: Full-plan-check gate for Pi runtime liveness,
       shared spec conformance, runtime remediation retests, overlay authority adjudication,
       and full verification. review_depth: THOROUGH.
@@ -98956,6 +98956,89 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-03T03:35:06.178405+00:00'
+    done_at: '2026-06-03T03:43:30.742571+00:00'
+    evidence: 'SUCCESS/PASS: runtime conformance and full verification phase gate
+      passed; gate_open_allowed=true; blockers=[].
+
+
+      Worker evidence commit: 28e94c81b8beb36803a25eba274f10f237c971e5.
+
+      Mainline squash commit: 0c375d9 [vectl] step-pi_impl_runtime_conformance_20260603.gate
+      completed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read for runtime conformance, capability
+      matrix, fatal startup, overlay authority, and degraded addAutocompleteProvider
+      expectations.
+
+      - Full guard, runtime smoke retest, shared spec conformance retest, and overlay
+      adjudication evidence reviewed.
+
+
+      Worker gate verification:
+
+      - `uv run pytest -q` -> 718 passed.
+
+      - `invar_invar_guard changed=false` -> ok=true, errors=0, warnings=5, files_checked=43.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> extension/rpc/subagent gates pass; uiAutocompleteProvider correctly degraded
+      unsupported without live hook proof.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      fatal startup PASS; nonzero before prompt; LARVA_MODEL_UNAVAILABLE stderr.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case mention-namespace
+      --prefix @` -> id-only @persona candidates; all expected mentions returned.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> B1/B2/B3/B4 PASS.
+
+      - repo-local/opifex gate command -> authority pin/schema/capabilities/MCP/docs
+      parity PASS.
+
+      - focused overlay/degraded addAutocompleteProvider subset -> 3 passed.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case mention-namespace
+      --prefix @` -> exit 0.
+
+      - `pytest -q` -> 718 passed in 58.12s.
+
+      - `invar_invar_guard(path=''.'', changed=false)` run_id grd_0e7210963d58426fa74d791e
+      -> complete; ok=true, errors=0, warnings=5, infos=7, files_checked=43.
+
+
+      Checklist receipt:
+
+      - Runtime smoke retest, spec conformance retest, overlay adjudication, and full
+      guard evidence reviewed with structured decision basis: PASS.
+
+      - Every OWNED requirement PROVEN or has remediation; unresolved non-blockers
+      include non-intersection evidence: PASS.
+
+      - Hard Pi capability gaps block PASS unless design-aligned degraded behavior
+      authorized/proven: PASS; addAutocompleteProvider live hook is documented unsupported/mock-only
+      and not falsely claimed.
+
+      - B3 overlay disposition AUTHORIZED with aligned expectations: PASS.
+
+      - Finalization can proceed without bypassing behavioral/runtime obligations:
+      PASS.
+
+
+      Blockers: none. Warnings: guard warnings=5 and addAutocompleteProvider live
+      hook unsupported/mock-only are documented non-blocking. Deviation Records: none.'
   - id: fix-runtime-conformance-blockers
     name: Fix runtime conformance blockers from smoke and spec audits
     status: done
@@ -99646,7 +99729,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_impl_finalization_20260603
   name: Pi Integration Finalization 2026-06-03
-  status: locked
+  status: pending
   gate: Documentation, wiring, conformance, and final deep review all PASS.
   depends_on:
   - pi_impl_runtime_conformance_20260603
