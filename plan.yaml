@@ -102471,3 +102471,165 @@ phases:
     - pi_tui_verification_docs_20260603.docs-sync
     - pi_tui_verification_docs_20260603.full-runtime-smoke
     agent: spec-verifier
+  - id: pi_tui_verification_docs_20260603.final-gate
+    name: Final gate for Pi TUI enhanced UI implementation
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+      verification_scope: full-plan-check
+
+      DECISION ARTIFACT:
+
+      Final independent gate for the complete P0/P1/P2/P3 Pi TUI enhanced UI plan.
+      The gate may open only when every owned requirement has positive proof or an
+      explicit BLOCKED/non-intersection closure path accepted by the gate. Do not
+      approve from sampled evidence or source-only claims for launched/user-visible
+      runtime obligations.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase covers user-observable Pi TUI behavior, terminal width/key/mouse handling,
+      package dependency governance, CI, and runtime smoke.
+
+      - Historical Pi phases had runtime proof gaps and spec drift loops; require
+      full requirement-to-proof closure.
+
+
+      cross_cutting_focus:
+
+      - exact `@earendil-works/pi-tui@0.78.0` package/lock/install proof
+
+      - direct Pi TUI imports and no host-global fallback reliance
+
+      - render visible width `<= width`
+
+      - keyboard tabs/scroll/close and Enter-no-close behavior
+
+      - Markdown final output and log Output pane
+
+      - enhanced selector behavior and fallback preservation
+
+      - mouse reporting cleanup and no mouse click support
+
+      - no PersonaSpec/opifex/shared-surface drift
+
+      - Invar/Core non-intersection or guard proof
+
+
+      <side_effect_budget>
+
+      Allowed: review evidence, inspect files, and produce OPEN/BLOCKED decision.
+      Forbidden: editing code/docs/tests, claiming PASS with open blockers, or treating
+      environment-blocked runtime proof as product success.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Reconcile the spec-conformance verdicts against the runtime proof register
+      row by row.
+
+      - Search for residual optional Pi TUI loader/fallback or hand-rolled width/key
+      helpers where Pi TUI should own behavior.
+
+      - Search for mouse click handlers or docs/tests implying click support.
+
+      </risk_probes>'
+    verification: '- [ ] P0/P1/P2/P3 steps completed with evidence templates including
+      refs-read confirmation.
+
+      - [ ] Final gate reviews npm ci, exact package version, direct import, CI wiring,
+      tests, runtime smoke, docs sync, and spec-conformance evidence.
+
+      - [ ] Every owned requirement row is PROVEN, or BLOCKED with explicit closure
+      path and no false OPEN decision.
+
+      - [ ] Runtime/user-visible obligations are backed by launched or harnessed surface
+      evidence, not source/build evidence alone.
+
+      - [ ] Mouse click is preserved as a non-goal/no-op and is not planned or implemented
+      as support.
+
+      - [ ] No shared PersonaSpec/opifex/Python Core drift remains, or any Python
+      Core change has contracts/doctests and guard proof.
+
+      - [ ] Final decision is OPEN or BLOCKED with blockers and required actions listed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - AGENTS.md — <Invar/shared contract passage>
+
+      - INVAR.md — <Core/Shell passage if relevant, otherwise NOT READ: no Python
+      Core changes>
+
+
+      ## Final Gate Decision Basis
+
+      | requirement_family | evidence_refs_reviewed | proof_status | unresolved_statuses
+      | downstream/blocking disposition |
+
+      | --- | --- | --- | --- | --- |
+
+      | P0 dependency packaging | <refs> | PROVEN/UNPROVEN/BLOCKED | <items> | <disposition>
+      |
+
+      | P1 rendering foundation | <refs> | PROVEN/UNPROVEN/BLOCKED | <items> | <disposition>
+      |
+
+      | P2 subagent Markdown overlay | <refs> | PROVEN/UNPROVEN/BLOCKED | <items>
+      | <disposition> |
+
+      | P2 persona selector | <refs> | PROVEN/UNPROVEN/BLOCKED | <items> | <disposition>
+      |
+
+      | P3 docs/CI/tests/runtime | <refs> | PROVEN/UNPROVEN/BLOCKED | <items> | <disposition>
+      |
+
+      | non-goals/shared/Core | <refs> | PROVEN/UNPROVEN/BLOCKED | <items> | <disposition>
+      |
+
+
+      ## Issues Identified
+
+      | Severity | Description | Related Step | Blocking? | Required Action |
+
+      | --- | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion/tech_debt | <issue> | <step> | YES/NO | <action>
+      |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: all blocker-class obligations proven and no unresolved gate-intersecting
+      debt remains.
+
+      - [ ] BLOCKED: required remediation/retest steps needed before completion.
+
+
+      ## Checklist Receipt
+
+      - all_evidence_reviewed: satisfied|failed|blocked
+
+      - runtime_liveness_reviewed: satisfied|failed|blocked
+
+      - spec_conformance_reviewed: satisfied|failed|blocked
+
+      - non_goals_preserved: satisfied|failed|blocked
+
+      - final_decision_recorded: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_verification_docs_20260603.test-ci-version-governance
+    - pi_tui_verification_docs_20260603.docs-sync
+    - pi_tui_verification_docs_20260603.full-runtime-smoke
+    - pi_tui_verification_docs_20260603.spec-conformance-review
+    agent: gate-reviewer
