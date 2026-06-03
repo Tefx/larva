@@ -102349,3 +102349,125 @@ phases:
     depends_on:
     - pi_tui_verification_docs_20260603.test-ci-version-governance
     agent: integration-verifier
+  - id: pi_tui_verification_docs_20260603.spec-conformance-review
+    name: Audit Pi TUI enhanced UI spec conformance
+    status: pending
+    description: 'step_type: audit
+
+      agent_source: project
+
+      verification_scope: full-plan-check
+
+      CONFORMANCE ARTIFACT:
+
+      Adversarially compare the implemented Pi TUI enhanced UI target against the
+      authoritative docs and runtime proof. This is not a test-pass summary; it must
+      identify spec-code/proof divergences and map each to PROVEN, DIVERGES, PARTIAL,
+      NEEDS_TEST, NOT_FOUND, AMBIGUOUS_SPEC, or SPEC_POSSIBLY_STALE.
+
+
+      This check protects the final gate and consumes P0/P1/P2/P3 requirement matrix
+      rows.
+
+
+      <side_effect_budget>
+
+      Allowed: read docs/source/tests/evidence and produce a conformance matrix. Forbidden:
+      editing docs/code, inventing requirements, or approving sampled evidence where
+      the matrix has unproven rows.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify adapter-local dependency/overlay/selector behavior does not drift into
+      shared PersonaSpec/opifex surfaces.
+
+      - Verify mouse click is excluded in implementation/tests/docs, not silently
+      untested.
+
+      - Verify final runtime proof covers every verification addendum target, not
+      just source-level presence.
+
+      </risk_probes>'
+    verification: '- [ ] Requirements register covers all material rows from the Pi
+      TUI dependency policy, overlay contract, selector enhancement, verification
+      addendum, and non-goals.
+
+      - [ ] Evidence table cites source doc passages and implementation/test/runtime
+      evidence for each requirement.
+
+      - [ ] Divergences, partials, needs-test items, and blockers have explicit closure
+      paths or non-intersection rationale.
+
+      - [ ] Audit verifies no shared PersonaSpec/opifex changes were introduced by
+      this adapter-local UI work.
+
+      - [ ] Final recommendation is OPEN or BLOCKED based on positive proof, not absence
+      of known defects.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - contrib/pi-extension/larva.ts — <implementation passage>
+
+      - .github/workflows/ci.yml — <CI passage>
+
+      - tests/shell/test_pi_extension_subagent_ux.py — <test passage>
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — <Pi TUI API passage>
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+      | --- | --- | --- | --- | --- |
+
+      | <R#> | <section> | <requirement> | MUST/SHOULD/NON-GOAL | yes/no |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Test/Runtime Evidence |
+      Verdict | Notes |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | <R#> | <section> | <requirement> | <file:line> | <evidence ref> | CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE
+      | <notes> |
+
+
+      ## Coverage Summary
+
+      - Total requirements: <N>
+
+      - CONFORMS: <N>
+
+      - DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE:
+      <counts>
+
+      - Shared-surface drift check: <none/findings>
+
+      - Mouse click non-goal check: <proven/findings>
+
+
+      ## Checklist Receipt
+
+      - full_register_complete: satisfied|failed|blocked
+
+      - evidence_table_complete: satisfied|failed|blocked
+
+      - no_shared_surface_drift: satisfied|failed|blocked
+
+      - unresolved_items_dispositioned: satisfied|failed|blocked
+
+      - recommendation_recorded: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_verification_docs_20260603.docs-sync
+    - pi_tui_verification_docs_20260603.full-runtime-smoke
+    agent: spec-verifier
