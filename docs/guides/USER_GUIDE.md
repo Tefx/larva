@@ -410,7 +410,39 @@ Plugin path resolution order:
 2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
 3. source-tree fallback at `contrib/opencode-plugin/larva.ts`
 
-## 15. Troubleshooting
+## 15. Pi Coding Agent wrapper
+
+Launch Pi through Larva when you want the bundled Pi extension to project the
+active Larva persona into Pi:
+
+```bash
+larva pi --persona python-senior --agent-persona-switch ask -- <pi args...>
+```
+
+`--agent-persona-switch off|ask|auto` controls whether the model may request a
+session-local persona switch. The same launch default can be supplied with
+`LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`, and the current session can be
+changed with `/larva-agent-persona-switch [off|ask|auto]`.
+
+- `off` is the default. Autonomous model-facing switch tools are hidden and stale
+  calls are rejected, but the user can still run `/larva-persona <id>` manually.
+- `ask` exposes `larva_persona_switch(persona_id, reason, handoff?,
+  continue_task?)` and `larva_personas(query?, limit?)`, but commits only after
+  UI approval and fails safely if no approval UI is available.
+- `auto` exposes the same tools and executes an allowed self-switch without UI
+  approval.
+
+A successful autonomous switch returns `terminate=true`. When `continue_task` is
+true, Larva queues an explicit `[Larva-generated continuation after persona
+switch]` follow-up for the new persona; it is not a human-authored request. Child
+subagent sessions currently default self-switch mode to `off`; child
+inherit/ask/auto modes and a `LARVA_PI_CHILD_AGENT_PERSONA_SWITCH` knob are not
+implemented.
+
+This is Pi adapter-local behavior only: it does not change PersonaSpec or opifex
+contracts, and the model never receives a direct `commitPersona` tool.
+
+## 16. Troubleshooting
 
 ### `INVALID_PERSONA_ID`
 

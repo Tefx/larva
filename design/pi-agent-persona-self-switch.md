@@ -1,6 +1,6 @@
 # Larva Pi Agent Persona Self-Switch Design
 
-Status: proposed design
+Status: implemented first target; future child inherit/ask/auto policy remains unimplemented
 Scope: `larva pi` launcher and bundled Pi extension only
 Canonical contract authority: opifex-owned PersonaSpec schema remains unchanged
 

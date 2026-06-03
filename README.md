@@ -229,7 +229,7 @@ behavior, target refresh semantics, and failure handling.
 ## Pi Coding Agent integration
 
 ```bash
-larva pi --persona python-senior -- <pi args...>
+larva pi --persona python-senior --agent-persona-switch ask -- <pi args...>
 ```
 
 `larva pi` launches the real Pi CLI with the bundled Larva Pi extension loaded
@@ -238,9 +238,10 @@ arguments after Larva-owned flags. It does not write `.pi/settings.json` or any
 other Pi settings file as a fallback. The launcher-owned environment includes the
 resolved real Pi binary, selected extension flag, bundled extension entry, Larva
 CLI argv prefix, optional initial persona id, explicit adapter-config overrides,
-interactive-mode classification, and `LARVA_PI_LAUNCHED=1`. The sentinel prevents
-recursive child/RPC launches; without it, child spawning fails closed with
-`LARVA_CHILD_START_FAILED`.
+interactive-mode classification, the agent self-switch default from
+`--agent-persona-switch off|ask|auto` / `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`,
+and `LARVA_PI_LAUNCHED=1`. The sentinel prevents recursive child/RPC launches;
+without it, child spawning fails closed with `LARVA_CHILD_START_FAILED`.
 
 Persona-specific Pi tool rules live in adapter-local
 `~/.pi/larva/tool-policy.json`, or the absolute path explicitly named by
@@ -253,8 +254,29 @@ wildcard matching, project-level policy hierarchy, or PersonaSpec schema change.
 Inside Pi, `/larva-persona <id>` switches the active Larva persona atomically for
 the next model invocation. With no argument, it opens a selector only in
 interactive TUI mode; non-interactive modes return an input error without
-changing state. Initial `larva pi --persona <id>` model/policy failures are fatal
-startup errors when launched through the sentinel path: the extension writes
+changing state. This manual command remains available even when agent self-switch
+mode is `off`.
+
+Agent self-switch is session-level Pi policy, not PersonaSpec policy. The default
+is `off`; it can be set at launch with `--agent-persona-switch off|ask|auto`, by
+setting `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`, or during the session with
+`/larva-agent-persona-switch [off|ask|auto]`. In `off`, model-facing autonomous
+switch tools are hidden from the active tool set and stale or forged calls are
+rejected while manual `/larva-persona <id>` still works. In `ask`,
+`larva_persona_switch(persona_id, reason, handoff?, continue_task?)` and the
+bounded read-only `larva_personas(query?, limit?)` discovery tool are exposed, but
+the switch commits only after UI approval and fails safely without UI, rejection,
+cancel, or timeout. In `auto`, those tools are exposed and an allowed switch
+commits without UI approval. A successful autonomous switch returns
+`terminate=true`; if `continue_task` is true, Larva queues an explicit
+`[Larva-generated continuation after persona switch]` follow-up for the new
+persona rather than pretending a human wrote a new request. Child subagent Pi
+sessions currently start with agent self-switch mode `off`; there is no
+implemented child inherit/ask/auto switch policy, no PersonaSpec/opifex contract
+change, and no direct model-facing `commitPersona` tool.
+
+Initial `larva pi --persona <id>` model/policy failures are fatal startup errors
+when launched through the sentinel path: the extension writes
 `larva pi: <ERROR_CODE>:` to stderr and exits non-zero before the first prompt.
 Pi status shows `larva: <id>` or `larva: none`.
 

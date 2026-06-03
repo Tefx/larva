@@ -11,12 +11,14 @@ active-persona, sidecar, or runtime-permission fields to PersonaSpec JSON.
 Use the Larva launcher instead of loading this extension manually:
 
 ```bash
-larva pi --persona python-senior -- <pi args...>
+larva pi --persona python-senior --agent-persona-switch ask -- <pi args...>
 ```
 
 `--persona` is optional. When omitted, Pi starts with no active Larva persona
-until one is selected in the session. Arguments after `larva pi` are forwarded to
-the real Pi executable.
+until one is selected in the session. `--agent-persona-switch off|ask|auto` is
+also optional and defaults to `off`; the same default can be supplied through
+`LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`. Arguments after `larva pi` are
+forwarded to the real Pi executable.
 
 The launcher loads the bundled extension with Pi's documented extension flag,
 preferring `-e` when supported and otherwise using `--extension`. It must not
@@ -232,7 +234,8 @@ The extension registers this slash command:
 Switching resolves the target persona through the Larva CLI context supplied by
 the launcher, validates the target model and active policy entry, computes tool
 rules, and commits the persona atomically. If any step fails, the previous
-persona, model, and tool rules remain active.
+persona, model, and tool rules remain active. This user-driven command is
+preserved in every agent self-switch mode, including `off`.
 
 With no argument, `/larva-persona` opens a selector only in interactive TUI mode.
 When Pi exposes custom UI, the selector uses Pi TUI `Input` plus `SelectList`
@@ -263,6 +266,62 @@ or, when no persona is active:
 ```text
 larva: none
 ```
+
+### Agent persona self-switch
+
+Agent persona self-switch is session-level Pi extension policy. It does not add
+fields to PersonaSpec, does not change opifex shared contracts, and does not give
+the model direct access to the internal `commitPersona` primitive.
+
+Configure the launch default with either surface:
+
+```text
+larva pi --agent-persona-switch off|ask|auto ...
+LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto
+```
+
+Change the current Pi session mode with:
+
+```text
+/larva-agent-persona-switch [off|ask|auto]
+```
+
+Mode behavior:
+
+- `off` is the default. `larva_persona_switch` and `larva_personas` are hidden
+  from the active model-facing tool set, and stale or forged calls to those
+  autonomous tools are rejected with `LARVA_AGENT_PERSONA_SWITCH_OFF`. Manual
+  `/larva-persona <id>` remains available.
+- `ask` exposes `larva_persona_switch(persona_id, reason, handoff?,
+  continue_task?)` and read-only `larva_personas(query?, limit?)`. A requested
+  switch commits only after UI confirmation. Rejection, cancellation, timeout, or
+  missing UI fails safely without changing persona, model, or tool state.
+- `auto` exposes the same tools and commits an allowed self-switch without UI
+  confirmation.
+
+`larva_personas` is bounded discovery metadata; it is not a prompt/spec catalogue
+injection surface. `larva_persona_switch` requires a non-empty `reason`; `handoff`
+is optional and bounded. A successful autonomous switch returns a tool result with
+`terminate=true` because the current provider turn started under the old persona
+prompt. If `continue_task` is true, the extension sends an explicit
+Larva-authored follow-up using Pi's follow-up delivery:
+
+```text
+[Larva-generated continuation after persona switch]
+Switched from <old-persona> to <new-persona>.
+Reason: <reason>
+Handoff: <handoff>
+Continue the user's original task under the new persona.
+Do not switch again unless newly justified.
+```
+
+That continuation is auditable runtime orchestration text, not a human-authored
+request. The current implementation also enforces the first-target child boundary:
+child Pi sessions spawned by `larva_subagent` always start with
+`LARVA_PI_AGENT_PERSONA_SWITCH=off`. There is no implemented
+`LARVA_PI_CHILD_AGENT_PERSONA_SWITCH` environment variable, no child
+inherit/ask/auto mode, and no child self-switch policy beyond this default-off
+boundary.
 
 ### Prompt identity composition
 

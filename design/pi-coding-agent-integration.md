@@ -237,6 +237,39 @@ effect. The command returns a user-visible error with one of these stable codes:
 `LARVA_BAD_INPUT`, `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
 `LARVA_POLICY_INVALID`, or `LARVA_TOOL_ENUMERATION_FAILED`.
 
+### Agent persona self-switch
+
+The implemented self-switch policy is a Pi session mode, not a PersonaSpec field
+or opifex shared-contract change. Launch-time configuration accepts
+`larva pi --agent-persona-switch off|ask|auto ...` and
+`LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`; the in-session command is
+`/larva-agent-persona-switch [off|ask|auto]`.
+
+Mode contract:
+
+- `off` is the default. Autonomous model-facing switch tools are hidden from the
+  active tool set and defensive gates reject stale/forged calls. Manual
+  `/larva-persona <id>` switching remains available and atomic.
+- `ask` exposes `larva_persona_switch(persona_id, reason, handoff?,
+  continue_task?)` plus read-only bounded `larva_personas(query?, limit?)`.
+  Commit requires UI approval; rejection, cancellation, timeout, or no UI leaves
+  persona/model/tool state unchanged.
+- `auto` exposes the same tools and commits an allowed self-switch without UI
+  approval.
+
+A successful model-facing switch returns `terminate=true` so the old persona turn
+stops before any continuation under the new prompt. If `continue_task` is true,
+the extension sends an explicit Larva-generated Pi follow-up (`deliverAs: "followUp"`)
+containing the reason and handoff; this continuation is auditable
+runtime text and must not be represented as human-authored input. The model-facing
+surface remains the facade tool only; there is no direct model-facing
+`commitPersona` tool.
+
+Child subagent Pi processes start with `LARVA_PI_AGENT_PERSONA_SWITCH=off` even
+when the parent session is `ask` or `auto`. The current implementation does not
+provide `LARVA_PI_CHILD_AGENT_PERSONA_SWITCH` and does not implement child
+inherit/ask/auto self-switch modes.
+
 ### Persona mentions
 
 The Pi extension supports canonical persona mentions in the interactive TUI
