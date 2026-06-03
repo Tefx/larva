@@ -100541,7 +100541,7 @@ phases:
       Blockers: none. Deviation Records: none.'
 - id: pi_tui_dependency_packaging_20260603
   name: P0 Pi TUI Dependency Packaging 2026-06-03
-  status: pending
+  status: in_progress
   gate: Formal @earendil-works/pi-tui@0.78.0 dependency is declared under contrib/pi-extension
     and local/CI npm ci expectations are proven.
   depends_on:
@@ -100550,7 +100550,7 @@ phases:
   steps:
   - id: pi_tui_dependency_packaging_20260603.manifest-lock
     name: Declare pinned Pi TUI dependency manifest and lock
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -100657,6 +100657,8 @@ phases:
 
       - no_mouse_click_scope: satisfied|failed|blocked'
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-03T08:09:07.305807+00:00'
   - id: pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
     name: Wire local and CI npm ci expectation for Pi extension
     status: pending
