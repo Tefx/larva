@@ -101243,7 +101243,7 @@ phases:
       - CONSTITUTION.md not present in isolated worktree.'
   - id: pi_tui_dependency_packaging_20260603.gate
     name: Gate P0 Pi TUI dependency packaging
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: project
@@ -101344,6 +101344,8 @@ phases:
     - pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
     - pi_tui_dependency_packaging_20260603.npm-ci-proof
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-03T08:31:07.514481+00:00'
 - id: pi_tui_rendering_foundation_20260603
   name: P1 Pi TUI Rendering Foundation 2026-06-03
   status: locked
