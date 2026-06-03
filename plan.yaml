@@ -100539,3 +100539,11 @@ phases:
 
 
       Blockers: none. Deviation Records: none.'
+- id: pi_tui_dependency_packaging_20260603
+  name: P0 Pi TUI Dependency Packaging 2026-06-03
+  status: pending
+  gate: Formal @earendil-works/pi-tui@0.78.0 dependency is declared under contrib/pi-extension
+    and local/CI npm ci expectations are proven.
+  depends_on:
+  - pi_impl_finalization_20260603
+  - meta.gate
