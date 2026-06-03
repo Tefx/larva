@@ -101975,3 +101975,152 @@ phases:
     non-goal are all evidenced with independent review.
   depends_on:
   - pi_tui_persona_selector_20260603
+  steps:
+  - id: pi_tui_verification_docs_20260603.test-ci-version-governance
+    name: Align tests CI and version governance for Pi TUI UI target
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      Focused test, smoke, and CI governance cover the completed Pi TUI enhanced UI
+      target: exact `@earendil-works/pi-tui@0.78.0`, `npm --prefix contrib/pi-extension
+      ci`, direct import resolution, render visible width `<= width`, keyboard tabs,
+      Markdown output, enhanced selector behavior, mouse reporting cleanup, and mouse
+      click non-goal/no-op assertion.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `.github/workflows/ci.yml`, `tests/shell/test_pi_extension_contract.py`,
+      `tests/shell/test_pi_extension_subagent_ux.py`, `tests/shell/test_pi_extension_real_runtime.py`,
+      `scripts/pi-extension-runtime-smoke.mjs`, `scripts/pi-extension-autocomplete-smoke.mjs`,
+      `contrib/pi-extension/test-*.mjs` as needed
+
+      - spec_refs: `design > Verification targets > Pi TUI enhanced UI verification
+      addendum`; `README > Pi TUI dependency and UI component policy`; `README > /larva-subagent-log
+      view-only overlay`
+
+      - harness_refs: existing Pi extension pytest files and smoke scripts named above
+
+      - authoritative_interface: the final gate must run npm ci and runtime/UI proofs
+      before accepting enhanced UI work
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P3-GOV-001 | addendum target 1-2 | test/CI proves npm ci and local direct
+      import | pi_tui_verification_docs_20260603.test-ci-version-governance | npm/import
+      gate covered | governance_matrix | OWNED | n/a |
+
+      | P3-GOV-002 | addendum target 3-7 | tests cover width, keyboard tabs, Markdown
+      output, active-pane controls, mouse cleanup/no click | same | overlay tests
+      covered | test_inventory | OWNED | n/a |
+
+      | P3-GOV-003 | addendum target 10 | tests cover enhanced selector and fallback
+      behavior | same | selector tests covered | selector_test_inventory | OWNED |
+      n/a |
+
+      | P3-GOV-004 | project Invar/Core rules | no Python Core touched unless contracts/doctests
+      are added | same | core non-intersection checked | core_touch_scan | OWNED |
+      n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: update tests, smoke scripts, and CI gate wiring for the Pi extension
+      target. Forbidden: weakening existing tests, adding mouse click support, modifying
+      Python Core without Invar contracts/doctests, or changing shared opifex/PersonaSpec
+      contracts.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm tests fail if render lines exceed width or tabs do not switch panes.
+
+      - Confirm tests distinguish Markdown rendering from plain text metadata flags.
+
+      - Confirm CI install/runtime ordering cannot pass with missing `node_modules`
+      or missing lockfile.
+
+      </risk_probes>'
+    verification: '- [ ] Test/CI inventory covers npm ci, exact Pi TUI version, direct
+      import resolution, and no host-global fallback dependency.
+
+      - [ ] Test/CI inventory covers render visible width `<= width` across CJK, emoji,
+      ANSI-stripped, Markdown, and long path cases.
+
+      - [ ] Test/CI inventory covers keyboard tabs, active-pane scroll controls, Enter
+      not closing overlay, mouse wheel, mouse reporting cleanup, and mouse click no-op/non-goal.
+
+      - [ ] Test/CI inventory covers expanded Markdown final views and `/larva-subagent-log`
+      Markdown Output pane.
+
+      - [ ] Test/CI inventory covers enhanced persona selector filter/detail/Enter/Esc/fallback
+      behavior.
+
+      - [ ] Python Core touch scan shows no Core changes, or any Core changes have
+      @pre/@post contracts and doctests.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - .github/workflows/ci.yml — <key passage>
+
+      - tests/shell/test_pi_extension_contract.py — <key passage>
+
+      - tests/shell/test_pi_extension_subagent_ux.py — <key passage>
+
+      - scripts/pi-extension-runtime-smoke.mjs — <key passage>
+
+
+      ## Governance Matrix
+
+      | target | owning test/script/CI step | positive evidence | failure mode exercised?
+      |
+
+      | --- | --- | --- | --- |
+
+      | npm ci + exact 0.78.0 | <file/test> | <evidence> | yes/no |
+
+      | direct import | <file/test> | <evidence> | yes/no |
+
+      | visible width <= width | <file/test> | <evidence> | yes/no |
+
+      | keyboard tabs/controls | <file/test> | <evidence> | yes/no |
+
+      | Markdown final/output | <file/test> | <evidence> | yes/no |
+
+      | selector behavior | <file/test> | <evidence> | yes/no |
+
+      | mouse cleanup/no click | <file/test> | <evidence> | yes/no |
+
+
+      ## Additional Evidence
+
+      - test_inventory: <list of added/updated tests>
+
+      - selector_test_inventory: <list of selector tests>
+
+      - core_touch_scan: <git diff/path scan or explanation>
+
+
+      ## Checklist Receipt
+
+      - governance_matrix_complete: satisfied|failed|blocked
+
+      - ci_ordering_preserved: satisfied|failed|blocked
+
+      - no_mouse_click_tested: satisfied|failed|blocked
+
+      - core_invar_non_intersection: satisfied|failed|blocked'
+    agent: frontend-engineer
