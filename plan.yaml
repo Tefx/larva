@@ -100556,3 +100556,11 @@ phases:
     support.
   depends_on:
   - pi_tui_dependency_packaging_20260603
+- id: pi_tui_subagent_markdown_overlay_20260603
+  name: P2 Subagent Markdown Views and Tabbed Overlay 2026-06-03
+  status: locked
+  gate: Expanded larva_subagent final views render Markdown UI and /larva-subagent-log
+    is a keyboard-tabbed Summary/Output/Metadata Pi TUI overlay with Markdown Output
+    and view-only safety preserved.
+  depends_on:
+  - pi_tui_rendering_foundation_20260603
