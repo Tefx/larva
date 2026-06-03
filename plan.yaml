@@ -100781,7 +100781,7 @@ phases:
       not applicable to this packaging-only step.'
   - id: pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
     name: Wire local and CI npm ci expectation for Pi extension
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -100885,6 +100885,128 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-03T08:16:47.538134+00:00'
+    done_at: '2026-06-03T08:24:58.373482+00:00'
+    evidence: '## refs Read Confirmation
+
+      - contrib/pi-extension/README.md — local development and CI must install the
+      extension dependency set before Pi-extension UI work with `npm --prefix contrib/pi-extension
+      ci`.
+
+      - design/pi-coding-agent-integration.md — verification target requires `npm
+      --prefix contrib/pi-extension ci` to succeed and install pinned Pi TUI.
+
+      - .github/workflows/ci.yml — workflow now installs Pi extension npm dependencies
+      before retained Pi extension/runtime checks.
+
+      - tests/shell/test_pi_extension_contract.py — updated to assert CI contains
+      `npm --prefix contrib/pi-extension ci`, it precedes the Pi extension runtime
+      gate, and retained gate commands remain required.
+
+
+      ## CI Wiring Evidence
+
+      - ci_yaml_snippet: `.github/workflows/ci.yml` now has `Install Pi extension
+      npm dependencies` with `run: npm --prefix contrib/pi-extension ci` after `uv
+      sync --group dev` and before `Verify repo-local gate script tests`, `Verify
+      Pi extension supplemental runtime gate`, and `Verify shared-surface repo-local
+      gate`.
+
+      - ordering_evidence: worker and mainline Python probes asserted `npm --prefix
+      contrib/pi-extension ci` appears before `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_real_runtime.py -v`.
+
+      - existing_gate_preservation: retained workflow commands include `uv run pytest
+      -q tests/shell/test_repo_local_ci_gate.py`, `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_real_runtime.py -v`, `uv run python scripts/ci/larva_repo_local_gate.py
+      verify --opifex-root opifex`, and existing expected-red gate remains unchanged.
+
+      - local_command_docs: no new docs edit required here because `contrib/pi-extension/README.md`
+      already documents the local/CI command.
+
+
+      ## Requirement / Checklist Proof Matrix
+
+      | obligation | status | concrete proof |
+
+      | ci npm ci wiring present | PROVEN | `.github/workflows/ci.yml` includes required
+      `npm --prefix contrib/pi-extension ci`. |
+
+      | existing gates preserved | PROVEN | retained commands listed above remain
+      in workflow and contract test asserts presence. |
+
+      | no gate weakening | PROVEN | new workflow step is required; no `continue-on-error`/`||
+      true`; mainline checks passed. |
+
+      | local command docs identified | PROVEN | README already documents command;
+      no doc mutation needed. |
+
+      | P0-CI-001 | PROVEN | CI/local gate wiring now installs extension dependency
+      set before Pi UI/runtime work. |
+
+      | P0-CI-002 | EXCLUDED_OR_DEFERRED | Dedicated `pi_tui_dependency_packaging_20260603.npm-ci-proof`
+      step owns raw npm ci/import execution proof. |
+
+
+      ## Commands
+
+      - worker Python workflow assertion exit 0: `npm ci present before Pi extension
+      runtime gate`; retained gates present.
+
+      - worker `git diff --check` exit 0.
+
+      - worker `invar_invar_guard(path=<worktree>, changed=true)` passed.
+
+      - worker `invar_invar_guard(path=<worktree>, changed=false)` complete: `ok=true,
+      errors=0, files_checked=43`.
+
+      - mainline after squash merge: `rm -rf contrib/pi-extension/node_modules &&
+      npm --prefix contrib/pi-extension ci` exit 0: `added 3 packages, and audited
+      4 packages`; `found 0 vulnerabilities`.
+
+      - mainline Python workflow assertion exit 0: `ci npm install precedes pi extension
+      runtime gate; retained gates present; npm step is required`.
+
+      - mainline `invar_invar_guard(path=".", changed=true, strict=false)` passed:
+      `files_checked=0, errors=0, warnings=0`.
+
+      - cleanup: removed `contrib/pi-extension/node_modules`; `git status --porcelain`
+      clean before checklist/complete plan mutation.
+
+
+      ## Files changed
+
+      - .github/workflows/ci.yml
+
+      - tests/shell/test_pi_extension_contract.py
+
+
+      ## Commits
+
+      - worker commit: 5bf28f91ab0bde772f6854ec9d5e528827a7554b
+
+      - main squash commit: 152ef89 `[vectl] step-pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
+      completed`
+
+
+      ## checklist_receipt
+
+      - CI or repo-local gate wiring includes `npm --prefix contrib/pi-extension ci`
+      before Pi extension UI/runtime tests: done
+
+      - Existing Pi extension pytest and repo-local gate commands remain present:
+      done
+
+      - Wiring does not weaken or skip existing Python/Invar/shared-surface checks:
+      done
+
+      - Evidence identifies any local developer command documentation updated by this
+      wiring: done
+
+
+      ## Gaps / Notes
+
+      - Raw npm ci/import proof remains intentionally owned by the next dedicated
+      proof step.'
   - id: pi_tui_dependency_packaging_20260603.npm-ci-proof
     name: Verify Pi extension npm ci and direct dependency install
     status: pending
