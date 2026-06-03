@@ -98910,7 +98910,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_runtime_conformance_20260603.gate
     name: Gate runtime conformance and full verification
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT: Full-plan-check gate for Pi runtime liveness,
       shared spec conformance, runtime remediation retests, overlay authority adjudication,
       and full verification. review_depth: THOROUGH.
@@ -98954,6 +98954,8 @@ phases:
     - retest-full-runtime-smoke
     - retest-shared-spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-03T03:35:06.178405+00:00'
   - id: fix-runtime-conformance-blockers
     name: Fix runtime conformance blockers from smoke and spec audits
     status: done
