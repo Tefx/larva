@@ -100126,7 +100126,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.wiring-blocker-retest
     name: Retest final wiring audit blockers
-    status: claimed
+    status: done
     description: 'Independent retest for final wiring audit blockers B1-B3. Verify
       B1 startup tool enumeration failure degrades rather than exits, B2 no-active-persona
       session_start sets `larva: none`, and B3 child RPC trace env/file-write path
@@ -100151,3 +100151,71 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-06-03T04:07:38.586503+00:00'
+    done_at: '2026-06-03T04:13:50.474994+00:00'
+    evidence: 'SUCCESS/PASS: final wiring blockers B1-B3 independently retested successfully;
+      gate_open_allowed=true; blockers=[].
+
+
+      Worker evidence commit: 0af6634041e9c3afdba708aee3374fa4dc7ff36e.
+
+      Mainline squash commit: 9e53941 [vectl] step-pi_impl_finalization_20260603.wiring-blocker-retest
+      completed.
+
+
+      Retest results:
+
+      - B1 setActiveTools failure degradation: PASS; degrades without process exit.
+
+      - B2 no-active-persona session_start `larva: none`: PASS.
+
+      - B3 child RPC trace env/file-write path: PASS; documented proof-only, no helper
+      authority drift.
+
+      - Child RPC live proof B1/B2/B3/B4: PASS.
+
+      - capability-gates: PASS.
+
+      - startup-fatal: PASS.
+
+      - relevant pytest: PASS.
+
+
+      Worker verification:
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      tests/shell/test_pi_extension_subagent_ux.py -v` -> 92 passed.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> passed.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> passed.
+
+
+      Mainline final-state verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      tests/shell/test_pi_extension_subagent_ux.py -q` -> 92 passed in 49.72s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0.
+
+
+      Checklist receipt:
+
+      - B1 setActiveTools degradation proven: true.
+
+      - B2 `larva: none` no-active-persona status proven: true.
+
+      - B3 trace disposition PASS/no helper authority drift: true.
+
+      - child RPC live proof, capability-gates, startup-fatal, relevant pytest passing:
+      true.
+
+      - final verdict PASS only because no wiring blockers remain: true.
+
+
+      Blockers: none. Deviation Records: none.'
