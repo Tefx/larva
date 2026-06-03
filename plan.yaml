@@ -100547,6 +100547,116 @@ phases:
   depends_on:
   - pi_impl_finalization_20260603
   - meta.gate
+  steps:
+  - id: pi_tui_dependency_packaging_20260603.manifest-lock
+    name: Declare pinned Pi TUI dependency manifest and lock
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      `contrib/pi-extension` has an npm dependency manifest and lockfile declaring
+      `@earendil-works/pi-tui` exactly at `0.78.0` with no semver range. Local install
+      uses `npm --prefix contrib/pi-extension ci` and must install from the repo-local
+      package files, not host-global Pi resolution.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - spec_refs: `contrib/pi-extension/README.md > Pi TUI dependency and UI component
+      policy`; `design/pi-coding-agent-integration.md > Runtime UX > Pi TUI dependency
+      and reusable UI components`; Pi docs `docs/tui.md > Line Width`, `Keyboard Input`,
+      `Built-in Components`
+
+      - authoritative_interface: package manifest pins `@earendil-works/pi-tui@0.78.0`;
+      install command is `npm --prefix contrib/pi-extension ci`
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P0-DEP-001 | README Pi TUI dependency policy: formal dependency and npm ci
+      | create manifest/lock for Pi extension dependency set | pi_tui_dependency_packaging_20260603.manifest-lock
+      | exact dependency pinned | package_manifest_snippet | OWNED | n/a |
+
+      | P0-DEP-002 | design runtime UX: adapter-local runtime dependency | keep dependency
+      local to contrib/pi-extension | pi_tui_dependency_packaging_20260603.manifest-lock
+      | no root/shared dep drift | dependency_scope_scan | OWNED | n/a |
+
+      | NG-MOUSE-001 | docs: mouse click unsupported | do not add click dependency/config
+      | pi_tui_dependency_packaging_20260603.manifest-lock | no click scope introduced
+      | non_goal_scan | OWNED | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: create/update only the Pi extension npm manifest and lockfile. Forbidden:
+      changing Python package dependencies, PersonaSpec/opifex contracts, root package
+      manager state, or implementing UI behavior in this packaging step.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify lockfile records exact `0.78.0`, not `^0.78.0` or transitive-only dependency.
+
+      - Verify `npm ci` is possible from a clean checkout with no preexisting `node_modules`.
+
+      - Verify no root-level package files or shared contract docs are treated as
+      dependency authority.
+
+      </risk_probes>'
+    verification: '- [ ] `contrib/pi-extension/package.json` declares `@earendil-works/pi-tui`
+      exactly as `0.78.0`.
+
+      - [ ] `contrib/pi-extension/package-lock.json` exists and records the same exact
+      version.
+
+      - [ ] No root-level npm manifest or Python dependency entry is introduced for
+      Pi TUI.
+
+      - [ ] Mouse click support is not introduced by dependency metadata or scripts.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage from Pi TUI dependency policy>
+
+      - design/pi-coding-agent-integration.md — <key passage from Runtime UX Pi TUI
+      dependency>
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — <key passage about render(width), width helpers, keyboard helpers>
+
+
+      ## Package Manifest Evidence
+
+      - package_manifest_snippet: <paste dependencies/scripts snippet>
+
+      - package_lock_snippet: <paste package-lock entry showing @earendil-works/pi-tui
+      0.78.0>
+
+      - dependency_scope_scan: <evidence root Python/root npm deps were not changed
+      for Pi TUI>
+
+      - non_goal_scan: <evidence no mouse click support/config introduced>
+
+
+      ## Checklist Receipt
+
+      - exact_dependency_pinned: satisfied|failed|blocked
+
+      - lockfile_exact: satisfied|failed|blocked
+
+      - root_shared_dep_unchanged: satisfied|failed|blocked
+
+      - no_mouse_click_scope: satisfied|failed|blocked'
+    agent: frontend-engineer
 - id: pi_tui_rendering_foundation_20260603
   name: P1 Pi TUI Rendering Foundation 2026-06-03
   status: locked
