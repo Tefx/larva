@@ -100304,7 +100304,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.expected-red-label-cleanup
     name: Clean stale expected-red labels from final Pi proof set
-    status: pending
+    status: claimed
     description: 'TARGET STATE: Remove or clearly reclassify stale expected-red labels/docstrings
       in Pi proof files so final green proof does not rely on contradictory expected-red
       wording. Gate failure B1 found expected-red labels/docstrings in tests/shell
@@ -100337,6 +100337,8 @@ phases:
     - pi_impl_finalization_20260603.wiring-blocker-retest
     - pi_impl_finalization_20260603.plan-readiness-review
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-03T04:30:37.092618+00:00'
   - id: pi_impl_finalization_20260603.final-gate-retest
     name: Retest final Pi integration deep review gate after expected-red cleanup
     status: pending
