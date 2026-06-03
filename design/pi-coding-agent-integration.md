@@ -949,8 +949,10 @@ Live streaming target:
   replace the current status/output preview for that tool.
 - Tool output belongs in the `Events` pane as a bounded preview, not in the
   assistant `Output` pane. The `Output` pane is for assistant live/final text;
-  the `Events` pane is for tool name, status, bounded args preview, bounded output
-  preview, and final success/failure state.
+  the `Events` pane is action-first: it shows tool name, human-readable bounded
+  argument summary, bounded output/error preview, and final success/failure
+  state. Internal `toolCallId`, frame ids, UUIDs, and provider correlation ids are
+  hidden by default and may appear only in bounded debug/metadata affordances.
 - Overlong selector rows, assistant text, tool args, and tool output must be
   renderer-safe and bounded. Selector rows are single-line truncated summaries.
   Scrollable panes may wrap, but live buffers must still have a hard in-memory
@@ -993,12 +995,17 @@ Overlay UI contract:
   completion with Pi TUI `Markdown` when output exists; empty output uses a
   renderer-safe fallback.
 - `Events` shows grouped tool-call snapshots and other normalized stream events.
-  Each tool call is displayed as one evolving status row/snapshot keyed by
-  `toolCallId`, with bounded args/output previews and final success/failure
-  status.
+  Each tool call is displayed as one evolving human-readable action row keyed
+  internally by `toolCallId`, with bounded argument summaries, bounded
+  output/error previews, and final success/failure status. Default Events content
+  must not start with or visually privilege internal ids such as `call_*`,
+  `toolCallId`, frame ids, UUIDs, or provider correlation ids. Pressing `d` in
+  Events may reveal bounded debug IDs for diagnosis without polluting the default
+  view.
 - `Metadata` shows adapter-local fields such as mode, sequence, phase,
   task_preview, prompt pointer, call id, selected task id, overlay generation,
-  live-stream availability, error object, and view-only provenance.
+  live-stream availability, error object, bounded debug tool IDs, and view-only
+  provenance.
 - Keyboard controls in detail mode: `Esc`/`q` close, `s` enters selector mode,
   `↑`/`↓` scroll, `PageUp`/`PageDown` page scroll, `Home`/`End` jump, and
   `1`/`2`/`3`/`4`/`5` or `←`/`→` switch tabs. `Enter` does not close the detail
@@ -2519,8 +2526,10 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    `get_last_assistant_text`.
 9. The Events pane groups `tool_execution_start`, `tool_execution_update`, and
    `tool_execution_end` by `toolCallId` into one evolving row/snapshot per tool
-   call. It shows bounded tool args/output previews and success/failure status
-   without appending an unbounded event firehose.
+   call. Its default view is human-action-first: it shows tool name, bounded
+   argument summary, bounded output/error previews, and success/failure status
+   without appending an unbounded event firehose or exposing internal call/frame
+   ids. Internal ids are available only through bounded debug/metadata views.
 10. `message_update` streaming proof covers assistant text preview updates and
     verifies that `thinking_*` content is not rendered. Overlong message/tool
     content must be bounded in memory, renderer-safe, and visibly marked as

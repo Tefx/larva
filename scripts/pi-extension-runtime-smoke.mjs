@@ -863,6 +863,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const resetResult = await mod.resetExtensionUI("subagent-log-selector-streaming-smoke");
   const afterReset = mod.larva_subagent_log("/tmp/does-not-exist.jsonl");
 
+  const toolRowCount = (eventsDuringPlain.match(/Tool/g) ?? []).length;
   const toolIdCount = (eventsDuringPlain.match(/rpc-tool-1/g) ?? []).length;
   return {
     status: "PASS",
@@ -893,7 +894,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
       childRpcEventsDroveOverlayRenderRequest: rendersAfterLive > rendersBeforeLive,
       assistantDeltaRenderedFromRpc: outputDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE"),
       thinkingContentHidden: !combinedVisible.includes("THINKING_SECRET_SHOULD_NOT_RENDER") && combinedVisible.includes("thinking hidden"),
-      toolEventsGroupedByToolCallId: toolIdCount === 1 && eventsDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && eventsDuringPlain.includes("success"),
+      toolEventsGroupedByToolCallId: toolRowCount === 1 && toolIdCount === 0 && eventsDuringPlain.includes("bash") && eventsDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && eventsDuringPlain.includes("success"),
       rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET"),
       liveStateNotPersisted: !cacheDuringLiveText.includes("RPC_ASSISTANT_DELTA_VISIBLE") && !cacheDuringLiveText.includes("RPC_TOOL_OUTPUT_FINAL"),
       finalOutputAuthorityPreserved: result?.details?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
@@ -1007,8 +1008,9 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     },
     R4_groupedToolEvents: {
       eventsTabExists: /Events/.test(detailPlain) && /● 4 Events/.test(fourthTabPlain),
-      groupedByToolCallId: (fourthTabPlain.match(/tool-1/g) ?? []).length === 1,
+      groupedByToolCallId: (fourthTabPlain.match(/bash/g) ?? []).length === 1 && (fourthTabPlain.match(/Tool/g) ?? []).length === 1,
       toolOutputOnlyBoundedEventsPreview: fourthTabPlain.includes("SECRET_TOOL_TAIL") === false && /truncated|…|\.\.\./i.test(fourthTabPlain) && outputPlain.includes("SECRET_TOOL_TAIL") === false,
+      internalIdsHiddenByDefault: !fourthTabPlain.includes("tool-1"),
     },
     R5_outputLiveAndFinalAuthority: {
       liveAssistantShownWhileRunning: outputPlain.includes("LIVE_ASSISTANT_PREVIEW_VISIBLE_WHILE_RUNNING"),

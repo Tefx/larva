@@ -758,11 +758,18 @@ change recent-session resume UX authority, or remove the public child `task_id`.
 Target interaction model:
 
 - Default open: newest observed entry in detail mode.
-- `s`: enter/leave the in-overlay subagent selector.
+- `s`: enter/leave the in-overlay subagent selector. The selector is
+  event-driven: newly observed subagents appear on presentation-log refresh
+  without timer polling, while the cursor stays attached to the previously
+  selected entry when possible.
 - Selector ordering: running entries first, then newest `updated_at`, then highest
   `sequence` as tie-breaker.
-- Selector rows: status, persona id, phase/status, bounded task preview, and
-  bounded `task_id` suffix; no full prompt, full output, or raw event payload.
+- Selector rows: local started time (`HH:MM:SS`), status token, persona id, short
+  task label, phase/status, and bounded task preview; no full prompt, full output,
+  full task path, internal call/frame id, or raw event payload. Absolute local
+  time is preferred over relative age because the overlay is refresh-on-event
+  rather than timer-polled; a relative `3m ago` label would become stale while
+  the selector is idle.
 - Selector `Enter`: select highlighted entry and return to detail mode without
   closing the overlay.
 - `Esc` or `q`: close.
@@ -785,19 +792,25 @@ Target panes:
    assistant output after completion, otherwise a renderer-safe empty/fallback
    message.
 4. `Events`: grouped tool-call snapshots and normalized stream events. A tool call
-   is displayed as one evolving status row/snapshot keyed by `toolCallId`; start,
-   update, and end events update that row rather than appending an unbounded
-   firehose. Tool args and tool output appear only as bounded previews here.
+   is displayed as one evolving human-readable action row keyed internally by
+   `toolCallId`; start, update, and end events update that row rather than
+   appending an unbounded firehose. The default row is action-first, not
+   identifier-first: `Tool  read("file") — success`, followed by bounded output or
+   error preview lines such as `└─ output: 45 lines read`. Full internal
+   `toolCallId`/frame identifiers are hidden by default because they are debug
+   plumbing, not user intent; press `d` in the Events pane to reveal bounded
+   internal IDs when diagnosing adapter behavior.
 5. `Metadata`: adapter-local mode, sequence, phase, task preview, prompt pointer,
    call id, selected task id, overlay generation, live-stream availability, error
-   object, and view-only provenance.
+   object, debug tool IDs, and view-only provenance.
 
-Overlong selector rows, assistant messages, tool args, and tool output are always
-renderer-safe and bounded. Selector rows are single-line truncated summaries.
-Scrollable panes may wrap, but live buffers must still have a hard in-memory bound
-and visible truncation marker so a noisy child cannot turn the overlay into an
-unbounded log stream. `thinking_*` child deltas must not display thinking content;
-the overlay may show only a bounded neutral state such as `thinking hidden`.
+Overlong selector rows, assistant messages, tool args, tool output, and debug IDs
+are always renderer-safe and bounded. Selector rows are single-line truncated
+summaries. Scrollable panes may wrap, but live buffers must still have a hard
+in-memory bound and visible truncation marker so a noisy child cannot turn the
+overlay into an unbounded log stream. `thinking_*` child deltas must not display
+thinking content; the overlay may show only a bounded neutral state such as
+`thinking hidden`.
 
 The overlay result carries `view_only: true`, renderer-safe text `content`, and
 adapter-local overlay `details`. It deliberately does not mirror

@@ -504,7 +504,16 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         mod.recordSubagentPresentationEntryForTests(null, "epsilon", "running", { phase: "starting", mode: "new", task_preview: "pending fresh run", task_prompt: "pending initial prompt" });
         const pendingNewest = mod.larva_subagent_log({ expanded: true });
         const longOverlayText = ["# Markdown Heading", "", "- bullet one", "- bullet two", "", "```text", "fenced code output", "```", ...Array.from({ length: 45 }, (_, index) => `scroll proof line ${String(index).padStart(2, "0")} 这是 🧪 /very/long/path/${index}`)].join("\\n");
-        mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", { result_text: longOverlayText, phase: "success", task_preview: "long prompt preview", task_prompt: initialPrompt });
+        mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", {
+          result_text: longOverlayText,
+          phase: "success",
+          task_preview: "long prompt preview",
+          task_prompt: initialPrompt,
+          tool_snapshots: [
+            { toolCallId: "call_HUMANUNREADABLE_INTERNAL_ID_SHOULD_NOT_DEFAULT|fc_020beed829888023016d207adfbc5081918979b4ffb2360c38", name: "read", status: "success", args_preview: JSON.stringify({ path: "contrib/pi-extension/README.md" }), output_preview: "45 lines read" },
+            { toolCallId: "call_SECOND_INTERNAL_ID_SHOULD_STAY_OUT_OF_DEFAULT_EVENTS|fc_020beed829888023016d207ae38d988191a1946d27467ba823", name: "grep", status: "success", args_preview: JSON.stringify({ pattern: "SubagentPresentationLogOverlay" }), output_preview: "3 matches" },
+          ],
+        });
         const beforeSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
         const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
@@ -590,6 +599,10 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             const outputTab = component.render(80);
             component.handleInput?.("4");
             const eventsTab = component.render(80);
+            component.handleInput?.("d");
+            const eventsDebugTab = component.render(80);
+            component.handleInput?.("d");
+            const eventsDebugOffTab = component.render(80);
             component.handleInput?.("5");
             const metadataTab = component.render(80);
             component.handleInput?.("\\x1b[D");
@@ -633,7 +646,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             const emptyComponent = new mod.SubagentPresentationLogOverlay({ entry: { task_id: "/tmp/empty.jsonl", persona_id: "empty", status: "success", sequence: 99, phase: "success", result_text: "", error: null }, generation: 99, tui: { terminal: { rows: 50 } } });
             emptyComponent.handleInput?.("3");
             const emptyOutputTab = emptyComponent.render(80);
-            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, promptTab, eventsTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
+            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, promptTab, eventsTab, eventsDebugTab, eventsDebugOffTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
             return null;
           },
         };
@@ -644,7 +657,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         mod.resetSubagentPresentationStateForTests();
-        const overlayStateKeys = ["rendered", "outputTab", "promptTab", "eventsTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
+        const overlayStateKeys = ["rendered", "outputTab", "promptTab", "eventsTab", "eventsDebugTab", "eventsDebugOffTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
         const smallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } });
         const tallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 60 } } });
         const smallHeightLines = smallHeightComponent.render(80);
@@ -674,6 +687,25 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           summaryReadable: commandCustomCalls[0].rendered.some((line) => line.includes("Run")) && commandCustomCalls[0].rendered.some((line) => line.includes("Status") && line.includes("success")) && commandCustomCalls[0].rendered.some((line) => line.includes("Output") && line.includes("see Output tab")) && !commandCustomCalls[0].rendered.some((line) => line.includes("INITIAL_PROMPT_MARKER") || line.includes("# Markdown Heading")),
           promptTabVisible: commandCustomCalls[0].promptTab.some((line) => line.includes("Initial Prompt")) && commandCustomCalls[0].promptTab.some((line) => line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
           outputMarkdownPane: (() => { const plain = commandCustomCalls[0].outputTab.map(stripAnsi).join("\\n"); return plain.includes("Markdown Heading") && plain.includes("• bullet one") && plain.includes("fenced code output") && !plain.includes("# Markdown Heading") && !plain.includes("- bullet one") && !plain.includes("```text") && !plain.includes("```\\n"); })(),
+          eventsHumanReadableDefault: (() => {
+            const plain = commandCustomCalls[0].eventsTab.map(stripAnsi).join("\\n");
+            const debugPlain = commandCustomCalls[0].eventsDebugTab.map(stripAnsi).join("\\n");
+            const offPlain = commandCustomCalls[0].eventsDebugOffTab.map(stripAnsi).join("\\n");
+            const metadataPlain = commandCustomCalls[0].metadataTab.map(stripAnsi).join("\\n");
+            return plain.includes("Tool")
+              && plain.includes('read("contrib/pi-extension/README.md")')
+              && plain.includes("grep")
+              && plain.includes("Preview")
+              && plain.includes("45 lines read")
+              && plain.includes("press d to show internal tool IDs")
+              && !plain.includes("HUMANUNREADABLE_INTERNAL_ID")
+              && !plain.includes("fc_020beed")
+              && debugPlain.includes("Debug ID")
+              && debugPlain.includes("HUMANUNREADABLE_INTERNAL_ID")
+              && !offPlain.includes("HUMANUNREADABLE_INTERNAL_ID")
+              && metadataPlain.includes("Debug tool IDs")
+              && metadataPlain.includes("HUMANUNREADABLE_INTERNAL_ID");
+          })(),
           emptyOutputFallback: commandCustomCalls[0].emptyOutputTab.some((line) => line.includes("No final subagent output")),
           overlayCloseKeys: commandCustomCalls[0].doneAfterEnter === 0 && commandCustomCalls[0].doneAfterLiveEsc === 1 && commandCustomCalls[0].doneAfterEsc === 2 && commandCustomCalls[0].doneAfterQ === 3 && commandCustomCalls[0].rendered.some((line) => line.includes("Esc/q close")) && !commandCustomCalls[0].rendered.some((line) => line.includes("Enter")),
           overlayScrollable: commandCustomCalls[0].longInitial.length > 34 && commandCustomCalls[0].longInitial.some((line) => line.includes("Wheel/↑↓ PgUp/PgDn Home/End")) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterWheelDown) && JSON.stringify(commandCustomCalls[0].afterWheelUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterDown) && JSON.stringify(commandCustomCalls[0].afterDown) !== JSON.stringify(commandCustomCalls[0].afterPageDown) && JSON.stringify(commandCustomCalls[0].afterHome) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterLiveDown) && JSON.stringify(commandCustomCalls[0].afterLiveUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLivePageDown) !== JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLiveHome) === JSON.stringify(commandCustomCalls[0].longInitial),
@@ -702,6 +734,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["summaryReadable"] is True
     assert payload["promptTabVisible"] is True
     assert payload["outputMarkdownPane"] is True
+    assert payload["eventsHumanReadableDefault"] is True
     assert payload["emptyOutputFallback"] is True
     assert payload["overlayCloseKeys"] is True
     assert payload["overlayScrollable"] is True
@@ -1379,6 +1412,7 @@ def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> 
         "eventsTabExists": True,
         "groupedByToolCallId": True,
         "toolOutputOnlyBoundedEventsPreview": True,
+        "internalIdsHiddenByDefault": True,
     }
     assert assertions["R5_outputLiveAndFinalAuthority"] == {
         "liveAssistantShownWhileRunning": True,
