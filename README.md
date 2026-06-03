@@ -236,51 +236,60 @@ larva pi --persona python-senior -- <pi args...>
 through Pi's extension flag (`-e` or `--extension`) and forwards user Pi
 arguments after Larva-owned flags. It does not write `.pi/settings.json` or any
 other Pi settings file as a fallback. The launcher-owned environment includes the
-resolved real Pi binary, selected extension flag, bundled extension entry,
-Larva CLI argv prefix, optional initial persona id, policy-file path, and
-interactive-mode classification so parent and child Pi sessions use the same
-runtime context.
+resolved real Pi binary, selected extension flag, bundled extension entry, Larva
+CLI argv prefix, optional initial persona id, explicit adapter-config overrides,
+interactive-mode classification, and `LARVA_PI_LAUNCHED=1`. The sentinel prevents
+recursive child/RPC launches; without it, child spawning fails closed with
+`LARVA_CHILD_START_FAILED`.
 
-Persona-specific Pi tool rules live in adapter-local `~/.pi/tool-policy.json`.
-That file is not a PersonaSpec field and is not interpreted by opifex. The Pi
-extension validates the active persona entry and supports only exact tool-name
-`allow` and `deny` arrays; there is no `ask` action, wildcard matching,
-project-level policy hierarchy, or PersonaSpec schema change.
+Persona-specific Pi tool rules live in adapter-local
+`~/.pi/larva/tool-policy.json`, or the absolute path explicitly named by
+`LARVA_PI_TOOL_POLICY_FILE`. Legacy `~/.pi/tool-policy.json` is not read as an
+implicit fallback. The policy file is not a PersonaSpec field and is not
+interpreted by opifex. The Pi extension validates the active persona entry and
+supports only exact tool-name `allow` and `deny` arrays; there is no `ask` action,
+wildcard matching, project-level policy hierarchy, or PersonaSpec schema change.
 
 Inside Pi, `/larva-persona <id>` switches the active Larva persona atomically for
 the next model invocation. With no argument, it opens a selector only in
 interactive TUI mode; non-interactive modes return an input error without
-changing state. Pi status shows `larva: <id>` or `larva: none`.
+changing state. Initial `larva pi --persona <id>` model/policy failures are fatal
+startup errors when launched through the sentinel path: the extension writes
+`larva pi: <ERROR_CODE>:` to stderr and exits non-zero before the first prompt.
+Pi status shows `larva: <id>` or `larva: none`.
 
 For Tab completion, the bundled extension preserves Pi's command-level
 `/larva-persona` argument completer and, when the Pi TUI exposes
-`ctx.ui.addAutocompleteProvider`, installs a narrow editor provider for only
-`/larva-persona <prefix>`. In `larva pi`, typing that command shape and pressing
-Tab should show matching persona ids from `larva list --json`. The provider sends
-exactly the argument prefix to the Larva-specific completion path, uses exact
-`startsWith` matching, returns `null` without throwing on list failures or
-malformed JSON, and delegates every other input back to Pi's base autocomplete
-provider. It does not inject persona catalogues into prompts, cache persona
-lists, or perform fuzzy matching. Runtime troubleshooting uses:
+`ctx.ui.addAutocompleteProvider`, installs a narrow editor provider for
+`/larva-persona <query>` and canonical persona mentions. Matching is
+case-insensitive substring matching over persona ids, with prefix matches ranked
+first and registry order preserved otherwise. The process-local parsed-list cache
+is bounded and test-resettable; it is not a prompt catalogue and is not written to
+disk. If live Pi does not expose `ctx.ui.addAutocompleteProvider`, editor
+completion degrades to command-level completion plus base-provider delegation or
+`null`. Mock/local hook evidence is not enough to claim live editor support.
 
-```bash
-node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix vectl
-node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix vectl
-node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input
-node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure
-uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v
-```
+Persona mentions insert id-only values exactly shaped as `@persona:<id>`. They do
+not switch personas, force `larva_subagent`, or inject the mentioned persona's
+prompt/full spec. Raw short forms such as `@python-senior` remain delegated to
+Pi-owned file-reference completion.
 
-The bundled extension exposes one custom tool, `larva_subagent(persona_id, task,
-task_id?)`, when the active parent persona and tool policy allow it. A successful
-call returns a `LarvaSubagentResult` containing `task_id`, `persona_id`,
-`status`, `result_text`, and `error`; `task_id` is the public resume handle and
+The bundled extension exposes `larva_subagent(persona_id, task, task_id?)` when
+the active parent persona and tool policy allow it. Results are Pi ToolResult
+wrappers around `LarvaSubagentResult`; `task_id` is the public resume handle and
 is the child Pi `.jsonl` session path under `~/.pi/larva/child-sessions`. Resumes
 reuse that path, append the new `task`, and re-resolve the requested child
-persona from the current registry. There is no Larva sidecar metadata guarantee,
-batch subagent scheduler, worktree isolation, credential isolation, filesystem
-lock, MCP transport, or Pi permission platform in this integration. See
-`contrib/pi-extension/README.md` for user-facing policy and subagent details.
+persona from the current registry. The authorized `/larva-subagent-log [task_id?]`
+slash command is a view-only, user-visible overlay over the parent extension's
+in-memory presentation log; it is not a model-facing tool, not resume authority,
+and not a shared opifex surface.
+
+Runtime proof summaries live in `design/pi-coding-agent-integration.md` under
+"Runtime capability and provenance matrix". See `contrib/pi-extension/README.md`
+for operator-facing details and the exact smoke commands. There is no Larva
+sidecar metadata guarantee, batch subagent scheduler, worktree isolation,
+credential isolation, filesystem lock, MCP transport, or Pi permission platform
+in this integration.
 
 ## Architecture
 

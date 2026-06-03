@@ -1,6 +1,6 @@
 # Pi Coding Agent Integration
 
-Status: proposed design target  
+Status: implementation authority for the current `larva pi` target
 Scope: `larva pi` launcher, bundled Pi extension, persona switching, adapter-local Pi tool policy keyed by persona id, and Larva-backed subagent spawning  
 Canonical contract authority: opifex-owned PersonaSpec schema
 
@@ -1974,6 +1974,23 @@ Prompt identity overlay delta:
 - Provider-specific payload rewrite is out of scope for persona identity; the
   effective Pi session prompt should remain inspectable through Pi's system prompt
   surfaces.
+
+## Runtime capability and provenance matrix
+
+This matrix records the implementation/proof status for the bundled Pi extension.
+It is part of this design authority; operator docs may summarize it but should
+link here rather than redefining the contracts.
+
+| capability | implemented behavior | provenance rule | proof command or test |
+| --- | --- | --- | --- |
+| Fatal initial persona startup | `larva pi --persona <id>` failures in model selection or policy parsing write `larva pi: <ERROR_CODE>:` and exit non-zero before any prompt/model turn. Manual extension loads without `LARVA_PI_LAUNCHED=1` may degrade instead of exiting. | PASS requires non-zero process exit plus Larva startup stderr before the first prompt. | `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k startup_fatal -v` |
+| Launcher sentinel | `LARVA_PI_LAUNCHED=1` is required before the extension trusts `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY` for child/RPC spawning. Missing or false sentinel fails closed with `LARVA_CHILD_START_FAILED`. | Source/harness proof is sufficient for the recursion guard because it proves no child process is spawned without the sentinel. | `uv run pytest tests/shell/test_pi_extension_contract.py -k launched_sentinel -v` |
+| Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw short forms such as `@python-senior` remain delegated. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
+| `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
+| `/larva-subagent-log` overlay | The authorized slash command is view-only, user-visible, adapter-local, and backed only by the parent extension's in-memory presentation log. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k presentation_log_overlay -v` |
+| Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
+| Subagent row/progress rendering | `larva_subagent` exposes `renderCall`, `execute` progress updates, and `renderResult` with bounded visible text; this is row-local and does not replace the parent `larva:` footer. | Harness proof is sufficient for renderer contract shape and deterministic bounds; live Pi rendering remains a UI runtime concern. | `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'render_hooks or vt46' -v` |
+| Runtime hard gates | Extension loading, Pi RPC command inventory, autocomplete hook provenance, subagent row progress, and subagent log overlay command are reported together. | The matrix is data/provenance, not a fallback authority for behavior. Unsupported or mock-only items must be shown as unsupported/unknown rather than claimed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
 
 ## Verification targets
 

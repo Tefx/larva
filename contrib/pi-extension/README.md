@@ -20,16 +20,32 @@ the real Pi executable.
 
 The launcher loads the bundled extension with Pi's documented extension flag,
 preferring `-e` when supported and otherwise using `--extension`. It must not
-fall back to writing `.pi/settings.json` or any other Pi settings file. At a
-user-appropriate level, the launcher-owned environment records the resolved real
-Pi executable, selected extension flag, absolute bundled extension entry, Larva
-CLI argv prefix, optional initial persona id, optional explicit policy override,
-and whether the forwarded Pi arguments look interactive. The launcher passes
-`LARVA_PI_TOOL_POLICY_FILE` only when an explicit override is set; otherwise the
-parent and child extensions each resolve the canonical default policy path
-themselves. Child Pi RPC sessions reuse launcher-provided executable, extension,
-CLI, persona, and interactive-mode values rather than rediscovering Pi or
-deriving extension paths.
+fall back to writing `.pi/settings.json` or any other Pi settings file. The
+design document is the normative authority for launcher/environment contracts;
+this README is an operator-facing summary.
+
+At launch, the environment records the resolved real Pi executable, selected
+extension flag, absolute bundled extension entry, Larva CLI argv prefix, optional
+initial persona id, optional explicit policy override, interactive-mode
+classification, and `LARVA_PI_LAUNCHED=1`. The launched sentinel is consumed as a
+recursion guard: child/RPC spawning trusts `LARVA_PI_REAL_BIN`,
+`LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY` only when the sentinel
+is present. Without it, child/RPC spawning fails closed with
+`LARVA_CHILD_START_FAILED` instead of invoking a possibly recursive launcher
+path.
+
+The launcher passes `LARVA_PI_TOOL_POLICY_FILE` only when an explicit override is
+set; otherwise the parent and child extensions each resolve the canonical
+default policy path themselves. Child Pi RPC sessions reuse launcher-provided
+executable, extension, CLI, persona, and interactive-mode values rather than
+rediscovering Pi or deriving extension paths.
+
+For `larva pi --persona <id>`, initial persona resolution/model/policy commit is
+startup-critical. Extension-detected model or policy failures write
+`larva pi: <ERROR_CODE>: <message>` to stderr and exit non-zero before the first
+prompt/model turn when `LARVA_PI_LAUNCHED=1`. Manual extension loads without the
+launcher sentinel may degrade to an unavailable status instead of being process
+fatal.
 
 ## Adapter-local model map
 
@@ -279,10 +295,10 @@ autocomplete. The provider intercepts only a slash-command line shaped as:
 /larva-persona <query>
 ```
 
-Target behavior for the next implementation step:
+Implemented behavior:
 
 - Typing `/larva-persona <query>` and pressing Tab shows matching persona ids
-  from `larva list --json`.
+  from `larva list --json` when the runtime exposes the editor provider hook.
 - Matching is case-insensitive substring matching over persona ids, not only
   prefix matching. For example, `senior` should match `python-senior`.
 - Prefix matches rank before non-prefix substring matches. Otherwise preserve the
@@ -327,7 +343,12 @@ uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v
 ```
 
 The runtime gate for editor autocomplete must prove the tested Pi build exposes
-`ctx.ui.addAutocompleteProvider` before claiming editor-autocomplete support.
+`ctx.ui.addAutocompleteProvider` before claiming editor-autocomplete support. The
+local Node harness intentionally reports mock-only hook provenance as degraded:
+`capability-gates.runtime.hardGates.uiAutocompleteProvider.supported` stays
+`false` when the only observed hook is `runtimeHarness.mock`. Mock/local hook
+proof is useful for provider behavior, but it is never sufficient to claim live
+Pi interactive TUI editor-autocomplete support.
 
 ### `@persona:<id>` mentions
 
@@ -338,11 +359,11 @@ adds a narrow autocomplete provider for Larva persona mentions in the editor:
 @persona:<persona-id>
 ```
 
-The mention is only a user-facing reference to a Larva persona. It is not a
-command, does not switch the active parent persona, does not automatically call
-`larva_subagent`, and does not inject the mentioned persona's prompt or full spec
-into the parent context. The parent agent decides normally whether the mention is
-relevant and whether calling `larva_subagent` is useful.
+The mention is only an id-only user-facing reference to a Larva persona. It is
+not a command, does not switch the active parent persona, does not automatically
+call `larva_subagent`, and does not inject the mentioned persona's prompt or full
+spec into the parent context. The parent agent decides normally whether the
+mention is relevant and whether calling `larva_subagent` is useful.
 
 Autocomplete uses the same persona list bridge and matching rules as
 `/larva-persona` completion. Candidate `value` and dedupe identity are exactly
@@ -383,6 +404,16 @@ coverage stay distinct and additive:
 uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py -v
 ```
 
+Runtime capability/provenance is summarized by:
+
+```bash
+node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
+```
+
+The capability-gates output is evidence, not a replacement contract. Normative
+behavior remains in `design/pi-coding-agent-integration.md` under "Runtime
+capability and provenance matrix" and "Verification targets".
+
 The supplemental gate uses `--offline` runtime scenarios and the deterministic
 fake Larva CLI bridge under `tests/fixtures/pi/fake-larva-cli.mjs`; it does not
 require live network access or session credentials. If the real Pi binary is not
@@ -391,6 +422,16 @@ captured availability evidence. If Pi is present but its RPC runtime does not
 expose extension UI/custom-command observability, those scenarios xfail with RPC
 evidence. Plugin load, slash-command liveness, and other product/runtime failures
 must fail the gate rather than being hidden behind unconditional skips.
+
+For controlled child RPC liveness, run:
+
+```bash
+node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+```
+
+A PASS requires the `runtime.controlledLive` checks to prove fresh child startup,
+resume, abort propagation, and orphan-free cleanup. If Pi or extension loading is
+unavailable, the proof is blocked rather than silently passed.
 
 ## `larva_subagent` custom tool
 
@@ -555,6 +596,29 @@ If the parent tool call is aborted, the extension forwards a Pi RPC abort reques
 to the child and may kill the child after a grace period. If the child is stopped
 by abort or kill, the result is `cancelled` with `LARVA_CHILD_CANCELLED`; if the
 child completes during the grace period, the normal success result is returned.
+
+### `/larva-subagent-log` view-only overlay
+
+The extension also registers the authorized slash command:
+
+```text
+/larva-subagent-log [task_id?]
+```
+
+This is a user-visible, view-only overlay over the parent extension's in-memory
+subagent presentation log. It is not a model-facing tool, not a tool-policy input,
+not a resume authority, and not a shared Larva/opifex schema. With no argument it
+selects the newest observed presentation-log entry; with an argument it selects
+one exact `task_id`. It does not scan the filesystem, parse raw Pi JSONL, read or
+write sidecars, or support aliases such as `last`.
+
+The overlay result carries `view_only: true`, renderer-safe text `content`, and
+adapter-local overlay `details`. It deliberately does not mirror
+`LarvaSubagentResult` top-level `task_id` or `result_text` fields. Missing
+observed entries return `LARVA_SUBAGENT_LOG_NOT_OBSERVED`; unavailable UI
+notification returns `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE`. Opening or resetting the
+overlay must not mutate persona state, model state, tool policy, active task
+markers, child session files, recent-session index contents, or resume authority.
 
 ## Explicit non-goals and unsupported guarantees
 
