@@ -100572,3 +100572,11 @@ phases:
     behavior.
   depends_on:
   - pi_tui_subagent_markdown_overlay_20260603
+- id: pi_tui_verification_docs_20260603
+  name: P3 Pi TUI Verification, CI, and Docs Closure 2026-06-03
+  status: locked
+  gate: Docs, CI, tests, version governance, runtime smoke, npm ci, width, keyboard
+    tabs, Markdown output, selector behavior, mouse reporting cleanup, and no-click
+    non-goal are all evidenced with independent review.
+  depends_on:
+  - pi_tui_persona_selector_20260603
