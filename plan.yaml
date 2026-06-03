@@ -100323,16 +100323,16 @@ phases:
       proof where behavior is implemented.
 
       - Keep runtime smoke, full pytest, and invar green.'
-    verification: '- [ ] grep/static scan shows no stale expected-red labels/docstrings
+    verification: '- [x] grep/static scan shows no stale expected-red labels/docstrings
       in final Pi proof files, or any remaining occurrences are explicitly historical/quarantined
       and not used as final proof.
 
-      - [ ] full pytest passes.
+      - [x] full pytest passes.
 
-      - [ ] runtime smoke capability-gates, startup-fatal, and live-child-rpc-proof
+      - [x] runtime smoke capability-gates, startup-fatal, and live-child-rpc-proof
       pass.
 
-      - [ ] invar guard changed/full passes.'
+      - [x] invar guard changed/full passes.'
     depends_on:
     - pi_impl_finalization_20260603.wiring-blocker-retest
     - pi_impl_finalization_20260603.plan-readiness-review
