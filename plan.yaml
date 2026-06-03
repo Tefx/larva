@@ -99758,16 +99758,16 @@ phases:
 
       - Runtime proof limitations must be documented without implying PASS when hard
       gate is absent.'
-    verification: '- [ ] Documentation describes launcher env/args, persona switching,
+    verification: '- [x] Documentation describes launcher env/args, persona switching,
       tool policy paths, child RPC, sessions helper, realtime/log UI, overlay trigger,
       reset cleanup, and verification commands.
 
-      - [ ] Docs preserve view-only overlay and no-scan/no-raw-JSONL/no-sidecar/no-alias
+      - [x] Docs preserve view-only overlay and no-scan/no-raw-JSONL/no-sidecar/no-alias
       constraints.
 
-      - [ ] Docs do not duplicate or supersede design/pi-coding-agent-integration.md.
+      - [x] Docs do not duplicate or supersede design/pi-coding-agent-integration.md.
 
-      - [ ] Docs match actual implemented commands and evidence from runtime conformance
+      - [x] Docs match actual implemented commands and evidence from runtime conformance
       phase.'
     refs:
     - design/pi-coding-agent-integration.md
