@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any, Final
 
 import pytest
-from wcwidth import wcswidth
 
 ROOT: Final = Path(__file__).resolve().parents[2]
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
@@ -499,9 +498,10 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         const expanded = mod.larva_subagent_log({ expanded: true, limit: 4 });
         mod.recordSubagentPresentationEntryForTests(null, "epsilon", "running", { phase: "starting", mode: "new", task_preview: "pending fresh run" });
         const pendingNewest = mod.larva_subagent_log({ expanded: true });
-        const longOverlayText = Array.from({ length: 45 }, (_, index) => `scroll proof line ${String(index).padStart(2, "0")}`).join("\\n");
+        const longOverlayText = ["# Markdown Heading", "", "- bullet one", "- bullet two", "", "```text", "fenced code output", "```", ...Array.from({ length: 45 }, (_, index) => `scroll proof line ${String(index).padStart(2, "0")} 这是 🧪 /very/long/path/${index}`)].join("\\n");
         mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", { result_text: longOverlayText, phase: "success" });
         const beforeSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
+        const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
         const commandNotifications = [];
         const commandCustomCalls = [];
         const commandResults = [];
@@ -524,6 +524,17 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             };
             const component = factory({ requestRender: () => undefined, terminal: { write: (data) => terminalWrites.push(data) } }, { fg: (_token, text) => text, bold: (text) => text }, keybindings, (value) => doneValues.push(value));
             const rendered = component.render(80);
+            component.handleInput?.("2");
+            const outputTab = component.render(80);
+            component.handleInput?.("3");
+            const metadataTab = component.render(80);
+            component.handleInput?.("\\x1b[D");
+            const afterLeft = component.render(80);
+            component.handleInput?.("\\x1b[C");
+            const afterRight = component.render(80);
+            component.handleInput?.("1");
+            const afterDigitOne = component.render(80);
+            component.handleInput?.("2");
             const longInitial = component.render(80);
             component.handleInput?.("\\x1b[<65;10;10M");
             const afterWheelDown = component.render(80);
@@ -543,6 +554,9 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             const afterLivePageDown = component.render(80);
             component.handleInput?.("LIVE_HOME");
             const afterLiveHome = component.render(80);
+            const beforeClick = component.render(80);
+            component.handleInput?.("\\x1b[<0;10;10M");
+            const afterClick = component.render(80);
             component.handleInput?.("\\r");
             const doneAfterEnter = doneValues.length;
             component.handleInput?.("LIVE_ESC");
@@ -552,7 +566,10 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             component.handleInput?.("q");
             const doneAfterQ = doneValues.length;
             component.dispose?.();
-            commandCustomCalls.push({ options, focused, terminalWrites, rendered, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
+            const emptyComponent = new mod.SubagentPresentationLogOverlay({ entry: { task_id: "/tmp/empty.jsonl", persona_id: "empty", status: "success", sequence: 99, phase: "success", result_text: "", error: null }, generation: 99 });
+            emptyComponent.handleInput?.("2");
+            const emptyOutputTab = emptyComponent.render(80);
+            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
             return null;
           },
         };
@@ -573,9 +590,14 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
           overlayRenderedLines: commandCustomCalls[0].rendered,
           overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
-          overlayBoxed: commandCustomCalls[0].rendered[0].startsWith("╭─ Larva subagent presentation log") && commandCustomCalls[0].rendered.at(-1).startsWith("╰") && commandCustomCalls[0].rendered.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │") && Array.from(line).length <= 80),
+          overlayBoxed: commandCustomCalls[0].rendered[0].startsWith("╭─ Larva subagent presentation log") && commandCustomCalls[0].rendered.at(-1).startsWith("╰") && commandCustomCalls[0].rendered.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │") && piTui.visibleWidth(line) <= 80),
+          allOverlayLinesFit: ["rendered", "outputTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"].every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
+          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Output") && line.includes("○ 3 Metadata")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
+          outputMarkdownPane: commandCustomCalls[0].outputTab.some((line) => line.includes("Markdown Heading")) && commandCustomCalls[0].outputTab.some((line) => line.includes("bullet one")) && commandCustomCalls[0].outputTab.some((line) => line.includes("fenced code output")),
+          emptyOutputFallback: commandCustomCalls[0].emptyOutputTab.some((line) => line.includes("No final subagent output")),
           overlayCloseKeys: commandCustomCalls[0].doneAfterEnter === 0 && commandCustomCalls[0].doneAfterLiveEsc === 1 && commandCustomCalls[0].doneAfterEsc === 2 && commandCustomCalls[0].doneAfterQ === 3 && commandCustomCalls[0].rendered.some((line) => line.includes("Esc/q close")) && !commandCustomCalls[0].rendered.some((line) => line.includes("Enter")),
           overlayScrollable: commandCustomCalls[0].longInitial.length <= 22 && commandCustomCalls[0].longInitial.some((line) => line.includes("Wheel/↑↓ PgUp/PgDn Home/End")) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterWheelDown) && JSON.stringify(commandCustomCalls[0].afterWheelUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterDown) && JSON.stringify(commandCustomCalls[0].afterDown) !== JSON.stringify(commandCustomCalls[0].afterPageDown) && JSON.stringify(commandCustomCalls[0].afterHome) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterLiveDown) && JSON.stringify(commandCustomCalls[0].afterLiveUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLivePageDown) !== JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLiveHome) === JSON.stringify(commandCustomCalls[0].longInitial),
+          clickNoop: JSON.stringify(commandCustomCalls[0].beforeClick) === JSON.stringify(commandCustomCalls[0].afterClick),
           noNotifyWhenOverlayAvailable: commandNotifications.length === 0,
           resetEmpty: mod.larva_subagent_sessions({ limit: 10 }).details.sessions.length === 0 && mod.larva_subagent_log({ expanded: true }).details.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
         }, null, 2));
@@ -590,9 +612,13 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["viewOnlyNoMutation"] is True
     assert payload["overlayOpened"] is True
     assert payload["overlayBoxed"] is True
-    assert all(wcswidth(line) <= 80 for line in payload["overlayRenderedLines"])
+    assert payload["allOverlayLinesFit"] is True
+    assert payload["overlayTabs"] is True
+    assert payload["outputMarkdownPane"] is True
+    assert payload["emptyOutputFallback"] is True
     assert payload["overlayCloseKeys"] is True
     assert payload["overlayScrollable"] is True
+    assert payload["clickNoop"] is True
     assert payload["noNotifyWhenOverlayAvailable"] is True
     assert payload["resetEmpty"] is True
 
@@ -602,11 +628,12 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
 
     source = EXTENSION.read_text(encoding="utf-8")
     assert 'from "@earendil-works/pi-tui"' in source
-    for required in ["visibleWidth", "truncateToWidth", "wrapTextWithAnsi", "matchesKey", "Key"]:
+    for required in ["visibleWidth", "truncateToWidth", "wrapTextWithAnsi", "matchesKey", "Key", "Markdown"]:
         assert required in source
     for removed in ["createRequire", "loadPiTuiTextHelpers", "PI_TUI_TEXT_HELPERS", "terminalCharWidth"]:
         assert removed not in source
     assert "class BorderedScrollableText" in source
+    assert "class SubagentPresentationLogOverlay" in source
     assert "Mouse click/press/release SGR events are intentionally unsupported no-ops" in source
 
     payload = _run_node(
@@ -652,6 +679,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
             truncateToWidth: typeof piTui.truncateToWidth,
             wrapTextWithAnsi: typeof piTui.wrapTextWithAnsi,
             matchesKey: typeof piTui.matchesKey,
+            markdown: typeof piTui.Markdown,
             keyUp: piTui.Key?.up,
           },
           widthSafe: renderedByWidth.every(({ width, lines }) => lines.every((line) => piTui.visibleWidth(line) <= width)),
@@ -672,6 +700,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
         "truncateToWidth": "function",
         "wrapTextWithAnsi": "function",
         "matchesKey": "function",
+        "markdown": "function",
         "keyUp": "up",
     }
     assert payload["widthSafe"] is True
@@ -788,20 +817,25 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
           componentShapes: {
             collapsedRenderable: typeof collapsed?.render === "function" && Array.isArray(collapsed.render(80)),
             expandedRenderable: typeof expanded?.render === "function" && Array.isArray(expanded.render(80)),
-            expandedMarkdownCapable: expanded?.format === "markdown" && typeof expanded?.markdown === "string" && expanded.markdown.includes("**output:**"),
+            expandedMarkdownCapable: expanded?.format === "markdown" && typeof expanded?.markdown === "string" && ["## Summary", "## Task", "## Output", "## Error", "## Resume"].every((needle) => expanded.markdown.includes(needle)),
           },
           collapsedText,
           expandedText,
           statuses,
           collapsedHasPersonaAndTerminalState: collapsedText.includes("turing") && collapsedText.includes("failed"),
           expandedHasIndependentFields: [
+            "Summary",
             "persona_id: turing",
             "mode: resume",
+            "Task",
             "full task text",
             finalResult.task_id,
             "status: failed",
+            "Output",
             "LARVA_CHILD_PROTOCOL_FAILED",
             "final output body",
+            "Error",
+            "Resume",
             "reuse: pass this exact task_id to larva_subagent",
           ].every((needle) => expandedText.includes(needle)),
           parentFooterPreserved: statuses.some(([key, value]) => key === "larva" && value === "ok"),

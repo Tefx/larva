@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { Key, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { Key, Markdown, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type MarkdownTheme } from "@earendil-works/pi-tui";
 import { access, appendFile, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
@@ -250,11 +250,29 @@ const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona)
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const ENABLE_MOUSE_REPORTING = "\x1b[?1000h\x1b[?1006h";
 const DISABLE_MOUSE_REPORTING = "\x1b[?1006l\x1b[?1000l";
+const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
+  heading: (text) => text,
+  link: (text) => text,
+  linkUrl: (text) => text,
+  code: (text) => text,
+  codeBlock: (text) => text,
+  codeBlockBorder: (text) => text,
+  quote: (text) => text,
+  quoteBorder: (text) => text,
+  hr: (text) => text,
+  listBullet: (text) => text,
+  bold: (text) => text,
+  italic: (text) => text,
+  strikethrough: (text) => text,
+  underline: (text) => text,
+  codeBlockIndent: "  ",
+};
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 const activeTaskIds: Set<string> = new Set<string>();
 const retainedSubagentPresentationLog: SubagentPresentationLogEntry[] = [];
 const activeSubagentChildren: Set<{ child: ChildProcessWithoutNullStreams; env: RuntimeEnv }> = new Set();
 let currentSubagentOverlay: { entry: SubagentPresentationLogEntry; text: string; generation: number } | null = null;
+let currentSubagentOverlayComponent: PiOverlayComponent | null = null;
 let subagentOverlayGeneration = 0;
 let subagentPresentationSequence = 0;
 let subagentUiResetGeneration = 0;
@@ -478,6 +496,7 @@ export class BorderedScrollableText implements PiOverlayComponent {
 
   handleInput(data: string): void {
     if (isSubagentOverlayCloseKey(data, this.keybindings)) {
+      this.dispose();
       this.done?.(null);
       return;
     }
@@ -496,16 +515,291 @@ export class BorderedScrollableText implements PiOverlayComponent {
   }
 }
 
-async function openSubagentPresentationOverlay(ctx: PiContext, text: string): Promise<boolean> {
+type SubagentOverlayTab = "summary" | "output" | "metadata";
+const SUBAGENT_OVERLAY_TABS: Array<{ id: SubagentOverlayTab; label: string }> = [
+  { id: "summary", label: "Summary" },
+  { id: "output", label: "Output" },
+  { id: "metadata", label: "Metadata" },
+];
+
+type SubagentPresentationLogOverlayOptions = {
+  entry: SubagentPresentationLogEntry;
+  generation: number;
+  keybindings?: PiKeybindings;
+  tui?: PiTui;
+  done?: (result: unknown) => void;
+  maxBoxLines?: number;
+  maxWidth?: number;
+};
+
+function rendererSafeMarkdownSource(value: string): string {
+  const strippedAnsi = value.normalize("NFC").replace(ANSI_ESCAPE_RE, "");
+  let rendered = "";
+  for (const char of Array.from(strippedAnsi)) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    if (char === "\n" || char === "\r") {
+      rendered += char;
+      continue;
+    }
+    if (char === "\t") {
+      rendered += "   ";
+      continue;
+    }
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) {
+      rendered += " ";
+      continue;
+    }
+    rendered += char;
+  }
+  return rendered;
+}
+
+function renderRendererSafePlainLines(text: string, contentWidth: number): string[] {
+  const width = Math.max(1, Math.floor(contentWidth));
+  const lines = rendererSafeMarkdownSource(text).split(/\r?\n/).flatMap((line) => {
+    if (line.length === 0) return [""];
+    const wrapped = wrapTextWithAnsi(line, width);
+    return (wrapped.length > 0 ? wrapped : [""]).map((wrappedLine) => truncateToWidth(wrappedLine, width, ""));
+  });
+  return lines.length > 0 ? lines : [""];
+}
+
+function renderMarkdownLines(markdown: string, contentWidth: number): string[] {
+  const width = Math.max(1, Math.floor(contentWidth));
+  try {
+    const component = new Markdown(rendererSafeMarkdownSource(markdown), 0, 0, DEFAULT_MARKDOWN_THEME);
+    const rendered = component.render(width);
+    return (rendered.length > 0 ? rendered : [""]).map((line) => truncateToWidth(line, width, ""));
+  } catch {
+    return renderRendererSafePlainLines(markdown, width);
+  }
+}
+
+function markdownFence(value: string): string {
+  const safe = rendererSafeMarkdownSource(value);
+  const fence = safe.includes("```") ? "````" : "```";
+  return `${fence}text\n${safe}\n${fence}`;
+}
+
+function subagentEntryOutput(entry: SubagentPresentationLogEntry): string {
+  return typeof entry.result_text === "string" ? entry.result_text : "";
+}
+
+function subagentEntryOutputIsPresent(entry: SubagentPresentationLogEntry): boolean {
+  return subagentEntryOutput(entry).trim().length > 0;
+}
+
+function subagentEntryErrorText(entry: SubagentPresentationLogEntry): string {
+  return entry.error ? `${entry.error.code}: ${entry.error.message}` : "none";
+}
+
+function subagentSummaryPaneLines(entry: SubagentPresentationLogEntry, generation: number): string[] {
+  const outputSummary = subagentEntryOutputIsPresent(entry) ? boundedVisible(subagentEntryOutput(entry), 160) : "No final output observed.";
+  return [
+    "Summary",
+    `status: ${entry.status}`,
+    `persona_id: ${entry.persona_id}`,
+    `progress: ${entry.phase ?? entry.status}`,
+    `task_id: ${entry.task_id ?? "pending"}`,
+    `output_summary: ${outputSummary}`,
+    `error_summary: ${subagentEntryErrorText(entry)}`,
+    `view_only: true`,
+    `source: in-memory presentation log; no raw JSONL authority`,
+    `overlay_generation: ${generation}`,
+  ];
+}
+
+function subagentMetadataPaneLines(entry: SubagentPresentationLogEntry, generation: number): string[] {
+  return [
+    "Metadata",
+    `mode: ${entry.mode ?? "unknown"}`,
+    `sequence: ${entry.sequence}`,
+    `phase: ${entry.phase ?? entry.status}`,
+    `task_preview: ${entry.task_preview ?? ""}`,
+    `call_id: ${entry.call_id ?? ""}`,
+    `selected_task_id: ${entry.task_id ?? "pending"}`,
+    `error_object: ${entry.error ? JSON.stringify(entry.error) : "null"}`,
+    `output_render_mode: ${subagentEntryOutputIsPresent(entry) ? "markdown" : "fallback"}`,
+    `overlay_generation: ${generation}`,
+    `provenance: parent extension process memory only`,
+    `view_only_contract: no persona/model/tool-policy/session/recent-index/resume-authority mutation`,
+  ];
+}
+
+export class SubagentPresentationLogOverlay implements PiOverlayComponent {
+  private activeTabIndex = 0;
+  private readonly scrollOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, metadata: 0 };
+  private readonly lastMaxOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, metadata: 0 };
+  private mouseReportingEnabled = false;
+  private readonly entry: SubagentPresentationLogEntry;
+  private readonly generation: number;
+  private readonly keybindings?: PiKeybindings;
+  private readonly tui?: PiTui;
+  private readonly done?: (result: unknown) => void;
+  private readonly maxBoxLines: number;
+  private readonly maxWidth: number;
+
+  constructor(options: SubagentPresentationLogOverlayOptions) {
+    this.entry = { ...options.entry };
+    this.generation = options.generation;
+    this.keybindings = options.keybindings;
+    this.tui = options.tui;
+    this.done = options.done;
+    this.maxBoxLines = Math.max(6, Math.floor(options.maxBoxLines ?? 22));
+    this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? 110));
+    if (this.tui?.terminal?.write) {
+      this.tui.terminal.write(ENABLE_MOUSE_REPORTING);
+      this.mouseReportingEnabled = true;
+    }
+  }
+
+  invalidate(): void {}
+
+  dispose(): void {
+    if (!this.mouseReportingEnabled) return;
+    this.tui?.terminal?.write?.(DISABLE_MOUSE_REPORTING);
+    this.mouseReportingEnabled = false;
+    if (currentSubagentOverlayComponent === this) currentSubagentOverlayComponent = null;
+  }
+
+  private activeTab(): SubagentOverlayTab {
+    return SUBAGENT_OVERLAY_TABS[this.activeTabIndex]?.id ?? "summary";
+  }
+
+  private viewportLines(): number {
+    return Math.max(1, this.maxBoxLines - 4);
+  }
+
+  private requestRender(): void {
+    this.tui?.requestRender?.();
+  }
+
+  private paneLines(contentWidth: number): string[] {
+    const tab = this.activeTab();
+    if (tab === "output") {
+      if (!subagentEntryOutputIsPresent(this.entry)) {
+        return renderRendererSafePlainLines("No final subagent output is available for this observed entry.", contentWidth);
+      }
+      return renderMarkdownLines(subagentEntryOutput(this.entry), contentWidth);
+    }
+    const lines = tab === "metadata"
+      ? subagentMetadataPaneLines(this.entry, this.generation)
+      : subagentSummaryPaneLines(this.entry, this.generation);
+    return lines.flatMap((line) => overlayWrapLine(line, contentWidth));
+  }
+
+  private tabLine(contentWidth: number): string {
+    const labels = SUBAGENT_OVERLAY_TABS.map((tab, index) => `${index === this.activeTabIndex ? "●" : "○"} ${index + 1} ${tab.label}`);
+    return overlayPadLine(labels.join("   "), contentWidth);
+  }
+
+  private scrollBy(delta: number): void {
+    const tab = this.activeTab();
+    const next = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab] + delta));
+    if (next === this.scrollOffsets[tab]) return;
+    this.scrollOffsets[tab] = next;
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private jumpTo(offset: number): void {
+    const tab = this.activeTab();
+    const next = Math.max(0, Math.min(this.lastMaxOffsets[tab], offset));
+    if (next === this.scrollOffsets[tab]) return;
+    this.scrollOffsets[tab] = next;
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private switchTab(index: number): void {
+    const next = Math.max(0, Math.min(SUBAGENT_OVERLAY_TABS.length - 1, index));
+    if (next === this.activeTabIndex) return;
+    this.activeTabIndex = next;
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private switchRelative(delta: number): void {
+    this.switchTab((this.activeTabIndex + delta + SUBAGENT_OVERLAY_TABS.length) % SUBAGENT_OVERLAY_TABS.length);
+  }
+
+  render(width: number): string[] {
+    const renderWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+    const boxWidth = Math.min(renderWidth, this.maxWidth);
+    if (boxWidth < 4) return [truncateToWidth("Larva subagent log", boxWidth, "")];
+    const contentWidth = boxWidth - 4;
+    const viewportLines = this.viewportLines();
+    const title = overlayTruncateLine("─ Larva subagent presentation log ", boxWidth - 2);
+    const top = `╭${title}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(title)))}╮`;
+    const tab = this.activeTab();
+    const innerLines = this.paneLines(contentWidth);
+    this.lastMaxOffsets[tab] = Math.max(0, innerLines.length - viewportLines);
+    this.scrollOffsets[tab] = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab]));
+    const visibleLines = innerLines.slice(this.scrollOffsets[tab], this.scrollOffsets[tab] + viewportLines);
+    while (visibleLines.length < Math.min(viewportLines, innerLines.length || 1)) visibleLines.push("");
+    const start = innerLines.length === 0 ? 0 : this.scrollOffsets[tab] + 1;
+    const end = Math.min(innerLines.length, this.scrollOffsets[tab] + viewportLines);
+    const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
+    const scrollInfo = `1/2/3 ←→ tabs • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`;
+    return [
+      top,
+      `│ ${this.tabLine(contentWidth)} │`,
+      ...visibleLines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
+      `│ ${overlayPadLine(scrollInfo, contentWidth)} │`,
+      `╰${"─".repeat(boxWidth - 2)}╯`,
+    ];
+  }
+
+  handleInput(data: string): void {
+    if (isSubagentOverlayCloseKey(data, this.keybindings)) {
+      this.dispose();
+      this.done?.(null);
+      return;
+    }
+    if (matchesInputKey(this.keybindings, data, ["tui.confirm", "tui.select.confirm"], [Key.enter], ["\r", "\n"], ["enter"])) return;
+    if (data === "1") this.switchTab(0);
+    else if (data === "2") this.switchTab(1);
+    else if (data === "3") this.switchTab(2);
+    else if (matchesInputKey(this.keybindings, data, ["tui.select.left", "tui.editor.cursorLeft"], [Key.left], [], ["arrowleft", "left"])) this.switchRelative(-1);
+    else if (matchesInputKey(this.keybindings, data, ["tui.select.right", "tui.editor.cursorRight"], [Key.right], [], ["arrowright", "right"])) this.switchRelative(1);
+    else {
+      const wheelDelta = mouseWheelScrollDelta(data);
+      if (wheelDelta !== null) {
+        this.scrollBy(wheelDelta);
+        return;
+      }
+      if (isSgrMouseEvent(data)) return; // Mouse click/press/release SGR events are intentionally unsupported no-ops.
+      if (matchesInputKey(this.keybindings, data, ["tui.select.down", "tui.editor.cursorDown"], [Key.down], [], ["arrowdown", "down"])) this.scrollBy(1);
+      else if (matchesInputKey(this.keybindings, data, ["tui.select.up", "tui.editor.cursorUp"], [Key.up], [], ["arrowup", "up"])) this.scrollBy(-1);
+      else if (matchesInputKey(this.keybindings, data, ["tui.select.pageDown", "tui.editor.pageDown"], [Key.pageDown], [], ["pagedown"])) this.scrollBy(this.viewportLines());
+      else if (matchesInputKey(this.keybindings, data, ["tui.select.pageUp", "tui.editor.pageUp"], [Key.pageUp], [], ["pageup"])) this.scrollBy(-this.viewportLines());
+      else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineStart"], [Key.home], ["\x1b[1~"], ["home"])) this.jumpTo(0);
+      else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineEnd"], [Key.end], ["\x1b[4~"], ["end"])) this.jumpTo(this.lastMaxOffsets[this.activeTab()]);
+    }
+  }
+}
+
+async function openSubagentPresentationOverlay(ctx: PiContext, overlay: LarvaSubagentOverlayResult): Promise<boolean> {
   const custom = ctx.ui?.custom;
-  if (typeof custom !== "function") return false;
-  await custom((tui, _theme, keybindings, done) => new BorderedScrollableText({
-    text,
-    title: "Larva subagent presentation log",
-    keybindings,
-    tui,
-    done,
-  }), {
+  if (typeof custom !== "function" || overlay.details.entries.length === 0) return false;
+  const entry = overlay.details.entries[0];
+  const generation = overlay.details.overlay_generation;
+  await custom((tui, _theme, keybindings, done) => {
+    let component: SubagentPresentationLogOverlay;
+    component = new SubagentPresentationLogOverlay({
+      entry,
+      generation,
+      keybindings,
+      tui,
+      done: (result) => {
+        component.dispose();
+        done(result);
+      },
+    });
+    currentSubagentOverlayComponent = component;
+    return component;
+  }, {
     overlay: true,
     overlayOptions: { width: "90%", maxHeight: "80%", anchor: "center", margin: 1 },
     onHandle: (handle: PiOverlayHandle) => handle.focus?.(),
@@ -1134,14 +1428,21 @@ function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
     description: "Show the view-only Larva subagent presentation log",
     handler: async (input?: string, commandCtx?: PiContext) => {
       const runtimeCtx = commandCtx ?? ctx;
-      const hasOverlay = typeof runtimeCtx.ui?.custom === "function";
-      const hasNotify = typeof runtimeCtx.ui?.notify === "function";
-      if (!hasOverlay && !hasNotify) return failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
+      if (typeof runtimeCtx.ui?.custom !== "function") {
+        const unavailable = failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
+        await notify(runtimeCtx, unavailable.content[0]?.text ?? unavailable.details.error?.message ?? "Larva subagent log UI is unavailable.", "error");
+        return unavailable;
+      }
       const overlay = larva_subagent_log(input ?? "");
       const text = overlay.content[0]?.text ?? "Larva subagent presentation log is empty.";
-      if (await openSubagentPresentationOverlay(runtimeCtx, text)) return overlay;
-      await notify(runtimeCtx, text, overlay.isError ? "error" : "info");
-      return overlay;
+      if (overlay.isError) {
+        await notify(runtimeCtx, text, "error");
+        return overlay;
+      }
+      if (await openSubagentPresentationOverlay(runtimeCtx, overlay)) return overlay;
+      const unavailable = failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
+      await notify(runtimeCtx, unavailable.content[0]?.text ?? unavailable.details.error?.message ?? "Larva subagent log UI is unavailable.", "error");
+      return unavailable;
     },
   };
   registerCommandCompat(pi, "larva-subagent-log", command);
@@ -1678,15 +1979,17 @@ function exactOverlayEntry(taskId: string): SubagentPresentationLogEntry | null 
   return null;
 }
 
-function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry[], expanded: boolean): string {
+function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry[], expanded: boolean, generation: number): string {
   if (entries.length === 0) return "Larva subagent presentation log (view-only): empty";
   const lines = [
     "Larva subagent presentation log (view-only)",
+    "tabs: Summary | Output | Metadata",
     "source: in-memory presentation log; no raw JSONL authority",
   ];
   for (const entry of entries) {
     lines.push(presentationRow(entry));
     if (!expanded) continue;
+    lines.push("  [Summary]");
     lines.push(`  task_id: ${entry.task_id ?? "pending"}`);
     lines.push(`  persona_id: ${entry.persona_id}`);
     lines.push(`  status: ${entry.status}`);
@@ -1694,8 +1997,15 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push(`  result: ${entry.result_text ?? ""}`);
     const entryError = entry.error ? `${entry.error.code}: ${entry.error.message}` : "";
     lines.push(`  error: ${entryError}`);
-    if (entry.mode) lines.push(`  mode: ${entry.mode}`);
+    lines.push("  [Output]");
+    lines.push(subagentEntryOutputIsPresent(entry) ? subagentEntryOutput(entry) : "  No final subagent output is available for this observed entry.");
+    lines.push("  [Metadata]");
+    lines.push(`  mode: ${entry.mode ?? "unknown"}`);
+    lines.push(`  sequence: ${entry.sequence}`);
+    lines.push(`  phase: ${entry.phase ?? entry.status}`);
     if (entry.task_preview) lines.push(`  task_preview: ${entry.task_preview}`);
+    lines.push(`  output_render_mode: ${subagentEntryOutputIsPresent(entry) ? "markdown" : "fallback"}`);
+    lines.push(`  overlay_generation: ${generation}`);
   }
   return lines.join("\n");
 }
@@ -1712,6 +2022,8 @@ function failedSubagentOverlay(code: Extract<LarvaErrorCode, "LARVA_SUBAGENT_LOG
 }
 
 export function closeSubagentPresentationOverlay(): void {
+  currentSubagentOverlayComponent?.dispose?.();
+  currentSubagentOverlayComponent = null;
   currentSubagentOverlay = null;
 }
 
@@ -1727,14 +2039,15 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
     closeSubagentPresentationOverlay();
     return failedSubagentOverlay("LARVA_SUBAGENT_LOG_NOT_OBSERVED", target);
   }
-  const text = renderSubagentPresentationOverlay(entries, options.expanded);
   subagentOverlayGeneration += 1;
-  currentSubagentOverlay = { entry: entries[0], text, generation: subagentOverlayGeneration };
+  const generation = subagentOverlayGeneration;
+  const text = renderSubagentPresentationOverlay(entries, options.expanded, generation);
+  currentSubagentOverlay = { entry: entries[0], text, generation };
   return {
     ok: true,
     view_only: true,
     content: [{ type: "text", text }],
-    details: { status: "success", entries, selected_task_id: entries[0].task_id, overlay_generation: subagentOverlayGeneration, error: null },
+    details: { status: "success", entries, selected_task_id: entries[0].task_id, overlay_generation: generation, error: null },
     isError: false,
   };
 }
@@ -1789,17 +2102,9 @@ function renderTextComponent(text: string, markdown?: string): PiRenderableText 
     invalidate: () => undefined,
     render: (width: number): string[] => {
       const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
-      const lines: string[] = [];
-      for (const rawLine of text.split(/\r?\n/)) {
-        const safeLine = visibleText(rawLine.replace(/\t/g, "   "));
-        if (safeLine.length === 0) {
-          lines.push("");
-          continue;
-        }
-        const wrapped = wrapTextWithAnsi(safeLine, contentWidth);
-        lines.push(...(wrapped.length > 0 ? wrapped : [""]).map((line) => truncateToWidth(line, contentWidth, "")));
-      }
-      return lines;
+      return markdown === undefined
+        ? renderRendererSafePlainLines(text, contentWidth)
+        : renderMarkdownLines(markdown, contentWidth);
     },
   };
 }
@@ -1846,30 +2151,42 @@ function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { 
   if (!options?.expanded) return renderTextComponent(`${details.persona_id} ${terminal}`);
   const input = options.input ?? {};
   const mode = subagentMode(input);
-  const lines = [
+  const task = typeof input.task === "string" ? input.task : "";
+  const taskIdLine = details.task_id !== null ? `task_id: ${details.task_id}` : "task_id: pending";
+  const footer = resumeFooter(details);
+  const output = details.result_text.length > 0 ? details.result_text : "Larva subagent completed without final assistant text.";
+  const fallbackLines = [
+    "Summary",
     `persona_id: ${details.persona_id}`,
     `mode: ${mode}`,
-    `task: ${typeof input.task === "string" ? input.task : ""}`,
+    taskIdLine,
+    `status: ${details.status}`,
+    "",
+    "Task",
+    `task: ${task}`,
+    "",
+    "Output",
+    `output: ${output}`,
   ];
-  if (details.task_id !== null) lines.push(`task_id: ${details.task_id}`);
-  lines.push(`status: ${details.status}`);
-  if (details.error) lines.push(`error: ${details.error.code}: ${details.error.message}`);
-  lines.push(`output: ${details.result_text}`);
-  const footer = resumeFooter(details);
-  if (footer.length > 0) lines.push(footer);
-  const fallback = lines.join("\n");
-  const markdown = [
-    `**persona_id:** ${details.persona_id}`,
-    `**mode:** ${mode}`,
-    `**task:** ${typeof input.task === "string" ? input.task : ""}`,
-    details.task_id !== null ? `**task_id:** ${details.task_id}` : "",
-    `**status:** ${details.status}`,
-    details.error ? `**error:** ${details.error.code}: ${details.error.message}` : "",
-    "**output:**",
-    details.result_text,
-    footer.length > 0 ? `\n\`\`\`text\n${footer}\n\`\`\`` : "",
-  ].filter((line) => line.length > 0).join("\n");
-  return renderTextComponent(fallback, markdown);
+  if (details.error) fallbackLines.push("", "Error", `error: ${details.error.code}: ${details.error.message}`);
+  if (footer.length > 0) fallbackLines.push("", "Resume", footer);
+  const fallback = fallbackLines.join("\n");
+  const markdownSections = [
+    "## Summary",
+    `- persona_id: ${details.persona_id}`,
+    `- mode: ${mode}`,
+    `- ${taskIdLine}`,
+    `- status: ${details.status}`,
+    "",
+    "## Task",
+    markdownFence(task),
+    "",
+    "## Output",
+    output,
+  ];
+  if (details.error) markdownSections.push("", "## Error", `- ${details.error.code}: ${details.error.message}`);
+  if (footer.length > 0) markdownSections.push("", "## Resume", markdownFence(footer));
+  return renderTextComponent(fallback, markdownSections.join("\n"));
 }
 
 function normalizeString(value: unknown): string | null {
