@@ -102124,3 +102124,116 @@ phases:
 
       - core_invar_non_intersection: satisfied|failed|blocked'
     agent: frontend-engineer
+  - id: pi_tui_verification_docs_20260603.docs-sync
+    name: Synchronize Pi TUI enhanced UI docs after implementation
+    status: pending
+    description: 'step_type: documentation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      Project docs remain synchronized with implemented Pi TUI enhanced UI behavior.
+      The authoritative docs already define the approved target; this step updates
+      only stale or newly necessary implementation/CI/runtime guidance after code
+      and test changes, including exact version governance, npm ci, overlay tabs/Markdown,
+      selector enhancement, runtime smoke expectations, and the explicit mouse click
+      non-goal.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `contrib/pi-extension/README.md`, `design/pi-coding-agent-integration.md`,
+      `docs/guides/USAGE.md`, `docs/reference/ARCHITECTURE.md`, `docs/reference/INTERFACES.md`
+      as needed
+
+      - spec_refs: same docs listed in refs; no new design authority beyond user-approved
+      Pi TUI target
+
+      - authoritative_interface: docs must not claim mouse click support, shared PersonaSpec
+      changes, sidecar/provenance files, model-visible overlay logs, or opifex contract
+      changes
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P3-DOC-001 | README/design updated authoritative sections | docs match implemented
+      exact Pi TUI dependency and npm ci workflow | pi_tui_verification_docs_20260603.docs-sync
+      | package docs synced | doc_diff_summary | OWNED | n/a |
+
+      | P3-DOC-002 | overlay/selector contracts | docs match Markdown tabs and selector
+      behavior | same | UI docs synced | ui_doc_matrix | OWNED | n/a |
+
+      | P3-DOC-003 | non-goals | mouse click remains explicit non-goal | same | no-click
+      docs preserved | non_goal_doc_scan | OWNED | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: documentation-only updates. Forbidden: creating new product requirements,
+      weakening authoritative docs, claiming unproven runtime support, or editing
+      code/tests/plan.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Check docs do not overclaim live Pi support if runtime proof reports environment
+      limitation.
+
+      - Check docs distinguish Markdown UI/runtime liveness from design/visual conformance.
+
+      - Check docs do not imply overlay is model-facing, resume authority, or filesystem-backed.
+
+      </risk_probes>'
+    verification: '- [ ] Documentation reflects exact `@earendil-works/pi-tui@0.78.0`
+      dependency and `npm --prefix contrib/pi-extension ci` workflow.
+
+      - [ ] Documentation reflects direct Pi TUI imports/components, render-width
+      obligations, Markdown final/output views, tabbed overlay, selector detail behavior,
+      and runtime smoke expectations.
+
+      - [ ] Documentation preserves explicit non-goals: no mouse click support, no
+      PersonaSpec/opifex/shared-surface changes, no sidecar/provenance files, no model-visible
+      overlay log stream.
+
+      - [ ] Documentation does not claim runtime support beyond collected proof; any
+      blocked live proof is described accurately.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - docs/guides/USAGE.md — <key passage or NOT READ with reason>
+
+      - docs/reference/ARCHITECTURE.md — <key passage or NOT READ with reason>
+
+      - docs/reference/INTERFACES.md — <key passage or NOT READ with reason>
+
+
+      ## Documentation Sync Evidence
+
+      - doc_diff_summary: <files changed and why>
+
+      - ui_doc_matrix: <implemented behavior -> doc section mapping>
+
+      - non_goal_doc_scan: <mouse click and shared-surface non-goal evidence>
+
+      - runtime_claims_alignment: <proof/blocker wording alignment>
+
+
+      ## Checklist Receipt
+
+      - package_docs_synced: satisfied|failed|blocked
+
+      - ui_behavior_docs_synced: satisfied|failed|blocked
+
+      - non_goals_preserved: satisfied|failed|blocked
+
+      - no_overclaim: satisfied|failed|blocked'
+    agent: doc-reviewer
