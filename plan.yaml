@@ -99989,7 +99989,7 @@ phases:
     agent: gate-reviewer
   - id: pi_impl_finalization_20260603.wiring-blocker-fix
     name: Fix final wiring audit blockers
-    status: claimed
+    status: done
     description: 'TARGET STATE: Resolve blockers from `pi_impl_finalization_20260603.deep-wiring-audit`.
 
 
@@ -100044,6 +100044,86 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-03T04:00:31.224562+00:00'
+    done_at: '2026-06-03T04:07:10.934778+00:00'
+    evidence: 'SUCCESS/PASS: final wiring audit blockers B1-B3 fixed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read for startup degradation/fatal startup/no-active-persona/trace
+      path constraints.
+
+      - contrib/pi-extension/larva.ts read/updated.
+
+      - contrib/pi-extension/README.md read/updated.
+
+
+      Files changed:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/README.md
+
+      - tests/shell/test_pi_extension_contract.py
+
+
+      Worker commit: c15907863b4f7712fe139e969ca2ab85c296bdc1.
+
+      Mainline squash commit: 436a2a6 [vectl] step-pi_impl_finalization_20260603.wiring-blocker-fix
+      completed.
+
+
+      Resolved blockers:
+
+      - B1 setActiveTools startup failure degrades without exit; no active persona/startup-unavailable
+      behavior proven; previous fatal startup for model/policy/persona failures preserved.
+
+      - B2 no-active-persona startup/session_start emits `larva: none`.
+
+      - B3 LARVA_PI_CHILD_RPC_TRACE_FILE documented as proof-only trace artifact,
+      not authority/sidecar/helper raw JSONL path.
+
+
+      Worker verification:
+
+      - `uv run python -m pytest tests/shell/test_pi_extension_contract.py -q` ->
+      55 passed.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status/startup-fatal/tool-call-block`
+      -> passed.
+
+      - invar changed guard -> passed.
+
+
+      Mainline final-state verification:
+
+      - `pytest tests/shell/test_pi_extension_contract.py -q` -> 55 passed in 2.17s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-call-block` ->
+      exit 0.
+
+
+      Checklist receipt:
+
+      - setActiveTools failure degrades and does not fatal exit: true.
+
+      - no initial persona session_start emits larva:none: true.
+
+      - child RPC trace path documented/authorized as proof trace only with no helper
+      authority drift: true.
+
+      - targeted runtime smokes and relevant pytest pass: true.
+
+      - previous fatal startup nonzero-before-prompt remains passing: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.wiring-blocker-retest
     name: Retest final wiring audit blockers
     status: pending
