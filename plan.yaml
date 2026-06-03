@@ -100657,6 +100657,110 @@ phases:
 
       - no_mouse_click_scope: satisfied|failed|blocked'
     agent: frontend-engineer
+  - id: pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
+    name: Wire local and CI npm ci expectation for Pi extension
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      Repo-local CI and test expectations require `npm --prefix contrib/pi-extension
+      ci` before Pi-extension UI/runtime checks that import `@earendil-works/pi-tui`.
+      This is CI/install governance only; it does not implement UI behavior.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `.github/workflows/ci.yml`, `tests/shell/test_pi_extension_contract.py`
+      and/or existing Pi extension gate harnesses if needed
+
+      - spec_refs: `contrib/pi-extension/README.md > Pi TUI dependency and UI component
+      policy`; `design/pi-coding-agent-integration.md > Verification targets > Pi
+      TUI enhanced UI verification addendum`
+
+      - authoritative_interface: local and CI install command is `npm --prefix contrib/pi-extension
+      ci`
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P0-CI-001 | README policy: local development and CI must install extension
+      dependency set | CI/local gate runs npm ci before Pi UI/runtime work | pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
+      | CI npm ci wiring present | ci_yaml_snippet | OWNED | n/a |
+
+      | P0-CI-002 | verification addendum target 1 | npm ci evidence is captured by
+      verification | pi_tui_dependency_packaging_20260603.npm-ci-proof | npm ci passes
+      | npm_ci_stdout | DEFERRED | proof step owns execution after wiring |
+
+
+      <side_effect_budget>
+
+      Allowed: update CI/test harness wiring for Pi extension npm install. Forbidden:
+      changing runtime semantics, loosening existing Python/guard gates, skipping
+      opifex checkout gates, or making CI depend on host-global Pi TUI modules.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Ensure `npm ci` runs in the Pi-extension subdirectory and before any Node/Pi-extension
+      UI smoke that needs the dependency.
+
+      - Ensure CI still runs existing `uv run pytest ...` Pi extension checks and
+      repo-local gate.
+
+      - Ensure CI does not hide failures by marking npm ci optional unless the step
+      is explicitly a documented environment skip outside product behavior.
+
+      </risk_probes>'
+    verification: '- [ ] CI or repo-local gate wiring includes `npm --prefix contrib/pi-extension
+      ci` before Pi extension UI/runtime tests.
+
+      - [ ] Existing Pi extension pytest and repo-local gate commands remain present.
+
+      - [ ] Wiring does not weaken or skip existing Python/Invar/shared-surface checks.
+
+      - [ ] Evidence identifies any local developer command documentation updated
+      by this wiring.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - .github/workflows/ci.yml — <current relevant gate passage>
+
+      - tests/shell/test_pi_extension_contract.py — <key passage if modified or used>
+
+
+      ## CI Wiring Evidence
+
+      - ci_yaml_snippet: <paste workflow or gate harness snippet with npm --prefix
+      contrib/pi-extension ci>
+
+      - ordering_evidence: <show npm ci precedes Pi extension UI/runtime checks>
+
+      - existing_gate_preservation: <paste retained pytest/repo-local gate commands>
+
+      - local_command_docs: <docs or harness references updated, or N/A with rationale>
+
+
+      ## Checklist Receipt
+
+      - ci_npm_ci_wired: satisfied|failed|blocked
+
+      - existing_gates_preserved: satisfied|failed|blocked
+
+      - no_gate_weakening: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_dependency_packaging_20260603.manifest-lock
+    agent: frontend-engineer
 - id: pi_tui_rendering_foundation_20260603
   name: P1 Pi TUI Rendering Foundation 2026-06-03
   status: locked
