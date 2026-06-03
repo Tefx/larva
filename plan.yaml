@@ -102237,3 +102237,115 @@ phases:
 
       - no_overclaim: satisfied|failed|blocked'
     agent: doc-reviewer
+  - id: pi_tui_verification_docs_20260603.full-runtime-smoke
+    name: Run full Pi TUI enhanced UI verification and runtime smoke
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: project
+
+      verification_scope: full-plan-check
+
+      PROOF ARTIFACT:
+
+      Run the final verification set for the Pi TUI enhanced UI target. This is the
+      first hard full-family closure check for P0/P1/P2/P3, not a bounded implementation
+      slice.
+
+
+      This check protects final plan completion and must include exact commands/logs
+      for npm ci, focused Pi extension tests, runtime smoke, and guard behavior. If
+      a real Pi runtime target is unavailable, classify the live-smoke portion as
+      BLOCKED with exact environment reason; do not report it as passed.
+
+
+      Suggested command family (adjust only with evidence):
+
+      - `npm --prefix contrib/pi-extension ci`
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py
+      tests/shell/test_pi_extension_real_runtime.py -v`
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`
+
+      - selector/autocomplete smoke covering enhanced selector behavior if added/updated
+
+      - full guard via project-approved Invar path (`uvx invar-tools guard --all`
+      or MCP equivalent) when Python files or repo gate policy require it
+
+
+      <side_effect_budget>
+
+      Allowed: run verification commands and capture artifacts. Forbidden: editing
+      code, hiding failures, or converting missing live Pi proof into PASS.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify npm ci is run from a clean or clearly documented dependency state.
+
+      - Verify width/key/Markdown/selector/mouse cleanup assertions are in test output,
+      not only source scans.
+
+      - Verify any Python Core touch has contracts/doctests or else prove Core was
+      not touched.
+
+      </risk_probes>'
+    verification: '- [ ] `npm --prefix contrib/pi-extension ci` raw output is captured
+      and exits 0.
+
+      - [ ] Focused Pi extension tests cover dependency import, visible width <= width,
+      keyboard tabs, Markdown output, selector behavior, mouse reporting cleanup,
+      and no mouse click support.
+
+      - [ ] Runtime smoke launches or harnesses the Pi extension surface and captures
+      meaningful subagent overlay/final-view and selector evidence.
+
+      - [ ] Invar/Core non-intersection is proven; if Python Core changed, guard evidence
+      plus contracts/doctests are present.
+
+      - [ ] Behavioral proof register marks every P0/P1/P2/P3 owned requirement PROVEN
+      or BLOCKED with explicit closure path.
+
+      - [ ] No unresolved blocker-class issue is left as pre-existing/out-of-scope
+      without non-intersection evidence.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - scripts/pi-extension-runtime-smoke.mjs — <key scenario passage>\n- scripts/pi-extension-autocomplete-smoke.mjs\
+      \ — <key scenario passage or NOT READ>\n- tests/shell/test_pi_extension_contract.py\
+      \ — <key passage>\n- tests/shell/test_pi_extension_subagent_ux.py — <key passage>\n\
+      - tests/shell/test_pi_extension_real_runtime.py — <key passage>\n- INVAR.md\
+      \ — <Core/Shell contract passage if Python touched, otherwise NOT READ: no Python\
+      \ Core changes>\n- AGENTS.md — <Invar/Core and shared contract rules passage>\n\
+      \n## Command Log\n```bash\nnpm --prefix contrib/pi-extension ci\nuv run pytest\
+      \ tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py\
+      \ tests/shell/test_pi_extension_real_runtime.py -v\nnode scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario tool-result-renderer-shape\nnode scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario live-child-rpc-proof\n<selector/autocomplete smoke command>\n<guard\
+      \ command if required>\n```\n\n## Raw Output\n- npm_ci_stdout: |\n    <paste\
+      \ raw output>\n- pytest_stdout: |\n    <paste raw output>\n- runtime_smoke_stdout:\
+      \ |\n    <paste raw output>\n- selector_smoke_stdout: |\n    <paste raw output>\n\
+      - guard_stdout_or_non_intersection: |\n    <paste raw output or Core non-intersection\
+      \ evidence>\n\n## Behavioral Proof Register\n| requirement_ref | behavior_claim\
+      \ | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- |\n| P0-DEP/P0-CI | dependency\
+      \ install/import | npm ci + import proof | <ref> | PROVEN/UNPROVEN/BLOCKED |\
+      \ <path> | <decision> |\n| P1-TUI | direct imports/width/key/wheel/no-click\
+      \ | tests + component output | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision>\
+      \ |\n| P2-SUB | Markdown final/log overlay tabs | runtime smoke | <ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n| P2-SEL | enhanced selector/fallback | runtime smoke/tests\
+      \ | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n| P3-GOV | docs/CI/tests\
+      \ governance | workflow/test inventory | <ref> | PROVEN/UNPROVEN/BLOCKED | <path>\
+      \ | <decision> |\n| INVAR-CORE | Python Core constraints | guard or non-intersection\
+      \ | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n\n## Checklist\
+      \ Receipt\n- npm_ci_green: satisfied|failed|blocked\n- focused_tests_green:\
+      \ satisfied|failed|blocked\n- runtime_smoke_meaningful: satisfied|failed|blocked\n\
+      - selector_smoke_meaningful: satisfied|failed|blocked\n- invar_core_closed:\
+      \ satisfied|failed|blocked\n- proof_register_complete: satisfied|failed|blocked"
+    depends_on:
+    - pi_tui_verification_docs_20260603.test-ci-version-governance
+    agent: integration-verifier
