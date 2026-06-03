@@ -300,6 +300,37 @@ user-visible overlay. Neither surface replaces this footer status:
 `larva: <persona-id>` continues to mean the active parent persona.
 
 
+### Pi TUI dependency and reusable UI components
+
+The bundled Pi extension is a Node/TypeScript runtime surface and formally
+depends on `@earendil-works/pi-tui` for terminal UI correctness. This is an
+adapter-local runtime dependency, not a Larva/opifex shared-surface dependency.
+The dependency is declared under `contrib/pi-extension` and installed with:
+
+```bash
+npm --prefix contrib/pi-extension ci
+```
+
+The adapter must prefer Pi TUI primitives over handwritten terminal UI code:
+
+- `visibleWidth`, `truncateToWidth`, and `wrapTextWithAnsi` own display-width,
+  wrapping, and truncation behavior.
+- `matchesKey`/`Key` plus injected Pi keybindings own keyboard matching.
+- `Markdown`, `Text`, `TruncatedText`, `Input`, `SelectList`, `Container`, and
+  `Box` should be used where they fit the UI surface.
+- Custom components remain allowed only for Larva-specific state/layout not
+  provided by Pi TUI, including the subagent log overlay's scroll state, keyboard
+  tab state, and mouse-reporting lifecycle.
+
+Every component returned through `ctx.ui.custom()` or tool rendering must satisfy
+Pi TUI's `render(width)` contract: each returned line's visible width is less
+than or equal to `width`. Tests should include CJK text, emoji, ANSI-stripped
+input, long task ids, and Markdown output.
+
+Mouse wheel support is allowed for scrollable overlays by enabling SGR mouse
+reporting while the overlay is open and disabling it on dispose. Mouse click
+handling is explicitly out of scope for this implementation target.
+
 ## Persona runtime projection
 
 Persona projection is snapshot-based for a running process, not live-reloaded every
@@ -800,7 +831,7 @@ model-facing tool, not a shared Larva/opifex schema, and not a tool-policy input
 It exists only so the human user can inspect recent subagent row/progress/result
 presentation without streaming full child logs into the parent model context.
 
-Overlay contract:
+Overlay selection contract:
 
 - The command is registered as `larva-subagent-log`; the protocol tool name
   remains `larva_subagent`.
@@ -810,6 +841,30 @@ Overlay contract:
   read/write.
 - The overlay content is derived only from the parent extension's in-memory
   presentation log for child sessions already observed by this parent process.
+
+Overlay UI contract:
+
+- The overlay is a Pi TUI-backed custom component. It must use Pi TUI
+  `visibleWidth`, `truncateToWidth`, and `wrapTextWithAnsi` for bordered rows,
+  pane content, wrapping, and truncation.
+- The component must preserve Pi TUI's `render(width)` invariant for every line,
+  including CJK text, emoji, Markdown syntax, ANSI-stripped input, and long child
+  session paths.
+- The overlay exposes keyboard tabs: `Summary`, `Output`, and `Metadata`.
+- `Summary` shows selected-entry status, persona, progress, task id, result/error
+  summary, and view-only provenance.
+- `Output` renders final output with Pi TUI `Markdown` when output exists; empty
+  output uses a renderer-safe fallback.
+- `Metadata` shows adapter-local fields such as mode, sequence, phase,
+  task_preview, error object, overlay generation, and selected task id.
+- Keyboard controls: `Esc`/`q` close, `↑`/`↓` scroll, `PageUp`/`PageDown` page
+  scroll, `Home`/`End` jump, and `1`/`2`/`3` or `←`/`→` switch tabs.
+- Mouse wheel may scroll the active pane while the overlay is open. The component
+  owns mouse-reporting enable/disable cleanup. Mouse click support is explicitly
+  out of scope for this target.
+
+Result and safety contract:
+
 - The result shape is adapter-local and view-only: it carries `view_only: true`,
   renderer-safe `content`, and overlay `details`; it does not mirror
   `LarvaSubagentResult` top-level `task_id` or `result_text` fields.
@@ -828,8 +883,9 @@ Rationale: the tool row remains the primary realtime surface, but a small
 view-only overlay is useful when the user needs to inspect recent presentation
 state after row rendering has scrolled or collapsed. Keeping it in-memory,
 view-only, and model-invisible preserves the opifex shared-surface boundaries and
-avoids turning UI inspection into resume authority.
-
+avoids turning UI inspection into resume authority. Pi TUI owns terminal width,
+Markdown rendering, and keyboard primitives so Larva does not reimplement fragile
+terminal behavior.
 
 ### Spawn authority
 
@@ -1895,6 +1951,27 @@ architecture_basis:
 
 ### Architecture basis change notes
 
+Pi TUI formal dependency and enhanced UI delta:
+
+- `contrib/pi-extension` is a Node/TypeScript runtime surface with a formal
+  dependency on `@earendil-works/pi-tui`; local development and CI must install
+  it with `npm --prefix contrib/pi-extension ci` before Pi-extension UI work.
+- Pi TUI owns display width, wrapping, truncation, keyboard matching, Markdown
+  rendering, selector/input primitives, and basic layout containers.
+- Larva owns only adapter-specific UI state: subagent log overlay selection,
+  scroll offset, keyboard tab state, view-only overlay result shape, and
+  mouse-reporting lifecycle cleanup.
+- Expanded subagent results should render as Markdown UI when expanded, while
+  collapsed rows remain compact renderer-safe text.
+- `/larva-subagent-log` should become a keyboard-tabbed Pi TUI overlay with
+  Summary, Output, and Metadata panes; Output uses Markdown rendering.
+- `/larva-persona` no-argument interactive selection may be upgraded from a plain
+  list to a Pi TUI selector using `Input`, `SelectList`, and a detail panel,
+  while preserving non-interactive fallback behavior.
+- Mouse wheel remains supported for scrollable overlays. Mouse click is a
+  non-goal for this target.
+
+
 Subagent reuse visibility delta:
 
 - `larva_subagent_sessions(limit?)` is a Pi-adapter-owned read-only helper surface
@@ -2218,6 +2295,37 @@ Implementation gates must prove these observable behaviors:
     committed PersonaSpec prompt, and does not rebuild Pi's prompt from
     `systemPromptOptions` or modify provider-specific request payloads for
     persona identity.
+
+
+### Pi TUI enhanced UI verification addendum
+
+Additional gates for the formal Pi TUI dependency and enhanced UI target:
+
+1. `npm --prefix contrib/pi-extension ci` succeeds and installs the pinned
+   `@earendil-works/pi-tui` version used by this integration target.
+2. The Pi extension can import Pi TUI primitives from the formal dependency path
+   without relying on host-global module resolution.
+3. All `/larva-subagent-log` custom-component render lines satisfy visible width
+   `<= width` using Pi TUI `visibleWidth`, including CJK text, emoji, Markdown
+   syntax, ANSI-stripped input, and long `task_id` paths.
+4. `/larva-subagent-log` exposes keyboard tabs for Summary, Output, and Metadata;
+   `1`/`2`/`3` and `←`/`→` switch tabs without mutating presentation state.
+5. The Output pane renders final subagent output through Pi TUI Markdown when
+   output exists and uses a renderer-safe fallback when output is empty.
+6. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, and mouse wheel continue
+   to work on the active pane; Enter does not close the overlay.
+7. Mouse reporting is enabled only while the overlay is open and disabled on
+   dispose/reset/close. Mouse click is not supported and has no required behavior.
+8. Expanded `larva_subagent` final views render as Markdown UI with Summary,
+   Task, Output, Error, and Resume sections while preserving the semantic
+   `LarvaSubagentResult` and Pi ToolResult top-level/details mirrors.
+9. Collapsed `larva_subagent` final views remain compact renderer-safe text and
+   do not add a widget dashboard.
+10. `/larva-persona` interactive no-argument mode, when UI is available, renders a
+    Pi TUI selector with filter input, persona list, model/description/capability
+    summary, digest detail, Enter confirm, and Esc cancel. Non-interactive mode,
+    missing UI, and fallback selector behavior remain as specified earlier in
+    this section.
 
 ## Implementation handoff
 

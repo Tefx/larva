@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import pytest
+from wcwidth import wcswidth
 
 ROOT: Final = Path(__file__).resolve().parents[2]
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
@@ -494,12 +495,68 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         mod.recordSubagentPresentationEntryForTests("/tmp/cancelled.jsonl", "delta", "cancelled", { error: { code: "LARVA_CHILD_CANCELLED", message: "stopped" }, phase: "cancelled" });
         const compact = mod.larva_subagent_log({ limit: 4 });
         const expanded = mod.larva_subagent_log({ expanded: true, limit: 4 });
+        mod.recordSubagentPresentationEntryForTests(null, "epsilon", "running", { phase: "starting", mode: "new", task_preview: "pending fresh run" });
+        const pendingNewest = mod.larva_subagent_log({ expanded: true });
+        const longOverlayText = Array.from({ length: 45 }, (_, index) => `scroll proof line ${String(index).padStart(2, "0")}`).join("\\n");
+        mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", { result_text: longOverlayText, phase: "success" });
         const beforeSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         const commandNotifications = [];
+        const commandCustomCalls = [];
         const commandResults = [];
+        const commandUi = {
+          notify: (...args) => commandNotifications.push(args),
+          setStatus: () => undefined,
+          custom: async (factory, options) => {
+            const doneValues = [];
+            let focused = false;
+            const terminalWrites = [];
+            options?.onHandle?.({ focus: () => { focused = true; } });
+            const keybindings = {
+              matches: (data, keybindingId) => ({
+                "LIVE_DOWN": ["tui.select.down", "tui.editor.cursorDown"],
+                "LIVE_UP": ["tui.select.up", "tui.editor.cursorUp"],
+                "LIVE_PAGEDOWN": ["tui.select.pageDown", "tui.editor.pageDown"],
+                "LIVE_HOME": ["tui.editor.cursorLineStart"],
+                "LIVE_ESC": ["tui.select.cancel"],
+              }[data] ?? []).includes(keybindingId),
+            };
+            const component = factory({ requestRender: () => undefined, terminal: { write: (data) => terminalWrites.push(data) } }, { fg: (_token, text) => text, bold: (text) => text }, keybindings, (value) => doneValues.push(value));
+            const rendered = component.render(80);
+            const longInitial = component.render(80);
+            component.handleInput?.("\\x1b[<65;10;10M");
+            const afterWheelDown = component.render(80);
+            component.handleInput?.("\\x1b[<64;10;10M");
+            const afterWheelUp = component.render(80);
+            component.handleInput?.("\\x1b[B");
+            const afterDown = component.render(80);
+            component.handleInput?.("\\x1b[6~");
+            const afterPageDown = component.render(80);
+            component.handleInput?.("\\x1b[H");
+            const afterHome = component.render(80);
+            component.handleInput?.("LIVE_DOWN");
+            const afterLiveDown = component.render(80);
+            component.handleInput?.("LIVE_UP");
+            const afterLiveUp = component.render(80);
+            component.handleInput?.("LIVE_PAGEDOWN");
+            const afterLivePageDown = component.render(80);
+            component.handleInput?.("LIVE_HOME");
+            const afterLiveHome = component.render(80);
+            component.handleInput?.("\\r");
+            const doneAfterEnter = doneValues.length;
+            component.handleInput?.("LIVE_ESC");
+            const doneAfterLiveEsc = doneValues.length;
+            component.handleInput?.("\\x1b[27;1;27~");
+            const doneAfterEsc = doneValues.length;
+            component.handleInput?.("q");
+            const doneAfterQ = doneValues.length;
+            component.dispose?.();
+            commandCustomCalls.push({ options, focused, terminalWrites, rendered, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
+            return null;
+          },
+        };
         await mod.initializeExtension(
-          { env: baseEnv(), modelRegistry, ui: { notify: (...args) => commandNotifications.push(args), setStatus: () => undefined } },
-          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent-log") commandResults.push(command.handler()); } },
+          { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent-log") commandResults.push(command.handler(undefined, { env: baseEnv(), modelRegistry, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
@@ -510,7 +567,14 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           viewOnlyShape: { ok: compact.ok, view_only: compact.view_only, isError: compact.isError, noTaskId: !("task_id" in compact), noResultText: !("result_text" in compact) },
           detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child"].every((needle) => expanded.content[0].text.includes(needle)),
           rowStatesPresent: ["active alpha", "final beta", "error gamma", "cancelled delta"].every((needle) => compact.content[0].text.includes(needle)),
-          viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true && commandNotifications.some(([message]) => String(message).includes("Larva subagent presentation log (view-only)")),
+          pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run"),
+          viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
+          overlayRenderedLines: commandCustomCalls[0].rendered,
+          overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
+          overlayBoxed: commandCustomCalls[0].rendered[0].startsWith("╭─ Larva subagent presentation log") && commandCustomCalls[0].rendered.at(-1).startsWith("╰") && commandCustomCalls[0].rendered.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │") && Array.from(line).length <= 80),
+          overlayCloseKeys: commandCustomCalls[0].doneAfterEnter === 0 && commandCustomCalls[0].doneAfterLiveEsc === 1 && commandCustomCalls[0].doneAfterEsc === 2 && commandCustomCalls[0].doneAfterQ === 3 && commandCustomCalls[0].rendered.some((line) => line.includes("Esc/q close")) && !commandCustomCalls[0].rendered.some((line) => line.includes("Enter")),
+          overlayScrollable: commandCustomCalls[0].longInitial.length <= 22 && commandCustomCalls[0].longInitial.some((line) => line.includes("Wheel/↑↓ PgUp/PgDn Home/End")) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterWheelDown) && JSON.stringify(commandCustomCalls[0].afterWheelUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterDown) && JSON.stringify(commandCustomCalls[0].afterDown) !== JSON.stringify(commandCustomCalls[0].afterPageDown) && JSON.stringify(commandCustomCalls[0].afterHome) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterLiveDown) && JSON.stringify(commandCustomCalls[0].afterLiveUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLivePageDown) !== JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLiveHome) === JSON.stringify(commandCustomCalls[0].longInitial),
+          noNotifyWhenOverlayAvailable: commandNotifications.length === 0,
           resetEmpty: mod.larva_subagent_sessions({ limit: 10 }).details.sessions.length === 0 && mod.larva_subagent_log({ expanded: true }).details.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
         }, null, 2));
         """,
@@ -520,7 +584,14 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["viewOnlyShape"] == {"ok": True, "view_only": True, "isError": False, "noTaskId": True, "noResultText": True}
     assert payload["rowStatesPresent"] is True
     assert payload["detailFieldsPresent"] is True
+    assert payload["pendingNewestVisible"] is True
     assert payload["viewOnlyNoMutation"] is True
+    assert payload["overlayOpened"] is True
+    assert payload["overlayBoxed"] is True
+    assert all(wcswidth(line) <= 80 for line in payload["overlayRenderedLines"])
+    assert payload["overlayCloseKeys"] is True
+    assert payload["overlayScrollable"] is True
+    assert payload["noNotifyWhenOverlayAvailable"] is True
     assert payload["resetEmpty"] is True
 
 

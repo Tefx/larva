@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { createRequire } from "node:module";
 import { access, appendFile, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
@@ -191,6 +192,21 @@ type ToolDefinition<Input, Output> = {
   renderResult?: (result: Output, options?: { expanded?: boolean; input?: Input }) => PiRenderableComponent;
 };
 type PiRenderableComponent = { render: (width: number) => string[]; invalidate?: () => void };
+type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string) => void; dispose?: () => void };
+type PiTuiTextHelpers = {
+  visibleWidth: (value: string) => number;
+  truncateToWidth: (value: string, maxWidth: number, ellipsis?: string, pad?: boolean) => string;
+  wrapTextWithAnsi: (value: string, width: number) => string[];
+};
+type PiKeybindings = { matches?: (data: string, keybindingId: string) => boolean };
+type PiOverlayHandle = { focus?: () => void };
+type PiTui = { requestRender?: () => void; terminal?: { write?: (data: string) => void } };
+type PiCustomFactory = (
+  tui: PiTui,
+  theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
+  keybindings: PiKeybindings,
+  done: (result: unknown) => void,
+) => PiOverlayComponent;
 type PiRenderableText = PiRenderableComponent & { text: string; markdown?: string; format?: "plain_text" | "markdown" };
 type SelectorOption = { id: string; label: string; description?: string };
 type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string };
@@ -199,6 +215,7 @@ type PiUi = {
   setStatus?: StatusSetter;
   addAutocompleteProvider?: (provider: PiAutocompleteProviderFactory) => unknown;
   notify?: (message: string, notifyType?: "info" | "warning" | "error") => void | Promise<void>;
+  custom?: (factory: PiCustomFactory, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
 };
 type PiApi = {
@@ -236,6 +253,9 @@ const LARVA_ACTIVE_PERSONA_BEGIN = "<!-- larva:active-persona:begin -->";
 const LARVA_ACTIVE_PERSONA_END = "<!-- larva:active-persona:end -->";
 const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona):begin -->[\s\S]*?<!-- larva:(?:identity-policy|active-persona):end -->\n?/g;
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
+const ENABLE_MOUSE_REPORTING = "\x1b[?1000h\x1b[?1006h";
+const DISABLE_MOUSE_REPORTING = "\x1b[?1006l\x1b[?1000l";
+const PI_TUI_TEXT_HELPERS = loadPiTuiTextHelpers();
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 const activeTaskIds: Set<string> = new Set<string>();
 const retainedSubagentPresentationLog: SubagentPresentationLogEntry[] = [];
@@ -297,6 +317,203 @@ async function setLarvaStatus(ctx: PiContext, statusText: string): Promise<void>
 
 async function notify(ctx: PiContext, message: string, notifyType: "info" | "warning" | "error" = "info"): Promise<void> {
   await ctx.ui?.notify?.(message, notifyType);
+}
+
+function loadPiTuiTextHelpers(): PiTuiTextHelpers | null {
+  const requireCandidates = [createRequire(import.meta.url)];
+  if (typeof process.argv[1] === "string" && process.argv[1].length > 0) {
+    try {
+      requireCandidates.push(createRequire(process.argv[1]));
+    } catch {
+      // Ignore non-file argv values in test harnesses.
+    }
+  }
+  for (const requireCandidate of requireCandidates) {
+    try {
+      const candidate = requireCandidate("@earendil-works/pi-tui") as Partial<PiTuiTextHelpers>;
+      if (
+        typeof candidate.visibleWidth === "function"
+        && typeof candidate.truncateToWidth === "function"
+        && typeof candidate.wrapTextWithAnsi === "function"
+      ) {
+        return {
+          visibleWidth: candidate.visibleWidth,
+          truncateToWidth: candidate.truncateToWidth,
+          wrapTextWithAnsi: candidate.wrapTextWithAnsi,
+        };
+      }
+    } catch {
+      // Optional dependency: available in Pi runtime, absent in this Python repo's local Node test harness.
+    }
+  }
+  return null;
+}
+
+function overlaySafeLine(value: string): string {
+  return value.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(CONTROL_RE, " ").replace(/\t/g, "   ").trimEnd();
+}
+
+function overlayDisplayWidth(value: string): number {
+  return PI_TUI_TEXT_HELPERS?.visibleWidth(value) ?? Array.from(value).reduce((total, char) => total + terminalCharWidth(char), 0);
+}
+
+function overlayTruncateLine(value: string, contentWidth: number): string {
+  if (PI_TUI_TEXT_HELPERS) return PI_TUI_TEXT_HELPERS.truncateToWidth(value, contentWidth, "");
+  let line = "";
+  let width = 0;
+  for (const char of Array.from(value)) {
+    const charWidth = terminalCharWidth(char);
+    const safeChar = charWidth > contentWidth ? "?" : char;
+    const safeCharWidth = charWidth > contentWidth ? 1 : charWidth;
+    if (width + safeCharWidth > contentWidth) break;
+    line += safeChar;
+    width += safeCharWidth;
+  }
+  return line;
+}
+
+function overlayWrapLine(value: string, contentWidth: number): string[] {
+  const safeLine = overlaySafeLine(value);
+  if (safeLine.length === 0) return [""];
+  if (PI_TUI_TEXT_HELPERS) {
+    const wrapped = PI_TUI_TEXT_HELPERS.wrapTextWithAnsi(safeLine, contentWidth);
+    return (wrapped.length > 0 ? wrapped : [""]).map((line) => overlayTruncateLine(line, contentWidth));
+  }
+  const lines: string[] = [];
+  let currentLine = "";
+  let currentWidth = 0;
+  for (const char of Array.from(safeLine)) {
+    const charWidth = terminalCharWidth(char);
+    const safeChar = charWidth > contentWidth ? "?" : char;
+    const safeCharWidth = charWidth > contentWidth ? 1 : charWidth;
+    if (currentWidth > 0 && currentWidth + safeCharWidth > contentWidth) {
+      lines.push(overlayTruncateLine(currentLine, contentWidth));
+      currentLine = "";
+      currentWidth = 0;
+    }
+    currentLine += safeChar;
+    currentWidth += safeCharWidth;
+  }
+  lines.push(overlayTruncateLine(currentLine, contentWidth));
+  return lines;
+}
+
+function overlayPadLine(value: string, contentWidth: number): string {
+  const clipped = overlayTruncateLine(value, contentWidth);
+  return `${clipped}${" ".repeat(Math.max(0, contentWidth - overlayDisplayWidth(clipped)))}`;
+}
+
+function keybindingsMatch(keybindings: PiKeybindings | undefined, data: string, keybindingIds: string[]): boolean {
+  if (!keybindings || typeof keybindings.matches !== "function") return false;
+  return keybindingIds.some((keybindingId) => {
+    try {
+      return keybindings.matches?.(data, keybindingId) === true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isSubagentOverlayCloseKey(data: string, keybindings?: PiKeybindings): boolean {
+  const lowered = data.toLowerCase();
+  return keybindingsMatch(keybindings, data, ["tui.select.cancel", "app.interrupt"])
+    || lowered === "escape"
+    || data === "\x1b"
+    || /^\x1b\[27;\d+;27~$/.test(data)
+    || /^\x1b\[27;\d+;27u$/.test(data)
+    || /^\x1b\[27u$/.test(data)
+    || lowered === "q";
+}
+
+function mouseWheelScrollDelta(data: string): number | null {
+  const match = /^\x1b\[<(\d+);\d+;\d+[Mm]$/.exec(data);
+  if (!match) return null;
+  const button = Number(match[1]);
+  if (!Number.isInteger(button) || (button & 64) === 0) return null;
+  const wheelDirection = button & 3;
+  if (wheelDirection === 0) return -3;
+  if (wheelDirection === 1) return 3;
+  return null;
+}
+
+function renderBoxedSubagentOverlay(text: string, keybindings?: PiKeybindings): PiOverlayComponent {
+  let scrollOffset = 0;
+  let lastMaxOffset = 0;
+  const maxBoxLines = 22;
+  const viewportLines = maxBoxLines - 3; // top border + footer + bottom border.
+  const scrollBy = (delta: number): void => {
+    scrollOffset = Math.max(0, Math.min(lastMaxOffset, scrollOffset + delta));
+  };
+  const matches = (data: string, keybindingIds: string[], rawFallbacks: string[], namedFallbacks: string[] = []): boolean => {
+    const lowered = data.toLowerCase();
+    return keybindingsMatch(keybindings, data, keybindingIds)
+      || rawFallbacks.includes(data)
+      || namedFallbacks.includes(lowered);
+  };
+  return {
+    invalidate: () => undefined,
+    render: (width: number): string[] => {
+      const availableWidth = Number.isFinite(width) ? Math.max(32, Math.floor(width)) : 80;
+      const boxWidth = Math.max(32, Math.min(availableWidth, 100));
+      const contentWidth = boxWidth - 4;
+      const title = "Larva subagent presentation log";
+      const topTitle = `─ ${title} `;
+      const top = `╭${topTitle}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(topTitle)))}╮`;
+      const innerLines = text.split(/\r?\n/).flatMap((line) => overlayWrapLine(line, contentWidth));
+      lastMaxOffset = Math.max(0, innerLines.length - viewportLines);
+      scrollOffset = Math.max(0, Math.min(lastMaxOffset, scrollOffset));
+      const visibleLines = innerLines.slice(scrollOffset, scrollOffset + viewportLines);
+      while (visibleLines.length < Math.min(viewportLines, innerLines.length || 1)) visibleLines.push("");
+      const start = innerLines.length === 0 ? 0 : scrollOffset + 1;
+      const end = Math.min(innerLines.length, scrollOffset + viewportLines);
+      const scrollInfo = innerLines.length > viewportLines ? `Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close • ${start}-${end}/${innerLines.length}` : "Esc/q close";
+      return [
+        top,
+        ...visibleLines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
+        `│ ${overlayPadLine(scrollInfo, contentWidth)} │`,
+        `╰${"─".repeat(boxWidth - 2)}╯`,
+      ];
+    },
+    handleInput: (data: string) => {
+      const wheelDelta = mouseWheelScrollDelta(data);
+      if (wheelDelta !== null) scrollBy(wheelDelta);
+      else if (matches(data, ["tui.select.down", "tui.editor.cursorDown"], ["\x1b[B"], ["arrowdown", "down"])) scrollBy(1);
+      else if (matches(data, ["tui.select.up", "tui.editor.cursorUp"], ["\x1b[A"], ["arrowup", "up"])) scrollBy(-1);
+      else if (matches(data, ["tui.select.pageDown", "tui.editor.pageDown"], ["\x1b[6~"], ["pagedown"])) scrollBy(viewportLines);
+      else if (matches(data, ["tui.select.pageUp", "tui.editor.pageUp"], ["\x1b[5~"], ["pageup"])) scrollBy(-viewportLines);
+      else if (matches(data, ["tui.editor.cursorLineStart"], ["\x1b[H", "\x1b[1~"], ["home"])) scrollOffset = 0;
+      else if (matches(data, ["tui.editor.cursorLineEnd"], ["\x1b[F", "\x1b[4~"], ["end"])) scrollOffset = lastMaxOffset;
+    },
+  };
+}
+
+async function openSubagentPresentationOverlay(ctx: PiContext, text: string): Promise<boolean> {
+  const custom = ctx.ui?.custom;
+  if (typeof custom !== "function") return false;
+  await custom((tui, _theme, keybindings, done) => {
+    tui.terminal?.write?.(ENABLE_MOUSE_REPORTING);
+    const component = renderBoxedSubagentOverlay(text, keybindings);
+    return {
+      render: component.render,
+      invalidate: component.invalidate,
+      dispose: () => {
+        tui.terminal?.write?.(DISABLE_MOUSE_REPORTING);
+      },
+      handleInput: (data: string) => {
+        if (isSubagentOverlayCloseKey(data, keybindings)) {
+          done(null);
+          return;
+        }
+        component.handleInput?.(data);
+        tui.requestRender?.();
+      },
+    };
+  }, {
+    overlay: true,
+    overlayOptions: { width: "90%", maxHeight: "80%", anchor: "center", margin: 1 },
+    onHandle: (handle: PiOverlayHandle) => handle.focus?.(),
+  });
+  return true;
 }
 
 export function parseModel(model: string): ParsedModel | null {
@@ -918,10 +1135,15 @@ function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
 function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
   const command: CommandOptions = {
     description: "Show the view-only Larva subagent presentation log",
-    handler: async (input?: string) => {
-      if (typeof ctx.ui?.notify !== "function") return failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
+    handler: async (input?: string, commandCtx?: PiContext) => {
+      const runtimeCtx = commandCtx ?? ctx;
+      const hasOverlay = typeof runtimeCtx.ui?.custom === "function";
+      const hasNotify = typeof runtimeCtx.ui?.notify === "function";
+      if (!hasOverlay && !hasNotify) return failedSubagentOverlay("LARVA_SUBAGENT_LOG_UI_UNAVAILABLE", "Larva subagent log UI is unavailable.");
       const overlay = larva_subagent_log(input ?? "");
-      await notify(ctx, overlay.content[0]?.text ?? "Larva subagent presentation log is empty.", overlay.isError ? "error" : "info");
+      const text = overlay.content[0]?.text ?? "Larva subagent presentation log is empty.";
+      if (await openSubagentPresentationOverlay(runtimeCtx, text)) return overlay;
+      await notify(runtimeCtx, text, overlay.isError ? "error" : "info");
       return overlay;
     },
   };
@@ -1447,11 +1669,8 @@ function overlayEntries(limit: number): SubagentPresentationLogEntry[] {
 }
 
 function newestOverlayEntry(): SubagentPresentationLogEntry | null {
-  for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
-    const entry = retainedSubagentPresentationLog[index];
-    if (entry.task_id !== null) return { ...entry };
-  }
-  return null;
+  const entry = retainedSubagentPresentationLog[retainedSubagentPresentationLog.length - 1];
+  return entry ? { ...entry } : null;
 }
 
 function exactOverlayEntry(taskId: string): SubagentPresentationLogEntry | null {
@@ -1505,7 +1724,9 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
     ? overlayEntries(options.limit)
     : [options.taskId === null ? newestOverlayEntry() : exactOverlayEntry(options.taskId)].filter((entry): entry is SubagentPresentationLogEntry => entry !== null);
   if (entries.length === 0) {
-    const target = options.taskId === null ? "No Larva subagent run has been observed." : `Larva subagent run not observed for task_id ${options.taskId}.`;
+    const target = options.taskId === null
+      ? "No Larva subagent run has been observed in this parent extension process since the last reload/reset. Run a subagent in this session, then reopen /larva-subagent-log."
+      : `Larva subagent run not observed for task_id ${options.taskId} in this parent extension process since the last reload/reset.`;
     closeSubagentPresentationOverlay();
     return failedSubagentOverlay("LARVA_SUBAGENT_LOG_NOT_OBSERVED", target);
   }
@@ -1603,8 +1824,54 @@ function terminalCharWidth(char: string): number {
   if (char.length === 0) return 0;
   const codePoint = char.codePointAt(0);
   if (codePoint === undefined) return 0;
-  if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return 0;
-  return codePoint >= 0x20 && codePoint <= 0x7e ? 1 : 2;
+  if (codePoint === 0 || codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return 0;
+  if (
+    (codePoint >= 0x0300 && codePoint <= 0x036f)
+    || (codePoint >= 0x0483 && codePoint <= 0x0489)
+    || (codePoint >= 0x0591 && codePoint <= 0x05bd)
+    || codePoint === 0x05bf
+    || (codePoint >= 0x05c1 && codePoint <= 0x05c2)
+    || (codePoint >= 0x05c4 && codePoint <= 0x05c5)
+    || codePoint === 0x05c7
+    || (codePoint >= 0x0610 && codePoint <= 0x061a)
+    || (codePoint >= 0x064b && codePoint <= 0x065f)
+    || codePoint === 0x0670
+    || (codePoint >= 0x06d6 && codePoint <= 0x06dc)
+    || (codePoint >= 0x06df && codePoint <= 0x06e4)
+    || (codePoint >= 0x06e7 && codePoint <= 0x06e8)
+    || (codePoint >= 0x06ea && codePoint <= 0x06ed)
+    || (codePoint >= 0x0711 && codePoint <= 0x0711)
+    || (codePoint >= 0x0730 && codePoint <= 0x074a)
+    || (codePoint >= 0x07a6 && codePoint <= 0x07b0)
+    || (codePoint >= 0x07eb && codePoint <= 0x07f3)
+    || (codePoint >= 0x0816 && codePoint <= 0x0819)
+    || (codePoint >= 0x081b && codePoint <= 0x0823)
+    || (codePoint >= 0x0825 && codePoint <= 0x0827)
+    || (codePoint >= 0x0829 && codePoint <= 0x082d)
+    || (codePoint >= 0x0859 && codePoint <= 0x085b)
+    || (codePoint >= 0x08d3 && codePoint <= 0x08e1)
+    || (codePoint >= 0x08e3 && codePoint <= 0x0903)
+    || (codePoint >= 0xfe00 && codePoint <= 0xfe0f)
+    || (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
+    || codePoint === 0x200d
+  ) return 0;
+  if (
+    codePoint >= 0x1100 && (
+      codePoint <= 0x115f
+      || codePoint === 0x2329
+      || codePoint === 0x232a
+      || (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f)
+      || (codePoint >= 0xac00 && codePoint <= 0xd7a3)
+      || (codePoint >= 0xf900 && codePoint <= 0xfaff)
+      || (codePoint >= 0xfe10 && codePoint <= 0xfe19)
+      || (codePoint >= 0xfe30 && codePoint <= 0xfe6f)
+      || (codePoint >= 0xff00 && codePoint <= 0xff60)
+      || (codePoint >= 0xffe0 && codePoint <= 0xffe6)
+      || (codePoint >= 0x1f300 && codePoint <= 0x1faff)
+      || (codePoint >= 0x20000 && codePoint <= 0x3fffd)
+    )
+  ) return 2;
+  return 1;
 }
 
 function renderLarvaSubagentCall(input: LarvaSubagentInput): PiRenderableText {

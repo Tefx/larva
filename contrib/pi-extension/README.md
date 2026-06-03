@@ -433,6 +433,37 @@ A PASS requires the `runtime.controlledLive` checks to prove fresh child startup
 resume, abort propagation, and orphan-free cleanup. If Pi or extension loading is
 unavailable, the proof is blocked rather than silently passed.
 
+## Pi TUI dependency and UI component policy
+
+The Pi extension is a Node/TypeScript runtime surface and formally depends on
+`@earendil-works/pi-tui` for terminal UI correctness. Local development and CI
+must install the extension dependency set before Pi-extension UI work:
+
+```bash
+npm --prefix contrib/pi-extension ci
+```
+
+Initial policy: pin `@earendil-works/pi-tui` to the Pi runtime-compatible version
+used by this integration target. Do not use a semver range until compatibility is
+proven against the live Pi runtime. When Pi is upgraded, update the Pi TUI version
+in the same implementation pass and rerun the Pi-extension UI/runtime gates.
+
+UI rendering rules:
+
+- Use Pi TUI `visibleWidth`, `truncateToWidth`, and `wrapTextWithAnsi` for all
+  width-sensitive text, border rows, wrapping, and truncation.
+- Use Pi TUI `matchesKey`/`Key` and injected Pi keybindings for keyboard input;
+  raw ANSI fallbacks may remain only for runtime compatibility gaps.
+- Prefer Pi TUI `Markdown`, `Text`, `TruncatedText`, `Input`, `SelectList`,
+  `Container`, and `Box` over handwritten equivalents.
+- Every custom component `render(width)` line must satisfy visible width `<= width`.
+- Mouse wheel is supported by overlay-scoped SGR mouse reporting. Mouse click is
+  intentionally unsupported for this target.
+
+The extension should keep custom code only for adapter-specific state and layout
+that Pi TUI does not provide directly, such as subagent presentation-log scroll
+state, tab state, and mouse-reporting lifecycle cleanup.
+
 ## `larva_subagent` custom tool
 
 When the active parent persona and Pi tool policy allow it, the extension exposes
@@ -621,13 +652,39 @@ selects the newest observed presentation-log entry; with an argument it selects
 one exact `task_id`. It does not scan the filesystem, parse raw Pi JSONL, read or
 write sidecars, or support aliases such as `last`.
 
+The overlay is implemented as a Pi TUI-backed custom component. It must use Pi
+TUI width/wrap/truncate helpers for all bordered rows and content panes, and it
+must preserve the invariant that each rendered line fits the `render(width)`
+contract. Long output is internally scrollable; the terminal transcript outside
+the overlay is not used as scroll authority.
+
+Target interaction model:
+
+- `Esc` or `q`: close.
+- `↑`/`↓`: scroll the active pane.
+- `PageUp`/`PageDown`: page scroll the active pane.
+- `Home`/`End`: jump to start/end of the active pane.
+- `1`/`2`/`3` or `←`/`→`: switch keyboard tabs.
+- Mouse wheel: scroll the active pane while the overlay is open.
+- Mouse click: intentionally unsupported for this target.
+
+Target panes:
+
+1. `Summary`: selected entry status, persona, progress, task id, and output/error
+   summary.
+2. `Output`: Markdown-rendered final output when present, otherwise a renderer-safe
+   empty/fallback message.
+3. `Metadata`: adapter-local mode, sequence, phase, task preview, error object,
+   overlay generation, and view-only provenance.
+
 The overlay result carries `view_only: true`, renderer-safe text `content`, and
 adapter-local overlay `details`. It deliberately does not mirror
 `LarvaSubagentResult` top-level `task_id` or `result_text` fields. Missing
 observed entries return `LARVA_SUBAGENT_LOG_NOT_OBSERVED`; unavailable UI
-notification returns `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE`. Opening or resetting the
-overlay must not mutate persona state, model state, tool policy, active task
-markers, child session files, recent-session index contents, or resume authority.
+notification returns `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE`. Opening, tabbing,
+scrolling, or resetting the overlay must not mutate persona state, model state,
+tool policy, active task markers, child session files, recent-session index
+contents, or resume authority.
 
 ## Explicit non-goals and unsupported guarantees
 
