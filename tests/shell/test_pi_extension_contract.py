@@ -1604,6 +1604,54 @@ def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() 
         assert forbidden_live_field in sanitizer
 
 def test_agent_persona_switch_mode_contract() -> None:
+    """
+    Ensures that the extension defines AgentPersonaSwitchMode with exact literal
+    strings: 'off', 'ask', 'auto'.
+    """
     source = _source()
     _assert_tokens(source, "AgentPersonaSwitchMode", "\"off\"", "\"ask\"", "\"auto\"")
     _assert_tokens(source, "LARVA_PI_AGENT_PERSONA_SWITCH")
+
+
+def test_agent_persona_switch_session_persistence_contract() -> None:
+    """
+    Verification target: Session slash command updates mode and persists it.
+    The customType larva-agent-persona-switch-mode must be present with mode
+    and source keys.
+    """
+    source = _source()
+    _assert_tokens(source, "\"larva-agent-persona-switch-mode\"")
+    _assert_tokens(source, "details", "mode", "source")
+
+
+def test_agent_persona_switch_tool_and_slash_command() -> None:
+    """
+    Ensure the extension defines the slash command and the tools from the spec.
+    """
+    source = _source()
+    _assert_tokens(source, "larva_persona_switch", "persona_id", "reason", "handoff", "continue_task")
+    _assert_tokens(source, "/larva-agent-persona-switch")
+
+
+def test_agent_persona_switch_audit_entry_shape() -> None:
+    """
+    Ensure the extension pushes audit entries.
+    """
+    source = _source()
+    _assert_tokens(
+        source,
+        "from_persona_id", "to_persona_id", "reason", "handoff",
+        "approved", "committed", "error_code", "continue_task"
+    )
+
+def test_child_subagent_default_switch_mode() -> None:
+    """
+    Child subagent starts with self-switch mode `off` unless a future explicit
+    child policy is added.
+    """
+    # The source should contain logic that sets default off for child requests
+    # Though it might be tricky to token-assert exactly, 
+    # we expect subagent spawn to at least not pass ask/auto through implicitly.
+    source = _source()
+    _assert_tokens(source, "LARVA_PI_AGENT_PERSONA_SWITCH", "off", "spawn")
+

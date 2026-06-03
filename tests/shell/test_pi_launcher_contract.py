@@ -485,22 +485,34 @@ def test_launcher_propagates_extension_fatal_startup_errors(mock_shutil_which, m
     assert code != 0
     assert "larva pi: LARVA_MODEL_UNAVAILABLE:" in stderr.getvalue()
 
-def test_launcher_agent_persona_switch_flag(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+def test_launcher_agent_persona_switch_flag_handles_off_ask_auto(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+    """
+    Verification target:
+    CLI forwards LARVA_PI_AGENT_PERSONA_SWITCH correctly for off, ask, auto.
+    """
     import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", "auto", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-    
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == "auto"
+
+    for mode in ("off", "ask", "auto"):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        
+        # Test CLI flag
+        code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", mode, "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+        assert code == 0, f"Expected 0 for {mode}, got {code}. Stderr: {stderr.getvalue()}"
+        env = mock_subprocess_run.call_args[1].get("env", os.environ)
+        assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == mode
 
 def test_launcher_agent_persona_switch_invalid_value(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+    """
+    Verification target:
+    Invalid CLI mode fails before Pi launch.
+    """
     import io
     stdout = io.StringIO()
     stderr = io.StringIO()
     
-    code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", "invalid"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", "invalid_mode"], facade=_make_facade(), stdout=stdout, stderr=stderr)
     assert code != 0
     assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
+    # Confirm Pi wasn't launched
+    assert mock_subprocess_run.call_count == 0
