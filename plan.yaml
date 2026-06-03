@@ -99363,7 +99363,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: retest-full-runtime-smoke
     name: Retest full Pi runtime smoke after remediation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -99421,6 +99421,83 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-02T21:58:26.790815+00:00'
+    done_at: '2026-06-03T03:34:18.693380+00:00'
+    evidence: 'SUCCESS/PASS: full Pi runtime smoke retest passed after remediation;
+      gate_open_allowed=true; blockers=[].
+
+
+      Worker evidence commit: a407bb56aa9e5930857490fd195b2498a26959f2.
+
+      Mainline squash commit: 16b5dc7 [vectl] step-retest-full-runtime-smoke completed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read for runtime smoke/capability matrix/fatal
+      startup/autocomplete degraded behavior.
+
+      - scripts/pi-extension-runtime-smoke.mjs, scripts/pi-extension-autocomplete-smoke.mjs,
+      contrib/pi-extension/test-autocomplete-runtime.mjs read.
+
+
+      Worker verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs` matrix -> exit 0; OVERALL=PASS;
+      startup-fatal status=PASS nonzeroBeforePrompt=true; live-child-rpc-proof controlledLive.status=PASS.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs` + `node contrib/pi-extension/test-autocomplete-runtime.mjs`
+      matrix -> exit 0; OVERALL=PASS; id-only values/labels confirmed; mention namespace
+      confirmed; cache/delegation/failure/reset lifecycle confirmed.
+
+      - `python -m pytest tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_subagent_ux.py
+      -q` -> 37 passed in 48.48s.
+
+
+      Capability matrix:
+
+      - extensionLoading supported=true.
+
+      - rpcJsonl supported=true.
+
+      - uiAutocompleteProvider supported=false, status=unsupported, provenance=runtimeHarness.mock,
+      blocker=false (documented design-aligned degraded behavior; no false live support
+      claim).
+
+      - subagentToolRowProgress supported=true.
+
+      - subagentLogOverlayCommand supported=true.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case mention-namespace`
+      -> exit 0.
+
+      - `pytest tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_subagent_ux.py
+      tests/shell/test_pi_extension_contract.py -q` -> 91 passed in 49.58s.
+
+
+      Checklist receipt:
+
+      - Runtime smoke raw output includes tested Pi package version/commit: true.
+
+      - Autocomplete smoke/runtime raw outputs included: true.
+
+      - addAutocompleteProvider row resolved via documented unsupported live capability
+      provenance: true.
+
+      - Fatal startup fixtures stop Pi nonzero before first prompt/model turn: true.
+
+      - Previously passing runtime checks remain passing: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: retest-shared-spec-conformance
     name: Retest shared spec conformance after remediation and adjudication
     status: claimed
