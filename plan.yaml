@@ -101009,7 +101009,7 @@ phases:
       proof step.'
   - id: pi_tui_dependency_packaging_20260603.npm-ci-proof
     name: Verify Pi extension npm ci and direct dependency install
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: project
@@ -101097,6 +101097,150 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-03T08:25:14.786509+00:00'
+    done_at: '2026-06-03T08:30:55.678264+00:00'
+    evidence: '## refs Read Confirmation
+
+      - contrib/pi-extension/README.md — lines 436-449 state the Pi extension formally
+      depends on `@earendil-works/pi-tui`, local development and CI must run `npm
+      --prefix contrib/pi-extension ci`, and the dependency must be exact pinned.
+
+      - design/pi-coding-agent-integration.md — lines 303-311 state the bundled Pi
+      extension depends on Pi TUI under `contrib/pi-extension`, installed with `npm
+      --prefix contrib/pi-extension ci`; lines 2304-2307 require npm ci to install
+      pinned version and import without host-global resolution.
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — Pi TUI is imported from `@earendil-works/pi-tui`; render lines must not exceed
+      width; helpers include `visibleWidth`, `truncateToWidth`, `wrapTextWithAnsi`.
+
+
+      ## Semantic Verification Fields
+
+      - step_intent: verification
+
+      - expected_result: green
+
+      - observed_result: green; `npm --prefix contrib/pi-extension ci` exited 0, Node
+      import/version probe resolved local `@earendil-works/pi-tui@0.78.0` from `contrib/pi-extension/node_modules`,
+      and CI workflow runs the same npm ci before Pi extension runtime checks.
+
+      - failure_alignment: n/a
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - product_implementation_files_modified: no
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+
+      ## Raw Output
+
+      - worker npm_ci_stdout: `added 3 packages, and audited 4 packages in 493ms`;
+      `found 0 vulnerabilities`; exit code 0.
+
+      - worker import_probe_stdout: packageJsonPath and entryPath under `.vectl/worktrees/.../contrib/pi-extension/node_modules/@earendil-works/pi-tui`;
+      version `0.78.0`; versionMatches true; underLocalNodeModules true; exports `visibleWidth`,
+      `truncateToWidth`, `wrapTextWithAnsi`, `Markdown` are functions; exit code 0.
+
+      - worker import stderr: empty.
+
+      - mainline npm_ci_stdout after no-op merge: `added 3 packages, and audited 4
+      packages in 560ms`; `found 0 vulnerabilities`; exit code 0.
+
+      - mainline import probe stdout: `{ "version": "0.78.0", "versionMatches": true,
+      "underLocalNodeModules": true, "exports": { "visibleWidth": "function", "truncateToWidth":
+      "function", "wrapTextWithAnsi": "function", "Markdown": "function" } }`; exit
+      code 0.
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | P0-DEP-001 | local pinned dependency install works | npm ci + import probe
+      | raw npm/import logs above; package metadata exact `0.78.0` | PROVEN | n/a
+      | P1 can safely use direct imports from local `contrib/pi-extension` dependency.
+      |
+
+      | P0-CI-001 | CI expects same local install before UI/runtime checks | CI workflow/harness
+      evidence | `.github/workflows/ci.yml` npm ci step precedes Pi extension supplemental
+      runtime gate | PROVEN | n/a | CI gate enforces install before UI/runtime checks.
+      |
+
+
+      ## Requirement / Checklist Proof Matrix
+
+      | obligation | status | concrete proof |
+
+      | npm ci exits 0 | PROVEN | worker and mainline `npm --prefix contrib/pi-extension
+      ci` both exited 0 with raw stdout. |
+
+      | Node import probe resolves/version 0.78.0 | PROVEN | probes resolved package
+      under local `contrib/pi-extension/node_modules` and version `0.78.0`. |
+
+      | CI wiring requires same npm ci before UI/runtime checks | PROVEN | workflow
+      contains npm ci before Pi extension supplemental runtime gate. |
+
+      | blockers classified correctly | PROVEN | no environment blocker occurred;
+      if missing, evidence would be BLOCKED, not success. |
+
+      | no host-global masking | PROVEN | probe used `createRequire(contrib/pi-extension/package.json)`,
+      unset `NODE_PATH`, and verified local node_modules paths. |
+
+
+      ## Commands / Side Effects
+
+      - worker `node --version` v26.0.0; `npm --version` 11.12.1.
+
+      - worker `npm --prefix contrib/pi-extension ci` exit 0.
+
+      - worker Node import/version probe exit 0.
+
+      - mainline `git merge --squash vectl/step-pi_tui_dependency_packaging_20260603.npm-ci-proof`
+      reported already up to date / nothing to squash because verify-only step made
+      no file changes.
+
+      - mainline `npm --prefix contrib/pi-extension ci` and import/version probe exit
+      0.
+
+      - mainline `invar_invar_guard(path=".", changed=true, strict=false)` passed:
+      `files_checked=0, errors=0, warnings=0`.
+
+      - Side effects: `npm ci` created `contrib/pi-extension/node_modules`; removed
+      afterward. No product file edits.
+
+
+      ## Commits
+
+      - none (verify-only no file changes)
+
+
+      ## checklist_receipt
+
+      - `npm --prefix contrib/pi-extension ci` exits 0 with raw stdout/stderr evidence:
+      done
+
+      - Node import probe from Pi-extension context resolves `@earendil-works/pi-tui`
+      and reports/proves version `0.78.0`: done
+
+      - CI wiring evidence shows same npm ci command required before Pi-extension
+      UI/runtime checks: done
+
+      - Environment blockers classified as BLOCKED, not success: done
+
+
+      ## Gaps / Notes
+
+      - Product proof gaps: none.
+
+      - CONSTITUTION.md not present in isolated worktree.'
   - id: pi_tui_dependency_packaging_20260603.gate
     name: Gate P0 Pi TUI dependency packaging
     status: pending
