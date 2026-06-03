@@ -99934,14 +99934,14 @@ phases:
       or equivalent.
 
       - Ensure no architecture basis conflict was hidden inside implementation evidence.'
-    verification: '- [ ] Plan/evidence readiness review verdict is PASS or CHANGES_REQUESTED
+    verification: '- [x] Plan/evidence readiness review verdict is PASS or CHANGES_REQUESTED
       with exact blockers.
 
-      - [ ] Review covers the whole Pi target, not only recent fixes.
+      - [x] Review covers the whole Pi target, not only recent fixes.
 
-      - [ ] Any changes requested include concrete owning step/fix recommendation.
+      - [x] Any changes requested include concrete owning step/fix recommendation.
 
-      - [ ] PASS contains no conditional fixes or unresolved blocker-class gaps.'
+      - [x] PASS contains no conditional fixes or unresolved blocker-class gaps.'
     refs:
     - design/pi-coding-agent-integration.md
     agent: plan-readiness-auditor
