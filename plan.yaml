@@ -101065,16 +101065,16 @@ phases:
       path.
 
       </risk_probes>'
-    verification: '- [ ] `npm --prefix contrib/pi-extension ci` exits 0 with raw stdout/stderr
+    verification: '- [x] `npm --prefix contrib/pi-extension ci` exits 0 with raw stdout/stderr
       evidence.
 
-      - [ ] A Node import probe executed from the Pi-extension context resolves `@earendil-works/pi-tui`
+      - [x] A Node import probe executed from the Pi-extension context resolves `@earendil-works/pi-tui`
       and reports version `0.78.0` or package metadata proving that version.
 
-      - [ ] CI wiring evidence shows the same npm ci command is required before Pi-extension
+      - [x] CI wiring evidence shows the same npm ci command is required before Pi-extension
       UI/runtime checks.
 
-      - [ ] Any environment blocker is classified as BLOCKED with exact missing prerequisite
+      - [x] Any environment blocker is classified as BLOCKED with exact missing prerequisite
       and not as success.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
       \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
