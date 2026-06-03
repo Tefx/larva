@@ -99989,7 +99989,7 @@ phases:
     agent: gate-reviewer
   - id: pi_impl_finalization_20260603.wiring-blocker-fix
     name: Fix final wiring audit blockers
-    status: pending
+    status: claimed
     description: 'TARGET STATE: Resolve blockers from `pi_impl_finalization_20260603.deep-wiring-audit`.
 
 
@@ -100042,6 +100042,8 @@ phases:
     depends_on:
     - pi_impl_finalization_20260603.docs-sync
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-03T04:00:31.224562+00:00'
   - id: pi_impl_finalization_20260603.wiring-blocker-retest
     name: Retest final wiring audit blockers
     status: pending
