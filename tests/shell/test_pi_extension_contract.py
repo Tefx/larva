@@ -22,6 +22,7 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 CI_WORKFLOW: Final = ROOT / ".github" / "workflows" / "ci.yml"
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 PI_EXTENSION_README: Final = ROOT / "contrib" / "pi-extension" / "README.md"
+PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-persona-selector-ui.mjs"
 PYPROJECT: Final = ROOT / "pyproject.toml"
 PI_EXTENSION_NPM_CI_COMMAND: Final = "npm --prefix contrib/pi-extension ci"
 PI_EXTENSION_RUNTIME_GATE_COMMAND: Final = (
@@ -123,6 +124,22 @@ def _runtime_extension_copy(tmp_path: Path, appended_exports: str) -> Path:
     extension = tmp_path / "larva-pi-runtime-test.ts"
     extension.write_text(_source() + "\n" + textwrap.dedent(appended_exports), encoding="utf-8")
     return extension
+
+
+def _run_selector_ui_harness() -> dict[str, Any]:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension selector UI runtime contract tests")
+    completed = subprocess.run(
+        [node, str(PI_EXTENSION_SELECTOR_UI)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=8,
+        env={**os.environ, "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0"},
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
 
 
 def _assert_tokens(source: str, *tokens: str) -> None:
@@ -544,6 +561,64 @@ def test_no_argument_selector_is_interactive_only_and_mode_gated() -> None:
         "completePersonaIds",
         "LARVA_BAD_INPUT",
     )
+
+
+def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_mouse_click() -> None:
+    source = _source()
+    _assert_tokens(
+        source,
+        "Input as TuiInput",
+        "SelectList",
+        "LarvaPersonaSelector",
+        "openEnhancedPersonaSelector",
+        "rankPersonasForSelector",
+        "Type to filter persona ids/descriptions.",
+        "Capabilities",
+        "Digest",
+        "Mouse click/press/release SGR events are intentionally unsupported no-ops",
+    )
+    selector_body = _function_body(source, "export class LarvaPersonaSelector")
+    assert "new TuiInput()" in selector_body
+    assert "new SelectList" in selector_body
+    assert "renderDetailRow" in selector_body
+    assert "handleInput(data: string)" in selector_body
+    assert "ENABLE_MOUSE_REPORTING" not in selector_body
+    assert "mouseWheelScrollDelta" not in selector_body
+
+    open_body = _function_body(source, "export async function openPersonaSelector")
+    assert open_body.index("openEnhancedPersonaSelector") < open_body.index("ctx.ui?.select")
+    handle_body = _function_body(source, "export async function handlePersonaCommand")
+    assert handle_body.index("LARVA_PI_INTERACTIVE_TUI") < handle_body.index("openPersonaSelector")
+
+
+def test_enhanced_persona_selector_runtime_harness() -> None:
+    payload = _run_selector_ui_harness()
+    assertions = payload["assertions"]
+
+    assert assertions == {
+        "enhancedComponentUsesInputSelectListDetail": True,
+        "detailPanelHasCapabilitiesAndDigest": True,
+        "filteringRankingDeterministic": True,
+        "enterCommitsThroughCommand": True,
+        "escCancelPreservesActiveState": True,
+        "fallbackPreserved": True,
+        "mouseClickUnsupportedNoOp": True,
+        "renderLinesWithinWidth": True,
+    }
+    assert payload["detail"]["afterFilterDetail"] == [
+        "ID: DevOps",
+        "Model: openrouter/devops",
+        "Description: Operations developer prefix match",
+        "Capabilities: deploy:read_write, shell:read_only",
+        "Digest: sha256:DevOps",
+    ]
+    assert payload["detail"]["filteredOrder"] == ["DevOps", "devrel", "qa-dev", "backend-dev"]
+    assert payload["detail"]["afterDownDetail"][0] == "ID: devrel"
+    assert payload["detail"]["enterResult"] == "devrel"
+    assert payload["commit"]["envelopePersona"] == "vectl-planner"
+    assert payload["commit"]["selectedByCustom"] == "vectl-planner"
+    assert payload["cancel"]["activePersonaAfterCancel"] == "ok"
+    assert payload["fallback"]["nonInteractiveCalls"] == {"custom": 0, "select": 0, "openSelector": 0}
 
 
 def test_no_argument_non_interactive_returns_bad_input_without_state_change() -> None:

@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { Key, Markdown, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type MarkdownTheme } from "@earendil-works/pi-tui";
+import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
@@ -204,7 +204,7 @@ type PiCustomFactory = (
 ) => PiOverlayComponent;
 type PiRenderableText = PiRenderableComponent & { text: string; markdown?: string; format?: "plain_text" | "markdown" };
 type SelectorOption = { id: string; label: string; description?: string };
-type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string };
+type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string; capabilities?: Record<string, CapabilityPosture> };
 type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
 type PiUi = {
   setStatus?: StatusSetter;
@@ -400,6 +400,238 @@ function mouseWheelScrollDelta(data: string): number | null {
   if (wheelDirection === 0) return -3;
   if (wheelDirection === 1) return 3;
   return null;
+}
+
+type PersonaSelectorTheme = { fg?: (token: string, text: string) => string; bold?: (text: string) => string };
+
+type LarvaPersonaSelectorOptions = {
+  personas: BridgeListItem[];
+  theme: PersonaSelectorTheme;
+  keybindings?: PiKeybindings;
+  tui?: PiTui;
+  done: (result: string | null) => void;
+};
+
+function selectorThemeFg(theme: PersonaSelectorTheme, token: string, text: string): string {
+  try {
+    return theme.fg?.(token, text) ?? text;
+  } catch {
+    return text;
+  }
+}
+
+function selectorThemeBold(theme: PersonaSelectorTheme, text: string): string {
+  try {
+    return theme.bold?.(text) ?? text;
+  } catch {
+    return text;
+  }
+}
+
+function selectorLine(value: string, width: number): string {
+  return truncateToWidth(value, Math.max(0, width), "");
+}
+
+function selectorDescription(persona: BridgeListItem): string | undefined {
+  return persona.description ?? persona.model;
+}
+
+function selectorItemDescription(persona: BridgeListItem): string | undefined {
+  const parts = [persona.model, persona.description].filter((part): part is string => typeof part === "string" && part.length > 0);
+  return parts.length > 0 ? parts.join(" | ") : undefined;
+}
+
+function selectorCapabilitiesSummary(capabilities: Record<string, CapabilityPosture> | undefined): string {
+  if (capabilities === undefined) return "not listed";
+  const entries = Object.entries(capabilities).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) return "none declared";
+  const active = entries.filter(([, posture]) => posture !== "none");
+  const summarySource = active.length > 0 ? active : entries;
+  const visible = summarySource.slice(0, 4).map(([family, posture]) => `${family}:${posture}`);
+  const remaining = summarySource.length - visible.length;
+  return remaining > 0 ? `${visible.join(", ")} +${remaining} more` : visible.join(", ");
+}
+
+export function rankPersonasForSelector(personas: BridgeListItem[], filter: string): BridgeListItem[] {
+  const query = filter.trim().toLocaleLowerCase();
+  if (query.length === 0) return personas.slice();
+  return personas
+    .map((persona, index) => {
+      const idLower = persona.id.toLocaleLowerCase();
+      const descriptionLower = (persona.description ?? "").toLocaleLowerCase();
+      const idMatch = idLower.includes(query);
+      const descriptionMatch = descriptionLower.includes(query);
+      const rank = idLower.startsWith(query) ? 0 : idMatch ? 1 : 2;
+      return { persona, index, idMatch, descriptionMatch, rank };
+    })
+    .filter((entry) => entry.idMatch || entry.descriptionMatch)
+    .sort((left, right) => left.rank - right.rank || left.index - right.index)
+    .map((entry) => entry.persona);
+}
+
+export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
+  private readonly personas: BridgeListItem[];
+  private readonly theme: PersonaSelectorTheme;
+  private readonly keybindings?: PiKeybindings;
+  private readonly tui?: PiTui;
+  private readonly done: (result: string | null) => void;
+  private readonly input = new TuiInput();
+  private filter = "";
+  private filteredPersonas: BridgeListItem[] = [];
+  private selectList: SelectList;
+  private selectedIndex = 0;
+  private _focused = true;
+
+  constructor(options: LarvaPersonaSelectorOptions) {
+    this.personas = options.personas;
+    this.theme = options.theme;
+    this.keybindings = options.keybindings;
+    this.tui = options.tui;
+    this.done = options.done;
+    this.input.focused = true;
+    this.selectList = this.createSelectList([]);
+    this.applyFilter("");
+  }
+
+  get focused(): boolean {
+    return this._focused;
+  }
+
+  set focused(value: boolean) {
+    this._focused = value;
+    this.input.focused = value;
+  }
+
+  private createSelectList(items: SelectItem[]): SelectList {
+    const selectList = new SelectList(items, Math.min(Math.max(items.length, 1), 8), {
+      selectedPrefix: (text) => selectorThemeFg(this.theme, "accent", text),
+      selectedText: (text) => selectorThemeFg(this.theme, "accent", text),
+      description: (text) => selectorThemeFg(this.theme, "muted", text),
+      scrollInfo: (text) => selectorThemeFg(this.theme, "dim", text),
+      noMatch: (text) => selectorThemeFg(this.theme, "warning", text.replace("commands", "personas")),
+    }, {
+      minPrimaryColumnWidth: 18,
+      maxPrimaryColumnWidth: 34,
+    });
+    selectList.onSelect = (item) => this.done(item.value);
+    selectList.onCancel = () => this.done(null);
+    selectList.onSelectionChange = (item) => this.syncSelectedItem(item.value);
+    return selectList;
+  }
+
+  private applyFilter(filter: string): void {
+    this.filter = filter;
+    this.filteredPersonas = rankPersonasForSelector(this.personas, filter);
+    this.selectedIndex = 0;
+    const items = this.filteredPersonas.map((persona) => ({
+      value: persona.id,
+      label: persona.id,
+      description: selectorItemDescription(persona),
+    }));
+    this.selectList = this.createSelectList(items);
+    this.selectList.setSelectedIndex(this.selectedIndex);
+  }
+
+  private syncSelectedItem(personaId: string): void {
+    const nextIndex = this.filteredPersonas.findIndex((persona) => persona.id === personaId);
+    this.selectedIndex = nextIndex >= 0 ? nextIndex : 0;
+  }
+
+  private selectedPersona(): BridgeListItem | null {
+    return this.filteredPersonas[this.selectedIndex] ?? null;
+  }
+
+  private moveSelection(delta: number): void {
+    if (this.filteredPersonas.length === 0) return;
+    const nextIndex = (this.selectedIndex + delta + this.filteredPersonas.length) % this.filteredPersonas.length;
+    this.selectedIndex = nextIndex;
+    this.selectList.setSelectedIndex(nextIndex);
+  }
+
+  private confirmSelection(): void {
+    const selected = this.selectList.getSelectedItem();
+    if (selected) this.done(selected.value);
+  }
+
+  private requestRender(): void {
+    this.tui?.requestRender?.();
+  }
+
+  private renderDetailRow(label: string, value: string, width: number): string[] {
+    const prefix = `${label}: `;
+    const safeValue = overlaySafeLine(value).trim() || "not listed";
+    const valueWidth = Math.max(1, width - visibleWidth(prefix));
+    const wrapped = wrapTextWithAnsi(safeValue, valueWidth);
+    const lines = wrapped.length > 0 ? wrapped : [safeValue];
+    return lines.map((line, index) => selectorLine(`${index === 0 ? prefix : " ".repeat(visibleWidth(prefix))}${line}`, width));
+  }
+
+  private renderDetail(width: number): string[] {
+    const persona = this.selectedPersona();
+    if (!persona) return [selectorLine(selectorThemeFg(this.theme, "warning", "No matching persona."), width)];
+    return [
+      ...this.renderDetailRow("ID", persona.id, width),
+      ...this.renderDetailRow("Model", persona.model ?? "not listed", width),
+      ...this.renderDetailRow("Description", selectorDescription(persona) ?? "not listed", width),
+      ...this.renderDetailRow("Capabilities", selectorCapabilitiesSummary(persona.capabilities), width),
+      ...this.renderDetailRow("Digest", persona.spec_digest ?? "not listed", width),
+    ];
+  }
+
+  render(width: number): string[] {
+    const renderWidth = Math.max(1, width);
+    const filterPrefix = "Filter: ";
+    const inputWidth = Math.max(1, renderWidth - visibleWidth(filterPrefix));
+    const inputLine = this.input.render(inputWidth)[0] ?? "";
+    const listLines = this.selectList.render(renderWidth).map((line) => selectorLine(line, renderWidth));
+    const lines = [
+      selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Select Larva persona")), renderWidth),
+      selectorLine(`${filterPrefix}${inputLine}`, renderWidth),
+      selectorLine(selectorThemeFg(this.theme, "dim", "Type to filter persona ids/descriptions."), renderWidth),
+      "",
+      ...listLines,
+      "",
+      selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Detail")), renderWidth),
+      ...this.renderDetail(renderWidth),
+      "",
+      selectorLine(selectorThemeFg(this.theme, "dim", "↑↓ navigate • enter confirm • esc cancel • mouse click unsupported"), renderWidth),
+    ];
+    return lines.map((line) => selectorLine(line, renderWidth));
+  }
+
+  invalidate(): void {
+    this.input.invalidate();
+    this.selectList.invalidate();
+  }
+
+  handleInput(data: string): void {
+    if (isSgrMouseEvent(data)) return; // Mouse click/press/release SGR events are intentionally unsupported no-ops.
+    if (matchesInputKey(this.keybindings, data, ["tui.select.cancel", "app.interrupt"], [Key.escape, Key.ctrl("c")], [], ["escape"])) {
+      this.done(null);
+      return;
+    }
+    if (matchesInputKey(this.keybindings, data, ["tui.select.confirm", "tui.input.submit"], [Key.enter], ["\r", "\n"], ["enter"])) {
+      this.confirmSelection();
+      return;
+    }
+    if (matchesInputKey(this.keybindings, data, ["tui.select.down", "tui.editor.cursorDown"], [Key.down], [], ["arrowdown", "down"])) {
+      this.moveSelection(1);
+      this.requestRender();
+      return;
+    }
+    if (matchesInputKey(this.keybindings, data, ["tui.select.up", "tui.editor.cursorUp"], [Key.up], [], ["arrowup", "up"])) {
+      this.moveSelection(-1);
+      this.requestRender();
+      return;
+    }
+    const before = this.input.getValue();
+    this.input.handleInput(data);
+    const after = this.input.getValue();
+    if (after !== before) {
+      this.applyFilter(after);
+      this.requestRender();
+    }
+  }
 }
 
 type BorderedScrollableTextOptions = {
@@ -1123,6 +1355,7 @@ function normalizeListItem(item: unknown): BridgeListItem | null {
     description: typeof item.description === "string" ? item.description : undefined,
     model: typeof item.model === "string" ? item.model : undefined,
     spec_digest: typeof item.spec_digest === "string" ? item.spec_digest : undefined,
+    capabilities: isCanonicalCapabilities(item.capabilities) ? item.capabilities : undefined,
   };
 }
 
@@ -1684,9 +1917,34 @@ function isLarvaError(value: unknown): value is LarvaError {
   return isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
 }
 
+type EnhancedPersonaSelectorResult = { handled: true; selected: string | null } | { handled: false };
+
+async function openEnhancedPersonaSelector(ctx: PiContext, personas: BridgeListItem[]): Promise<EnhancedPersonaSelectorResult> {
+  const custom = ctx.ui?.custom;
+  if (typeof custom !== "function") return { handled: false };
+  try {
+    const selected = await custom((tui, theme, keybindings, done) => new LarvaPersonaSelector({
+      personas,
+      theme,
+      keybindings,
+      tui,
+      done: (result) => done(result),
+    }), {
+      overlay: true,
+      overlayOptions: { width: "90%", maxHeight: "80%", anchor: "center", margin: 1 },
+      onHandle: (handle: PiOverlayHandle) => handle.focus?.(),
+    });
+    return { handled: true, selected: typeof selected === "string" && selected.length > 0 ? selected : null };
+  } catch {
+    return { handled: false };
+  }
+}
+
 export async function openPersonaSelector(ctx: PiContext): Promise<string | null> {
   const personas = await listPersonas(ctx);
   if (personas.length === 0) throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
+  const enhanced = await openEnhancedPersonaSelector(ctx, personas);
+  if (enhanced.handled) return enhanced.selected;
   const options = personas.map((persona) => ({ id: persona.id, label: persona.id, description: persona.description ?? persona.model }));
   if (ctx.ui?.select) {
     const selected = await ctx.ui.select("Select Larva persona", options.map((option) => option.id));
