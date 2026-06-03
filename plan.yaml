@@ -101507,6 +101507,124 @@ phases:
     depends_on:
     - pi_tui_subagent_markdown_overlay_20260603.markdown-tabs-implementation
     agent: client-runtime-verifier
+  - id: pi_tui_subagent_markdown_overlay_20260603.gate
+    name: Gate P2 subagent Markdown overlay
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      DECISION ARTIFACT:
+
+      Independent gate for the subagent Markdown final view and tabbed log overlay.
+      Gate must consume the requirement-to-checklist matrix and client-runtime proof,
+      not just test pass summaries.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - render(width) visible width <= width across all panes and borders
+
+      - Markdown output proof distinct from plain text fallback
+
+      - view-only/no-authority mutation proof
+
+      - mouse wheel cleanup and no mouse click support
+
+
+      <side_effect_budget>
+
+      Allowed: inspect evidence/source, reject weak evidence, and list blockers. Forbidden:
+      modifying code or accepting runtime-liveness gaps as OPEN without non-intersection
+      proof.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Check that Output tab uses Markdown rendering and not plain escaped Markdown
+      only.
+
+      - Check that missing observed entries and UI-unavailable errors preserve stable
+      codes.
+
+      - Check that collapsed final view stayed compact and no widget dashboard was
+      added.
+
+      </risk_probes>'
+    verification: '- [ ] Implementation evidence and client-runtime proof both include
+      refs-read confirmation.
+
+      - [ ] Every P2-SUB requirement row has PROVEN status or an explicit BLOCKED
+      closure path.
+
+      - [ ] Runtime evidence proves tabs, Markdown output, width safety, controls,
+      wheel cleanup, and no-click non-goal.
+
+      - [ ] Gate rejects source-only, mock-only, or sampled evidence for launched/user-visible
+      obligations unless classified with a blocker/non-intersection rationale.
+
+      - [ ] Gate decision is OPEN or BLOCKED with explicit unresolved statuses and
+      closure paths.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — <key passage>
+
+
+      ## Gate Decision Basis
+
+      | requirement_ref | evidence_ref | proof_status | unresolved_blocks_downstream?
+      | closure_path |
+
+      | --- | --- | --- | --- | --- |
+
+      | P2-SUB-001 | <expanded final view evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+      | P2-SUB-002 | <tab evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no | <path> |
+
+      | P2-SUB-003 | <Markdown Output evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+      | P2-SUB-004 | <view-only safety evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+      | P2-SUB-005 | <controls/mouse evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: Persona selector phase may proceed.
+
+      - [ ] BLOCKED: list blockers and required follow-up.
+
+
+      ## Checklist Receipt
+
+      - p2_matrix_complete: satisfied|failed|blocked
+
+      - client_runtime_evidence_reviewed: satisfied|failed|blocked
+
+      - no_authority_mutation: satisfied|failed|blocked
+
+      - no_click_non_goal_preserved: satisfied|failed|blocked
+
+      - decision_recorded: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_subagent_markdown_overlay_20260603.markdown-tabs-implementation
+    - pi_tui_subagent_markdown_overlay_20260603.client-runtime-proof
+    agent: gate-reviewer
 - id: pi_tui_persona_selector_20260603
   name: P2 Persona Selector Enhancement 2026-06-03
   status: locked
