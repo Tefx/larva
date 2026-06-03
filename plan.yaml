@@ -101855,6 +101855,118 @@ phases:
     depends_on:
     - pi_tui_persona_selector_20260603.input-selectlist-detail-implementation
     agent: client-runtime-verifier
+  - id: pi_tui_persona_selector_20260603.gate
+    name: Gate P2 persona selector enhancement
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      DECISION ARTIFACT:
+
+      Independent gate for enhanced `/larva-persona` selector. Gate must reject implementation
+      that improves the happy-path selector while regressing fallback/atomic persona
+      switching behavior.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - selector UI liveness and detail panel completeness
+
+      - atomic persona/model/tool policy commit preservation
+
+      - non-interactive/missing-UI fallback behavior
+
+      - no mouse click support
+
+
+      <side_effect_budget>
+
+      Allowed: inspect evidence/source and block. Forbidden: modifying code or accepting
+      UI screenshots without state/fallback proof.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm filter/highlight does not commit persona before Enter.
+
+      - Confirm Esc and non-interactive errors preserve previous state.
+
+      - Confirm no prompt catalogue injection or cache-file writes were introduced.
+
+      </risk_probes>'
+    verification: '- [ ] Implementation and client-runtime proof both include refs-read
+      confirmation.
+
+      - [ ] Enhanced selector uses Input + SelectList + detail panel in interactive
+      TUI mode.
+
+      - [ ] Runtime evidence proves filter/detail, Enter confirm, Esc cancel, width
+      safety, and no-click non-goal.
+
+      - [ ] Fallback/non-interactive behavior and atomic commit semantics are explicitly
+      proven.
+
+      - [ ] Gate decision is OPEN or BLOCKED with explicit unresolved statuses and
+      closure paths.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — <key passage>
+
+
+      ## Gate Decision Basis
+
+      | requirement_ref | evidence_ref | proof_status | unresolved_blocks_downstream?
+      | closure_path |
+
+      | --- | --- | --- | --- | --- |
+
+      | P2-SEL-001 | <selector liveness evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+      | P2-SEL-002 | <fallback evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no | <path>
+      |
+
+      | P2-SEL-003 | <detail panel evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no |
+      <path> |
+
+      | P2-SEL-004 | <interaction/no-click evidence> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: final verification/docs phase may proceed.
+
+      - [ ] BLOCKED: list blockers and required follow-up.
+
+
+      ## Checklist Receipt
+
+      - selector_liveness_reviewed: satisfied|failed|blocked
+
+      - fallback_reviewed: satisfied|failed|blocked
+
+      - atomic_commit_reviewed: satisfied|failed|blocked
+
+      - no_click_non_goal_preserved: satisfied|failed|blocked
+
+      - decision_recorded: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_persona_selector_20260603.input-selectlist-detail-implementation
+    - pi_tui_persona_selector_20260603.client-runtime-proof
+    agent: gate-reviewer
 - id: pi_tui_verification_docs_20260603
   name: P3 Pi TUI Verification, CI, and Docs Closure 2026-06-03
   status: locked
