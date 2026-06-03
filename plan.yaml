@@ -99915,7 +99915,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_impl_finalization_20260603.plan-readiness-review
     name: Fresh plan readiness/spec conformance review
-    status: claimed
+    status: done
     description: 'DECISION ARTIFACT: Read-only fresh review of the executed plan shape
       and evidence readiness for the Pi integration target. This is the in-plan counterpart
       to external review/fix loop: audit step specificity, evidence completeness,
@@ -99947,6 +99947,86 @@ phases:
     agent: plan-readiness-auditor
     claimed_by: plan-readiness-auditor
     claimed_at: '2026-06-03T04:14:13.284145+00:00'
+    done_at: '2026-06-03T04:18:43.223781+00:00'
+    evidence: 'SUCCESS/PASS: final Pi plan readiness/spec conformance review passed;
+      plan_ready_for_final_gate; gate_open_allowed=true; blockers=[].
+
+
+      Worker evidence commit: 47ba874dd5347aa63c1d3a15cfb530476660a5d8.
+
+      Mainline squash commit: a7ecf4f [vectl] step-pi_impl_finalization_20260603.plan-readiness-review
+      completed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read for whole Pi target readiness/spec
+      conformance.
+
+      - plan/repo artifacts inspected read-only; no vectl mutation by worker.
+
+
+      Readiness matrix:
+
+      - prior_phase_blockers: PASS.
+
+      - remediation_retests: PASS.
+
+      - docs_spec_alignment: PASS.
+
+      - runtime_conformance: PASS.
+
+      - final_gate_inputs: PASS.
+
+      - worktree_clean: PASS.
+
+      - note: final-gate deps omit wiring-blocker-retest, but retest is done and blocker-free.
+
+
+      Worker verification:
+
+      - invar guard full_scan -> ok, errors=0, warnings=5.
+
+      - plan YAML static dependency/status audit -> PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      PASS.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> PASS.
+
+      - `git diff --check` -> PASS.
+
+      - `git status --short` -> clean.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
+      --live-timeout-ms 90000` -> exit 0.
+
+
+      Checklist receipt:
+
+      - Plan/evidence readiness verdict PASS with no blockers: true.
+
+      - Review covers whole Pi target: true.
+
+      - Changes requested N/A; no blockers: true.
+
+      - PASS contains no conditional fixes or unresolved blocker-class gaps: true.
+
+
+      Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.final-gate
     name: Final Pi integration deep review gate
     status: pending
