@@ -101167,6 +101167,106 @@ phases:
     depends_on:
     - pi_tui_rendering_foundation_20260603.direct-imports-scrollable-text
     agent: integration-verifier
+  - id: pi_tui_rendering_foundation_20260603.gate
+    name: Gate P1 rendering foundation
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      DECISION ARTIFACT:
+
+      Independent gate for P1. Gate must decide whether downstream overlay/selector
+      work can depend on the direct-import Pi TUI rendering foundation.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: user-visible terminal UI width/key/mouse behavior is
+      historically rework-prone and cross-cuts multiple later surfaces.
+
+
+      <side_effect_budget>
+
+      Allowed: inspect evidence/source and block with findings. Forbidden: modifying
+      code or accepting source-only proof for rendered width behavior.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Look for any remaining primary optional-loader fallback path for Pi TUI-owned
+      helpers.
+
+      - Check all rendered lines, including borders and help text, for visible width
+      overflow.
+
+      - Check no mouse click support slipped in while preserving wheel cleanup.
+
+      </risk_probes>'
+    verification: '- [ ] P1 implementation and independent proof evidence both include
+      refs-read confirmation.
+
+      - [ ] Direct Pi TUI imports and removed/narrowed fallback behavior are proven.
+
+      - [ ] Render-width proof covers CJK, emoji, ANSI-stripped input, Markdown syntax,
+      and long paths.
+
+      - [ ] Keyboard controls and mouse wheel work; mouse click remains an explicit
+      non-goal/no-op.
+
+      - [ ] Gate decision basis is OPEN or BLOCKED with unresolved statuses and closure
+      paths.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — <key passage>
+
+
+      ## Gate Decision Basis
+
+      | requirement_ref | evidence_ref | proof_status | unresolved_blocks_downstream?
+      | closure_path |
+
+      | --- | --- | --- | --- | --- |
+
+      | P1-TUI-001 | <import proof> | PROVEN/UNPROVEN/BLOCKED | yes/no | <path> |
+
+      | P1-TUI-002 | <key proof> | PROVEN/UNPROVEN/BLOCKED | yes/no | <path> |
+
+      | P1-TUI-003 | <width proof> | PROVEN/UNPROVEN/BLOCKED | yes/no | <path> |
+
+      | NG-MOUSE-CLICK | <mouse proof> | PROVEN/UNPROVEN/BLOCKED | yes/no | <path>
+      |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: downstream overlay/selector work may depend on P1 foundation.
+
+      - [ ] BLOCKED: list blockers and required follow-up.
+
+
+      ## Checklist Receipt
+
+      - direct_imports_reviewed: satisfied|failed|blocked
+
+      - width_runtime_evidence_reviewed: satisfied|failed|blocked
+
+      - keyboard_mouse_reviewed: satisfied|failed|blocked
+
+      - decision_recorded: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_rendering_foundation_20260603.direct-imports-scrollable-text
+    - pi_tui_rendering_foundation_20260603.render-foundation-proof
+    agent: gate-reviewer
 - id: pi_tui_subagent_markdown_overlay_20260603
   name: P2 Subagent Markdown Views and Tabbed Overlay 2026-06-03
   status: locked
