@@ -100550,7 +100550,7 @@ phases:
   steps:
   - id: pi_tui_dependency_packaging_20260603.manifest-lock
     name: Declare pinned Pi TUI dependency manifest and lock
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -100659,6 +100659,126 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-03T08:09:07.305807+00:00'
+    done_at: '2026-06-03T08:16:24.951440+00:00'
+    evidence: '## refs Read Confirmation
+
+      - contrib/pi-extension/README.md — Pi extension formally depends on `@earendil-works/pi-tui`,
+      install with `npm --prefix contrib/pi-extension ci`, pin exact 0.78.0, and mouse
+      click remains unsupported.
+
+      - design/pi-coding-agent-integration.md — Pi TUI is adapter-local under `contrib/pi-extension`,
+      installed with `npm --prefix contrib/pi-extension ci`, and click handling is
+      out of scope.
+
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md
+      — render lines must respect width; use `visibleWidth`, `truncateToWidth`, `wrapTextWithAnsi`,
+      `matchesKey`/`Key`, and built-ins from `@earendil-works/pi-tui`.
+
+
+      ## Package Manifest Evidence
+
+      - package_manifest_snippet: `dependencies: { "@earendil-works/pi-tui": "0.78.0"
+      }` in `contrib/pi-extension/package.json`.
+
+      - package_lock_snippet: package-lock root dependency and `node_modules/@earendil-works/pi-tui`
+      package entry both record `0.78.0`.
+
+      - dependency_scope_scan: changed files are only `contrib/pi-extension/package.json`
+      and `contrib/pi-extension/package-lock.json`; root npm files absent; `pyproject.toml`/`uv.lock`
+      do not contain Pi TUI.
+
+      - non_goal_scan: no mouse/click/sgr metadata or scripts introduced in package
+      files.
+
+
+      ## Requirement / Checklist Proof Matrix
+
+      | obligation | status | concrete proof |
+
+      | exact dependency pinned | PROVEN | worker and mainline node probe printed
+      `dep: 0.78.0`. |
+
+      | lockfile exact | PROVEN | worker and mainline node probe printed `lockRoot:
+      0.78.0`, `lockPkg: 0.78.0`. |
+
+      | root/shared dep unchanged | PROVEN | merge changed only contrib/pi-extension
+      package manifest and lockfile; no Python/root dependency drift. |
+
+      | no mouse click scope | PROVEN | package has no scripts and no mouse/click
+      metadata/config introduced. |
+
+      | P0-DEP-001 | PROVEN | manifest and lockfile created; `npm --prefix contrib/pi-extension
+      ci` succeeded in worker and mainline. |
+
+      | P0-DEP-002 | PROVEN | dependency declared only under `contrib/pi-extension`.
+      |
+
+      | NG-MOUSE-001 | PROVEN | no click-support metadata or scripts introduced. |
+
+
+      ## Commands
+
+      - worker: `npm --prefix contrib/pi-extension install --package-lock-only --ignore-scripts`
+      exit 0: `up to date, audited 4 packages`; `found 0 vulnerabilities`.
+
+      - worker: `npm --prefix contrib/pi-extension ci` from no node_modules exit 0:
+      `added 3 packages, and audited 4 packages`; `found 0 vulnerabilities`.
+
+      - worker: `npm ls @earendil-works/pi-tui` / node version probe exit 0: `@earendil-works/pi-tui@0.78.0`;
+      `0.78.0`.
+
+      - worker: `invar_invar_guard(path=<worktree>, changed=true)` passed: `files_checked=0,
+      errors=0, warnings=0`.
+
+      - mainline after squash merge: `rm -rf contrib/pi-extension/node_modules &&
+      npm --prefix contrib/pi-extension ci` exit 0: `added 3 packages, and audited
+      4 packages`; `found 0 vulnerabilities`.
+
+      - mainline node probe exit 0: `{ "dep": "0.78.0", "lockRoot": "0.78.0", "lockPkg":
+      "0.78.0", "scripts": null }`.
+
+      - mainline `invar_invar_guard(path=".", changed=true, strict=false)` passed:
+      `files_checked=0, errors=0, warnings=0`.
+
+      - cleanup: removed `contrib/pi-extension/node_modules`; `git status --porcelain`
+      clean before checklist/complete plan mutation.
+
+
+      ## Files changed
+
+      - contrib/pi-extension/package.json
+
+      - contrib/pi-extension/package-lock.json
+
+
+      ## Commits
+
+      - worker commit: 39ae6fdf1114cb74539a31fafe84c737b7cb4f7e
+
+      - main squash commit: a3aba7a `[vectl] step-pi_tui_dependency_packaging_20260603.manifest-lock
+      completed`
+
+
+      ## checklist_receipt
+
+      - `contrib/pi-extension/package.json` declares `@earendil-works/pi-tui` exactly
+      as `0.78.0`: done
+
+      - `contrib/pi-extension/package-lock.json` exists and records the same exact
+      version: done
+
+      - No root-level npm manifest or Python dependency entry is introduced for Pi
+      TUI: done
+
+      - Mouse click support is not introduced by dependency metadata or scripts: done
+
+
+      ## Gaps / Notes
+
+      - CONSTITUTION.md was not present in the isolated worktree.
+
+      - No UI behavior was changed; rendered-output/client-runtime verification is
+      not applicable to this packaging-only step.'
   - id: pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
     name: Wire local and CI npm ci expectation for Pi extension
     status: pending
