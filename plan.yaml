@@ -101090,6 +101090,83 @@ phases:
       \ satisfied|failed|blocked\n- keyboard_controls_preserved: satisfied|failed|blocked\n\
       - mouse_wheel_only: satisfied|failed|blocked"
     agent: frontend-engineer
+  - id: pi_tui_rendering_foundation_20260603.render-foundation-proof
+    name: Verify rendering foundation width, keyboard, and mouse-wheel behavior
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      PROOF ARTIFACT:
+
+      Independently verify P1 rendering foundation from a fresh perspective. Finding
+      a width/key/mouse issue is a successful verification finding; do not patch in
+      this step.
+
+
+      This check protects downstream overlay and selector gates plus final runtime
+      smoke.
+
+
+      Behavioral proof register required for width, keyboard, mouse wheel, and no-click
+      non-goal.
+
+
+      <side_effect_budget>
+
+      Allowed: run focused tests/probes and inspect rendered component output. Forbidden:
+      editing implementation or using source-only claims as runtime proof.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Try narrow widths near border minimum and wide Unicode strings.
+
+      - Send Tab/arrow/page/home/end/escape/q-like key data through component input.
+
+      - Send SGR wheel and click-shaped mouse inputs and verify only wheel scrolls.
+
+      </risk_probes>'
+    verification: '- [ ] Focused tests/probes show every rendered line visible width
+      `<= width` for representative CJK, emoji, ANSI-stripped, Markdown, and long
+      path content.
+
+      - [ ] Keyboard controls use the documented keys and do not regress close/scroll/page/home/end
+      behavior.
+
+      - [ ] Mouse wheel scrolls the active scroll area; mouse click input is ignored
+      or no-op with no selection/activation behavior.
+
+      - [ ] Direct Pi TUI import proof remains valid after P1 implementation.
+
+      - [ ] Verification report includes a behavioral proof register with PROVEN/UNPROVEN/BLOCKED
+      statuses and closure paths.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - contrib/pi-extension/larva.ts — <implemented helper/component passage>\n-\
+      \ tests/shell/test_pi_extension_subagent_ux.py — <test/probe passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <key passage>\n\n## Verification Commands\n```bash\n<focused width/key/mouse\
+      \ test command>\n<direct import probe command if separate>\n```\n\n## Raw Output\n\
+      - command_stdout: |\n    <paste raw stdout>\n- command_stderr: |\n    <paste\
+      \ raw stderr>\n- exit_code: <code>\n\n## Behavioral Proof Register\n| requirement_ref\
+      \ | behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path\
+      \ | gate_decision_basis |\n| --- | --- | --- | --- | --- | --- | --- |\n| P1-TUI-001\
+      \ | direct imports resolve locally | import probe/test | <log> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n| P1-TUI-002 | key controls work | input simulation\
+      \ output | <log> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n| P1-TUI-003\
+      \ | width-safe bordered scrolling | rendered line width table | <log> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n| NG-MOUSE-CLICK | click unsupported/no-op | click-shaped\
+      \ input probe | <log> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n\n\
+      ## Checklist Receipt\n- width_cases_proven: satisfied|failed|blocked\n- keyboard_proven:\
+      \ satisfied|failed|blocked\n- mouse_wheel_proven: satisfied|failed|blocked\n\
+      - click_non_goal_proven: satisfied|failed|blocked"
+    depends_on:
+    - pi_tui_rendering_foundation_20260603.direct-imports-scrollable-text
+    agent: integration-verifier
 - id: pi_tui_subagent_markdown_overlay_20260603
   name: P2 Subagent Markdown Views and Tabbed Overlay 2026-06-03
   status: locked
