@@ -361,8 +361,17 @@ def test_real_pi_failure_path_uses_slash_command_topology() -> None:
 
 def test_runtime_capability_gate_rejects_mock_only_autocomplete_support() -> None:
     payload = _run_runtime_scenario("capability-gates")
+    pi_tui_gate = payload["runtime"]["hardGates"]["piTuiDependency"]
+    pi_tui_dependency = payload["package"]["piTuiDependency"]
     gate = payload["runtime"]["hardGates"]["uiAutocompleteProvider"]
 
+    assert pi_tui_gate["supported"] is True
+    assert pi_tui_dependency["packageJsonVersion"] == "0.78.0"
+    assert pi_tui_dependency["lockfileRootDependency"] == "0.78.0"
+    assert pi_tui_dependency["lockfileVersion"] == "0.78.0"
+    assert pi_tui_dependency["installedVersion"] == "0.78.0"
+    assert pi_tui_dependency["noHostGlobalFallback"] is True
+    assert pi_tui_dependency["importOk"] is True
     assert gate["supported"] is False
     assert gate["status"] in {"unsupported", "unknown"}
     assert gate["provenance"] == "runtimeHarness.mock"

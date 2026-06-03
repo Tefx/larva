@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { access, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
 
@@ -39,6 +40,11 @@ function parseArgs(argv) {
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const extensionPath = join(root, "contrib", "pi-extension", "larva.ts");
 const fakeCli = join(root, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
+const piExtensionRoot = join(root, "contrib", "pi-extension");
+const piExtensionPackageJson = join(piExtensionRoot, "package.json");
+const piExtensionLockfile = join(piExtensionRoot, "package-lock.json");
+const piExtensionNodeModules = join(piExtensionRoot, "node_modules");
+const pinnedPiTuiVersion = "0.78.0";
 
 function baseEvidence(scenario) {
   return {
@@ -49,6 +55,81 @@ function baseEvidence(scenario) {
     runtime: {},
     package: { versionCommand: null, versionExitCode: null, packageRoot: null, commit: null, commitExitCode: null },
   };
+}
+
+async function readJsonFile(path) {
+  return JSON.parse(await readFile(path, "utf8"));
+}
+
+async function collectPiTuiDependencyEvidence(evidence) {
+  const dependency = {
+    expectedVersion: pinnedPiTuiVersion,
+    packageJsonPath: piExtensionPackageJson,
+    lockfilePath: piExtensionLockfile,
+    packageJsonExists: false,
+    lockfileExists: false,
+    packageJsonVersion: null,
+    lockfileRootDependency: null,
+    lockfileVersion: null,
+    installedVersion: null,
+    resolvedPath: null,
+    resolvedFromExtensionNodeModules: false,
+    noHostGlobalFallback: false,
+    importOk: false,
+    exactPinned: false,
+    requiredPrimitives: {},
+    errors: [],
+  };
+
+  try {
+    const packageJson = await readJsonFile(piExtensionPackageJson);
+    dependency.packageJsonExists = true;
+    dependency.packageJsonVersion = packageJson.dependencies?.["@earendil-works/pi-tui"] ?? null;
+  } catch (error) {
+    dependency.errors.push(`package.json: ${error?.message ?? String(error)}`);
+  }
+
+  try {
+    const lockfile = await readJsonFile(piExtensionLockfile);
+    dependency.lockfileExists = true;
+    dependency.lockfileVersion = lockfile.packages?.["node_modules/@earendil-works/pi-tui"]?.version ?? null;
+    dependency.lockfileRootDependency = lockfile.packages?.[""]?.dependencies?.["@earendil-works/pi-tui"] ?? null;
+  } catch (error) {
+    dependency.errors.push(`package-lock.json: ${error?.message ?? String(error)}`);
+  }
+
+  try {
+    const installedPackage = await readJsonFile(join(piExtensionNodeModules, "@earendil-works", "pi-tui", "package.json"));
+    dependency.installedVersion = installedPackage.version ?? null;
+  } catch (error) {
+    dependency.errors.push(`node_modules package: ${error?.message ?? String(error)}`);
+  }
+
+  try {
+    const extensionRequire = createRequire(pathToFileURL(extensionPath).href);
+    const resolvedPath = extensionRequire.resolve("@earendil-works/pi-tui");
+    dependency.resolvedPath = resolvedPath;
+    dependency.resolvedFromExtensionNodeModules = resolvedPath === piExtensionNodeModules
+      || resolvedPath.startsWith(`${piExtensionNodeModules}${sep}`);
+    dependency.noHostGlobalFallback = dependency.resolvedFromExtensionNodeModules;
+    const piTui = await import(pathToFileURL(resolvedPath).href);
+    for (const primitive of ["visibleWidth", "truncateToWidth", "wrapTextWithAnsi", "matchesKey", "Markdown"]) {
+      dependency.requiredPrimitives[primitive] = typeof piTui[primitive];
+    }
+    dependency.importOk = Object.values(dependency.requiredPrimitives).every((kind) => kind === "function");
+  } catch (error) {
+    dependency.errors.push(`direct import: ${error?.message ?? String(error)}`);
+  }
+
+  dependency.exactPinned = dependency.packageJsonVersion === pinnedPiTuiVersion
+    && dependency.lockfileRootDependency === pinnedPiTuiVersion
+    && dependency.lockfileVersion === pinnedPiTuiVersion
+    && dependency.installedVersion === pinnedPiTuiVersion;
+  dependency.hardGateStatus = dependency.exactPinned && dependency.lockfileExists && dependency.importOk && dependency.noHostGlobalFallback
+    ? "PASS"
+    : "FAIL";
+  evidence.package.piTuiDependency = dependency;
+  return dependency;
 }
 
 function runProcess(command, args, options = {}) {
@@ -631,6 +712,7 @@ async function main() {
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
+  await collectPiTuiDependencyEvidence(evidence);
   if (scenario === "availability") {
     await piAvailability(evidence);
   } else if (scenario === "get-commands") {
@@ -846,6 +928,10 @@ async function main() {
         evidence: { mode: "rpc", commands: ["get_state", "prompt", "switch_session", "get_last_assistant_text", "abort"] },
       },
       uiAutocompleteProvider: classifyUiAutocompleteProviderGate(evidence),
+      piTuiDependency: {
+        supported: evidence.package.piTuiDependency?.hardGateStatus === "PASS",
+        evidence: evidence.package.piTuiDependency,
+      },
       subagentToolRowProgress: {
         supported: typeof tool?.renderCall === "function" && typeof tool?.renderResult === "function" && typeof tool?.execute === "function",
         evidence: { hasRenderCall: typeof tool?.renderCall, hasRenderResult: typeof tool?.renderResult, hasExecute: typeof tool?.execute },
@@ -860,6 +946,9 @@ async function main() {
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
+  if (scenario === "capability-gates" && evidence.package.piTuiDependency?.hardGateStatus !== "PASS") {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {

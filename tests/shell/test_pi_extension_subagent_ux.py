@@ -46,6 +46,7 @@ def _node_prelude(tmp_path: Path) -> str:
         import {{ createRequire }} from "node:module";
         const piTuiRequire = createRequire({json.dumps(EXTENSION.as_uri())});
         const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const repoRoot = {json.dumps(str(ROOT))};
         const fakeCli = {json.dumps(str(FAKE_CLI))};
         const tmpRoot = {json.dumps(str(tmp_path))};
         const childRoot = join(tmpRoot, "child-sessions");
@@ -640,7 +641,11 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
         tmp_path,
         _node_prelude(tmp_path)
         + """
-        const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
+        const { readFile: readPackageJson } = await import("node:fs/promises");
+        const resolvedPiTuiPath = piTuiRequire.resolve("@earendil-works/pi-tui");
+        const piTui = await import(resolvedPiTuiPath);
+        const expectedPiTuiRoot = join(repoRoot, "contrib", "pi-extension", "node_modules", "@earendil-works", "pi-tui");
+        const installedPiTuiPackage = JSON.parse(await readPackageJson(join(expectedPiTuiRoot, "package.json"), "utf8"));
         const mixedLines = [
           "CJK: 这是一个宽字符测试".repeat(3),
           "Emoji: 🧪🚀✨ with skin-tone-ish output".repeat(2),
@@ -675,6 +680,9 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
         component.dispose();
         console.log(JSON.stringify({
           directImportProbe: {
+            resolvedPath: resolvedPiTuiPath,
+            packageVersion: installedPiTuiPackage.version,
+            resolvedFromExtensionNodeModules: resolvedPiTuiPath.startsWith(expectedPiTuiRoot),
             visibleWidth: typeof piTui.visibleWidth,
             truncateToWidth: typeof piTui.truncateToWidth,
             wrapTextWithAnsi: typeof piTui.wrapTextWithAnsi,
@@ -696,6 +704,18 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
     )
 
     assert payload["directImportProbe"] == {
+        "resolvedPath": str(
+            ROOT
+            / "contrib"
+            / "pi-extension"
+            / "node_modules"
+            / "@earendil-works"
+            / "pi-tui"
+            / "dist"
+            / "index.js"
+        ),
+        "packageVersion": "0.78.0",
+        "resolvedFromExtensionNodeModules": True,
         "visibleWidth": "function",
         "truncateToWidth": "function",
         "wrapTextWithAnsi": "function",
@@ -822,6 +842,13 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
           collapsedText,
           expandedText,
           statuses,
+          markdownPlainTextModes: {
+            collapsedFormat: collapsed?.format,
+            collapsedHasMarkdownSource: typeof collapsed?.markdown === "string",
+            expandedFormat: expanded?.format,
+            expandedMarkdownHasOutputHeading: expanded?.markdown?.includes("## Output") === true,
+            expandedPlainTextFallbackStillAvailable: expandedText.includes("output: final output body"),
+          },
           collapsedHasPersonaAndTerminalState: collapsedText.includes("turing") && collapsedText.includes("failed"),
           expandedHasIndependentFields: [
             "Summary",
@@ -847,6 +874,13 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
     )
 
     assert payload["componentShapes"] == {"collapsedRenderable": True, "expandedRenderable": True, "expandedMarkdownCapable": True}
+    assert payload["markdownPlainTextModes"] == {
+        "collapsedFormat": "plain_text",
+        "collapsedHasMarkdownSource": False,
+        "expandedFormat": "markdown",
+        "expandedMarkdownHasOutputHeading": True,
+        "expandedPlainTextFallbackStillAvailable": True,
+    }
     assert payload["collapsedHasPersonaAndTerminalState"] is True
     assert payload["expandedHasIndependentFields"] is True
     assert payload["parentFooterPreserved"] is True
@@ -874,6 +908,15 @@ def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
     assert payload["package"]["packageRoot"]
     assert "versionExitCode" in payload["package"]
     assert "commitExitCode" in payload["package"]
+    pi_tui_dependency = payload["package"]["piTuiDependency"]
+    assert pi_tui_dependency["hardGateStatus"] == "PASS"
+    assert pi_tui_dependency["packageJsonVersion"] == "0.78.0"
+    assert pi_tui_dependency["lockfileVersion"] == "0.78.0"
+    assert pi_tui_dependency["installedVersion"] == "0.78.0"
+    assert pi_tui_dependency["lockfileExists"] is True
+    assert pi_tui_dependency["noHostGlobalFallback"] is True
+    assert pi_tui_dependency["importOk"] is True
+    assert payload["runtime"]["hardGates"]["piTuiDependency"]["supported"] is True
     assert payload["runtime"]["hardGates"]["extensionLoading"]["evidence"]["helpExitCode"] is not None
     assert payload["runtime"]["hardGates"]["rpcJsonl"]["evidence"]["commands"] == [
         "get_state",

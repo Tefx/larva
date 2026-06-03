@@ -95,8 +95,11 @@ jobs:
       - name: Verify repo-local gate script tests
         run: uv run pytest -q tests/shell/test_repo_local_ci_gate.py
 
-      - name: Verify Pi extension supplemental runtime gate
-        run: uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py -v
+      - name: Verify Pi extension supplemental runtime and UI gates
+        run: uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py -v
+
+      - name: Verify Pi extension runtime smoke gates
+        run: node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
 
       - name: Verify shared-surface repo-local gate
         run: uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root opifex

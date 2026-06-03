@@ -23,11 +23,18 @@ CI_WORKFLOW: Final = ROOT / ".github" / "workflows" / "ci.yml"
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 PI_EXTENSION_README: Final = ROOT / "contrib" / "pi-extension" / "README.md"
 PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-persona-selector-ui.mjs"
+PI_EXTENSION_PACKAGE_JSON: Final = ROOT / "contrib" / "pi-extension" / "package.json"
+PI_EXTENSION_PACKAGE_LOCK: Final = ROOT / "contrib" / "pi-extension" / "package-lock.json"
 PYPROJECT: Final = ROOT / "pyproject.toml"
+PI_TUI_PINNED_VERSION: Final = "0.78.0"
 PI_EXTENSION_NPM_CI_COMMAND: Final = "npm --prefix contrib/pi-extension ci"
 PI_EXTENSION_RUNTIME_GATE_COMMAND: Final = (
     "uv run pytest tests/shell/test_pi_extension_contract.py "
+    "tests/shell/test_pi_extension_subagent_ux.py "
     "tests/shell/test_pi_extension_real_runtime.py -v"
+)
+PI_EXTENSION_RUNTIME_SMOKE_COMMAND: Final = (
+    "node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates"
 )
 REPO_LOCAL_GATE_TEST_COMMAND: Final = "uv run pytest -q tests/shell/test_repo_local_ci_gate.py"
 SHARED_SURFACE_GATE_COMMAND: Final = (
@@ -187,18 +194,39 @@ def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
 
     assert PI_EXTENSION_NPM_CI_COMMAND in workflow
     assert PI_EXTENSION_RUNTIME_GATE_COMMAND in workflow
+    assert PI_EXTENSION_RUNTIME_SMOKE_COMMAND in workflow
     assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(
         PI_EXTENSION_RUNTIME_GATE_COMMAND
+    )
+    assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(
+        PI_EXTENSION_RUNTIME_SMOKE_COMMAND
+    )
+    assert workflow.index(PI_EXTENSION_RUNTIME_GATE_COMMAND) < workflow.index(
+        PI_EXTENSION_RUNTIME_SMOKE_COMMAND
     )
 
     _assert_required_workflow_step(workflow, PI_EXTENSION_NPM_CI_COMMAND)
     for retained_gate in (
         REPO_LOCAL_GATE_TEST_COMMAND,
         PI_EXTENSION_RUNTIME_GATE_COMMAND,
+        PI_EXTENSION_RUNTIME_SMOKE_COMMAND,
         SHARED_SURFACE_GATE_COMMAND,
     ):
         assert retained_gate in workflow
         _assert_required_workflow_step(workflow, retained_gate)
+
+
+def test_pi_tui_dependency_is_exact_lockfile_backed_and_ci_installable() -> None:
+    """The formal Pi TUI dependency must be exact and lockfile-backed for npm ci."""
+    package_json = json.loads(PI_EXTENSION_PACKAGE_JSON.read_text(encoding="utf-8"))
+    package_lock = json.loads(PI_EXTENSION_PACKAGE_LOCK.read_text(encoding="utf-8"))
+
+    assert package_json["dependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
+    assert package_lock["packages"][""]["dependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
+    locked_pi_tui = package_lock["packages"]["node_modules/@earendil-works/pi-tui"]
+    assert locked_pi_tui["version"] == PI_TUI_PINNED_VERSION
+    assert f"pi-tui-{PI_TUI_PINNED_VERSION}.tgz" in locked_pi_tui["resolved"]
+    assert "integrity" in locked_pi_tui
 
 
 def test_initial_persona_commit_is_before_user_visible_none_state() -> None:
