@@ -117,6 +117,7 @@ type SubagentPresentationLogEntry = {
   sequence: number;
   mode?: SubagentPresentationMode;
   task_preview?: string;
+  task_prompt?: string;
   phase?: string;
   result_text?: string;
   error?: LarvaError | null;
@@ -937,6 +938,7 @@ function subagentSummaryPaneLines(entry: SubagentPresentationLogEntry, generatio
     `persona_id: ${entry.persona_id}`,
     `progress: ${entry.phase ?? entry.status}`,
     `task_id: ${entry.task_id ?? "pending"}`,
+    `initial_prompt: ${entry.task_prompt ?? "not recorded"}`,
     `output_summary: ${outputSummary}`,
     `error_summary: ${subagentEntryErrorText(entry)}`,
     `view_only: true`,
@@ -952,6 +954,7 @@ function subagentMetadataPaneLines(entry: SubagentPresentationLogEntry, generati
     `sequence: ${entry.sequence}`,
     `phase: ${entry.phase ?? entry.status}`,
     `task_preview: ${entry.task_preview ?? ""}`,
+    `initial_prompt: ${entry.task_prompt ?? ""}`,
     `call_id: ${entry.call_id ?? ""}`,
     `selected_task_id: ${entry.task_id ?? "pending"}`,
     `error_object: ${entry.error ? JSON.stringify(entry.error) : "null"}`,
@@ -983,7 +986,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.tui = options.tui;
     this.done = options.done;
     this.maxBoxLines = Math.max(6, Math.floor(options.maxBoxLines ?? 22));
-    this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? 110));
+    this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? Number.MAX_SAFE_INTEGER));
     if (this.tui?.terminal?.write) {
       this.tui.terminal.write(ENABLE_MOUSE_REPORTING);
       this.mouseReportingEnabled = true;
@@ -1140,7 +1143,7 @@ async function openSubagentPresentationOverlay(ctx: PiContext, overlay: LarvaSub
     return component;
   }, {
     overlay: true,
-    overlayOptions: { width: "90%", maxHeight: "80%", anchor: "center", margin: 1 },
+    overlayOptions: { width: "90%", maxHeight: "90%", anchor: "center", margin: 1 },
     onHandle: (handle: PiOverlayHandle) => handle.focus?.(),
   });
   return true;
@@ -2189,8 +2192,18 @@ function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry,
   return retained;
 }
 
-function appendSubagentPresentationRunning(taskId: string, personaId: string): void {
-  retainedSubagentPresentationLog.push({ task_id: taskId, persona_id: personaId, status: "running", sequence: 0, phase: "waiting_for_child" });
+function appendSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
+  retainedSubagentPresentationLog.push({
+    task_id: taskId,
+    persona_id: personaId,
+    status: "running",
+    sequence: 0,
+    mode: presentationMode(input),
+    task_preview: presentationTaskPreview(input),
+    task_prompt: presentationTaskPrompt(input),
+    phase: "waiting_for_child",
+    call_id: callId,
+  });
   while (retainedSubagentPresentationLog.length > 25) retainedSubagentPresentationLog.shift();
 }
 
@@ -2206,8 +2219,8 @@ function removePendingSubagentPresentationRunning(taskId: string): SubagentPrese
   return preserved;
 }
 
-function recordSubagentPresentationRunning(taskId: string, personaId: string): void {
-  appendSubagentPresentationRunning(taskId, personaId);
+function recordSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
+  appendSubagentPresentationRunning(taskId, personaId, input, callId);
 }
 
 function presentationMode(input?: LarvaSubagentInput): SubagentPresentationMode | undefined {
@@ -2216,6 +2229,10 @@ function presentationMode(input?: LarvaSubagentInput): SubagentPresentationMode 
 
 function presentationTaskPreview(input?: LarvaSubagentInput): string | undefined {
   return typeof input?.task === "string" ? boundedVisible(input.task, 120) : undefined;
+}
+
+function presentationTaskPrompt(input?: LarvaSubagentInput): string | undefined {
+  return typeof input?.task === "string" ? rendererSafeMarkdownSource(input.task).trim() : undefined;
 }
 
 function upsertSubagentPresentationProgress(input: LarvaSubagentInput, phase: string, taskId: string | null | undefined, callId?: string): void {
@@ -2230,6 +2247,7 @@ function upsertSubagentPresentationProgress(input: LarvaSubagentInput, phase: st
     status: "running",
     mode: presentationMode(input),
     task_preview: presentationTaskPreview(input),
+    task_prompt: presentationTaskPrompt(input),
     phase,
     result_text: "",
     error: null,
@@ -2258,6 +2276,7 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
     status: result.status,
     mode: presentationMode(input) ?? preserved?.mode,
     task_preview: presentationTaskPreview(input) ?? preserved?.task_preview,
+    task_prompt: presentationTaskPrompt(input) ?? preserved?.task_prompt,
     phase: result.status,
     result_text: result.result_text,
     error: result.error,
@@ -2372,6 +2391,7 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push(`  persona_id: ${entry.persona_id}`);
     lines.push(`  status: ${entry.status}`);
     lines.push(`  progress: ${entry.phase ?? entry.status}`);
+    if (entry.task_prompt) lines.push(`  initial_prompt: ${entry.task_prompt}`);
     lines.push(`  result: ${entry.result_text ?? ""}`);
     const entryError = entry.error ? `${entry.error.code}: ${entry.error.message}` : "";
     lines.push(`  error: ${entryError}`);
@@ -2382,6 +2402,7 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push(`  sequence: ${entry.sequence}`);
     lines.push(`  phase: ${entry.phase ?? entry.status}`);
     if (entry.task_preview) lines.push(`  task_preview: ${entry.task_preview}`);
+    if (entry.task_prompt) lines.push(`  initial_prompt: ${entry.task_prompt}`);
     lines.push(`  output_render_mode: ${subagentEntryOutputIsPresent(entry) ? "markdown" : "fallback"}`);
     lines.push(`  overlay_generation: ${generation}`);
   }
@@ -3131,7 +3152,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
       return result;
     }
     activeTaskIds.add(canonicalTaskId);
-    recordSubagentPresentationRunning(canonicalTaskId, personaId);
+    recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   }
 
   try {
@@ -3141,7 +3162,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
         onPhase: ctx?.onPhase,
         onTaskAllocated: (allocatedTaskId) => {
           busyTaskId = allocatedTaskId;
-          if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId);
+          if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
         },
       });
     busyTaskId = result.task_id ?? busyTaskId;

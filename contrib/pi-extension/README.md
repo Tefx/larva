@@ -694,11 +694,13 @@ write sidecars, or support aliases such as `last`.
 The overlay is implemented as a Pi TUI-backed custom component. It must use Pi
 TUI width/wrap/truncate helpers for all bordered rows and content panes, and it
 must preserve the invariant that each rendered line fits the `render(width)`
-contract. Like the persona selector, it renders as a modal surface with an
-accent-colored border, solid ANSI background, stable frame height across tab and
-scroll states, and a terminal-compatible right/bottom drop shadow. Long output
-is internally scrollable; the terminal transcript outside the overlay is not used
-as scroll authority.
+contract. Like the persona selector, it renders through the same modal chrome
+helpers: accent-colored border, solid ANSI background, stable frame height across
+tab and scroll states, and terminal-compatible right/bottom drop shadow. The
+custom overlay uses the same `90%` width and `90%` max-height budget so the
+shadow is not clipped by Pi's overlay frame. Long output is internally
+scrollable; the terminal transcript outside the overlay is not used as scroll
+authority.
 
 Target interaction model:
 
@@ -712,12 +714,12 @@ Target interaction model:
 
 Target panes:
 
-1. `Summary`: selected entry status, persona, progress, task id, and output/error
-   summary.
+1. `Summary`: selected entry status, persona, progress, task id, initial prompt,
+   and output/error summary.
 2. `Output`: Markdown-rendered final output when present, otherwise a renderer-safe
    empty/fallback message.
-3. `Metadata`: adapter-local mode, sequence, phase, task preview, error object,
-   overlay generation, and view-only provenance.
+3. `Metadata`: adapter-local mode, sequence, phase, task preview, initial prompt,
+   error object, overlay generation, and view-only provenance.
 
 The overlay result carries `view_only: true`, renderer-safe text `content`, and
 adapter-local overlay `details`. It deliberately does not mirror

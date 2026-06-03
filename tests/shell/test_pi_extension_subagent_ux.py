@@ -120,6 +120,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
         await mod.commitPersona("ok", ctx, piBase);
         const subagent = tools.find((tool) => tool.name === "larva_subagent");
         const success = await subagent.handler({ persona_id: "ok", task: "summarize child result" });
+        const successPromptEntry = mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "summarize child result");
         const failedBeforeSession = await subagent.handler({ persona_id: "ok", task: "" });
 
         const malformedChild = join(tmpRoot, "fake-pi-child-malformed.mjs");
@@ -144,6 +145,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
           toolNames: tools.map((tool) => tool.name),
           success: {
             mirrorOk: mirrorOk(success),
+            promptCaptured: successPromptEntry?.task_prompt === "summarize child result",
             isError: success.isError,
             task_id: success.task_id,
             detailsTaskId: success.details?.task_id,
@@ -184,6 +186,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
 
     assert "larva_subagent" in payload["toolNames"]
     assert payload["success"]["mirrorOk"] is True
+    assert payload["success"]["promptCaptured"] is True
     assert payload["success"]["isError"] is False
     assert payload["success"]["task_id"] == payload["success"]["detailsTaskId"]
     assert payload["success"]["hasFooter"] is True
@@ -491,16 +494,17 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         _node_prelude(tmp_path)
         + """
         mod.resetSubagentPresentationStateForTests();
-        mod.recordSubagentPresentationEntryForTests("/tmp/active.jsonl", "alpha", "running", { phase: "waiting_for_child", mode: "new", task_preview: "active task" });
-        mod.recordSubagentPresentationEntryForTests("/tmp/final.jsonl", "beta", "success", { result_text: "final child output", phase: "success" });
+        const initialPrompt = "Initial subagent prompt: inspect overlay styling and include this prompt.\\nSecond prompt line with CJK 这是 and emoji 🧪.";
+        mod.recordSubagentPresentationEntryForTests("/tmp/active.jsonl", "alpha", "running", { phase: "waiting_for_child", mode: "new", task_preview: "active task", task_prompt: initialPrompt });
+        mod.recordSubagentPresentationEntryForTests("/tmp/final.jsonl", "beta", "success", { result_text: "final child output", phase: "success", task_prompt: "final prompt body" });
         mod.recordSubagentPresentationEntryForTests("/tmp/error.jsonl", "gamma", "failed", { error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "boom" }, phase: "failed" });
         mod.recordSubagentPresentationEntryForTests("/tmp/cancelled.jsonl", "delta", "cancelled", { error: { code: "LARVA_CHILD_CANCELLED", message: "stopped" }, phase: "cancelled" });
         const compact = mod.larva_subagent_log({ limit: 4 });
         const expanded = mod.larva_subagent_log({ expanded: true, limit: 4 });
-        mod.recordSubagentPresentationEntryForTests(null, "epsilon", "running", { phase: "starting", mode: "new", task_preview: "pending fresh run" });
+        mod.recordSubagentPresentationEntryForTests(null, "epsilon", "running", { phase: "starting", mode: "new", task_preview: "pending fresh run", task_prompt: "pending initial prompt" });
         const pendingNewest = mod.larva_subagent_log({ expanded: true });
         const longOverlayText = ["# Markdown Heading", "", "- bullet one", "- bullet two", "", "```text", "fenced code output", "```", ...Array.from({ length: 45 }, (_, index) => `scroll proof line ${String(index).padStart(2, "0")} 这是 🧪 /very/long/path/${index}`)].join("\\n");
-        mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", { result_text: longOverlayText, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", { result_text: longOverlayText, phase: "success", task_preview: "long prompt preview", task_prompt: initialPrompt });
         const beforeSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
         const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
@@ -533,6 +537,31 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             && stripAnsi(bottomShadow).includes("▀")
             && piTui.visibleWidth(bottomShadow) <= width;
         }
+        function modalChromeFingerprint(lines, width) {
+          const surfaceRows = overlaySurfaceRows(lines);
+          const strippedRows = surfaceRows.map((line) => stripAnsi(line));
+          const bottomShadow = lines.at(-1) ?? "";
+          return {
+            allLinesFit: lines.every((line) => piTui.visibleWidth(line) <= width),
+            surfaceWidth: surfaceRows.length > 0 ? piTui.visibleWidth(surfaceRows[0]) : 0,
+            allSurfaceRowsSameWidth: surfaceRows.every((line) => piTui.visibleWidth(line) === width),
+            surfaceBackgroundEveryRow: surfaceRows.every((line) => line.includes(SELECTOR_SURFACE_BG)),
+            accentBorderPresent: surfaceRows.some((line) => line.includes(SELECTOR_BORDER_FG)),
+            rightShadowEverySurfaceRow: surfaceRows.every((line) => line.includes(SELECTOR_SHADOW_FG) && stripAnsi(line).endsWith("█")),
+            bottomShadowLine: stripAnsi(bottomShadow),
+            bottomShadowColor: bottomShadow.includes(SELECTOR_SHADOW_FG),
+            topLeft: strippedRows[0]?.slice(0, 2),
+            topRightWithShadow: strippedRows[0]?.slice(-2),
+            bottomLeft: strippedRows.at(-1)?.slice(0, 1),
+            bottomRightWithShadow: strippedRows.at(-1)?.slice(-2),
+          };
+        }
+        const personaComponent = new mod.LarvaPersonaSelector({
+          personas: [{ id: "ok", model: "openai/gpt-5.5", description: "Strict chrome parity persona", capabilities: {}, spec_digest: "sha256:ok" }],
+          theme: { fg: (_token, text) => text, bold: (text) => text },
+          done: () => undefined,
+        });
+        const personaRenderedForChrome = personaComponent.render(80);
         const commandNotifications = [];
         const commandCustomCalls = [];
         const commandResults = [];
@@ -621,18 +650,20 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           compactText: compact.content[0].text,
           expandedText: expanded.content[0].text,
           viewOnlyShape: { ok: compact.ok, view_only: compact.view_only, isError: compact.isError, noTaskId: !("task_id" in compact), noResultText: !("result_text" in compact) },
-          detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child"].every((needle) => expanded.content[0].text.includes(needle)),
+          detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child", "initial_prompt: final prompt body"].every((needle) => expanded.content[0].text.includes(needle)),
           rowStatesPresent: ["active alpha", "final beta", "error gamma", "cancelled delta"].every((needle) => compact.content[0].text.includes(needle)),
-          pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run"),
+          pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run") && pendingNewest.content[0].text.includes("initial_prompt: pending initial prompt"),
           viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
           overlayRenderedLines: commandCustomCalls[0].rendered,
-          overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
+          overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].options?.overlayOptions?.width === "90%" && commandCustomCalls[0].options?.overlayOptions?.maxHeight === "90%" && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
           overlayBoxed: overlayStateKeys.every((key) => overlayLinesBoxed(commandCustomCalls[0][key], 80)),
           overlaySurfaceDistinct: overlayStateKeys.every((key) => overlaySurfaceDistinct(commandCustomCalls[0][key])),
           overlayDropShadow: overlayStateKeys.every((key) => overlayDropShadow(commandCustomCalls[0][key], 80)),
+          strictModalChromeParity: JSON.stringify(modalChromeFingerprint(commandCustomCalls[0].rendered, 80)) === JSON.stringify(modalChromeFingerprint(personaRenderedForChrome, 80)),
           allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
           overlayFrameStable,
           overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Output") && line.includes("○ 3 Metadata")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
+          initialPromptVisible: commandCustomCalls[0].rendered.some((line) => line.includes("initial_prompt") && line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
           outputMarkdownPane: commandCustomCalls[0].outputTab.some((line) => line.includes("Markdown Heading")) && commandCustomCalls[0].outputTab.some((line) => line.includes("bullet one")) && commandCustomCalls[0].outputTab.some((line) => line.includes("fenced code output")),
           emptyOutputFallback: commandCustomCalls[0].emptyOutputTab.some((line) => line.includes("No final subagent output")),
           overlayCloseKeys: commandCustomCalls[0].doneAfterEnter === 0 && commandCustomCalls[0].doneAfterLiveEsc === 1 && commandCustomCalls[0].doneAfterEsc === 2 && commandCustomCalls[0].doneAfterQ === 3 && commandCustomCalls[0].rendered.some((line) => line.includes("Esc/q close")) && !commandCustomCalls[0].rendered.some((line) => line.includes("Enter")),
@@ -654,9 +685,11 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["overlayBoxed"] is True
     assert payload["overlaySurfaceDistinct"] is True
     assert payload["overlayDropShadow"] is True
+    assert payload["strictModalChromeParity"] is True
     assert payload["allOverlayLinesFit"] is True
     assert payload["overlayFrameStable"] is True
     assert payload["overlayTabs"] is True
+    assert payload["initialPromptVisible"] is True
     assert payload["outputMarkdownPane"] is True
     assert payload["emptyOutputFallback"] is True
     assert payload["overlayCloseKeys"] is True

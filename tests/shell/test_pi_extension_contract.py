@@ -725,6 +725,8 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
             "stable frame height",
             "terminal-compatible",
             "drop shadow",
+            "90%",
+            "initial prompt",
             "mouse click",
         )
 
