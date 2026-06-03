@@ -100961,6 +100961,135 @@ phases:
     support.
   depends_on:
   - pi_tui_dependency_packaging_20260603
+  steps:
+  - id: pi_tui_rendering_foundation_20260603.direct-imports-scrollable-text
+    name: Use direct Pi TUI imports and extract bordered scrollable text
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      `contrib/pi-extension/larva.ts` uses direct imports from `@earendil-works/pi-tui`
+      for width/wrap/truncate and key matching primitives. The optional `loadPiTuiTextHelpers()`
+      path and handwritten width/key fallbacks are removed or narrowed wherever the
+      now-formal dependency owns the behavior. A reusable `BorderedScrollableText`-style
+      component owns bordered width-safe rendering, scroll state, keyboard controls,
+      mouse wheel handling, and mouse-reporting lifecycle cleanup for later overlays.
+      Mouse click remains unsupported.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `contrib/pi-extension/larva.ts`, focused Pi extension Node/Python
+      test harnesses under `tests/shell/` or `contrib/pi-extension/test-*.mjs`
+
+      - spec_refs: `README > Pi TUI dependency and UI component policy`; `design >
+      Runtime UX > Pi TUI dependency and reusable UI components`; Pi docs `TUI Components
+      > Keyboard Input`, `Line Width`, `Overlays`, `Key Rules`
+
+      - harness_refs: `tests/shell/test_pi_extension_subagent_ux.py`, `scripts/pi-extension-runtime-smoke.mjs`,
+      `contrib/pi-extension/test-subagent-sessions-helper.mjs` as applicable
+
+      - authoritative_interface: each `render(width)` line visible width <= width;
+      keyboard matching via `matchesKey`/`Key`; mouse wheel yes, mouse click no
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P1-TUI-001 | docs: formal Pi TUI dependency owns width/wrap/truncate | direct
+      imports replace optional loader/fallback for UI width helpers | pi_tui_rendering_foundation_20260603.direct-imports-scrollable-text
+      | direct imports present | import_diff_snippet | OWNED | n/a |
+
+      | P1-TUI-002 | docs: use matchesKey/Key and injected keybindings | keyboard
+      controls use Pi TUI matching path | same | keyboard matching migrated | key_handling_snippet
+      | OWNED | n/a |
+
+      | P1-TUI-003 | docs: custom state allowed for scroll/tab/mouse cleanup | reusable
+      bordered scroll component owns scroll and lifecycle only | same | component
+      extracted | component_snippet | OWNED | n/a |
+
+      | NG-MOUSE-CLICK | docs: mouse click unsupported | preserve no click behavior;
+      only wheel is handled | same | click not implemented | mouse_scan | OWNED |
+      n/a |
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Optional Pi TUI loader/fallback remains as the primary width helper despite
+      formal dependency.
+
+      2. Render output can exceed `width` for CJK, emoji, ANSI-stripped long paths,
+      or Markdown syntax.
+
+      3. Mouse reporting is enabled without disable-on-dispose/reset/close evidence.
+
+      4. Any mouse click selection/activation behavior is introduced.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      component must process input width, content, key events, and wheel events into
+      output/scroll behavior that varies by input.
+
+
+      <side_effect_budget>
+
+      Allowed: refactor Pi extension UI helper/import code and focused tests. Forbidden:
+      changing LarvaSubagentResult semantics, PersonaSpec/opifex contracts, child
+      session resume authority, active persona/model/tool policy state, or adding
+      mouse click support.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Prove direct imports work after `npm ci` without host-global module fallback.
+
+      - Prove every line from the new component is width-safe with CJK/emoji/ANSI/long
+      paths.
+
+      - Prove wheel events scroll and click-like SGR mouse events are ignored/no-op.
+
+      </risk_probes>'
+    verification: '- [ ] Direct `@earendil-works/pi-tui` imports are used for `visibleWidth`,
+      `truncateToWidth`, `wrapTextWithAnsi`, `matchesKey`, and `Key` where those behaviors
+      are needed.
+
+      - [ ] Optional Pi TUI helper loader/fallback code is removed or explicitly narrowed
+      with documented non-primary scope.
+
+      - [ ] Reusable bordered scrollable text component renders all lines with visible
+      width `<= width` for CJK, emoji, ANSI-stripped text, Markdown syntax, and long
+      `task_id` paths.
+
+      - [ ] Keyboard controls for close/scroll/page/home/end use `matchesKey`/`Key`
+      plus injected keybindings where applicable.
+
+      - [ ] Mouse wheel behavior is preserved and mouse click support is absent/ignored.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - contrib/pi-extension/larva.ts — <pre-change helper/import passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <key passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/examples/extensions/overlay-qa-tests.ts\
+      \ — <key passage for overlay/mouse lifecycle>\n\n## Implementation Evidence\n\
+      - import_diff_snippet: <paste direct import block and removed/narrowed loader\
+      \ proof>\n- component_snippet: <paste BorderedScrollableText public/internal\
+      \ signature and render/handleInput outline>\n- key_handling_snippet: <paste\
+      \ matchesKey/Key path>\n- mouse_scan: <grep output showing wheel handling and\
+      \ no click activation support>\n\n## Targeted Test Evidence\n- command: <focused\
+      \ Node/Python command>\n- raw_stdout: |\n    <paste raw output>\n- width_cases:\
+      \ CJK=<pass/fail>, emoji=<pass/fail>, ANSI=<pass/fail>, markdown=<pass/fail>,\
+      \ long_task_id=<pass/fail>\n\n## Checklist Receipt\n- direct_imports: satisfied|failed|blocked\n\
+      - loader_removed_or_narrowed: satisfied|failed|blocked\n- width_safe_component:\
+      \ satisfied|failed|blocked\n- keyboard_controls_preserved: satisfied|failed|blocked\n\
+      - mouse_wheel_only: satisfied|failed|blocked"
+    agent: frontend-engineer
 - id: pi_tui_subagent_markdown_overlay_20260603
   name: P2 Subagent Markdown Views and Tabbed Overlay 2026-06-03
   status: locked
