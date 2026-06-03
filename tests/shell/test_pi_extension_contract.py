@@ -1603,57 +1603,402 @@ def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() 
     ):
         assert forbidden_live_field in sanitizer
 
-def test_agent_persona_switch_mode_contract() -> None:
-    """
-    Ensures that the extension defines AgentPersonaSwitchMode with exact literal
-    strings: 'off', 'ask', 'auto'.
-    """
-    source = _source()
-    _assert_tokens(source, "AgentPersonaSwitchMode", "\"off\"", "\"ask\"", "\"auto\"")
-    _assert_tokens(source, "LARVA_PI_AGENT_PERSONA_SWITCH")
+def _write_agent_switch_fake_cli(tmp_path: Path) -> Path:
+    fake_cli = tmp_path / "fake-larva-agent-switch-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, arg, jsonFlag] = process.argv;
+            if (command === "resolve" && jsonFlag === "--json") {
+              process.stdout.write(JSON.stringify({
+                data: {
+                  id: arg,
+                  description: `Persona ${arg}`,
+                  prompt: `Prompt for ${arg}`,
+                  model: "provider/model",
+                  capabilities: {},
+                  spec_version: "0.1.0",
+                  spec_digest: `sha256:${arg}`,
+                  can_spawn: true
+                }
+              }));
+            } else if (command === "list" && arg === "--json") {
+              process.stdout.write(JSON.stringify({
+                data: [
+                  { id: "architect", description: "Architecture persona", model: "provider/model" },
+                  { id: "python", description: "Python persona", model: "provider/model" }
+                ]
+              }));
+            } else {
+              process.exit(3);
+            }
+            """
+        ),
+        encoding="utf-8",
+    )
+    return fake_cli
 
 
-def test_agent_persona_switch_session_persistence_contract() -> None:
-    """
-    Verification target: Session slash command updates mode and persists it.
-    The customType larva-agent-persona-switch-mode must be present with mode
-    and source keys.
-    """
-    source = _source()
-    _assert_tokens(source, "\"larva-agent-persona-switch-mode\"")
-    _assert_tokens(source, "details", "mode", "source")
+def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dict[str, Any]:
+    fake_cli = _write_agent_switch_fake_cli(tmp_path)
+    return _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const fakeCli = {json.dumps(str(fake_cli))};
 
+        async function buildHarness(envOverrides = {{}}, options = {{}}) {{
+          const commands = {{}};
+          const tools = {{}};
+          const handlers = {{}};
+          const sessionEntries = [...(options.sessionEntries ?? [])];
+          const statuses = [];
+          const notifications = [];
+          const activeToolCalls = [];
+          const modelCalls = [];
+          const sentUserMessages = [];
+          const confirmations = [];
+          const pi = {{
+            getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
+            setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+            setModel: async (...args) => {{ modelCalls.push(args); return true; }},
+            registerCommand: (nameOrCommand, maybeOptions) => {{
+              if (typeof nameOrCommand === "string") commands[nameOrCommand] = maybeOptions;
+              else commands[nameOrCommand.name] = nameOrCommand;
+            }},
+            registerTool: (tool) => {{ tools[tool.name] = tool; }},
+            on: (event, handler) => {{ handlers[event] = handler; }},
+            sendUserMessage: async (message, options) => {{ sentUserMessages.push({{ message, options }}); return true; }},
+          }};
+          const ctx = {{
+            env: {{
+              LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+              LARVA_PI_INTERACTIVE_TUI: "1",
+              ...envOverrides,
+            }},
+            ui: {{
+              setStatus: async (...args) => statuses.push(args),
+              notify: async (...args) => notifications.push(args),
+              confirm: async (...args) => {{ confirmations.push(args); return options.confirmResult ?? true; }},
+            }},
+            modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return {{ id: "model" }}; }} }},
+            session: {{
+              entries: sessionEntries,
+              getEntries: () => sessionEntries,
+              appendEntry: (entry) => sessionEntries.push(entry),
+              addEntry: (entry) => sessionEntries.push(entry),
+              addCustomEntry: (entry) => sessionEntries.push(entry),
+            }},
+          }};
+          await mod.initializeExtension(ctx, pi);
+          if (typeof handlers.session_start === "function") await handlers.session_start({{ entries: sessionEntries }}, ctx);
+          return {{ mod, ctx, pi, commands, tools, handlers, sessionEntries, statuses, notifications, activeToolCalls, modelCalls, sentUserMessages, confirmations }};
+        }}
 
-def test_agent_persona_switch_tool_and_slash_command() -> None:
-    """
-    Ensure the extension defines the slash command and the tools from the spec.
-    """
-    source = _source()
-    _assert_tokens(source, "larva_persona_switch", "persona_id", "reason", "handoff", "continue_task")
-    _assert_tokens(source, "larva_personas", "query", "limit")
-    _assert_tokens(source, "/larva-agent-persona-switch")
-    _assert_tokens(source, "/larva-persona")
-
-
-def test_agent_persona_switch_audit_entry_shape() -> None:
-    """
-    Ensure the extension pushes audit entries.
-    """
-    source = _source()
-    _assert_tokens(
-        source,
-        "from_persona_id", "to_persona_id", "reason", "handoff",
-        "approved", "committed", "error_code", "continue_task"
+        {textwrap.dedent(scenario_body)}
+        """,
+        timeout=8,
     )
 
-def test_child_subagent_default_switch_mode() -> None:
-    """
-    Child subagent starts with self-switch mode `off` unless a future explicit
-    child policy is added.
-    """
-    # The source should contain logic that sets default off for child requests
-    # Though it might be tricky to token-assert exactly,
-    # we expect subagent spawn to at least not pass ask/auto through implicitly.
-    source = _source()
-    _assert_tokens(source, "LARVA_PI_AGENT_PERSONA_SWITCH", "off", "spawn")
+
+def _registered_names(payload: dict[str, Any], key: str) -> set[str]:
+    return set(payload.get(key, []))
+
+
+def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_off_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const defaultHarness = await buildHarness({});
+        const envAskHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask" });
+        const envAutoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+        const customAutoHarness = await buildHarness(
+          { LARVA_PI_AGENT_PERSONA_SWITCH: "off" },
+          { sessionEntries: [{ customType: "larva-agent-persona-switch-mode", details: { mode: "auto", source: "slash-command" } }] }
+        );
+        console.log(JSON.stringify({
+          defaultTools: Object.keys(defaultHarness.tools),
+          envAskTools: Object.keys(envAskHarness.tools),
+          envAutoTools: Object.keys(envAutoHarness.tools),
+          customAutoTools: Object.keys(customAutoHarness.tools),
+          customEntries: customAutoHarness.sessionEntries,
+          commands: Object.keys(defaultHarness.commands),
+        }));
+        """,
+    )
+
+    assert "larva-agent-persona-switch" in _registered_names(payload, "commands")
+    assert "larva_persona_switch" not in _registered_names(payload, "defaultTools")
+    assert "larva_personas" not in _registered_names(payload, "defaultTools")
+    for key in ("envAskTools", "envAutoTools", "customAutoTools"):
+        assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, key)
+
+
+def test_agent_persona_switch_slash_command_persists_documented_session_entry_shape_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({});
+        const command = harness.commands["larva-agent-persona-switch"];
+        const result = command ? await (command.handler ?? command.options?.handler)("auto", harness.ctx) : null;
+        console.log(JSON.stringify({ result, sessionEntries: harness.sessionEntries, commands: Object.keys(harness.commands) }));
+        """,
+    )
+
+    assert "larva-agent-persona-switch" in _registered_names(payload, "commands")
+    assert any(
+        entry == {
+            "customType": "larva-agent-persona-switch-mode",
+            "details": {"mode": "auto", "source": "slash-command"},
+        }
+        for entry in payload["sessionEntries"]
+    )
+
+
+def test_agent_persona_switch_tool_exposure_ask_auto_vs_off_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
+        const askHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask" });
+        const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+        console.log(JSON.stringify({
+          offTools: Object.keys(offHarness.tools),
+          askTools: Object.keys(askHarness.tools),
+          autoTools: Object.keys(autoHarness.tools),
+        }));
+        """,
+    )
+
+    assert "larva_persona_switch" not in _registered_names(payload, "offTools")
+    assert "larva_personas" not in _registered_names(payload, "offTools")
+    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "askTools")
+    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "autoTools")
+
+
+def test_agent_persona_switch_stale_off_rejects_forged_tool_call_without_commit_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const forgedEventDecision = await harness.handlers.tool_call?.({ toolName: "larva_persona_switch" });
+        const forgedTool = harness.tools["larva_persona_switch"];
+        const directResult = forgedTool ? await (forgedTool.execute ?? forgedTool.handler)("call-1", { persona_id: "python", reason: "need implementation" }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({
+          forgedEventDecision,
+          directResult,
+          finalEnvelope: harness.mod.getActiveEnvelope(),
+          tools: Object.keys(harness.tools),
+        }));
+        """,
+    )
+
+    assert payload["forgedEventDecision"]["block"] is True
+    assert "off" in payload["forgedEventDecision"]["reason"].lower()
+    if payload["directResult"] is not None:
+        assert payload["directResult"]["status"] == "failed"
+        assert payload["directResult"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
+    assert payload["finalEnvelope"]["persona_id"] == "architect"
+
+
+def test_agent_persona_switch_manual_larva_persona_preserved_in_off_ask_auto_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const results = [];
+        for (const mode of ["off", "ask", "auto"]) {
+          const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: mode });
+          const manual = harness.commands["larva-persona"];
+          const result = await (manual.handler ?? manual.options?.handler)("python", harness.ctx);
+          results.push({ mode, result, finalEnvelope: harness.mod.getActiveEnvelope(), toolNames: Object.keys(harness.tools) });
+        }
+        console.log(JSON.stringify({ results }));
+        """,
+    )
+
+    for case in payload["results"]:
+        assert case["result"]["ok"] is True
+        assert case["finalEnvelope"]["persona_id"] == "python"
+    off_case = next(case for case in payload["results"] if case["mode"] == "off")
+    assert "larva_persona_switch" not in off_case["toolNames"]
+
+
+def test_agent_persona_switch_reason_required_before_commit_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const tool = harness.tools["larva_persona_switch"];
+        const result = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python" }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({ result, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
+        """,
+    )
+
+    assert "larva_persona_switch" in _registered_names(payload, "tools")
+    assert payload["result"]["status"] == "failed"
+    assert payload["result"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert payload["finalEnvelope"]["persona_id"] == "architect"
+
+
+def test_agent_persona_switch_same_persona_no_op_no_termination_or_extra_commit_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const beforeModelCallCount = harness.modelCalls.length;
+        const tool = harness.tools["larva_persona_switch"];
+        const result = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "architect", reason: "already suitable" }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({
+          result,
+          modelCallDelta: harness.modelCalls.length - beforeModelCallCount,
+          finalEnvelope: harness.mod.getActiveEnvelope(),
+          sessionEntries: harness.sessionEntries,
+          tools: Object.keys(harness.tools),
+        }));
+        """,
+    )
+
+    assert payload["result"]["status"] == "success"
+    assert payload["result"].get("terminate") is False
+    assert payload["modelCallDelta"] == 0
+    assert payload["finalEnvelope"]["persona_id"] == "architect"
+
+
+def test_agent_persona_switch_one_switch_guard_rejects_second_success_in_request_chain_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const tool = harness.tools["larva_persona_switch"];
+        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation" }, undefined, undefined, harness.ctx) : null;
+        const second = tool ? await (tool.execute ?? tool.handler)("call-2", { persona_id: "architect", reason: "switch back" }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({ first, second, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
+        """,
+    )
+
+    assert payload["first"]["status"] == "success"
+    assert payload["first"].get("terminate") is True
+    assert payload["second"]["status"] == "failed"
+    assert payload["second"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
+    assert payload["finalEnvelope"]["persona_id"] == "python"
+
+
+def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const tool = harness.tools["larva_persona_switch"];
+        const result = tool ? await (tool.execute ?? tool.handler)("call-1", {
+          persona_id: "python",
+          reason: "Python implementation is now required",
+          handoff: "Implement the agreed test boundary",
+          continue_task: true,
+        }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({
+          result,
+          finalEnvelope: harness.mod.getActiveEnvelope(),
+          sentUserMessages: harness.sentUserMessages,
+          sessionEntries: harness.sessionEntries,
+          tools: Object.keys(harness.tools),
+        }));
+        """,
+    )
+
+    assert payload["result"]["status"] == "success"
+    assert payload["result"].get("terminate") is True
+    assert payload["finalEnvelope"]["persona_id"] == "python"
+    assert payload["sentUserMessages"] == [
+        {
+            "message": "[Larva-generated continuation after persona switch]\nSwitched from architect to python.\nReason: Python implementation is now required\nHandoff: Implement the agreed test boundary\nContinue the user's original task under the new persona.\nDo not switch again unless newly justified.",
+            "options": {"deliverAs": "followUp"},
+        }
+    ]
+    assert any(
+        entry.get("customType") == "larva-agent-persona-switch-audit"
+        and entry.get("details") == {
+            "source": "tool",
+            "mode": "auto",
+            "from_persona_id": "architect",
+            "to_persona_id": "python",
+            "reason": "Python implementation is now required",
+            "handoff": "Implement the agreed test boundary",
+            "approved": True,
+            "committed": True,
+            "error_code": None,
+            "continue_task": True,
+        }
+        for entry in payload["sessionEntries"]
+    )
+
+
+def test_agent_persona_switch_child_subagent_defaults_self_switch_off_behavior(tmp_path: Path) -> None:
+    fake_cli = _write_agent_switch_fake_cli(tmp_path)
+    child_env_artifact = tmp_path / "child-env.json"
+    fake_pi = tmp_path / "fake-pi-child-env.mjs"
+    fake_pi.write_text(
+        textwrap.dedent(
+            f"""
+            import {{ writeFileSync }} from "node:fs";
+            writeFileSync(
+              {json.dumps(str(child_env_artifact))},
+              JSON.stringify({{
+                LARVA_PI_AGENT_PERSONA_SWITCH: process.env.LARVA_PI_AGENT_PERSONA_SWITCH ?? null,
+                LARVA_PI_INITIAL_PERSONA_ID: process.env.LARVA_PI_INITIAL_PERSONA_ID ?? null,
+                LARVA_PI_PARENT_PERSONA_ID: process.env.LARVA_PI_PARENT_PERSONA_ID ?? null,
+                LARVA_PI_INTERACTIVE_TUI: process.env.LARVA_PI_INTERACTIVE_TUI ?? null,
+              }}, null, 2),
+              "utf8"
+            );
+            process.exit(0);
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{
+          LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          LARVA_PI_REAL_BIN: process.execPath,
+          LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
+          LARVA_PI_EXTENSION_ENTRY: "unused-extension-entry.ts",
+          LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(tmp_path))},
+          LARVA_PI_AGENT_PERSONA_SWITCH: "auto",
+          LARVA_PI_INTERACTIVE_TUI: "1",
+          LARVA_PI_LAUNCHED: "1",
+          HOME: {json.dumps(str(tmp_path))},
+        }};
+        const ctx = {{
+          env,
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerTool: () => undefined,
+          registerCommand: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("architect", ctx, pi);
+        const result = await mod.larva_subagent({{ persona_id: "python", task: "capture child launch env" }}, {{ env }});
+        const fs = await import("node:fs");
+        const childEnv = fs.existsSync({json.dumps(str(child_env_artifact))})
+          ? JSON.parse(fs.readFileSync({json.dumps(str(child_env_artifact))}, "utf8"))
+          : null;
+        console.log(JSON.stringify({{ result, childEnv }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["childEnv"] is not None
+    assert payload["childEnv"]["LARVA_PI_INITIAL_PERSONA_ID"] == "python"
+    assert payload["childEnv"]["LARVA_PI_PARENT_PERSONA_ID"] == "architect"
+    assert payload["childEnv"]["LARVA_PI_INTERACTIVE_TUI"] == "0"
+    assert payload["childEnv"]["LARVA_PI_AGENT_PERSONA_SWITCH"] == "off"
 
