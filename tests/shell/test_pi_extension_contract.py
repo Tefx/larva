@@ -2081,17 +2081,47 @@ def test_agent_persona_switch_one_switch_guard_rejects_second_success_in_request
         """
         const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const tool = harness.tools["larva_persona_switch"];
-        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation" }, undefined, undefined, harness.ctx) : null;
+        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation", continue_task: true }, undefined, undefined, harness.ctx) : null;
+        const followUpPrompt = harness.sentUserMessages[0]?.message ?? "";
+        const followUpBeforeAgent = harness.mod.before_agent_start({ prompt: followUpPrompt, systemPrompt: "base" });
         const second = tool ? await (tool.execute ?? tool.handler)("call-2", { persona_id: "architect", reason: "switch back" }, undefined, undefined, harness.ctx) : null;
-        console.log(JSON.stringify({ first, second, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
+        console.log(JSON.stringify({ first, followUpBeforeAgent, second, sentUserMessages: harness.sentUserMessages, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
         """,
     )
 
     assert payload["first"]["status"] == "success"
     assert payload["first"].get("terminate") is True
+    assert payload["sentUserMessages"][0]["options"] == {"deliverAs": "followUp"}
+    assert payload["followUpBeforeAgent"]["systemPrompt"]
     assert payload["second"]["status"] == "failed"
     assert payload["second"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
     assert payload["finalEnvelope"]["persona_id"] == "python"
+
+
+def test_agent_persona_switch_request_chain_resets_for_later_independent_user_request_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const tool = harness.tools["larva_persona_switch"];
+        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation", continue_task: true }, undefined, undefined, harness.ctx) : null;
+        const followUpPrompt = harness.sentUserMessages[0]?.message ?? "";
+        const followUpBeforeAgent = harness.mod.before_agent_start({ prompt: followUpPrompt, systemPrompt: "base" });
+        const sameChainSecond = tool ? await (tool.execute ?? tool.handler)("call-2", { persona_id: "architect", reason: "switch back too soon" }, undefined, undefined, harness.ctx) : null;
+        const independentBeforeAgent = harness.mod.before_agent_start({ prompt: "New independent user request: please return to architecture", systemPrompt: "base" });
+        const laterFirst = tool ? await (tool.execute ?? tool.handler)("call-3", { persona_id: "architect", reason: "new request needs architecture" }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({ first, followUpBeforeAgent, sameChainSecond, independentBeforeAgent, laterFirst, finalEnvelope: harness.mod.getActiveEnvelope(), sentUserMessages: harness.sentUserMessages }));
+        """,
+    )
+
+    assert payload["first"]["status"] == "success"
+    assert payload["followUpBeforeAgent"]["systemPrompt"]
+    assert payload["sameChainSecond"]["status"] == "failed"
+    assert payload["sameChainSecond"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
+    assert payload["independentBeforeAgent"]["systemPrompt"]
+    assert payload["laterFirst"]["status"] == "success"
+    assert payload["laterFirst"].get("terminate") is True
+    assert payload["finalEnvelope"]["persona_id"] == "architect"
 
 
 def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior(tmp_path: Path) -> None:

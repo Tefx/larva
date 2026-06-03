@@ -355,6 +355,7 @@ let personaCompletionClock: () => number = () => Date.now();
 let toolEnumerationMode: ToolEnumerationMode = "strict";
 let agentPersonaSwitchMode: AgentPersonaSwitchMode = "off";
 let agentPersonaSwitchSucceededInChain = false;
+let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
@@ -2329,6 +2330,7 @@ function appendSessionCustomEntry(ctx: PiContext, entry: unknown): void {
 function setAgentPersonaSwitchMode(mode: AgentPersonaSwitchMode): void {
   agentPersonaSwitchMode = mode;
   agentPersonaSwitchSucceededInChain = false;
+  agentPersonaSwitchPendingFollowUpContinuations = 0;
 }
 
 function agentPersonaToolsAllowed(): boolean {
@@ -2757,9 +2759,26 @@ function appendPersonaSwitchAudit(ctx: PiContext, details: Record<string, unknow
   appendSessionCustomEntry(ctx, { customType: "larva-agent-persona-switch-audit", details });
 }
 
+const LARVA_PERSONA_SWITCH_CONTINUATION_MARKER = "[Larva-generated continuation after persona switch]";
+
+function isLarvaGeneratedPersonaSwitchContinuation(event: unknown): boolean {
+  if (!isRecord(event) || typeof event.prompt !== "string") return false;
+  return event.prompt.startsWith(LARVA_PERSONA_SWITCH_CONTINUATION_MARKER);
+}
+
+function noteAgentPersonaSwitchRequestChainBoundary(event: unknown): void {
+  if (!isRecord(event) || typeof event.prompt !== "string") return;
+  if (isLarvaGeneratedPersonaSwitchContinuation(event) && agentPersonaSwitchPendingFollowUpContinuations > 0) {
+    agentPersonaSwitchPendingFollowUpContinuations -= 1;
+    return;
+  }
+  agentPersonaSwitchSucceededInChain = false;
+  agentPersonaSwitchPendingFollowUpContinuations = 0;
+}
+
 function continuationMessage(fromPersona: string, toPersona: string, reason: string, handoff: string | undefined): string {
   return [
-    "[Larva-generated continuation after persona switch]",
+    LARVA_PERSONA_SWITCH_CONTINUATION_MARKER,
     `Switched from ${fromPersona} to ${toPersona}.`,
     `Reason: ${reason}`,
     `Handoff: ${handoff ?? ""}`,
@@ -2846,6 +2865,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   const sendUserMessage = ctx.sendUserMessage ?? (pi as PiContext).sendUserMessage;
   if (continueTask && typeof sendUserMessage === "function") {
     await sendUserMessage(continuationMessage(fromPersona ?? "none", personaId, reason, handoff), { deliverAs: "followUp" });
+    agentPersonaSwitchPendingFollowUpContinuations += 1;
   }
   return switchToolSuccess(`Larva persona switched to ${personaId}`, { persona_id: personaId, committed: true }, true);
 }
@@ -2900,6 +2920,7 @@ export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnv
 }
 
 export function before_agent_start(event: unknown): { systemPrompt: string } | null {
+  noteAgentPersonaSwitchRequestChainBoundary(event);
   if (!state.envelope || !isRecord(event) || typeof event.systemPrompt !== "string") return null;
   return { systemPrompt: replaceLarvaWatermark(event.systemPrompt, state.envelope) };
 }
