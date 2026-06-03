@@ -100029,7 +100029,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: pi_impl_finalization_20260603.final-gate
     name: Final Pi integration deep review gate
-    status: pending
+    status: skipped
     description: 'DECISION ARTIFACT: Final deep review gate for the complete Larva
       Pi coding-agent integration target. review_depth: THOROUGH. Gate opens only
       when documentation sync, deep wiring audit, plan readiness review, runtime conformance,
@@ -100069,6 +100069,7 @@ phases:
     - pi_impl_finalization_20260603.deep-wiring-audit
     - pi_impl_finalization_20260603.plan-readiness-review
     agent: gate-reviewer
+    skipped_reason: absorbed
   - id: pi_impl_finalization_20260603.wiring-blocker-fix
     name: Fix final wiring audit blockers
     status: done
