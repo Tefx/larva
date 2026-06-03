@@ -99500,7 +99500,7 @@ phases:
       Blockers: none. Deviation Records: none.'
   - id: retest-shared-spec-conformance
     name: Retest shared spec conformance after remediation and adjudication
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -99561,6 +99561,87 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-06-02T21:58:14.129073+00:00'
+    done_at: '2026-06-03T03:34:49.620052+00:00'
+    evidence: 'SUCCESS/PASS: shared spec conformance retest passed after remediation
+      and overlay authority adjudication; gate_open_allowed=true; blockers=[].
+
+
+      Worker evidence commit: 596078edd6be6148a0f2d0839c1d40f04ee0d5f2.
+
+      Mainline squash commit: 2246f73 [vectl] step-retest-shared-spec-conformance
+      completed.
+
+
+      refs Read Confirmation:
+
+      - design/pi-coding-agent-integration.md read: fatal startup, id-only completion/mention
+      candidates, and authorized `/larva-subagent-log` view-only overlay expectations.
+
+      - ../opifex/design/final-canonical-contract.md, ../opifex/contracts/persona_spec.schema.json,
+      ../opifex/conformance/shared_surfaces.yaml, and conformance case matrix refs
+      read for shared PersonaSpec authority.
+
+
+      Conformance matrix summary:
+
+      - fatal startup: CONFORMS; invalid/unavailable initial persona/model/policy
+      stops nonzero before first prompt/model turn.
+
+      - id-only mentions: CONFORMS; minimal non-empty data[].id without spec_digest
+      produces mention candidates.
+
+      - overlay authority: CONFORMS; cites adjudication artifact AUTHORIZED and does
+      not silently remove/approve without basis.
+
+      - PersonaSpec canonical fields/admission: CONFORMS.
+
+      - tool/model semantics: CONFORMS.
+
+      - no shared surface drift/duplicate design authority/unresolved forbidden behavior
+      remains unowned.
+
+
+      Worker verification:
+
+      - pytest relevant conformance set -> 114 passed.
+
+      - node runtime checks -> passed.
+
+      - `uvx invar-tools guard --all` -> passed with warnings only.
+
+
+      Mainline final-state verification:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal` ->
+      exit 0.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
+      -> exit 0.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case mention-namespace`
+      -> exit 0.
+
+      - `pytest tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_subagent_ux.py
+      tests/shell/test_pi_extension_contract.py -q` -> 91 passed in 49.58s.
+
+
+      Checklist receipt:
+
+      - B1 fatal startup, B2 id-only mentions, B3 overlay authority rechecked: true.
+
+      - Fatal startup divergence now CONFORMS with runtime evidence: true.
+
+      - Id-only fixture uses minimal data[].id without spec_digest and produces candidates:
+      true.
+
+      - Overlay verdict cites adjudication artifact and does not silently approve/remove:
+      true.
+
+      - No shared surface drift/duplicate design authority/unresolved forbidden behavior
+      remains: true.
+
+
+      Blockers: none. Deviation Records: none.'
 - id: pi_impl_finalization_20260603
   name: Pi Integration Finalization 2026-06-03
   status: locked
