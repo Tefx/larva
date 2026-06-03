@@ -22,6 +22,7 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 CI_WORKFLOW: Final = ROOT / ".github" / "workflows" / "ci.yml"
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 PI_EXTENSION_README: Final = ROOT / "contrib" / "pi-extension" / "README.md"
+PI_INTEGRATION_DESIGN: Final = ROOT / "design" / "pi-coding-agent-integration.md"
 PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-persona-selector-ui.mjs"
 PI_EXTENSION_PACKAGE_JSON: Final = ROOT / "contrib" / "pi-extension" / "package.json"
 PI_EXTENSION_PACKAGE_LOCK: Final = ROOT / "contrib" / "pi-extension" / "package-lock.json"
@@ -604,6 +605,11 @@ def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_m
         "Capabilities",
         "Digest",
         "Mouse click/press/release SGR events are intentionally unsupported no-ops",
+        "SELECTOR_SURFACE_BG",
+        "SELECTOR_BORDER_FG",
+        "selectorSurfaceLine",
+        "selectorShadowLine",
+        "selectorListViewportLines",
         "╭",
         "╰",
         "overlayPadLine",
@@ -613,8 +619,9 @@ def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_m
     assert "new SelectList" in selector_body
     assert "renderDetailRow" in selector_body
     assert "handleInput(data: string)" in selector_body
-    assert "overlayPadLine" in selector_body
-    assert "renderWidth - 4" in selector_body
+    assert "boxWidth - 4" in selector_body
+    assert "selectorBoxRow" in selector_body
+    assert "selectorFullBorderRow" in selector_body
     assert "ENABLE_MOUSE_REPORTING" not in selector_body
     assert "mouseWheelScrollDelta" not in selector_body
 
@@ -638,6 +645,9 @@ def test_enhanced_persona_selector_runtime_harness() -> None:
         "mouseClickUnsupportedNoOp": True,
         "renderLinesWithinWidth": True,
         "selectorOverlayBordered": True,
+        "selectorSurfaceDistinct": True,
+        "selectorAdaptiveHeightUtilization": True,
+        "selectorDropShadow": True,
         "selectorFrameStableDuringNavigation": True,
     }
     assert payload["detail"]["afterFilterDetail"] == [
@@ -654,6 +664,31 @@ def test_enhanced_persona_selector_runtime_harness() -> None:
     assert payload["commit"]["selectedByCustom"] == "vectl-planner"
     assert payload["cancel"]["activePersonaAfterCancel"] == "ok"
     assert payload["fallback"]["nonInteractiveCalls"] == {"custom": 0, "select": 0, "openSelector": 0}
+    assert payload["adaptive"]["tallListViewportRows"] > payload["adaptive"]["smallListViewportRows"]
+    assert payload["adaptive"]["tallCandidateRows"] >= 16
+
+
+def test_persona_selector_surface_layout_shadow_docs_are_synchronized() -> None:
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+    design = PI_INTEGRATION_DESIGN.read_text(encoding="utf-8")
+    selector_harness = PI_EXTENSION_SELECTOR_UI.read_text(encoding="utf-8")
+
+    for document in (readme, design):
+        _assert_tokens(
+            document,
+            "accent-colored border",
+            "solid ANSI background",
+            "adaptive list viewport",
+            "terminal-compatible drop shadow",
+            "frame height remains stable",
+            "mouse click",
+        )
+    _assert_tokens(
+        selector_harness,
+        "selectorSurfaceDistinct",
+        "selectorAdaptiveHeightUtilization",
+        "selectorDropShadow",
+    )
 
 
 def test_no_argument_non_interactive_returns_bad_input_without_state_change() -> None:

@@ -200,8 +200,13 @@ No-argument behavior:
   the Larva CLI bridge list command.
 - When Pi custom UI is available, the selector is a Pi TUI component using
   `Input` for filtering, `SelectList` for candidates, and a detail panel showing
-  id, model, description, capabilities, and digest. `Enter` confirms, `Esc`
-  cancels, and mouse-click SGR events are intentionally unsupported no-ops.
+  id, model, description, capabilities, and digest. It renders as a boxed modal
+  surface with an accent-colored border, solid ANSI background, adaptive list
+  viewport that expands to available terminal height while keeping detail/footer
+  bounded, and terminal-compatible drop shadow; frame height remains stable
+  across filter, navigation, and width-safe render states. `Enter` confirms,
+  `Esc` cancels, and mouse-click SGR events are intentionally unsupported
+  no-ops.
 - If the enhanced custom UI cannot be opened but Pi's simpler selector API is
   available, the command may fall back to that selector without changing the
   non-interactive contract.
@@ -341,6 +346,14 @@ Every component returned through `ctx.ui.custom()` or tool rendering must satisf
 Pi TUI's `render(width)` contract: each returned line's visible width is less
 than or equal to `width`. Tests should include CJK text, emoji, ANSI-stripped
 input, long task ids, and Markdown output.
+
+Terminal-modal overlays should provide figure/ground separation without relying
+on CSS: use a full-row solid ANSI background, accent-colored border, stable frame
+height, and optional right/bottom terminal-compatible drop shadow that remains
+within the supplied render width. Persona selector layouts should reserve
+fixed/bounded rows for filter, detail, and footer content, then give remaining
+vertical capacity to an adaptive list viewport so tall terminals show additional
+persona candidates rather than unused bottom padding.
 
 Mouse wheel support is allowed for scrollable overlays by enabling SGR mouse
 reporting while the overlay is open and disabling it on dispose. Mouse click
@@ -2341,9 +2354,12 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    do not add a widget dashboard.
 10. `/larva-persona` interactive no-argument mode, when UI is available, renders a
     Pi TUI selector with filter input, persona list, model/description/capability
-    summary, digest detail, Enter confirm, and Esc cancel. Non-interactive mode,
-    missing UI, and fallback selector behavior remain as specified earlier in
-    this section.
+    summary, digest detail, Enter confirm, and Esc cancel. Selector proof must
+    cover an accent-colored border, solid ANSI background, adaptive list
+    viewport/full-height utilization, terminal-compatible drop shadow, stable
+    frame height during filter/navigation, visible width `<= width`, and mouse
+    click no-op behavior. Non-interactive mode, missing UI, and fallback selector
+    behavior remain as specified earlier in this section.
 
 ## Implementation handoff
 

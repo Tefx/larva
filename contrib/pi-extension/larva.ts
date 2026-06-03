@@ -195,7 +195,7 @@ type PiRenderableComponent = { render: (width: number) => string[]; invalidate?:
 type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string) => void; dispose?: () => void };
 type PiKeybindings = { matches?: (data: string, keybindingId: string) => boolean };
 type PiOverlayHandle = { focus?: () => void };
-type PiTui = { requestRender?: () => void; terminal?: { write?: (data: string) => void } };
+type PiTui = { requestRender?: () => void; terminal?: { write?: (data: string) => void; rows?: number; columns?: number } };
 type PiCustomFactory = (
   tui: PiTui,
   theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
@@ -404,8 +404,18 @@ function mouseWheelScrollDelta(data: string): number | null {
 
 type PersonaSelectorTheme = { fg?: (token: string, text: string) => string; bold?: (text: string) => string };
 
-const PERSONA_SELECTOR_LIST_LINES = 9;
+const ANSI_RESET = "\x1b[0m";
+const ANSI_FG_RESET = "\x1b[39m";
+const ANSI_RESET_RE = /\x1b\[(?:0)?m/g;
+const SELECTOR_SURFACE_BG = "\x1b[48;5;235m";
+const SELECTOR_BORDER_FG = "\x1b[38;5;116m";
+const SELECTOR_SHADOW_FG = "\x1b[38;5;232m";
+const PERSONA_SELECTOR_MIN_LIST_LINES = 9;
 const PERSONA_SELECTOR_DETAIL_LINES = 8;
+const PERSONA_SELECTOR_FIXED_SURFACE_LINES_WITHOUT_LIST = PERSONA_SELECTOR_DETAIL_LINES + 8;
+const PERSONA_SELECTOR_MIN_SURFACE_LINES = PERSONA_SELECTOR_FIXED_SURFACE_LINES_WITHOUT_LIST + PERSONA_SELECTOR_MIN_LIST_LINES;
+const PERSONA_SELECTOR_FALLBACK_SURFACE_LINES = 34;
+const PERSONA_SELECTOR_MAX_SURFACE_LINES = 36;
 
 type LarvaPersonaSelectorOptions = {
   personas: BridgeListItem[];
@@ -443,6 +453,53 @@ function selectorFixedViewportLines(lines: string[], width: number, count: numbe
   }
   while (result.length < viewportLineCount) result.push("");
   return result;
+}
+
+function selectorClamp(value: number, minimum: number, maximum: number): number {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
+function selectorTerminalRows(tui?: PiTui): number | null {
+  const rows = tui?.terminal?.rows;
+  if (typeof rows !== "number" || !Number.isFinite(rows)) return null;
+  return Math.max(1, Math.floor(rows));
+}
+
+function selectorSurfaceLineCount(tui?: PiTui): number {
+  const rows = selectorTerminalRows(tui);
+  if (rows === null) return PERSONA_SELECTOR_FALLBACK_SURFACE_LINES;
+  const shadowAwareBudget = Math.floor(rows * 0.82) - 1;
+  return selectorClamp(shadowAwareBudget, PERSONA_SELECTOR_MIN_SURFACE_LINES, PERSONA_SELECTOR_MAX_SURFACE_LINES);
+}
+
+function selectorListViewportLines(tui?: PiTui): number {
+  return Math.max(PERSONA_SELECTOR_MIN_LIST_LINES, selectorSurfaceLineCount(tui) - PERSONA_SELECTOR_FIXED_SURFACE_LINES_WITHOUT_LIST);
+}
+
+function selectorBorder(text: string): string {
+  return `${SELECTOR_BORDER_FG}${text}${ANSI_FG_RESET}`;
+}
+
+function selectorSurfaceLine(line: string): string {
+  return `${SELECTOR_SURFACE_BG}${line.replace(ANSI_RESET_RE, `${ANSI_RESET}${SELECTOR_SURFACE_BG}`)}${ANSI_RESET}`;
+}
+
+function selectorShadow(text: string): string {
+  return `${SELECTOR_SHADOW_FG}${text}${ANSI_RESET}`;
+}
+
+function selectorShadowLine(width: number): string {
+  return selectorShadow(`${" ".repeat(width > 0 ? 1 : 0)}${"▀".repeat(Math.max(0, width))}`);
+}
+
+function selectorBoxRow(line: string, contentWidth: number, withShadow: boolean): string {
+  const row = `${selectorBorder("│")} ${overlayPadLine(line, contentWidth)} ${selectorBorder("│")}`;
+  return `${selectorSurfaceLine(row)}${withShadow ? selectorShadow("█") : ""}`;
+}
+
+function selectorFullBorderRow(left: string, middle: string, right: string, withShadow: boolean): string {
+  const row = selectorBorder(`${left}${middle}${right}`);
+  return `${selectorSurfaceLine(row)}${withShadow ? selectorShadow("█") : ""}`;
 }
 
 function selectorDescription(persona: BridgeListItem): string | undefined {
@@ -491,8 +548,10 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
   private readonly input = new TuiInput();
   private filter = "";
   private filteredPersonas: BridgeListItem[] = [];
+  private selectItems: SelectItem[] = [];
   private selectList: SelectList;
   private selectedIndex = 0;
+  private listViewportLines = PERSONA_SELECTOR_MIN_LIST_LINES;
   private _focused = true;
 
   constructor(options: LarvaPersonaSelectorOptions) {
@@ -515,8 +574,8 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
     this.input.focused = value;
   }
 
-  private createSelectList(items: SelectItem[]): SelectList {
-    const selectList = new SelectList(items, Math.max(1, PERSONA_SELECTOR_LIST_LINES - 1), {
+  private createSelectList(items: SelectItem[], listViewportLines = this.listViewportLines): SelectList {
+    const selectList = new SelectList(items, Math.max(1, listViewportLines - 1), {
       selectedPrefix: (text) => selectorThemeFg(this.theme, "accent", text),
       selectedText: (text) => selectorThemeFg(this.theme, "accent", text),
       description: (text) => selectorThemeFg(this.theme, "muted", text),
@@ -532,6 +591,13 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
     return selectList;
   }
 
+  private rebuildSelectList(items = this.selectItems, listViewportLines = this.listViewportLines): void {
+    this.selectItems = items;
+    this.listViewportLines = listViewportLines;
+    this.selectList = this.createSelectList(items, listViewportLines);
+    this.selectList.setSelectedIndex(this.selectedIndex);
+  }
+
   private applyFilter(filter: string): void {
     this.filter = filter;
     this.filteredPersonas = rankPersonasForSelector(this.personas, filter);
@@ -541,8 +607,7 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
       label: persona.id,
       description: selectorItemDescription(persona),
     }));
-    this.selectList = this.createSelectList(items);
-    this.selectList.setSelectedIndex(this.selectedIndex);
+    this.rebuildSelectList(items, this.listViewportLines);
   }
 
   private syncSelectedItem(personaId: string): void {
@@ -594,35 +659,45 @@ export class LarvaPersonaSelector implements PiOverlayComponent, Focusable {
   render(width: number): string[] {
     const renderWidth = Math.max(1, width);
     if (renderWidth < 4) return [selectorLine("Select Larva persona", renderWidth)];
-    const contentWidth = renderWidth - 4;
+    const withShadow = renderWidth >= 8;
+    const boxWidth = withShadow ? renderWidth - 1 : renderWidth;
+    const contentWidth = boxWidth - 4;
+    const nextListViewportLines = selectorListViewportLines(this.tui);
+    if (nextListViewportLines !== this.listViewportLines) {
+      this.rebuildSelectList(this.selectItems, nextListViewportLines);
+    }
     const filterPrefix = "Filter: ";
     const inputWidth = Math.max(1, contentWidth - visibleWidth(filterPrefix));
     const inputLine = this.input.render(inputWidth)[0] ?? "";
     const listLines = selectorFixedViewportLines(
       this.selectList.render(contentWidth).map((line) => selectorLine(line, contentWidth)),
       contentWidth,
-      PERSONA_SELECTOR_LIST_LINES,
+      this.listViewportLines,
     );
     const detailLines = selectorFixedViewportLines(this.renderDetail(contentWidth), contentWidth, PERSONA_SELECTOR_DETAIL_LINES);
-    const lines = [
+    const contentLines = [
       selectorLine(`${filterPrefix}${inputLine}`, contentWidth),
       selectorLine(selectorThemeFg(this.theme, "dim", "Type to filter persona ids/descriptions."), contentWidth),
       "",
       ...listLines,
-      "",
+    ];
+    const detailAndFooterLines = [
       selectorLine(selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Detail")), contentWidth),
       ...detailLines,
-      "",
       selectorLine(selectorThemeFg(this.theme, "dim", "↑↓ navigate • enter confirm • esc cancel • mouse click unsupported"), contentWidth),
     ];
     const title = selectorThemeFg(this.theme, "accent", selectorThemeBold(this.theme, "Select Larva persona"));
-    const topTitle = overlayTruncateLine(`─ ${title} `, renderWidth - 2);
-    const top = `╭${topTitle}${"─".repeat(Math.max(0, renderWidth - 2 - overlayDisplayWidth(topTitle)))}╮`;
-    return [
-      top,
-      ...lines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
-      `╰${"─".repeat(renderWidth - 2)}╯`,
+    const topTitle = overlayTruncateLine(`─ ${title} `, boxWidth - 2);
+    const topMiddle = `${topTitle}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(topTitle)))}`;
+    const dividerMiddle = "─".repeat(Math.max(0, boxWidth - 2));
+    const rows = [
+      selectorFullBorderRow("╭", topMiddle, "╮", withShadow),
+      ...contentLines.map((line) => selectorBoxRow(line, contentWidth, withShadow)),
+      selectorFullBorderRow("├", dividerMiddle, "┤", withShadow),
+      ...detailAndFooterLines.map((line) => selectorBoxRow(line, contentWidth, withShadow)),
+      selectorFullBorderRow("╰", "─".repeat(Math.max(0, boxWidth - 2)), "╯", withShadow),
     ];
+    return withShadow ? [...rows, selectorShadowLine(boxWidth)] : rows;
   }
 
   invalidate(): void {
@@ -1957,7 +2032,7 @@ async function openEnhancedPersonaSelector(ctx: PiContext, personas: BridgeListI
       done: (result) => done(result),
     }), {
       overlay: true,
-      overlayOptions: { width: "90%", maxHeight: "80%", anchor: "center", margin: 1 },
+      overlayOptions: { width: "90%", maxHeight: "90%", anchor: "center", margin: 1 },
       onHandle: (handle: PiOverlayHandle) => handle.focus?.(),
     });
     return { handled: true, selected: typeof selected === "string" && selected.length > 0 ? selected : null };

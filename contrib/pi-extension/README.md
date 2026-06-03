@@ -236,13 +236,17 @@ persona, model, and tool rules remain active.
 
 With no argument, `/larva-persona` opens a selector only in interactive TUI mode.
 When Pi exposes custom UI, the selector uses Pi TUI `Input` plus `SelectList`
-with a detail panel showing id, model, description, capabilities, and digest;
-`Enter` confirms and `Esc` cancels. Mouse clicks are intentionally unsupported
-no-ops. If the enhanced custom UI cannot be opened but Pi's simpler selector API
-is available, the command may fall back to that selector. In RPC, print, JSON,
-SDK, malformed mode, unknown mode, or other non-interactive launcher
-classifications, the command returns an input error and leaves active state
-unchanged. The Pi status line shows:
+with a detail panel showing id, model, description, capabilities, and digest.
+The selector renders as a boxed modal surface with an accent-colored border,
+solid ANSI background, adaptive list viewport that expands to available terminal
+height while keeping detail/footer bounded, and terminal-compatible drop shadow;
+its frame height remains stable across filter, navigation, and width-safe render
+states. `Enter` confirms and `Esc` cancels. Mouse clicks are intentionally
+unsupported no-ops. If the enhanced custom UI cannot be opened but Pi's simpler
+selector API is available, the command may fall back to that selector. In RPC,
+print, JSON, SDK, malformed mode, unknown mode, or other non-interactive
+launcher classifications, the command returns an input error and leaves active
+state unchanged. The Pi status line shows:
 
 ```text
 larva: <id>
@@ -467,6 +471,12 @@ UI rendering rules:
 - Prefer Pi TUI `Markdown`, `Text`, `TruncatedText`, `Input`, `SelectList`,
   `Container`, and `Box` over handwritten equivalents.
 - Every custom component `render(width)` line must satisfy visible width `<= width`.
+- Modal custom overlays should use terminal-compatible surface cues: full-row
+  solid ANSI background, accent-colored border, stable frame height, and optional
+  right/bottom drop shadow that stays within the provided render width.
+- Persona selector layouts should allocate fixed/bounded space for filter,
+  detail, and footer rows, then give remaining rows to an adaptive list viewport
+  so tall terminals show more candidates instead of unused bottom padding.
 - Mouse wheel is supported by overlay-scoped SGR mouse reporting. Mouse click is
   intentionally unsupported for this target.
 

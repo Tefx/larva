@@ -44,13 +44,33 @@ async function tempHome() {
   return mkdtemp(join(tmpdir(), "larva-persona-selector-"));
 }
 
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+const SELECTOR_SURFACE_BG = "\x1b[48;5;235m";
+const SELECTOR_BORDER_FG = "\x1b[38;5;116m";
+const SELECTOR_SHADOW_FG = "\x1b[38;5;232m";
+
+function stripAnsi(line) {
+  return line.replace(ANSI_RE, "");
+}
+
+function selectorSurfaceRows(lines) {
+  const lastPlain = stripAnsi(lines.at(-1) ?? "");
+  return /^ ▀+$/.test(lastPlain) ? lines.slice(0, -1) : lines;
+}
+
+function stripSelectorShadow(line) {
+  const plain = stripAnsi(line);
+  return plain.endsWith("█") ? plain.slice(0, -1) : plain;
+}
+
 function stripSelectorFrame(line) {
-  if (line.startsWith("│ ") && line.endsWith(" │")) return line.slice(2, -2).trimEnd();
-  return line;
+  const plain = stripSelectorShadow(line);
+  if (plain.startsWith("│ ") && plain.endsWith(" │")) return plain.slice(2, -2).trimEnd();
+  return plain;
 }
 
 function linesContaining(lines, tokens) {
-  return lines.map(stripSelectorFrame).filter((line) => tokens.some((token) => line.includes(token)));
+  return selectorSurfaceRows(lines).map(stripSelectorFrame).filter((line) => tokens.some((token) => line.includes(token)));
 }
 
 function allLinesFit(lines, width) {
@@ -58,11 +78,34 @@ function allLinesFit(lines, width) {
 }
 
 function selectorLinesBoxed(lines, width) {
-  return lines.length >= 3
-    && lines[0].startsWith("╭─ Select Larva persona")
-    && lines.at(-1).startsWith("╰")
-    && lines.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │"))
+  const surfaceRows = selectorSurfaceRows(lines);
+  const plainRows = surfaceRows.map(stripSelectorShadow);
+  return lines.length >= 4
+    && plainRows[0].startsWith("╭─ Select Larva persona")
+    && plainRows.at(-1).startsWith("╰")
+    && plainRows.slice(1, -1).every((line) => (line.startsWith("│ ") && line.endsWith(" │")) || (line.startsWith("├") && line.endsWith("┤")))
     && allLinesFit(lines, width);
+}
+
+function selectorSurfaceDistinct(lines) {
+  const surfaceRows = selectorSurfaceRows(lines);
+  return surfaceRows.length > 0
+    && surfaceRows.every((line) => line.includes(SELECTOR_SURFACE_BG))
+    && surfaceRows.some((line) => line.includes(SELECTOR_BORDER_FG));
+}
+
+function selectorDropShadow(lines) {
+  const surfaceRows = selectorSurfaceRows(lines);
+  const bottomShadow = stripAnsi(lines.at(-1) ?? "");
+  return surfaceRows.length + 1 === lines.length
+    && /^ ▀+$/.test(bottomShadow)
+    && surfaceRows.every((line) => line.includes(SELECTOR_SHADOW_FG) && stripAnsi(line).endsWith("█"));
+}
+
+function selectorListRows(lines) {
+  const contentRows = selectorSurfaceRows(lines).map(stripSelectorFrame);
+  const dividerIndex = contentRows.findIndex((line) => line.startsWith("├"));
+  return dividerIndex >= 0 ? contentRows.slice(3, dividerIndex) : [];
 }
 
 function selectorFrameStable(renderedStates) {
@@ -172,13 +215,51 @@ function selectorComponentEvidence() {
     clickNoOp: JSON.stringify(afterClick) === JSON.stringify(afterDown),
     enterResult: doneValue,
     renderRequests: tui.renderRequests,
-    allLinesFit: [initial, filtered, afterDown, afterClick].every((lines) => allLinesFit(lines, 96)) && allLinesFit(narrowInitial, 40),
+    allLinesFit: [initial, filtered, afterDown, afterClick].every((lines) => allLinesFit(lines, 96)) && [narrowInitial, narrowFiltered, narrowAfterDown].every((lines) => allLinesFit(lines, 40)),
     selectorBoxed: [initial, filtered, afterDown, afterUp, afterClick].every((lines) => selectorLinesBoxed(lines, 96)) && [narrowInitial, narrowFiltered, narrowAfterDown].every((lines) => selectorLinesBoxed(lines, 40)),
+    selectorSurfaceDistinct: [initial, filtered, afterDown, afterUp, afterClick, narrowInitial, narrowFiltered, narrowAfterDown].every(selectorSurfaceDistinct),
+    selectorDropShadow: [initial, filtered, afterDown, afterUp, afterClick, narrowInitial, narrowFiltered, narrowAfterDown].every(selectorDropShadow),
     selectorFrameStable: selectorFrameStable([initial, filtered, afterDown, afterUp, afterClick]) && selectorFrameStable([narrowInitial, narrowFiltered, narrowAfterDown]),
     renderedLineCounts: [initial, filtered, afterDown, afterUp, afterClick].map((lines) => lines.length),
     narrowRenderedLineCounts: [narrowInitial, narrowFiltered, narrowAfterDown].map((lines) => lines.length),
     capabilitySummaryShown: afterFilterDetail.some((line) => line.includes("deploy:read_write") || line.includes("shell:read_only")),
     digestShown: afterFilterDetail.some((line) => line.includes("sha256:DevOps")),
+  };
+}
+
+function adaptiveSelectorEvidence() {
+  const personas = Array.from({ length: 62 }, (_, index) => ({
+    id: `persona-${String(index + 1).padStart(2, "0")}`,
+    description: `Adaptive height candidate ${index + 1}`,
+    model: "openrouter/adaptive-model",
+    spec_digest: `sha256:adaptive-${index + 1}`,
+    capabilities: { shell: "read_only" },
+  }));
+  const smallTui = { terminal: { rows: 30 }, renderRequests: 0, requestRender() { this.renderRequests += 1; } };
+  const tallTui = { terminal: { rows: 50 }, renderRequests: 0, requestRender() { this.renderRequests += 1; } };
+  const smallSelector = new mod.LarvaPersonaSelector({ personas, theme, keybindings, tui: smallTui, done: () => {} });
+  const tallSelector = new mod.LarvaPersonaSelector({ personas, theme, keybindings, tui: tallTui, done: () => {} });
+  const smallInitial = smallSelector.render(96);
+  smallSelector.handleInput("down");
+  const smallAfterDown = smallSelector.render(96);
+  const tallInitial = tallSelector.render(96);
+  tallSelector.handleInput("down");
+  const tallAfterDown = tallSelector.render(96);
+  const tallListRows = selectorListRows(tallInitial);
+  const smallListRows = selectorListRows(smallInitial);
+  return {
+    smallLineCount: smallInitial.length,
+    tallLineCount: tallInitial.length,
+    smallSurfaceLineCount: selectorSurfaceRows(smallInitial).length,
+    tallSurfaceLineCount: selectorSurfaceRows(tallInitial).length,
+    smallListViewportRows: smallListRows.length,
+    tallListViewportRows: tallListRows.length,
+    tallCandidateRows: tallListRows.filter((line) => line.includes("persona-")).length,
+    frameStableSmall: selectorFrameStable([smallInitial, smallAfterDown]),
+    frameStableTall: selectorFrameStable([tallInitial, tallAfterDown]),
+    surfaceDistinct: [smallInitial, smallAfterDown, tallInitial, tallAfterDown].every(selectorSurfaceDistinct),
+    dropShadow: [smallInitial, smallAfterDown, tallInitial, tallAfterDown].every(selectorDropShadow),
+    widthSafe: [smallInitial, smallAfterDown, tallInitial, tallAfterDown].every((lines) => allLinesFit(lines, 96)),
   };
 }
 
@@ -303,12 +384,14 @@ async function fallbackEvidence() {
 }
 
 const detail = selectorComponentEvidence();
+const adaptive = adaptiveSelectorEvidence();
 const commit = await commitThroughCommandEvidence();
 const cancel = await cancelEvidence();
 const fallback = await fallbackEvidence();
 
 console.log(JSON.stringify({
   detail,
+  adaptive,
   commit,
   cancel,
   fallback,
@@ -320,8 +403,11 @@ console.log(JSON.stringify({
     escCancelPreservesActiveState: cancel.initialOk && !cancel.cancelledOk && cancel.cancelCode === "LARVA_BAD_INPUT" && cancel.activePersonaAfterCancel === "ok" && cancel.noAdditionalModelSet && cancel.noAdditionalToolSet,
     fallbackPreserved: fallback.uiSelectResult === "ok" && fallback.customThrowFallsBackToSelect === "startup" && fallback.openSelectorResult === "child" && !fallback.nonInteractiveOk && fallback.nonInteractiveCode === "LARVA_BAD_INPUT" && fallback.nonInteractiveCalls.custom === 0 && fallback.nonInteractiveCalls.select === 0 && fallback.nonInteractiveCalls.openSelector === 0 && !fallback.missingUiOk && fallback.missingUiCode === "LARVA_BAD_INPUT",
     mouseClickUnsupportedNoOp: detail.clickNoOp,
-    renderLinesWithinWidth: detail.allLinesFit,
+    renderLinesWithinWidth: detail.allLinesFit && adaptive.widthSafe,
     selectorOverlayBordered: detail.selectorBoxed,
-    selectorFrameStableDuringNavigation: detail.selectorFrameStable,
+    selectorSurfaceDistinct: detail.selectorSurfaceDistinct && adaptive.surfaceDistinct,
+    selectorAdaptiveHeightUtilization: adaptive.tallLineCount > adaptive.smallLineCount && adaptive.tallListViewportRows > adaptive.smallListViewportRows && adaptive.tallCandidateRows >= 16,
+    selectorDropShadow: detail.selectorDropShadow && adaptive.dropShadow,
+    selectorFrameStableDuringNavigation: detail.selectorFrameStable && adaptive.frameStableSmall && adaptive.frameStableTall,
   },
 }, null, 2));
