@@ -100133,19 +100133,19 @@ phases:
       is documented/authorized or removed without creating raw JSONL/sidecar authority.
       Also verify previously passing Pi runtime and docs/spec contract checks remain
       passing.'
-    verification: '- [ ] B1 setActiveTools failure degradation is proven with raw
+    verification: '- [x] B1 setActiveTools failure degradation is proven with raw
       command/probe output.
 
-      - [ ] B2 `larva: none` no-active-persona session_start status is proven with
+      - [x] B2 `larva: none` no-active-persona session_start status is proven with
       raw output.
 
-      - [ ] B3 trace env/file-write disposition is PASS with citations and no helper
+      - [x] B3 trace env/file-write disposition is PASS with citations and no helper
       authority drift.
 
-      - [ ] child RPC live proof, capability-gates, startup-fatal, and relevant pytest
+      - [x] child RPC live proof, capability-gates, startup-fatal, and relevant pytest
       remain passing.
 
-      - [ ] final verdict PASS only if no wiring blockers remain.'
+      - [x] final verdict PASS only if no wiring blockers remain.'
     depends_on:
     - pi_impl_finalization_20260603.wiring-blocker-fix
     agent: wiring-auditor
