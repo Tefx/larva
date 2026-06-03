@@ -101765,6 +101765,96 @@ phases:
       - atomic_commit_preserved: satisfied|failed|blocked\n- fallback_preserved: satisfied|failed|blocked\n\
       - no_mouse_click_selection: satisfied|failed|blocked"
     agent: frontend-engineer
+  - id: pi_tui_persona_selector_20260603.client-runtime-proof
+    name: Prove enhanced persona selector runtime liveness and fallback behavior
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      PROOF ARTIFACT:
+
+      Launch or harness the Pi TUI/client selector surface and prove no-argument `/larva-persona`
+      is observable, non-blank, keyboard-interactive, and fallback-safe. Source/build
+      evidence alone is insufficient.
+
+
+      This check protects `pi_tui_persona_selector_20260603.gate` and final P3 runtime
+      smoke.
+
+
+      Required evidence fields: surface class (`tui`), exact launch/command/harness,
+      selector screenshot/snapshot/terminal capture, filter input behavior, detail
+      panel content, Enter/Esc behavior, fallback matrix, click non-goal evidence,
+      blockers.
+
+
+      <side_effect_budget>
+
+      Allowed: run real Pi or closest component/runtime harness and capture evidence.
+      Forbidden: modifying code or treating mock-only selector proof as live Pi TUI
+      support without explicit BLOCKED/PARTIAL classification.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Exercise no-argument command in interactive TUI mode and missing/non-interactive
+      modes.
+
+      - Confirm selection commits through existing command result only after Enter;
+      highlight/filter alone does not switch persona.
+
+      - Confirm Esc leaves previous active persona/model/tool policy unchanged.
+
+      </risk_probes>'
+    verification: '- [ ] Runtime evidence shows the enhanced selector with filter
+      input, SelectList, and detail panel.
+
+      - [ ] Evidence shows filter input changes list/detail and rendered lines stay
+      visible width `<= width`.
+
+      - [ ] Enter selection commits through existing persona switch path; Esc cancel
+      returns error and leaves state unchanged.
+
+      - [ ] Non-interactive/RPC/missing UI/fallback paths match documented behavior
+      and do not mutate state.
+
+      - [ ] Mouse click support is absent/no-op and not required for selector completion.
+
+      - [ ] If real Pi TUI proof is blocked, evidence states exact missing binary/hook/target
+      and whether product work or environment is blocking.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - scripts/pi-extension-autocomplete-smoke.mjs — <if used, key passage>\n- scripts/pi-extension-runtime-smoke.mjs\
+      \ — <if used, key passage>\n- tests/shell/test_pi_extension_contract.py — <key\
+      \ passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <key passage>\n\n## Runtime Evidence\n- surface_class: tui\n- command_or_harness:\
+      \ <exact command>\n- launch_context: <Pi binary/version or harness provenance>\n\
+      - selector_capture: |\n    <paste terminal capture/snapshot>\n- filter_behavior:\
+      \ <query -> candidates/detail evidence>\n- detail_panel_fields: <id/model/description/capabilities/digest\
+      \ proof>\n- enter_confirm: <state before/after + result>\n- esc_cancel: <state\
+      \ before/after + error>\n- fallback_matrix: <non-interactive/RPC/missing UI/fallback\
+      \ behavior>\n- click_non_goal: <click-shaped input ignored/no-op or no click\
+      \ handler evidence>\n- width_table: <line width measurements>\n\n## Behavioral\
+      \ Proof Register\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | ---\
+      \ | --- | --- | --- | --- | --- |\n| P2-SEL-001 | enhanced selector visible\
+      \ | launched/harness capture | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision>\
+      \ |\n| P2-SEL-002 | fallback preserved | fallback matrix | <ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n| P2-SEL-003 | detail panel complete | capture/snapshot\
+      \ | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <decision> |\n| P2-SEL-004 |\
+      \ Enter/Esc/no-click behavior | interaction logs | <ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n\n## Checklist Receipt\n- selector_runtime_observed:\
+      \ satisfied|failed|blocked\n- filter_detail_proven: satisfied|failed|blocked\n\
+      - confirm_cancel_proven: satisfied|failed|blocked\n- fallback_proven: satisfied|failed|blocked\n\
+      - no_click_proven: satisfied|failed|blocked"
+    depends_on:
+    - pi_tui_persona_selector_20260603.input-selectlist-detail-implementation
+    agent: client-runtime-verifier
 - id: pi_tui_verification_docs_20260603
   name: P3 Pi TUI Verification, CI, and Docs Closure 2026-06-03
   status: locked
