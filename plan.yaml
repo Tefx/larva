@@ -100841,14 +100841,14 @@ phases:
       is explicitly a documented environment skip outside product behavior.
 
       </risk_probes>'
-    verification: '- [ ] CI or repo-local gate wiring includes `npm --prefix contrib/pi-extension
+    verification: '- [x] CI or repo-local gate wiring includes `npm --prefix contrib/pi-extension
       ci` before Pi extension UI/runtime tests.
 
-      - [ ] Existing Pi extension pytest and repo-local gate commands remain present.
+      - [x] Existing Pi extension pytest and repo-local gate commands remain present.
 
-      - [ ] Wiring does not weaken or skip existing Python/Invar/shared-surface checks.
+      - [x] Wiring does not weaken or skip existing Python/Invar/shared-surface checks.
 
-      - [ ] Evidence identifies any local developer command documentation updated
+      - [x] Evidence identifies any local developer command documentation updated
       by this wiring.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
