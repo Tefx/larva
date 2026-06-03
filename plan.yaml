@@ -100303,3 +100303,57 @@ phases:
 
 
       Blockers: none. Deviation Records: none.'
+  - id: pi_impl_finalization_20260603.expected-red-label-cleanup
+    name: Clean stale expected-red labels from final Pi proof set
+    status: pending
+    description: 'TARGET STATE: Remove or clearly reclassify stale expected-red labels/docstrings
+      in Pi proof files so final green proof does not rely on contradictory expected-red
+      wording. Gate failure B1 found expected-red labels/docstrings in tests/shell
+      Pi proof files including test_pi_extension_contract.py, test_pi_extension_subagent_ux.py,
+      test_pi_postspec_editor_prompt_expected_red.py, and test_pi_reported_failures_expected_red.py.
+
+
+      CONSTRAINTS:
+
+      - Do not weaken tests or delete meaningful coverage.
+
+      - Preserve historical expected-red artifacts only if explicitly quarantined
+      as historical/non-final proof and not used as final PASS evidence.
+
+      - Update names/docstrings/docs so final proof files describe green regression/conformance
+      proof where behavior is implemented.
+
+      - Keep runtime smoke, full pytest, and invar green.'
+    verification: '- [ ] grep/static scan shows no stale expected-red labels/docstrings
+      in final Pi proof files, or any remaining occurrences are explicitly historical/quarantined
+      and not used as final proof.
+
+      - [ ] full pytest passes.
+
+      - [ ] runtime smoke capability-gates, startup-fatal, and live-child-rpc-proof
+      pass.
+
+      - [ ] invar guard changed/full passes.'
+    depends_on:
+    - pi_impl_finalization_20260603.wiring-blocker-retest
+    - pi_impl_finalization_20260603.plan-readiness-review
+    agent: frontend-engineer
+  - id: pi_impl_finalization_20260603.final-gate-retest
+    name: Retest final Pi integration deep review gate after expected-red cleanup
+    status: pending
+    description: Independent retest of final Pi integration deep review after stale
+      expected-red label cleanup. Verify all prior final gate criteria plus no stale
+      expected-red proof labels remain as accepted final proof.
+    verification: '- [ ] full guard/pytest evidence is green.
+
+      - [ ] runtime smoke/capability/fatal startup/live child RPC proof is green.
+
+      - [ ] docs/runtime matrix/final wiring blockers are green.
+
+      - [ ] expected-red cleanup is verified with grep/static scan and no stale final
+      proof contradiction remains.
+
+      - [ ] final verdict PASS only if blockers=[] and gate_open_allowed=true.'
+    depends_on:
+    - pi_impl_finalization_20260603.expected-red-label-cleanup
+    agent: gate-reviewer
