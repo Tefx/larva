@@ -100564,3 +100564,11 @@ phases:
     and view-only safety preserved.
   depends_on:
   - pi_tui_rendering_foundation_20260603
+- id: pi_tui_persona_selector_20260603
+  name: P2 Persona Selector Enhancement 2026-06-03
+  status: locked
+  gate: /larva-persona no-argument interactive TUI selector uses Input + SelectList
+    + detail panel while preserving non-interactive, missing-UI, and legacy fallback
+    behavior.
+  depends_on:
+  - pi_tui_subagent_markdown_overlay_20260603
