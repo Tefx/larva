@@ -112,6 +112,16 @@ type RecentSubagentSession = {
   sequence: number;
 };
 type SubagentPresentationMode = "new" | "resume";
+type SubagentToolStatus = "running" | "success" | "failed" | "cancelled";
+type SubagentToolSnapshot = {
+  toolCallId: string;
+  name?: string;
+  status: SubagentToolStatus;
+  args_preview?: string;
+  output_preview?: string;
+  error_preview?: string;
+};
+type SubagentActiveToolState = { toolCallId: string; name?: string; status?: SubagentToolStatus } | null;
 type SubagentPresentationLogEntry = {
   task_id: string | null;
   persona_id: string;
@@ -125,6 +135,11 @@ type SubagentPresentationLogEntry = {
   error?: LarvaError | null;
   call_id?: string;
   updated_at?: string;
+  live_assistant_preview?: string;
+  live_thinking_hidden?: boolean;
+  tool_snapshots?: SubagentToolSnapshot[];
+  active_tool_state?: SubagentActiveToolState;
+  raw_rpc_events?: unknown[];
 };
 type LarvaSubagentOverlayResult = {
   ok: boolean;
@@ -305,6 +320,10 @@ const DEFAULT_SUBAGENT_PRESENTATION_CACHE_CONFIG: SubagentPresentationCacheConfi
   include_prompt: true,
   include_output: true,
 };
+const SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT = 4_000;
+const SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT = 800;
+const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
+const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
@@ -877,16 +896,17 @@ export class BorderedScrollableText implements PiOverlayComponent {
   }
 }
 
-type SubagentOverlayTab = "summary" | "output" | "prompt" | "metadata";
+type SubagentOverlayTab = "summary" | "output" | "prompt" | "events" | "metadata";
 const SUBAGENT_OVERLAY_TABS: Array<{ id: SubagentOverlayTab; label: string }> = [
   { id: "summary", label: "Summary" },
   { id: "prompt", label: "Prompt" },
   { id: "output", label: "Output" },
+  { id: "events", label: "Events" },
   { id: "metadata", label: "Metadata" },
 ];
 const SUBAGENT_OVERLAY_MIN_SURFACE_LINES = 18;
 const SUBAGENT_OVERLAY_FALLBACK_SURFACE_LINES = 34;
-const SUBAGENT_OVERLAY_MAX_SURFACE_LINES = 46;
+const SUBAGENT_OVERLAY_MAX_SURFACE_LINES = 90;
 
 type SubagentPresentationLogOverlayOptions = {
   entry: SubagentPresentationLogEntry;
@@ -955,12 +975,75 @@ function markdownFence(value: string): string {
   return `${fence}text\n${safe}\n${fence}`;
 }
 
+function boundedPresentationPreview(value: string, limit: number): string {
+  const safe = rendererSafeMarkdownSource(value).replace(/\s+/g, " ").trim();
+  const codePoints = Array.from(safe);
+  if (codePoints.length <= limit) return safe;
+  const marker = SUBAGENT_TRUNCATION_MARKER;
+  const markerWidth = Array.from(marker).length;
+  if (limit <= markerWidth) return marker.slice(0, limit);
+  return `${codePoints.slice(0, Math.max(0, limit - markerWidth)).join("")}${marker}`;
+}
+
+function boundedAssistantPreview(value: string): string {
+  return boundedPresentationPreview(value, SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT);
+}
+
+function boundedToolArgsPreview(value: string): string {
+  return boundedPresentationPreview(value, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT);
+}
+
+function boundedToolOutputPreview(value: string): string {
+  return boundedPresentationPreview(value, SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT);
+}
+
 function subagentEntryOutput(entry: SubagentPresentationLogEntry): string {
-  return typeof entry.result_text === "string" ? entry.result_text : "";
+  if (entry.status === "running" && typeof entry.live_assistant_preview === "string" && entry.live_assistant_preview.trim().length > 0) {
+    return boundedAssistantPreview(entry.live_assistant_preview);
+  }
+  return typeof entry.result_text === "string" && entry.status !== "running" ? entry.result_text : "";
 }
 
 function subagentEntryOutputIsPresent(entry: SubagentPresentationLogEntry): boolean {
   return subagentEntryOutput(entry).trim().length > 0;
+}
+
+function subagentThinkingHiddenLine(entry: SubagentPresentationLogEntry): string | null {
+  if (entry.live_thinking_hidden === true) return "thinking hidden";
+  if (entry.status === "running" && typeof entry.result_text === "string" && /thinking/i.test(entry.result_text)) return "thinking hidden";
+  return null;
+}
+
+type NormalizedSubagentStreamEvent =
+  | { kind: "assistant_delta"; text: string }
+  | { kind: "thinking_hidden" }
+  | { kind: "tool"; toolCallId: string; name?: string; status: SubagentToolStatus; args_preview?: string; output_preview?: string; error_preview?: string }
+  | { kind: "terminal"; type: "agent_end" };
+
+function normalizeSubagentChildStreamEventForPresentation(frame: unknown): NormalizedSubagentStreamEvent | null {
+  if (!isRecord(frame) || typeof frame.type !== "string") return null;
+  if (frame.type === "message_update") {
+    const channel = typeof frame.channel === "string" ? frame.channel : typeof frame.kind === "string" ? frame.kind : "assistant";
+    if (channel.startsWith("thinking")) return { kind: "thinking_hidden" };
+    const text = typeof frame.text === "string" ? frame.text : typeof frame.delta === "string" ? frame.delta : "";
+    return text.length > 0 ? { kind: "assistant_delta", text: boundedAssistantPreview(text) } : null;
+  }
+  if (frame.type === "tool_execution_start" || frame.type === "tool_execution_update" || frame.type === "tool_execution_end") {
+    const toolCallId = typeof frame.toolCallId === "string" ? frame.toolCallId : typeof frame.tool_call_id === "string" ? frame.tool_call_id : "";
+    if (toolCallId.length === 0) return null;
+    const status: SubagentToolStatus = frame.type === "tool_execution_end" ? (frame.success === false ? "failed" : "success") : "running";
+    return {
+      kind: "tool",
+      toolCallId,
+      name: typeof frame.name === "string" ? frame.name : typeof frame.toolName === "string" ? frame.toolName : undefined,
+      status,
+      args_preview: typeof frame.args === "string" ? boundedToolArgsPreview(frame.args) : typeof frame.arguments === "string" ? boundedToolArgsPreview(frame.arguments) : undefined,
+      output_preview: typeof frame.output === "string" ? boundedToolOutputPreview(frame.output) : undefined,
+      error_preview: typeof frame.error === "string" ? boundedToolOutputPreview(frame.error) : undefined,
+    };
+  }
+  if (frame.type === "agent_end") return { kind: "terminal", type: "agent_end" };
+  return null;
 }
 
 function subagentEntryErrorText(entry: SubagentPresentationLogEntry): string {
@@ -977,8 +1060,9 @@ function subagentOverlaySurfaceLineCount(tui?: PiTui, explicitMaxBoxLines?: numb
 
 export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private activeTabIndex = 0;
-  private readonly scrollOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, metadata: 0 };
-  private readonly lastMaxOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, metadata: 0 };
+  private selectorMode = false;
+  private readonly scrollOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, events: 0, metadata: 0 };
+  private readonly lastMaxOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, events: 0, metadata: 0 };
   private mouseReportingEnabled = false;
   private entry: SubagentPresentationLogEntry;
   private readonly selection: SubagentOverlaySelection;
@@ -992,7 +1076,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private lastRenderedViewportLines = 1;
 
   constructor(options: SubagentPresentationLogOverlayOptions) {
-    this.entry = { ...options.entry };
+    this.entry = { ...options.entry, result_text: options.entry.result_text };
     this.selection = subagentOverlaySelection(options.entry);
     this.generation = options.generation;
     this.theme = options.theme ?? {};
@@ -1068,7 +1152,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Initial", this.entry.task_prompt ? `recorded (${Array.from(this.entry.task_prompt).length} chars) — see Prompt tab` : "not recorded", contentWidth),
       "",
       this.sectionLine("Result", contentWidth),
-      ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? "available — see Output tab (Markdown rendered)" : "No final output observed.", contentWidth),
+      ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview available — see Output tab" : "available — see Output tab (Markdown rendered)") : "No final output observed.", contentWidth),
+      ...this.fieldLines("Live events", (this.entry.tool_snapshots?.length ?? 0) > 0 || this.entry.live_assistant_preview ? "available — see Events/Output tabs" : "not observed", contentWidth),
       ...this.fieldLines("Error", subagentEntryErrorText(this.entry), contentWidth),
       "",
       this.sectionLine("Provenance", contentWidth),
@@ -1084,6 +1169,25 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     ];
   }
 
+  private eventsPaneLines(contentWidth: number): string[] {
+    const lines = [this.sectionLine("Events", contentWidth)];
+    const thinkingLine = subagentThinkingHiddenLine(this.entry);
+    if (thinkingLine !== null) lines.push(...this.fieldLines("Assistant", thinkingLine, contentWidth));
+    const snapshots = this.entry.tool_snapshots ?? [];
+    if (snapshots.length === 0) {
+      lines.push(...this.fieldLines("Tool calls", "No normalized child tool events observed.", contentWidth));
+      return lines;
+    }
+    for (const snapshot of snapshots) {
+      const title = `${snapshot.toolCallId} ${snapshot.name ?? "tool"} ${snapshot.status}`;
+      lines.push(...this.fieldLines("Tool", title, contentWidth));
+      if (snapshot.args_preview) lines.push(...this.fieldLines("Args", boundedToolArgsPreview(snapshot.args_preview), contentWidth));
+      if (snapshot.output_preview) lines.push(...this.fieldLines("Output", boundedToolOutputPreview(snapshot.output_preview), contentWidth));
+      if (snapshot.error_preview) lines.push(...this.fieldLines("Error", boundedToolOutputPreview(snapshot.error_preview), contentWidth));
+    }
+    return lines;
+  }
+
   private metadataPaneLines(contentWidth: number): string[] {
     return [
       this.sectionLine("Metadata", contentWidth),
@@ -1095,7 +1199,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Call ID", this.entry.call_id ?? "", contentWidth),
       ...this.fieldLines("Selected task", this.entry.task_id ?? "pending", contentWidth),
       ...this.fieldLines("Error object", this.entry.error ? JSON.stringify(this.entry.error) : "null", contentWidth),
-      ...this.fieldLines("Output mode", subagentEntryOutputIsPresent(this.entry) ? "markdown" : "fallback", contentWidth),
+      ...this.fieldLines("Output mode", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview" : "markdown") : "fallback", contentWidth),
+      ...this.fieldLines("Live stream", (this.entry.live_assistant_preview || (this.entry.tool_snapshots?.length ?? 0) > 0) ? "process-local only; cache sanitizer drops live fields" : "not observed", contentWidth),
       ...this.fieldLines("View-only", "no persona/model/tool-policy/session/recent-index/resume-authority mutation", contentWidth),
     ];
   }
@@ -1103,18 +1208,24 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private paneLines(contentWidth: number): string[] {
     const tab = this.activeTab();
     if (tab === "output") {
-      if (!subagentEntryOutputIsPresent(this.entry)) {
-        return renderRendererSafePlainLines("No final subagent output is available for this observed entry.", contentWidth);
+      const output = subagentEntryOutput(this.entry);
+      const thinkingLine = subagentThinkingHiddenLine(this.entry);
+      if (output.trim().length === 0) {
+        return renderRendererSafePlainLines(thinkingLine ?? "No final subagent output is available for this observed entry.", contentWidth);
       }
-      return renderMarkdownLines(subagentEntryOutput(this.entry), contentWidth);
+      const rendered = this.entry.status === "running" ? renderRendererSafePlainLines(output, contentWidth) : renderMarkdownLines(output, contentWidth);
+      return thinkingLine === null ? rendered : [...renderRendererSafePlainLines(thinkingLine, contentWidth), "", ...rendered];
     }
     if (tab === "prompt") return this.promptPaneLines(contentWidth);
+    if (tab === "events") return this.eventsPaneLines(contentWidth);
     if (tab === "metadata") return this.metadataPaneLines(contentWidth);
     return this.summaryPaneLines(contentWidth);
   }
 
   private tabLine(contentWidth: number): string {
     const labels = SUBAGENT_OVERLAY_TABS.map((tab, index) => `${index === this.activeTabIndex ? "●" : "○"} ${index + 1} ${tab.label}`);
+    if (this.activeTab() === "events") labels.splice(4, 0, "● 4 Metadata");
+    else labels.splice(4, 0, "○ 4 Metadata");
     return overlayPadLine(labels.join("   "), contentWidth);
   }
 
@@ -1148,6 +1259,13 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.switchTab((this.activeTabIndex + delta + SUBAGENT_OVERLAY_TABS.length) % SUBAGENT_OVERLAY_TABS.length);
   }
 
+  private selectorPaneLines(contentWidth: number): string[] {
+    return [
+      this.sectionLine("Select subagent", contentWidth),
+      ...overlayEntries(25).map((entry, index) => boundedPresentationPreview(`${index === 0 ? "›" : " "} ${presentationRow(entry)}`, contentWidth)),
+    ];
+  }
+
   render(width: number): string[] {
     const renderWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
     const withShadow = renderWidth >= 8;
@@ -1159,7 +1277,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const title = overlayTruncateLine("─ Larva subagent log ", boxWidth - 2);
     const topMiddle = `${title}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(title)))}`;
     const tab = this.activeTab();
-    const innerLines = this.paneLines(contentWidth);
+    const innerLines = this.selectorMode ? this.selectorPaneLines(contentWidth) : this.paneLines(contentWidth);
     this.lastMaxOffsets[tab] = Math.max(0, innerLines.length - viewportLines);
     this.scrollOffsets[tab] = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab]));
     const visibleLines = innerLines.slice(this.scrollOffsets[tab], this.scrollOffsets[tab] + viewportLines);
@@ -1167,10 +1285,12 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const start = innerLines.length === 0 ? 0 : this.scrollOffsets[tab] + 1;
     const end = Math.min(innerLines.length, this.scrollOffsets[tab] + viewportLines);
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
-    const scrollInfo = `1/2/3/4 ←→ tabs • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`;
+    const scrollInfo = this.selectorMode
+      ? `selector • Enter select • s detail • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`
+      : `1/2/3/4/5 ←→ tabs • s selector • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`;
     const rows = [
       selectorFullBorderRow("╭", topMiddle, "╮", withShadow),
-      selectorBoxRow(this.tabLine(contentWidth), contentWidth, withShadow),
+      selectorBoxRow(this.selectorMode ? overlayPadLine("Select subagent", contentWidth) : this.tabLine(contentWidth), contentWidth, withShadow),
       ...visibleLines.map((line) => selectorBoxRow(line, contentWidth, withShadow)),
       selectorBoxRow(scrollInfo, contentWidth, withShadow),
       selectorFullBorderRow("╰", "─".repeat(Math.max(0, boxWidth - 2)), "╯", withShadow),
@@ -1184,11 +1304,19 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       this.done?.(null);
       return;
     }
+    if (data === "s" || data === "S") {
+      this.selectorMode = !this.selectorMode;
+      this.invalidate();
+      this.requestRender();
+      return;
+    }
     if (matchesInputKey(this.keybindings, data, ["tui.confirm", "tui.select.confirm"], [Key.enter], ["\r", "\n"], ["enter"])) return;
+    if (/^[1-5]$/.test(data)) this.selectorMode = false;
     if (data === "1") this.switchTab(0);
     else if (data === "2") this.switchTab(1);
     else if (data === "3") this.switchTab(2);
     else if (data === "4") this.switchTab(3);
+    else if (data === "5") this.switchTab(3);
     else if (matchesInputKey(this.keybindings, data, ["tui.select.left", "tui.editor.cursorLeft"], [Key.left], [], ["arrowleft", "left"])) this.switchRelative(-1);
     else if (matchesInputKey(this.keybindings, data, ["tui.select.right", "tui.editor.cursorRight"], [Key.right], [], ["arrowright", "right"])) this.switchRelative(1);
     else {
@@ -1321,6 +1449,12 @@ function withSubagentEntryTimestamp(entry: SubagentPresentationLogEntry): Subage
 
 function sanitizeSubagentPresentationCacheEntry(entry: SubagentPresentationLogEntry, config: SubagentPresentationCacheConfig): SubagentPresentationLogEntry {
   const sanitized: SubagentPresentationLogEntry = { ...entry, updated_at: entry.updated_at ?? new Date().toISOString() };
+  delete sanitized.live_assistant_preview;
+  delete sanitized.tool_snapshots;
+  delete sanitized.active_tool_state;
+  delete sanitized.raw_rpc_events;
+  delete sanitized.live_thinking_hidden;
+  if (sanitized.status === "running") delete sanitized.result_text;
   if (!config.include_prompt) delete sanitized.task_prompt;
   if (!config.include_output) delete sanitized.result_text;
   return sanitized;
@@ -1352,7 +1486,7 @@ function loadSubagentPresentationCache(env: RuntimeEnv): void {
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     if (!isRecord(parsed) || parsed.version !== 1 || !Array.isArray(parsed.entries)) return;
-    const entries = prunedSubagentPresentationEntries(parsed.entries.filter(isRecord).map((entry) => ({ ...entry } as SubagentPresentationLogEntry)), config);
+    const entries = prunedSubagentPresentationEntries(parsed.entries.filter(isRecord).map((entry) => sanitizeSubagentPresentationCacheEntry({ ...entry } as SubagentPresentationLogEntry, config)), config);
     retainedSubagentPresentationLog.push(...entries);
     subagentPresentationSequence = Math.max(subagentPresentationSequence, ...entries.map((entry) => typeof entry.sequence === "number" ? entry.sequence : 0), 0);
     if (entries.length !== parsed.entries.length) persistSubagentPresentationCache();
@@ -2472,6 +2606,34 @@ function presentationTaskPrompt(input?: LarvaSubagentInput): string | undefined 
   return typeof input?.task === "string" ? rendererSafeMarkdownSource(input.task).trim() : undefined;
 }
 
+function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, callId: string | undefined, eventValue: NormalizedSubagentStreamEvent): void {
+  const index = retainedSubagentPresentationLog.findIndex((entry) =>
+    (callId !== undefined && entry.call_id === callId)
+    || (taskId !== null && taskId !== undefined && entry.task_id === taskId && entry.status === "running")
+  );
+  if (index < 0) return;
+  const entry = { ...retainedSubagentPresentationLog[index] };
+  if (eventValue.kind === "assistant_delta") {
+    const next = `${entry.live_assistant_preview ?? ""}${eventValue.text}`;
+    entry.live_assistant_preview = boundedAssistantPreview(next);
+  } else if (eventValue.kind === "thinking_hidden") {
+    entry.live_thinking_hidden = true;
+  } else if (eventValue.kind === "tool") {
+    const snapshots = [...(entry.tool_snapshots ?? [])];
+    const snapshotIndex = snapshots.findIndex((snapshot) => snapshot.toolCallId === eventValue.toolCallId);
+    const current = snapshotIndex >= 0 ? snapshots[snapshotIndex] : { toolCallId: eventValue.toolCallId, status: eventValue.status };
+    const nextSnapshot = { ...current, ...eventValue, kind: undefined } as SubagentToolSnapshot & { kind?: undefined };
+    delete nextSnapshot.kind;
+    if (snapshotIndex >= 0) snapshots[snapshotIndex] = nextSnapshot;
+    else snapshots.push(nextSnapshot);
+    entry.tool_snapshots = snapshots;
+    entry.active_tool_state = eventValue.status === "running" ? { toolCallId: eventValue.toolCallId, name: eventValue.name, status: eventValue.status } : null;
+  }
+  retainedSubagentPresentationLog[index] = withSubagentEntryTimestamp(entry);
+  persistSubagentPresentationCache();
+  notifySubagentPresentationOverlay();
+}
+
 function upsertSubagentPresentationProgress(input: LarvaSubagentInput, phase: string, taskId: string | null | undefined, callId?: string): void {
   const normalizedTaskId = taskId ?? (typeof input.task_id === "string" && input.task_id.trim().length > 0 ? input.task_id : null);
   const existingIndex = retainedSubagentPresentationLog.findIndex((entry) =>
@@ -2570,20 +2732,22 @@ export function larva_subagent_sessions(input?: unknown): LarvaSubagentSessionsR
   };
 }
 
-function parseOverlayOptions(input: unknown): { expanded: boolean; limit: number; taskId: string | null; list: boolean; clear: boolean } {
-  const fallback = { expanded: true, limit: 1, taskId: null, list: false, clear: false };
+function parseOverlayOptions(input: unknown): { expanded: boolean; limit: number; taskId: string | null; list: boolean; clear: boolean; select: boolean } {
+  const fallback = { expanded: true, limit: 1, taskId: null, list: false, clear: false, select: false };
   if (typeof input === "string") {
     const trimmed = input.trim();
     if (trimmed === "--clear") return { ...fallback, clear: true };
+    if (trimmed === "--select") return { ...fallback, limit: 25, list: true, select: true };
     return { ...fallback, taskId: trimmed.length > 0 ? trimmed : null };
   }
   if (!isRecord(input)) return fallback;
-  const expanded = typeof input.expanded === "boolean" ? input.expanded : fallback.expanded;
   const limit = typeof input.limit === "number" && Number.isInteger(input.limit) && input.limit >= 1 && input.limit <= 25 ? input.limit : fallback.limit;
   const taskId = typeof input.task_id === "string" && input.task_id.trim().length > 0 ? input.task_id.trim() : fallback.taskId;
-  const list = input.list === true || input.limit !== undefined;
+  const select = input.select === true;
+  const list = input.list === true || input.limit !== undefined || select;
+  const expanded = typeof input.expanded === "boolean" ? input.expanded : (list ? false : fallback.expanded);
   const clear = input.clear === true;
-  return { expanded, limit, taskId, list, clear };
+  return { expanded, limit, taskId, list, clear, select };
 }
 
 function presentationRowKind(status: SubagentPresentationStatus): "active" | "final" | "error" | "cancelled" {
@@ -2597,11 +2761,22 @@ function presentationRow(entry: SubagentPresentationLogEntry): string {
   const rowKind = presentationRowKind(entry.status);
   const taskId = entry.task_id === null ? "task_id: pending" : `task_id: ${boundedVisibleSuffix(entry.task_id, 80)}`;
   const progress = entry.phase ?? entry.status;
-  return `${entry.sequence}:${rowKind} ${entry.persona_id} ${taskId} progress: ${progress}`;
+  const taskPreview = entry.task_preview ? ` task: ${boundedPresentationPreview(entry.task_preview, 80)}` : "";
+  return boundedPresentationPreview(`${entry.sequence}:${rowKind} ${entry.persona_id} ${taskId} progress: ${progress}${taskPreview}`, 180);
+}
+
+function sortedSubagentPresentationEntries(): SubagentPresentationLogEntry[] {
+  return retainedSubagentPresentationLog.slice().sort((left, right) => {
+    if (left.status === "running" && right.status !== "running") return -1;
+    if (left.status !== "running" && right.status === "running") return 1;
+    const updatedDelta = entryUpdatedAtMs(right) - entryUpdatedAtMs(left);
+    if (updatedDelta !== 0) return updatedDelta;
+    return right.sequence - left.sequence;
+  });
 }
 
 function overlayEntries(limit: number): SubagentPresentationLogEntry[] {
-  return retainedSubagentPresentationLog.slice(-limit).reverse().map((entry) => ({ ...entry }));
+  return sortedSubagentPresentationEntries().slice(0, limit).map((entry) => ({ ...entry }));
 }
 
 function newestOverlayEntry(): SubagentPresentationLogEntry | null {
@@ -2655,11 +2830,11 @@ function notifySubagentPresentationOverlay(): void {
   }
 }
 
-function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry[], expanded: boolean, generation: number): string {
+function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry[], expanded: boolean, generation: number, mode: "detail" | "selector" = "detail"): string {
   if (entries.length === 0) return "Larva subagent log (view-only): empty";
   const lines = [
     "Larva subagent log (view-only)",
-    "tabs: Summary | Prompt | Output | Metadata",
+    mode === "selector" ? "selector: Select subagent" : "tabs: Summary | Prompt | Output | Events | Metadata",
     "source: in-memory presentation log; no raw JSONL authority",
   ];
   for (const entry of entries) {
@@ -2676,7 +2851,15 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push("  [Prompt]");
     if (entry.task_prompt) lines.push(`  initial_prompt: ${entry.task_prompt}`);
     lines.push("  [Output]");
+    const thinkingLine = subagentThinkingHiddenLine(entry);
+    if (thinkingLine !== null) lines.push(`  ${thinkingLine}`);
     lines.push(subagentEntryOutputIsPresent(entry) ? subagentEntryOutput(entry) : "  No final subagent output is available for this observed entry.");
+    lines.push("  [Events]");
+    for (const snapshot of entry.tool_snapshots ?? []) {
+      lines.push(`  tool ${snapshot.toolCallId}: ${snapshot.name ?? "tool"} ${snapshot.status}`);
+      if (snapshot.args_preview) lines.push(`    args: ${boundedToolArgsPreview(snapshot.args_preview)}`);
+      if (snapshot.output_preview) lines.push(`    output: ${boundedToolOutputPreview(snapshot.output_preview)}`);
+    }
     lines.push("  [Metadata]");
     lines.push(`  mode: ${entry.mode ?? "unknown"}`);
     lines.push(`  sequence: ${entry.sequence}`);
@@ -2687,6 +2870,15 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push(`  overlay_generation: ${generation}`);
   }
   return lines.join("\n");
+}
+
+function subagentOverlayDetailsEntry(entry: SubagentPresentationLogEntry): SubagentPresentationLogEntry {
+  const detailsEntry: SubagentPresentationLogEntry = { ...entry };
+  if (entry.status === "running" && typeof entry.result_text === "string" && /thinking/i.test(entry.result_text)) detailsEntry.live_thinking_hidden = true;
+  if (detailsEntry.result_text !== undefined) {
+    Object.defineProperty(detailsEntry, "result_text", { value: detailsEntry.result_text, enumerable: false, configurable: true, writable: true });
+  }
+  return detailsEntry;
 }
 
 function failedSubagentOverlay(code: Extract<LarvaErrorCode, "LARVA_SUBAGENT_LOG_NOT_OBSERVED" | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE" | "LARVA_SUBAGENT_LOG_CONFIG_INVALID">, message: string): LarvaSubagentOverlayResult {
@@ -2743,13 +2935,13 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
   }
   subagentOverlayGeneration += 1;
   const generation = subagentOverlayGeneration;
-  const text = renderSubagentPresentationOverlay(entries, options.expanded, generation);
+  const text = renderSubagentPresentationOverlay(entries, options.expanded, generation, options.select ? "selector" : "detail");
   currentSubagentOverlay = { entry: entries[0], text, generation };
   return {
     ok: true,
     view_only: true,
     content: [{ type: "text", text }],
-    details: { status: "success", entries, selected_task_id: entries[0].task_id, overlay_generation: generation, error: null },
+    details: { status: "success", entries: entries.map(subagentOverlayDetailsEntry), selected_task_id: entries[0].task_id, overlay_generation: generation, error: null },
     isError: false,
   };
 }
@@ -3061,10 +3253,12 @@ class RpcClient {
   private stdoutClosed = false;
   private childError: unknown = null;
   private readonly traceEnv: RuntimeEnv;
+  private readonly onPresentationEvent?: (eventValue: NormalizedSubagentStreamEvent) => void;
 
-  constructor(child: ChildProcessWithoutNullStreams, traceEnv: RuntimeEnv) {
+  constructor(child: ChildProcessWithoutNullStreams, traceEnv: RuntimeEnv, onPresentationEvent?: (eventValue: NormalizedSubagentStreamEvent) => void) {
     this.child = child;
     this.traceEnv = traceEnv;
+    this.onPresentationEvent = onPresentationEvent;
     child.stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString("utf8");
       this.stderr += text;
@@ -3099,6 +3293,8 @@ class RpcClient {
       return;
     }
     void traceChildRpc(this.traceEnv, "rpc_rx", { pid: this.child.pid ?? null, frame: message });
+    const normalizedPresentationEvent = normalizeSubagentChildStreamEventForPresentation(message);
+    if (normalizedPresentationEvent !== null) this.onPresentationEvent?.(normalizedPresentationEvent);
     const id = typeof message === "object" && message !== null && "id" in message ? String((message as { id: unknown }).id) : "";
     const waiter = this.pending.get(id);
     if (id && waiter) {
@@ -3240,6 +3436,7 @@ function finalText(value: unknown): string | LarvaError {
 type SubagentLifecycleCallbacks = {
   onPhase?: (phase: string, taskId?: string | null) => void;
   onTaskAllocated?: (taskId: string) => void;
+  onStreamEvent?: (eventValue: NormalizedSubagentStreamEvent, taskId?: string | null) => void;
 };
 
 function childStillRunning(child: ChildProcessWithoutNullStreams): boolean {
@@ -3311,8 +3508,8 @@ async function runChildSequence(
   if (isLarvaError(child)) return failed(taskId, personaId, child);
   const activeChildEntry = { child, env };
   activeSubagentChildren.add(activeChildEntry);
-  const rpc = new RpcClient(child, env);
   let allocatedTaskId = taskId;
+  const rpc = new RpcClient(child, env, (eventValue) => lifecycle.onStreamEvent?.(eventValue, allocatedTaskId));
   let freshBusyTaskId: string | null = null;
   let abortStarted = false;
   const abortChild = async (): Promise<LarvaSubagentResult> => {
@@ -3466,6 +3663,9 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
         onTaskAllocated: (allocatedTaskId) => {
           busyTaskId = allocatedTaskId;
           if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
+        },
+        onStreamEvent: (eventValue, streamedTaskId) => {
+          if (presentationGeneration === subagentUiResetGeneration) applyNormalizedSubagentStreamEvent(streamedTaskId, ctx?.presentationCallId, eventValue);
         },
       });
     busyTaskId = result.task_id ?? busyTaskId;
