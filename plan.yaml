@@ -100761,6 +100761,94 @@ phases:
     depends_on:
     - pi_tui_dependency_packaging_20260603.manifest-lock
     agent: frontend-engineer
+  - id: pi_tui_dependency_packaging_20260603.npm-ci-proof
+    name: Verify Pi extension npm ci and direct dependency install
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      PROOF ARTIFACT:
+
+      Independently prove the P0 packaging phase is installable and resolves Pi TUI
+      through `contrib/pi-extension` package metadata.
+
+
+      This check protects downstream gates: `pi_tui_rendering_foundation_20260603`,
+      `pi_tui_subagent_markdown_overlay_20260603`, `pi_tui_persona_selector_20260603`,
+      and final runtime smoke.
+
+
+      Behavioral proof register required in evidence:
+
+      - requirement_ref: P0-DEP-001/P0-CI-001
+
+      - behavior_claim: npm ci installs pinned Pi TUI locally and CI expects the same
+
+      - runtime_proof_expected: raw npm ci stdout/stderr plus a Node import probe
+      from contrib/pi-extension context
+
+      - evidence_ref: command output paths or pasted logs
+
+      - status: PROVEN|UNPROVEN|BLOCKED
+
+      - closure_path: if blocked, specify environment missing vs product packaging
+      issue
+
+      - gate_decision_basis: whether P1 can safely use direct imports
+
+
+      <side_effect_budget>
+
+      Allowed: read files and run install/import probes; may remove `contrib/pi-extension/node_modules`
+      only if needed for clean install proof and documented. Forbidden: editing product
+      files or marking failure as pass.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm no host-global module resolution masks a missing local dependency.
+
+      - Confirm npm lockfile/version matches the exact docs-pinned target.
+
+      - Confirm CI wiring is not merely documented but present in executable workflow/gate
+      path.
+
+      </risk_probes>'
+    verification: '- [ ] `npm --prefix contrib/pi-extension ci` exits 0 with raw stdout/stderr
+      evidence.
+
+      - [ ] A Node import probe executed from the Pi-extension context resolves `@earendil-works/pi-tui`
+      and reports version `0.78.0` or package metadata proving that version.
+
+      - [ ] CI wiring evidence shows the same npm ci command is required before Pi-extension
+      UI/runtime checks.
+
+      - [ ] Any environment blocker is classified as BLOCKED with exact missing prerequisite
+      and not as success.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <key passage>\n\n## Commands\n```bash\nnpm --prefix contrib/pi-extension\
+      \ ci\n<node import/version probe command>\n```\n\n## Raw Output\n- npm_ci_stdout:\
+      \ |\n    <paste raw stdout>\n- npm_ci_stderr: |\n    <paste raw stderr>\n- npm_ci_exit_code:\
+      \ <code>\n- import_probe_stdout: |\n    <paste raw stdout>\n- import_probe_exit_code:\
+      \ <code>\n\n## Behavioral Proof Register\n| requirement_ref | behavior_claim\
+      \ | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- |\n| P0-DEP-001 | local pinned\
+      \ dependency install works | npm ci + import probe | <log ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n| P0-CI-001 | CI expects npm ci before UI/runtime\
+      \ checks | workflow/harness snippet | <file:line/log> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <decision> |\n\n## Checklist Receipt\n- npm_ci_passed: satisfied|failed|blocked\n\
+      - import_probe_passed: satisfied|failed|blocked\n- ci_expectation_proven: satisfied|failed|blocked"
+    depends_on:
+    - pi_tui_dependency_packaging_20260603.manifest-lock
+    - pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
+    agent: integration-verifier
 - id: pi_tui_rendering_foundation_20260603
   name: P1 Pi TUI Rendering Foundation 2026-06-03
   status: locked
