@@ -589,6 +589,8 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             component.handleInput?.("3");
             const outputTab = component.render(80);
             component.handleInput?.("4");
+            const eventsTab = component.render(80);
+            component.handleInput?.("5");
             const metadataTab = component.render(80);
             component.handleInput?.("\\x1b[D");
             const afterLeft = component.render(80);
@@ -631,7 +633,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             const emptyComponent = new mod.SubagentPresentationLogOverlay({ entry: { task_id: "/tmp/empty.jsonl", persona_id: "empty", status: "success", sequence: 99, phase: "success", result_text: "", error: null }, generation: 99, tui: { terminal: { rows: 50 } } });
             emptyComponent.handleInput?.("3");
             const emptyOutputTab = emptyComponent.render(80);
-            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, promptTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
+            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, promptTab, eventsTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
             return null;
           },
         };
@@ -642,7 +644,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         mod.resetSubagentPresentationStateForTests();
-        const overlayStateKeys = ["rendered", "outputTab", "promptTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
+        const overlayStateKeys = ["rendered", "outputTab", "promptTab", "eventsTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
         const smallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } });
         const tallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 60 } } });
         const smallHeightLines = smallHeightComponent.render(80);
@@ -668,7 +670,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           strictModalChromeParity: JSON.stringify(modalChromeFingerprint(commandCustomCalls[0].rendered, 80)) === JSON.stringify(modalChromeFingerprint(personaRenderedForChrome, 80)),
           allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
           overlayFrameStable,
-          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Prompt") && line.includes("○ 3 Output") && line.includes("○ 4 Metadata")) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 4 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 4 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
+          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Prompt") && line.includes("○ 3 Output") && line.includes("○ 4 Events") && line.includes("○ 5 Metadata")) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].eventsTab.some((line) => line.includes("● 4 Events")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 4 Events")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
           summaryReadable: commandCustomCalls[0].rendered.some((line) => line.includes("Run")) && commandCustomCalls[0].rendered.some((line) => line.includes("Status") && line.includes("success")) && commandCustomCalls[0].rendered.some((line) => line.includes("Output") && line.includes("see Output tab")) && !commandCustomCalls[0].rendered.some((line) => line.includes("INITIAL_PROMPT_MARKER") || line.includes("# Markdown Heading")),
           promptTabVisible: commandCustomCalls[0].promptTab.some((line) => line.includes("Initial Prompt")) && commandCustomCalls[0].promptTab.some((line) => line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
           outputMarkdownPane: (() => { const plain = commandCustomCalls[0].outputTab.map(stripAnsi).join("\\n"); return plain.includes("Markdown Heading") && plain.includes("• bullet one") && plain.includes("fenced code output") && !plain.includes("# Markdown Heading") && !plain.includes("- bullet one") && !plain.includes("```text") && !plain.includes("```\\n"); })(),

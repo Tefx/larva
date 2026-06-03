@@ -785,6 +785,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   component.handleInput?.("5");
   const fifthTabFrame = component.render(100);
   const fifthTabPlain = renderedPlainText(fifthTabFrame);
+  const beforeClickFrame = component.render(100);
   component.handleInput?.("\x1b[<0;10;10M");
   const afterClickFrame = component.render(100);
   component.dispose?.();
@@ -833,7 +834,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     R7_chromeTabsAndInput: {
       tabOrderSummaryPromptOutputEventsMetadata: /1 Summary.*2 Prompt.*3 Output.*4 Events.*5 Metadata/s.test(detailPlain),
       stableFrameAcrossSelectorTabsScroll: [selectorFrame, outputFrame, fourthTabFrame, fifthTabFrame].every((lines) => lines.length === detailFrame.length && lines[0] === detailFrame[0] && lines.at(-1) === detailFrame.at(-1)),
-      keyboardMouseClickNoop: JSON.stringify(fourthTabFrame) === JSON.stringify(afterClickFrame),
+      keyboardMouseClickNoop: JSON.stringify(beforeClickFrame) === JSON.stringify(afterClickFrame),
     },
     R8_negativeBoundaries: {
       noRawJsonlOrSidecarShortcutInSourcePath: !/larva_subagent_log[\s\S]{0,2000}(readFile|lstat|realpath|sidecar|\.jsonl\.meta)/.test(source),

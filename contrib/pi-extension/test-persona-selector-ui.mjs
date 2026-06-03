@@ -439,6 +439,45 @@ function subagentLogOverlayExpectedRedEvidence() {
   component.handleInput("\x1b[<0;12;4M");
   const afterClick = component.render(96);
   component.dispose?.();
+  const selectorDoneValues = [];
+  const selectorSelectComponent = new mod.SubagentPresentationLogOverlay({
+    entry: list.details.entries[0],
+    generation: 2,
+    tui: { terminal: { rows: 100 } },
+    done: (value) => selectorDoneValues.push(value),
+  });
+  selectorSelectComponent.handleInput("s");
+  const selectorSelectStart = selectorSelectComponent.render(96);
+  selectorSelectComponent.handleInput("down");
+  const selectorSelectAfterDown = selectorSelectComponent.render(96);
+  selectorSelectComponent.handleInput("\r");
+  const selectorDetailAfterEnter = selectorSelectComponent.render(96);
+  selectorSelectComponent.handleInput("\r");
+  const detailDoneAfterEnter = selectorDoneValues.length;
+  selectorSelectComponent.dispose?.();
+  const selectorNavComponent = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 3, tui: { terminal: { rows: 100 } } });
+  selectorNavComponent.handleInput("s");
+  const selectorNavStart = selectorNavComponent.render(96);
+  selectorNavComponent.handleInput("\x1b[6~");
+  const selectorNavPageDown = selectorNavComponent.render(96);
+  selectorNavComponent.handleInput("\x1b[5~");
+  const selectorNavPageUp = selectorNavComponent.render(96);
+  selectorNavComponent.handleInput("\x1b[4~");
+  const selectorNavEnd = selectorNavComponent.render(96);
+  selectorNavComponent.handleInput("\x1b[H");
+  const selectorNavHome = selectorNavComponent.render(96);
+  selectorNavComponent.handleInput("\x1b[<65;12;4M");
+  const selectorNavWheelDown = selectorNavComponent.render(96);
+  selectorNavComponent.dispose?.();
+  const selectFlag = mod.larva_subagent_log("--select");
+  const directSelectorComponent = new mod.SubagentPresentationLogOverlay({
+    entry: selectFlag.details.entries[0],
+    generation: selectFlag.details.overlay_generation,
+    initialMode: selectFlag.details.overlay_mode,
+    tui: { terminal: { rows: 100 } },
+  });
+  const directSelector = directSelectorComponent.render(96);
+  directSelectorComponent.dispose?.();
   const small = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } }).render(96);
   const tall = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 1, tui: { terminal: { rows: 100 } } }).render(96);
   const plain = (lines) => lines.map(stripAnsi).join("\n");
@@ -446,10 +485,17 @@ function subagentLogOverlayExpectedRedEvidence() {
   const selectorPlain = plain(selector);
   const fourthPlain = plain(fourthTab);
   const fifthPlain = plain(fifthTab);
+  const selectorSelectStartPlain = plain(selectorSelectStart);
+  const selectorSelectAfterDownPlain = plain(selectorSelectAfterDown);
+  const selectorDetailAfterEnterPlain = plain(selectorDetailAfterEnter);
+  const directSelectorPlain = plain(directSelector);
   return {
-    renderedLineCounts: { small: small.length, tall: tall.length, detail: detail.length, selector: selector.length, fourthTab: fourthTab.length, fifthTab: fifthTab.length },
+    renderedLineCounts: { small: small.length, tall: tall.length, detail: detail.length, selector: selector.length, fourthTab: fourthTab.length, fifthTab: fifthTab.length, directSelector: directSelector.length },
     assertions: {
       selectorModeViaS: /selector|select subagent/i.test(selectorPlain) && !selectorPlain.includes("● 1 Summary"),
+      selectFlagOpensSelectorDirectly: selectFlag.details.overlay_mode === "selector" && /selector|select subagent/i.test(directSelectorPlain) && !directSelectorPlain.includes("● 1 Summary"),
+      selectorEnterSelectsWithoutClosing: selectorSelectStartPlain.includes("runner") && selectorSelectAfterDownPlain.includes("› 2:final finisher") && selectorDetailAfterEnterPlain.includes("Persona          finisher") && selectorDetailAfterEnterPlain.includes("● 1 Summary") && selectorDoneValues.length === 0 && detailDoneAfterEnter === 0,
+      selectorNavigationKeysWork: JSON.stringify(selectorNavStart) !== JSON.stringify(selectorNavPageDown) && JSON.stringify(selectorNavPageUp) === JSON.stringify(selectorNavStart) && JSON.stringify(selectorNavEnd) === JSON.stringify(selectorNavPageDown) && JSON.stringify(selectorNavHome) === JSON.stringify(selectorNavStart) && JSON.stringify(selectorNavWheelDown) === JSON.stringify(selectorNavPageDown),
       runningFirstOrdering: list.details.entries[0]?.status === "running",
       tabOrderIncludesEvents: /1 Summary.*2 Prompt.*3 Output.*4 Events.*5 Metadata/s.test(detailPlain),
       fourthTabIsEvents: fourthPlain.includes("● 4 Events"),
@@ -457,7 +503,7 @@ function subagentLogOverlayExpectedRedEvidence() {
       tallTerminalUsesNinetyPercent: tall.length >= 85 && tall.length <= 91,
       stableFrameAcrossSelectorAndTabs: [selector, fourthTab, fifthTab].every((lines) => lines.length === detail.length && lines[0] === detail[0] && lines.at(-1) === detail.at(-1)),
       mouseClickNoop: JSON.stringify(beforeClick) === JSON.stringify(afterClick),
-      allLinesFit: [detail, selector, fourthTab, fifthTab, small, tall].every((lines) => lines.every((line) => visibleWidth(line) <= 96)),
+      allLinesFit: [detail, selector, fourthTab, fifthTab, selectorSelectStart, selectorSelectAfterDown, selectorDetailAfterEnter, directSelector, small, tall].every((lines) => lines.every((line) => visibleWidth(line) <= 96)),
     },
   };
 }

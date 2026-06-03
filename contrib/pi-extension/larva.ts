@@ -150,6 +150,7 @@ type LarvaSubagentOverlayResult = {
     entries: SubagentPresentationLogEntry[];
     selected_task_id: string | null;
     overlay_generation: number;
+    overlay_mode: "detail" | "selector";
     error: LarvaError | null;
   };
   isError: boolean;
@@ -917,6 +918,7 @@ type SubagentPresentationLogOverlayOptions = {
   done?: (result: unknown) => void;
   maxBoxLines?: number;
   maxWidth?: number;
+  initialMode?: "detail" | "selector";
 };
 
 type SubagentOverlaySelection = {
@@ -1065,7 +1067,10 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private readonly lastMaxOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, events: 0, metadata: 0 };
   private mouseReportingEnabled = false;
   private entry: SubagentPresentationLogEntry;
-  private readonly selection: SubagentOverlaySelection;
+  private selection: SubagentOverlaySelection;
+  private selectorCursorIndex = 0;
+  private selectorScrollOffset = 0;
+  private lastSelectorMaxOffset = 0;
   private readonly generation: number;
   private readonly theme: PersonaSelectorTheme;
   private readonly keybindings?: PiKeybindings;
@@ -1085,6 +1090,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.done = options.done;
     this.maxBoxLines = subagentOverlaySurfaceLineCount(options.tui, options.maxBoxLines);
     this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? Number.MAX_SAFE_INTEGER));
+    this.selectorMode = options.initialMode === "selector";
+    this.alignSelectorCursorToSelection(true);
     if (this.tui?.terminal?.write) {
       this.tui.terminal.write(ENABLE_MOUSE_REPORTING);
       this.mouseReportingEnabled = true;
@@ -1102,6 +1109,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       return;
     }
     this.entry = refreshed;
+    this.selection = subagentOverlaySelection(refreshed);
+    this.alignSelectorCursorToSelection(false);
     currentSubagentOverlay = { entry: refreshed, text: renderSubagentPresentationOverlay([refreshed], true, this.generation), generation: this.generation };
     this.invalidate();
     this.requestRender();
@@ -1125,6 +1134,64 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
 
   private requestRender(): void {
     this.tui?.requestRender?.();
+  }
+
+  private selectorEntries(): SubagentPresentationLogEntry[] {
+    return overlayEntries(25);
+  }
+
+  private selectorEntryMatchesSelection(entry: SubagentPresentationLogEntry, selection = this.selection): boolean {
+    if (selection.call_id !== undefined && entry.call_id === selection.call_id) return true;
+    if (selection.task_id !== null && entry.task_id === selection.task_id) return true;
+    return entry.sequence === selection.sequence;
+  }
+
+  private alignSelectorCursorToSelection(resetScroll: boolean): void {
+    const entries = this.selectorEntries();
+    const selectedIndex = entries.findIndex((entry) => this.selectorEntryMatchesSelection(entry));
+    this.selectorCursorIndex = selectedIndex >= 0 ? selectedIndex : selectorClamp(this.selectorCursorIndex, 0, Math.max(0, entries.length - 1));
+    if (resetScroll) this.selectorScrollOffset = 0;
+  }
+
+  private ensureSelectorCursorVisible(viewportLines: number): void {
+    const cursorLine = this.selectorCursorIndex + 1;
+    if (cursorLine < this.selectorScrollOffset) this.selectorScrollOffset = cursorLine;
+    if (cursorLine >= this.selectorScrollOffset + viewportLines) this.selectorScrollOffset = cursorLine - viewportLines + 1;
+    this.selectorScrollOffset = selectorClamp(this.selectorScrollOffset, 0, this.lastSelectorMaxOffset);
+  }
+
+  private moveSelectorCursor(delta: number): void {
+    const entries = this.selectorEntries();
+    if (entries.length === 0) return;
+    const next = selectorClamp(this.selectorCursorIndex + delta, 0, entries.length - 1);
+    if (next === this.selectorCursorIndex) return;
+    this.selectorCursorIndex = next;
+    this.ensureSelectorCursorVisible(this.lastRenderedViewportLines);
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private jumpSelectorCursor(index: number): void {
+    const entries = this.selectorEntries();
+    if (entries.length === 0) return;
+    const next = selectorClamp(index, 0, entries.length - 1);
+    if (next === this.selectorCursorIndex) return;
+    this.selectorCursorIndex = next;
+    this.ensureSelectorCursorVisible(this.lastRenderedViewportLines);
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private selectSelectorCursor(): void {
+    const entries = this.selectorEntries();
+    const selected = entries[selectorClamp(this.selectorCursorIndex, 0, Math.max(0, entries.length - 1))];
+    if (!selected) return;
+    this.entry = selected;
+    this.selection = subagentOverlaySelection(selected);
+    this.selectorMode = false;
+    currentSubagentOverlay = { entry: selected, text: renderSubagentPresentationOverlay([selected], true, this.generation), generation: this.generation };
+    this.invalidate();
+    this.requestRender();
   }
 
   private sectionLine(title: string, contentWidth: number): string {
@@ -1224,12 +1291,14 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
 
   private tabLine(contentWidth: number): string {
     const labels = SUBAGENT_OVERLAY_TABS.map((tab, index) => `${index === this.activeTabIndex ? "●" : "○"} ${index + 1} ${tab.label}`);
-    if (this.activeTab() === "events") labels.splice(4, 0, "● 4 Metadata");
-    else labels.splice(4, 0, "○ 4 Metadata");
     return overlayPadLine(labels.join("   "), contentWidth);
   }
 
   private scrollBy(delta: number): void {
+    if (this.selectorMode) {
+      this.moveSelectorCursor(delta);
+      return;
+    }
     const tab = this.activeTab();
     const next = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab] + delta));
     if (next === this.scrollOffsets[tab]) return;
@@ -1239,6 +1308,10 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   }
 
   private jumpTo(offset: number): void {
+    if (this.selectorMode) {
+      this.jumpSelectorCursor(offset <= 0 ? 0 : this.selectorEntries().length - 1);
+      return;
+    }
     const tab = this.activeTab();
     const next = Math.max(0, Math.min(this.lastMaxOffsets[tab], offset));
     if (next === this.scrollOffsets[tab]) return;
@@ -1260,9 +1333,12 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   }
 
   private selectorPaneLines(contentWidth: number): string[] {
+    const entries = this.selectorEntries();
     return [
       this.sectionLine("Select subagent", contentWidth),
-      ...overlayEntries(25).map((entry, index) => boundedPresentationPreview(`${index === 0 ? "›" : " "} ${presentationRow(entry)}`, contentWidth)),
+      ...(entries.length === 0
+        ? [overlayTruncateLine("No observed subagent entries.", contentWidth)]
+        : entries.map((entry, index) => boundedPresentationPreview(`${index === this.selectorCursorIndex ? "›" : " "} ${presentationRow(entry)}`, contentWidth))),
     ];
   }
 
@@ -1278,12 +1354,21 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const topMiddle = `${title}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(title)))}`;
     const tab = this.activeTab();
     const innerLines = this.selectorMode ? this.selectorPaneLines(contentWidth) : this.paneLines(contentWidth);
-    this.lastMaxOffsets[tab] = Math.max(0, innerLines.length - viewportLines);
-    this.scrollOffsets[tab] = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab]));
-    const visibleLines = innerLines.slice(this.scrollOffsets[tab], this.scrollOffsets[tab] + viewportLines);
+    let scrollOffset: number;
+    if (this.selectorMode) {
+      this.lastSelectorMaxOffset = Math.max(0, innerLines.length - viewportLines);
+      this.selectorCursorIndex = selectorClamp(this.selectorCursorIndex, 0, Math.max(0, this.selectorEntries().length - 1));
+      this.ensureSelectorCursorVisible(viewportLines);
+      scrollOffset = this.selectorScrollOffset;
+    } else {
+      this.lastMaxOffsets[tab] = Math.max(0, innerLines.length - viewportLines);
+      this.scrollOffsets[tab] = Math.max(0, Math.min(this.lastMaxOffsets[tab], this.scrollOffsets[tab]));
+      scrollOffset = this.scrollOffsets[tab];
+    }
+    const visibleLines = innerLines.slice(scrollOffset, scrollOffset + viewportLines);
     while (visibleLines.length < viewportLines) visibleLines.push("");
-    const start = innerLines.length === 0 ? 0 : this.scrollOffsets[tab] + 1;
-    const end = Math.min(innerLines.length, this.scrollOffsets[tab] + viewportLines);
+    const start = innerLines.length === 0 ? 0 : scrollOffset + 1;
+    const end = Math.min(innerLines.length, scrollOffset + viewportLines);
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
     const scrollInfo = this.selectorMode
       ? `selector • Enter select • s detail • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`
@@ -1306,17 +1391,21 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     }
     if (data === "s" || data === "S") {
       this.selectorMode = !this.selectorMode;
+      if (this.selectorMode) this.alignSelectorCursorToSelection(false);
       this.invalidate();
       this.requestRender();
       return;
     }
-    if (matchesInputKey(this.keybindings, data, ["tui.confirm", "tui.select.confirm"], [Key.enter], ["\r", "\n"], ["enter"])) return;
+    if (matchesInputKey(this.keybindings, data, ["tui.confirm", "tui.select.confirm"], [Key.enter], ["\r", "\n"], ["enter"])) {
+      if (this.selectorMode) this.selectSelectorCursor();
+      return;
+    }
     if (/^[1-5]$/.test(data)) this.selectorMode = false;
     if (data === "1") this.switchTab(0);
     else if (data === "2") this.switchTab(1);
     else if (data === "3") this.switchTab(2);
     else if (data === "4") this.switchTab(3);
-    else if (data === "5") this.switchTab(3);
+    else if (data === "5") this.switchTab(4);
     else if (matchesInputKey(this.keybindings, data, ["tui.select.left", "tui.editor.cursorLeft"], [Key.left], [], ["arrowleft", "left"])) this.switchRelative(-1);
     else if (matchesInputKey(this.keybindings, data, ["tui.select.right", "tui.editor.cursorRight"], [Key.right], [], ["arrowright", "right"])) this.switchRelative(1);
     else {
@@ -1331,7 +1420,10 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       else if (matchesInputKey(this.keybindings, data, ["tui.select.pageDown", "tui.editor.pageDown"], [Key.pageDown], [], ["pagedown"])) this.scrollBy(this.lastRenderedViewportLines);
       else if (matchesInputKey(this.keybindings, data, ["tui.select.pageUp", "tui.editor.pageUp"], [Key.pageUp], [], ["pageup"])) this.scrollBy(-this.lastRenderedViewportLines);
       else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineStart"], [Key.home], ["\x1b[1~"], ["home"])) this.jumpTo(0);
-      else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineEnd"], [Key.end], ["\x1b[4~"], ["end"])) this.jumpTo(this.lastMaxOffsets[this.activeTab()]);
+      else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineEnd"], [Key.end], ["\x1b[4~"], ["end"])) {
+        if (this.selectorMode) this.jumpSelectorCursor(this.selectorEntries().length - 1);
+        else this.jumpTo(this.lastMaxOffsets[this.activeTab()]);
+      }
     }
   }
 }
@@ -1349,6 +1441,7 @@ async function openSubagentPresentationOverlay(ctx: PiContext, overlay: LarvaSub
       theme: _theme,
       keybindings,
       tui,
+      initialMode: overlay.details.overlay_mode,
       done: (result) => {
         component.dispose();
         done(result);
@@ -2887,7 +2980,7 @@ function failedSubagentOverlay(code: Extract<LarvaErrorCode, "LARVA_SUBAGENT_LOG
     ok: false,
     view_only: true,
     content: [{ type: "text", text: `${larvaError.code}: ${larvaError.message}` }],
-    details: { status: "failed", entries: [], selected_task_id: null, overlay_generation: subagentOverlayGeneration, error: larvaError },
+    details: { status: "failed", entries: [], selected_task_id: null, overlay_generation: subagentOverlayGeneration, overlay_mode: "detail", error: larvaError },
     isError: true,
   };
 }
@@ -2903,7 +2996,7 @@ function clearedSubagentPresentationOverlay(): LarvaSubagentOverlayResult {
     ok: true,
     view_only: true,
     content: [{ type: "text", text: "Larva subagent log cleared (view-only presentation cache and in-memory overlay entries)." }],
-    details: { status: "success", entries: [], selected_task_id: null, overlay_generation: subagentOverlayGeneration, error: null },
+    details: { status: "success", entries: [], selected_task_id: null, overlay_generation: subagentOverlayGeneration, overlay_mode: "detail", error: null },
     isError: false,
   };
 }
@@ -2941,7 +3034,7 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
     ok: true,
     view_only: true,
     content: [{ type: "text", text }],
-    details: { status: "success", entries: entries.map(subagentOverlayDetailsEntry), selected_task_id: entries[0].task_id, overlay_generation: generation, error: null },
+    details: { status: "success", entries: entries.map(subagentOverlayDetailsEntry), selected_task_id: entries[0].task_id, overlay_generation: generation, overlay_mode: options.select ? "selector" : "detail", error: null },
     isError: false,
   };
 }
