@@ -100849,6 +100849,109 @@ phases:
     - pi_tui_dependency_packaging_20260603.manifest-lock
     - pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
     agent: integration-verifier
+  - id: pi_tui_dependency_packaging_20260603.gate
+    name: Gate P0 Pi TUI dependency packaging
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      DECISION ARTIFACT:
+
+      Independent gate for P0 packaging. Gate must decide whether downstream P1 may
+      rely on direct `@earendil-works/pi-tui` imports from the formal dependency path.
+
+
+      review_depth: STANDARD
+
+      Independence: gate-reviewer is independent of frontend-engineer implementation
+      and integration-verifier proof.
+
+
+      Gate decision basis must review every P0 requirement matrix row and reject sampled/pass-by-summary
+      evidence.
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence and inspect package/CI files. Forbidden: modifying code
+      or completing missing implementation inside the gate.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Does package-lock actually pin 0.78.0, or is it only documented?
+
+      - Could import probes still be succeeding through host-global Pi installation?
+
+      - Is CI install ordering before Pi UI/runtime tests explicit and non-optional?
+
+      </risk_probes>'
+    verification: '- [ ] All P0 steps are complete with refs-read evidence.
+
+      - [ ] Package manifest and lockfile pin `@earendil-works/pi-tui@0.78.0` exactly.
+
+      - [ ] `npm --prefix contrib/pi-extension ci` and direct import/version proof
+      are present.
+
+      - [ ] CI/local gate expectation is present and does not weaken existing checks.
+
+      - [ ] Gate decision basis is OPEN or BLOCKED with explicit unresolved statuses
+      and closure paths.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - contrib/pi-extension/README.md — <key passage>
+
+      - design/pi-coding-agent-integration.md — <key passage>
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer
+
+      **Phase**: pi_tui_dependency_packaging_20260603
+
+
+      ## Requirement Decision Basis
+
+      | requirement_ref | checklist_item | evidence_ref | proof_status | unresolved_blocks_downstream?
+      | closure_path |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | P0-DEP-001 | exact dependency pinned | <manifest/log> | PROVEN/UNPROVEN/BLOCKED
+      | yes/no | <path> |
+
+      | P0-CI-001 | npm ci CI/local expectation | <workflow/log> | PROVEN/UNPROVEN/BLOCKED
+      | yes/no | <path> |
+
+      | NG-MOUSE-001 | no mouse click scope | <scan> | PROVEN/UNPROVEN/BLOCKED | yes/no
+      | <path> |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: P1 may rely on direct Pi TUI imports.
+
+      - [ ] BLOCKED: list blockers and required follow-up.
+
+
+      ## Checklist Receipt
+
+      - evidence_specific: satisfied|failed|blocked
+
+      - no_unresolved_p0_blocker: satisfied|failed|blocked
+
+      - final_decision_recorded: satisfied|failed|blocked'
+    depends_on:
+    - pi_tui_dependency_packaging_20260603.manifest-lock
+    - pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
+    - pi_tui_dependency_packaging_20260603.npm-ci-proof
+    agent: gate-reviewer
 - id: pi_tui_rendering_foundation_20260603
   name: P1 Pi TUI Rendering Foundation 2026-06-03
   status: locked
