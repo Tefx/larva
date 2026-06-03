@@ -209,6 +209,8 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         });
         const installedAfterFactory = typeof installedFactory;
         await handlers.session_start({ reason: "runtime" }, ctx);
+        const sessionStartStatus = [...status];
+        status.length = 0;
         const baseItems = [
           { value: "./src/app.ts", label: "./src/app.ts", description: "Pi file reference" },
           { value: "@persona:vectl-planner", label: "Pi duplicate wins" },
@@ -264,7 +266,8 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
           beforeEnvelope,
           afterEnvelope,
           promptAfterMention,
-          status,
+          sessionStartStatus,
+          mentionStatus: status,
         }, null, 2));
         """,
     )
@@ -325,7 +328,8 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     assert payload["beforeEnvelope"] is None
     assert payload["afterEnvelope"] is None
     assert payload["promptAfterMention"] is None
-    assert payload["status"] == []
+    assert ["larva", "larva: none"] in payload["sessionStartStatus"]
+    assert payload["mentionStatus"] == []
 
 
 def test_prompt_overlay_marker_blocks_idempotence_and_pi_prompt_byte_preservation(tmp_path: Path) -> None:
