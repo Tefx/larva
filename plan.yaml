@@ -101009,7 +101009,7 @@ phases:
       proof step.'
   - id: pi_tui_dependency_packaging_20260603.npm-ci-proof
     name: Verify Pi extension npm ci and direct dependency install
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: project
@@ -101095,6 +101095,8 @@ phases:
     - pi_tui_dependency_packaging_20260603.manifest-lock
     - pi_tui_dependency_packaging_20260603.ci-npm-ci-wiring
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-03T08:25:14.786509+00:00'
   - id: pi_tui_dependency_packaging_20260603.gate
     name: Gate P0 Pi TUI dependency packaging
     status: pending
