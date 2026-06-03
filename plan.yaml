@@ -101275,6 +101275,150 @@ phases:
     and view-only safety preserved.
   depends_on:
   - pi_tui_rendering_foundation_20260603
+  steps:
+  - id: pi_tui_subagent_markdown_overlay_20260603.markdown-tabs-implementation
+    name: Complete subagent Markdown final views and tabbed log overlay
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE:
+
+      Expanded `larva_subagent` final results render as Pi TUI Markdown UI with Summary,
+      Task, Output, Error, and Resume sections while preserving collapsed compact
+      renderer-safe text and all semantic `LarvaSubagentResult` / Pi ToolResult mirrors.
+      `/larva-subagent-log [task_id?]` becomes a Pi TUI-backed keyboard-tabbed overlay
+      with Summary, Output, and Metadata panes; Output uses Pi TUI Markdown when final
+      output exists and a renderer-safe fallback when empty.
+
+
+      BOUNDING BOX:
+
+      - touch_paths: `contrib/pi-extension/larva.ts`, `tests/shell/test_pi_extension_subagent_ux.py`,
+      `scripts/pi-extension-runtime-smoke.mjs` or focused Node harnesses as needed
+
+      - spec_refs: `README > larva_subagent custom tool > /larva-subagent-log view-only
+      overlay`; `design > Subagent spawning > Presentation log view-only overlay`;
+      `design > Verification targets > Pi TUI enhanced UI verification addendum`;
+      Pi docs `Markdown`, `Overlays`, `Keyboard Input`, `Line Width`
+
+      - harness_refs: `tests/shell/test_pi_extension_subagent_ux.py`, `scripts/pi-extension-runtime-smoke.mjs
+      --scenario tool-result-renderer-shape`, `scripts/pi-extension-runtime-smoke.mjs
+      --scenario live-child-rpc-proof` as applicable
+
+      - authoritative_interface: overlay command `larva-subagent-log`; selected entry
+      newest or exact task_id only; tabs `Summary|Output|Metadata`; no filesystem
+      scan/sidecar/alias; mouse wheel yes; mouse click no
+
+
+      Requirement traceability:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | P2-SUB-001 | addendum target 8 | expanded final views render Markdown UI with
+      required sections | pi_tui_subagent_markdown_overlay_20260603.markdown-tabs-implementation
+      | Markdown final view implemented | final_view_snippet | OWNED | n/a |
+
+      | P2-SUB-002 | overlay UI contract | keyboard tabs Summary/Output/Metadata |
+      same | tabs implemented | tab_state_snippet | OWNED | n/a |
+
+      | P2-SUB-003 | overlay Output contract | Markdown output pane plus empty fallback
+      | same | Markdown Output implemented | output_pane_snippet | OWNED | n/a |
+
+      | P2-SUB-004 | overlay safety contract | view-only shape; no state/session mutations
+      | same | safety preserved | state_mutation_scan | OWNED | n/a |
+
+      | P2-SUB-005 | addendum target 6-7 | keyboard scroll/close/tab controls, wheel
+      cleanup, Enter not close, no click | same | controls preserved | input_matrix
+      | OWNED | n/a |
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Expanded final result only returns a markdown string marker but not a Pi
+      TUI Markdown-rendered component/path.
+
+      2. `/larva-subagent-log` remains a single text pane or lacks Summary/Output/Metadata
+      keyboard tabs.
+
+      3. Output pane fails on empty output or does not render Markdown where output
+      exists.
+
+      4. Opening/tabbing/scrolling mutates persona/model/tool policy, active task
+      markers, session files, recent-session index, or resume authority.
+
+      5. Mouse reporting cleanup is missing, Enter closes the overlay, or mouse click
+      behavior is added.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      overlay must maintain real tab/scroll state and render different panes/output
+      based on selected entry and input.
+
+
+      <side_effect_budget>
+
+      Allowed: modify Pi extension rendering/overlay code and focused tests. Forbidden:
+      changing semantic LarvaSubagentResult fields, adding overlay model-facing tool
+      data, scanning child session files, introducing aliases like `last`, or implementing
+      mouse click support.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify Markdown rendering does not break width constraints for fenced code,
+      bullets, CJK, emoji, and long paths.
+
+      - Verify tab switching changes visible pane without mutating retained presentation
+      log or recent sessions.
+
+      - Verify not-observed/UI-unavailable errors remain stable and close/reset behavior
+      cleans overlay state.
+
+      </risk_probes>'
+    verification: '- [ ] Expanded `larva_subagent` final view uses Pi TUI Markdown
+      UI and includes Summary, Task, Output, Error when applicable, and Resume when
+      `task_id` is non-null.
+
+      - [ ] Collapsed `larva_subagent` final view remains compact renderer-safe text
+      and no widget dashboard is added.
+
+      - [ ] `/larva-subagent-log` registers/opens a Pi TUI overlay with keyboard tabs
+      Summary, Output, and Metadata.
+
+      - [ ] `1`/`2`/`3` and left/right switch tabs; up/down/PageUp/PageDown/Home/End
+      scroll active pane; Esc/q close; Enter does not close.
+
+      - [ ] Output tab renders Markdown when output exists and a renderer-safe fallback
+      when empty.
+
+      - [ ] Mouse wheel scrolls active pane; mouse reporting disables on dispose/reset/close;
+      mouse click support remains absent/no-op.
+
+      - [ ] Overlay result is view-only and does not mutate persona/model/tool policy/session/recent-index/resume
+      authority.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- contrib/pi-extension/README.md\
+      \ — <key passage>\n- design/pi-coding-agent-integration.md — <key passage>\n\
+      - contrib/pi-extension/larva.ts — <pre/post relevant rendering passage>\n- tests/shell/test_pi_extension_subagent_ux.py\
+      \ — <test passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md\
+      \ — <Markdown/Overlay/Keyboard/Width passage>\n- /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/examples/extensions/todo.ts\
+      \ — <renderResult/custom rendering passage>\n\n## Implementation Evidence\n\
+      - final_view_snippet: <paste expanded Markdown-rendering path>\n- tab_state_snippet:\
+      \ <paste Summary/Output/Metadata state + input handling>\n- output_pane_snippet:\
+      \ <paste Markdown/fallback path>\n- state_mutation_scan: <evidence overlay does\
+      \ not touch forbidden state>\n- input_matrix: <table of key/wheel/click-shaped\
+      \ inputs and effects>\n\n## Test Evidence\n- command: <focused tests>\n- raw_stdout:\
+      \ |\n    <paste raw output>\n- exit_code: <code>\n\n## Checklist Receipt\n-\
+      \ expanded_markdown_view: satisfied|failed|blocked\n- tabbed_overlay: satisfied|failed|blocked\n\
+      - output_markdown_and_empty_fallback: satisfied|failed|blocked\n- controls_and_mouse_cleanup:\
+      \ satisfied|failed|blocked\n- view_only_safety: satisfied|failed|blocked"
+    agent: frontend-engineer
 - id: pi_tui_persona_selector_20260603
   name: P2 Persona Selector Enhancement 2026-06-03
   status: locked
