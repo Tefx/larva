@@ -99736,7 +99736,7 @@ phases:
   steps:
   - id: pi_impl_finalization_20260603.docs-sync
     name: Sync Pi integration documentation to implemented behavior
-    status: pending
+    status: claimed
     description: 'TARGET STATE: Update existing project documentation only to reflect
       the implemented Pi behavior. Scope: contrib/pi-extension/README.md and existing
       relevant docs; design/pi-coding-agent-integration.md remains canonical design
@@ -99777,6 +99777,8 @@ phases:
     - docs/reference/ARCHITECTURE.md
     - docs/guides/USAGE.md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-03T03:44:32.944038+00:00'
   - id: pi_impl_finalization_20260603.deep-wiring-audit
     name: Deep wiring audit for Pi integration
     status: claimed
