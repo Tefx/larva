@@ -684,51 +684,129 @@ The extension also registers the authorized slash command:
 /larva-subagent-log [task_id?]
 ```
 
-This is a user-visible, view-only overlay over the parent extension's in-memory
-subagent presentation log. It is not a model-facing tool, not a tool-policy input,
-not a resume authority, and not a shared Larva/opifex schema. With no argument it
-selects the newest observed presentation-log entry; with an argument it selects
-one exact `task_id`. It does not scan the filesystem, parse raw Pi JSONL, read or
-write sidecars, or support aliases such as `last`.
+This is a user-visible, view-only overlay over the parent extension's subagent
+presentation log and optional adapter-local persistent cache. It is not a
+model-facing tool, not a tool-policy input, not a resume authority, and not a
+shared Larva/opifex schema. With no argument it selects the newest observed
+presentation-log entry in detail mode; with an argument it selects one exact
+`task_id`. It does not scan the filesystem, parse raw Pi JSONL, read or write
+child-session sidecars, or support aliases such as `last`.
 
-The overlay is implemented as a Pi TUI-backed custom component. It must use Pi
-TUI width/wrap/truncate helpers for all bordered rows and content panes, and it
-must preserve the invariant that each rendered line fits the `render(width)`
-contract. Like the persona selector, it renders through the same modal chrome
-helpers: accent-colored border, solid ANSI background, stable frame height across
-tab and scroll states, and terminal-compatible right/bottom drop shadow. The
-custom overlay uses the same `90%` width and `90%` max-height budget so the
-shadow is not clipped by Pi's overlay frame. Long output is internally
+The overlay is implemented as a Pi TUI-backed custom component. Its visible
+chrome title is the concise `Larva subagent log`; `presentation log` remains the
+internal/design term for adapter-local in-memory UI state. It must use Pi TUI
+width/wrap/truncate helpers for all bordered rows and content panes, and it must
+preserve the invariant that each rendered line fits the `render(width)` contract.
+Like the persona selector, it renders through the same modal chrome helpers:
+accent-colored border, solid ANSI background, stable frame height across
+tab, scroll, and selector states, and terminal-compatible right/bottom drop
+shadow. The custom overlay uses the same `90%` width and `90%` max-height budget
+so the shadow is not clipped by Pi's overlay frame. The component adapts its
+rendered height to the available terminal rows on tall terminals while keeping
+frame height stable across tabs and scroll positions. Long output is internally
 scrollable; the terminal transcript outside the overlay is not used as scroll
 authority.
 
+While open, the overlay is an event-driven live view over adapter-local
+presentation state. Presentation-log mutations (`running`, progress, final result,
+cancel, failure, or reset) and normalized child RPC stream events notify the open
+component, which re-reads the selected entry from in-memory state and requests a
+render. This is not timer polling and still does not scan or parse child JSONL.
+The component preserves the active tab, selector/detail mode, selected entry,
+selector cursor, and scroll offset where possible; if the selected entry
+disappears during reset, the overlay closes/clears through the normal cleanup
+path.
+
+Persistent cache target: the Pi adapter persists the newest renderer-safe
+presentation entries to an adapter-local cache file, defaulting to 100 entries
+and 7 days of retention. The cache is only a UI inspection cache; it is not
+resume authority, not a child-session source of truth, not a model-visible tool
+result stream, and not a shared Larva/opifex schema. The cache is never populated
+by scanning child session JSONL files; it is written only from the same
+presentation-log mutations that already drive the live overlay.
+
+Live streaming state is intentionally process-local for this target. Live
+assistant output previews, grouped tool-call snapshots, active tool state, and
+raw child RPC event payloads are not persisted. The cache sanitizer must drop
+live-only fields if they are present in memory. The final assistant output still
+comes from the child `get_last_assistant_text` response; live text is only a
+realtime preview while the child is running.
+
+Cache defaults and configuration:
+
+- Default enabled state: `enabled: true`.
+- Default cache file: `~/.pi/larva/subagent-presentation-log.json`.
+- Default retention: newest 100 entries and entries updated within the last 7
+  days.
+- Optional config file: `~/.pi/larva/subagent-log.json`.
+- Optional absolute test/user override: `LARVA_PI_SUBAGENT_LOG_FILE`.
+- Config fields: `enabled`, `max_entries`, `max_age_days`, `include_prompt`, and
+  `include_output`.
+- Valid ranges: `max_entries` is an integer from 1 to 1000; `max_age_days` is an
+  integer from 1 to 365. Boolean fields must be booleans.
+- Malformed config fails closed for persistence: do not write the cache for that
+  process, and report a user-visible `LARVA_SUBAGENT_LOG_CONFIG_INVALID` error.
+- Privacy escape hatch: setting `enabled: false` disables persistence; setting
+  `include_prompt: false` or `include_output: false` stores only summary metadata
+  for those fields.
+
+Cleanup surface: `/larva-subagent-log --clear` clears the adapter-local
+presentation cache and in-memory overlay entries, then closes any open overlay. It
+must not delete child Pi session files, mutate persona/model/tool-policy state,
+change recent-session resume UX authority, or remove the public child `task_id`.
+
 Target interaction model:
 
+- Default open: newest observed entry in detail mode.
+- `s`: enter/leave the in-overlay subagent selector.
+- Selector ordering: running entries first, then newest `updated_at`, then highest
+  `sequence` as tie-breaker.
+- Selector rows: status, persona id, phase/status, bounded task preview, and
+  bounded `task_id` suffix; no full prompt, full output, or raw event payload.
+- Selector `Enter`: select highlighted entry and return to detail mode without
+  closing the overlay.
 - `Esc` or `q`: close.
-- `↑`/`↓`: scroll the active pane.
-- `PageUp`/`PageDown`: page scroll the active pane.
-- `Home`/`End`: jump to start/end of the active pane.
-- `1`/`2`/`3` or `←`/`→`: switch keyboard tabs.
-- Mouse wheel: scroll the active pane while the overlay is open.
+- `↑`/`↓`: scroll the active pane or move the selector cursor.
+- `PageUp`/`PageDown`: page scroll the active pane or selector.
+- `Home`/`End`: jump to start/end of the active pane or selector.
+- `1`/`2`/`3`/`4`/`5` or `←`/`→`: switch keyboard tabs in detail mode.
+- Mouse wheel: scroll the active pane or selector while the overlay is open.
 - Mouse click: intentionally unsupported for this target.
 
 Target panes:
 
-1. `Summary`: selected entry status, persona, progress, task id, initial prompt,
-   and output/error summary.
-2. `Output`: Markdown-rendered final output when present, otherwise a renderer-safe
-   empty/fallback message.
-3. `Metadata`: adapter-local mode, sequence, phase, task preview, initial prompt,
-   error object, overlay generation, and view-only provenance.
+1. `Summary`: readable grouped/aligned fields for selected-entry status, persona,
+   progress, task id, prompt availability, output availability, live event
+   availability, error summary, and view-only provenance. It intentionally does
+   not inline full prompt, raw Markdown output, raw tool output, or raw RPC
+   payloads.
+2. `Prompt`: full initial prompt / subagent task text with width-safe wrapping.
+3. `Output`: live assistant text while running and Pi TUI Markdown-rendered final
+   assistant output after completion, otherwise a renderer-safe empty/fallback
+   message.
+4. `Events`: grouped tool-call snapshots and normalized stream events. A tool call
+   is displayed as one evolving status row/snapshot keyed by `toolCallId`; start,
+   update, and end events update that row rather than appending an unbounded
+   firehose. Tool args and tool output appear only as bounded previews here.
+5. `Metadata`: adapter-local mode, sequence, phase, task preview, prompt pointer,
+   call id, selected task id, overlay generation, live-stream availability, error
+   object, and view-only provenance.
+
+Overlong selector rows, assistant messages, tool args, and tool output are always
+renderer-safe and bounded. Selector rows are single-line truncated summaries.
+Scrollable panes may wrap, but live buffers must still have a hard in-memory bound
+and visible truncation marker so a noisy child cannot turn the overlay into an
+unbounded log stream. `thinking_*` child deltas must not display thinking content;
+the overlay may show only a bounded neutral state such as `thinking hidden`.
 
 The overlay result carries `view_only: true`, renderer-safe text `content`, and
 adapter-local overlay `details`. It deliberately does not mirror
 `LarvaSubagentResult` top-level `task_id` or `result_text` fields. Missing
 observed entries return `LARVA_SUBAGENT_LOG_NOT_OBSERVED`; unavailable UI
-notification returns `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE`. Opening, tabbing,
-scrolling, or resetting the overlay must not mutate persona state, model state,
-tool policy, active task markers, child session files, recent-session index
-contents, or resume authority.
+notification returns `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE`. Opening, selecting,
+tabbing, scrolling, event-driven refresh, streaming updates, or resetting the
+overlay must not mutate persona state, model state, tool policy, active task
+markers, child session files, recent-session index contents, or resume authority.
 
 ## Explicit non-goals and unsupported guarantees
 
@@ -751,7 +829,8 @@ Do not infer these guarantees from `larva pi` or this extension:
 - No subagent catalogue dumped into the system prompt.
 - No Larva sidecar metadata or provenance file for child sessions.
 - No model-visible overlay log stream; `/larva-subagent-log` is user-visible,
-  view-only, in-memory presentation state only.
+  view-only adapter-local presentation state. Persistent cache entries are UI
+  inspection state only, and live stream previews are process-local only.
 - No mouse click support for this target; keyboard controls and overlay mouse
   wheel scrolling are the supported TUI interactions.
 - No MCP transport implementation inside this integration; users may install a Pi

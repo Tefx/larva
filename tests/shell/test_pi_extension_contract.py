@@ -719,6 +719,7 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
         _assert_tokens(
             document,
             "/larva-subagent-log",
+            "Larva subagent log",
             "persona selector",
             "accent-colored border",
             "solid ANSI background",
@@ -727,6 +728,19 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
             "drop shadow",
             "90%",
             "initial prompt",
+            "event-driven",
+            "not timer polling",
+            "Persistent cache",
+            "subagent-presentation-log.json",
+            "subagent-log.json",
+            "--clear",
+            "LARVA_SUBAGENT_LOG_CONFIG_INVALID",
+            "Summary",
+            "Prompt",
+            "Output",
+            "Metadata",
+            "Markdown",
+            "height",
             "mouse click",
         )
 

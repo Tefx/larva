@@ -860,8 +860,9 @@ P2 result rendering:
 ### Presentation log view-only overlay
 
 `/larva-subagent-log [task_id?]` is an authorized Pi-adapter slash command for
-viewing the parent extension's in-memory subagent presentation log. It is not a
-model-facing tool, not a shared Larva/opifex schema, and not a tool-policy input.
+viewing the parent extension's subagent presentation log and optional
+adapter-local persistent cache. It is not a model-facing tool, not a shared
+Larva/opifex schema, and not a tool-policy input.
 It exists only so the human user can inspect recent subagent row/progress/result
 presentation without streaming full child logs into the parent model context.
 
@@ -870,38 +871,145 @@ Overlay selection contract:
 - The command is registered as `larva-subagent-log`; the protocol tool name
   remains `larva_subagent`.
 - The optional argument is interpreted as one exact `task_id` after trimming. With
-  no argument, the newest retained presentation-log entry is selected. There is
-  no `last` alias, fuzzy matching, filesystem scan, raw JSONL parsing, or sidecar
-  read/write.
-- The overlay content is derived only from the parent extension's in-memory
-  presentation log for child sessions already observed by this parent process.
+  no argument, the newest retained presentation-log entry is selected in detail
+  mode. There is no `last` alias, fuzzy matching, filesystem scan, raw JSONL
+  parsing, or sidecar read/write.
+- Pressing `s` while the overlay is open enters an in-overlay subagent selector.
+  `/larva-subagent-log --select` may open directly into that selector. The
+  selector does not replace the command's default newest-detail behavior.
+- Selector rows are single-line, width-safe summaries containing status, persona
+  id, phase/status, bounded task preview, and bounded `task_id` suffix. Metadata
+  such as sequence and updated time may appear when width allows, but full task
+  prompts, full outputs, and raw child event payloads must stay out of selector
+  rows.
+- Selector ordering is deterministic: running entries first, then newest
+  `updated_at` first, then highest `sequence` first as a tie-breaker. This keeps
+  active subagents easiest to inspect while preserving log-like recency for
+  completed entries.
+- In selector mode, `↑`/`↓` moves the cursor and `Enter` selects the highlighted
+  entry, returning to detail mode without closing the overlay. `Esc`/`q` closes
+  the overlay. Mouse click remains unsupported/no-op.
+- The overlay content is derived only from the parent extension's presentation
+  log for child sessions already observed by this parent process plus the
+  adapter-local persistent cache described below. Loaded cache entries are
+  inspectable historical UI state, not live event sources.
+
+Persistent cache target:
+
+- The Pi adapter persists the newest renderer-safe presentation entries to
+  `~/.pi/larva/subagent-presentation-log.json`.
+- Default enabled state is `enabled: true`.
+- Default retention is newest 100 entries and entries updated within the last 7
+  days. Retention cleanup runs on load, write, and explicit clear.
+- Optional config file: `~/.pi/larva/subagent-log.json`.
+- Optional absolute file override for tests/users: `LARVA_PI_SUBAGENT_LOG_FILE`.
+- Config shape is adapter-local and intentionally small:
+  `enabled`, `max_entries`, `max_age_days`, `include_prompt`, and
+  `include_output`.
+- Valid ranges: `max_entries` is an integer from 1 to 1000; `max_age_days` is an
+  integer from 1 to 365. Boolean fields must be booleans.
+- Malformed config fails closed for persistence: do not write the cache for that
+  process, and report a user-visible `LARVA_SUBAGENT_LOG_CONFIG_INVALID` error.
+- Persistence is fed only by presentation-log mutations (`running`, progress,
+  final result, cancel, failure, reset). It must not scan child session JSONL,
+  parse raw Pi transcripts, write sidecars beside child sessions, or infer entries
+  from filesystem history.
+- Live streaming fields are process-local only for this target. Assistant live
+  text previews, normalized tool event snapshots, active tool state, and raw child
+  RPC event payloads must not be persisted in the adapter cache. The cache
+  sanitizer must drop those fields if they are present in memory.
+- The persisted cache is a UI inspection cache only. It is not resume authority,
+  not a child-session source of truth, not model-visible context, not a tool-policy
+  input, and not a shared Larva/opifex schema.
+- `/larva-subagent-log --clear` is the cleanup surface. It clears the
+  adapter-local presentation cache and in-memory overlay entries, then closes any
+  open overlay. It must not delete child Pi session files, mutate persona/model
+  state, alter tool policy, or remove public child `task_id` values.
+
+Live streaming target:
+
+- While a selected subagent is running, the overlay may show live assistant output
+  and tool-call activity from the child Pi RPC event stream. Authorized child
+  event inputs are `message_update`, `tool_execution_start`,
+  `tool_execution_update`, `tool_execution_end`, and terminal agent events such as
+  `agent_end`. The implementation must not scan or parse raw child session JSONL
+  to reconstruct streaming state.
+- Child RPC events are normalized into adapter-local presentation events before
+  they reach the overlay. Raw RPC frames must not be rendered, persisted, exposed
+  as shared schema, or injected into model-visible context.
+- `message_update` text deltas may update a process-local live assistant output
+  preview. `thinking_*` deltas must not display thinking content; the overlay may
+  show only a bounded neutral state such as `thinking hidden` if useful.
+- The final `Output` content remains the final `get_last_assistant_text` result
+  after child completion. Live assistant text is a realtime preview only and is
+  replaced or reconciled by the final result.
+- Tool execution events are grouped by `toolCallId` into one changing tool row or
+  snapshot per tool call. `tool_execution_start`, `tool_execution_update`, and
+  `tool_execution_end` must not create an unbounded three-event firehose. Updates
+  replace the current status/output preview for that tool.
+- Tool output belongs in the `Events` pane as a bounded preview, not in the
+  assistant `Output` pane. The `Output` pane is for assistant live/final text;
+  the `Events` pane is for tool name, status, bounded args preview, bounded output
+  preview, and final success/failure state.
+- Overlong selector rows, assistant text, tool args, and tool output must be
+  renderer-safe and bounded. Selector rows are single-line truncated summaries.
+  Scrollable panes may wrap, but live buffers must still have a hard in-memory
+  bound and visible truncation marker so a noisy child cannot turn the overlay
+  into an unbounded log stream.
 
 Overlay UI contract:
 
-- The overlay is a Pi TUI-backed custom component. It must use Pi TUI
+- The overlay is a Pi TUI-backed custom component. Its visible chrome title is
+  the concise `Larva subagent log`; `presentation log` remains the
+  internal/design term for adapter-local in-memory UI state. It must use Pi TUI
   `visibleWidth`, `truncateToWidth`, and `wrapTextWithAnsi` for bordered rows,
   pane content, wrapping, and truncation.
 - The component must preserve Pi TUI's `render(width)` invariant for every line,
-  including CJK text, emoji, Markdown syntax, ANSI-stripped input, and long child
-  session paths.
+  including CJK text, emoji, Markdown syntax, ANSI-stripped input, long child
+  session paths, selector rows, live assistant previews, and tool-output previews.
 - The overlay uses the same terminal-modal chrome helpers and frame budget as
   the persona selector: `90%` width, `90%` max height, accent-colored border,
-  solid ANSI background, stable frame height across tab/scroll states, and a
-  terminal-compatible right/bottom drop shadow that is not clipped by Pi's
+  solid ANSI background, stable frame height across tab/scroll/selector states,
+  and a terminal-compatible right/bottom drop shadow that is not clipped by Pi's
   overlay frame.
-- The overlay exposes keyboard tabs: `Summary`, `Output`, and `Metadata`.
-- `Summary` shows selected-entry status, persona, progress, task id, initial
-  prompt, result/error summary, and view-only provenance.
-- `Output` renders final output with Pi TUI `Markdown` when output exists; empty
-  output uses a renderer-safe fallback.
+- The overlay is an event-driven live view while open: presentation-log and
+  normalized stream mutations notify the open component, which re-reads the
+  selected adapter-local entry and requests a render. This is not timer polling
+  and it still never scans or parses child JSONL.
+- Event-driven refresh preserves the active tab, selector/detail mode, selected
+  entry, selector cursor, and scroll offset where possible. If the selected entry
+  disappears during reset/cleanup, the overlay closes or clears through normal
+  cleanup.
+- The overlay exposes keyboard tabs in input-before-output order with events
+  after assistant output: `Summary`, `Prompt`, `Output`, `Events`, and
+  `Metadata`.
+- `Summary` shows readable grouped/aligned fields for selected-entry status,
+  persona, progress, task id, prompt availability, output availability, live event
+  availability, result/error summary, and view-only provenance; it must not inline
+  the full prompt, raw Markdown output, raw tool output, or raw RPC payloads.
+- `Prompt` shows the full initial subagent prompt/task text with width-safe
+  wrapping.
+- `Output` renders live assistant text while running and final output after
+  completion with Pi TUI `Markdown` when output exists; empty output uses a
+  renderer-safe fallback.
+- `Events` shows grouped tool-call snapshots and other normalized stream events.
+  Each tool call is displayed as one evolving status row/snapshot keyed by
+  `toolCallId`, with bounded args/output previews and final success/failure
+  status.
 - `Metadata` shows adapter-local fields such as mode, sequence, phase,
-  task_preview, initial prompt, error object, overlay generation, and selected
-  task id.
-- Keyboard controls: `Esc`/`q` close, `↑`/`↓` scroll, `PageUp`/`PageDown` page
-  scroll, `Home`/`End` jump, and `1`/`2`/`3` or `←`/`→` switch tabs.
-- Mouse wheel may scroll the active pane while the overlay is open. The component
-  owns mouse-reporting enable/disable cleanup. Mouse click support is explicitly
-  out of scope for this target.
+  task_preview, prompt pointer, call id, selected task id, overlay generation,
+  live-stream availability, error object, and view-only provenance.
+- Keyboard controls in detail mode: `Esc`/`q` close, `s` enters selector mode,
+  `↑`/`↓` scroll, `PageUp`/`PageDown` page scroll, `Home`/`End` jump, and
+  `1`/`2`/`3`/`4`/`5` or `←`/`→` switch tabs. `Enter` does not close the detail
+  overlay.
+- Keyboard controls in selector mode: `↑`/`↓` move the selector cursor,
+  `PageUp`/`PageDown` page through entries, `Home`/`End` jump, `Enter` selects
+  the highlighted entry and returns to detail mode, `s` returns to detail mode,
+  and `Esc`/`q` close the overlay.
+- Mouse wheel may scroll the active pane or selector list while the overlay is
+  open. The component owns mouse-reporting enable/disable cleanup. Mouse click
+  support is explicitly out of scope for this target.
 
 Result and safety contract:
 
@@ -914,18 +1022,19 @@ Result and safety contract:
 - The overlay must not mutate persona state, model state, tool policy, active
   task markers, child session files, recent-session index contents, or resume
   authority. Reset/cleanup may close the overlay and clear presentation state.
-- Overlay text is user-visible only. It must not be injected into the parent
-  system prompt, model-visible tool list, model-facing tool result stream, tool
-  allow/deny policy, shared PersonaSpec, CapabilityToken, JobSpec, or any opifex
-  shared surface.
+- Overlay text and live stream previews are user-visible only. They must not be
+  injected into the parent system prompt, model-visible tool list, model-facing
+  tool result stream, tool allow/deny policy, shared PersonaSpec,
+  CapabilityToken, JobSpec, or any opifex shared surface.
 
-Rationale: the tool row remains the primary realtime surface, but a small
-view-only overlay is useful when the user needs to inspect recent presentation
-state after row rendering has scrolled or collapsed. Keeping it in-memory,
-view-only, and model-invisible preserves the opifex shared-surface boundaries and
-avoids turning UI inspection into resume authority. Pi TUI owns terminal width,
-Markdown rendering, and keyboard primitives so Larva does not reimplement fragile
-terminal behavior.
+Rationale: the tool row remains the primary compact realtime surface, but a
+small view-only overlay is useful when the user needs to inspect recent or
+currently running subagents after row rendering has scrolled or collapsed. Keeping
+selection, streaming, and cache behavior adapter-local, bounded, event-driven,
+and model-invisible preserves the opifex shared-surface boundaries and avoids
+turning UI inspection into resume authority or a filesystem-backed monitor. Pi
+TUI owns terminal width, Markdown rendering, and keyboard primitives so Larva does
+not reimplement fragile terminal behavior.
 
 ### Spawn authority
 
@@ -1837,7 +1946,7 @@ architecture_basis:
     child session identity: "Pi child session file path returned as task_id"
     child session validation: "Canonical readable .jsonl path under child session root"
     child resume busy state: "Parent extension in-memory active-task set"
-    subagent presentation log overlay: "Parent extension in-memory presentation log plus current overlay generation; user-visible only and never model/tool-policy visible"
+    subagent presentation log overlay: "Parent extension presentation log plus adapter-local persistent cache and current overlay generation; user-visible only and never model/tool-policy visible"
     Pi MCP bridge: "User-installed Pi extension/package, out of this integration scope"
 
   service_catalog:
@@ -1861,7 +1970,7 @@ architecture_basis:
     subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
     subagent_sessions_helper: "optional larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, or provenance proof"
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
-    subagent_presentation_overlay: "/larva-subagent-log [task_id?] shows a view-only user-visible overlay from parent-extension in-memory presentation log entries; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"
+    subagent_presentation_overlay: "/larva-subagent-log [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"
     persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show persona candidates while preserving Pi file-reference suggestions"
     child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
     resume: "task_id is a readable .jsonl child session path under child root; task is appended through RPC prompt; child persona id is re-resolved from current registry"
@@ -1873,7 +1982,7 @@ architecture_basis:
     child_session_state: "Pi session JSONL file used as public task_id"
     child_busy_state: "In-memory active-task set inside one parent Pi extension process"
     recent_session_index: "In-memory newest-first process-local index of up to 25 child sessions observed by one parent Pi extension process; advisory only"
-    presentation_overlay_state: "In-memory presentation log and current overlay generation inside one parent Pi extension process; user-visible view state only, not model context or resume authority"
+    presentation_overlay_state: "In-memory presentation log, adapter-local persistent cache, and current overlay generation; user-visible view state only, not model context or resume authority"
 
   transport_boundary_rules:
     - "Larva CLI/facade/MCP surfaces remain the persona source; Pi extension does not read registry files directly."
@@ -1892,7 +2001,7 @@ architecture_basis:
       - "Pi extension keeps only session-local committed envelope state."
       - "Parent Pi extension keeps a process-local active-task set for same-task resume exclusion."
       - "Parent Pi extension keeps a process-local recent-session index capped at 25 entries only for optional resume UX."
-      - "Parent Pi extension keeps a process-local presentation log/current overlay generation only for view-only user inspection."
+      - "Parent Pi extension keeps a process-local presentation log/current overlay generation and adapter-local persistent cache only for view-only user inspection."
     lifecycle_ordering:
       - "Launcher preflights Larva-owned arguments, extension path, real Pi executable, extension flag, Larva CLI argv prefix, interactive classification, and initial persona id only."
       - "Extension parses active-target policy shape, selects model, enumerates the current Pi model-facing tool baseline for strict commits, applies target policy, ignores missing policy tool names, sets active tools, and commits persona envelope only after checks pass; initial startup may substitute an empty baseline only when the Pi enumeration surface is absent or unsupported."
@@ -1971,7 +2080,7 @@ architecture_basis:
     - surface: "Pi custom tool"
       scope: "larva_subagent tool description, optional larva_subagent_sessions helper, visible resume footer, renderCall/onUpdate/renderResult row display, and result shape"
     - surface: "Pi slash command overlay"
-      scope: "/larva-subagent-log [task_id?] view-only user-visible presentation log from in-memory parent-extension entries; not model/tool-policy visible"
+      scope: "/larva-subagent-log [task_id?] view-only user-visible presentation log from parent-extension entries plus adapter-local persistent cache; not model/tool-policy visible"
     - surface: "Pi interactive editor autocomplete"
       scope: "canonical @persona:<id> mention candidates, raw @ and partial namespace suggestions, no automatic side effects, and preservation of Pi file-reference suggestions"
 
@@ -2004,11 +2113,12 @@ Pi TUI formal dependency and enhanced UI delta:
   mouse-reporting lifecycle cleanup.
 - Expanded subagent results render as Markdown UI when expanded, while collapsed
   rows remain compact renderer-safe text.
-- `/larva-subagent-log` is a keyboard-tabbed Pi TUI overlay with Summary, Output,
-  and Metadata panes; Summary/Metadata include the initial prompt, and Output uses
-  Markdown rendering. The overlay uses the same modal chrome helpers, `90%` width,
-  `90%` max-height budget, accent border, solid ANSI surface, stable frame, and
-  terminal-compatible drop shadow conventions as the persona selector.
+- `/larva-subagent-log` is a keyboard-tabbed Pi TUI overlay with Summary, Prompt,
+  Output, and Metadata panes; Prompt contains the full initial prompt, Summary
+  uses readable grouped/aligned fields, and Output uses Pi TUI Markdown rendering.
+  The overlay uses the same modal chrome helpers, `90%` width, `90%` max-height
+  budget, accent border, solid ANSI surface, stable frame, and terminal-compatible
+  drop shadow conventions as the persona selector.
 - `/larva-persona` no-argument interactive selection uses a Pi TUI selector with
   `Input`, `SelectList`, and a detail panel when custom UI is available, while
   preserving non-interactive and fallback selector behavior.
@@ -2057,6 +2167,12 @@ Subagent presentation overlay delta:
   model-visible log streams; it does not forbid this fixed view-only overlay.
 - The overlay is not a model-facing tool, not tool-policy input/output, not
   resume authority, and not a shared Larva/opifex schema or surface.
+- Persistent-cache support uses an adapter-local cache file at
+  `~/.pi/larva/subagent-presentation-log.json` with default 7-day/100-entry
+  retention. That cache remains UI inspection state only and is written only from
+  presentation-log mutations, never from raw child JSONL scanning.
+- Cleanup uses `/larva-subagent-log --clear` to clear overlay cache/state without
+  deleting child sessions or changing resume authority.
 - Overlay verification must prove command registration, exact-task/newest
   selection, view-only result shape, stable not-observed/UI-unavailable errors,
   cleanup/close behavior, and no persona/model/tool-policy/session mutation.
@@ -2096,6 +2212,34 @@ Prompt identity overlay delta:
   effective Pi session prompt should remain inspectable through Pi's system prompt
   surfaces.
 
+
+#### Subagent selector and live streaming overlay delta
+
+- `/larva-subagent-log` remains the only authorized user-visible overlay for this
+  target. The default command opens newest-detail mode; selector mode is entered
+  with `s` or directly via `/larva-subagent-log --select`.
+- Selector state is adapter-local overlay state. It selects among parent-observed
+  presentation entries and loaded adapter-cache entries only; it does not scan
+  child session files, parse raw JSONL, or create resume authority.
+- Selector ordering is running entries first, then newest `updated_at`, then
+  highest `sequence`. Selector rows are width-safe one-line summaries and must not
+  include full prompts, full outputs, raw tool output, or raw child RPC payloads.
+- Live assistant output and tool-call activity are process-local presentation
+  state fed by child Pi RPC events. Authorized inputs are normalized
+  `message_update`, `tool_execution_start`, `tool_execution_update`,
+  `tool_execution_end`, and terminal child events such as `agent_end`.
+- Streaming state is not persisted in this target. Cache writes must omit live
+  assistant previews, grouped tool-call snapshots, active tool state, and raw
+  child RPC event payloads.
+- Tool-call display is grouped by `toolCallId`: start/update/end events update one
+  changing row or snapshot per tool call instead of appending an unbounded event
+  log. Tool output is shown only as a bounded preview in the `Events` pane.
+- The `Output` pane is for assistant live/final text. The final output authority
+  remains the child `get_last_assistant_text` result after completion.
+- Overlong streaming text, tool args, and tool output must be renderer-safe,
+  bounded in memory, and visibly marked when truncated. `thinking_*` deltas must
+  not reveal thinking content.
+
 ## Runtime capability and provenance matrix
 
 This matrix records the implementation/proof status for the bundled Pi extension.
@@ -2108,8 +2252,8 @@ link here rather than redefining the contracts.
 | Launcher sentinel | `LARVA_PI_LAUNCHED=1` is required before the extension trusts `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY` for child/RPC spawning. Missing or false sentinel fails closed with `LARVA_CHILD_START_FAILED`. | Source/harness proof is sufficient for the recursion guard because it proves no child process is spawned without the sentinel. | `uv run pytest tests/shell/test_pi_extension_contract.py -k launched_sentinel -v` |
 | Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw short forms such as `@python-senior` remain delegated. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
 | `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
-| `/larva-subagent-log` overlay | The authorized slash command is view-only, user-visible, adapter-local, and backed only by the parent extension's in-memory presentation log. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k presentation_log_overlay -v` |
-| Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.78.0`; custom components satisfy visible-width rendering; `/larva-subagent-log` has Summary/Output/Metadata tabs with Markdown output; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
+| `/larva-subagent-log` overlay | The authorized slash command is view-only, user-visible, adapter-local, and backed by the parent extension's presentation log plus adapter-local persistent cache. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, persistent cache load/clear, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k presentation_log_overlay -v` |
+| Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.78.0`; custom components satisfy visible-width rendering; `/larva-subagent-log` has the concise `Larva subagent log` chrome title, Summary/Prompt/Output/Metadata tabs, event-driven in-memory refresh, and Markdown output; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
 | Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
 | Subagent row/progress rendering | `larva_subagent` exposes `renderCall`, `execute` progress updates, and `renderResult` with bounded visible text; this is row-local and does not replace the parent `larva:` footer. | Harness proof is sufficient for renderer contract shape and deterministic bounds; live Pi rendering remains a UI runtime concern. | `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'render_hooks or vt46' -v` |
 | Runtime hard gates | Extension loading, Pi RPC command inventory, autocomplete hook provenance, subagent row progress, and subagent log overlay command are reported together. | The matrix is data/provenance, not a fallback authority for behavior. Unsupported or mock-only items must be shown as unsupported/unknown rather than claimed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
@@ -2305,7 +2449,8 @@ Implementation gates must prove these observable behaviors:
     footer status or add a widget dashboard.
 47. `/larva-subagent-log [task_id?]`, if exposed, is registered as a Pi slash
     command and opens only a user-visible, view-only overlay from the parent
-    extension's in-memory presentation log. Tests must prove newest and exact
+    extension's presentation log plus adapter-local persistent cache. Tests must
+    prove newest and exact
     `task_id` selection, `view_only: true`, no top-level `task_id` or
     `result_text` mirrors, stable `LARVA_SUBAGENT_LOG_NOT_OBSERVED` and
     `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE` errors, reset/not-observed cleanup, and
@@ -2353,28 +2498,54 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    without relying on host-global module resolution.
 3. All `/larva-subagent-log` custom-component render lines satisfy visible width
    `<= width` using Pi TUI `visibleWidth`, including CJK text, emoji, Markdown
-   syntax, ANSI-stripped input, and long `task_id` paths.
+   syntax, ANSI-stripped input, long `task_id` paths, selector rows, live
+   assistant previews, and tool-output previews.
 4. `/larva-subagent-log` uses the persona selector's modal surface conventions:
    the same modal chrome helpers, `90%` width, `90%` max-height budget,
    accent-colored border, solid ANSI background, stable frame height across
-   tab/scroll states, and terminal-compatible right/bottom drop shadow.
+   tab/scroll/selector states, and terminal-compatible right/bottom drop shadow.
 5. `/larva-subagent-log` captures the initial subagent prompt/task text in the
    presentation log and exposes it in the user-visible overlay without making it a
    model-facing or shared opifex surface.
-6. `/larva-subagent-log` exposes keyboard tabs for Summary, Output, and Metadata;
-   `1`/`2`/`3` and `←`/`→` switch tabs without mutating presentation state.
-7. The Output pane renders final subagent output through Pi TUI Markdown when
-   output exists and uses a renderer-safe fallback when output is empty.
-8. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, and mouse wheel continue
-   to work on the active pane; Enter does not close the overlay.
-9. Mouse reporting is enabled only while the overlay is open and disabled on
-   dispose/reset/close. Mouse click is not supported and has no required behavior.
-10. Expanded `larva_subagent` final views render as Markdown UI with Summary,
-   Task, Output, Error, and Resume sections while preserving the semantic
-   `LarvaSubagentResult` and Pi ToolResult top-level/details mirrors.
-11. Collapsed `larva_subagent` final views remain compact renderer-safe text and
-   do not add a widget dashboard.
-12. `/larva-persona` interactive no-argument mode, when UI is available, renders a
+6. `/larva-subagent-log` exposes keyboard tabs for Summary, Prompt, Output,
+   Events, and Metadata; `1`/`2`/`3`/`4`/`5` and `←`/`→` switch tabs without
+   mutating presentation state.
+7. Summary uses readable grouped/aligned fields and does not inline full prompt,
+   raw Markdown output, raw tool output, or raw RPC payloads; the Prompt pane
+   exposes the full initial prompt.
+8. The Output pane renders live assistant text while running and final subagent
+   output through Pi TUI Markdown when output exists, and uses a renderer-safe
+   fallback when output is empty. Final output remains based on
+   `get_last_assistant_text`.
+9. The Events pane groups `tool_execution_start`, `tool_execution_update`, and
+   `tool_execution_end` by `toolCallId` into one evolving row/snapshot per tool
+   call. It shows bounded tool args/output previews and success/failure status
+   without appending an unbounded event firehose.
+10. `message_update` streaming proof covers assistant text preview updates and
+    verifies that `thinking_*` content is not rendered. Overlong message/tool
+    content must be bounded in memory, renderer-safe, and visibly marked as
+    truncated.
+11. Selector proof covers default newest-detail open, `s` to enter selector,
+    deterministic ordering (running first, then newest `updated_at`, then highest
+    `sequence`), single-line bounded rows, keyboard navigation, `Enter` selecting
+    without closing, and `Esc`/`q` close behavior.
+12. Streaming state is process-local only for this target. Cache roundtrip proof
+    must show live assistant previews, grouped tool snapshots, active tool state,
+    and raw child RPC event payloads are not persisted.
+13. The overlay uses substantially more available height on tall terminals through
+    terminal-row-aware viewport sizing while preserving stable frame height.
+14. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, `s`, `Enter`, and mouse
+    wheel continue to work according to the active mode; Enter does not close the
+    detail overlay and mouse click remains unsupported/no-op.
+15. Mouse reporting is enabled only while the overlay is open and disabled on
+    dispose/reset/close. Mouse click is not supported and has no required
+    behavior.
+16. Expanded `larva_subagent` final views render as Markdown UI with Summary,
+    Task, Output, Error, and Resume sections while preserving the semantic
+    `LarvaSubagentResult` and Pi ToolResult top-level/details mirrors.
+17. Collapsed `larva_subagent` final views remain compact renderer-safe text and
+    do not add a widget dashboard.
+18. `/larva-persona` interactive no-argument mode, when UI is available, renders a
     Pi TUI selector with filter input, persona list, model/description/capability
     summary, digest detail, Enter confirm, and Esc cancel. Selector proof must
     cover an accent-colored border, solid ANSI background, adaptive list

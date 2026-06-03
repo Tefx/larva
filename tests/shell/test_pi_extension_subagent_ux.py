@@ -517,7 +517,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         function overlayLinesBoxed(lines, width) {
           const surfaceRows = overlaySurfaceRows(lines);
           const strippedRows = surfaceRows.map((line) => withoutRightShadow(stripAnsi(line)));
-          return strippedRows[0]?.startsWith("╭─ Larva subagent presentation log")
+          return strippedRows[0]?.startsWith("╭─ Larva subagent log")
             && strippedRows.at(-1)?.startsWith("╰")
             && strippedRows.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │"))
             && lines.every((line) => piTui.visibleWidth(line) <= width);
@@ -582,11 +582,13 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
                 "LIVE_ESC": ["tui.select.cancel"],
               }[data] ?? []).includes(keybindingId),
             };
-            const component = factory({ requestRender: () => undefined, terminal: { write: (data) => terminalWrites.push(data) } }, { fg: (_token, text) => text, bold: (text) => text }, keybindings, (value) => doneValues.push(value));
+            const component = factory({ requestRender: () => undefined, terminal: { rows: 50, write: (data) => terminalWrites.push(data) } }, { fg: (_token, text) => text, bold: (text) => text }, keybindings, (value) => doneValues.push(value));
             const rendered = component.render(80);
             component.handleInput?.("2");
-            const outputTab = component.render(80);
+            const promptTab = component.render(80);
             component.handleInput?.("3");
+            const outputTab = component.render(80);
+            component.handleInput?.("4");
             const metadataTab = component.render(80);
             component.handleInput?.("\\x1b[D");
             const afterLeft = component.render(80);
@@ -594,7 +596,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             const afterRight = component.render(80);
             component.handleInput?.("1");
             const afterDigitOne = component.render(80);
-            component.handleInput?.("2");
+            component.handleInput?.("3");
             const longInitial = component.render(80);
             component.handleInput?.("\\x1b[<65;10;10M");
             const afterWheelDown = component.render(80);
@@ -626,10 +628,10 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             component.handleInput?.("q");
             const doneAfterQ = doneValues.length;
             component.dispose?.();
-            const emptyComponent = new mod.SubagentPresentationLogOverlay({ entry: { task_id: "/tmp/empty.jsonl", persona_id: "empty", status: "success", sequence: 99, phase: "success", result_text: "", error: null }, generation: 99 });
-            emptyComponent.handleInput?.("2");
+            const emptyComponent = new mod.SubagentPresentationLogOverlay({ entry: { task_id: "/tmp/empty.jsonl", persona_id: "empty", status: "success", sequence: 99, phase: "success", result_text: "", error: null }, generation: 99, tui: { terminal: { rows: 50 } } });
+            emptyComponent.handleInput?.("3");
             const emptyOutputTab = emptyComponent.render(80);
-            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
+            commandCustomCalls.push({ options, focused, terminalWrites, rendered, outputTab, promptTab, metadataTab, afterLeft, afterRight, afterDigitOne, longInitial, afterWheelDown, afterWheelUp, afterDown, afterPageDown, afterHome, afterLiveDown, afterLiveUp, afterLivePageDown, afterLiveHome, beforeClick, afterClick, emptyOutputTab, doneAfterEnter, doneAfterLiveEsc, doneAfterEsc, doneAfterQ });
             return null;
           },
         };
@@ -640,7 +642,11 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         mod.resetSubagentPresentationStateForTests();
-        const overlayStateKeys = ["rendered", "outputTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
+        const overlayStateKeys = ["rendered", "outputTab", "promptTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
+        const smallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } });
+        const tallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 60 } } });
+        const smallHeightLines = smallHeightComponent.render(80);
+        const tallHeightLines = tallHeightComponent.render(80);
         const overlayReferenceFrame = commandCustomCalls[0].rendered;
         const overlayFrameStable = overlayStateKeys.every((key) => {
           const lines = commandCustomCalls[0][key];
@@ -655,19 +661,21 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run") && pendingNewest.content[0].text.includes("initial_prompt: pending initial prompt"),
           viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
           overlayRenderedLines: commandCustomCalls[0].rendered,
-          overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].options?.overlayOptions?.width === "90%" && commandCustomCalls[0].options?.overlayOptions?.maxHeight === "90%" && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
+          overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].options?.overlayOptions?.width === "90%" && commandCustomCalls[0].options?.overlayOptions?.maxHeight === "90%" && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent log")),
           overlayBoxed: overlayStateKeys.every((key) => overlayLinesBoxed(commandCustomCalls[0][key], 80)),
           overlaySurfaceDistinct: overlayStateKeys.every((key) => overlaySurfaceDistinct(commandCustomCalls[0][key])),
           overlayDropShadow: overlayStateKeys.every((key) => overlayDropShadow(commandCustomCalls[0][key], 80)),
           strictModalChromeParity: JSON.stringify(modalChromeFingerprint(commandCustomCalls[0].rendered, 80)) === JSON.stringify(modalChromeFingerprint(personaRenderedForChrome, 80)),
           allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
           overlayFrameStable,
-          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Output") && line.includes("○ 3 Metadata")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
-          initialPromptVisible: commandCustomCalls[0].rendered.some((line) => line.includes("initial_prompt") && line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
-          outputMarkdownPane: commandCustomCalls[0].outputTab.some((line) => line.includes("Markdown Heading")) && commandCustomCalls[0].outputTab.some((line) => line.includes("bullet one")) && commandCustomCalls[0].outputTab.some((line) => line.includes("fenced code output")),
+          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Prompt") && line.includes("○ 3 Output") && line.includes("○ 4 Metadata")) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 4 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 4 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
+          summaryReadable: commandCustomCalls[0].rendered.some((line) => line.includes("Run")) && commandCustomCalls[0].rendered.some((line) => line.includes("Status") && line.includes("success")) && commandCustomCalls[0].rendered.some((line) => line.includes("Output") && line.includes("see Output tab")) && !commandCustomCalls[0].rendered.some((line) => line.includes("INITIAL_PROMPT_MARKER") || line.includes("# Markdown Heading")),
+          promptTabVisible: commandCustomCalls[0].promptTab.some((line) => line.includes("Initial Prompt")) && commandCustomCalls[0].promptTab.some((line) => line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
+          outputMarkdownPane: (() => { const plain = commandCustomCalls[0].outputTab.map(stripAnsi).join("\\n"); return plain.includes("Markdown Heading") && plain.includes("• bullet one") && plain.includes("fenced code output") && !plain.includes("# Markdown Heading") && !plain.includes("- bullet one") && !plain.includes("```text") && !plain.includes("```\\n"); })(),
           emptyOutputFallback: commandCustomCalls[0].emptyOutputTab.some((line) => line.includes("No final subagent output")),
           overlayCloseKeys: commandCustomCalls[0].doneAfterEnter === 0 && commandCustomCalls[0].doneAfterLiveEsc === 1 && commandCustomCalls[0].doneAfterEsc === 2 && commandCustomCalls[0].doneAfterQ === 3 && commandCustomCalls[0].rendered.some((line) => line.includes("Esc/q close")) && !commandCustomCalls[0].rendered.some((line) => line.includes("Enter")),
-          overlayScrollable: commandCustomCalls[0].longInitial.length <= 22 && commandCustomCalls[0].longInitial.some((line) => line.includes("Wheel/↑↓ PgUp/PgDn Home/End")) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterWheelDown) && JSON.stringify(commandCustomCalls[0].afterWheelUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterDown) && JSON.stringify(commandCustomCalls[0].afterDown) !== JSON.stringify(commandCustomCalls[0].afterPageDown) && JSON.stringify(commandCustomCalls[0].afterHome) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterLiveDown) && JSON.stringify(commandCustomCalls[0].afterLiveUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLivePageDown) !== JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLiveHome) === JSON.stringify(commandCustomCalls[0].longInitial),
+          overlayScrollable: commandCustomCalls[0].longInitial.length > 34 && commandCustomCalls[0].longInitial.some((line) => line.includes("Wheel/↑↓ PgUp/PgDn Home/End")) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterWheelDown) && JSON.stringify(commandCustomCalls[0].afterWheelUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterDown) && JSON.stringify(commandCustomCalls[0].afterDown) !== JSON.stringify(commandCustomCalls[0].afterPageDown) && JSON.stringify(commandCustomCalls[0].afterHome) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].longInitial) !== JSON.stringify(commandCustomCalls[0].afterLiveDown) && JSON.stringify(commandCustomCalls[0].afterLiveUp) === JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLivePageDown) !== JSON.stringify(commandCustomCalls[0].longInitial) && JSON.stringify(commandCustomCalls[0].afterLiveHome) === JSON.stringify(commandCustomCalls[0].longInitial),
+          adaptiveHeightUtilization: tallHeightLines.length > smallHeightLines.length && tallHeightLines.length >= 40 && smallHeightLines.length < tallHeightLines.length,
           clickNoop: JSON.stringify(commandCustomCalls[0].beforeClick) === JSON.stringify(commandCustomCalls[0].afterClick),
           noNotifyWhenOverlayAvailable: commandNotifications.length === 0,
           resetEmpty: mod.larva_subagent_sessions({ limit: 10 }).details.sessions.length === 0 && mod.larva_subagent_log({ expanded: true }).details.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
@@ -689,14 +697,201 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["allOverlayLinesFit"] is True
     assert payload["overlayFrameStable"] is True
     assert payload["overlayTabs"] is True
-    assert payload["initialPromptVisible"] is True
+    assert payload["summaryReadable"] is True
+    assert payload["promptTabVisible"] is True
     assert payload["outputMarkdownPane"] is True
     assert payload["emptyOutputFallback"] is True
     assert payload["overlayCloseKeys"] is True
     assert payload["overlayScrollable"] is True
+    assert payload["adaptiveHeightUtilization"] is True
     assert payload["clickNoop"] is True
     assert payload["noNotifyWhenOverlayAvailable"] is True
     assert payload["resetEmpty"] is True
+
+
+def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: Path) -> None:
+    """Pin Scheme B: open subagent log overlays refresh on presentation mutations, not polling."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        mod.resetSubagentPresentationStateForTests();
+        mod.recordSubagentPresentationEntryForTests("/tmp/live.jsonl", "live", "running", {
+          phase: "starting",
+          mode: "new",
+          task_preview: "live preview",
+          task_prompt: "Live prompt before output",
+          call_id: "call-refresh",
+        });
+        const commandResults = [];
+        let component = null;
+        const requestRenderEvents = [];
+        const doneValues = [];
+        const terminalWrites = [];
+        const commandUi = {
+          notify: () => undefined,
+          setStatus: () => undefined,
+          custom: async (factory, options) => {
+            component = factory(
+              { requestRender: () => requestRenderEvents.push("render"), terminal: { rows: 50, write: (data) => terminalWrites.push(data) } },
+              { fg: (_token, text) => text, bold: (text) => text },
+              { matches: () => false },
+              (value) => doneValues.push(value),
+            );
+            component.handleInput?.("3");
+            return null;
+          },
+        };
+        await mod.initializeExtension(
+          { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent-log") commandResults.push(command.handler(undefined, { env: baseEnv(), modelRegistry, ui: commandUi })); } },
+        );
+        const commandResult = await commandResults[0];
+        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const beforeOutputPlain = component.render(80).map(stripAnsi).join("\\n");
+        const rendersBeforeMutation = requestRenderEvents.length;
+        mod.recordSubagentPresentationEntryForTests("/tmp/live.jsonl", "live", "success", {
+          phase: "success",
+          result_text: "# Refreshed Heading\\n\\n- refreshed bullet\\n\\n```text\\nrefreshed code\\n```",
+          task_prompt: "Live prompt before output",
+          call_id: "call-refresh",
+        });
+        const rendersAfterMutation = requestRenderEvents.length;
+        const afterOutputPlain = component.render(80).map(stripAnsi).join("\\n");
+        const overlayAfterRefresh = mod.currentSubagentOverlayForTests();
+        component.handleInput?.("q");
+        const rendersAfterClose = requestRenderEvents.length;
+        mod.recordSubagentPresentationEntryForTests("/tmp/live.jsonl", "live", "failed", {
+          phase: "failed",
+          error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "after close" },
+          task_prompt: "Live prompt before output",
+          call_id: "call-refresh",
+        });
+        const rendersAfterClosedMutation = requestRenderEvents.length;
+        mod.resetSubagentPresentationStateForTests();
+        console.log(JSON.stringify({
+          opened: commandResult.ok === true && component !== null,
+          selectedTaskId: commandResult.details.selected_task_id,
+          outputTabPreserved: beforeOutputPlain.includes("● 3 Output") && afterOutputPlain.includes("● 3 Output"),
+          beforeFallback: beforeOutputPlain.includes("No final subagent output"),
+          refreshedMarkdown: afterOutputPlain.includes("Refreshed Heading") && afterOutputPlain.includes("• refreshed bullet") && afterOutputPlain.includes("refreshed code") && !afterOutputPlain.includes("# Refreshed Heading") && !afterOutputPlain.includes("- refreshed bullet") && !afterOutputPlain.includes("```text"),
+          eventDrivenRenderRequested: rendersAfterMutation > rendersBeforeMutation,
+          overlaySnapshotUpdated: overlayAfterRefresh?.task_id === "/tmp/live.jsonl",
+          closeStopsRefresh: doneValues.length === 1 && rendersAfterClosedMutation === rendersAfterClose,
+          mouseReportingCleaned: terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && terminalWrites.includes("\x1b[?1006l\x1b[?1000l"),
+        }, null, 2));
+        """,
+    )
+
+    assert payload["opened"] is True
+    assert payload["selectedTaskId"] == "/tmp/live.jsonl"
+    assert payload["outputTabPreserved"] is True
+    assert payload["beforeFallback"] is True
+    assert payload["refreshedMarkdown"] is True
+    assert payload["eventDrivenRenderRequested"] is True
+    assert payload["overlaySnapshotUpdated"] is True
+    assert payload["closeStopsRefresh"] is True
+    assert payload["mouseReportingCleaned"] is True
+
+
+def test_larva_subagent_persistent_log_cache_roundtrip_retention_and_clear(tmp_path: Path) -> None:
+    """Pin persistent presentation cache load, retention, exact selection, and clear."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { access, readFile, writeFile: writeFsFile } = await import("node:fs/promises");
+        const cacheFile = join(tmpRoot, "subagent-presentation-cache.json");
+        const configDir = join(tmpRoot, ".pi", "larva");
+        await mkdir(configDir, { recursive: true });
+        await writeFsFile(join(configDir, "subagent-log.json"), JSON.stringify({ enabled: true, max_entries: 3, max_age_days: 7, include_prompt: true, include_output: true }));
+        const env = baseEnv({ LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
+        await mod.initializeExtension({ env, modelRegistry, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
+        mod.recordSubagentPresentationEntryForTests("/tmp/cache-old.jsonl", "cache", "success", { phase: "success", task_prompt: "old prompt", result_text: "old output", updated_at: "2000-01-01T00:00:00.000Z" });
+        for (let index = 1; index <= 4; index += 1) {
+          mod.recordSubagentPresentationEntryForTests(`/tmp/cache-${index}.jsonl`, "cache", "success", { phase: "success", task_prompt: `prompt ${index}`, result_text: `# Output ${index}\n\n- bullet ${index}` });
+        }
+        const cacheAfterWrite = JSON.parse(await readFile(cacheFile, "utf8"));
+        const cachedIds = cacheAfterWrite.entries.map((entry) => entry.task_id);
+        const cachedNewest = cacheAfterWrite.entries.at(-1);
+        mod.resetSubagentPresentationStateForTests();
+        const loadedExact = mod.larva_subagent_log("/tmp/cache-4.jsonl");
+        const loadedNewest = mod.larva_subagent_log("");
+        const clearResult = mod.larva_subagent_log("--clear");
+        let cacheExistsAfterClear = true;
+        try { await access(cacheFile); } catch { cacheExistsAfterClear = false; }
+        const afterClear = mod.larva_subagent_log("/tmp/cache-4.jsonl");
+        console.log(JSON.stringify({
+          cacheVersion: cacheAfterWrite.version,
+          retentionApplied: cachedIds.length === 3 && !cachedIds.includes("/tmp/cache-old.jsonl") && !cachedIds.includes("/tmp/cache-1.jsonl") && cachedIds.includes("/tmp/cache-4.jsonl"),
+          cacheHasPromptAndOutput: cachedNewest.task_prompt === "prompt 4" && cachedNewest.result_text.includes("Output 4") && typeof cachedNewest.updated_at === "string",
+          exactLoadedFromCache: loadedExact.ok === true && loadedExact.details.selected_task_id === "/tmp/cache-4.jsonl" && loadedExact.content[0].text.includes("Output 4"),
+          newestLoadedFromCache: loadedNewest.ok === true && loadedNewest.details.selected_task_id === "/tmp/cache-4.jsonl",
+          clearOk: clearResult.ok === true && clearResult.view_only === true && clearResult.content[0].text.includes("cleared"),
+          cacheRemoved: cacheExistsAfterClear === false,
+          afterClearNotObserved: afterClear.details.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED",
+        }, null, 2));
+        """,
+    )
+
+    assert payload["cacheVersion"] == 1
+    assert payload["retentionApplied"] is True
+    assert payload["cacheHasPromptAndOutput"] is True
+    assert payload["exactLoadedFromCache"] is True
+    assert payload["newestLoadedFromCache"] is True
+    assert payload["clearOk"] is True
+    assert payload["cacheRemoved"] is True
+    assert payload["afterClearNotObserved"] is True
+
+
+def test_larva_subagent_persistent_log_cache_privacy_config_and_fail_closed(tmp_path: Path) -> None:
+    """Pin include_prompt/include_output privacy controls and malformed-config fail-closed behavior."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { access, readFile, writeFile: writeFsFile } = await import("node:fs/promises");
+        const configDir = join(tmpRoot, ".pi", "larva");
+        await mkdir(configDir, { recursive: true });
+        const privateCache = join(tmpRoot, "private-cache.json");
+        await writeFsFile(join(configDir, "subagent-log.json"), JSON.stringify({ enabled: true, max_entries: 10, max_age_days: 7, include_prompt: false, include_output: false }));
+        const privateEnv = baseEnv({ LARVA_PI_SUBAGENT_LOG_FILE: privateCache });
+        await mod.initializeExtension({ env: privateEnv, modelRegistry, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
+        mod.recordSubagentPresentationEntryForTests("/tmp/private.jsonl", "cache", "success", { phase: "success", task_prompt: "sensitive prompt", result_text: "sensitive output" });
+        const privateCacheData = JSON.parse(await readFile(privateCache, "utf8"));
+        const privateEntry = privateCacheData.entries[0];
+        mod.resetSubagentPresentationStateForTests();
+
+        const invalidRoot = join(tmpRoot, "invalid-home");
+        const invalidConfigDir = join(invalidRoot, ".pi", "larva");
+        await mkdir(invalidConfigDir, { recursive: true });
+        await writeFsFile(join(invalidConfigDir, "subagent-log.json"), JSON.stringify({ enabled: true, max_entries: 0, max_age_days: 7, include_prompt: true, include_output: true }));
+        const invalidCache = join(tmpRoot, "invalid-cache.json");
+        const invalidEnv = baseEnv({ HOME: invalidRoot, LARVA_PI_SUBAGENT_LOG_FILE: invalidCache });
+        await mod.initializeExtension({ env: invalidEnv, modelRegistry, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
+        mod.recordSubagentPresentationEntryForTests("/tmp/invalid.jsonl", "cache", "success", { phase: "success", task_prompt: "must not persist", result_text: "must not persist" });
+        const invalidLog = mod.larva_subagent_log("");
+        let invalidCacheExists = true;
+        try { await access(invalidCache); } catch { invalidCacheExists = false; }
+        console.log(JSON.stringify({
+          promptOmitted: !("task_prompt" in privateEntry),
+          outputOmitted: !("result_text" in privateEntry),
+          summaryMetadataKept: privateEntry.task_id === "/tmp/private.jsonl" && privateEntry.status === "success" && privateEntry.persona_id === "cache",
+          invalidConfigReported: invalidLog.details.error?.code === "LARVA_SUBAGENT_LOG_CONFIG_INVALID" && invalidLog.isError === true,
+          invalidCacheNotWritten: invalidCacheExists === false,
+        }, null, 2));
+        """,
+    )
+
+    assert payload["promptOmitted"] is True
+    assert payload["outputOmitted"] is True
+    assert payload["summaryMetadataKept"] is True
+    assert payload["invalidConfigReported"] is True
+    assert payload["invalidCacheNotWritten"] is True
 
 
 def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_path: Path) -> None:
@@ -711,7 +906,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
     assert "class BorderedScrollableText" in source
     assert "class SubagentPresentationLogOverlay" in source
     subagent_overlay_source = source.split("export class SubagentPresentationLogOverlay", 1)[1].split("async function openSubagentPresentationOverlay", 1)[0]
-    for required in ["selectorBoxRow", "selectorFullBorderRow", "selectorShadowLine"]:
+    for required in ["selectorBoxRow", "selectorFullBorderRow", "selectorShadowLine", "summaryPaneLines", "promptPaneLines", "subagentOverlaySurfaceLineCount"]:
         assert required in subagent_overlay_source
     assert "Mouse click/press/release SGR events are intentionally unsupported no-ops" in source
 
