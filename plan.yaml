@@ -100547,3 +100547,12 @@ phases:
   depends_on:
   - pi_impl_finalization_20260603
   - meta.gate
+- id: pi_tui_rendering_foundation_20260603
+  name: P1 Pi TUI Rendering Foundation 2026-06-03
+  status: locked
+  gate: Pi extension directly imports Pi TUI helpers/components, removes optional
+    loader/fallbacks where appropriate, and exposes a reusable bordered scrollable
+    text foundation preserving keyboard and mouse-wheel behavior without mouse click
+    support.
+  depends_on:
+  - pi_tui_dependency_packaging_20260603
