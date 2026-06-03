@@ -2341,6 +2341,25 @@ function applyAgentPersonaToolExposure(tools: string[]): string[] {
   return tools.filter((tool) => !agentTools.has(tool));
 }
 
+async function refreshActiveToolExposureForAgentPersonaMode(pi: PiApi): Promise<LarvaError | null> {
+  try {
+    const baseline = await enumerateTools(pi);
+    const policyFiltered = state.envelope ? filterPolicyTools(baseline, state.envelope.tool_policy) : baseline;
+    const activeTools = applyAgentPersonaToolExposure(policyFiltered);
+    let applied: boolean | void | undefined;
+    try {
+      applied = await pi.setActiveTools?.(activeTools);
+    } catch {
+      return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    }
+    if (applied === false) return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    state.activeTools = new Set(activeTools);
+    return null;
+  } catch (caught) {
+    return isLarvaError(caught) ? caught : error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+  }
+}
+
 function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void {
   const command: CommandOptions = {
     description: "Set Larva agent persona self-switch mode: off, ask, or auto.",
@@ -2362,6 +2381,11 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
         details: { mode, source: "slash-command" },
       });
       if (agentPersonaToolsAllowed()) registerAgentPersonaSwitchTools(runtimeCtx, pi);
+      const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi);
+      if (exposureError !== null) {
+        await notify(runtimeCtx, `Larva agent persona self-switch mode updated but active tools failed: ${exposureError.code}: ${exposureError.message}`, "error");
+        return { ok: false, mode, error: exposureError };
+      }
       await notify(runtimeCtx, `Larva agent persona self-switch mode: ${mode}`, "info");
       return { ok: true, mode };
     },

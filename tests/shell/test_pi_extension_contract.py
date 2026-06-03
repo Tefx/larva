@@ -1797,6 +1797,55 @@ def test_agent_persona_switch_invalid_stored_mode_falls_back_to_env_then_off_beh
     assert "larva_personas" not in _registered_names(payload, "invalidEnvTools")
 
 
+def test_agent_persona_switch_slash_off_recomputes_active_tools_and_preserves_manual_switch_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const cases = [];
+        for (const mode of ["ask", "auto"]) {
+          const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: mode, LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+          const beforeOffActiveTools = harness.activeToolCalls.at(-1);
+          const modeCommand = harness.commands["larva-agent-persona-switch"];
+          const offResult = await (modeCommand.handler ?? modeCommand.options?.handler)("off", harness.ctx);
+          const afterOffActiveTools = harness.activeToolCalls.at(-1);
+          const staleSwitchDecision = harness.mod.decideToolCall("larva_persona_switch");
+          const stalePersonasDecision = harness.mod.decideToolCall("larva_personas");
+          const manual = harness.commands["larva-persona"];
+          const manualResult = await (manual.handler ?? manual.options?.handler)("python", harness.ctx);
+          const afterManualActiveTools = harness.activeToolCalls.at(-1);
+          cases.push({
+            mode,
+            beforeOffActiveTools,
+            offResult,
+            afterOffActiveTools,
+            staleSwitchDecision,
+            stalePersonasDecision,
+            manualResult,
+            afterManualActiveTools,
+            finalEnvelope: harness.mod.getActiveEnvelope(),
+            commands: Object.keys(harness.commands),
+          });
+        }
+        console.log(JSON.stringify({ cases }));
+        """,
+    )
+
+    assert {case["mode"] for case in payload["cases"]} == {"ask", "auto"}
+    for case in payload["cases"]:
+        assert {"larva_persona_switch", "larva_personas"} <= set(case["beforeOffActiveTools"])
+        assert case["offResult"] == {"ok": True, "mode": "off"}
+        assert "larva_persona_switch" not in case["afterOffActiveTools"]
+        assert "larva_personas" not in case["afterOffActiveTools"]
+        assert case["staleSwitchDecision"]["action"] == "deny"
+        assert case["staleSwitchDecision"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
+        assert case["stalePersonasDecision"]["action"] == "deny"
+        assert "larva-persona" in case["commands"]
+        assert case["manualResult"]["ok"] is True
+        assert case["finalEnvelope"]["persona_id"] == "python"
+        assert "larva_persona_switch" not in case["afterManualActiveTools"]
+        assert "larva_personas" not in case["afterManualActiveTools"]
+
+
 def test_agent_persona_switch_stale_off_rejects_forged_tool_call_without_commit_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,

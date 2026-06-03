@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import textwrap
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+EXTENSION = ROOT / "contrib" / "pi-extension" / "larva.ts"
 SMOKE = ROOT / "scripts" / "pi-extension-autocomplete-smoke.mjs"
 RUNTIME_SMOKE = ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"
 AUTOCOMPLETE_RUNTIME = ROOT / "contrib" / "pi-extension" / "test-autocomplete-runtime.mjs"
@@ -215,6 +217,23 @@ def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout:
     return json.loads(completed.stdout)
 
 
+def _run_node_inline(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str, Any]:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension runtime artifact tests")
+    script_path = tmp_path / "runtime-artifact.mjs"
+    script_path.write_text(script, encoding="utf-8")
+    completed = subprocess.run(
+        [node, str(script_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
+
+
 def _skip_if_pi_absent(payload: dict[str, Any]) -> None:
     pi = payload.get("pi", {})
     if pi.get("available") is not True:
@@ -277,6 +296,117 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "live-child-rpc-proof",
     ):
         assert scenario in completed.stdout
+
+
+def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_persona_prompt(tmp_path: Path) -> None:
+    """Accepted equivalent runtime artifact for Pi terminate + followUp behavior.
+
+    The live Pi RPC surface does not currently expose a stable way to force a
+    queued follow-up turn in this test environment. This harness exercises the
+    same extension runtime objects Pi calls: registered tool execution returns a
+    terminating result, ``sendUserMessage(..., {deliverAs: "followUp"})`` queues
+    an auditable Larva-generated user continuation, and the next simulated Pi
+    turn invokes ``before_agent_start`` after termination against the committed
+    post-switch envelope.
+    """
+
+    fake_cli = tmp_path / "fake-larva-followup-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, arg, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            const promptMarker = arg === "python" ? "PYTHON_RUNTIME_PROMPT_MARKER" : "ARCHITECT_RUNTIME_PROMPT_MARKER";
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: arg,
+                description: `Persona ${arg}`,
+                prompt: `Prompt for ${arg}\n${promptMarker}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${arg}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node_inline(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const queuedFollowUps = [];
+        const activeToolCalls = [];
+        const tools = {{}};
+        const handlers = {{}};
+        const sessionEntries = [];
+        const pi = {{
+          getAllTools: async () => ["read", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async (activeTools) => {{ activeToolCalls.push(activeTools); return true; }},
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: (tool) => {{ tools[tool.name] = tool; }},
+          on: (event, handler) => {{ handlers[event] = handler; }},
+          sendUserMessage: async (message, options) => {{ queuedFollowUps.push({{ message, options }}); return true; }},
+        }};
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_AGENT_PERSONA_SWITCH: "auto",
+            LARVA_PI_INITIAL_PERSONA_ID: "architect",
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+          session: {{ entries: sessionEntries, getEntries: () => sessionEntries, appendEntry: (entry) => sessionEntries.push(entry) }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.session_start?.({{ reason: "startup" }}, ctx);
+        const switchTool = tools["larva_persona_switch"];
+        const switchResult = await switchTool.execute("call-switch", {{
+          persona_id: "python",
+          reason: "Python runtime proof required",
+          handoff: "Continue with the Python marker",
+          continue_task: true,
+        }}, undefined, undefined, ctx);
+        const nextTurn = switchResult.terminate === true ? queuedFollowUps.shift() : null;
+        const nextPrompt = nextTurn ? mod.before_agent_start({{ systemPrompt: "base prompt before next provider call" }})?.systemPrompt ?? "" : "";
+        console.log(JSON.stringify({{
+          switchResult,
+          nextTurn,
+          nextPrompt,
+          finalEnvelope: mod.getActiveEnvelope(),
+          activeToolCalls,
+          auditEntries: sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          assertions: {{
+            terminatedOldTurn: switchResult.terminate === true,
+            followUpQueued: nextTurn?.options?.deliverAs === "followUp",
+            larvaGeneratedMarkerPresent: nextTurn?.message?.startsWith("[Larva-generated continuation after persona switch]") === true,
+            nextPromptUsesNewPersonaEnvelope: nextPrompt.includes("<!-- larva-spec: python@sha256:python -->"),
+            nextPromptUsesNewPersonaPrompt: nextPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER") && !nextPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER"),
+          }},
+        }}));
+        """,
+    )
+
+    assert payload["switchResult"]["status"] == "success"
+    assert payload["switchResult"].get("terminate") is True
+    assert payload["finalEnvelope"]["persona_id"] == "python"
+    assert payload["nextTurn"] == {
+        "message": "[Larva-generated continuation after persona switch]\nSwitched from architect to python.\nReason: Python runtime proof required\nHandoff: Continue with the Python marker\nContinue the user's original task under the new persona.\nDo not switch again unless newly justified.",
+        "options": {"deliverAs": "followUp"},
+    }
+    assert payload["assertions"] == {
+        "terminatedOldTurn": True,
+        "followUpQueued": True,
+        "larvaGeneratedMarkerPresent": True,
+        "nextPromptUsesNewPersonaEnvelope": True,
+        "nextPromptUsesNewPersonaPrompt": True,
+    }
+    assert payload["auditEntries"][-1]["details"]["committed"] is True
 
 
 def test_real_pi_availability_records_binary_and_extension_flag() -> None:
