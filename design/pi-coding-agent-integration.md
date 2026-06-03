@@ -884,6 +884,9 @@ Overlay UI contract:
 - The component must preserve Pi TUI's `render(width)` invariant for every line,
   including CJK text, emoji, Markdown syntax, ANSI-stripped input, and long child
   session paths.
+- The overlay uses the same terminal-modal surface conventions as the persona
+  selector: accent-colored border, solid ANSI background, stable frame height
+  across tab/scroll states, and a terminal-compatible right/bottom drop shadow.
 - The overlay exposes keyboard tabs: `Summary`, `Output`, and `Metadata`.
 - `Summary` shows selected-entry status, persona, progress, task id, result/error
   summary, and view-only provenance.
@@ -1999,7 +2002,9 @@ Pi TUI formal dependency and enhanced UI delta:
 - Expanded subagent results render as Markdown UI when expanded, while collapsed
   rows remain compact renderer-safe text.
 - `/larva-subagent-log` is a keyboard-tabbed Pi TUI overlay with Summary, Output,
-  and Metadata panes; Output uses Markdown rendering.
+  and Metadata panes; Output uses Markdown rendering and the same accent border,
+  solid ANSI modal surface, stable frame, and terminal-compatible drop shadow
+  conventions as the persona selector.
 - `/larva-persona` no-argument interactive selection uses a Pi TUI selector with
   `Input`, `SelectList`, and a detail panel when custom UI is available, while
   preserving non-interactive and fallback selector behavior.
@@ -2345,20 +2350,23 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
 3. All `/larva-subagent-log` custom-component render lines satisfy visible width
    `<= width` using Pi TUI `visibleWidth`, including CJK text, emoji, Markdown
    syntax, ANSI-stripped input, and long `task_id` paths.
-4. `/larva-subagent-log` exposes keyboard tabs for Summary, Output, and Metadata;
+4. `/larva-subagent-log` uses the persona selector's modal surface conventions:
+   accent-colored border, solid ANSI background, stable frame height across
+   tab/scroll states, and terminal-compatible right/bottom drop shadow.
+5. `/larva-subagent-log` exposes keyboard tabs for Summary, Output, and Metadata;
    `1`/`2`/`3` and `←`/`→` switch tabs without mutating presentation state.
-5. The Output pane renders final subagent output through Pi TUI Markdown when
+6. The Output pane renders final subagent output through Pi TUI Markdown when
    output exists and uses a renderer-safe fallback when output is empty.
-6. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, and mouse wheel continue
+7. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, and mouse wheel continue
    to work on the active pane; Enter does not close the overlay.
-7. Mouse reporting is enabled only while the overlay is open and disabled on
+8. Mouse reporting is enabled only while the overlay is open and disabled on
    dispose/reset/close. Mouse click is not supported and has no required behavior.
-8. Expanded `larva_subagent` final views render as Markdown UI with Summary,
+9. Expanded `larva_subagent` final views render as Markdown UI with Summary,
    Task, Output, Error, and Resume sections while preserving the semantic
    `LarvaSubagentResult` and Pi ToolResult top-level/details mirrors.
-9. Collapsed `larva_subagent` final views remain compact renderer-safe text and
+10. Collapsed `larva_subagent` final views remain compact renderer-safe text and
    do not add a widget dashboard.
-10. `/larva-persona` interactive no-argument mode, when UI is available, renders a
+11. `/larva-persona` interactive no-argument mode, when UI is available, renders a
     Pi TUI selector with filter input, persona list, model/description/capability
     summary, digest detail, Enter confirm, and Esc cancel. Selector proof must
     cover an accent-colored border, solid ANSI background, adaptive list

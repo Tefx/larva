@@ -711,6 +711,24 @@ def test_persona_selector_surface_layout_shadow_docs_are_synchronized() -> None:
     )
 
 
+def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+    design = PI_INTEGRATION_DESIGN.read_text(encoding="utf-8")
+
+    for document in (readme, design):
+        _assert_tokens(
+            document,
+            "/larva-subagent-log",
+            "persona selector",
+            "accent-colored border",
+            "solid ANSI background",
+            "stable frame height",
+            "terminal-compatible",
+            "drop shadow",
+            "mouse click",
+        )
+
+
 def test_no_argument_non_interactive_returns_bad_input_without_state_change() -> None:
     source = _source()
     _assert_tokens(source, "LARVA_PI_INTERACTIVE_TUI", "ok: false", "LARVA_BAD_INPUT")

@@ -974,6 +974,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private readonly done?: (result: unknown) => void;
   private readonly maxBoxLines: number;
   private readonly maxWidth: number;
+  private lastRenderedViewportLines = 1;
 
   constructor(options: SubagentPresentationLogOverlayOptions) {
     this.entry = { ...options.entry };
@@ -1002,8 +1003,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     return SUBAGENT_OVERLAY_TABS[this.activeTabIndex]?.id ?? "summary";
   }
 
-  private viewportLines(): number {
-    return Math.max(1, this.maxBoxLines - 4);
+  private viewportLines(withShadow = false): number {
+    return Math.max(1, this.maxBoxLines - (withShadow ? 5 : 4));
   }
 
   private requestRender(): void {
@@ -1061,12 +1062,14 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
 
   render(width: number): string[] {
     const renderWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
-    const boxWidth = Math.min(renderWidth, this.maxWidth);
+    const withShadow = renderWidth >= 8;
+    const boxWidth = Math.min(withShadow ? renderWidth - 1 : renderWidth, this.maxWidth);
     if (boxWidth < 4) return [truncateToWidth("Larva subagent log", boxWidth, "")];
     const contentWidth = boxWidth - 4;
-    const viewportLines = this.viewportLines();
+    const viewportLines = this.viewportLines(withShadow);
+    this.lastRenderedViewportLines = viewportLines;
     const title = overlayTruncateLine("─ Larva subagent presentation log ", boxWidth - 2);
-    const top = `╭${title}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(title)))}╮`;
+    const topMiddle = `${title}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(title)))}`;
     const tab = this.activeTab();
     const innerLines = this.paneLines(contentWidth);
     this.lastMaxOffsets[tab] = Math.max(0, innerLines.length - viewportLines);
@@ -1077,13 +1080,14 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const end = Math.min(innerLines.length, this.scrollOffsets[tab] + viewportLines);
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
     const scrollInfo = `1/2/3 ←→ tabs • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`;
-    return [
-      top,
-      `│ ${this.tabLine(contentWidth)} │`,
-      ...visibleLines.map((line) => `│ ${overlayPadLine(line, contentWidth)} │`),
-      `│ ${overlayPadLine(scrollInfo, contentWidth)} │`,
-      `╰${"─".repeat(boxWidth - 2)}╯`,
+    const rows = [
+      selectorFullBorderRow("╭", topMiddle, "╮", withShadow),
+      selectorBoxRow(this.tabLine(contentWidth), contentWidth, withShadow),
+      ...visibleLines.map((line) => selectorBoxRow(line, contentWidth, withShadow)),
+      selectorBoxRow(scrollInfo, contentWidth, withShadow),
+      selectorFullBorderRow("╰", "─".repeat(Math.max(0, boxWidth - 2)), "╯", withShadow),
     ];
+    return withShadow ? [...rows, selectorShadowLine(boxWidth)] : rows;
   }
 
   handleInput(data: string): void {
@@ -1107,8 +1111,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       if (isSgrMouseEvent(data)) return; // Mouse click/press/release SGR events are intentionally unsupported no-ops.
       if (matchesInputKey(this.keybindings, data, ["tui.select.down", "tui.editor.cursorDown"], [Key.down], [], ["arrowdown", "down"])) this.scrollBy(1);
       else if (matchesInputKey(this.keybindings, data, ["tui.select.up", "tui.editor.cursorUp"], [Key.up], [], ["arrowup", "up"])) this.scrollBy(-1);
-      else if (matchesInputKey(this.keybindings, data, ["tui.select.pageDown", "tui.editor.pageDown"], [Key.pageDown], [], ["pagedown"])) this.scrollBy(this.viewportLines());
-      else if (matchesInputKey(this.keybindings, data, ["tui.select.pageUp", "tui.editor.pageUp"], [Key.pageUp], [], ["pageup"])) this.scrollBy(-this.viewportLines());
+      else if (matchesInputKey(this.keybindings, data, ["tui.select.pageDown", "tui.editor.pageDown"], [Key.pageDown], [], ["pagedown"])) this.scrollBy(this.lastRenderedViewportLines);
+      else if (matchesInputKey(this.keybindings, data, ["tui.select.pageUp", "tui.editor.pageUp"], [Key.pageUp], [], ["pageup"])) this.scrollBy(-this.lastRenderedViewportLines);
       else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineStart"], [Key.home], ["\x1b[1~"], ["home"])) this.jumpTo(0);
       else if (matchesInputKey(this.keybindings, data, ["tui.editor.cursorLineEnd"], [Key.end], ["\x1b[4~"], ["end"])) this.jumpTo(this.lastMaxOffsets[this.activeTab()]);
     }

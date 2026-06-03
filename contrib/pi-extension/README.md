@@ -694,8 +694,11 @@ write sidecars, or support aliases such as `last`.
 The overlay is implemented as a Pi TUI-backed custom component. It must use Pi
 TUI width/wrap/truncate helpers for all bordered rows and content panes, and it
 must preserve the invariant that each rendered line fits the `render(width)`
-contract. Long output is internally scrollable; the terminal transcript outside
-the overlay is not used as scroll authority.
+contract. Like the persona selector, it renders as a modal surface with an
+accent-colored border, solid ANSI background, stable frame height across tab and
+scroll states, and a terminal-compatible right/bottom drop shadow. Long output
+is internally scrollable; the terminal transcript outside the overlay is not used
+as scroll authority.
 
 Target interaction model:
 

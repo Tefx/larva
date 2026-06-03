@@ -503,6 +503,36 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         mod.recordSubagentPresentationEntryForTests("/tmp/long.jsonl", "zeta", "success", { result_text: longOverlayText, phase: "success" });
         const beforeSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
         const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
+        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+        const SELECTOR_SURFACE_BG = "\x1b[48;5;235m";
+        const SELECTOR_BORDER_FG = "\x1b[38;5;116m";
+        const SELECTOR_SHADOW_FG = "\x1b[38;5;232m";
+        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const overlaySurfaceRows = (lines) => lines.at(-1)?.includes(SELECTOR_SHADOW_FG) && stripAnsi(lines.at(-1)).includes("▀") ? lines.slice(0, -1) : lines;
+        const withoutRightShadow = (line) => line.endsWith("█") ? line.slice(0, -1) : line;
+        function overlayLinesBoxed(lines, width) {
+          const surfaceRows = overlaySurfaceRows(lines);
+          const strippedRows = surfaceRows.map((line) => withoutRightShadow(stripAnsi(line)));
+          return strippedRows[0]?.startsWith("╭─ Larva subagent presentation log")
+            && strippedRows.at(-1)?.startsWith("╰")
+            && strippedRows.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │"))
+            && lines.every((line) => piTui.visibleWidth(line) <= width);
+        }
+        function overlaySurfaceDistinct(lines) {
+          const surfaceRows = overlaySurfaceRows(lines);
+          return surfaceRows.length > 0
+            && surfaceRows.every((line) => line.includes(SELECTOR_SURFACE_BG))
+            && surfaceRows.some((line) => line.includes(SELECTOR_BORDER_FG));
+        }
+        function overlayDropShadow(lines, width) {
+          const surfaceRows = overlaySurfaceRows(lines);
+          const bottomShadow = lines.at(-1) ?? "";
+          return surfaceRows.length > 0
+            && surfaceRows.every((line) => line.includes(SELECTOR_SHADOW_FG) && stripAnsi(line).endsWith("█"))
+            && bottomShadow.includes(SELECTOR_SHADOW_FG)
+            && stripAnsi(bottomShadow).includes("▀")
+            && piTui.visibleWidth(bottomShadow) <= width;
+        }
         const commandNotifications = [];
         const commandCustomCalls = [];
         const commandResults = [];
@@ -597,7 +627,9 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
           overlayRenderedLines: commandCustomCalls[0].rendered,
           overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent presentation log")),
-          overlayBoxed: commandCustomCalls[0].rendered[0].startsWith("╭─ Larva subagent presentation log") && commandCustomCalls[0].rendered.at(-1).startsWith("╰") && commandCustomCalls[0].rendered.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │") && piTui.visibleWidth(line) <= 80),
+          overlayBoxed: overlayStateKeys.every((key) => overlayLinesBoxed(commandCustomCalls[0][key], 80)),
+          overlaySurfaceDistinct: overlayStateKeys.every((key) => overlaySurfaceDistinct(commandCustomCalls[0][key])),
+          overlayDropShadow: overlayStateKeys.every((key) => overlayDropShadow(commandCustomCalls[0][key], 80)),
           allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
           overlayFrameStable,
           overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Output") && line.includes("○ 3 Metadata")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 2 Output")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 3 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
@@ -620,6 +652,8 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["viewOnlyNoMutation"] is True
     assert payload["overlayOpened"] is True
     assert payload["overlayBoxed"] is True
+    assert payload["overlaySurfaceDistinct"] is True
+    assert payload["overlayDropShadow"] is True
     assert payload["allOverlayLinesFit"] is True
     assert payload["overlayFrameStable"] is True
     assert payload["overlayTabs"] is True
@@ -643,6 +677,9 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
         assert removed not in source
     assert "class BorderedScrollableText" in source
     assert "class SubagentPresentationLogOverlay" in source
+    subagent_overlay_source = source.split("export class SubagentPresentationLogOverlay", 1)[1].split("async function openSubagentPresentationOverlay", 1)[0]
+    for required in ["selectorBoxRow", "selectorFullBorderRow", "selectorShadowLine"]:
+        assert required in subagent_overlay_source
     assert "Mouse click/press/release SGR events are intentionally unsupported no-ops" in source
 
     payload = _run_node(
