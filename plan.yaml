@@ -100430,16 +100430,16 @@ phases:
     description: Independent retest of final Pi integration deep review after stale
       expected-red label cleanup. Verify all prior final gate criteria plus no stale
       expected-red proof labels remain as accepted final proof.
-    verification: '- [ ] full guard/pytest evidence is green.
+    verification: '- [x] full guard/pytest evidence is green.
 
-      - [ ] runtime smoke/capability/fatal startup/live child RPC proof is green.
+      - [x] runtime smoke/capability/fatal startup/live child RPC proof is green.
 
-      - [ ] docs/runtime matrix/final wiring blockers are green.
+      - [x] docs/runtime matrix/final wiring blockers are green.
 
-      - [ ] expected-red cleanup is verified with grep/static scan and no stale final
+      - [x] expected-red cleanup is verified with grep/static scan and no stale final
       proof contradiction remains.
 
-      - [ ] final verdict PASS only if blockers=[] and gate_open_allowed=true.'
+      - [x] final verdict PASS only if blockers=[] and gate_open_allowed=true.'
     depends_on:
     - pi_impl_finalization_20260603.expected-red-label-cleanup
     agent: gate-reviewer
