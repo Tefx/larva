@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
-import { access, appendFile, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { access, appendFile, lstat, mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -62,6 +62,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_LAUNCHED?: string;
   LARVA_PI_CHILD_RPC_TRACE_FILE?: string;
   LARVA_PI_SUBAGENT_LOG_FILE?: string;
+  LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE?: string;
 };
 
 type CapabilityPosture = "none" | "read_only" | "read_write" | "destructive";
@@ -238,7 +239,14 @@ type PiCustomFactory = (
 ) => PiOverlayComponent;
 type PiRenderableText = PiRenderableComponent & { text: string; markdown?: string; format?: "plain_text" | "markdown" };
 type SelectorOption = { id: string; label: string; description?: string };
-type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string; capabilities?: Record<string, CapabilityPosture> };
+export type PersonaCandidate = {
+  id: string;
+  description?: string;
+  model?: string;
+  spec_digest?: string;
+  capabilities?: Record<string, CapabilityPosture>;
+};
+type BridgeListItem = PersonaCandidate;
 type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
 type PiUi = {
   setStatus?: StatusSetter;
@@ -292,11 +300,20 @@ type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
   | { kind: "fallback" };
 type ToolEnumerationMode = "strict" | "startup-tolerant";
-type PersonaListCache = { key: string; expiresAt: number; items: BridgeListItem[] } | null;
-type PersonaListInFlight = { key: string; promise: Promise<BridgeListItem[] | null> } | null;
+type PersonaCandidateCacheFile = {
+  version: 1;
+  source: string;
+  source_key: string;
+  fetched_at_ms: number;
+  candidates: PersonaCandidate[];
+};
+type PersonaListCache = { key: string; fetchedAtMs: number; items: PersonaCandidate[] } | null;
+type PersonaListInFlight = { key: string; promise: Promise<PersonaCandidate[] | null> } | null;
 
 const CLI_TIMEOUT_MS = 10_000;
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
+const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
+const LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE = "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE";
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
 const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
 const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
@@ -2100,6 +2117,108 @@ function personaListCacheKey(env: RuntimeEnv): string {
   return env.LARVA_CLI_ARGV_JSON ?? "larva-default-argv";
 }
 
+function personaCandidateCachePath(env: RuntimeEnv): string {
+  const override = env[LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE];
+  if (typeof override === "string" && override.length > 0 && isAbsolute(override)) return override;
+  const home = typeof env.HOME === "string" && env.HOME.length > 0 ? env.HOME : homedir();
+  return join(home, ".pi", "larva", "persona-candidates-cache.json");
+}
+
+function clonePersonaCandidate(candidate: PersonaCandidate): PersonaCandidate {
+  return {
+    id: candidate.id,
+    description: candidate.description,
+    model: candidate.model,
+    spec_digest: candidate.spec_digest,
+    capabilities: candidate.capabilities === undefined ? undefined : { ...candidate.capabilities },
+  };
+}
+
+function clonePersonaCandidates(candidates: PersonaCandidate[]): PersonaCandidate[] {
+  return candidates.map((candidate) => clonePersonaCandidate(candidate));
+}
+
+function isPersonaCandidate(value: unknown): value is PersonaCandidate {
+  if (!isRecord(value) || typeof value.id !== "string" || value.id.length === 0) return false;
+  return (
+    (value.description === undefined || typeof value.description === "string") &&
+    (value.model === undefined || typeof value.model === "string") &&
+    (value.spec_digest === undefined || typeof value.spec_digest === "string") &&
+    (value.capabilities === undefined || isCanonicalCapabilities(value.capabilities))
+  );
+}
+
+function parsePersonaCandidateCacheFile(raw: string, key: string): PersonaCandidateCacheFile | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) return null;
+    if (parsed.version !== 1 || parsed.source !== PERSONA_CANDIDATE_CACHE_SOURCE || parsed.source_key !== key) return null;
+    if (typeof parsed.fetched_at_ms !== "number" || !Number.isFinite(parsed.fetched_at_ms)) return null;
+    if (!Array.isArray(parsed.candidates) || !parsed.candidates.every(isPersonaCandidate)) return null;
+    return {
+      version: 1,
+      source: PERSONA_CANDIDATE_CACHE_SOURCE,
+      source_key: key,
+      fetched_at_ms: parsed.fetched_at_ms,
+      candidates: clonePersonaCandidates(parsed.candidates),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function readPersonaCandidateDiskCache(env: RuntimeEnv, key: string): Promise<PersonaListCache | null> {
+  try {
+    const raw = await readFile(personaCandidateCachePath(env), "utf8");
+    const cacheFile = parsePersonaCandidateCacheFile(raw, key);
+    if (cacheFile === null) return null;
+    return { key, fetchedAtMs: cacheFile.fetched_at_ms, items: cacheFile.candidates };
+  } catch {
+    return null;
+  }
+}
+
+async function writePersonaCandidateDiskCache(env: RuntimeEnv, key: string, items: PersonaCandidate[], fetchedAtMs: number): Promise<void> {
+  try {
+    const cachePath = personaCandidateCachePath(env);
+    const cacheFile: PersonaCandidateCacheFile = {
+      version: 1,
+      source: PERSONA_CANDIDATE_CACHE_SOURCE,
+      source_key: key,
+      fetched_at_ms: fetchedAtMs,
+      candidates: clonePersonaCandidates(items),
+    };
+    await mkdir(dirname(cachePath), { recursive: true });
+    await writeFile(cachePath, `${JSON.stringify(cacheFile)}\n`, "utf8");
+  } catch {
+    // Disk cache writes are best-effort; stale memory/disk candidates remain valid.
+  }
+}
+
+function isPersonaListCacheFresh(cache: PersonaListCache, key: string, now: number): boolean {
+  return cache !== null && cache.key === key && cache.fetchedAtMs + PERSONA_COMPLETION_CACHE_TTL_MS > now;
+}
+
+async function refreshPersonaListInBackground(env: RuntimeEnv, key: string): Promise<PersonaCandidate[] | null> {
+  if (personaListInFlight && personaListInFlight.key === key) return personaListInFlight.promise;
+  const promise = fetchPersonaList(env)
+    .then(async (items) => {
+      if (items !== null) {
+        const fetchedAtMs = personaCompletionClock();
+        const cloned = clonePersonaCandidates(items);
+        personaListCache = { key, fetchedAtMs, items: cloned };
+        await writePersonaCandidateDiskCache(env, key, cloned, fetchedAtMs);
+        return cloned;
+      }
+      return null;
+    })
+    .finally(() => {
+      personaListInFlight = null;
+    });
+  personaListInFlight = { key, promise };
+  return promise;
+}
+
 async function fetchPersonaList(env: RuntimeEnv): Promise<BridgeListItem[] | null> {
   const result = await runLarvaCommand(env, ["list", "--json"]);
   if (!result.ok) return null;
@@ -2109,7 +2228,7 @@ async function fetchPersonaList(env: RuntimeEnv): Promise<BridgeListItem[] | nul
     if (!Array.isArray(data)) return null;
     const items = data.map((item) => normalizeListItem(item));
     if (items.some((item) => item === null)) return null;
-    return items as BridgeListItem[];
+    return clonePersonaCandidates(items as PersonaCandidate[]);
   } catch {
     return null;
   }
@@ -2119,20 +2238,23 @@ async function cachedPersonaList(ctx?: { env?: RuntimeEnv }): Promise<BridgeList
   const env = currentEnv(ctx);
   const key = personaListCacheKey(env);
   const now = personaCompletionClock();
-  if (personaListCache && personaListCache.key === key && personaListCache.expiresAt > now) return personaListCache.items;
+  if (personaListCache !== null && isPersonaListCacheFresh(personaListCache, key, now)) return clonePersonaCandidates(personaListCache.items);
+
+  const memoryStale = personaListCache?.key === key ? personaListCache : null;
+  if (memoryStale !== null) {
+    void refreshPersonaListInBackground(env, key);
+    return clonePersonaCandidates(memoryStale.items);
+  }
+
+  const diskStale = await readPersonaCandidateDiskCache(env, key);
+  if (diskStale !== null) {
+    personaListCache = { key, fetchedAtMs: diskStale.fetchedAtMs, items: clonePersonaCandidates(diskStale.items) };
+    if (!isPersonaListCacheFresh(diskStale, key, now)) void refreshPersonaListInBackground(env, key);
+    return clonePersonaCandidates(diskStale.items);
+  }
+
   if (personaListInFlight && personaListInFlight.key === key) return personaListInFlight.promise;
-  const promise = fetchPersonaList(env)
-    .then((items) => {
-      if (items !== null) {
-        personaListCache = { key, expiresAt: personaCompletionClock() + PERSONA_COMPLETION_CACHE_TTL_MS, items };
-      }
-      return items;
-    })
-    .finally(() => {
-      personaListInFlight = null;
-    });
-  personaListInFlight = { key, promise };
-  return promise;
+  return refreshPersonaListInBackground(env, key);
 }
 
 export function resetPersonaCompletionCache(): void {
