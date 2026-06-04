@@ -260,7 +260,7 @@ mode is `off`.
 Agent self-switch is session-level Pi policy, not PersonaSpec policy. The default
 is `off`; it can be set at launch with `--agent-persona-switch off|ask|auto`, by
 setting `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`, or during the session with
-`/larva-agent-persona-switch [off|ask|auto]`. In `off`, model-facing autonomous
+`/larva-mode [off|ask|auto]`. In `off`, model-facing autonomous
 switch tools are hidden from the active tool set and stale or forged calls are
 rejected while manual `/larva-persona <id>` still works. In `ask`,
 `larva_persona_switch(persona_id, reason, handoff?, continue_task?)` and the
@@ -301,7 +301,7 @@ the active parent persona and tool policy allow it. Results are Pi ToolResult
 wrappers around `LarvaSubagentResult`; `task_id` is the public resume handle and
 is the child Pi `.jsonl` session path under `~/.pi/larva/child-sessions`. Resumes
 reuse that path, append the new `task`, and re-resolve the requested child
-persona from the current registry. The authorized `/larva-subagent-log [task_id?]`
+persona from the current registry. The authorized `/larva-log [task_id?]`
 slash command is a view-only, user-visible overlay over the parent extension's
 in-memory presentation log; it is not a model-facing tool, not resume authority,
 and not a shared opifex surface.

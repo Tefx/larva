@@ -283,7 +283,7 @@ LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto
 Change the current Pi session mode with:
 
 ```text
-/larva-agent-persona-switch [off|ask|auto]
+/larva-mode [off|ask|auto]
 ```
 
 Mode behavior:
@@ -663,7 +663,7 @@ an explicit trace path. When set, the extension appends best-effort diagnostic
 JSONL events for child spawn/RPC/cleanup observations. This trace is not a
 model-facing helper, not a public resume handle, not a provenance record, not
 sidecar metadata, and not authority for `larva_subagent_sessions` or
-`/larva-subagent-log`; production operators should leave it unset unless
+`/larva-log`; production operators should leave it unset unless
 collecting temporary integration proof. Trace write failures are ignored and must
 never change child runtime behavior.
 
@@ -735,12 +735,12 @@ to the child and may kill the child after a grace period. If the child is stoppe
 by abort or kill, the result is `cancelled` with `LARVA_CHILD_CANCELLED`; if the
 child completes during the grace period, the normal success result is returned.
 
-### `/larva-subagent-log` view-only overlay
+### `/larva-log` view-only overlay
 
 The extension also registers the authorized slash command:
 
 ```text
-/larva-subagent-log [task_id?]
+/larva-log [task_id?]
 ```
 
 This is a user-visible, view-only overlay over the parent extension's subagent
@@ -809,7 +809,7 @@ Cache defaults and configuration:
   `include_prompt: false` or `include_output: false` stores only summary metadata
   for those fields.
 
-Cleanup surface: `/larva-subagent-log --clear` clears the adapter-local
+Cleanup surface: `/larva-log --clear` clears the adapter-local
 presentation cache and in-memory overlay entries, then closes any open overlay. It
 must not delete child Pi session files, mutate persona/model/tool-policy state,
 change recent-session resume UX authority, or remove the public child `task_id`.
@@ -900,7 +900,7 @@ Do not infer these guarantees from `larva pi` or this extension:
 - No batch subagent tool or job scheduler.
 - No subagent catalogue dumped into the system prompt.
 - No Larva sidecar metadata or provenance file for child sessions.
-- No model-visible overlay log stream; `/larva-subagent-log` is user-visible,
+- No model-visible overlay log stream; `/larva-log` is user-visible,
   view-only adapter-local presentation state. Persistent cache entries are UI
   inspection state only, and live stream previews are process-local only.
 - No mouse click support for this target; keyboard controls and overlay mouse

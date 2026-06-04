@@ -12,7 +12,7 @@ The feature has three user-facing surfaces:
 
 ```text
 larva pi --agent-persona-switch off|ask|auto ...
-/larva-agent-persona-switch [off|ask|auto]
+/larva-mode [off|ask|auto]
 larva_persona_switch(persona_id, reason, handoff?, continue_task?)
 ```
 
@@ -173,7 +173,7 @@ LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto
 The slash command updates the current session mode:
 
 ```text
-/larva-agent-persona-switch auto
+/larva-mode auto
 ```
 
 The extension persists session override state with a custom session entry:
@@ -323,7 +323,7 @@ architecture_basis:
 
   runtime_contract:
     launch: "larva pi --agent-persona-switch off|ask|auto [--persona <id>] [--] <pi args...>"
-    slash_mode: "/larva-agent-persona-switch [off|ask|auto]"
+    slash_mode: "/larva-mode [off|ask|auto]"
     tool_switch: "larva_persona_switch(persona_id, reason, handoff?, continue_task?)"
     success: "commit target persona atomically, append audit, terminate old turn, optionally queue continuation"
     failure: "do not commit; preserve previous persona/model/tools"
@@ -385,7 +385,7 @@ architecture_basis:
     - surface: "CLI flag"
       scope: "--agent-persona-switch off|ask|auto"
     - surface: "Pi slash command"
-      scope: "/larva-agent-persona-switch [off|ask|auto]"
+      scope: "/larva-mode [off|ask|auto]"
     - surface: "Pi model-facing tool"
       scope: "larva_persona_switch and optional larva_personas"
     - surface: "Confirmation UI"
@@ -418,7 +418,7 @@ Suggested order:
 
 1. Add CLI flag parsing and env forwarding.
 2. Add extension mode enum, mode resolution, and session persistence.
-3. Add `/larva-agent-persona-switch` slash command.
+3. Add `/larva-mode` slash command.
 4. Add optional `larva_personas` read-only discovery tool.
 5. Add `larva_persona_switch` tool as facade over internal commit.
 6. Add active-tool exposure and defensive `tool_call` gating.

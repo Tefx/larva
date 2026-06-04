@@ -718,7 +718,7 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
     for document in (readme, design):
         _assert_tokens(
             document,
-            "/larva-subagent-log",
+            "/larva-log",
             "Larva subagent log",
             "persona selector",
             "accent-colored border",
@@ -1581,7 +1581,7 @@ def test_fake_contract_scenarios_are_documented_for_future_runtime_harness() -> 
 
 
 def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() -> None:
-    """Expected-red source contract for `/larva-subagent-log` selector + streaming delta."""
+    """Expected-red source contract for `/larva-log` selector + streaming delta."""
 
     source = _source()
     assert '"--select"' in source
@@ -1732,7 +1732,8 @@ def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_o
         """,
     )
 
-    assert "larva-agent-persona-switch" in _registered_names(payload, "commands")
+    assert "larva-mode" in _registered_names(payload, "commands")
+    assert "larva-agent-persona-switch" not in _registered_names(payload, "commands")
     assert "larva_persona_switch" not in _registered_names(payload, "defaultTools")
     assert "larva_personas" not in _registered_names(payload, "defaultTools")
     for key in ("envAskTools", "envAutoTools", "customAutoTools"):
@@ -1744,13 +1745,14 @@ def test_agent_persona_switch_slash_command_persists_documented_session_entry_sh
         tmp_path,
         """
         const harness = await buildHarness({});
-        const command = harness.commands["larva-agent-persona-switch"];
+        const command = harness.commands["larva-mode"];
         const result = command ? await (command.handler ?? command.options?.handler)("auto", harness.ctx) : null;
         console.log(JSON.stringify({ result, sessionEntries: harness.sessionEntries, commands: Object.keys(harness.commands) }));
         """,
     )
 
-    assert "larva-agent-persona-switch" in _registered_names(payload, "commands")
+    assert "larva-mode" in _registered_names(payload, "commands")
+    assert "larva-agent-persona-switch" not in _registered_names(payload, "commands")
     assert payload["result"] == {"ok": True, "mode": "auto"}
     assert any(
         entry == {
@@ -1766,7 +1768,7 @@ def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp
         tmp_path,
         """
         const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { selectResult: "ask" });
-        const command = harness.commands["larva-agent-persona-switch"];
+        const command = harness.commands["larva-mode"];
         const result = await (command.handler ?? command.options?.handler)("", harness.ctx);
         console.log(JSON.stringify({
           result,
@@ -1796,10 +1798,10 @@ def test_agent_persona_switch_noarg_cancel_or_missing_ui_preserves_mode_behavior
         tmp_path,
         """
         const canceledHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
-        const canceledCommand = canceledHarness.commands["larva-agent-persona-switch"];
+        const canceledCommand = canceledHarness.commands["larva-mode"];
         const canceledResult = await (canceledCommand.handler ?? canceledCommand.options?.handler)("", canceledHarness.ctx);
         const missingUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { omitUi: true });
-        const missingUiCommand = missingUiHarness.commands["larva-agent-persona-switch"];
+        const missingUiCommand = missingUiHarness.commands["larva-mode"];
         const missingUiResult = await (missingUiCommand.handler ?? missingUiCommand.options?.handler)("", missingUiHarness.ctx);
         console.log(JSON.stringify({
           canceledResult,
@@ -1875,7 +1877,7 @@ def test_agent_persona_switch_slash_off_recomputes_active_tools_and_preserves_ma
         for (const mode of ["ask", "auto"]) {
           const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: mode, LARVA_PI_INITIAL_PERSONA_ID: "architect" });
           const beforeOffActiveTools = harness.activeToolCalls.at(-1);
-          const modeCommand = harness.commands["larva-agent-persona-switch"];
+          const modeCommand = harness.commands["larva-mode"];
           const offResult = await (modeCommand.handler ?? modeCommand.options?.handler)("off", harness.ctx);
           const afterOffActiveTools = harness.activeToolCalls.at(-1);
           const staleSwitchDecision = harness.mod.decideToolCall("larva_persona_switch");

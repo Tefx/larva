@@ -652,7 +652,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         };
         await mod.initializeExtension(
           { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
-          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent-log") commandResults.push(command.handler(undefined, { env: baseEnv(), modelRegistry, ui: commandUi })); } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-log") commandResults.push(command.handler(undefined, { env: baseEnv(), modelRegistry, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
@@ -780,7 +780,7 @@ def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: 
         };
         await mod.initializeExtension(
           { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
-          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent-log") commandResults.push(command.handler(undefined, { env: baseEnv(), modelRegistry, ui: commandUi })); } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-log") commandResults.push(command.handler(undefined, { env: baseEnv(), modelRegistry, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
         const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
@@ -1284,7 +1284,7 @@ def test_subagent_log_overlay_command_green_without_live_credentials() -> None:
     payload = json.loads(completed.stdout)
     gate = payload["runtime"]["hardGates"]["subagentLogOverlayCommand"]
 
-    assert gate["evidence"]["requiredCommand"] == "larva-subagent-log"
+    assert gate["evidence"]["requiredCommand"] == "larva-log"
     assert "larva-persona" in gate["evidence"]["registeredCommandNames"]
     assert gate["supported"] is True
 

@@ -250,13 +250,13 @@ assert.equal(noUpdateResult.status, "success");
 assert.ok(mod.subagentPresentationLogForTests().some((entry) => entry.call_id === "call-id-no-update" && entry.status === "success"));
 console.log("safe onUpdate ordering and call_id mapping: PASS");
 
-const commandResult = await capturedCommands.get("larva-subagent-log").handler(executeResult.task_id);
+const commandResult = await capturedCommands.get("larva-log").handler(executeResult.task_id);
 assert.equal(commandResult.ok, true);
 assert.equal(commandResult.details.selected_task_id, executeResult.task_id);
 assert.equal(commandResult.view_only, true);
 const unavailableCommands = new Map();
 await mod.initializeExtension({ env, modelRegistry: ctx.modelRegistry }, { ...pi, registerTool: () => undefined, registerCommand: (name, command) => unavailableCommands.set(name, command) });
-const unavailableResult = await unavailableCommands.get("larva-subagent-log").handler(executeResult.task_id);
+const unavailableResult = await unavailableCommands.get("larva-log").handler(executeResult.task_id);
 assert.equal(unavailableResult.ok, false);
 assert.equal(unavailableResult.details.error.code, "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE");
 console.log("exact task_id overlay command and stable errors: PASS");

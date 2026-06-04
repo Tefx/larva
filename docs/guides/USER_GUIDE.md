@@ -422,7 +422,7 @@ larva pi --persona python-senior --agent-persona-switch ask -- <pi args...>
 `--agent-persona-switch off|ask|auto` controls whether the model may request a
 session-local persona switch. The same launch default can be supplied with
 `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`, and the current session can be
-changed with `/larva-agent-persona-switch [off|ask|auto]`.
+changed with `/larva-mode [off|ask|auto]`.
 
 - `off` is the default. Autonomous model-facing switch tools are hidden and stale
   calls are rejected, but the user can still run `/larva-persona <id>` manually.

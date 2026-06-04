@@ -2389,7 +2389,7 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
       } else if (isAgentPersonaSwitchMode(trimmed)) {
         mode = trimmed;
       } else {
-        return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-agent-persona-switch off|ask|auto") };
+        return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-mode off|ask|auto") };
       }
       setAgentPersonaSwitchMode(mode);
       appendSessionCustomEntry(runtimeCtx, {
@@ -2406,7 +2406,7 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
       return { ok: true, mode };
     },
   };
-  registerCommandCompat(pi, "larva-agent-persona-switch", command);
+  registerCommandCompat(pi, "larva-mode", command);
 }
 
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
@@ -2464,7 +2464,7 @@ function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
       return unavailable;
     },
   };
-  registerCommandCompat(pi, "larva-subagent-log", command);
+  registerCommandCompat(pi, "larva-log", command);
 }
 
 export function getActiveEnvelope(): PersonaEnvelope | null {
@@ -3426,7 +3426,7 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
     : [options.taskId === null ? newestOverlayEntry() : exactOverlayEntry(options.taskId)].filter((entry): entry is SubagentPresentationLogEntry => entry !== null);
   if (entries.length === 0) {
     const target = options.taskId === null
-      ? "No Larva subagent run has been observed in this parent extension process since the last reload/reset. Run a subagent in this session, then reopen /larva-subagent-log."
+      ? "No Larva subagent run has been observed in this parent extension process since the last reload/reset. Run a subagent in this session, then reopen /larva-log."
       : `Larva subagent run not observed for task_id ${options.taskId} in this parent extension process since the last reload/reset.`;
     closeSubagentPresentationOverlay();
     return failedSubagentOverlay("LARVA_SUBAGENT_LOG_NOT_OBSERVED", target);

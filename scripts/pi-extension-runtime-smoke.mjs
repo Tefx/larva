@@ -803,7 +803,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   await mod.initializeExtension(ctx, pi);
   await mod.commitPersona("ok", ctx, pi);
   const subagent = tools.find((tool) => tool.name === "larva_subagent");
-  const command = commands.get("larva-subagent-log");
+  const command = commands.get("larva-log");
   if (!subagent || typeof subagent.execute !== "function" || !command) throw new Error("runtime proof setup missing subagent tool or log command");
 
   let component = null;
@@ -908,7 +908,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const extensionRequire = createRequire(pathToFileURL(extensionPath).href);
   const piTui = await import(pathToFileURL(extensionRequire.resolve("@earendil-works/pi-tui")).href);
-  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-subagent-log-selector-streaming-"));
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-log-selector-streaming-"));
   const cacheFile = join(sessionRoot, "subagent-presentation-log.json");
   const env = runtimeEnv({ HOME: sessionRoot, LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
   await mod.initializeExtension(
@@ -1302,8 +1302,8 @@ async function main() {
         evidence: { hasRenderCall: typeof tool?.renderCall, hasRenderResult: typeof tool?.renderResult, hasExecute: typeof tool?.execute },
       },
       subagentLogOverlayCommand: {
-        supported: evidence.runtime.registeredCommandNames.includes("larva-subagent-log"),
-        evidence: { requiredCommand: "larva-subagent-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
+        supported: evidence.runtime.registeredCommandNames.includes("larva-log"),
+        evidence: { requiredCommand: "larva-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
       },
       personaSelectorShortcut: {
         supported: evidence.runtime.registeredShortcuts.some((entry) => entry.shortcut === "ctrl+alt+p" && entry.description === "Open Larva persona selector"),
