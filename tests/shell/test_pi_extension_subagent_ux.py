@@ -320,6 +320,7 @@ def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: 
             sequence: 1,
             result_text: "final",
             error: null,
+            task_prompt: "Please inspect the Timeline formatting: (1) read docs, (2) grep tests, (3) run git status.",
             timeline_events: [
               { kind: "assistant", text: "I will inspect the repo before running the command." },
               { kind: "tool", toolCallId: "call_SECRET_INTERNAL_ID", snapshot: { toolCallId: "call_SECRET_INTERNAL_ID", name: "bash", status: "success", args_preview: JSON.stringify({ command: "git status --porcelain", content: "SECRET_HEAVY_PAYLOAD_SHOULD_NOT_RENDER" }), output_preview: "clean" } },
@@ -333,13 +334,17 @@ def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: 
           },
           tui: { terminal: { rows: 40 } },
         });
+        component.handleInput?.("2");
+        const promptLines = component.render(72);
+        const promptPlain = promptLines.map(stripAnsi).join("\\n");
         component.handleInput?.("4");
         const lines = component.render(72);
         const plain = lines.map(stripAnsi).join("\\n");
         const toolLine = lines.find((line) => stripAnsi(line).includes("↳ bash(")) ?? "";
         console.log(JSON.stringify({
-          allLinesFit: lines.every((line) => piTui.visibleWidth(line) <= 72),
-          hasAssistant: plain.includes("Assistant") && plain.includes("inspect the repo"),
+          allLinesFit: [...promptLines, ...lines].every((line) => piTui.visibleWidth(line) <= 72),
+          promptFormatted: promptPlain.includes("1. read docs") && promptPlain.includes("2. grep tests") && promptPlain.includes("3. run git status"),
+          hasAssistant: plain.includes("assistant") && plain.includes("inspect the repo"),
           toolLineIndented: stripAnsi(toolLine).includes("  ↳ bash("),
           toolLineDim: toolLine.includes("\\x1b[2m"),
           terminalSuccess: plain.includes("✓ success"),
@@ -351,6 +356,7 @@ def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: 
 
     assert payload == {
         "allLinesFit": True,
+        "promptFormatted": True,
         "hasAssistant": True,
         "toolLineIndented": True,
         "toolLineDim": True,

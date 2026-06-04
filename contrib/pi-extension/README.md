@@ -859,7 +859,8 @@ Target panes:
    availability, error summary, and view-only provenance. It intentionally does
    not inline full prompt, raw Markdown output, raw tool output, or raw RPC
    payloads.
-2. `Prompt`: full initial prompt / subagent task text with width-safe wrapping.
+2. `Prompt`: full initial prompt / subagent task text with width-safe Markdown
+   rendering and readable numbered-step formatting for compact task prompts.
 3. `Output`: live assistant text while running and Pi TUI Markdown-rendered final
    assistant output after completion, otherwise a renderer-safe empty/fallback
    message.
@@ -870,8 +871,10 @@ Target panes:
    `toolCallId`; start, update, and end frames update that row rather than
    appending an unbounded firehose. The default row is action-first, not
    identifier-first: `↳ read(path="file") — success`, dimmed and indented under
-   assistant/terminal rows. Tool arguments are shown by default only as bounded
-   summaries; heavy fields such as full content, patches, diffs, or base64 data
+   assistant/terminal rows. Assistant excerpts use timeline-shaped rows such as
+   `• assistant <excerpt>` rather than field-table rows. Tool arguments are shown
+   by default only as bounded summaries; heavy fields such as full content,
+   patches, diffs, or base64 data
    are omitted/summarized. Bounded output or error previews appear as subordinate
    preview rows such as `preview: 45 lines read`. Full internal
    `toolCallId`/frame identifiers are hidden by default because they are debug

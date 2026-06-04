@@ -1043,7 +1043,8 @@ Overlay UI contract:
   availability, result/error summary, and view-only provenance; it must not inline
   the full prompt, raw Markdown output, raw tool output, or raw RPC payloads.
 - `Prompt` shows the full initial subagent prompt/task text with width-safe
-  wrapping.
+  Markdown rendering and readable numbered-step formatting for compact task
+  prompts.
 - `Output` renders live assistant text while running and final output after
   completion with Pi TUI `Markdown` when output exists; empty output uses a
   renderer-safe fallback.
@@ -1052,7 +1053,8 @@ Overlay UI contract:
   status, grouped tool-call snapshots, and other normalized stream events. Each
   tool call is displayed as one evolving human-readable action row keyed
   internally by `toolCallId`, with bounded argument summaries, bounded
-  output/error previews, and final success/failure status. Tool rows are dimmed,
+  output/error previews, and final success/failure status. Assistant excerpts use
+  timeline-shaped rows such as `• assistant <excerpt>`. Tool rows are dimmed,
   indented rows such as `↳ read(path="file") — success`; heavy arguments such as
   full content, patches, diffs, or base64 data are omitted/summarized rather than
   rendered. Default Timeline
@@ -2584,18 +2586,20 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
 7. Summary uses readable grouped/aligned fields and does not inline full prompt,
    raw Markdown output, raw tool output, or raw RPC payloads; the Prompt pane
    exposes the full initial prompt.
-8. The Output pane renders live assistant text while running and final subagent
-   output through Pi TUI Markdown when output exists, and uses a renderer-safe
-   fallback when output is empty. Final output remains based on
-   `get_last_assistant_text`.
+8. The Prompt pane renders the full initial prompt/task text through Pi TUI
+   Markdown with readable numbered-step formatting for compact task prompts. The
+   Output pane renders live assistant text while running and final subagent output
+   through Pi TUI Markdown when output exists, and uses a renderer-safe fallback
+   when output is empty. Final output remains based on `get_last_assistant_text`.
 9. The Timeline pane shows a process-local bounded chronological stream that may
    include assistant message excerpts, hidden-thinking markers, terminal status,
    and tool-call snapshots. It groups `tool_execution_start`,
    `tool_execution_update`, and `tool_execution_end` by `toolCallId` into one
    evolving row/snapshot per tool call at its first-seen position. Its default
-   view is human-action-first: it shows assistant excerpts, dimmed/indented tool
-   rows such as `↳ read(path="file") — success`, bounded argument summaries,
-   bounded output/error previews, and success/failure status without appending an
+   view is human-action-first: it shows assistant excerpts as timeline rows such
+   as `• assistant <excerpt>`, dimmed/indented tool rows such as
+   `↳ read(path="file") — success`, bounded argument summaries, bounded
+   output/error previews, and success/failure status without appending an
    unbounded event firehose or exposing internal call/frame ids. Heavy arguments
    such as full content, patches, diffs, and base64 data are omitted/summarized.
    Internal ids are available only through bounded debug/metadata views.

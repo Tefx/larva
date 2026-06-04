@@ -1011,6 +1011,12 @@ function renderMarkdownLines(markdown: string, contentWidth: number): string[] {
   }
 }
 
+function subagentPromptMarkdownSource(value: string): string {
+  const safe = rendererSafeMarkdownSource(value).trim();
+  if (safe.length === 0) return "No initial subagent prompt was recorded for this entry.";
+  return safe.replace(/\s*\((\d+)\)\s+/g, (_match, number: string) => `\n${number}. `).trim();
+}
+
 function markdownFence(value: string): string {
   const safe = rendererSafeMarkdownSource(value);
   const fence = safe.includes("```") ? "````" : "```";
@@ -1411,8 +1417,15 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private promptPaneLines(contentWidth: number): string[] {
     return [
       this.sectionLine("Initial Prompt", contentWidth),
-      ...renderRendererSafePlainLines(this.entry.task_prompt ?? "No initial subagent prompt was recorded for this entry.", contentWidth),
+      ...renderMarkdownLines(subagentPromptMarkdownSource(this.entry.task_prompt ?? ""), contentWidth),
     ];
+  }
+
+  private timelineAssistantLines(text: string, contentWidth: number): string[] {
+    const prefix = selectorThemeFg(this.theme, "accent", selectorThemeBold("• assistant "));
+    const valueWidth = Math.max(1, contentWidth - visibleWidth(prefix));
+    return renderRendererSafePlainLines(boundedTimelineAssistantEvent(text), valueWidth)
+      .map((line, index) => overlayTruncateLine(`${index === 0 ? prefix : " ".repeat(visibleWidth(prefix))}${line}`, contentWidth));
   }
 
   private timelineToolLine(snapshot: SubagentToolSnapshot, contentWidth: number): string {
@@ -1432,9 +1445,10 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       lines.push(...this.fieldLines("Timeline", "No normalized child stream events observed.", contentWidth));
       return lines;
     }
-    for (const eventValue of timelineEvents) {
+    for (const [index, eventValue] of timelineEvents.entries()) {
+      if (index > 0) lines.push("");
       if (eventValue.kind === "assistant") {
-        lines.push(...this.fieldLines("Assistant", boundedTimelineAssistantEvent(eventValue.text), contentWidth));
+        lines.push(...this.timelineAssistantLines(eventValue.text, contentWidth));
       } else if (eventValue.kind === "thinking_hidden") {
         lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", "~ thinking hidden"), contentWidth));
       } else if (eventValue.kind === "terminal") {
