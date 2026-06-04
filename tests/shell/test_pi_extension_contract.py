@@ -272,7 +272,10 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     assert session_body is not None
     assert "registerLarvaPersonaAutocompleteProvider(runtimeCtx)" in session_body.group("body")
     assert session_body.group("body").index("registerLarvaPersonaAutocompleteProvider(runtimeCtx)") < session_body.group("body").index("initializeSession(runtimeCtx, pi)")
-    assert 'on?.("before_agent_start", (payload: unknown) => before_agent_start(payload))' in body
+    assert 'sessionInitializationPromise = initializeSession(runtimeCtx, pi)' in session_body.group("body")
+    assert 'on?.("before_agent_start", async (payload: unknown)' in body
+    assert "await sessionInitializationPromise" in body
+    assert "return before_agent_start(payload)" in body
     tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None
     assert "decideToolCall(name)" in tool_call_registration.group("body")
@@ -1689,7 +1692,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
               ...envOverrides,
             }},
             ui: options.omitUi ? undefined : ui,
-            modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return {{ id: "model" }}; }} }},
+            modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return options.modelUnavailable ? null : {{ id: "model" }}; }} }},
             session: {{
               entries: sessionEntries,
               getEntries: () => sessionEntries,
@@ -1741,6 +1744,99 @@ def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_o
     assert "larva_personas" not in _registered_names(payload, "defaultTools")
     for key in ("envAskTools", "envAutoTools", "customAutoTools"):
         assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, key)
+
+
+def test_active_persona_session_restore_uses_latest_commit_without_rewriting_session_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          customType: "larva-active-persona-commit",
+          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness({}, { sessionEntries: [restoreEntry] });
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          sessionEntries: harness.sessionEntries,
+          statuses: harness.statuses,
+          modelCalls: harness.modelCalls,
+          activeTools: harness.activeToolCalls.at(-1),
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert payload["envelope"]["spec_digest"] == "sha256:python"
+    assert payload["sessionEntries"] == [
+        {
+            "customType": "larva-active-persona-commit",
+            "details": {
+                "schema_version": 1,
+                "persona_id": "python",
+                "spec_digest": "sha256:python",
+                "source": "slash-command",
+                "committed_at": "2026-06-04T00:00:00.000Z",
+            },
+        }
+    ]
+    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(call[:3] == ["find", "provider", "model"] for call in payload["modelCalls"])
+    assert "read" in payload["activeTools"]
+
+
+def test_active_persona_session_restore_explicit_startup_persona_wins_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          customType: "larva-active-persona-commit",
+          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness({ LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { sessionEntries: [restoreEntry] });
+        console.log(JSON.stringify({ envelope: harness.mod.getActiveEnvelope(), sessionEntries: harness.sessionEntries }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "architect"
+    active_entries = [entry for entry in payload["sessionEntries"] if entry.get("customType") == "larva-active-persona-commit"]
+    assert active_entries[0]["details"]["persona_id"] == "python"
+    assert active_entries[-1]["details"]["persona_id"] == "architect"
+    assert active_entries[-1]["details"]["source"] == "startup"
+
+
+def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          customType: "larva-active-persona-commit",
+          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness({}, { sessionEntries: [restoreEntry], modelUnavailable: true });
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          statuses: harness.statuses,
+          notifications: harness.notifications,
+          sessionEntries: harness.sessionEntries,
+        }));
+        """,
+    )
+
+    assert payload["envelope"] is None
+    assert any(status == ["larva: python unavailable (LARVA_MODEL_UNAVAILABLE)"] for status in payload["statuses"])
+    assert any("Larva session persona restore unavailable: LARVA_MODEL_UNAVAILABLE" in notification[0] for notification in payload["notifications"])
+    assert payload["sessionEntries"] == [
+        {
+            "customType": "larva-active-persona-commit",
+            "details": {
+                "schema_version": 1,
+                "persona_id": "python",
+                "spec_digest": "sha256:python",
+                "source": "slash-command",
+                "committed_at": "2026-06-04T00:00:00.000Z",
+            },
+        }
+    ]
 
 
 def test_agent_persona_switch_slash_command_persists_documented_session_entry_shape_behavior(tmp_path: Path) -> None:
