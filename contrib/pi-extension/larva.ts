@@ -2132,13 +2132,12 @@ function personaCandidateCachePath(env: RuntimeEnv): string {
 }
 
 function clonePersonaCandidate(candidate: PersonaCandidate): PersonaCandidate {
-  return {
-    id: candidate.id,
-    description: candidate.description,
-    model: candidate.model,
-    spec_digest: candidate.spec_digest,
-    capabilities: candidate.capabilities === undefined ? undefined : { ...candidate.capabilities },
-  };
+  const cloned: PersonaCandidate = { id: candidate.id };
+  if (candidate.description !== undefined) cloned.description = candidate.description;
+  if (candidate.model !== undefined) cloned.model = candidate.model;
+  if (candidate.spec_digest !== undefined) cloned.spec_digest = candidate.spec_digest;
+  if (candidate.capabilities !== undefined) cloned.capabilities = { ...candidate.capabilities };
+  return cloned;
 }
 
 function clonePersonaCandidates(candidates: PersonaCandidate[]): PersonaCandidate[] {
@@ -3350,7 +3349,7 @@ export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ 
   const personas = (await listPersonas(ctx))
     .filter((persona) => query.length === 0 || persona.id.toLocaleLowerCase().includes(query) || (persona.description ?? "").toLocaleLowerCase().includes(query))
     .slice(0, limit)
-    .map((persona) => ({ ...persona, prompt: undefined } as BridgeListItem));
+    .map((persona) => clonePersonaCandidate(persona));
   const text = personas.map((persona) => `${persona.id}${persona.description ? ` — ${persona.description}` : ""}`).join("\n") || "No matching Larva personas.";
   return { content: switchToolText(text), details: { status: "success", personas, error: null }, isError: false };
 }

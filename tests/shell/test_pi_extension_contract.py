@@ -2473,11 +2473,18 @@ def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: P
         const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
         const tool = autoHarness.tools["larva_personas"];
         const result = tool ? await (tool.execute ?? tool.handler)("call-1", { limit: 100 }, undefined, undefined, autoHarness.ctx) : null;
+        const firstPersona = result?.details?.personas?.[0] ?? null;
+        const firstPersonaShape = firstPersona === null ? null : {
+          keys: Object.keys(firstPersona),
+          hasOwnPrompt: Object.prototype.hasOwnProperty.call(firstPersona, "prompt"),
+          allowlistedKeysOnly: Object.keys(firstPersona).every((key) => ["id", "description", "model", "spec_digest", "capabilities"].includes(key)),
+        };
         const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
         const directOff = await offHarness.mod.larva_personas({ limit: 100 }, offHarness.ctx);
         console.log(JSON.stringify({
           offTools: Object.keys(offHarness.tools),
           result,
+          firstPersonaShape,
           directOff,
         }));
         """,
@@ -2487,6 +2494,11 @@ def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: P
     assert payload["result"]["details"]["status"] == "success"
     assert len(payload["result"]["details"]["personas"]) <= 25
     assert "prompt" not in payload["result"]["details"]["personas"][0]
+    assert payload["firstPersonaShape"] == {
+        "keys": ["id", "description", "model"],
+        "hasOwnPrompt": False,
+        "allowlistedKeysOnly": True,
+    }
     assert payload["directOff"]["isError"] is True
     assert payload["directOff"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
 

@@ -89,6 +89,14 @@ async function collectSinks(ctx) {
   const mention = await provider.getSuggestions(["ask @persona:"], 0, "ask @persona:".length, { force: true });
   const mentionElapsedMs = Date.now() - mentionStarted;
 
+  const personasTool = await mod.larva_personas({ limit: 25 }, ctx);
+  const toolPersona = personasTool.details.personas[0] ?? null;
+  const toolPersonaShape = toolPersona === null ? null : {
+    keys: Object.keys(toolPersona),
+    hasOwnPrompt: Object.prototype.hasOwnProperty.call(toolPersona, "prompt"),
+    allowlistedKeysOnly: Object.keys(toolPersona).every((key) => ["id", "description", "model", "spec_digest", "capabilities"].includes(key)),
+  };
+
   return {
     slash: personaValues(slash),
     slashElapsedMs,
@@ -102,7 +110,21 @@ async function collectSinks(ctx) {
       prefix: mention?.prefix ?? null,
       elapsedMs: mentionElapsedMs,
     },
+    personasTool: {
+      status: personasTool.details.status,
+      firstPersonaShape: toolPersonaShape,
+    },
   };
+}
+
+function assertNoOwnPrompt(items, label) {
+  for (const item of items) {
+    const shape = item.personasTool?.firstPersonaShape;
+    if (shape === null) continue;
+    if (shape.hasOwnPrompt || shape.keys.includes("prompt") || !shape.allowlistedKeysOnly) {
+      throw new Error(`${label} included a prompt own property or non-allowlisted key: ${JSON.stringify(shape)}`);
+    }
+  }
 }
 
 function assertNoPrompt(payload, label) {
@@ -119,6 +141,7 @@ const ctx = {
   env: {
     HOME: join(dir, "home"),
     LARVA_CLI_ARGV_JSON: sourceKey,
+    LARVA_PI_AGENT_PERSONA_SWITCH: "auto",
     LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: cacheFile,
     FAKE_LARVA_LIST_FILE: listFile,
     FAKE_LARVA_INVOCATION_LOG: invocationLog,
@@ -128,7 +151,10 @@ const ctx = {
   setModel: () => { setModelCalls += 1; },
   setActiveTools: () => { setActiveToolsCalls += 1; },
   appendEntry: () => { appendEntryCalls += 1; },
+  registerCommand: () => undefined,
+  registerTool: () => undefined,
 };
+await mod.initializeExtension(ctx, ctx);
 const stateBefore = { activeEnvelope: mod.getActiveEnvelope(), setModelCalls, setActiveToolsCalls, appendEntryCalls };
 
 const staleBeforeRefresh = await collectSinks(ctx);
@@ -147,6 +173,7 @@ assertNoPrompt(failureStale, "failure stale hot path");
 await sleep(500);
 const afterFailedRefresh = await collectSinks(ctx);
 assertNoPrompt(afterFailedRefresh, "after failed refresh");
+assertNoOwnPrompt([staleBeforeRefresh, freshAfterRefresh, failureStale, afterFailedRefresh], "larva_personas candidate output");
 
 const stateAfter = { activeEnvelope: mod.getActiveEnvelope(), setModelCalls, setActiveToolsCalls, appendEntryCalls };
 const invocationsText = await readFile(invocationLog, "utf8").catch(() => "");
@@ -163,6 +190,10 @@ const evidence = {
   cacheAfterFailure: JSON.parse(cacheAfterFailureText),
   invocations: invocationsText.trim().split("\n").filter(Boolean),
   noPromptInUiOrCache: !JSON.stringify({ staleBeforeRefresh, freshAfterRefresh, failureStale, afterFailedRefresh, refreshedCacheText, cacheAfterFailureText }).includes("SECRET") && !JSON.stringify({ staleBeforeRefresh, freshAfterRefresh, failureStale, afterFailedRefresh, refreshedCacheText, cacheAfterFailureText }).includes("prompt"),
+  personasToolOwnPromptAbsent: [staleBeforeRefresh, freshAfterRefresh, failureStale, afterFailedRefresh].every((item) => {
+    const shape = item.personasTool.firstPersonaShape;
+    return shape === null || (!shape.hasOwnPrompt && !shape.keys.includes("prompt") && shape.allowlistedKeysOnly);
+  }),
   hotPathUnder200ms: [
     staleBeforeRefresh.slashElapsedMs,
     staleBeforeRefresh.selector.elapsedMs,
@@ -180,6 +211,7 @@ if (JSON.stringify(evidence.staleBeforeRefresh).includes("disk-cached") !== true
 if (JSON.stringify(evidence.freshAfterRefresh).includes("fresh-public") !== true) throw new Error("successful refresh did not update hot path suggestions");
 if (JSON.stringify(evidence.failureStale).includes("fresh-public") !== true) throw new Error("failure path did not preserve stale suggestions");
 if (!evidence.noPromptInUiOrCache) throw new Error("prompt material reached UI/cache evidence");
+if (!evidence.personasToolOwnPromptAbsent) throw new Error("larva_personas candidate output included prompt own property evidence");
 if (!evidence.hotPathUnder200ms) throw new Error("a hot path synchronously waited for refresh");
 if (!evidence.refreshDidNotAlterActivePersonaModelToolsOrSession) throw new Error("refresh altered active persona/model/tool/session state");
 
