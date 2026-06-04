@@ -750,7 +750,7 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile) {
         await sleep(10);
         send({ type: "message_update", channel: "thinking_delta", text: "THINKING_SECRET_SHOULD_NOT_RENDER" });
         await sleep(10);
-        send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", name: "bash", args: "echo rpc", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", name: "bash", arguments: { command: "echo rpc", content: "RAW_ARG_SECRET_SHOULD_NOT_RENDER" }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "tool_execution_update", toolCallId: "rpc-tool-1", name: "bash", output: "RPC_TOOL_OUTPUT_CHUNK", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "tool_execution_end", toolCallId: "rpc-tool-1", name: "bash", success: true, output: "RPC_TOOL_OUTPUT_FINAL", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         await sleep(180);
@@ -894,8 +894,8 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
       childRpcEventsDroveOverlayRenderRequest: rendersAfterLive > rendersBeforeLive,
       assistantDeltaRenderedFromRpc: outputDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE"),
       thinkingContentHidden: !combinedVisible.includes("THINKING_SECRET_SHOULD_NOT_RENDER") && combinedVisible.includes("thinking hidden"),
-      timelineIncludesAssistantAndGroupedTool: timelineDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE") && toolRowCount === 1 && toolIdCount === 0 && timelineDuringPlain.includes("bash") && timelineDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && timelineDuringPlain.includes("success"),
-      rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET"),
+      timelineIncludesAssistantAndGroupedTool: timelineDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE") && toolRowCount === 1 && toolIdCount === 0 && timelineDuringPlain.includes("bash") && timelineDuringPlain.includes('command="echo rpc"') && timelineDuringPlain.includes("content=<omitted>") && timelineDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && timelineDuringPlain.includes("success"),
+      rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !combinedVisible.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER"),
       liveStateNotPersisted: !cacheDuringLiveText.includes("RPC_ASSISTANT_DELTA_VISIBLE") && !cacheDuringLiveText.includes("RPC_TOOL_OUTPUT_FINAL"),
       finalOutputAuthorityPreserved: result?.details?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
       activeTabAndSelectionPreservedAcrossRefresh: timelineAfterFinalPlain.includes("● 4 Timeline") && currentAfterFinal?.task_id === result?.details?.task_id,

@@ -1184,6 +1184,20 @@ type NormalizedSubagentStreamEvent =
   | { kind: "tool"; toolCallId: string; name?: string; status: SubagentToolStatus; args_preview?: string; output_preview?: string; error_preview?: string }
   | { kind: "terminal"; type: "agent_end" };
 
+function subagentToolArgsPreviewFromFrameValue(value: unknown): string | undefined {
+  if (typeof value === "string") return boundedToolArgsPreview(value);
+  if (value === null || typeof value === "number" || typeof value === "boolean" || Array.isArray(value) || isRecord(value)) {
+    try { return boundedToolArgsPreview(JSON.stringify(value)); } catch { return undefined; }
+  }
+  return undefined;
+}
+
+function subagentToolArgsPreviewFromFrame(frame: Record<string, unknown>): string | undefined {
+  return subagentToolArgsPreviewFromFrameValue(frame.args)
+    ?? subagentToolArgsPreviewFromFrameValue(frame.arguments)
+    ?? subagentToolArgsPreviewFromFrameValue(frame.input);
+}
+
 function normalizeSubagentChildStreamEventForPresentation(frame: unknown): NormalizedSubagentStreamEvent | null {
   if (!isRecord(frame) || typeof frame.type !== "string") return null;
   if (frame.type === "message_update") {
@@ -1201,7 +1215,7 @@ function normalizeSubagentChildStreamEventForPresentation(frame: unknown): Norma
       toolCallId,
       name: typeof frame.name === "string" ? frame.name : typeof frame.toolName === "string" ? frame.toolName : undefined,
       status,
-      args_preview: typeof frame.args === "string" ? boundedToolArgsPreview(frame.args) : typeof frame.arguments === "string" ? boundedToolArgsPreview(frame.arguments) : undefined,
+      args_preview: subagentToolArgsPreviewFromFrame(frame),
       output_preview: typeof frame.output === "string" ? boundedToolOutputPreview(frame.output) : undefined,
       error_preview: typeof frame.error === "string" ? boundedToolOutputPreview(frame.error) : undefined,
     };
