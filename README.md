@@ -285,11 +285,14 @@ For Tab completion, the bundled extension preserves Pi's command-level
 `ctx.ui.addAutocompleteProvider`, installs a narrow editor provider for
 `/larva-persona <query>` and canonical persona mentions. Matching is
 case-insensitive substring matching over persona ids, with prefix matches ranked
-first and registry order preserved otherwise. The process-local parsed-list cache
-is bounded and test-resettable; it is not a prompt catalogue and is not written to
-disk. If live Pi does not expose `ctx.ui.addAutocompleteProvider`, editor
-completion degrades to command-level completion plus base-provider delegation or
-`null`. Mock/local hook evidence is not enough to claim live editor support.
+first and current candidate-cache order preserved otherwise. Persona candidates
+come from an adapter-local memory/disk cache generated only from public
+`larva list --json`; cache entries contain only `id`, `description`, `model`,
+`spec_digest`, and `capabilities`, never `prompt`. `/larva-persona --refresh-cache`
+forces a foreground refresh without switching persona/model/tools. If live Pi
+does not expose `ctx.ui.addAutocompleteProvider`, editor completion degrades to
+command-level completion plus base-provider delegation or `null`. Mock/local hook
+evidence is not enough to claim live editor support.
 
 Persona mentions insert id-only values exactly shaped as `@persona:<id>`. They do
 not switch personas, force `larva_subagent`, or inject the mentioned persona's

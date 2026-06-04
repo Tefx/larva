@@ -406,6 +406,15 @@ function withRuntimeEnv(ctx: PiContext | undefined, env: RuntimeEnv): PiContext 
   return { ...(ctx ?? {}), env: { ...env, ...(ctx?.env ?? {}) } } as PiContext;
 }
 
+function hasRuntimeModelRegistry(ctx: PiContext | undefined): boolean {
+  const registry = ctx?.modelRegistry;
+  return isRecord(registry) && typeof registry.find === "function";
+}
+
+function canInitializeSessionNow(ctx: PiContext | undefined): boolean {
+  return hasRuntimeModelRegistry(ctx);
+}
+
 async function setLarvaStatus(ctx: PiContext, statusText: string): Promise<void> {
   const setter = ctx.ui?.setStatus as ((keyOrStatus: string, status?: string) => void | Promise<void>) | undefined;
   if (!setter) return;
@@ -4591,7 +4600,8 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     execute: async (_toolCallId, input) => larva_subagent_sessions(input),
   });
   registerAgentPersonaSwitchTools(ctx, pi);
-  await ensureSessionInitialized(withRuntimeEnv(ctx, env), pi);
+  const initialRuntimeCtx = withRuntimeEnv(ctx, env);
+  if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi);
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     registerLarvaPersonaAutocompleteProvider(runtimeCtx);

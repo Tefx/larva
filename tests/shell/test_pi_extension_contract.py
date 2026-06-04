@@ -252,10 +252,11 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     source = _source()
     body = _function_body(source, "export async function initializeExtension")
 
-    assert "ensureSessionInitialized(withRuntimeEnv(ctx, env), pi)" in body
+    assert "const initialRuntimeCtx = withRuntimeEnv(ctx, env)" in body
+    assert "if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi)" in body
     assert 'on?.("session_start"' in body
     assert body.index("registerLarvaPersonaCommand") < body.index('on?.("before_agent_start"')
-    assert body.index("registerTool") < body.index("ensureSessionInitialized(withRuntimeEnv(ctx, env), pi)")
+    assert body.index("registerTool") < body.index("const initialRuntimeCtx = withRuntimeEnv(ctx, env)")
     assert body.index("registerTool") < body.index('on?.("tool_call"')
 
     assert "registerLarvaPersonaCommand(ctx, pi)" in body
@@ -457,6 +458,80 @@ def test_current_pi_factory_uses_event_context_for_startup_status_and_commands(t
     assert result["finalEnvelope"]["persona_id"] == "ok"
 
 
+def test_current_pi_factory_defers_process_env_initial_persona_until_session_context(tmp_path: Path) -> None:
+    """Child Pi startup has persona in process.env but modelRegistry only on session_start ctx."""
+
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        process.env.LARVA_PI_LAUNCHED = "1";
+        process.env.LARVA_PI_INITIAL_PERSONA_ID = "startup";
+        process.env.LARVA_CLI_ARGV_JSON = JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]);
+        process.env.LARVA_PI_INTERACTIVE_TUI = "0";
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const statuses = [];
+        const handlers = {{}};
+        const modelCalls = [];
+        const pi = {{
+          getAllTools: async () => ["read", "bash", "larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+
+        await mod.default(pi);
+        const envelopeBeforeSession = mod.getActiveEnvelope();
+        const runtimeCtx = {{
+          env: {{
+            LARVA_PI_INITIAL_PERSONA_ID: "startup",
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async (key, status) => statuses.push({{ key, status }}), notify: async () => undefined }},
+          modelRegistry: {{ find: async (...args) => {{ modelCalls.push(args); return {{ id: "model" }}; }} }},
+        }};
+        await handlers.session_start({{ reason: "startup" }}, runtimeCtx);
+
+        console.log(JSON.stringify({{
+          envelopeBeforeSession,
+          finalEnvelope: mod.getActiveEnvelope(),
+          statuses,
+          modelCalls,
+        }}));
+        """,
+    )
+
+    assert result["envelopeBeforeSession"] is None
+    assert result["finalEnvelope"]["persona_id"] == "startup"
+    assert result["statuses"][-1] == {"key": "larva", "status": "larva: startup"}
+    assert result["modelCalls"] == [["provider", "model"]]
+
+
 def test_launched_initial_persona_invalid_model_exits_before_prompt(tmp_path: Path) -> None:
     """`larva pi --persona` startup failures must be process-fatal before a prompt."""
 
@@ -492,23 +567,26 @@ def test_launched_initial_persona_invalid_model_exits_before_prompt(tmp_path: Pa
         const originalWrite = process.stderr.write;
         process.exit = (code) => {{ exitCode = code; throw new Error("PROCESS_EXIT"); }};
         process.stderr.write = (chunk) => {{ stderr += String(chunk); return true; }};
+        const handlers = {{}};
         const pi = {{
           getAllTools: async () => ["read"],
           setActiveTools: async () => true,
           setModel: async () => true,
           registerCommand: () => undefined,
           registerTool: () => undefined,
-          on: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
         }};
         try {{
-          await mod.initializeExtension({{
+          await mod.default(pi);
+          await handlers.session_start({{ reason: "startup" }}, {{
             env: {{
               LARVA_PI_LAUNCHED: "1",
               LARVA_PI_INITIAL_PERSONA_ID: "startup",
               LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             }},
             ui: {{ setStatus: () => undefined, notify: () => undefined }},
-          }}, pi);
+            modelRegistry: {{ find: async () => null }},
+          }});
         }} catch (error) {{
           if (error.message !== "PROCESS_EXIT") throw error;
         }} finally {{
@@ -562,7 +640,7 @@ def test_no_active_persona_sets_none_status(tmp_path: Path) -> None:
         """,
     )
     assert result["envelope"] is None
-    assert result["statuses"] == ["larva: none", "larva: none"]
+    assert result["statuses"] == ["larva: none"]
 
 
 def test_prompt_watermark_composes_replaces_and_never_dumps_catalogue() -> None:

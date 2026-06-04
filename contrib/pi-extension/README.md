@@ -231,7 +231,12 @@ The extension registers this slash command:
 
 ```text
 /larva-persona <persona-id>
+/larva-persona --refresh-cache
 ```
+
+`--refresh-cache` refreshes only the adapter-local persona candidate cache used
+by completion, selector, and `@persona` autocomplete. It does not switch persona,
+model, or active tools. No separate refresh slash command or alias is registered.
 
 Switching resolves the target persona through the Larva CLI context supplied by
 the launcher, validates the target model and active policy entry, computes tool
@@ -240,8 +245,10 @@ persona, model, and tool rules remain active. This user-driven command is
 preserved in every agent self-switch mode, including `off`.
 
 With no argument, `/larva-persona` opens a selector only in interactive TUI mode.
-When Pi exposes custom UI, the selector uses Pi TUI `Input` plus `SelectList`
-with a detail panel showing id, model, description, capabilities, and digest.
+The selector is populated from the same adapter-local persona candidate cache as
+completion and mentions. When Pi exposes custom UI, the selector uses Pi TUI
+`Input` plus `SelectList` with a detail panel showing id, model, description,
+capabilities, and digest.
 The selector renders as a boxed modal surface with an accent-colored border,
 solid ANSI background, adaptive list viewport that expands to available terminal
 height while keeping detail/footer bounded, and terminal-compatible drop shadow;
@@ -407,11 +414,12 @@ autocomplete. The provider intercepts only a slash-command line shaped as:
 Implemented behavior:
 
 - Typing `/larva-persona <query>` and pressing Tab shows matching persona ids
-  from `larva list --json` when the runtime exposes the editor provider hook.
+  from the adapter-local persona candidate cache when the runtime exposes the
+  editor provider hook. The cache source is public `larva list --json`.
 - Matching is case-insensitive substring matching over persona ids, not only
   prefix matching. For example, `senior` should match `python-senior`.
 - Prefix matches rank before non-prefix substring matches. Otherwise preserve the
-  registry order returned by `larva list --json`.
+  latest accepted candidate-cache order.
 - Forced Tab and regular completion use the same matching path.
 - All non-`/larva-persona` editor input is delegated to Pi's base provider so
   global and file completion remain Pi-owned.
@@ -424,19 +432,25 @@ Completion candidates have Pi's command item shape:
 
 Performance target:
 
-- The provider should cache the parsed `larva list --json` result in memory for
-  an implementation-defined bounded TTL and share an in-flight list request
-  between concurrent completion calls. The chosen TTL must be deterministic in
-  tests by using an injectable clock or equivalent test hook; tests must prove
-  cache hit, expiry, and in-flight sharing behavior without waiting on wall-clock
-  time.
-- The cache is a process-local parsed-list cache only. Do not write completion
-  cache files, prefetch the persona list before a completion or selector needs it,
-  or inject the persona catalogue into prompts.
-- Tests must be able to reset the process-local completion cache and shared
-  in-flight request state without touching disk.
-- If `larva list --json` fails or returns malformed JSON, the provider returns
-  `null` and does not throw through the Pi TUI.
+- The extension keeps a two-tier adapter-local persona candidate cache: process
+  memory and a Pi-owned Larva cache file such as
+  `~/.pi/larva/persona-candidates-cache.json`.
+- The cache is generated only from public `larva list --json`; the Pi extension
+  must not directly read `~/.larva/registry` for candidate population.
+- Cache entries are prompt-free UI projections containing only `id`,
+  `description`, `model`, `spec_digest`, and `capabilities`.
+- Completion and selector hot paths return memory cache when present, else disk
+  cache when present, and trigger background refresh when data is stale or
+  missing. They must not synchronously wait on slow `larva list --json`.
+- If both caches are empty, the provider returns `null` or a bounded empty result
+  compatible with the calling UI and starts background refresh.
+- Background refresh failure preserves stale cache and does not throw through the
+  Pi TUI.
+- `/larva-persona --refresh-cache` forces a foreground refresh through public
+  `larva list --json`. Success updates memory and disk cache; failure keeps the
+  old cache and reports a bounded failure reason.
+- Tests must be able to reset process-local cache state and redirect disk cache
+  to a temp path.
 
 This is substring matching, not fuzzy matching: no edit distance, wildcard,
 regex, nearest-persona guessing, or hidden aliases.
@@ -474,11 +488,11 @@ call `larva_subagent`, and does not inject the mentioned persona's prompt or ful
 spec into the parent context. The parent agent decides normally whether the
 mention is relevant and whether calling `larva_subagent` is useful.
 
-Autocomplete uses the same persona list bridge and matching rules as
-`/larva-persona` completion. Candidate `value` and dedupe identity are exactly
-`@persona:<id>`. Any trailing space or suffix after insertion is Pi UI behavior
-outside the Larva candidate value. Candidates may include the persona description
-or model in the completion description. When persona candidates and Pi
+Autocomplete uses the same adapter-local persona candidate cache and matching
+rules as `/larva-persona` completion. Candidate `value` and dedupe identity are
+exactly `@persona:<id>`. Any trailing space or suffix after insertion is Pi UI
+behavior outside the Larva candidate value. Candidates may include the persona
+description or model in the completion description. When persona candidates and Pi
 file-reference candidates are both present, Pi file-reference candidates keep
 their original order, persona candidates are appended after them, and exact
 duplicate insertion `value`s across the merged list are removed by keeping the

@@ -13,13 +13,15 @@ The integration projects Larva personas into Pi at runtime. It does not change
 the canonical `PersonaSpec` shape and does not make Larva a workspace sandbox,
 task scheduler, or general Pi permission platform.
 
-The integration owns five runtime behaviors:
+The integration owns six runtime behaviors:
 
 1. start Pi with an optional active Larva persona;
 2. switch the active persona in-place during a Pi session;
 3. apply persona-specific model-map and tool rules;
 4. spawn a child Pi session as a Larva persona through one subagent tool;
-5. surface canonical persona mention autocomplete in Pi's interactive editor.
+5. surface canonical persona mention autocomplete in Pi's interactive editor;
+6. keep persona selector/autocomplete hot paths fast with an adapter-local,
+   prompt-free candidate cache sourced only from public `larva list --json`.
 
 ## Rationale
 
@@ -44,6 +46,9 @@ must not recreate OpenCode's full runtime or add unrelated workspace management.
 - No project-level policy hierarchy.
 - No batch subagent tool.
 - No subagent catalogue dumped into the system prompt.
+- No direct private-registry parsing by the Pi extension for persona candidates.
+- No `PersonaCandidateIndex`, persistent Pi bridge daemon, or registry revision
+  invalidation for the first candidate-cache pass.
 - No MCP transport implementation inside this integration. A Pi MCP bridge may be
   installed separately by the user.
 
@@ -162,11 +167,17 @@ the code, it uses `2`. A zero exit after a Larva fatal startup error is invalid.
 
 ### Persona switching
 
-The Pi extension registers:
+The Pi extension registers one slash command for persona selection and cache
+maintenance:
 
 ```text
 /larva-persona <persona-id>
+/larva-persona --refresh-cache
 ```
+
+No additional persona-list refresh slash command or alias is introduced. Keeping
+refresh under `/larva-persona` preserves the small command surface: `/larva-persona`,
+`/larva-mode`, and `/larva-log`.
 
 The command supports argument completion for persona ids.
 
@@ -184,23 +195,41 @@ Completion target behavior:
   completion remain Pi-owned.
 - The `/larva-persona` completer performs case-insensitive substring matching over
   persona ids. Prefix matches rank before non-prefix substring matches; remaining
-  order follows `larva list --json`.
-- The completer should cache parsed list results in process memory with an
-  implementation-defined bounded TTL and share an in-flight list request between
-  concurrent completion calls. The chosen TTL must be deterministic in tests by
-  using an injectable clock or equivalent test hook; tests must prove cache hit,
-  expiry, and in-flight sharing behavior without waiting on wall-clock time. It
-  must not write cache files, prefetch the persona list before a completion or
-  selector needs it, or inject the persona catalogue into prompts.
-- Tests must be able to reset the process-local completion cache and shared
-  in-flight request state without touching disk.
+  order follows the latest accepted persona candidate cache order, whose source is
+  public `larva list --json` output.
+- Persona candidate discovery uses an adapter-local stale-while-revalidate cache,
+  not direct reads from `~/.larva/registry`. The cache has two tiers:
+  process-local memory and an adapter-local disk cache under Pi-owned Larva state
+  such as `~/.pi/larva/persona-candidates-cache.json`.
+- Cache entries are a projection for UI only: `id`, `description`, `model`,
+  `spec_digest`, and `capabilities`. The projection must not include `prompt` or
+  full PersonaSpec content.
+- UI hot paths must not synchronously wait for slow `larva list --json`. Completion
+  and selector population return memory cache when present, else disk cache when
+  present, and trigger a background refresh when data is missing or stale. If no
+  cache exists, they return a bounded empty/loading-compatible result and start a
+  background refresh rather than blocking the editor.
+- Background refresh runs public `larva list --json`, validates the result shape,
+  strips all fields outside the UI projection, updates memory cache, then writes
+  the disk cache. Refresh failure keeps the previous cache and records only
+  bounded diagnostics.
+- `/larva-persona --refresh-cache` is the explicit user freshness escape hatch for
+  registry mutations. It forces a foreground refresh through public
+  `larva list --json`; success updates memory and disk cache and notifies the
+  user; failure preserves the old cache and reports a bounded failure reason.
+- Registry mutation is intentionally weakly consistent for this UI surface.
+  Newly-added or removed personas need not appear instantly until background
+  refresh, TTL expiry, reload, or `/larva-persona --refresh-cache`.
+- Tests must be able to reset process-local cache state and direct the disk cache
+  path to a test location. Tests must also prove the extension never reads the
+  private registry path for candidate population.
 - This is not fuzzy matching: no edit distance, wildcard, regex, nearest-persona
   guessing, or hidden aliases.
 
 No-argument behavior:
 
-- In interactive TUI mode only, the extension opens a selector populated through
-  the Larva CLI bridge list command.
+- In interactive TUI mode only, the extension opens a selector populated from the
+  same persona candidate cache used by completion and mention autocomplete.
 - When Pi custom UI is available, the selector is a Pi TUI component using
   `Input` for filtering, `SelectList` for candidates, and a detail panel showing
   id, model, description, capabilities, and digest. It renders as a boxed modal
@@ -345,10 +374,11 @@ Autocomplete target behavior:
   mention autocomplete and leaves Pi-owned editor behavior unchanged.
 - The provider may surface persona candidates only for the token classes in the
   table below.
-- Candidate ids come from the same `larva list --json` bridge and process-local
-  completion cache used by `/larva-persona`.
+- Candidate ids come from the same adapter-local persona candidate cache used by
+  `/larva-persona` completion and selector. The cache source is public
+  `larva list --json`; the mention provider must not read `~/.larva/registry`.
 - Matching and ordering follow `/larva-persona`: case-insensitive substring
-  matching, prefix matches first, then registry order.
+  matching, prefix matches first, then current candidate-cache order.
 - When persona candidates and Pi file-reference candidates are both present, the
   provider preserves Pi's file-reference candidates in their original order,
   appends Larva `@persona:<id>` candidates after them, and removes exact
@@ -1837,6 +1867,25 @@ type LarvaAutocompleteCandidate = {
   description?: string;
 };
 
+type PersonaCandidate = {
+  id: string;
+  description: string;
+  model: string;
+  spec_digest: string;
+  capabilities: Record<string, "none" | "read_only" | "read_write" | "destructive">;
+};
+
+type PersonaCandidateCache = {
+  schema_version: 1;
+  generated_at: string;
+  source: "larva list --json";
+  personas: PersonaCandidate[];
+};
+
+type PersonaCandidateRefreshResult =
+  | { ok: true; cache: PersonaCandidateCache }
+  | { ok: false; error: LarvaError; stale_cache: PersonaCandidateCache | null };
+
 type LarvaAutocompleteBaseProvider = (
   request: LarvaAutocompleteRequest,
 ) => Promise<LarvaAutocompleteCandidate[] | null> | LarvaAutocompleteCandidate[] | null;
@@ -1850,6 +1899,9 @@ Command and hook contracts:
 
 - `/larva-persona <id>` returns `PersonaSwitchResult` and commits state only on
   `ok: true`.
+- `/larva-persona --refresh-cache` returns a user-visible refresh result and never
+  commits persona/model/tool state. It refreshes only the adapter-local persona
+  candidate cache by running public `larva list --json`.
 - `/larva-persona` with no argument opens a selector only when
   `LARVA_PI_INTERACTIVE_TUI=1`. RPC `ctx.hasUI`, print mode, and JSON mode return
   `LARVA_BAD_INPUT` without changing state.
@@ -1858,8 +1910,8 @@ Command and hook contracts:
   `LarvaAutocompleteProvider`. Request fields are current editor `text`, current
   completion `query`, nullable `cursor` when Pi does not supply one, `trigger`,
   and nullable `baseProvider`. Larva consumes only `text`, `query`, `cursor`,
-  `trigger`, `baseProvider`, and persona ids from `larva list --json`; it must not
-  depend on private Pi fields.
+  `trigger`, `baseProvider`, and persona candidates from the adapter-local cache;
+  it must not depend on private Pi fields or private Larva registry files.
 - Autocomplete candidates use `LarvaAutocompleteCandidate`: insertion `value`,
   visible `label`, and optional `description`. `/larva-persona` candidates insert
   the persona id; mention candidate `value` is exactly `@persona:<id>`. Any
@@ -1876,15 +1928,22 @@ Command and hook contracts:
   candidates are appended after them. A duplicate is an exact same insertion
   `value` across the merged Pi+Larva list; duplicates are removed by keeping the
   first candidate.
+- Persona candidate cache refresh uses `LARVA_CLI_ARGV_JSON` plus
+  `list --json`, or the existing fallback command discovery only when
+  `LARVA_CLI_ARGV_JSON` is absent. The refresh path validates list output,
+  projects each persona to `PersonaCandidate`, strips `prompt`, rejects malformed
+  cache entries fail-closed for writes, and preserves the previous cache on
+  refresh failure.
 - Runtime verification must prove the tested supported Pi build exposes
   `ctx.ui.addAutocompleteProvider` before claiming editor-autocomplete support.
 - If `ctx.ui.addAutocompleteProvider` is unavailable, the extension keeps the
   command-level `/larva-persona` completer and omits Larva editor autocomplete
   for both `/larva-persona` editor input and persona mentions.
-  If persona listing fails or returns malformed JSON, the autocomplete provider
-  returns the base provider result when one was requested for that input, else
-  `null`; it must not throw through the Pi TUI. Base provider failures remain
-  Pi-owned and must not be converted into Larva errors.
+  If no persona candidate cache is available, the autocomplete provider returns
+  the base provider result when one was requested for that input, else `null`; it
+  must not synchronously wait for `larva list --json` or throw through the Pi TUI.
+  Base provider failures remain Pi-owned and must not be converted into Larva
+  errors.
 - Initial `--persona` commit runs during extension initialization before first
   prompt, selector, or `larva: none` status.
 - Prompt injection uses Pi `before_agent_start` and returns a composed
@@ -2055,6 +2114,7 @@ architecture_basis:
   source_of_truth_matrix:
     PersonaSpec schema: "opifex canonical contract"
     persona registry contents: "Larva persona registry; accessed by Pi extension through the launcher-supplied LARVA_CLI_ARGV_JSON CLI argv prefix"
+    persona candidate cache: "Pi extension adapter-local memory and disk projection generated only from public larva list --json; weakly consistent UI cache, not registry authority"
     active Pi persona: "Pi extension session-local committed envelope"
     Pi executable: "LARVA_PI_REAL_BIN discovered by launcher"
     Pi extension flag: "LARVA_PI_EXTENSION_FLAG selected by launcher from Pi help"
@@ -2077,6 +2137,9 @@ architecture_basis:
     larva_pi_extension:
       owner: "contrib/pi-extension"
       responsibility: "Project resolved Larva personas into Pi prompt/model/tool state."
+    persona_candidate_cache:
+      owner: "contrib/pi-extension"
+      responsibility: "Keep selector/autocomplete hot paths fast with a prompt-free memory/disk stale cache refreshed from public larva list --json."
     larva_subagent_tool:
       owner: "contrib/pi-extension"
       responsibility: "Spawn or resume one child Pi RPC process per invocation as a target persona."
@@ -2085,20 +2148,22 @@ architecture_basis:
     launch: "larva pi [--persona <id>] [--] <pi args...> -> <real-pi-bin> <extension-flag> <extension-entry> <pi args...>"
     interactive_mode: "LARVA_PI_INTERACTIVE_TUI from exact -p/--print/--json/--mode detector; non-interactive wins conflicts"
     switch: "/larva-persona <id>, next model invocation, atomic commit"
+    persona_cache_refresh: "/larva-persona --refresh-cache -> refresh prompt-free adapter-local PersonaCandidate cache from public larva list --json; does not commit persona/model/tool state"
     projection: "before_agent_start prompt composition + pi.setModel(model), committed at launch/switch/child startup"
     policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; initial startup tolerates absent/unsupported enumeration surfaces with an empty baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
-    persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent"
+    persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent; list results are projected into prompt-free PersonaCandidate cache before UI use"
     subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
     subagent_sessions_helper: "optional larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, or provenance proof"
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
     subagent_presentation_overlay: "/larva-log [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"
-    persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show persona candidates while preserving Pi file-reference suggestions"
+    persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show candidates from the adapter-local persona cache while preserving Pi file-reference suggestions"
     child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
     resume: "task_id is a readable .jsonl child session path under child root; task is appended through RPC prompt; child persona id is re-resolved from current registry"
 
   state_strata:
     canonical_state: "PersonaSpec and registry entries managed by Larva"
     adapter_config_state: "~/.pi/larva/model-map.json and ~/.pi/larva/tool-policy.json, plus explicit env overrides; no implicit legacy tool-policy fallback"
+    adapter_cache_state: "~/.pi/larva/persona-candidates-cache.json and process memory hold a prompt-free weakly consistent PersonaCandidate projection for UI hot paths"
     session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
     child_session_state: "Pi session JSONL file used as public task_id"
     child_busy_state: "In-memory active-task set inside one parent Pi extension process"
@@ -2119,12 +2184,14 @@ architecture_basis:
   cross_cutting_governance:
     registries:
       - "Larva persona registry remains owned by Larva."
+      - "Pi extension keeps an adapter-local prompt-free persona candidate cache generated only from public larva list --json."
       - "Pi extension keeps only session-local committed envelope state."
       - "Parent Pi extension keeps a process-local active-task set for same-task resume exclusion."
       - "Parent Pi extension keeps a process-local recent-session index capped at 25 entries only for optional resume UX."
       - "Parent Pi extension keeps a process-local presentation log/current overlay generation and adapter-local persistent cache only for view-only user inspection."
     lifecycle_ordering:
       - "Launcher preflights Larva-owned arguments, extension path, real Pi executable, extension flag, Larva CLI argv prefix, interactive classification, and initial persona id only."
+      - "Extension loads disk persona candidate cache at session start when available and starts background refresh without blocking selector/autocomplete hot paths."
       - "Extension parses active-target policy shape, selects model, enumerates the current Pi model-facing tool baseline for strict commits, applies target policy, ignores missing policy tool names, sets active tools, and commits persona envelope only after checks pass; initial startup may substitute an empty baseline only when the Pi enumeration surface is absent or unsupported."
       - "Child extension performs child persona/model/policy initialization before replying to get_state."
       - "Subagent child process discovers sessionFile via RPC get_state and validates it before exposing task_id."
@@ -2135,7 +2202,7 @@ architecture_basis:
       - "Selected Pi extension flag for parent and child extension loading."
       - "Launcher-provided Pi extension entry path for parent and child extension loading."
       - "Pi before_agent_start and pi.setModel for persona projection."
-      - "Pi extension command for persona switch."
+      - "Pi extension command for persona switch and persona candidate cache refresh under /larva-persona."
       - "Pi setActiveTools plus tool_call hook for allow/deny enforcement."
       - "Pi custom tool for subagent spawn/resume."
       - "Pi RPC JSONL for child sessions."
@@ -2144,9 +2211,10 @@ architecture_basis:
       - "In-memory recent-session index capped at 25 entries for optional larva_subagent_sessions(limit?) helper."
       - "Pi custom-tool row renderer for bounded subagent call, progress, and result visibility."
       - "Pi slash command /larva-log for view-only user-visible presentation-log overlay."
+      - "Adapter-local memory/disk persona candidate cache with background stale-while-revalidate refresh from public larva list --json."
       - "Pi editor autocomplete provider for canonical @persona:<id> mentions while preserving Pi file-reference suggestions; unavailable when ctx.ui.addAutocompleteProvider is absent."
-    wiring_strategy: "Explicit launcher environment plus selected Pi extension flag registration; row-local rendering, view-only presentation overlay, and editor autocomplete stay inside the Pi extension."
-    governance_owner: "Larva shell owns launcher; Pi extension owns runtime projection, tool-policy parsing, active-task state, recent-session index, subagent row rendering, view-only presentation overlay, and persona mention autocomplete."
+    wiring_strategy: "Explicit launcher environment plus selected Pi extension flag registration; row-local rendering, view-only presentation overlay, persona candidate caching, and editor autocomplete stay inside the Pi extension."
+    governance_owner: "Larva shell owns launcher; Pi extension owns runtime projection, persona candidate cache, tool-policy parsing, active-task state, recent-session index, subagent row rendering, view-only presentation overlay, and persona mention autocomplete."
 
   shared_abstractions:
     shared_types:
@@ -2158,6 +2226,10 @@ architecture_basis:
         owner_module: "contrib/pi-extension"
         consumers: ["persona switch", "prompt/model projection", "child startup"]
         rationale: "One committed process-local envelope prevents per-turn drift and half-applied state."
+      - name: "PersonaCandidate"
+        owner_module: "contrib/pi-extension"
+        consumers: ["/larva-persona completion", "persona selector", "@persona autocomplete", "manual cache refresh"]
+        rationale: "Prompt-free UI projection from public larva list --json keeps hot paths fast without exposing full PersonaSpec or reading private registry files."
       - name: "PiToolPolicy"
         owner_module: "contrib/pi-extension"
         consumers: ["persona switch", "tool_call hook", "subagent child startup"]
@@ -2197,7 +2269,7 @@ architecture_basis:
     - surface: "CLI command"
       scope: "larva pi --persona <id> argument forwarding, extension loading, exit behavior, stderr errors"
     - surface: "Pi slash command"
-      scope: "/larva-persona completion, selector, status/error messages"
+      scope: "/larva-persona completion, selector, --refresh-cache, status/error messages"
     - surface: "Pi custom tool"
       scope: "larva_subagent tool description, optional larva_subagent_sessions helper, visible resume footer, renderCall/onUpdate/renderResult row display, and result shape"
     - surface: "Pi slash command overlay"
@@ -2302,8 +2374,8 @@ Subagent presentation overlay delta:
 Persona mention UX delta:
 
 - `@persona:<id>` is a Pi-adapter-owned interactive editor mention surface backed
-  by the same persona list bridge as `/larva-persona` completion and available
-  only when the runtime UI exposes `ctx.ui.addAutocompleteProvider`.
+  by the same adapter-local persona candidate cache as `/larva-persona` completion
+  and available only when the runtime UI exposes `ctx.ui.addAutocompleteProvider`.
 - The mention is semantic context only. It does not switch active persona, force
   `larva_subagent`, or inject the mentioned persona prompt/spec.
 - Runtime authority remains unchanged: only explicit `/larva-persona` switches the
@@ -2517,10 +2589,14 @@ Implementation gates must prove these observable behaviors:
     and inherits launcher registry environment. Fallback to `larva`/`uvx larva` is
     allowed only when `LARVA_CLI_ARGV_JSON` is absent. Timeout/nonzero/malformed
     output maps to `LARVA_PERSONA_NOT_FOUND`.
-38. Persona list bridge uses `LARVA_CLI_ARGV_JSON` plus `list --json`, requires
-    only `data[].id` for completion/selector population, and maps list failure to
-    empty completions or `LARVA_PERSONA_NOT_FOUND` for the interactive
-    no-argument selector.
+38. Persona list bridge uses `LARVA_CLI_ARGV_JSON` plus `list --json` and never
+    reads private `~/.larva/registry` files. List output is projected into
+    adapter-local `PersonaCandidate` entries containing only `id`, `description`,
+    `model`, `spec_digest`, and `capabilities`; `prompt` and full PersonaSpec
+    content are excluded from memory cache, disk cache, completion items, selector
+    rows, and mention autocomplete. UI hot paths use memory or disk cache without
+    synchronously waiting for `larva list --json`; refresh failure preserves stale
+    cache.
 39. Before child RPC readiness, parent parses only child stderr lines shaped as
     `larva pi: <ERROR_CODE>:` and propagates only `LARVA_PERSONA_NOT_FOUND`,
     `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and
@@ -2593,18 +2669,24 @@ Implementation gates must prove these observable behaviors:
     exposes that hook before claiming editor-autocomplete support. With that hook,
     persona mentions may surface candidates on raw `@`, partial canonical
     namespace tokens, and `@persona:<query>` input.
-    It returns canonical `@persona:<id>` candidates from the same persona list
-    bridge/cache as `/larva-persona`, preserves the documented matching order,
-    keeps Pi file-reference candidates in their original order before appended
-    persona candidates, removes exact duplicate insertion `value`s across the
-    merged list by keeping the first candidate, delegates unrelated `@...` input
-    to Pi's base provider, and preserves Pi-owned file-reference suggestions when
-    raw `@` suggestions are shown. It does not offer raw short-form `@<id>`
+    It returns canonical `@persona:<id>` candidates from the same adapter-local
+    persona candidate cache as `/larva-persona`, preserves the documented matching
+    order, keeps Pi file-reference candidates in their original order before
+    appended persona candidates, removes exact duplicate insertion `value`s across
+    the merged list by keeping the first candidate, delegates unrelated `@...`
+    input to Pi's base provider, and preserves Pi-owned file-reference suggestions
+    when raw `@` suggestions are shown. It does not offer raw short-form `@<id>`
     persona candidates. A submitted `@persona:<id>` mention has no automatic side
     effect: it does not switch personas, force `larva_subagent`, or inject the
     mentioned persona prompt/spec.
 
-49. Prompt projection uses Larva-managed overlay blocks rather than Pi default
+49. `/larva-persona --refresh-cache` forces a persona candidate cache refresh
+    through public `larva list --json`, updates memory and disk cache on success,
+    preserves the old cache on failure, and does not commit persona/model/tool
+    state. Registry mutations need not be reflected instantly, but after manual
+    refresh the selector and autocomplete reflect the refreshed candidate set.
+
+50. Prompt projection uses Larva-managed overlay blocks rather than Pi default
     prompt string matching. The effective prompt preserves the incoming Pi
     chained system prompt unchanged between `larva:identity-policy` and
     `larva:active-persona` blocks, removes only previous Larva-managed marker
@@ -2694,42 +2776,83 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
     registration, same-path selector commit behavior, and non-idle no-state-change
     warning behavior. Non-interactive mode, missing UI, and fallback selector
     behavior remain as specified earlier in this section.
+19. Persona candidate cache proof covers memory hit, disk stale hit, background
+    refresh success, background refresh failure preserving stale data, cold-cache
+    non-blocking behavior, prompt exclusion, and `/larva-persona --refresh-cache`
+    manual refresh success/failure behavior.
 
 ## Implementation handoff
+Suggested order for the persona candidate cache work:
 
-Suggested order:
+1. Add adapter-local `PersonaCandidate` projection helpers inside
+   `contrib/pi-extension/larva.ts`.
+   - Input: public `larva list --json` result.
+   - Output: `id`, `description`, `model`, `spec_digest`, `capabilities` only.
+   - Reject malformed candidate rows for cache writes.
+   - Never retain `prompt` in memory cache, disk cache, selector details,
+     completion items, or mention autocomplete.
 
-1. Add the `larva pi` shell launcher and packaging hook for the bundled extension.
-   It must discover real Pi, select `-e` or `--extension`, launch with that flag,
-   preserve forwarded user Pi args, and pass `LARVA_PI_REAL_BIN`,
-   `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
-   `LARVA_PI_INTERACTIVE_TUI`, and any explicit adapter config path overrides
-   without parsing policy or model-map content.
-2. Add the Pi extension command and editor UX for active persona state:
-   `/larva-persona` completion/selector, canonical `@persona:<id>` mention
-   autocomplete, UI status, persona resolve/list through `LARVA_CLI_ARGV_JSON`,
-   model switch through `pi.setModel`, and Larva-managed prompt overlay/sandwich
-   composition through `before_agent_start`.
-3. Add adapter-local model-map resolution inside the Pi extension without changing
-   PersonaSpec or opifex contracts.
-4. Add canonical `~/.pi/larva/tool-policy.json` parsing and tool-call blocking
-   inside the Pi extension, explicitly excluding implicit legacy
-   `~/.pi/tool-policy.json` fallback, with `pi.setActiveTools(filteredTools)` and
-   `tool_call` interception.
-5. Add `larva_subagent` backed by one child Pi RPC process per invocation using
-   `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
-   `LARVA_PI_EXTENSION_ENTRY`, the child session root, public `task_id` path
-   validation, process-local same-`task_id` busy tracking, `task_id` resume,
-   visible resume footer, optional `larva_subagent_sessions(limit?)` helper,
-   `renderCall`, `onUpdate` progress phases, and collapsed/expanded
-   `renderResult`.
-6. Add documentation and verification tests for the behaviors listed above.
+2. Replace the existing completion TTL-only cache with a two-tier cache.
+   - Memory cache: current process fast path.
+   - Disk cache: adapter-local path such as
+     `~/.pi/larva/persona-candidates-cache.json`, with test override support.
+   - Tests must be able to reset memory state and point disk state at a temp file.
+
+3. Add stale-while-revalidate refresh orchestration.
+   - At `session_start` / extension initialization with real runtime context, load
+     disk cache when present.
+   - Start background refresh from public `larva list --json` without blocking Pi
+     startup, selector opening, or autocomplete.
+   - Share an in-flight refresh between callers.
+   - On refresh success, update memory first, then disk.
+   - On refresh failure, preserve stale cache and record bounded diagnostics.
+
+4. Rewire `/larva-persona` completion, selector population, and
+   `@persona:<id>` autocomplete to use the shared candidate cache.
+   - Hot paths return memory cache when present.
+   - If memory is empty but disk cache is valid, return disk cache immediately and
+     trigger refresh.
+   - If both caches are empty, return a bounded empty/loading-compatible result and
+     trigger refresh; do not synchronously wait for `larva list --json`.
+
+5. Add `/larva-persona --refresh-cache`.
+   - It is a mode of the existing command, not a new slash command.
+   - It forces a foreground refresh through public `larva list --json`.
+   - Success updates memory and disk cache and notifies the user.
+   - Failure preserves old cache and reports a bounded failure reason.
+   - It must not commit persona/model/tool state.
+
+6. Add tests before implementation where practical, then make them green.
+   Minimum tests:
+   - projection excludes `prompt`;
+   - disk stale cache is returned without waiting when `larva list --json` is slow
+     or fails;
+   - background refresh success updates memory and disk;
+   - background refresh failure preserves stale cache;
+   - cold cache does not read private `~/.larva/registry` and does not block UI;
+   - `/larva-persona --refresh-cache` success/failure behavior;
+   - simulated registry mutation becomes visible after manual refresh;
+   - selector, command completion, and mention autocomplete all use the same
+     candidate source.
+
+7. Run gates.
+   - Focused Pi extension contract tests.
+   - Pi extension subagent UX tests if shared helpers are touched.
+   - Runtime smoke for command registration and selector/autocomplete surfaces.
+   - `invar guard`.
 
 Watch for:
 
-- Do not import Pi-specific policy concepts into PersonaSpec validation.
+- Do not add `PersonaCandidateIndex`, `larva personas index --json`, a Pi bridge
+  daemon, or registry revision invalidation in this pass.
+- Do not add a new slash command or alias; use `/larva-persona --refresh-cache`.
+- Do not add a model-facing refresh tool unless a later workflow proves it is
+  necessary.
+- Do not import Pi-specific cache concepts into PersonaSpec validation or opifex
+  contracts.
+- Do not directly read `~/.larva/registry` as the primary data source.
 - Do not silently continue with a half-switched persona/model/policy state.
-- Do not dump persona registries into the system prompt.
+- Do not dump persona registries or cached candidates into the system prompt.
 - Do not match or rewrite Pi's default identity sentence; remove only
   Larva-managed marker blocks for prompt idempotence.
 - Do not rebuild Pi's prompt builder from `systemPromptOptions`; preserve Pi's
