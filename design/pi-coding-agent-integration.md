@@ -1052,7 +1052,10 @@ Overlay UI contract:
   status, grouped tool-call snapshots, and other normalized stream events. Each
   tool call is displayed as one evolving human-readable action row keyed
   internally by `toolCallId`, with bounded argument summaries, bounded
-  output/error previews, and final success/failure status. Default Timeline
+  output/error previews, and final success/failure status. Tool rows are dimmed,
+  indented rows such as `↳ read(path="file") — success`; heavy arguments such as
+  full content, patches, diffs, or base64 data are omitted/summarized rather than
+  rendered. Default Timeline
   content must not start with or visually privilege internal ids such as `call_*`,
   `toolCallId`, frame ids, UUIDs, or provider correlation ids. Pressing `d` in
   Timeline may reveal bounded debug IDs for diagnosis without polluting the
@@ -2590,10 +2593,12 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    and tool-call snapshots. It groups `tool_execution_start`,
    `tool_execution_update`, and `tool_execution_end` by `toolCallId` into one
    evolving row/snapshot per tool call at its first-seen position. Its default
-   view is human-action-first: it shows assistant excerpts, tool name, bounded
-   argument summary, bounded output/error previews, and success/failure status
-   without appending an unbounded event firehose or exposing internal call/frame
-   ids. Internal ids are available only through bounded debug/metadata views.
+   view is human-action-first: it shows assistant excerpts, dimmed/indented tool
+   rows such as `↳ read(path="file") — success`, bounded argument summaries,
+   bounded output/error previews, and success/failure status without appending an
+   unbounded event firehose or exposing internal call/frame ids. Heavy arguments
+   such as full content, patches, diffs, and base64 data are omitted/summarized.
+   Internal ids are available only through bounded debug/metadata views.
 10. `message_update` streaming proof covers assistant text preview updates and
     verifies that `thinking_*` content is not rendered. Overlong message/tool
     content must be bounded in memory, renderer-safe, and visibly marked as

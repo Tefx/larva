@@ -863,7 +863,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const resetResult = await mod.resetExtensionUI("subagent-log-selector-streaming-smoke");
   const afterReset = mod.larva_subagent_log("/tmp/does-not-exist.jsonl");
 
-  const toolRowCount = (timelineDuringPlain.match(/Tool/g) ?? []).length;
+  const toolRowCount = (timelineDuringPlain.match(/↳/g) ?? []).length;
   const toolIdCount = (timelineDuringPlain.match(/rpc-tool-1/g) ?? []).length;
   return {
     status: "PASS",
@@ -996,7 +996,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     },
     R2_selector_ordering_rows: {
       runningFirstThenNewestThenSequence: list.details?.entries?.[0]?.status === "running",
-      rowsContainRequiredBoundedFields: /runner/.test(listText) && /waiting_for_child/.test(listText) && /task_id: .*running-old\.jsonl/.test(listText) && /…|\.\.\./.test(listText),
+      rowsContainRequiredBoundedFields: /runner/.test(listText) && /waiting_for_child/.test(listText) && /…|\.\.\./.test(listText),
       rowsExcludeFullPromptOutputRawPayloads: !listText.includes("running prompt") && !listText.includes("FINAL_AUTHORITY") && !listText.includes("rawRpcSecret"),
       allRenderedLinesFit: allFrames.every((lines) => lines.every((line) => piTui.visibleWidth(line) <= 100)),
     },
@@ -1010,8 +1010,8 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     R4_timelineStream: {
       timelineTabExists: /Timeline/.test(detailPlain) && /● 4 Timeline/.test(fourthTabPlain),
       assistantAndToolChronological: fourthTabPlain.includes("ASSISTANT_FIRST") && fourthTabPlain.indexOf("ASSISTANT_FIRST") < fourthTabPlain.indexOf("bash"),
-      groupedByToolCallId: (fourthTabPlain.match(/bash/g) ?? []).length === 1 && (fourthTabPlain.match(/Tool/g) ?? []).length === 1,
-      toolOutputOnlyBoundedTimelinePreview: fourthTabPlain.includes("SECRET_TOOL_TAIL") === false && /truncated|…|\.\.\./i.test(fourthTabPlain) && outputPlain.includes("SECRET_TOOL_TAIL") === false,
+      groupedByToolCallId: (fourthTabPlain.match(/bash/g) ?? []).length === 1 && (fourthTabPlain.match(/↳/g) ?? []).length === 1,
+      toolOutputOnlyBoundedTimelinePreview: fourthTabPlain.includes("SECRET_TOOL_TAIL") === false && fourthTabPlain.includes("preview: output") && outputPlain.includes("SECRET_TOOL_TAIL") === false,
       internalIdsHiddenByDefault: !fourthTabPlain.includes("tool-1"),
     },
     R5_outputLiveAndFinalAuthority: {

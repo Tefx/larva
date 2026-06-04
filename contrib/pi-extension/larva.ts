@@ -355,6 +355,8 @@ const DEFAULT_SUBAGENT_PRESENTATION_CACHE_CONFIG: SubagentPresentationCacheConfi
 const SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT = 4_000;
 const SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT = 1_200;
 const SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT = 800;
+const SUBAGENT_TIMELINE_ARG_VALUE_LIMIT = 56;
+const SUBAGENT_TIMELINE_TOOL_ROW_LIMIT = 180;
 const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
 const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
@@ -1072,17 +1074,28 @@ function subagentToolDisplayName(snapshot: SubagentToolSnapshot): string {
   return boundedPresentationPreview(name, 32);
 }
 
+function subagentTimelineArgValue(value: unknown): string {
+  if (typeof value === "string") return JSON.stringify(boundedPresentationPreview(value.trim(), SUBAGENT_TIMELINE_ARG_VALUE_LIMIT));
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `<array:${value.length}>`;
+  if (isRecord(value)) return `<object:${Object.keys(value).length}>`;
+  return "<value>";
+}
+
 function subagentToolArgumentSummary(snapshot: SubagentToolSnapshot): string {
   const preview = typeof snapshot.args_preview === "string" ? boundedToolArgsPreview(snapshot.args_preview) : "";
   if (preview.length === 0) return "";
   try {
     const parsed = JSON.parse(preview) as unknown;
     if (isRecord(parsed)) {
+      const heavyKeys = new Set(["content", "contents", "text", "message", "prompt", "edits", "patch", "diff", "data", "file_data", "base64", "designMdBase64"]);
       const priorityKeys = ["path", "file", "command", "query", "pattern", "target", "url", "messageText", "document", "photo", "video"];
-      for (const key of priorityKeys) {
-        const value = parsed[key];
-        if (typeof value === "string" && value.trim().length > 0) return boundedPresentationPreview(JSON.stringify(value.trim()), 72);
-      }
+      const orderedKeys = [...priorityKeys.filter((key) => key in parsed), ...Object.keys(parsed).filter((key) => !priorityKeys.includes(key))].slice(0, 3);
+      const parts = orderedKeys.map((key) => heavyKeys.has(key)
+        ? `${key}=<omitted>`
+        : `${key}=${subagentTimelineArgValue(parsed[key])}`);
+      return boundedPresentationPreview(parts.join(", "), 96);
     }
   } catch {
     // Best-effort human summary only; invalid JSON remains a bounded plain preview.
@@ -1090,11 +1103,14 @@ function subagentToolArgumentSummary(snapshot: SubagentToolSnapshot): string {
   return boundedPresentationPreview(preview, 72);
 }
 
-function subagentToolActionSummary(snapshot: SubagentToolSnapshot): string {
+function subagentToolInvocationSummary(snapshot: SubagentToolSnapshot): string {
   const name = subagentToolDisplayName(snapshot);
   const args = subagentToolArgumentSummary(snapshot);
-  const invocation = args.length > 0 ? `${name}(${args})` : name;
-  return boundedPresentationPreview(`${invocation} — ${snapshot.status}`, 120);
+  return args.length > 0 ? `${name}(${args})` : `${name}()`;
+}
+
+function subagentToolActionSummary(snapshot: SubagentToolSnapshot): string {
+  return boundedPresentationPreview(`${subagentToolInvocationSummary(snapshot)} — ${snapshot.status}`, SUBAGENT_TIMELINE_TOOL_ROW_LIMIT);
 }
 
 function subagentToolDebugId(snapshot: SubagentToolSnapshot): string {
@@ -1385,6 +1401,16 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     ];
   }
 
+  private timelineToolLine(snapshot: SubagentToolSnapshot, contentWidth: number): string {
+    return overlayTruncateLine(selectorThemeFg(this.theme, "dim", `  ↳ ${subagentToolActionSummary(snapshot)}`), contentWidth);
+  }
+
+  private timelineTerminalLine(status: SubagentPresentationStatus, contentWidth: number): string {
+    const token = status === "success" ? "success" : status === "failed" ? "error" : status === "cancelled" ? "warning" : "accent";
+    const marker = status === "success" ? "✓" : status === "failed" ? "✗" : status === "cancelled" ? "⚠" : "•";
+    return overlayTruncateLine(selectorThemeFg(this.theme, token, selectorThemeBold(this.theme, `${marker} ${status}`)), contentWidth);
+  }
+
   private timelinePaneLines(contentWidth: number): string[] {
     const lines = [this.sectionLine("Timeline", contentWidth)];
     const timelineEvents = timelineEventsForEntry(this.entry);
@@ -1396,13 +1422,13 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       if (eventValue.kind === "assistant") {
         lines.push(...this.fieldLines("Assistant", boundedTimelineAssistantEvent(eventValue.text), contentWidth));
       } else if (eventValue.kind === "thinking_hidden") {
-        lines.push(...this.fieldLines("Assistant", "thinking hidden", contentWidth));
+        lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", "~ thinking hidden"), contentWidth));
       } else if (eventValue.kind === "terminal") {
-        lines.push(...this.fieldLines("Terminal", eventValue.status, contentWidth));
+        lines.push(this.timelineTerminalLine(eventValue.status, contentWidth));
       } else {
-        lines.push(...this.fieldLines("Tool", subagentToolActionSummary(eventValue.snapshot), contentWidth));
-        if (eventValue.snapshot.output_preview) lines.push(...this.fieldLines("Preview", `└─ output: ${boundedToolOutputPreview(eventValue.snapshot.output_preview)}`, contentWidth));
-        if (eventValue.snapshot.error_preview) lines.push(...this.fieldLines("Preview", `└─ error: ${boundedToolOutputPreview(eventValue.snapshot.error_preview)}`, contentWidth));
+        lines.push(this.timelineToolLine(eventValue.snapshot, contentWidth));
+        if (eventValue.snapshot.output_preview) lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", `    preview: output ${boundedToolOutputPreview(eventValue.snapshot.output_preview)}`), contentWidth));
+        if (eventValue.snapshot.error_preview) lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", `    preview: error ${boundedToolOutputPreview(eventValue.snapshot.error_preview)}`), contentWidth));
         if (this.eventsDebugIds) lines.push(...this.fieldLines("Debug ID", subagentToolDebugId(eventValue.snapshot), contentWidth));
       }
     }

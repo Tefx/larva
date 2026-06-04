@@ -302,6 +302,64 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
     assert payload["cacheLiveFieldsDropped"] is True
 
 
+def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: Path) -> None:
+    """Timeline rows show bounded args with terminal-safe hierarchy and no heavy payloads."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
+        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\\\[[0-9;]*m`, "g");
+        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const component = new mod.SubagentPresentationLogOverlay({
+          entry: {
+            task_id: "/tmp/readable.jsonl",
+            persona_id: "ux",
+            status: "success",
+            sequence: 1,
+            result_text: "final",
+            error: null,
+            timeline_events: [
+              { kind: "assistant", text: "I will inspect the repo before running the command." },
+              { kind: "tool", toolCallId: "call_SECRET_INTERNAL_ID", snapshot: { toolCallId: "call_SECRET_INTERNAL_ID", name: "bash", status: "success", args_preview: JSON.stringify({ command: "git status --porcelain", content: "SECRET_HEAVY_PAYLOAD_SHOULD_NOT_RENDER" }), output_preview: "clean" } },
+              { kind: "terminal", status: "success" },
+            ],
+          },
+          generation: 1,
+          theme: {
+            fg: (token, text) => token === "dim" ? `\\x1b[2m${text}\\x1b[22m` : token === "success" ? `\\x1b[32m${text}\\x1b[39m` : text,
+            bold: (text) => `\\x1b[1m${text}\\x1b[22m`,
+          },
+          tui: { terminal: { rows: 40 } },
+        });
+        component.handleInput?.("4");
+        const lines = component.render(72);
+        const plain = lines.map(stripAnsi).join("\\n");
+        const toolLine = lines.find((line) => stripAnsi(line).includes("↳ bash(")) ?? "";
+        console.log(JSON.stringify({
+          allLinesFit: lines.every((line) => piTui.visibleWidth(line) <= 72),
+          hasAssistant: plain.includes("Assistant") && plain.includes("inspect the repo"),
+          toolLineIndented: stripAnsi(toolLine).includes("  ↳ bash("),
+          toolLineDim: toolLine.includes("\\x1b[2m"),
+          terminalSuccess: plain.includes("✓ success"),
+          argsVisible: plain.includes('command="git status --porcelain"') && plain.includes("content=<omitted>"),
+          heavyHidden: !plain.includes("SECRET_HEAVY_PAYLOAD") && !plain.includes("call_SECRET_INTERNAL_ID"),
+        }, null, 2));
+        """,
+    )
+
+    assert payload == {
+        "allLinesFit": True,
+        "hasAssistant": True,
+        "toolLineIndented": True,
+        "toolLineDim": True,
+        "terminalSuccess": True,
+        "argsVisible": True,
+        "heavyHidden": True,
+    }
+
+
 def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: Path) -> None:
     """Pin public resume task_id validation codes before child launch."""
 
@@ -761,7 +819,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           expandedText: expanded.content[0].text,
           viewOnlyShape: { ok: compact.ok, view_only: compact.view_only, isError: compact.isError, noTaskId: !("task_id" in compact), noResultText: !("result_text" in compact) },
           detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child", "initial_prompt: final prompt body"].every((needle) => expanded.content[0].text.includes(needle)),
-          rowStatesPresent: ["active alpha", "final beta", "error gamma", "cancelled delta"].every((needle) => compact.content[0].text.includes(needle)),
+          rowStatesPresent: ["RUN alpha", "OK beta", "FAIL gamma", "CANC delta"].every((needle) => compact.content[0].text.includes(needle)),
           pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run") && pendingNewest.content[0].text.includes("initial_prompt: pending initial prompt"),
           viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
           overlayRenderedLines: commandCustomCalls[0].rendered,
@@ -781,10 +839,10 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
             const debugPlain = commandCustomCalls[0].eventsDebugTab.map(stripAnsi).join("\\n");
             const offPlain = commandCustomCalls[0].eventsDebugOffTab.map(stripAnsi).join("\\n");
             const metadataPlain = commandCustomCalls[0].metadataTab.map(stripAnsi).join("\\n");
-            return plain.includes("Tool")
-              && plain.includes('read("contrib/pi-extension/README.md")')
-              && plain.includes("grep")
-              && plain.includes("Preview")
+            return plain.includes("Timeline")
+              && plain.includes('↳ read(path="contrib/pi-extension/README.md")')
+              && plain.includes("↳ grep")
+              && plain.includes("preview: output")
               && plain.includes("45 lines read")
               && plain.includes("press d to show internal tool IDs")
               && !plain.includes("HUMANUNREADABLE_INTERNAL_ID")

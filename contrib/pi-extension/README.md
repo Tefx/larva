@@ -869,8 +869,11 @@ Target panes:
    is displayed as one evolving human-readable action row keyed internally by
    `toolCallId`; start, update, and end frames update that row rather than
    appending an unbounded firehose. The default row is action-first, not
-   identifier-first: `Tool  read("file") — success`, followed by bounded output or
-   error preview lines such as `└─ output: 45 lines read`. Full internal
+   identifier-first: `↳ read(path="file") — success`, dimmed and indented under
+   assistant/terminal rows. Tool arguments are shown by default only as bounded
+   summaries; heavy fields such as full content, patches, diffs, or base64 data
+   are omitted/summarized. Bounded output or error previews appear as subordinate
+   preview rows such as `preview: 45 lines read`. Full internal
    `toolCallId`/frame identifiers are hidden by default because they are debug
    plumbing, not user intent; press `d` in the Timeline pane to reveal bounded
    internal IDs when diagnosing adapter behavior.
