@@ -225,7 +225,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
         const childBin = join(tmpRoot, "fake-pi-child-streaming.mjs");
         await writeFile(childBin, `#!/usr/bin/env node
           import { createInterface } from "node:readline";
-          import { mkdir, writeFile } from "node:fs/promises";
+          import { appendFile, mkdir, writeFile } from "node:fs/promises";
           import { join } from "node:path";
           const root = process.argv[process.argv.length - 1];
           await mkdir(root, { recursive: true });
@@ -238,7 +238,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
             else if (msg.type === "prompt") {
               send({ id: msg.id, success: true });
-              send({ type: "message_update", channel: "assistant", delta: "live assistant only" });
+              await appendFile(sessionFile, JSON.stringify({ type: "message", id: "assistant-session-excerpt-1", timestamp: "2026-06-04T10:00:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "session assistant excerpt only" }] } }) + "\\\\n");
               send({ type: "tool_execution_start", toolCallId: "call_terminal_snapshot", name: "read", args: JSON.stringify({ path: "contrib/pi-extension/README.md" }) });
               send({ type: "tool_execution_update", toolCallId: "call_terminal_snapshot", name: "read", output: "partial output" });
               send({ type: "tool_execution_end", toolCallId: "call_terminal_snapshot", name: "read", success: true, output: "final tool output" });
@@ -258,6 +258,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
         const overlayText = mod.renderSubagentPresentationOverlayForTests({ task_id: result.task_id, expanded: true });
         console.log(JSON.stringify({
           resultStatus: result.status,
+          resultError: result.error,
           finalEntry: {
             status: finalEntry?.status,
             resultText: finalEntry?.result_text,
@@ -267,19 +268,20 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             toolSnapshot: finalEntry?.tool_snapshots?.[0] ?? null,
             timelineKinds: finalEntry?.timeline_events?.map((event) => event.kind) ?? [],
           },
-          overlayTimelineUseful: overlayText.includes("[Timeline]") && overlayText.includes("assistant:") && overlayText.includes("live assistant only") && overlayText.includes("read") && overlayText.includes("final tool output"),
-          overlayTimelineOrdered: overlayText.indexOf("live assistant only") >= 0 && overlayText.indexOf("live assistant only") < overlayText.indexOf("read"),
+          overlayTimelineUseful: overlayText.includes("[Timeline]") && overlayText.includes("assistant:") && overlayText.includes("session assistant excerpt only") && overlayText.includes("read") && overlayText.includes("final tool output"),
+          overlayTimelineOrdered: overlayText.indexOf("session assistant excerpt only") >= 0 && overlayText.indexOf("session assistant excerpt only") < overlayText.indexOf("read"),
           cacheLiveFieldsDropped: cachedEntry !== undefined
             && !("live_assistant_preview" in cachedEntry)
             && !("tool_snapshots" in cachedEntry)
             && !("timeline_events" in cachedEntry)
+            && !("session_assistant_message_ids" in cachedEntry)
             && !("active_tool_state" in cachedEntry)
             && !("raw_rpc_events" in cachedEntry),
         }, null, 2));
         """,
     )
 
-    assert payload["resultStatus"] == "success"
+    assert payload["resultStatus"] == "success", payload.get("resultError")
     assert payload["finalEntry"] == {
         "status": "success",
         "resultText": "final child output",

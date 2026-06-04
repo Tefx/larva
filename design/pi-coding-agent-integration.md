@@ -950,9 +950,9 @@ Persistent cache target:
   parse raw Pi transcripts, write sidecars beside child sessions, or infer entries
   from filesystem history.
 - Live streaming fields are process-local only for this target. Assistant live
-  text previews, normalized timeline events, normalized tool snapshots, active
-  tool state, and raw child RPC event payloads must not be persisted in the
-  adapter cache. The cache sanitizer must drop those fields if they are present
+  text previews, normalized timeline events, exact-session assistant excerpt ids,
+  normalized tool snapshots, active tool state, and raw child RPC event payloads
+  must not be persisted in the adapter cache. The cache sanitizer must drop those fields if they are present
   in memory. In the same parent Pi extension process, terminal presentation
   entries may retain bounded normalized `timeline_events` and `tool_snapshots`
   copied from the running entry so the `Timeline` pane remains useful after
@@ -979,8 +979,11 @@ Live streaming target:
   as shared schema, or injected into model-visible context.
 - `message_update` text deltas may update a process-local live assistant output
   preview and append or merge into a bounded assistant excerpt in the process-local
-  `Timeline`. `thinking_*` deltas must not display thinking content; the overlay
-  may show only a bounded neutral state such as `thinking hidden` if useful.
+  `Timeline`. If real Pi RPC omits assistant `message_update` frames, the adapter
+  may read only the exact active child session file to extract bounded assistant
+  text excerpts for the same process-local Timeline. `thinking_*` deltas must not
+  display thinking content; the overlay may show only a bounded neutral state such
+  as `thinking hidden` if useful.
 - The final `Output` content remains the final `get_last_assistant_text` result
   after child completion. Live assistant text is a realtime preview only and is
   replaced or reconciled by the final result; preserving terminal
@@ -1022,8 +1025,12 @@ Overlay UI contract:
   overlay frame.
 - The overlay is an event-driven live view while open: presentation-log and
   normalized stream mutations notify the open component, which re-reads the
-  selected adapter-local entry and requests a render. This is not timer polling
-  and it still never scans or parses child JSONL.
+  selected adapter-local entry and requests a render. For the currently active
+  child only, the adapter may also read the exact allocated `task_id`/session file
+  already returned by Pi to extract bounded assistant text excerpts for Timeline
+  when RPC does not emit `message_update`. This is not timer polling, does not
+  scan directories, does not parse arbitrary history, and does not make child
+  JSONL resume/provenance authority.
 - Event-driven refresh preserves the active tab, selector/detail mode, selected
   entry, selector cursor, and scroll offset where possible. If the selected entry
   disappears during reset/cleanup, the overlay closes or clears through normal
@@ -2287,8 +2294,9 @@ Prompt identity overlay delta:
   `message_update`, `tool_execution_start`, `tool_execution_update`,
   `tool_execution_end`, and terminal child events such as `agent_end`.
 - Streaming state is not persisted in this target. Cache writes must omit live
-  assistant previews, timeline events, grouped tool-call snapshots, active tool
-  state, and raw child RPC event payloads.
+  assistant previews, timeline events, exact-session assistant excerpt ids,
+  grouped tool-call snapshots, active tool state, and raw child RPC event
+  payloads.
 - Timeline display is chronological and bounded: assistant message excerpts and
   first-seen tool calls share one ordered stream, while start/update/end frames
   update one changing tool row or snapshot per tool call instead of appending an
@@ -2596,8 +2604,9 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
     or internal IDs, event-driven refresh without cursor theft, keyboard
     navigation, `Enter` selecting without closing, and `Esc`/`q` close behavior.
 12. Streaming state is process-local only for this target. Cache roundtrip proof
-    must show live assistant previews, timeline events, grouped tool snapshots,
-    active tool state, and raw child RPC event payloads are not persisted.
+    must show live assistant previews, timeline events, exact-session assistant
+    excerpt ids, grouped tool snapshots, active tool state, and raw child RPC
+    event payloads are not persisted.
 13. The overlay uses substantially more available height on tall terminals through
     terminal-row-aware viewport sizing while preserving stable frame height.
 14. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, `s`, `Enter`, and mouse

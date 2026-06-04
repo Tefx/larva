@@ -770,7 +770,11 @@ While open, the overlay is an event-driven live view over adapter-local
 presentation state. Presentation-log mutations (`running`, progress, final result,
 cancel, failure, or reset) and normalized child RPC stream events notify the open
 component, which re-reads the selected entry from in-memory state and requests a
-render. This is not timer polling and still does not scan or parse child JSONL.
+render. For the currently active child only, the adapter may also read the exact
+allocated `task_id`/session file already returned by Pi to extract bounded
+assistant text excerpts for the Timeline when RPC does not emit `message_update`.
+This is not timer polling, does not scan directories, does not parse arbitrary
+history, and does not make child JSONL resume/provenance authority.
 The component preserves the active tab, selector/detail mode, selected entry,
 selector cursor, and scroll offset where possible; if the selected entry
 disappears during reset, the overlay closes/clears through the normal cleanup
@@ -785,12 +789,13 @@ by scanning child session JSONL files; it is written only from the same
 presentation-log mutations that already drive the live overlay.
 
 Live streaming state is intentionally process-local for this target. Live
-assistant output previews, grouped tool-call snapshots, active tool state, and
-raw child RPC event payloads are not persisted. The cache sanitizer must drop
-live-only fields if they are present in memory. Within the same parent Pi
-extension process, terminal result entries may retain the bounded normalized
-`timeline_events` and `tool_snapshots` copied from the running entry so the
-`Timeline` pane remains useful after success, failure, or cancellation. The
+assistant output previews, exact-session assistant excerpt ids, grouped tool-call
+snapshots, active tool state, and raw child RPC event payloads are not persisted.
+The cache sanitizer must drop live-only fields if they are present in memory.
+Within the same parent Pi extension process, terminal result entries may retain
+the bounded normalized `timeline_events` and `tool_snapshots` copied from the
+running entry so the `Timeline` pane remains useful after success, failure, or
+cancellation. The
 Timeline is chronological presentation state: assistant message excerpts and
 first-seen tool calls share one ordered stream, while tool start/update/end frames
 update the existing tool row instead of creating a firehose. Terminal entries must

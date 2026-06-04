@@ -1600,6 +1600,7 @@ def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() 
         "live_assistant_preview",
         "tool_snapshots",
         "timeline_events",
+        "session_assistant_message_ids",
         "active_tool_state",
         "raw_rpc_events",
     ):

@@ -150,6 +150,7 @@ type SubagentPresentationLogEntry = {
   live_thinking_hidden?: boolean;
   tool_snapshots?: SubagentToolSnapshot[];
   timeline_events?: SubagentTimelineEvent[];
+  session_assistant_message_ids?: string[];
   active_tool_state?: SubagentActiveToolState;
   raw_rpc_events?: unknown[];
 };
@@ -1128,6 +1129,39 @@ function timelineEventsForEntry(entry: SubagentPresentationLogEntry): SubagentTi
   return boundedSubagentTimelineEvents(events) ?? [];
 }
 
+function assistantTextFromSessionMessage(message: unknown): string | null {
+  if (!isRecord(message) || message.role !== "assistant" || !Array.isArray(message.content)) return null;
+  const textParts = message.content.flatMap((part) => isRecord(part) && part.type === "text" && typeof part.text === "string" ? [part.text] : []);
+  const text = rendererSafeMarkdownSource(textParts.join("\n")).trim();
+  return text.length > 0 ? boundedTimelineAssistantEvent(text) : null;
+}
+
+function ingestAssistantTimelineFromExactSession(entry: SubagentPresentationLogEntry): SubagentPresentationLogEntry {
+  if (entry.task_id === null) return entry;
+  let text: string;
+  try {
+    text = readFileSync(entry.task_id, "utf8");
+  } catch {
+    return entry;
+  }
+  const seen = new Set(entry.session_assistant_message_ids ?? []);
+  let nextEntry = entry;
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim().length === 0) continue;
+    let frame: unknown;
+    try { frame = JSON.parse(line); } catch { continue; }
+    if (!isRecord(frame) || frame.type !== "message") continue;
+    const id = typeof frame.id === "string" && frame.id.length > 0 ? frame.id : `${typeof frame.timestamp === "string" ? frame.timestamp : "unknown"}:${line.length}`;
+    if (seen.has(id)) continue;
+    const assistantText = assistantTextFromSessionMessage(frame.message);
+    if (assistantText === null) continue;
+    seen.add(id);
+    nextEntry = { ...nextEntry, session_assistant_message_ids: Array.from(seen) };
+    nextEntry.timeline_events = appendSubagentTimelineEvent(nextEntry, { kind: "assistant", text: assistantText });
+  }
+  return nextEntry;
+}
+
 type NormalizedSubagentStreamEvent =
   | { kind: "assistant_delta"; text: string }
   | { kind: "thinking_hidden" }
@@ -1682,6 +1716,7 @@ function sanitizeSubagentPresentationCacheEntry(entry: SubagentPresentationLogEn
   delete sanitized.live_assistant_preview;
   delete sanitized.tool_snapshots;
   delete sanitized.timeline_events;
+  delete sanitized.session_assistant_message_ids;
   delete sanitized.active_tool_state;
   delete sanitized.raw_rpc_events;
   delete sanitized.live_thinking_hidden;
@@ -3167,7 +3202,7 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     || (taskId !== null && taskId !== undefined && entry.task_id === taskId && entry.status === "running")
   );
   if (index < 0) return;
-  const entry = { ...retainedSubagentPresentationLog[index] };
+  let entry = ingestAssistantTimelineFromExactSession({ ...retainedSubagentPresentationLog[index] });
   if (eventValue.kind === "assistant_delta") {
     const next = `${entry.live_assistant_preview ?? ""}${eventValue.text}`;
     entry.live_assistant_preview = boundedAssistantPreview(next);
@@ -3234,20 +3269,22 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
       }
     }
   }
+  const preservedWithSessionExcerpts = preserved === null ? null : ingestAssistantTimelineFromExactSession(preserved);
   const statusEntry: Omit<SubagentPresentationLogEntry, "sequence"> = {
     task_id: result.task_id,
     persona_id: result.persona_id,
     status: result.status,
-    mode: presentationMode(input) ?? preserved?.mode,
-    task_preview: presentationTaskPreview(input) ?? preserved?.task_preview,
-    task_prompt: presentationTaskPrompt(input) ?? preserved?.task_prompt,
+    mode: presentationMode(input) ?? preservedWithSessionExcerpts?.mode,
+    task_preview: presentationTaskPreview(input) ?? preservedWithSessionExcerpts?.task_preview,
+    task_prompt: presentationTaskPrompt(input) ?? preservedWithSessionExcerpts?.task_prompt,
     phase: result.status,
     result_text: result.result_text,
     error: result.error,
-    call_id: callId ?? preserved?.call_id,
-    started_at: preserved?.started_at,
-    tool_snapshots: boundedSubagentToolSnapshots(preserved?.tool_snapshots),
-    timeline_events: boundedSubagentTimelineEvents(appendSubagentTimelineEvent({ timeline_events: preserved?.timeline_events } as SubagentPresentationLogEntry, { kind: "terminal", status: result.status })),
+    call_id: callId ?? preservedWithSessionExcerpts?.call_id,
+    started_at: preservedWithSessionExcerpts?.started_at,
+    tool_snapshots: boundedSubagentToolSnapshots(preservedWithSessionExcerpts?.tool_snapshots),
+    timeline_events: boundedSubagentTimelineEvents(appendSubagentTimelineEvent({ timeline_events: preservedWithSessionExcerpts?.timeline_events } as SubagentPresentationLogEntry, { kind: "terminal", status: result.status })),
+    session_assistant_message_ids: preservedWithSessionExcerpts?.session_assistant_message_ids,
     active_tool_state: null,
   };
   appendSubagentPresentationLog(statusEntry);
