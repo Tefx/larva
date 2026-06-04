@@ -252,10 +252,10 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     source = _source()
     body = _function_body(source, "export async function initializeExtension")
 
-    assert "initializeSession(withRuntimeEnv(ctx, env), pi)" in body
+    assert "ensureSessionInitialized(withRuntimeEnv(ctx, env), pi)" in body
     assert 'on?.("session_start"' in body
     assert body.index("registerLarvaPersonaCommand") < body.index('on?.("before_agent_start"')
-    assert body.index("registerTool") < body.index("initializeSession(withRuntimeEnv(ctx, env), pi)")
+    assert body.index("registerTool") < body.index("ensureSessionInitialized(withRuntimeEnv(ctx, env), pi)")
     assert body.index("registerTool") < body.index('on?.("tool_call"')
 
     assert "registerLarvaPersonaCommand(ctx, pi)" in body
@@ -271,10 +271,11 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     session_body = re.search(r"on\?\.\(\"session_start\", async \(_payload: unknown, eventCtx\?: PiContext\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert session_body is not None
     assert "registerLarvaPersonaAutocompleteProvider(runtimeCtx)" in session_body.group("body")
-    assert session_body.group("body").index("registerLarvaPersonaAutocompleteProvider(runtimeCtx)") < session_body.group("body").index("initializeSession(runtimeCtx, pi)")
-    assert 'sessionInitializationPromise = initializeSession(runtimeCtx, pi)' in session_body.group("body")
-    assert 'on?.("before_agent_start", async (payload: unknown)' in body
+    assert session_body.group("body").index("registerLarvaPersonaAutocompleteProvider(runtimeCtx)") < session_body.group("body").index("ensureSessionInitialized(runtimeCtx, pi)")
+    assert "await ensureSessionInitialized(runtimeCtx, pi)" in session_body.group("body")
+    assert 'on?.("before_agent_start", async (payload: unknown, eventCtx?: PiContext)' in body
     assert "await sessionInitializationPromise" in body
+    assert "await ensureSessionInitialized(withRuntimeEnv(eventCtx ?? ctx, env), pi)" in body
     assert "return before_agent_start(payload)" in body
     tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None
@@ -1685,6 +1686,13 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
           if (!options.omitSelect) {{
             ui.select = async (...args) => {{ selectCalls.push(args); return options.selectResult; }};
           }}
+          const session = {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (entry) => sessionEntries.push(entry),
+            addEntry: (entry) => sessionEntries.push(entry),
+            addCustomEntry: (entry) => sessionEntries.push(entry),
+          }};
           const ctx = {{
             env: {{
               LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
@@ -1693,16 +1701,15 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             }},
             ui: options.omitUi ? undefined : ui,
             modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return options.modelUnavailable ? null : {{ id: "model" }}; }} }},
-            session: {{
-              entries: sessionEntries,
-              getEntries: () => sessionEntries,
-              appendEntry: (entry) => sessionEntries.push(entry),
-              addEntry: (entry) => sessionEntries.push(entry),
-              addCustomEntry: (entry) => sessionEntries.push(entry),
-            }},
+            session: options.omitSession ? undefined : session,
           }};
-          await mod.initializeExtension(ctx, pi);
-          if (typeof handlers.session_start === "function") await handlers.session_start({{ entries: sessionEntries }}, ctx);
+          if (options.samePiAsCtx) {{
+            Object.assign(ctx, pi);
+            await mod.initializeExtension(ctx);
+          }} else {{
+            await mod.initializeExtension(ctx, pi);
+          }}
+          if (!options.skipSessionStart && typeof handlers.session_start === "function") await handlers.session_start({{ entries: sessionEntries }}, ctx);
           return {{ mod, ctx, pi, commands, tools, handlers, sessionEntries, statuses, notifications, activeToolCalls, modelCalls, sentUserMessages, confirmations, selectCalls }};
         }}
 
@@ -1782,6 +1789,75 @@ def test_active_persona_session_restore_uses_latest_commit_without_rewriting_ses
     assert any(status == ["larva: python"] for status in payload["statuses"])
     assert any(call[:3] == ["find", "provider", "model"] for call in payload["modelCalls"])
     assert "read" in payload["activeTools"]
+
+
+def test_active_persona_session_restore_runs_on_extension_reload_without_session_start_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          customType: "larva-active-persona-commit",
+          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness({}, { sessionEntries: [restoreEntry], samePiAsCtx: true, skipSessionStart: true });
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          statuses: harness.statuses,
+          activeTools: harness.activeToolCalls.at(-1),
+          sessionEntries: harness.sessionEntries,
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert "read" in payload["activeTools"]
+    assert len([entry for entry in payload["sessionEntries"] if entry.get("customType") == "larva-active-persona-commit"]) == 1
+
+
+def test_active_persona_session_restore_before_agent_start_uses_event_ctx_without_session_start_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          customType: "larva-active-persona-commit",
+          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness({}, { samePiAsCtx: true, skipSessionStart: true, omitSession: true });
+        const eventEntries = [restoreEntry];
+        const eventCtx = {
+          ...harness.ctx,
+          session: {
+            entries: eventEntries,
+            getEntries: () => eventEntries,
+            appendEntry: (entry) => eventEntries.push(entry),
+          },
+        };
+        const before = await harness.handlers.before_agent_start({ systemPrompt: "Base prompt" }, eventCtx);
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          before,
+          statuses: harness.statuses,
+          eventEntries,
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert "Prompt for python" in payload["before"]["systemPrompt"]
+    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert payload["eventEntries"] == [
+        {
+            "customType": "larva-active-persona-commit",
+            "details": {
+                "schema_version": 1,
+                "persona_id": "python",
+                "spec_digest": "sha256:python",
+                "source": "slash-command",
+                "committed_at": "2026-06-04T00:00:00.000Z",
+            },
+        }
+    ]
 
 
 def test_active_persona_session_restore_explicit_startup_persona_wins_behavior(tmp_path: Path) -> None:

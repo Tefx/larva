@@ -370,6 +370,7 @@ let agentPersonaSwitchSucceededInChain = false;
 let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 let sessionInitializationPromise: Promise<void> | null = null;
+const initializedPiSessionEntryCounts = new WeakMap<object, number>();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
@@ -4431,6 +4432,16 @@ function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefi
   }
 }
 
+async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void> {
+  const sessionIdentity = typeof ctx.session === "object" && ctx.session !== null ? ctx.session : null;
+  const entryCount = sessionEntries(ctx).length;
+  if (sessionIdentity !== null && initializedPiSessionEntryCounts.get(sessionIdentity) === entryCount) return;
+  const initialization = initializeSession(ctx, pi);
+  sessionInitializationPromise = initialization;
+  await initialization;
+  if (sessionIdentity !== null) initializedPiSessionEntryCounts.set(sessionIdentity, entryCount);
+}
+
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
@@ -4562,22 +4573,19 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     execute: async (_toolCallId, input) => larva_subagent_sessions(input),
   });
   registerAgentPersonaSwitchTools(ctx, pi);
-  if (pi !== ctx) {
-    sessionInitializationPromise = initializeSession(withRuntimeEnv(ctx, env), pi);
-    await sessionInitializationPromise;
-  }
+  await ensureSessionInitialized(withRuntimeEnv(ctx, env), pi);
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     registerLarvaPersonaAutocompleteProvider(runtimeCtx);
     await resetExtensionUI("session_start");
-    sessionInitializationPromise = initializeSession(runtimeCtx, pi);
-    await sessionInitializationPromise;
+    await ensureSessionInitialized(runtimeCtx, pi);
   });
   for (const lifecycleEvent of ["shutdown", "session_end", "exit"]) {
     pi.on?.(lifecycleEvent, async () => resetExtensionUI(lifecycleEvent));
   }
-  pi.on?.("before_agent_start", async (payload: unknown) => {
+  pi.on?.("before_agent_start", async (payload: unknown, eventCtx?: PiContext) => {
     if (sessionInitializationPromise !== null) await sessionInitializationPromise;
+    await ensureSessionInitialized(withRuntimeEnv(eventCtx ?? ctx, env), pi);
     return before_agent_start(payload);
   });
   pi.on?.("tool_call", (payload: unknown) => {
