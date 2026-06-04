@@ -249,6 +249,7 @@ type PiUi = {
   select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
 };
 type PiApi = {
+  appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
   setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
@@ -2483,7 +2484,8 @@ function resolveAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode {
   return isAgentPersonaSwitchMode(envMode) ? envMode : "off";
 }
 
-function appendSessionCustomEntry(ctx: PiContext, customType: string, data: Record<string, unknown>): void {
+function appendSessionCustomEntry(ctx: PiContext, customType: string, data: Record<string, unknown>, pi?: PiApi): void {
+  if (typeof pi?.appendEntry === "function") { pi.appendEntry(customType, data); return; }
   if (typeof ctx.appendEntry === "function") { ctx.appendEntry(customType, data); return; }
   const session = ctx.session;
   if (!session) return;
@@ -2508,14 +2510,14 @@ function latestStoredActivePersonaCommit(ctx: PiContext): { personaId: string; s
   return null;
 }
 
-function appendActivePersonaCommitEntry(ctx: PiContext, envelope: PersonaEnvelope, source: ActivePersonaCommitSource): void {
+function appendActivePersonaCommitEntry(ctx: PiContext, pi: PiApi, envelope: PersonaEnvelope, source: ActivePersonaCommitSource): void {
   appendSessionCustomEntry(ctx, "larva-active-persona-commit", {
     schema_version: 1,
     persona_id: envelope.persona_id,
     spec_digest: envelope.spec_digest,
     source,
     committed_at: new Date().toISOString(),
-  });
+  }, pi);
 }
 
 function setAgentPersonaSwitchMode(mode: AgentPersonaSwitchMode): void {
@@ -2583,7 +2585,7 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
         return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-mode off|ask|auto") };
       }
       setAgentPersonaSwitchMode(mode);
-      appendSessionCustomEntry(runtimeCtx, "larva-agent-persona-switch-mode", { mode, source: "slash-command" });
+      appendSessionCustomEntry(runtimeCtx, "larva-agent-persona-switch-mode", { mode, source: "slash-command" }, pi);
       if (agentPersonaToolsAllowed()) registerAgentPersonaSwitchTools(runtimeCtx, pi);
       const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi);
       if (exposureError !== null) {
@@ -2812,7 +2814,7 @@ async function commitPersonaInternal(
     state.envelope = envelope;
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
     state.piModel = model;
-    if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, envelope, sessionCommitSource);
+    if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
     await setStatus(ctx);
     return { ok: true, envelope };
   } catch (caught) {
@@ -2961,8 +2963,8 @@ function boundedOptionalString(value: unknown, limit: number): string | undefine
   return Array.from(trimmed).slice(0, limit).join("");
 }
 
-function appendPersonaSwitchAudit(ctx: PiContext, details: Record<string, unknown>): void {
-  appendSessionCustomEntry(ctx, "larva-agent-persona-switch-audit", details);
+function appendPersonaSwitchAudit(ctx: PiContext, pi: PiApi, details: Record<string, unknown>): void {
+  appendSessionCustomEntry(ctx, "larva-agent-persona-switch-audit", details, pi);
 }
 
 const LARVA_PERSONA_SWITCH_CONTINUATION_MARKER = "[Larva-generated continuation after persona switch]";
@@ -3015,21 +3017,21 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   };
   if (mode === "off") {
     const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_OFF", "Larva agent persona self-switch mode is off.");
-    appendPersonaSwitchAudit(ctx, { ...auditBase, error_code: larvaError.code });
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
   if (!personaId || !reason) {
     const larvaError = error("LARVA_BAD_INPUT", "larva_persona_switch requires persona_id and a non-empty reason.");
-    appendPersonaSwitchAudit(ctx, { ...auditBase, error_code: larvaError.code });
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
   if (agentPersonaSwitchSucceededInChain) {
     const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_LIMIT", "At most one successful self-switch is allowed for one user request chain.");
-    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", error_code: larvaError.code });
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
   if (fromPersona === personaId) {
-    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: false });
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: false });
     return switchToolSuccess(`Larva persona already active: ${personaId}`, { persona_id: personaId, committed: false }, false);
   }
   let approved = mode === "auto";
@@ -3047,16 +3049,16 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   }
   if (!approved) {
     const larvaError = error("LARVA_BAD_INPUT", "Larva persona switch was not approved.");
-    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: larvaError.code });
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
   const committed = await commitPersonaWithOptions(personaId, ctx, pi, { sessionCommitSource: "self-switch" });
   if (!committed.ok) {
-    appendPersonaSwitchAudit(ctx, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, error_code: committed.error.code });
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, error_code: committed.error.code });
     return switchToolFailure(committed.error);
   }
   agentPersonaSwitchSucceededInChain = true;
-  appendPersonaSwitchAudit(ctx, {
+  appendPersonaSwitchAudit(ctx, pi, {
     source: "tool",
     mode,
     from_persona_id: fromPersona,

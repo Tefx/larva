@@ -1890,7 +1890,21 @@ def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behav
         }});
         const sessionFile = manager.getSessionFile();
         const statuses = [];
-        const ctx = {{
+        const handlers = {{}};
+        const commands = {{}};
+        const pi = {{
+          appendEntry: (customType, data) => manager.appendCustomEntry(customType, data),
+          getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: (nameOrCommand, maybeOptions) => {{
+            if (typeof nameOrCommand === "string") commands[nameOrCommand] = maybeOptions;
+            else commands[nameOrCommand.name] = nameOrCommand;
+          }},
+          registerTool: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+        const eventCtx = {{
           env: {{
             LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             LARVA_PI_INTERACTIVE_TUI: "1",
@@ -1898,16 +1912,11 @@ def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behav
           ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
           modelRegistry: {{ find: async () => {{ return {{ id: "model" }}; }} }},
           sessionManager: manager,
-          appendEntry: (customType, data) => manager.appendCustomEntry(customType, data),
-          getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
-          setActiveTools: async () => true,
-          setModel: async () => true,
-          registerCommand: () => undefined,
-          registerTool: () => undefined,
-          on: () => undefined,
         }};
-        await mod.initializeExtension(ctx);
-        const committed = await mod.commitPersona("python", ctx, ctx);
+        await mod.initializeExtension(pi);
+        await handlers.session_start?.({{ reason: "startup" }}, eventCtx);
+        const command = commands["larva-persona"];
+        const committed = await (command.handler ?? command.options?.handler)("python", eventCtx);
         const reopened = SessionManager.open(sessionFile);
         console.log(JSON.stringify({{
           committed,
@@ -1923,7 +1932,7 @@ def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behav
     assert payload["entries"][-1]["customType"] == "larva-active-persona-commit"
     assert payload["entries"][-1]["data"]["persona_id"] == "python"
     assert payload["entries"][-1]["data"]["spec_digest"] == "sha256:python"
-    assert payload["entries"][-1]["data"]["source"] == "api"
+    assert payload["entries"][-1]["data"]["source"] == "slash-command"
 
 
 def test_active_persona_session_restore_from_real_pi_session_manager_reopen_behavior(tmp_path: Path) -> None:
@@ -1961,14 +1970,8 @@ def test_active_persona_session_restore_from_real_pi_session_manager_reopen_beha
         const modelCalls = [];
         const commands = {{}};
         const tools = {{}};
-        const ctx = {{
-          env: {{
-            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
-            LARVA_PI_INTERACTIVE_TUI: "1",
-          }},
-          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
-          modelRegistry: {{ find: async (...args) => {{ modelCalls.push(args); return {{ id: "model" }}; }} }},
-          sessionManager: reopened,
+        const handlers = {{}};
+        const pi = {{
           appendEntry: (customType, data) => reopened.appendCustomEntry(customType, data),
           getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
           setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
@@ -1978,9 +1981,19 @@ def test_active_persona_session_restore_from_real_pi_session_manager_reopen_beha
             else commands[nameOrCommand.name] = nameOrCommand;
           }},
           registerTool: (tool) => {{ tools[tool.name] = tool; }},
-          on: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
         }};
-        await mod.initializeExtension(ctx);
+        const eventCtx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INTERACTIVE_TUI: "1",
+          }},
+          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
+          modelRegistry: {{ find: async (...args) => {{ modelCalls.push(args); return {{ id: "model" }}; }} }},
+          sessionManager: reopened,
+        }};
+        await mod.initializeExtension(pi);
+        await handlers.session_start?.({{ reason: "startup" }}, eventCtx);
         console.log(JSON.stringify({{
           envelope: mod.getActiveEnvelope(),
           statuses,
