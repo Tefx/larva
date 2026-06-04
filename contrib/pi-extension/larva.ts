@@ -312,6 +312,7 @@ type PersonaListInFlight = { key: string; promise: Promise<PersonaCandidate[] | 
 
 const CLI_TIMEOUT_MS = 10_000;
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
+const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 75;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
 const LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE = "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE";
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
@@ -2257,6 +2258,40 @@ async function cachedPersonaList(ctx?: { env?: RuntimeEnv }): Promise<BridgeList
   return refreshPersonaListInBackground(env, key);
 }
 
+async function awaitPersonaListWithHotPathBudget(promise: Promise<PersonaCandidate[] | null>): Promise<PersonaCandidate[] | null> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(null), PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS);
+    void promise
+      .then((items) => resolve(items))
+      .catch(() => resolve(null))
+      .finally(() => clearTimeout(timeout));
+  });
+}
+
+async function cachedPersonaListHotPath(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[]> {
+  const env = currentEnv(ctx);
+  const key = personaListCacheKey(env);
+  const now = personaCompletionClock();
+  if (personaListCache !== null && isPersonaListCacheFresh(personaListCache, key, now)) return clonePersonaCandidates(personaListCache.items);
+
+  const memoryStale = personaListCache?.key === key ? personaListCache : null;
+  if (memoryStale !== null) {
+    void refreshPersonaListInBackground(env, key);
+    return clonePersonaCandidates(memoryStale.items);
+  }
+
+  const diskStale = await readPersonaCandidateDiskCache(env, key);
+  if (diskStale !== null) {
+    personaListCache = { key, fetchedAtMs: diskStale.fetchedAtMs, items: clonePersonaCandidates(diskStale.items) };
+    if (!isPersonaListCacheFresh(diskStale, key, now)) void refreshPersonaListInBackground(env, key);
+    return clonePersonaCandidates(diskStale.items);
+  }
+
+  const inFlight = personaListInFlight?.key === key ? personaListInFlight.promise : refreshPersonaListInBackground(env, key);
+  const quickRefresh = await awaitPersonaListWithHotPathBudget(inFlight);
+  return quickRefresh === null ? [] : clonePersonaCandidates(quickRefresh);
+}
+
 export function resetPersonaCompletionCache(): void {
   personaListCache = null;
   personaListInFlight = null;
@@ -2295,8 +2330,7 @@ function normalizeListItem(item: unknown): BridgeListItem | null {
 }
 
 async function completePersonaMentionIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[] | null> {
-  const personas = await cachedPersonaList(ctx);
-  if (personas === null) return null;
+  const personas = await cachedPersonaListHotPath(ctx);
   const query = prefix.toLocaleLowerCase();
   const ranked = personas
     .map((persona, index) => ({ persona, index, idLower: persona.id.toLocaleLowerCase() }))
@@ -2316,8 +2350,7 @@ async function completePersonaMentionIds(prefix = "", ctx?: { env?: RuntimeEnv }
 }
 
 export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[] | null> {
-  const personas = await cachedPersonaList(ctx);
-  if (personas === null) return null;
+  const personas = await cachedPersonaListHotPath(ctx);
   const query = prefix.toLocaleLowerCase();
   const ranked = personas
     .map((persona, index) => ({ persona, index, idLower: persona.id.toLocaleLowerCase() }))
@@ -3058,13 +3091,13 @@ async function openEnhancedPersonaSelector(ctx: PiContext, personas: BridgeListI
 }
 
 export async function openPersonaSelector(ctx: PiContext): Promise<string | null> {
-  const personas = await listPersonas(ctx);
+  const personas = await cachedPersonaListHotPath(ctx);
   if (personas.length === 0) throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
   const enhanced = await openEnhancedPersonaSelector(ctx, personas);
   if (enhanced.handled) return enhanced.selected;
   const options = personas.map((persona) => ({ id: persona.id, label: persona.id, description: persona.description ?? persona.model }));
   if (ctx.ui?.select) {
-    const selected = await ctx.ui.select("Select Larva persona", options.map((option) => option.id));
+    const selected = await ctx.ui.select("Select Larva persona", options);
     if (typeof selected === "string") return selected;
     if (isRecord(selected) && typeof selected.id === "string") return selected.id;
   }
