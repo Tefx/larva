@@ -126,7 +126,10 @@ Launch failure rules:
   preflight check using the same Larva CLI argv prefix later passed to the
   extension. Failure exits before Pi starts with `LARVA_PERSONA_NOT_FOUND`.
 - Initial persona commit happens during Pi extension initialization before the
-  first user prompt, selector, or `larva: none` status is exposed.
+  first user prompt, selector, or `larva: none` status is exposed. If no explicit
+  initial persona is supplied while an existing Pi session is opened/resumed or
+  the extension is reloaded, the extension may restore the latest adapter-local
+  active persona commit stored in that Pi session.
 - Tool-policy file parsing and validation happen inside the Pi extension. For
   initial `--persona`, unreadable, malformed, or structurally invalid policy is
   fatal: the extension writes `larva pi: LARVA_POLICY_INVALID: <message>` to
@@ -236,6 +239,55 @@ If any step fails, the previous active persona, model, and tool rules remain in
 effect. The command returns a user-visible error with one of these stable codes:
 `LARVA_BAD_INPUT`, `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
 `LARVA_POLICY_INVALID`, or `LARVA_TOOL_ENUMERATION_FAILED`.
+
+### Session-local active persona restore
+
+Active persona choice is represented as an adapter-local Pi session custom entry,
+not as PersonaSpec data and not as shared opifex contract data. After each
+successful persona commit, the extension appends a versioned entry:
+
+```json
+{
+  "customType": "larva-active-persona-commit",
+  "details": {
+    "schema_version": 1,
+    "persona_id": "frontend-engineer",
+    "spec_digest": "sha256:...",
+    "source": "startup|slash-command|selector|self-switch",
+    "committed_at": "2026-06-04T00:00:00.000Z"
+  }
+}
+```
+
+This entry records only the session's selected persona id and diagnostic digest.
+The Larva registry remains the source of truth for PersonaSpec content. On
+restore, the extension resolves the stored `persona_id` against the current
+registry and reruns the full commit pipeline: model resolution, `pi.setModel`,
+tool-policy filtering, active tool update, prompt-overlay state, and status. It
+must not restore by assigning `state.envelope` directly.
+
+Restore precedence is:
+
+```text
+explicit --persona / LARVA_PI_INITIAL_PERSONA_ID
+  > latest valid larva-active-persona-commit in ctx.session
+  > no active persona
+```
+
+An explicit startup persona wins over session state and writes a new session
+commit entry after success. Digest drift is non-fatal: if the stored digest
+differs from the current registry digest, restore uses the current registry
+PersonaSpec and may notify that the persona definition changed. If the stored
+persona no longer exists, the mapped model is unavailable, policy is invalid, or
+active-tool update fails, session restore is non-fatal: the extension leaves no
+active persona, shows restore-unavailable status/notification, and never silently
+claims the previous persona. Explicit `--persona` failures keep the existing fatal
+startup behavior.
+
+Session restore does not parse Larva prompt blocks, scan arbitrary JSONL history,
+read `/larva-log` cache, use `larva_subagent` task ids, mutate PersonaSpec, or
+restore one-turn agent self-switch guards. `/larva-mode` continues to use its own
+session-level mode entry and is restored independently.
 
 ### Agent persona self-switch
 

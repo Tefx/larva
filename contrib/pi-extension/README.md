@@ -14,11 +14,13 @@ Use the Larva launcher instead of loading this extension manually:
 larva pi --persona python-senior --agent-persona-switch ask -- <pi args...>
 ```
 
-`--persona` is optional. When omitted, Pi starts with no active Larva persona
-until one is selected in the session. `--agent-persona-switch off|ask|auto` is
-also optional and defaults to `off`; the same default can be supplied through
-`LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`. Arguments after `larva pi` are
-forwarded to the real Pi executable.
+`--persona` is optional. When omitted for a fresh Pi session, Pi starts with no
+active Larva persona until one is selected in the session. When omitted while
+opening an existing Pi `--session`, resuming, or reloading, the extension restores
+the last active Larva persona recorded in that Pi session when possible.
+`--agent-persona-switch off|ask|auto` is also optional and defaults to `off`; the
+same default can be supplied through `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`.
+Arguments after `larva pi` are forwarded to the real Pi executable.
 
 The launcher loads the bundled extension with Pi's documented extension flag,
 preferring `-e` when supported and otherwise using `--extension`. It must not
@@ -266,6 +268,39 @@ or, when no persona is active:
 ```text
 larva: none
 ```
+
+### Session persona restore
+
+Active persona selection is Pi-session-local adapter state. Successful persona
+commits append a versioned custom session entry, `larva-active-persona-commit`,
+containing the selected `persona_id`, current `spec_digest`, source, and commit
+time. This entry records the user's/session's active persona choice; it is not a
+PersonaSpec field, not an opifex/shared-contract surface, not a prompt block, and
+not a child-session sidecar.
+
+Startup restore precedence is:
+
+```text
+explicit --persona / LARVA_PI_INITIAL_PERSONA_ID
+  > latest larva-active-persona-commit in the Pi session
+  > no active persona
+```
+
+An explicit startup persona always wins over any stored session persona and writes
+a new commit entry after a successful commit. Session restore never directly
+mutates `state.envelope`; it reruns the same commit pipeline as `/larva-persona`
+so prompt injection, model selection, tool policy, active tools, and status are
+reconstructed together. The stored digest is diagnostic only: if the registry's
+current PersonaSpec digest differs, restore uses the current registry definition
+for the stored `persona_id`.
+
+If explicit startup persona commit fails, launcher startup remains fatal as
+documented above. If session restore fails because the stored persona is missing
+or current model/policy/tool activation fails, startup is non-fatal: the extension
+keeps no active persona, shows restore-unavailable status/notification, and does
+not silently claim the old persona. Restore does not recover one-turn
+self-switch guards, does not parse prompt blocks, does not scan JSONL history,
+and does not use `/larva-log` cache or `larva_subagent` task ids as authority.
 
 ### Agent persona self-switch
 
