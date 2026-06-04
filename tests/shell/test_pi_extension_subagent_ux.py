@@ -340,12 +340,16 @@ def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: 
         component.handleInput?.("4");
         const lines = component.render(72);
         const plain = lines.map(stripAnsi).join("\\n");
+        const strippedLines = lines.map(stripAnsi);
         const toolLine = lines.find((line) => stripAnsi(line).includes("↳ bash(")) ?? "";
+        const toolLineIndex = strippedLines.findIndex((line) => line.includes("↳ bash("));
         console.log(JSON.stringify({
           allLinesFit: [...promptLines, ...lines].every((line) => piTui.visibleWidth(line) <= 72),
           promptFormatted: promptPlain.includes("1. read docs") && promptPlain.includes("2. grep tests") && promptPlain.includes("3. run git status"),
           hasAssistant: plain.includes("assistant") && plain.includes("inspect the repo"),
           assistantMarkdownPlain: plain.includes("# Assistant Heading") && plain.includes("- inspect the repo") && plain.includes("```text") && !plain.includes("• inspect the repo"),
+          assistantLabelNoMarkup: plain.includes("• assistant") && !plain.includes("<b>") && !plain.includes("</b>"),
+          noBlankGapBeforeTool: toolLineIndex > 0 && strippedLines[toolLineIndex - 1].trim().length > 0,
           toolLineIndented: stripAnsi(toolLine).includes("  ↳ bash("),
           toolLineDim: toolLine.includes("\\x1b[2m"),
           terminalSuccess: plain.includes("✓ success"),
@@ -360,6 +364,8 @@ def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: 
         "promptFormatted": True,
         "hasAssistant": True,
         "assistantMarkdownPlain": True,
+        "assistantLabelNoMarkup": True,
+        "noBlankGapBeforeTool": True,
         "toolLineIndented": True,
         "toolLineDim": True,
         "terminalSuccess": True,

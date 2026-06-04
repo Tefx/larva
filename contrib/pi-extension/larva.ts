@@ -1424,7 +1424,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private timelineAssistantLines(text: string, contentWidth: number): string[] {
     // Timeline excerpts are compact chronological previews. Do not Markdown-render
     // partial assistant fragments here; the Output pane owns Markdown rendering.
-    const prefix = selectorThemeFg(this.theme, "accent", selectorThemeBold("• assistant "));
+    const prefix = selectorThemeFg(this.theme, "accent", "• assistant ");
     const valueWidth = Math.max(1, contentWidth - visibleWidth(prefix));
     return renderRendererSafePlainLines(boundedTimelineAssistantEvent(text), valueWidth)
       .map((line, index) => overlayTruncateLine(`${index === 0 ? prefix : " ".repeat(visibleWidth(prefix))}${line}`, contentWidth));
@@ -1447,8 +1447,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       lines.push(...this.fieldLines("Timeline", "No normalized child stream events observed.", contentWidth));
       return lines;
     }
-    for (const [index, eventValue] of timelineEvents.entries()) {
-      if (index > 0) lines.push("");
+    for (const eventValue of timelineEvents) {
       if (eventValue.kind === "assistant") {
         lines.push(...this.timelineAssistantLines(eventValue.text, contentWidth));
       } else if (eventValue.kind === "thinking_hidden") {
