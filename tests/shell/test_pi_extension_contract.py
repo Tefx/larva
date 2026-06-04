@@ -2482,6 +2482,10 @@ def test_agent_persona_switch_ask_approval_rejection_no_ui_and_cancel_preserve_s
 
     assert payload["approved"]["status"] == "success"
     assert payload["approved"].get("terminate") is True
+    assert payload["approved"]["details"]["active_persona"] == "python"
+    assert payload["approved"]["details"]["previous_persona"] == "architect"
+    assert payload["approved"]["details"]["spec_digest"] == "sha256:python"
+    assert payload["approved"]["details"]["commit_source"] == "self-switch"
     assert payload["approvedEnvelope"]["persona_id"] == "python"
     assert len(payload["approvedConfirmations"]) == 1
     for key in ("rejected", "noUi", "cancelled"):
@@ -2567,6 +2571,10 @@ def test_agent_persona_switch_same_persona_no_op_no_termination_or_extra_commit_
 
     assert payload["result"]["status"] == "success"
     assert payload["result"].get("terminate") is False
+    assert payload["result"]["details"]["active_persona"] == "architect"
+    assert payload["result"]["details"]["previous_persona"] == "architect"
+    assert payload["result"]["details"]["spec_digest"] == "sha256:architect"
+    assert payload["result"]["details"]["commit_source"] == "self-switch"
     assert payload["modelCallDelta"] == 0
     assert payload["finalEnvelope"]["persona_id"] == "architect"
 
@@ -2645,9 +2653,13 @@ def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior
     assert payload["result"]["status"] == "success"
     assert payload["result"].get("terminate") is True
     assert payload["finalEnvelope"]["persona_id"] == "python"
+    assert payload["result"]["details"]["active_persona"] == "python"
+    assert payload["result"]["details"]["previous_persona"] == "architect"
+    assert payload["result"]["details"]["spec_digest"] == "sha256:python"
+    assert payload["result"]["details"]["commit_source"] == "self-switch"
     assert payload["sentUserMessages"] == [
         {
-            "message": "[Larva-generated continuation after persona switch]\nSwitched from architect to python.\nReason: Python implementation is now required\nHandoff: Implement the agreed test boundary\nContinue the user's original task under the new persona.\nDo not switch again unless newly justified.",
+            "message": "[Larva-generated continuation after persona switch]\nSwitched from architect to python.\nReason: Python implementation is now required\nHandoff: Implement the agreed test boundary\nYou are now operating under the NEW active Larva persona.\nTreat the persona switch as a hard boundary: the new persona's instructions now take priority.\nIf any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.\nBefore taking further action, follow the new persona's opening/startup protocol if it defines one.\nContinue the user's original task under the new persona.\nDo not switch again unless newly justified.",
             "options": {"deliverAs": "followUp"},
         }
     ]

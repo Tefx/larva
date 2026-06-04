@@ -339,12 +339,16 @@ Mode contract:
   approval.
 
 A successful model-facing switch returns `terminate=true` so the old persona turn
-stops before any continuation under the new prompt. If `continue_task` is true,
+stops before any continuation under the new prompt. Success details include
+generic active-persona proof: `previous_persona`, `active_persona`,
+`spec_digest`, and `commit_source: "self-switch"`. If `continue_task` is true,
 the extension sends an explicit Larva-generated Pi follow-up (`deliverAs: "followUp"`)
-containing the reason and handoff; this continuation is auditable
-runtime text and must not be represented as human-authored input. The model-facing
-surface remains the facade tool only; there is no direct model-facing
-`commitPersona` tool.
+containing the reason, handoff, and generic hard-boundary text: the new persona's
+instructions take priority, and any old execution plan that conflicts with the
+new persona's startup or decision protocol must be discarded. This continuation
+is auditable runtime text and must not be represented as human-authored input.
+The model-facing surface remains the facade tool only; there is no direct
+model-facing `commitPersona` tool.
 
 Child subagent Pi processes start with `LARVA_PI_AGENT_PERSONA_SWITCH=off` even
 when the parent session is `ask` or `auto`. The current implementation does not

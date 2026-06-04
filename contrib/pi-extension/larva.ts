@@ -2965,6 +2965,17 @@ function switchToolSuccess(text: string, details: Record<string, unknown>, termi
   return { status: "success", content: switchToolText(text), isError: false, terminate, details };
 }
 
+function personaSwitchProof(previousPersona: string | null, activeEnvelope: PersonaEnvelope, committed: boolean): Record<string, unknown> {
+  return {
+    persona_id: activeEnvelope.persona_id,
+    committed,
+    previous_persona: previousPersona,
+    active_persona: activeEnvelope.persona_id,
+    spec_digest: activeEnvelope.spec_digest,
+    commit_source: "self-switch",
+  };
+}
+
 function boundedOptionalString(value: unknown, limit: number): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
@@ -2999,6 +3010,10 @@ function continuationMessage(fromPersona: string, toPersona: string, reason: str
     `Switched from ${fromPersona} to ${toPersona}.`,
     `Reason: ${reason}`,
     `Handoff: ${handoff ?? ""}`,
+    "You are now operating under the NEW active Larva persona.",
+    "Treat the persona switch as a hard boundary: the new persona's instructions now take priority.",
+    "If any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.",
+    "Before taking further action, follow the new persona's opening/startup protocol if it defines one.",
     "Continue the user's original task under the new persona.",
     "Do not switch again unless newly justified.",
   ].join("\n");
@@ -3041,7 +3056,8 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   }
   if (fromPersona === personaId) {
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: false });
-    return switchToolSuccess(`Larva persona already active: ${personaId}`, { persona_id: personaId, committed: false }, false);
+    if (state.envelope === null) return switchToolSuccess(`Larva persona already active: ${personaId}`, { persona_id: personaId, committed: false }, false);
+    return switchToolSuccess(`Larva persona already active: ${personaId}`, personaSwitchProof(fromPersona, state.envelope, false), false);
   }
   let approved = mode === "auto";
   if (mode === "ask") {
@@ -3084,7 +3100,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     await sendUserMessage(continuationMessage(fromPersona ?? "none", personaId, reason, handoff), { deliverAs: "followUp" });
     agentPersonaSwitchPendingFollowUpContinuations += 1;
   }
-  return switchToolSuccess(`Larva persona switched to ${personaId}`, { persona_id: personaId, committed: true }, true);
+  return switchToolSuccess(`Larva persona switched to ${personaId}`, personaSwitchProof(fromPersona, committed.envelope, true), true);
 }
 
 export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ content: PiTextContent[]; details: { status: "success" | "failed"; personas: BridgeListItem[]; error: LarvaError | null }; isError: boolean }> {

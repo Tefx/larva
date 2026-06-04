@@ -147,12 +147,18 @@ message after a successful commit:
 Switched from <old-persona> to <new-persona>.
 Reason: <reason>
 Handoff: <handoff>
+You are now operating under the NEW active Larva persona.
+Treat the persona switch as a hard boundary: the new persona's instructions now take priority.
+If any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.
+Before taking further action, follow the new persona's opening/startup protocol if it defines one.
 Continue the user's original task under the new persona.
 Do not switch again unless newly justified.
 ```
 
 The continuation must be explicit and auditable. It must not pretend to be a new
-human-authored request.
+human-authored request. It is also a generic hard-boundary reminder: the new
+persona's instructions take priority, and any previous execution plan that
+conflicts with the new persona's startup or decision protocol must be discarded.
 
 Recommended first implementation path:
 
@@ -305,7 +311,7 @@ architecture_basis:
     agent switch mode: "Pi session-level state; latest session override, else launcher env, else off"
     user manual switch: "/larva-persona <id>"
     agent self-switch: "larva_persona_switch tool gated by session switch mode"
-    continuation request: "Larva-generated queued message, explicit and auditable"
+    continuation request: "Larva-generated queued message, explicit, auditable, and a generic hard boundary between old and new persona instructions"
 
   service_catalog:
     larva_pi_launcher:
@@ -325,7 +331,7 @@ architecture_basis:
     launch: "larva pi --agent-persona-switch off|ask|auto [--persona <id>] [--] <pi args...>"
     slash_mode: "/larva-mode [off|ask|auto]"
     tool_switch: "larva_persona_switch(persona_id, reason, handoff?, continue_task?)"
-    success: "commit target persona atomically, append audit, terminate old turn, optionally queue continuation"
+    success: "commit target persona atomically, append audit, return active-persona proof, terminate old turn, optionally queue hard-boundary continuation"
     failure: "do not commit; preserve previous persona/model/tools"
     default_mode: "off"
     child_default_mode: "off"
@@ -402,7 +408,7 @@ architecture_basis:
       minimum_liveness_proof: "off rejects switch; auto commits without UI; ask rejects without UI."
 
   resolved_implementation_decisions:
-    continuation_transport: "Use explicit Larva-generated pi.sendUserMessage(..., { deliverAs: 'followUp' }) for first target auto-continuation. The message must be visibly marked as Larva-generated and auditable; do not block implementation on custom-message triggerTurn exploration."
+    continuation_transport: "Use explicit Larva-generated pi.sendUserMessage(..., { deliverAs: 'followUp' }) for first target auto-continuation. The message must be visibly marked as Larva-generated, auditable, and generic hard-boundary text; do not block implementation on custom-message triggerTurn exploration."
     mixed_tool_batch_enforcement: "Require larva_persona_switch to be called alone in tool description and prompt guidance. Runtime enforcement should defensively reject or neutralize sibling tool calls when Pi event ordering exposes enough context; if full sibling visibility is unavailable, the documented single-tool contract plus terminating result is the supported behavior."
     request_chain_identity: "Use a simple in-memory guard for the first target: at most one successful self-switch within the original user turn plus its Larva-generated continuation chain. Persist audit entries for inspection only; do not introduce durable global counters."
     child_policy: "Child Pi processes start with agent self-switch mode off. Do not add inherit/ask/auto child policy in the first target. Revisit only after parent self-switch has runtime proof."
@@ -437,6 +443,6 @@ Suggested order:
 - `ask` mode commits only after UI approval.
 - `ask` mode without UI rejects without commit.
 - `auto` mode commits without UI.
-- Successful model-facing switch returns terminating tool result.
-- Auto-continuation starts a new turn under the new persona prompt.
+- Successful model-facing switch returns terminating tool result with active persona proof (`previous_persona`, `active_persona`, `spec_digest`, `commit_source`).
+- Auto-continuation starts a new turn under the new persona prompt and includes generic hard-boundary text.
 - Child subagent starts with self-switch mode `off` unless a future explicit child policy is added.

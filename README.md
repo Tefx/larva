@@ -268,9 +268,11 @@ bounded read-only `larva_personas(query?, limit?)` discovery tool are exposed, b
 the switch commits only after UI approval and fails safely without UI, rejection,
 cancel, or timeout. In `auto`, those tools are exposed and an allowed switch
 commits without UI approval. A successful autonomous switch returns
-`terminate=true`; if `continue_task` is true, Larva queues an explicit
-`[Larva-generated continuation after persona switch]` follow-up for the new
-persona rather than pretending a human wrote a new request. Child subagent Pi
+`terminate=true` with active persona proof (`previous_persona`, `active_persona`,
+`spec_digest`, `commit_source`); if `continue_task` is true, Larva queues an
+explicit `[Larva-generated continuation after persona switch]` follow-up for the
+new persona with generic hard-boundary text rather than pretending a human wrote a
+new request. Child subagent Pi
 sessions currently start with agent self-switch mode `off`; there is no
 implemented child inherit/ask/auto switch policy, no PersonaSpec/opifex contract
 change, and no direct model-facing `commitPersona` tool.

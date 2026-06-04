@@ -345,14 +345,20 @@ Mode behavior:
 injection surface. `larva_persona_switch` requires a non-empty `reason`; `handoff`
 is optional and bounded. A successful autonomous switch returns a tool result with
 `terminate=true` because the current provider turn started under the old persona
-prompt. If `continue_task` is true, the extension sends an explicit
-Larva-authored follow-up using Pi's follow-up delivery:
+prompt. The success `details` include generic active-persona proof:
+`previous_persona`, `active_persona`, `spec_digest`, and
+`commit_source: "self-switch"`. If `continue_task` is true, the extension sends an
+explicit Larva-authored follow-up using Pi's follow-up delivery:
 
 ```text
 [Larva-generated continuation after persona switch]
 Switched from <old-persona> to <new-persona>.
 Reason: <reason>
 Handoff: <handoff>
+You are now operating under the NEW active Larva persona.
+Treat the persona switch as a hard boundary: the new persona's instructions now take priority.
+If any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.
+Before taking further action, follow the new persona's opening/startup protocol if it defines one.
 Continue the user's original task under the new persona.
 Do not switch again unless newly justified.
 ```
