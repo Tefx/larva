@@ -28,6 +28,7 @@ type LarvaErrorCode =
   | "LARVA_SUBAGENT_LOG_CONFIG_INVALID"
   | "LARVA_AGENT_PERSONA_SWITCH_OFF"
   | "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
+  | "LARVA_PERSONA_CANDIDATE_CACHE_REFRESH_FAILED"
   | "LARVA_CHILD_START_FAILED"
   | "LARVA_CHILD_PROTOCOL_FAILED"
   | "LARVA_CHILD_CANCELLED";
@@ -94,6 +95,11 @@ type PersonaEnvelope = {
 export type PersonaSwitchResult =
   | { ok: true; envelope: PersonaEnvelope }
   | { ok: false; error: LarvaError };
+
+type PersonaCandidateCacheRefreshResult =
+  | { ok: true; refreshed: true; source: typeof PERSONA_CANDIDATE_CACHE_SOURCE; candidates: number; stale_before: number; cache_path: string }
+  | { ok: false; refreshed: true; source: typeof PERSONA_CANDIDATE_CACHE_SOURCE; error: LarvaError; stale_available: boolean; stale_count: number; cache_path: string };
+type PersonaCommandResult = PersonaSwitchResult | PersonaCandidateCacheRefreshResult;
 
 export type ToolPolicyDecision = { action: "allow" } | { action: "deny"; error: LarvaError };
 export type LarvaSubagentInput = { persona_id?: unknown; task?: unknown; task_id?: unknown };
@@ -2200,17 +2206,19 @@ function isPersonaListCacheFresh(cache: PersonaListCache, key: string, now: numb
   return cache !== null && cache.key === key && cache.fetchedAtMs + PERSONA_COMPLETION_CACHE_TTL_MS > now;
 }
 
+async function applyPersonaListRefresh(env: RuntimeEnv, key: string, items: PersonaCandidate[]): Promise<PersonaCandidate[]> {
+  const fetchedAtMs = personaCompletionClock();
+  const cloned = clonePersonaCandidates(items);
+  personaListCache = { key, fetchedAtMs, items: cloned };
+  await writePersonaCandidateDiskCache(env, key, cloned, fetchedAtMs);
+  return cloned;
+}
+
 async function refreshPersonaListInBackground(env: RuntimeEnv, key: string): Promise<PersonaCandidate[] | null> {
   if (personaListInFlight && personaListInFlight.key === key) return personaListInFlight.promise;
   const promise = fetchPersonaList(env)
     .then(async (items) => {
-      if (items !== null) {
-        const fetchedAtMs = personaCompletionClock();
-        const cloned = clonePersonaCandidates(items);
-        personaListCache = { key, fetchedAtMs, items: cloned };
-        await writePersonaCandidateDiskCache(env, key, cloned, fetchedAtMs);
-        return cloned;
-      }
+      if (items !== null) return applyPersonaListRefresh(env, key, items);
       return null;
     })
     .finally(() => {
@@ -2218,6 +2226,41 @@ async function refreshPersonaListInBackground(env: RuntimeEnv, key: string): Pro
     });
   personaListInFlight = { key, promise };
   return promise;
+}
+
+async function personaListStaleOnly(env: RuntimeEnv, key: string): Promise<PersonaListCache | null> {
+  if (personaListCache?.key === key) return { key, fetchedAtMs: personaListCache.fetchedAtMs, items: clonePersonaCandidates(personaListCache.items) };
+  const diskStale = await readPersonaCandidateDiskCache(env, key);
+  if (diskStale === null) return null;
+  return { key, fetchedAtMs: diskStale.fetchedAtMs, items: clonePersonaCandidates(diskStale.items) };
+}
+
+export async function refreshPersonaCandidateCache(ctx?: { env?: RuntimeEnv }): Promise<PersonaCandidateCacheRefreshResult> {
+  const env = currentEnv(ctx);
+  const key = personaListCacheKey(env);
+  const stale = await personaListStaleOnly(env, key);
+  const cachePath = personaCandidateCachePath(env);
+  const items = await fetchPersonaList(env);
+  if (items === null) {
+    return {
+      ok: false,
+      refreshed: true,
+      source: PERSONA_CANDIDATE_CACHE_SOURCE,
+      error: error("LARVA_PERSONA_CANDIDATE_CACHE_REFRESH_FAILED", "Unable to refresh persona candidates from public larva list --json; stale cache retained."),
+      stale_available: stale !== null && stale.items.length > 0,
+      stale_count: stale?.items.length ?? 0,
+      cache_path: cachePath,
+    };
+  }
+  const refreshed = await applyPersonaListRefresh(env, key, items);
+  return {
+    ok: true,
+    refreshed: true,
+    source: PERSONA_CANDIDATE_CACHE_SOURCE,
+    candidates: refreshed.length,
+    stale_before: stale?.items.length ?? 0,
+    cache_path: cachePath,
+  };
 }
 
 async function fetchPersonaList(env: RuntimeEnv): Promise<BridgeListItem[] | null> {
@@ -2773,7 +2816,7 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
   // Static contract token for legacy Pi command shape: name: "larva-persona".
   const baseEnv = currentEnv(ctx);
-  const runPersonaSelectorCommand = async (input: string | undefined, commandCtx?: PiContext): Promise<PersonaSwitchResult> => {
+  const runPersonaSelectorCommand = async (input: string | undefined, commandCtx?: PiContext): Promise<PersonaCommandResult> => {
     const runtimeCtx = withRuntimeEnv(commandCtx ?? ctx, baseEnv);
     const result = await handlePersonaCommand(input, runtimeCtx, pi);
     await notifyPersonaSwitchResult(runtimeCtx, result);
@@ -2865,7 +2908,19 @@ function fatalInitialPersonaStartup(env: RuntimeEnv, personaId: string, larvaErr
   throw larvaError;
 }
 
-async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchResult): Promise<void> {
+function isPersonaCandidateCacheRefreshResult(result: PersonaCommandResult): result is PersonaCandidateCacheRefreshResult {
+  return isRecord(result) && result.refreshed === true;
+}
+
+async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaCommandResult): Promise<void> {
+  if (isPersonaCandidateCacheRefreshResult(result)) {
+    if (result.ok) {
+      await notify(ctx, `Larva persona candidate cache refreshed: ${result.candidates} candidates`, "info");
+      return;
+    }
+    await notify(ctx, `Larva persona candidate cache refresh failed: ${result.error.code}: ${result.error.message} Stale cache retained: ${result.stale_count} candidates.`, "error");
+    return;
+  }
   if (result.ok) {
     await notify(ctx, `Larva persona active: ${result.envelope.persona_id}`, "info");
     return;
@@ -3104,8 +3159,9 @@ export async function openPersonaSelector(ctx: PiContext): Promise<string | null
   return ctx.openSelector ? ctx.openSelector(options) : null;
 }
 
-export async function handlePersonaCommand(input: string | undefined, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaSwitchResult> {
+export async function handlePersonaCommand(input: string | undefined, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaCommandResult> {
   const trimmed = input?.trim() ?? "";
+  if (trimmed === "--refresh-cache") return refreshPersonaCandidateCache(ctx);
   if (trimmed.length > 0) return commitPersonaWithOptions(trimmed, ctx, pi, { sessionCommitSource: "slash-command" });
   if (currentEnv(ctx).LARVA_PI_INTERACTIVE_TUI !== "1") {
     return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selector is interactive TUI only; preserve previousEnvelope") };
