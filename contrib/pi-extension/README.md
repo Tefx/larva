@@ -236,7 +236,8 @@ The extension registers this slash command:
 
 `--refresh-cache` refreshes only the adapter-local persona candidate cache used
 by completion, selector, and `@persona` autocomplete. It does not switch persona,
-model, or active tools. No separate refresh slash command or alias is registered.
+model, or active tools, does not change session state, and is not a model-facing
+LLM tool. No separate refresh slash command or alias is registered.
 
 Switching resolves the target persona through the Larva CLI context supplied by
 the launcher, validates the target model and active policy entry, computes tool
@@ -444,24 +445,29 @@ Completion candidates have Pi's command item shape:
 Performance target:
 
 - The extension keeps a two-tier adapter-local persona candidate cache: process
-  memory and a Pi-owned Larva cache file such as
-  `~/.pi/larva/persona-candidates-cache.json`.
+  memory and a Pi-owned Larva cache file. The default disk path is
+  `~/.pi/larva/persona-candidates-cache.json`; tests may set the absolute-path
+  override `LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`.
 - The cache is generated only from public `larva list --json`; the Pi extension
   must not directly read `~/.larva/registry` for candidate population.
-- Cache entries are prompt-free UI projections containing only `id`,
-  `description`, `model`, `spec_digest`, and `capabilities`.
-- Completion and selector hot paths return memory cache when present, else disk
-  cache when present, and trigger background refresh when data is stale or
-  missing. They must not synchronously wait on slow `larva list --json`.
+- Cache entries are prompt-free UI projections containing exactly `id`,
+  `description`, `model`, `spec_digest`, and `capabilities`. They never contain
+  `prompt` or full PersonaSpec content.
+- Completion, no-argument selector, and `@persona` autocomplete hot paths return
+  memory cache when present, else disk cache when present, and trigger background
+  refresh when data is stale or missing. They must not synchronously wait on slow
+  `larva list --json`.
 - If both caches are empty, the provider returns `null` or a bounded empty result
   compatible with the calling UI and starts background refresh.
 - Background refresh failure preserves stale cache and does not throw through the
   Pi TUI.
 - `/larva-persona --refresh-cache` forces a foreground refresh through public
   `larva list --json`. Success updates memory and disk cache; failure keeps the
-  old cache and reports a bounded failure reason.
+  old cache and reports a bounded failure reason. This option is part of the
+  existing `/larva-persona` command; it is not a new slash command, not an LLM
+  tool, and not a persona/model/tool-policy/session-state change.
 - Tests must be able to reset process-local cache state and redirect disk cache
-  to a temp path.
+  to a temp path via `LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`.
 
 This is substring matching, not fuzzy matching: no edit distance, wildcard,
 regex, nearest-persona guessing, or hidden aliases.

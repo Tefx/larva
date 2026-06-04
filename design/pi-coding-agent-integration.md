@@ -199,11 +199,13 @@ Completion target behavior:
   public `larva list --json` output.
 - Persona candidate discovery uses an adapter-local stale-while-revalidate cache,
   not direct reads from `~/.larva/registry`. The cache has two tiers:
-  process-local memory and an adapter-local disk cache under Pi-owned Larva state
-  such as `~/.pi/larva/persona-candidates-cache.json`.
-- Cache entries are a projection for UI only: `id`, `description`, `model`,
-  `spec_digest`, and `capabilities`. The projection must not include `prompt` or
-  full PersonaSpec content.
+  process-local memory and an adapter-local disk cache. The default disk path is
+  `~/.pi/larva/persona-candidates-cache.json`; tests may redirect it with the
+  absolute-path env seam `LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`.
+- Cache entries are a prompt-free UI projection with exactly these candidate
+  fields: `id`, `description`, `model`, `spec_digest`, and `capabilities`. The
+  projection must not include `prompt`, cache prompt text, or retain full
+  PersonaSpec content.
 - UI hot paths must not synchronously wait for slow `larva list --json`. Completion
   and selector population return memory cache when present, else disk cache when
   present, and trigger a background refresh when data is missing or stale. If no
@@ -214,15 +216,19 @@ Completion target behavior:
   the disk cache. Refresh failure keeps the previous cache and records only
   bounded diagnostics.
 - `/larva-persona --refresh-cache` is the explicit user freshness escape hatch for
-  registry mutations. It forces a foreground refresh through public
-  `larva list --json`; success updates memory and disk cache and notifies the
-  user; failure preserves the old cache and reports a bounded failure reason.
+  registry mutations. It is an option on the existing `/larva-persona` command,
+  not a new slash command or LLM tool. It forces a foreground refresh through
+  public `larva list --json`; success updates memory and disk cache and notifies
+  the user; failure preserves the old cache and reports a bounded failure reason.
+  It does not change the active persona, selected model, active tool policy, or
+  session state.
 - Registry mutation is intentionally weakly consistent for this UI surface.
   Newly-added or removed personas need not appear instantly until background
   refresh, TTL expiry, reload, or `/larva-persona --refresh-cache`.
 - Tests must be able to reset process-local cache state and direct the disk cache
-  path to a test location. Tests must also prove the extension never reads the
-  private registry path for candidate population.
+  path to a test location via `LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`. Tests
+  must also prove the extension never reads the private registry path for
+  candidate population.
 - This is not fuzzy matching: no edit distance, wildcard, regex, nearest-persona
   guessing, or hidden aliases.
 
@@ -1887,16 +1893,17 @@ type PersonaCandidate = {
   capabilities: Record<string, "none" | "read_only" | "read_write" | "destructive">;
 };
 
-type PersonaCandidateCache = {
-  schema_version: 1;
-  generated_at: string;
+type PersonaCandidateCacheFile = {
+  version: 1;
   source: "larva list --json";
-  personas: PersonaCandidate[];
+  source_key: string;
+  fetched_at_ms: number;
+  candidates: PersonaCandidate[];
 };
 
 type PersonaCandidateRefreshResult =
-  | { ok: true; cache: PersonaCandidateCache }
-  | { ok: false; error: LarvaError; stale_cache: PersonaCandidateCache | null };
+  | { ok: true; refreshed: true; source: "larva list --json"; candidates: number; stale_before: number; cache_path: string }
+  | { ok: false; refreshed: true; source: "larva list --json"; error: LarvaError; stale_available: boolean; stale_count: number; cache_path: string };
 
 type LarvaAutocompleteBaseProvider = (
   request: LarvaAutocompleteRequest,
@@ -1912,8 +1919,9 @@ Command and hook contracts:
 - `/larva-persona <id>` returns `PersonaSwitchResult` and commits state only on
   `ok: true`.
 - `/larva-persona --refresh-cache` returns a user-visible refresh result and never
-  commits persona/model/tool state. It refreshes only the adapter-local persona
-  candidate cache by running public `larva list --json`.
+  commits persona/model/tool/session state. It refreshes only the adapter-local
+  persona candidate cache by running public `larva list --json`. It is not a new
+  slash command or model-facing LLM tool.
 - `/larva-persona` with no argument opens a selector only when
   `LARVA_PI_INTERACTIVE_TUI=1`. RPC `ctx.hasUI`, print mode, and JSON mode return
   `LARVA_BAD_INPUT` without changing state.
@@ -1942,10 +1950,12 @@ Command and hook contracts:
   first candidate.
 - Persona candidate cache refresh uses `LARVA_CLI_ARGV_JSON` plus
   `list --json`, or the existing fallback command discovery only when
-  `LARVA_CLI_ARGV_JSON` is absent. The refresh path validates list output,
-  projects each persona to `PersonaCandidate`, strips `prompt`, rejects malformed
-  cache entries fail-closed for writes, and preserves the previous cache on
-  refresh failure.
+  `LARVA_CLI_ARGV_JSON` is absent. The default disk cache path is
+  `~/.pi/larva/persona-candidates-cache.json`; tests may set the absolute-path
+  override `LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`. The refresh path validates
+  list output, projects each persona to `PersonaCandidate`, strips `prompt`,
+  rejects malformed cache entries fail-closed for writes, and preserves the
+  previous cache on refresh failure.
 - Runtime verification must prove the tested supported Pi build exposes
   `ctx.ui.addAutocompleteProvider` before claiming editor-autocomplete support.
 - If `ctx.ui.addAutocompleteProvider` is unavailable, the extension keeps the
@@ -2175,7 +2185,7 @@ architecture_basis:
   state_strata:
     canonical_state: "PersonaSpec and registry entries managed by Larva"
     adapter_config_state: "~/.pi/larva/model-map.json and ~/.pi/larva/tool-policy.json, plus explicit env overrides; no implicit legacy tool-policy fallback"
-    adapter_cache_state: "~/.pi/larva/persona-candidates-cache.json and process memory hold a prompt-free weakly consistent PersonaCandidate projection for UI hot paths"
+    adapter_cache_state: "~/.pi/larva/persona-candidates-cache.json, or absolute LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE override for tests, and process memory hold a prompt-free weakly consistent PersonaCandidate projection for UI hot paths"
     session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
     child_session_state: "Pi session JSONL file used as public task_id"
     child_busy_state: "In-memory active-task set inside one parent Pi extension process"
@@ -2694,9 +2704,11 @@ Implementation gates must prove these observable behaviors:
 
 49. `/larva-persona --refresh-cache` forces a persona candidate cache refresh
     through public `larva list --json`, updates memory and disk cache on success,
-    preserves the old cache on failure, and does not commit persona/model/tool
-    state. Registry mutations need not be reflected instantly, but after manual
-    refresh the selector and autocomplete reflect the refreshed candidate set.
+    preserves the old cache on failure, and does not commit persona/model/tool or
+    session state. It is an option on the existing `/larva-persona` command, not
+    a new slash command or model-facing LLM tool. Registry mutations need not be
+    reflected instantly, but after manual refresh the selector and autocomplete
+    reflect the refreshed candidate set.
 
 50. Prompt projection uses Larva-managed overlay blocks rather than Pi default
     prompt string matching. The effective prompt preserves the incoming Pi
@@ -2806,8 +2818,9 @@ Suggested order for the persona candidate cache work:
 
 2. Replace the existing completion TTL-only cache with a two-tier cache.
    - Memory cache: current process fast path.
-   - Disk cache: adapter-local path such as
-     `~/.pi/larva/persona-candidates-cache.json`, with test override support.
+   - Disk cache: adapter-local default path
+     `~/.pi/larva/persona-candidates-cache.json`, with absolute test override
+     support via `LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`.
    - Tests must be able to reset memory state and point disk state at a temp file.
 
 3. Add stale-while-revalidate refresh orchestration.
@@ -2828,11 +2841,11 @@ Suggested order for the persona candidate cache work:
      trigger refresh; do not synchronously wait for `larva list --json`.
 
 5. Add `/larva-persona --refresh-cache`.
-   - It is a mode of the existing command, not a new slash command.
+   - It is a mode of the existing command, not a new slash command or LLM tool.
    - It forces a foreground refresh through public `larva list --json`.
    - Success updates memory and disk cache and notifies the user.
    - Failure preserves old cache and reports a bounded failure reason.
-   - It must not commit persona/model/tool state.
+   - It must not commit persona/model/tool policy or session state.
 
 6. Add tests before implementation where practical, then make them green.
    Minimum tests:

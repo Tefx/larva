@@ -291,12 +291,19 @@ For Tab completion, the bundled extension preserves Pi's command-level
 case-insensitive substring matching over persona ids, with prefix matches ranked
 first and current candidate-cache order preserved otherwise. Persona candidates
 come from an adapter-local memory/disk cache generated only from public
-`larva list --json`; cache entries contain only `id`, `description`, `model`,
-`spec_digest`, and `capabilities`, never `prompt`. `/larva-persona --refresh-cache`
-forces a foreground refresh without switching persona/model/tools. If live Pi
-does not expose `ctx.ui.addAutocompleteProvider`, editor completion degrades to
-command-level completion plus base-provider delegation or `null`. Mock/local hook
-evidence is not enough to claim live editor support.
+`larva list --json`; the default disk cache path is
+`~/.pi/larva/persona-candidates-cache.json`, with test override
+`LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE`. Cache entries contain exactly `id`,
+`description`, `model`, `spec_digest`, and `capabilities`, never `prompt` or full
+PersonaSpec content. `/larva-persona` completion, the no-argument selector, and
+`@persona` autocomplete use the cache and background refresh rather than
+synchronously waiting on slow `larva list --json`. `/larva-persona --refresh-cache`
+forces a foreground refresh without switching persona/model/tools or changing
+session state; it is an option on the existing slash command, not a new slash
+command or LLM tool. If live Pi does not expose `ctx.ui.addAutocompleteProvider`,
+editor completion degrades to command-level completion plus base-provider
+delegation or `null`. Mock/local hook evidence is not enough to claim live editor
+support.
 
 Persona mentions insert id-only values exactly shaped as `@persona:<id>`. They do
 not switch personas, force `larva_subagent`, or inject the mentioned persona's
