@@ -126,6 +126,11 @@ type SubagentToolSnapshot = {
   output_preview?: string;
   error_preview?: string;
 };
+type SubagentTimelineEvent =
+  | { kind: "assistant"; text: string }
+  | { kind: "thinking_hidden" }
+  | { kind: "tool"; toolCallId: string; snapshot: SubagentToolSnapshot }
+  | { kind: "terminal"; status: SubagentPresentationStatus };
 type SubagentActiveToolState = { toolCallId: string; name?: string; status?: SubagentToolStatus } | null;
 type SubagentPresentationLogEntry = {
   task_id: string | null;
@@ -144,6 +149,7 @@ type SubagentPresentationLogEntry = {
   live_assistant_preview?: string;
   live_thinking_hidden?: boolean;
   tool_snapshots?: SubagentToolSnapshot[];
+  timeline_events?: SubagentTimelineEvent[];
   active_tool_state?: SubagentActiveToolState;
   raw_rpc_events?: unknown[];
 };
@@ -346,9 +352,11 @@ const DEFAULT_SUBAGENT_PRESENTATION_CACHE_CONFIG: SubagentPresentationCacheConfi
   include_output: true,
 };
 const SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT = 4_000;
+const SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT = 1_200;
 const SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT = 800;
 const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
 const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
+const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
@@ -926,12 +934,12 @@ export class BorderedScrollableText implements PiOverlayComponent {
   }
 }
 
-type SubagentOverlayTab = "summary" | "output" | "prompt" | "events" | "metadata";
+type SubagentOverlayTab = "summary" | "output" | "prompt" | "timeline" | "metadata";
 const SUBAGENT_OVERLAY_TABS: Array<{ id: SubagentOverlayTab; label: string }> = [
   { id: "summary", label: "Summary" },
   { id: "prompt", label: "Prompt" },
   { id: "output", label: "Output" },
-  { id: "events", label: "Events" },
+  { id: "timeline", label: "Timeline" },
   { id: "metadata", label: "Metadata" },
 ];
 const SUBAGENT_OVERLAY_MIN_SURFACE_LINES = 18;
@@ -1020,6 +1028,10 @@ function boundedAssistantPreview(value: string): string {
   return boundedPresentationPreview(value, SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT);
 }
 
+function boundedTimelineAssistantEvent(value: string): string {
+  return boundedPresentationPreview(value, SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT);
+}
+
 function boundedToolArgsPreview(value: string): string {
   return boundedPresentationPreview(value, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT);
 }
@@ -1028,16 +1040,30 @@ function boundedToolOutputPreview(value: string): string {
   return boundedPresentationPreview(value, SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT);
 }
 
-function boundedSubagentToolSnapshots(snapshots: SubagentToolSnapshot[] | undefined): SubagentToolSnapshot[] | undefined {
-  if (snapshots === undefined || snapshots.length === 0) return undefined;
-  return snapshots.slice(-SUBAGENT_TOOL_SNAPSHOT_LIMIT).map((snapshot) => ({
+function boundedSubagentToolSnapshot(snapshot: SubagentToolSnapshot): SubagentToolSnapshot {
+  return {
     toolCallId: boundedVisible(snapshot.toolCallId, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT),
     name: snapshot.name === undefined ? undefined : boundedVisible(snapshot.name, 120),
     status: snapshot.status,
     args_preview: snapshot.args_preview === undefined ? undefined : boundedToolArgsPreview(snapshot.args_preview),
     output_preview: snapshot.output_preview === undefined ? undefined : boundedToolOutputPreview(snapshot.output_preview),
     error_preview: snapshot.error_preview === undefined ? undefined : boundedToolOutputPreview(snapshot.error_preview),
-  }));
+  };
+}
+
+function boundedSubagentToolSnapshots(snapshots: SubagentToolSnapshot[] | undefined): SubagentToolSnapshot[] | undefined {
+  if (snapshots === undefined || snapshots.length === 0) return undefined;
+  return snapshots.slice(-SUBAGENT_TOOL_SNAPSHOT_LIMIT).map(boundedSubagentToolSnapshot);
+}
+
+function boundedSubagentTimelineEvents(events: SubagentTimelineEvent[] | undefined): SubagentTimelineEvent[] | undefined {
+  if (events === undefined || events.length === 0) return undefined;
+  return events.slice(-SUBAGENT_TIMELINE_EVENT_LIMIT).map((eventValue) => {
+    if (eventValue.kind === "assistant") return { kind: "assistant", text: boundedTimelineAssistantEvent(eventValue.text) };
+    if (eventValue.kind === "tool") return { kind: "tool", toolCallId: boundedVisible(eventValue.toolCallId, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT), snapshot: boundedSubagentToolSnapshot(eventValue.snapshot) };
+    if (eventValue.kind === "terminal") return { kind: "terminal", status: eventValue.status };
+    return { kind: "thinking_hidden" };
+  });
 }
 
 function subagentToolDisplayName(snapshot: SubagentToolSnapshot): string {
@@ -1091,6 +1117,17 @@ function subagentThinkingHiddenLine(entry: SubagentPresentationLogEntry): string
   return null;
 }
 
+function timelineEventsForEntry(entry: SubagentPresentationLogEntry): SubagentTimelineEvent[] {
+  if (entry.timeline_events !== undefined && entry.timeline_events.length > 0) return entry.timeline_events;
+  const events: SubagentTimelineEvent[] = [];
+  if (typeof entry.live_assistant_preview === "string" && entry.live_assistant_preview.trim().length > 0) {
+    events.push({ kind: "assistant", text: entry.live_assistant_preview });
+  }
+  if (subagentThinkingHiddenLine(entry) !== null) events.push({ kind: "thinking_hidden" });
+  for (const snapshot of entry.tool_snapshots ?? []) events.push({ kind: "tool", toolCallId: snapshot.toolCallId, snapshot });
+  return boundedSubagentTimelineEvents(events) ?? [];
+}
+
 type NormalizedSubagentStreamEvent =
   | { kind: "assistant_delta"; text: string }
   | { kind: "thinking_hidden" }
@@ -1138,8 +1175,8 @@ function subagentOverlaySurfaceLineCount(tui?: PiTui, explicitMaxBoxLines?: numb
 export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private activeTabIndex = 0;
   private selectorMode = false;
-  private readonly scrollOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, events: 0, metadata: 0 };
-  private readonly lastMaxOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, events: 0, metadata: 0 };
+  private readonly scrollOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, timeline: 0, metadata: 0 };
+  private readonly lastMaxOffsets: Record<SubagentOverlayTab, number> = { summary: 0, output: 0, prompt: 0, timeline: 0, metadata: 0 };
   private eventsDebugIds = false;
   private mouseReportingEnabled = false;
   private entry: SubagentPresentationLogEntry;
@@ -1298,7 +1335,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       "",
       this.sectionLine("Result", contentWidth),
       ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview available — see Output tab" : "available — see Output tab (Markdown rendered)") : "No final output observed.", contentWidth),
-      ...this.fieldLines("Live events", (this.entry.tool_snapshots?.length ?? 0) > 0 || this.entry.live_assistant_preview ? "available — see Events/Output tabs" : "not observed", contentWidth),
+      ...this.fieldLines("Timeline", (this.entry.timeline_events?.length ?? 0) > 0 || (this.entry.tool_snapshots?.length ?? 0) > 0 || this.entry.live_assistant_preview ? "available — see Timeline/Output tabs" : "not observed", contentWidth),
       ...this.fieldLines("Error", subagentEntryErrorText(this.entry), contentWidth),
       "",
       this.sectionLine("Provenance", contentWidth),
@@ -1314,22 +1351,28 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     ];
   }
 
-  private eventsPaneLines(contentWidth: number): string[] {
-    const lines = [this.sectionLine("Events", contentWidth)];
-    const thinkingLine = subagentThinkingHiddenLine(this.entry);
-    if (thinkingLine !== null) lines.push(...this.fieldLines("Assistant", thinkingLine, contentWidth));
-    const snapshots = this.entry.tool_snapshots ?? [];
-    if (snapshots.length === 0) {
-      lines.push(...this.fieldLines("Tool calls", "No normalized child tool events observed.", contentWidth));
+  private timelinePaneLines(contentWidth: number): string[] {
+    const lines = [this.sectionLine("Timeline", contentWidth)];
+    const timelineEvents = timelineEventsForEntry(this.entry);
+    if (timelineEvents.length === 0) {
+      lines.push(...this.fieldLines("Timeline", "No normalized child stream events observed.", contentWidth));
       return lines;
     }
-    for (const snapshot of snapshots) {
-      lines.push(...this.fieldLines("Tool", subagentToolActionSummary(snapshot), contentWidth));
-      if (snapshot.output_preview) lines.push(...this.fieldLines("Preview", `└─ output: ${boundedToolOutputPreview(snapshot.output_preview)}`, contentWidth));
-      if (snapshot.error_preview) lines.push(...this.fieldLines("Preview", `└─ error: ${boundedToolOutputPreview(snapshot.error_preview)}`, contentWidth));
-      if (this.eventsDebugIds) lines.push(...this.fieldLines("Debug ID", subagentToolDebugId(snapshot), contentWidth));
+    for (const eventValue of timelineEvents) {
+      if (eventValue.kind === "assistant") {
+        lines.push(...this.fieldLines("Assistant", boundedTimelineAssistantEvent(eventValue.text), contentWidth));
+      } else if (eventValue.kind === "thinking_hidden") {
+        lines.push(...this.fieldLines("Assistant", "thinking hidden", contentWidth));
+      } else if (eventValue.kind === "terminal") {
+        lines.push(...this.fieldLines("Terminal", eventValue.status, contentWidth));
+      } else {
+        lines.push(...this.fieldLines("Tool", subagentToolActionSummary(eventValue.snapshot), contentWidth));
+        if (eventValue.snapshot.output_preview) lines.push(...this.fieldLines("Preview", `└─ output: ${boundedToolOutputPreview(eventValue.snapshot.output_preview)}`, contentWidth));
+        if (eventValue.snapshot.error_preview) lines.push(...this.fieldLines("Preview", `└─ error: ${boundedToolOutputPreview(eventValue.snapshot.error_preview)}`, contentWidth));
+        if (this.eventsDebugIds) lines.push(...this.fieldLines("Debug ID", subagentToolDebugId(eventValue.snapshot), contentWidth));
+      }
     }
-    if (!this.eventsDebugIds) lines.push(...this.fieldLines("Debug", "press d to show internal tool IDs", contentWidth));
+    if (!this.eventsDebugIds && timelineEvents.some((eventValue) => eventValue.kind === "tool")) lines.push(...this.fieldLines("Debug", "press d to show internal tool IDs", contentWidth));
     return lines;
   }
 
@@ -1348,7 +1391,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Selected task", this.entry.task_id ?? "pending", contentWidth),
       ...this.fieldLines("Error object", this.entry.error ? JSON.stringify(this.entry.error) : "null", contentWidth),
       ...this.fieldLines("Output mode", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview" : "markdown") : "fallback", contentWidth),
-      ...this.fieldLines("Live stream", (this.entry.live_assistant_preview || (this.entry.tool_snapshots?.length ?? 0) > 0) ? "process-local only; cache sanitizer drops live fields" : "not observed", contentWidth),
+      ...this.fieldLines("Live stream", (this.entry.live_assistant_preview || (this.entry.timeline_events?.length ?? 0) > 0 || (this.entry.tool_snapshots?.length ?? 0) > 0) ? "process-local only; cache sanitizer drops live/timeline fields" : "not observed", contentWidth),
       ...this.fieldLines("View-only", "no persona/model/tool-policy/session/recent-index/resume-authority mutation", contentWidth),
       ...(toolRefs.length > 0 ? ["", this.sectionLine("Debug tool IDs", contentWidth), ...toolRefs] : []),
     ];
@@ -1366,7 +1409,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       return thinkingLine === null ? rendered : [...renderRendererSafePlainLines(thinkingLine, contentWidth), "", ...rendered];
     }
     if (tab === "prompt") return this.promptPaneLines(contentWidth);
-    if (tab === "events") return this.eventsPaneLines(contentWidth);
+    if (tab === "timeline") return this.timelinePaneLines(contentWidth);
     if (tab === "metadata") return this.metadataPaneLines(contentWidth);
     return this.summaryPaneLines(contentWidth);
   }
@@ -1452,7 +1495,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const start = innerLines.length === 0 ? 0 : scrollOffset + 1;
     const end = Math.min(innerLines.length, scrollOffset + viewportLines);
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
-    const debugHint = !this.selectorMode && tab === "events" ? " • d debug ids" : "";
+    const debugHint = !this.selectorMode && tab === "timeline" ? " • d debug ids" : "";
     const scrollInfo = this.selectorMode
       ? `selector • Enter select • s detail • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`
       : `1/2/3/4/5 ←→ tabs • s selector${debugHint} • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`;
@@ -1483,7 +1526,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       if (this.selectorMode) this.selectSelectorCursor();
       return;
     }
-    if (!this.selectorMode && this.activeTab() === "events" && (data === "d" || data === "D")) {
+    if (!this.selectorMode && this.activeTab() === "timeline" && (data === "d" || data === "D")) {
       this.eventsDebugIds = !this.eventsDebugIds;
       this.invalidate();
       this.requestRender();
@@ -1638,6 +1681,7 @@ function sanitizeSubagentPresentationCacheEntry(entry: SubagentPresentationLogEn
   const sanitized: SubagentPresentationLogEntry = withSubagentEntryTimestamp(entry);
   delete sanitized.live_assistant_preview;
   delete sanitized.tool_snapshots;
+  delete sanitized.timeline_events;
   delete sanitized.active_tool_state;
   delete sanitized.raw_rpc_events;
   delete sanitized.live_thinking_hidden;
@@ -3094,6 +3138,29 @@ function presentationTaskPrompt(input?: LarvaSubagentInput): string | undefined 
   return typeof input?.task === "string" ? rendererSafeMarkdownSource(input.task).trim() : undefined;
 }
 
+function appendSubagentTimelineEvent(entry: SubagentPresentationLogEntry, eventValue: SubagentTimelineEvent): SubagentTimelineEvent[] {
+  const timeline = [...(entry.timeline_events ?? [])];
+  if (eventValue.kind === "assistant") {
+    const previous = timeline.at(-1);
+    if (previous?.kind === "assistant") {
+      timeline[timeline.length - 1] = { kind: "assistant", text: boundedTimelineAssistantEvent(`${previous.text}${eventValue.text}`) };
+    } else {
+      timeline.push({ kind: "assistant", text: boundedTimelineAssistantEvent(eventValue.text) });
+    }
+  } else if (eventValue.kind === "tool") {
+    const existingIndex = timeline.findIndex((timelineEvent) => timelineEvent.kind === "tool" && timelineEvent.toolCallId === eventValue.toolCallId);
+    const next = { kind: "tool", toolCallId: boundedVisible(eventValue.toolCallId, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT), snapshot: boundedSubagentToolSnapshot(eventValue.snapshot) } satisfies SubagentTimelineEvent;
+    if (existingIndex >= 0) timeline[existingIndex] = next;
+    else timeline.push(next);
+  } else if (eventValue.kind === "terminal") {
+    const previous = timeline.at(-1);
+    if (previous?.kind !== "terminal" || previous.status !== eventValue.status) timeline.push({ kind: "terminal", status: eventValue.status });
+  } else if (!timeline.some((timelineEvent) => timelineEvent.kind === "thinking_hidden")) {
+    timeline.push({ kind: "thinking_hidden" });
+  }
+  return boundedSubagentTimelineEvents(timeline) ?? [];
+}
+
 function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, callId: string | undefined, eventValue: NormalizedSubagentStreamEvent): void {
   const index = retainedSubagentPresentationLog.findIndex((entry) =>
     (callId !== undefined && entry.call_id === callId)
@@ -3104,8 +3171,10 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
   if (eventValue.kind === "assistant_delta") {
     const next = `${entry.live_assistant_preview ?? ""}${eventValue.text}`;
     entry.live_assistant_preview = boundedAssistantPreview(next);
+    entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "assistant", text: eventValue.text });
   } else if (eventValue.kind === "thinking_hidden") {
     entry.live_thinking_hidden = true;
+    entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "thinking_hidden" });
   } else if (eventValue.kind === "tool") {
     const snapshots = [...(entry.tool_snapshots ?? [])];
     const snapshotIndex = snapshots.findIndex((snapshot) => snapshot.toolCallId === eventValue.toolCallId);
@@ -3118,7 +3187,10 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     if (snapshotIndex >= 0) snapshots[snapshotIndex] = nextSnapshot;
     else snapshots.push(nextSnapshot);
     entry.tool_snapshots = snapshots;
+    entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "tool", toolCallId: eventValue.toolCallId, snapshot: nextSnapshot });
     entry.active_tool_state = eventValue.status === "running" ? { toolCallId: eventValue.toolCallId, name: eventValue.name, status: eventValue.status } : null;
+  } else if (eventValue.kind === "terminal") {
+    entry.phase = "agent_end";
   }
   retainedSubagentPresentationLog[index] = touchSubagentEntryTimestamp(entry);
   persistSubagentPresentationCache();
@@ -3175,6 +3247,7 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
     call_id: callId ?? preserved?.call_id,
     started_at: preserved?.started_at,
     tool_snapshots: boundedSubagentToolSnapshots(preserved?.tool_snapshots),
+    timeline_events: boundedSubagentTimelineEvents(appendSubagentTimelineEvent({ timeline_events: preserved?.timeline_events } as SubagentPresentationLogEntry, { kind: "terminal", status: result.status })),
     active_tool_state: null,
   };
   appendSubagentPresentationLog(statusEntry);
@@ -3350,7 +3423,7 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
   if (entries.length === 0) return "Larva subagent log (view-only): empty";
   const lines = [
     "Larva subagent log (view-only)",
-    mode === "selector" ? "selector: Select subagent" : "tabs: Summary | Prompt | Output | Events | Metadata",
+    mode === "selector" ? "selector: Select subagent" : "tabs: Summary | Prompt | Output | Timeline | Metadata",
     "source: in-memory presentation log; no raw JSONL authority",
   ];
   for (const entry of entries) {
@@ -3370,11 +3443,16 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     const thinkingLine = subagentThinkingHiddenLine(entry);
     if (thinkingLine !== null) lines.push(`  ${thinkingLine}`);
     lines.push(subagentEntryOutputIsPresent(entry) ? subagentEntryOutput(entry) : "  No final subagent output is available for this observed entry.");
-    lines.push("  [Events]");
-    for (const snapshot of entry.tool_snapshots ?? []) {
-      lines.push(`  tool: ${subagentToolActionSummary(snapshot)}`);
-      if (snapshot.output_preview) lines.push(`    preview: output: ${boundedToolOutputPreview(snapshot.output_preview)}`);
-      if (snapshot.error_preview) lines.push(`    preview: error: ${boundedToolOutputPreview(snapshot.error_preview)}`);
+    lines.push("  [Timeline]");
+    for (const eventValue of timelineEventsForEntry(entry)) {
+      if (eventValue.kind === "assistant") lines.push(`  assistant: ${boundedTimelineAssistantEvent(eventValue.text)}`);
+      else if (eventValue.kind === "thinking_hidden") lines.push("  assistant: thinking hidden");
+      else if (eventValue.kind === "terminal") lines.push(`  terminal: ${eventValue.status}`);
+      else {
+        lines.push(`  tool: ${subagentToolActionSummary(eventValue.snapshot)}`);
+        if (eventValue.snapshot.output_preview) lines.push(`    preview: output: ${boundedToolOutputPreview(eventValue.snapshot.output_preview)}`);
+        if (eventValue.snapshot.error_preview) lines.push(`    preview: error: ${boundedToolOutputPreview(eventValue.snapshot.error_preview)}`);
+      }
     }
     lines.push("  [Metadata]");
     lines.push(`  mode: ${entry.mode ?? "unknown"}`);

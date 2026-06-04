@@ -846,7 +846,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const rendersAfterLive = requestRenderEvents.length;
   const outputDuringPlain = renderedPlainText(component.render(100));
   component.handleInput?.("4");
-  const eventsDuringPlain = renderedPlainText(component.render(100));
+  const timelineDuringPlain = renderedPlainText(component.render(100));
   const cacheDuringLive = JSON.parse(await readFile(cacheFile, "utf8"));
   const cacheDuringLiveText = JSON.stringify(cacheDuringLive);
   const result = await execution;
@@ -854,17 +854,17 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
     () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "success"),
     { label: "final presentation entry" },
   );
-  const eventsAfterFinalPlain = renderedPlainText(component.render(100));
+  const timelineAfterFinalPlain = renderedPlainText(component.render(100));
   component.handleInput?.("3");
   const outputAfterFinalPlain = renderedPlainText(component.render(100));
   const finalCacheText = JSON.stringify(JSON.parse(await readFile(cacheFile, "utf8")));
-  const combinedVisible = [outputDuringPlain, eventsDuringPlain, eventsAfterFinalPlain, outputAfterFinalPlain].join("\n");
+  const combinedVisible = [outputDuringPlain, timelineDuringPlain, timelineAfterFinalPlain, outputAfterFinalPlain].join("\n");
   const currentAfterFinal = mod.currentSubagentOverlayForTests();
   const resetResult = await mod.resetExtensionUI("subagent-log-selector-streaming-smoke");
   const afterReset = mod.larva_subagent_log("/tmp/does-not-exist.jsonl");
 
-  const toolRowCount = (eventsDuringPlain.match(/Tool/g) ?? []).length;
-  const toolIdCount = (eventsDuringPlain.match(/rpc-tool-1/g) ?? []).length;
+  const toolRowCount = (timelineDuringPlain.match(/Tool/g) ?? []).length;
+  const toolIdCount = (timelineDuringPlain.match(/rpc-tool-1/g) ?? []).length;
   return {
     status: "PASS",
     sessionRoot,
@@ -887,18 +887,18 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
     terminalWrites,
     samples: {
       outputDuring: outputDuringPlain.slice(0, 400),
-      eventsDuring: eventsDuringPlain.slice(0, 400),
+      timelineDuring: timelineDuringPlain.slice(0, 400),
       outputAfterFinal: outputAfterFinalPlain.slice(0, 400),
     },
     assertions: {
       childRpcEventsDroveOverlayRenderRequest: rendersAfterLive > rendersBeforeLive,
       assistantDeltaRenderedFromRpc: outputDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE"),
       thinkingContentHidden: !combinedVisible.includes("THINKING_SECRET_SHOULD_NOT_RENDER") && combinedVisible.includes("thinking hidden"),
-      toolEventsGroupedByToolCallId: toolRowCount === 1 && toolIdCount === 0 && eventsDuringPlain.includes("bash") && eventsDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && eventsDuringPlain.includes("success"),
+      timelineIncludesAssistantAndGroupedTool: timelineDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE") && toolRowCount === 1 && toolIdCount === 0 && timelineDuringPlain.includes("bash") && timelineDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && timelineDuringPlain.includes("success"),
       rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET"),
       liveStateNotPersisted: !cacheDuringLiveText.includes("RPC_ASSISTANT_DELTA_VISIBLE") && !cacheDuringLiveText.includes("RPC_TOOL_OUTPUT_FINAL"),
       finalOutputAuthorityPreserved: result?.details?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
-      activeTabAndSelectionPreservedAcrossRefresh: eventsAfterFinalPlain.includes("● 4 Events") && currentAfterFinal?.task_id === result?.details?.task_id,
+      activeTabAndSelectionPreservedAcrossRefresh: timelineAfterFinalPlain.includes("● 4 Timeline") && currentAfterFinal?.task_id === result?.details?.task_id,
       resetCleanupClosedAndCleared: resetResult.overlay_closed === true && resetResult.presentation_cleared === true && afterReset.details?.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED" && terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
     },
   };
@@ -946,7 +946,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     task_prompt: "streaming task prompt",
     result_text: "thinking_delta_secret SHOULD_NOT_RENDER",
     updated_at: "2026-06-04T01:00:00.000Z",
-    live_assistant_preview: "LIVE_ASSISTANT_PREVIEW_VISIBLE_WHILE_RUNNING",
+    live_assistant_preview: "ASSISTANT_FIRST LIVE_ASSISTANT_PREVIEW_VISIBLE_WHILE_RUNNING",
     tool_snapshots: [{ toolCallId: "tool-1", name: "bash", status: "running", args_preview: "echo hi", output_preview: overlongToolOutput }],
     active_tool_state: { toolCallId: "tool-1" },
     raw_rpc_events: [{ type: "tool_execution_update", payload: "rawRpcSecret" }],
@@ -1003,13 +1003,15 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     R3_processLocalLiveState_cacheSanitizer: {
       liveAssistantPreviewNotPersisted: !("live_assistant_preview" in liveCachedEntry),
       toolSnapshotsNotPersisted: !("tool_snapshots" in liveCachedEntry),
+      timelineEventsNotPersisted: !("timeline_events" in liveCachedEntry),
       activeToolStateNotPersisted: !("active_tool_state" in liveCachedEntry),
       rawRpcEventsNotPersisted: !("raw_rpc_events" in liveCachedEntry) && JSON.stringify(cached).includes("rawRpcSecret") === false,
     },
-    R4_groupedToolEvents: {
-      eventsTabExists: /Events/.test(detailPlain) && /● 4 Events/.test(fourthTabPlain),
+    R4_timelineStream: {
+      timelineTabExists: /Timeline/.test(detailPlain) && /● 4 Timeline/.test(fourthTabPlain),
+      assistantAndToolChronological: fourthTabPlain.includes("ASSISTANT_FIRST") && fourthTabPlain.indexOf("ASSISTANT_FIRST") < fourthTabPlain.indexOf("bash"),
       groupedByToolCallId: (fourthTabPlain.match(/bash/g) ?? []).length === 1 && (fourthTabPlain.match(/Tool/g) ?? []).length === 1,
-      toolOutputOnlyBoundedEventsPreview: fourthTabPlain.includes("SECRET_TOOL_TAIL") === false && /truncated|…|\.\.\./i.test(fourthTabPlain) && outputPlain.includes("SECRET_TOOL_TAIL") === false,
+      toolOutputOnlyBoundedTimelinePreview: fourthTabPlain.includes("SECRET_TOOL_TAIL") === false && /truncated|…|\.\.\./i.test(fourthTabPlain) && outputPlain.includes("SECRET_TOOL_TAIL") === false,
       internalIdsHiddenByDefault: !fourthTabPlain.includes("tool-1"),
     },
     R5_outputLiveAndFinalAuthority: {
@@ -1022,7 +1024,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
       overlongContentTruncated: /truncated|…|\.\.\./i.test(selectorPlain) && !selectorPlain.includes(overlongTask) && !fourthTabPlain.includes(overlongToolOutput),
     },
     R7_chromeTabsAndInput: {
-      tabOrderSummaryPromptOutputEventsMetadata: /1 Summary.*2 Prompt.*3 Output.*4 Events.*5 Metadata/s.test(detailPlain),
+      tabOrderSummaryPromptOutputTimelineMetadata: /1 Summary.*2 Prompt.*3 Output.*4 Timeline.*5 Metadata/s.test(detailPlain),
       stableFrameAcrossSelectorTabsScroll: [selectorFrame, outputFrame, fourthTabFrame, fifthTabFrame].every((lines) => lines.length === detailFrame.length && lines[0] === detailFrame[0] && lines.at(-1) === detailFrame.at(-1)),
       keyboardMouseClickNoop: JSON.stringify(beforeClickFrame) === JSON.stringify(afterClickFrame),
     },

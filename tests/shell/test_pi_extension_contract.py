@@ -1585,7 +1585,8 @@ def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() 
 
     source = _source()
     assert '"--select"' in source
-    assert '"events"' in source and "Events" in source
+    assert '"timeline"' in source and "Timeline" in source
+    assert "timeline_events" in source
     assert "toolCallId" in source
     assert "message_update" in source
     assert "tool_execution_start" in source
@@ -1598,6 +1599,7 @@ def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() 
     for forbidden_live_field in (
         "live_assistant_preview",
         "tool_snapshots",
+        "timeline_events",
         "active_tool_state",
         "raw_rpc_events",
     ):

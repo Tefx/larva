@@ -214,7 +214,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
 
 
 def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_path: Path) -> None:
-    """Same-process terminal entries retain bounded Events snapshots without cache persistence."""
+    """Same-process terminal entries retain bounded Timeline assistant/tool snapshots without cache persistence."""
 
     payload = _run_node(
         tmp_path,
@@ -255,7 +255,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
         const finalEntry = mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots");
         const cacheData = JSON.parse(await readFile(cacheFile, "utf8"));
         const cachedEntry = cacheData.entries.find((entry) => entry.task_id === result.task_id);
-        const overlayText = mod.renderSubagentPresentationOverlayForTests(result.task_id);
+        const overlayText = mod.renderSubagentPresentationOverlayForTests({ task_id: result.task_id, expanded: true });
         console.log(JSON.stringify({
           resultStatus: result.status,
           finalEntry: {
@@ -265,11 +265,14 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             activeToolStateCleared: finalEntry?.active_tool_state === null,
             toolSnapshotCount: finalEntry?.tool_snapshots?.length ?? 0,
             toolSnapshot: finalEntry?.tool_snapshots?.[0] ?? null,
+            timelineKinds: finalEntry?.timeline_events?.map((event) => event.kind) ?? [],
           },
-          overlayEventsUseful: overlayText.includes("[Events]") && overlayText.includes("read") && overlayText.includes("final tool output"),
+          overlayTimelineUseful: overlayText.includes("[Timeline]") && overlayText.includes("assistant:") && overlayText.includes("live assistant only") && overlayText.includes("read") && overlayText.includes("final tool output"),
+          overlayTimelineOrdered: overlayText.indexOf("live assistant only") >= 0 && overlayText.indexOf("live assistant only") < overlayText.indexOf("read"),
           cacheLiveFieldsDropped: cachedEntry !== undefined
             && !("live_assistant_preview" in cachedEntry)
             && !("tool_snapshots" in cachedEntry)
+            && !("timeline_events" in cachedEntry)
             && !("active_tool_state" in cachedEntry)
             && !("raw_rpc_events" in cachedEntry),
         }, null, 2));
@@ -290,8 +293,10 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             "args_preview": '{"path":"contrib/pi-extension/README.md"}',
             "output_preview": "final tool output",
         },
+        "timelineKinds": ["assistant", "tool", "terminal"],
     }
-    assert payload["overlayEventsUseful"] is True
+    assert payload["overlayTimelineUseful"] is True
+    assert payload["overlayTimelineOrdered"] is True
     assert payload["cacheLiveFieldsDropped"] is True
 
 
@@ -765,7 +770,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           strictModalChromeParity: JSON.stringify(modalChromeFingerprint(commandCustomCalls[0].rendered, 80)) === JSON.stringify(modalChromeFingerprint(personaRenderedForChrome, 80)),
           allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
           overlayFrameStable,
-          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Prompt") && line.includes("○ 3 Output") && line.includes("○ 4 Events") && line.includes("○ 5 Metadata")) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].eventsTab.some((line) => line.includes("● 4 Events")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 4 Events")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
+          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Prompt") && line.includes("○ 3 Output") && line.includes("○ 4 Timeline") && line.includes("○ 5 Metadata")) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].eventsTab.some((line) => line.includes("● 4 Timeline")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 4 Timeline")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
           summaryReadable: commandCustomCalls[0].rendered.some((line) => line.includes("Run")) && commandCustomCalls[0].rendered.some((line) => line.includes("Status") && line.includes("success")) && commandCustomCalls[0].rendered.some((line) => line.includes("Output") && line.includes("see Output tab")) && !commandCustomCalls[0].rendered.some((line) => line.includes("INITIAL_PROMPT_MARKER") || line.includes("# Markdown Heading")),
           promptTabVisible: commandCustomCalls[0].promptTab.some((line) => line.includes("Initial Prompt")) && commandCustomCalls[0].promptTab.some((line) => line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
           outputMarkdownPane: (() => { const plain = commandCustomCalls[0].outputTab.map(stripAnsi).join("\\n"); return plain.includes("Markdown Heading") && plain.includes("• bullet one") && plain.includes("fenced code output") && !plain.includes("# Markdown Heading") && !plain.includes("- bullet one") && !plain.includes("```text") && !plain.includes("```\\n"); })(),
@@ -1487,13 +1492,15 @@ def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> 
     assert assertions["R3_processLocalLiveState_cacheSanitizer"] == {
         "liveAssistantPreviewNotPersisted": True,
         "toolSnapshotsNotPersisted": True,
+        "timelineEventsNotPersisted": True,
         "activeToolStateNotPersisted": True,
         "rawRpcEventsNotPersisted": True,
     }
-    assert assertions["R4_groupedToolEvents"] == {
-        "eventsTabExists": True,
+    assert assertions["R4_timelineStream"] == {
+        "timelineTabExists": True,
+        "assistantAndToolChronological": True,
         "groupedByToolCallId": True,
-        "toolOutputOnlyBoundedEventsPreview": True,
+        "toolOutputOnlyBoundedTimelinePreview": True,
         "internalIdsHiddenByDefault": True,
     }
     assert assertions["R5_outputLiveAndFinalAuthority"] == {
@@ -1513,7 +1520,7 @@ def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> 
         "childRpcEventsDroveOverlayRenderRequest": True,
         "assistantDeltaRenderedFromRpc": True,
         "thinkingContentHidden": True,
-        "toolEventsGroupedByToolCallId": True,
+        "timelineIncludesAssistantAndGroupedTool": True,
         "rawPayloadNeverRenderedOrPersisted": True,
         "liveStateNotPersisted": True,
         "finalOutputAuthorityPreserved": True,
@@ -1528,7 +1535,7 @@ def test_expected_red_larva_subagent_log_chrome_mouse_and_tall_terminal_frame() 
     assertions = _subagent_selector_streaming_payload()
 
     assert assertions["R7_chromeTabsAndInput"] == {
-        "tabOrderSummaryPromptOutputEventsMetadata": True,
+        "tabOrderSummaryPromptOutputTimelineMetadata": True,
         "stableFrameAcrossSelectorTabsScroll": True,
         "keyboardMouseClickNoop": True,
     }

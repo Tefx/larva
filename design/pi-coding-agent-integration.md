@@ -950,14 +950,14 @@ Persistent cache target:
   parse raw Pi transcripts, write sidecars beside child sessions, or infer entries
   from filesystem history.
 - Live streaming fields are process-local only for this target. Assistant live
-  text previews, normalized tool event snapshots, active tool state, and raw child
-  RPC event payloads must not be persisted in the adapter cache. The cache
-  sanitizer must drop those fields if they are present in memory. In the same
-  parent Pi extension process, terminal presentation entries may retain the
-  bounded normalized `tool_snapshots` copied from the running entry so the
-  `Events` pane remains useful after success, failure, or cancellation; terminal
-  entries must clear `active_tool_state` and reload/cache roundtrips must still
-  drop those snapshots.
+  text previews, normalized timeline events, normalized tool snapshots, active
+  tool state, and raw child RPC event payloads must not be persisted in the
+  adapter cache. The cache sanitizer must drop those fields if they are present
+  in memory. In the same parent Pi extension process, terminal presentation
+  entries may retain bounded normalized `timeline_events` and `tool_snapshots`
+  copied from the running entry so the `Timeline` pane remains useful after
+  success, failure, or cancellation; terminal entries must clear
+  `active_tool_state` and reload/cache roundtrips must still drop those fields.
 - The persisted cache is a UI inspection cache only. It is not resume authority,
   not a child-session source of truth, not model-visible context, not a tool-policy
   input, and not a shared Larva/opifex schema.
@@ -978,23 +978,27 @@ Live streaming target:
   they reach the overlay. Raw RPC frames must not be rendered, persisted, exposed
   as shared schema, or injected into model-visible context.
 - `message_update` text deltas may update a process-local live assistant output
-  preview. `thinking_*` deltas must not display thinking content; the overlay may
-  show only a bounded neutral state such as `thinking hidden` if useful.
+  preview and append or merge into a bounded assistant excerpt in the process-local
+  `Timeline`. `thinking_*` deltas must not display thinking content; the overlay
+  may show only a bounded neutral state such as `thinking hidden` if useful.
 - The final `Output` content remains the final `get_last_assistant_text` result
   after child completion. Live assistant text is a realtime preview only and is
   replaced or reconciled by the final result; preserving terminal
-  `tool_snapshots` for same-process `Events` inspection must not make live
+  `timeline_events` for same-process `Timeline` inspection must not make live
   assistant preview text a final-output authority.
 - Tool execution events are grouped by `toolCallId` into one changing tool row or
   snapshot per tool call. `tool_execution_start`, `tool_execution_update`, and
   `tool_execution_end` must not create an unbounded three-event firehose. Updates
-  replace the current status/output preview for that tool.
-- Tool output belongs in the `Events` pane as a bounded preview, not in the
+  replace the current status/output preview for that tool while preserving the
+  tool row's first-seen position in the chronological Timeline.
+- Tool output belongs in the `Timeline` pane as a bounded preview, not in the
   assistant `Output` pane. The `Output` pane is for assistant live/final text;
-  the `Events` pane is action-first: it shows tool name, human-readable bounded
-  argument summary, bounded output/error preview, and final success/failure
-  state. Internal `toolCallId`, frame ids, UUIDs, and provider correlation ids are
-  hidden by default and may appear only in bounded debug/metadata affordances.
+  the `Timeline` pane is chronological and action-first: it shows assistant
+  message excerpts, hidden-thinking markers, terminal status, tool name,
+  human-readable bounded argument summary, bounded output/error preview, and final
+  success/failure state. Internal `toolCallId`, frame ids, UUIDs, and provider
+  correlation ids are hidden by default and may appear only in bounded
+  debug/metadata affordances.
 - Overlong selector rows, assistant text, tool args, and tool output must be
   renderer-safe and bounded. Selector rows are single-line truncated summaries.
   Scrollable panes may wrap, but live buffers must still have a hard in-memory
@@ -1024,9 +1028,9 @@ Overlay UI contract:
   entry, selector cursor, and scroll offset where possible. If the selected entry
   disappears during reset/cleanup, the overlay closes or clears through normal
   cleanup.
-- The overlay exposes keyboard tabs in input-before-output order with events
-  after assistant output: `Summary`, `Prompt`, `Output`, `Events`, and
-  `Metadata`.
+- The overlay exposes keyboard tabs in input-before-output order with the
+  chronological stream after assistant output: `Summary`, `Prompt`, `Output`,
+  `Timeline`, and `Metadata`.
 - `Summary` shows readable grouped/aligned fields for selected-entry status,
   persona, progress, task id, prompt availability, output availability, live event
   availability, result/error summary, and view-only provenance; it must not inline
@@ -1036,14 +1040,16 @@ Overlay UI contract:
 - `Output` renders live assistant text while running and final output after
   completion with Pi TUI `Markdown` when output exists; empty output uses a
   renderer-safe fallback.
-- `Events` shows grouped tool-call snapshots and other normalized stream events.
-  Each tool call is displayed as one evolving human-readable action row keyed
+- `Timeline` shows a process-local bounded chronological presentation stream.
+  It may include assistant message excerpts, hidden-thinking markers, terminal
+  status, grouped tool-call snapshots, and other normalized stream events. Each
+  tool call is displayed as one evolving human-readable action row keyed
   internally by `toolCallId`, with bounded argument summaries, bounded
-  output/error previews, and final success/failure status. Default Events content
-  must not start with or visually privilege internal ids such as `call_*`,
+  output/error previews, and final success/failure status. Default Timeline
+  content must not start with or visually privilege internal ids such as `call_*`,
   `toolCallId`, frame ids, UUIDs, or provider correlation ids. Pressing `d` in
-  Events may reveal bounded debug IDs for diagnosis without polluting the default
-  view.
+  Timeline may reveal bounded debug IDs for diagnosis without polluting the
+  default view.
 - `Metadata` shows adapter-local fields such as mode, sequence, phase,
   task_preview, prompt pointer, call id, selected task id, overlay generation,
   live-stream availability, error object, bounded debug tool IDs, and view-only
@@ -2281,11 +2287,13 @@ Prompt identity overlay delta:
   `message_update`, `tool_execution_start`, `tool_execution_update`,
   `tool_execution_end`, and terminal child events such as `agent_end`.
 - Streaming state is not persisted in this target. Cache writes must omit live
-  assistant previews, grouped tool-call snapshots, active tool state, and raw
-  child RPC event payloads.
-- Tool-call display is grouped by `toolCallId`: start/update/end events update one
-  changing row or snapshot per tool call instead of appending an unbounded event
-  log. Tool output is shown only as a bounded preview in the `Events` pane.
+  assistant previews, timeline events, grouped tool-call snapshots, active tool
+  state, and raw child RPC event payloads.
+- Timeline display is chronological and bounded: assistant message excerpts and
+  first-seen tool calls share one ordered stream, while start/update/end frames
+  update one changing tool row or snapshot per tool call instead of appending an
+  unbounded event log. Tool output is shown only as a bounded preview in the
+  `Timeline` pane.
 - The `Output` pane is for assistant live/final text. The final output authority
   remains the child `get_last_assistant_text` result after completion.
 - Overlong streaming text, tool args, and tool output must be renderer-safe,
@@ -2560,7 +2568,7 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    presentation log and exposes it in the user-visible overlay without making it a
    model-facing or shared opifex surface.
 6. `/larva-log` exposes keyboard tabs for Summary, Prompt, Output,
-   Events, and Metadata; `1`/`2`/`3`/`4`/`5` and `←`/`→` switch tabs without
+   Timeline, and Metadata; `1`/`2`/`3`/`4`/`5` and `←`/`→` switch tabs without
    mutating presentation state.
 7. Summary uses readable grouped/aligned fields and does not inline full prompt,
    raw Markdown output, raw tool output, or raw RPC payloads; the Prompt pane
@@ -2569,9 +2577,12 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    output through Pi TUI Markdown when output exists, and uses a renderer-safe
    fallback when output is empty. Final output remains based on
    `get_last_assistant_text`.
-9. The Events pane groups `tool_execution_start`, `tool_execution_update`, and
-   `tool_execution_end` by `toolCallId` into one evolving row/snapshot per tool
-   call. Its default view is human-action-first: it shows tool name, bounded
+9. The Timeline pane shows a process-local bounded chronological stream that may
+   include assistant message excerpts, hidden-thinking markers, terminal status,
+   and tool-call snapshots. It groups `tool_execution_start`,
+   `tool_execution_update`, and `tool_execution_end` by `toolCallId` into one
+   evolving row/snapshot per tool call at its first-seen position. Its default
+   view is human-action-first: it shows assistant excerpts, tool name, bounded
    argument summary, bounded output/error previews, and success/failure status
    without appending an unbounded event firehose or exposing internal call/frame
    ids. Internal ids are available only through bounded debug/metadata views.
@@ -2585,8 +2596,8 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
     or internal IDs, event-driven refresh without cursor theft, keyboard
     navigation, `Enter` selecting without closing, and `Esc`/`q` close behavior.
 12. Streaming state is process-local only for this target. Cache roundtrip proof
-    must show live assistant previews, grouped tool snapshots, active tool state,
-    and raw child RPC event payloads are not persisted.
+    must show live assistant previews, timeline events, grouped tool snapshots,
+    active tool state, and raw child RPC event payloads are not persisted.
 13. The overlay uses substantially more available height on tall terminals through
     terminal-row-aware viewport sizing while preserving stable frame height.
 14. `Esc`/`q`, `↑`/`↓`, `PageUp`/`PageDown`, `Home`/`End`, `s`, `Enter`, and mouse

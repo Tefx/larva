@@ -789,11 +789,15 @@ assistant output previews, grouped tool-call snapshots, active tool state, and
 raw child RPC event payloads are not persisted. The cache sanitizer must drop
 live-only fields if they are present in memory. Within the same parent Pi
 extension process, terminal result entries may retain the bounded normalized
-`tool_snapshots` copied from the running entry so the `Events` pane remains
-useful after success, failure, or cancellation; terminal entries must clear
-`active_tool_state` and still must not persist those snapshots across reload. The
-final assistant output still comes from the child `get_last_assistant_text`
-response; live text is only a realtime preview while the child is running.
+`timeline_events` and `tool_snapshots` copied from the running entry so the
+`Timeline` pane remains useful after success, failure, or cancellation. The
+Timeline is chronological presentation state: assistant message excerpts and
+first-seen tool calls share one ordered stream, while tool start/update/end frames
+update the existing tool row instead of creating a firehose. Terminal entries must
+clear `active_tool_state` and still must not persist those timeline/tool snapshots
+across reload. The final assistant output still comes from the child
+`get_last_assistant_text` response; live text/timeline excerpts are process-local
+inspection aids only.
 
 Cache defaults and configuration:
 
@@ -854,14 +858,16 @@ Target panes:
 3. `Output`: live assistant text while running and Pi TUI Markdown-rendered final
    assistant output after completion, otherwise a renderer-safe empty/fallback
    message.
-4. `Events`: grouped tool-call snapshots and normalized stream events. A tool call
+4. `Timeline`: process-local, bounded, chronological stream presentation. It may
+   include assistant message excerpts, hidden-thinking markers, terminal status,
+   and grouped tool-call snapshots in the order they first appeared. A tool call
    is displayed as one evolving human-readable action row keyed internally by
-   `toolCallId`; start, update, and end events update that row rather than
+   `toolCallId`; start, update, and end frames update that row rather than
    appending an unbounded firehose. The default row is action-first, not
    identifier-first: `Tool  read("file") — success`, followed by bounded output or
    error preview lines such as `└─ output: 45 lines read`. Full internal
    `toolCallId`/frame identifiers are hidden by default because they are debug
-   plumbing, not user intent; press `d` in the Events pane to reveal bounded
+   plumbing, not user intent; press `d` in the Timeline pane to reveal bounded
    internal IDs when diagnosing adapter behavior.
 5. `Metadata`: adapter-local mode, sequence, phase, task preview, prompt pointer,
    call id, selected task id, overlay generation, live-stream availability, error
