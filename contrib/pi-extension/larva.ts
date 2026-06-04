@@ -261,13 +261,15 @@ type PiContext = PiApi & {
   env?: RuntimeEnv;
   ui?: PiUi;
   modelRegistry?: ModelRegistry;
+  sessionManager?: { getEntries?: () => unknown[] };
   session?: {
     entries?: unknown[];
     getEntries?: () => unknown[];
-    appendEntry?: (entry: unknown) => unknown;
+    appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
     addEntry?: (entry: unknown) => unknown;
-    addCustomEntry?: (entry: unknown) => unknown;
+    addCustomEntry?: (customType: string, data: Record<string, unknown>) => unknown;
   };
+  appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   hasUI?: boolean;
   openSelector?: (options: SelectorOption[]) => Promise<string | null>;
@@ -2441,20 +2443,34 @@ function isAgentPersonaSwitchMode(value: unknown): value is AgentPersonaSwitchMo
 }
 
 function sessionEntries(ctx: PiContext): unknown[] {
-  const getter = ctx.session?.getEntries;
+  const manager = ctx.sessionManager;
+  const managerGetter = manager?.getEntries;
+  if (typeof managerGetter === "function") {
+    const entries = managerGetter.call(manager);
+    return Array.isArray(entries) ? entries : [];
+  }
+  const session = ctx.session;
+  const getter = session?.getEntries;
   if (typeof getter === "function") {
-    const entries = getter();
+    const entries = getter.call(session);
     return Array.isArray(entries) ? entries : [];
   }
   return Array.isArray(ctx.session?.entries) ? ctx.session.entries : [];
 }
 
+function sessionCustomData(entry: unknown, customType: string): Record<string, unknown> | null {
+  if (!isRecord(entry) || entry.customType !== customType) return null;
+  if (isRecord(entry.data)) return entry.data;
+  if (isRecord(entry.details)) return entry.details;
+  return null;
+}
+
 function latestStoredAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode | null {
   const entries = sessionEntries(ctx);
   for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
-    if (!isRecord(entry) || entry.customType !== "larva-agent-persona-switch-mode" || !isRecord(entry.details)) continue;
-    const mode = entry.details.mode;
+    const data = sessionCustomData(entries[index], "larva-agent-persona-switch-mode");
+    if (data === null) continue;
+    const mode = data.mode;
     if (isAgentPersonaSwitchMode(mode)) return mode;
   }
   return null;
@@ -2467,39 +2483,38 @@ function resolveAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode {
   return isAgentPersonaSwitchMode(envMode) ? envMode : "off";
 }
 
-function appendSessionCustomEntry(ctx: PiContext, entry: unknown): void {
+function appendSessionCustomEntry(ctx: PiContext, customType: string, data: Record<string, unknown>): void {
+  if (typeof ctx.appendEntry === "function") { ctx.appendEntry(customType, data); return; }
   const session = ctx.session;
   if (!session) return;
-  if (typeof session.appendEntry === "function") { session.appendEntry(entry); return; }
+  if (typeof session.appendEntry === "function") { session.appendEntry(customType, data); return; }
+  if (typeof session.addCustomEntry === "function") { session.addCustomEntry(customType, data); return; }
+  const entry = { type: "custom", customType, data };
   if (typeof session.addEntry === "function") { session.addEntry(entry); return; }
-  if (typeof session.addCustomEntry === "function") { session.addCustomEntry(entry); return; }
   if (Array.isArray(session.entries)) session.entries.push(entry);
 }
 
 function latestStoredActivePersonaCommit(ctx: PiContext): { personaId: string; specDigest: string } | null {
   const entries = sessionEntries(ctx);
   for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
-    if (!isRecord(entry) || entry.customType !== "larva-active-persona-commit" || !isRecord(entry.details)) continue;
-    if (entry.details.schema_version !== 1) continue;
-    const personaId = entry.details.persona_id;
+    const data = sessionCustomData(entries[index], "larva-active-persona-commit");
+    if (data === null) continue;
+    if (data.schema_version !== 1) continue;
+    const personaId = data.persona_id;
     if (typeof personaId !== "string" || personaId.trim().length === 0) continue;
-    const specDigest = typeof entry.details.spec_digest === "string" ? entry.details.spec_digest : "";
+    const specDigest = typeof data.spec_digest === "string" ? data.spec_digest : "";
     return { personaId: personaId.trim(), specDigest };
   }
   return null;
 }
 
 function appendActivePersonaCommitEntry(ctx: PiContext, envelope: PersonaEnvelope, source: ActivePersonaCommitSource): void {
-  appendSessionCustomEntry(ctx, {
-    customType: "larva-active-persona-commit",
-    details: {
-      schema_version: 1,
-      persona_id: envelope.persona_id,
-      spec_digest: envelope.spec_digest,
-      source,
-      committed_at: new Date().toISOString(),
-    },
+  appendSessionCustomEntry(ctx, "larva-active-persona-commit", {
+    schema_version: 1,
+    persona_id: envelope.persona_id,
+    spec_digest: envelope.spec_digest,
+    source,
+    committed_at: new Date().toISOString(),
   });
 }
 
@@ -2568,10 +2583,7 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
         return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-mode off|ask|auto") };
       }
       setAgentPersonaSwitchMode(mode);
-      appendSessionCustomEntry(runtimeCtx, {
-        customType: "larva-agent-persona-switch-mode",
-        details: { mode, source: "slash-command" },
-      });
+      appendSessionCustomEntry(runtimeCtx, "larva-agent-persona-switch-mode", { mode, source: "slash-command" });
       if (agentPersonaToolsAllowed()) registerAgentPersonaSwitchTools(runtimeCtx, pi);
       const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi);
       if (exposureError !== null) {
@@ -2950,7 +2962,7 @@ function boundedOptionalString(value: unknown, limit: number): string | undefine
 }
 
 function appendPersonaSwitchAudit(ctx: PiContext, details: Record<string, unknown>): void {
-  appendSessionCustomEntry(ctx, { customType: "larva-agent-persona-switch-audit", details });
+  appendSessionCustomEntry(ctx, "larva-agent-persona-switch-audit", details);
 }
 
 const LARVA_PERSONA_SWITCH_CONTINUATION_MARKER = "[Larva-generated continuation after persona switch]";
@@ -4433,7 +4445,11 @@ function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefi
 }
 
 async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void> {
-  const sessionIdentity = typeof ctx.session === "object" && ctx.session !== null ? ctx.session : null;
+  const sessionIdentity = typeof ctx.sessionManager === "object" && ctx.sessionManager !== null
+    ? ctx.sessionManager
+    : typeof ctx.session === "object" && ctx.session !== null
+      ? ctx.session
+      : null;
   const entryCount = sessionEntries(ctx).length;
   if (sessionIdentity !== null && initializedPiSessionEntryCounts.get(sessionIdentity) === entryCount) return;
   const initialization = initializeSession(ctx, pi);

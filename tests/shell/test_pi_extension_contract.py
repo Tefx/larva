@@ -1689,9 +1689,9 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
           const session = {{
             entries: sessionEntries,
             getEntries: () => sessionEntries,
-            appendEntry: (entry) => sessionEntries.push(entry),
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
             addEntry: (entry) => sessionEntries.push(entry),
-            addCustomEntry: (entry) => sessionEntries.push(entry),
+            addCustomEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
           }};
           const ctx = {{
             env: {{
@@ -1701,6 +1701,8 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             }},
             ui: options.omitUi ? undefined : ui,
             modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return options.modelUnavailable ? null : {{ id: "model" }}; }} }},
+            sessionManager: options.omitSession ? undefined : {{ getEntries: () => sessionEntries }},
+            appendEntry: options.omitSession ? undefined : (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
             session: options.omitSession ? undefined : session,
           }};
           if (options.samePiAsCtx) {{
@@ -1732,7 +1734,7 @@ def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_o
         const envAutoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
         const customAutoHarness = await buildHarness(
           { LARVA_PI_AGENT_PERSONA_SWITCH: "off" },
-          { sessionEntries: [{ customType: "larva-agent-persona-switch-mode", details: { mode: "auto", source: "slash-command" } }] }
+          { sessionEntries: [{ type: "custom", customType: "larva-agent-persona-switch-mode", data: { mode: "auto", source: "slash-command" } }] }
         );
         console.log(JSON.stringify({
           defaultTools: Object.keys(defaultHarness.tools),
@@ -1758,8 +1760,9 @@ def test_active_persona_session_restore_uses_latest_commit_without_rewriting_ses
         tmp_path,
         """
         const restoreEntry = {
+          type: "custom",
           customType: "larva-active-persona-commit",
-          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
         };
         const harness = await buildHarness({}, { sessionEntries: [restoreEntry] });
         console.log(JSON.stringify({
@@ -1776,8 +1779,9 @@ def test_active_persona_session_restore_uses_latest_commit_without_rewriting_ses
     assert payload["envelope"]["spec_digest"] == "sha256:python"
     assert payload["sessionEntries"] == [
         {
+            "type": "custom",
             "customType": "larva-active-persona-commit",
-            "details": {
+            "data": {
                 "schema_version": 1,
                 "persona_id": "python",
                 "spec_digest": "sha256:python",
@@ -1796,8 +1800,9 @@ def test_active_persona_session_restore_runs_on_extension_reload_without_session
         tmp_path,
         """
         const restoreEntry = {
+          type: "custom",
           customType: "larva-active-persona-commit",
-          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
         };
         const harness = await buildHarness({}, { sessionEntries: [restoreEntry], samePiAsCtx: true, skipSessionStart: true });
         console.log(JSON.stringify({
@@ -1820,8 +1825,9 @@ def test_active_persona_session_restore_before_agent_start_uses_event_ctx_withou
         tmp_path,
         """
         const restoreEntry = {
+          type: "custom",
           customType: "larva-active-persona-commit",
-          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
         };
         const harness = await buildHarness({}, { samePiAsCtx: true, skipSessionStart: true, omitSession: true });
         const eventEntries = [restoreEntry];
@@ -1830,7 +1836,7 @@ def test_active_persona_session_restore_before_agent_start_uses_event_ctx_withou
           session: {
             entries: eventEntries,
             getEntries: () => eventEntries,
-            appendEntry: (entry) => eventEntries.push(entry),
+            appendEntry: (customType, data) => eventEntries.push({ type: "custom", customType, data }),
           },
         };
         const before = await harness.handlers.before_agent_start({ systemPrompt: "Base prompt" }, eventCtx);
@@ -1848,8 +1854,9 @@ def test_active_persona_session_restore_before_agent_start_uses_event_ctx_withou
     assert any(status == ["larva: python"] for status in payload["statuses"])
     assert payload["eventEntries"] == [
         {
+            "type": "custom",
             "customType": "larva-active-persona-commit",
-            "details": {
+            "data": {
                 "schema_version": 1,
                 "persona_id": "python",
                 "spec_digest": "sha256:python",
@@ -1860,13 +1867,160 @@ def test_active_persona_session_restore_before_agent_start_uses_event_ctx_withou
     ]
 
 
+def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behavior(tmp_path: Path) -> None:
+    fake_cli = _write_agent_switch_fake_cli(tmp_path)
+    session_manager_js = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const {{ SessionManager }} = await import({json.dumps(session_manager_js)});
+        const sessionDir = {json.dumps(str(tmp_path / "pi-sessions-write"))};
+        const manager = SessionManager.create(process.cwd(), sessionDir);
+        manager.appendMessage({{ role: "user", content: "set persona", timestamp: Date.now() }});
+        manager.appendMessage({{
+          role: "assistant",
+          content: [{{ type: "text", text: "ok" }}],
+          api: "test",
+          provider: "test",
+          model: "test",
+          usage: {{ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: {{ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }} }},
+          stopReason: "stop",
+          timestamp: Date.now(),
+        }});
+        const sessionFile = manager.getSessionFile();
+        const statuses = [];
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INTERACTIVE_TUI: "1",
+          }},
+          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
+          modelRegistry: {{ find: async () => {{ return {{ id: "model" }}; }} }},
+          sessionManager: manager,
+          appendEntry: (customType, data) => manager.appendCustomEntry(customType, data),
+          getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx);
+        const committed = await mod.commitPersona("python", ctx, ctx);
+        const reopened = SessionManager.open(sessionFile);
+        console.log(JSON.stringify({{
+          committed,
+          entries: reopened.getEntries().filter((entry) => entry.customType === "larva-active-persona-commit"),
+          statuses,
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["committed"]["ok"] is True
+    assert payload["entries"][-1]["type"] == "custom"
+    assert payload["entries"][-1]["customType"] == "larva-active-persona-commit"
+    assert payload["entries"][-1]["data"]["persona_id"] == "python"
+    assert payload["entries"][-1]["data"]["spec_digest"] == "sha256:python"
+    assert payload["entries"][-1]["data"]["source"] == "api"
+
+
+def test_active_persona_session_restore_from_real_pi_session_manager_reopen_behavior(tmp_path: Path) -> None:
+    fake_cli = _write_agent_switch_fake_cli(tmp_path)
+    session_manager_js = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const {{ SessionManager }} = await import({json.dumps(session_manager_js)});
+        const sessionDir = {json.dumps(str(tmp_path / "pi-sessions"))};
+        const manager = SessionManager.create(process.cwd(), sessionDir);
+        manager.appendMessage({{ role: "user", content: "set persona", timestamp: Date.now() }});
+        manager.appendMessage({{
+          role: "assistant",
+          content: [{{ type: "text", text: "ok" }}],
+          api: "test",
+          provider: "test",
+          model: "test",
+          usage: {{ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: {{ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }} }},
+          stopReason: "stop",
+          timestamp: Date.now(),
+        }});
+        manager.appendCustomEntry("larva-active-persona-commit", {{
+          schema_version: 1,
+          persona_id: "python",
+          spec_digest: "sha256:python",
+          source: "slash-command",
+          committed_at: "2026-06-05T00:00:00.000Z",
+        }});
+        const sessionFile = manager.getSessionFile();
+        const reopened = SessionManager.open(sessionFile);
+        const statuses = [];
+        const activeToolCalls = [];
+        const modelCalls = [];
+        const commands = {{}};
+        const tools = {{}};
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INTERACTIVE_TUI: "1",
+          }},
+          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
+          modelRegistry: {{ find: async (...args) => {{ modelCalls.push(args); return {{ id: "model" }}; }} }},
+          sessionManager: reopened,
+          appendEntry: (customType, data) => reopened.appendCustomEntry(customType, data),
+          getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+          setModel: async () => true,
+          registerCommand: (nameOrCommand, maybeOptions) => {{
+            if (typeof nameOrCommand === "string") commands[nameOrCommand] = maybeOptions;
+            else commands[nameOrCommand.name] = nameOrCommand;
+          }},
+          registerTool: (tool) => {{ tools[tool.name] = tool; }},
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx);
+        console.log(JSON.stringify({{
+          envelope: mod.getActiveEnvelope(),
+          statuses,
+          activeTools: activeToolCalls.at(-1),
+          entries: reopened.getEntries().filter((entry) => entry.customType === "larva-active-persona-commit"),
+          sessionFile,
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert "read" in payload["activeTools"]
+    assert payload["entries"] == [
+        {
+            "type": "custom",
+            "customType": "larva-active-persona-commit",
+            "data": {
+                "schema_version": 1,
+                "persona_id": "python",
+                "spec_digest": "sha256:python",
+                "source": "slash-command",
+                "committed_at": "2026-06-05T00:00:00.000Z",
+            },
+            "id": payload["entries"][0]["id"],
+            "parentId": payload["entries"][0]["parentId"],
+            "timestamp": payload["entries"][0]["timestamp"],
+        }
+    ]
+
+
 def test_active_persona_session_restore_explicit_startup_persona_wins_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const restoreEntry = {
+          type: "custom",
           customType: "larva-active-persona-commit",
-          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
         };
         const harness = await buildHarness({ LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { sessionEntries: [restoreEntry] });
         console.log(JSON.stringify({ envelope: harness.mod.getActiveEnvelope(), sessionEntries: harness.sessionEntries }));
@@ -1875,9 +2029,9 @@ def test_active_persona_session_restore_explicit_startup_persona_wins_behavior(t
 
     assert payload["envelope"]["persona_id"] == "architect"
     active_entries = [entry for entry in payload["sessionEntries"] if entry.get("customType") == "larva-active-persona-commit"]
-    assert active_entries[0]["details"]["persona_id"] == "python"
-    assert active_entries[-1]["details"]["persona_id"] == "architect"
-    assert active_entries[-1]["details"]["source"] == "startup"
+    assert active_entries[0]["data"]["persona_id"] == "python"
+    assert active_entries[-1]["data"]["persona_id"] == "architect"
+    assert active_entries[-1]["data"]["source"] == "startup"
 
 
 def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: Path) -> None:
@@ -1885,8 +2039,9 @@ def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: P
         tmp_path,
         """
         const restoreEntry = {
+          type: "custom",
           customType: "larva-active-persona-commit",
-          details: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
         };
         const harness = await buildHarness({}, { sessionEntries: [restoreEntry], modelUnavailable: true });
         console.log(JSON.stringify({
@@ -1903,8 +2058,9 @@ def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: P
     assert any("Larva session persona restore unavailable: LARVA_MODEL_UNAVAILABLE" in notification[0] for notification in payload["notifications"])
     assert payload["sessionEntries"] == [
         {
+            "type": "custom",
             "customType": "larva-active-persona-commit",
-            "details": {
+            "data": {
                 "schema_version": 1,
                 "persona_id": "python",
                 "spec_digest": "sha256:python",
@@ -1931,8 +2087,9 @@ def test_agent_persona_switch_slash_command_persists_documented_session_entry_sh
     assert payload["result"] == {"ok": True, "mode": "auto"}
     assert any(
         entry == {
+            "type": "custom",
             "customType": "larva-agent-persona-switch-mode",
-            "details": {"mode": "auto", "source": "slash-command"},
+            "data": {"mode": "auto", "source": "slash-command"},
         }
         for entry in payload["sessionEntries"]
     )
@@ -1959,8 +2116,9 @@ def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp
     assert payload["selectCalls"] == [["Larva agent persona self-switch mode", ["off", "ask", "auto"]]]
     assert any(
         entry == {
+            "type": "custom",
             "customType": "larva-agent-persona-switch-mode",
-            "details": {"mode": "ask", "source": "slash-command"},
+            "data": {"mode": "ask", "source": "slash-command"},
         }
         for entry in payload["sessionEntries"]
     )
@@ -2029,7 +2187,7 @@ def test_agent_persona_switch_invalid_stored_mode_falls_back_to_env_then_off_beh
         """
         const envAskHarness = await buildHarness(
           { LARVA_PI_AGENT_PERSONA_SWITCH: "ask" },
-          { sessionEntries: [{ customType: "larva-agent-persona-switch-mode", details: { mode: "bogus", source: "slash-command" } }] }
+          { sessionEntries: [{ type: "custom", customType: "larva-agent-persona-switch-mode", data: { mode: "bogus", source: "slash-command" } }] }
         );
         const invalidEnvHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "bogus" });
         console.log(JSON.stringify({
@@ -2242,8 +2400,8 @@ def test_agent_persona_switch_ask_approval_rejection_no_ui_and_cancel_preserve_s
         assert payload[key]["persona_id"] == "architect"
     for key in ("rejectedAudit", "noUiAudit", "cancelledAudit"):
         assert payload[key]
-        assert payload[key][-1]["details"]["approved"] is False
-        assert payload[key][-1]["details"]["committed"] is False
+        assert payload[key][-1]["data"]["approved"] is False
+        assert payload[key][-1]["data"]["committed"] is False
 
 
 def test_agent_persona_switch_reason_required_before_commit_behavior(tmp_path: Path) -> None:
@@ -2284,7 +2442,7 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
           invalidAudit: invalidHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
           bounded,
           boundedEnvelope,
-          auditHandoffLength: audit?.details?.handoff?.length ?? null,
+          auditHandoffLength: audit?.data?.handoff?.length ?? null,
         }));
         """,
     )
@@ -2292,7 +2450,7 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
     assert payload["invalid"]["status"] == "failed"
     assert payload["invalid"]["error"]["code"] == "LARVA_BAD_INPUT"
     assert payload["invalidEnvelope"]["persona_id"] == "architect"
-    assert payload["invalidAudit"][-1]["details"]["committed"] is False
+    assert payload["invalidAudit"][-1]["data"]["committed"] is False
     assert payload["bounded"]["status"] == "success"
     assert payload["boundedEnvelope"]["persona_id"] == "python"
     assert payload["auditHandoffLength"] == 2000
@@ -2404,7 +2562,7 @@ def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior
     ]
     assert any(
         entry.get("customType") == "larva-agent-persona-switch-audit"
-        and entry.get("details") == {
+        and entry.get("data") == {
             "source": "tool",
             "mode": "auto",
             "from_persona_id": "architect",
