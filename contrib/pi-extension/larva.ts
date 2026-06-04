@@ -1422,6 +1422,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   }
 
   private timelineAssistantLines(text: string, contentWidth: number): string[] {
+    // Timeline excerpts are compact chronological previews. Do not Markdown-render
+    // partial assistant fragments here; the Output pane owns Markdown rendering.
     const prefix = selectorThemeFg(this.theme, "accent", selectorThemeBold("• assistant "));
     const valueWidth = Math.max(1, contentWidth - visibleWidth(prefix));
     return renderRendererSafePlainLines(boundedTimelineAssistantEvent(text), valueWidth)

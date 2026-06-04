@@ -871,11 +871,12 @@ Target panes:
    `toolCallId`; start, update, and end frames update that row rather than
    appending an unbounded firehose. The default row is action-first, not
    identifier-first: `↳ read(path="file") — success`, dimmed and indented under
-   assistant/terminal rows. Assistant excerpts use timeline-shaped rows such as
-   `• assistant <excerpt>` rather than field-table rows. Tool arguments are shown
-   by default only as bounded summaries; heavy fields such as full content,
-   patches, diffs, or base64 data
-   are omitted/summarized. Bounded output or error previews appear as subordinate
+   assistant/terminal rows. Assistant excerpts use timeline-shaped plain preview
+   rows such as `• assistant <excerpt>` rather than field-table rows or full
+   Markdown rendering; the Output pane remains the Markdown-reading surface for
+   assistant text. Tool arguments are shown by default only as bounded summaries;
+   heavy fields such as full content, patches, diffs, or base64 data are
+   omitted/summarized. Bounded output or error previews appear as subordinate
    preview rows such as `preview: 45 lines read`. Full internal
    `toolCallId`/frame identifiers are hidden by default because they are debug
    plumbing, not user intent; press `d` in the Timeline pane to reveal bounded

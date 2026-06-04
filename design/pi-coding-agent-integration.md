@@ -1054,8 +1054,10 @@ Overlay UI contract:
   tool call is displayed as one evolving human-readable action row keyed
   internally by `toolCallId`, with bounded argument summaries, bounded
   output/error previews, and final success/failure status. Assistant excerpts use
-  timeline-shaped rows such as `• assistant <excerpt>`. Tool rows are dimmed,
-  indented rows such as `↳ read(path="file") — success`; heavy arguments such as
+  timeline-shaped plain preview rows such as `• assistant <excerpt>` and must not
+  full-Markdown-render partial stream fragments; the Output pane remains the
+  Markdown-reading surface for assistant text. Tool rows are dimmed, indented rows
+  such as `↳ read(path="file") — success`; heavy arguments such as
   full content, patches, diffs, or base64 data are omitted/summarized rather than
   rendered. Default Timeline
   content must not start with or visually privilege internal ids such as `call_*`,
@@ -2596,8 +2598,9 @@ Additional gates for the formal Pi TUI dependency and enhanced UI target:
    and tool-call snapshots. It groups `tool_execution_start`,
    `tool_execution_update`, and `tool_execution_end` by `toolCallId` into one
    evolving row/snapshot per tool call at its first-seen position. Its default
-   view is human-action-first: it shows assistant excerpts as timeline rows such
-   as `• assistant <excerpt>`, dimmed/indented tool rows such as
+   view is human-action-first: it shows assistant excerpts as timeline-shaped
+   plain preview rows such as `• assistant <excerpt>` without full Markdown
+   rendering partial stream fragments, dimmed/indented tool rows such as
    `↳ read(path="file") — success`, bounded argument summaries, bounded
    output/error previews, and success/failure status without appending an
    unbounded event firehose or exposing internal call/frame ids. Heavy arguments
