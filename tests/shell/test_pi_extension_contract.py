@@ -2308,6 +2308,7 @@ def test_agent_persona_switch_tool_exposure_ask_auto_vs_off_behavior(tmp_path: P
           offTools: Object.keys(offHarness.tools),
           askTools: Object.keys(askHarness.tools),
           autoTools: Object.keys(autoHarness.tools),
+          autoSwitchSchema: autoHarness.tools["larva_persona_switch"]?.inputSchema ?? null,
         }));
         """,
     )
@@ -2316,6 +2317,10 @@ def test_agent_persona_switch_tool_exposure_ask_auto_vs_off_behavior(tmp_path: P
     assert "larva_personas" not in _registered_names(payload, "offTools")
     assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "askTools")
     assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "autoTools")
+    max_switches_schema = payload["autoSwitchSchema"]["properties"]["max_switches_per_chain"]
+    assert {option["type"] for option in max_switches_schema["anyOf"]} == {"integer", "null"}
+    assert max_switches_schema["anyOf"][0]["minimum"] == 0
+    assert "0 means unlimited" in max_switches_schema["description"]
 
 
 def test_agent_persona_switch_invalid_stored_mode_falls_back_to_env_then_off_behavior(tmp_path: Path) -> None:
@@ -2456,6 +2461,9 @@ def test_agent_persona_switch_prompt_guidance_only_for_ask_auto_without_catalogu
         assert "Do not call other tools in the same assistant message" in payload[key]
         assert "Python persona" not in payload[key]
         assert "Architecture persona" not in payload[key]
+    assert "default request-chain budget is 20" in payload["autoPrompt"]
+    assert "max_switches_per_chain" in payload["autoPrompt"]
+    assert "At most one" not in payload["autoPrompt"]
 
 
 def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: Path) -> None:
@@ -2570,6 +2578,11 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
         const invalid = await invalidHarness.mod.larva_persona_switch(null, invalidHarness.ctx, invalidHarness.pi);
         const invalidEnvelope = invalidHarness.mod.getActiveEnvelope();
 
+        const invalidBudgetHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const invalidBudgetTool = invalidBudgetHarness.tools["larva_persona_switch"];
+        const invalidBudget = await (invalidBudgetTool.execute ?? invalidBudgetTool.handler)("call-invalid-budget", { persona_id: "python", reason: "bad budget", max_switches_per_chain: -1 }, undefined, undefined, invalidBudgetHarness.ctx);
+        const invalidBudgetEnvelope = invalidBudgetHarness.mod.getActiveEnvelope();
+
         const handoffHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const longHandoff = "h".repeat(2500);
         const tool = handoffHarness.tools["larva_persona_switch"];
@@ -2581,6 +2594,9 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
           invalid,
           invalidEnvelope,
           invalidAudit: invalidHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          invalidBudget,
+          invalidBudgetEnvelope,
+          invalidBudgetAudit: invalidBudgetHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
           bounded,
           boundedEnvelope,
           auditHandoffLength: audit?.data?.handoff?.length ?? null,
@@ -2592,6 +2608,11 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
     assert payload["invalid"]["error"]["code"] == "LARVA_BAD_INPUT"
     assert payload["invalidEnvelope"]["persona_id"] == "architect"
     assert payload["invalidAudit"][-1]["data"]["committed"] is False
+    assert payload["invalidBudget"]["status"] == "failed"
+    assert payload["invalidBudget"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert "max_switches_per_chain" in payload["invalidBudget"]["error"]["message"]
+    assert payload["invalidBudgetEnvelope"]["persona_id"] == "architect"
+    assert payload["invalidBudgetAudit"][-1]["data"]["committed"] is False
     assert payload["bounded"]["status"] == "success"
     assert payload["boundedEnvelope"]["persona_id"] == "python"
     assert payload["auditHandoffLength"] == 2000
@@ -2625,17 +2646,18 @@ def test_agent_persona_switch_same_persona_no_op_no_termination_or_extra_commit_
     assert payload["finalEnvelope"]["persona_id"] == "architect"
 
 
-def test_agent_persona_switch_one_switch_guard_rejects_second_success_in_request_chain_behavior(tmp_path: Path) -> None:
+def test_agent_persona_switch_finite_budget_allows_multiple_successes_then_rejects_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const tool = harness.tools["larva_persona_switch"];
-        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation", continue_task: true }, undefined, undefined, harness.ctx) : null;
+        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation", continue_task: true, max_switches_per_chain: 2 }, undefined, undefined, harness.ctx) : null;
         const followUpPrompt = harness.sentUserMessages[0]?.message ?? "";
         const followUpBeforeAgent = harness.mod.before_agent_start({ prompt: followUpPrompt, systemPrompt: "base" });
         const second = tool ? await (tool.execute ?? tool.handler)("call-2", { persona_id: "architect", reason: "switch back" }, undefined, undefined, harness.ctx) : null;
-        console.log(JSON.stringify({ first, followUpBeforeAgent, second, sentUserMessages: harness.sentUserMessages, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
+        const third = tool ? await (tool.execute ?? tool.handler)("call-3", { persona_id: "python", reason: "budget exhausted" }, undefined, undefined, harness.ctx) : null;
+        console.log(JSON.stringify({ first, followUpBeforeAgent, second, third, sentUserMessages: harness.sentUserMessages, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
         """,
     )
 
@@ -2643,35 +2665,60 @@ def test_agent_persona_switch_one_switch_guard_rejects_second_success_in_request
     assert payload["first"].get("terminate") is True
     assert payload["sentUserMessages"][0]["options"] == {"deliverAs": "followUp"}
     assert payload["followUpBeforeAgent"]["systemPrompt"]
-    assert payload["second"]["status"] == "failed"
-    assert payload["second"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
-    assert payload["finalEnvelope"]["persona_id"] == "python"
+    assert payload["second"]["status"] == "success"
+    assert payload["second"].get("terminate") is True
+    assert payload["third"]["status"] == "failed"
+    assert payload["third"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
+    assert "budget" in payload["third"]["error"]["message"].lower()
+    assert payload["finalEnvelope"]["persona_id"] == "architect"
 
 
-def test_agent_persona_switch_request_chain_resets_for_later_independent_user_request_behavior(tmp_path: Path) -> None:
+def test_agent_persona_switch_budget_resets_for_later_request_and_zero_allows_unlimited_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-        const tool = harness.tools["larva_persona_switch"];
-        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation", continue_task: true }, undefined, undefined, harness.ctx) : null;
-        const followUpPrompt = harness.sentUserMessages[0]?.message ?? "";
-        const followUpBeforeAgent = harness.mod.before_agent_start({ prompt: followUpPrompt, systemPrompt: "base" });
-        const sameChainSecond = tool ? await (tool.execute ?? tool.handler)("call-2", { persona_id: "architect", reason: "switch back too soon" }, undefined, undefined, harness.ctx) : null;
-        const independentBeforeAgent = harness.mod.before_agent_start({ prompt: "New independent user request: please return to architecture", systemPrompt: "base" });
-        const laterFirst = tool ? await (tool.execute ?? tool.handler)("call-3", { persona_id: "architect", reason: "new request needs architecture" }, undefined, undefined, harness.ctx) : null;
-        console.log(JSON.stringify({ first, followUpBeforeAgent, sameChainSecond, independentBeforeAgent, laterFirst, finalEnvelope: harness.mod.getActiveEnvelope(), sentUserMessages: harness.sentUserMessages }));
+        const resetHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const resetTool = resetHarness.tools["larva_persona_switch"];
+        const resetFirst = await (resetTool.execute ?? resetTool.handler)("reset-1", { persona_id: "python", reason: "need implementation", max_switches_per_chain: 1, continue_task: true }, undefined, undefined, resetHarness.ctx);
+        const resetFollowUpPrompt = resetHarness.sentUserMessages[0]?.message ?? "";
+        const resetFollowUpBeforeAgent = resetHarness.mod.before_agent_start({ prompt: resetFollowUpPrompt, systemPrompt: "base" });
+        const resetSameChainSecond = await (resetTool.execute ?? resetTool.handler)("reset-2", { persona_id: "architect", reason: "budget exhausted" }, undefined, undefined, resetHarness.ctx);
+        const independentBeforeAgent = resetHarness.mod.before_agent_start({ prompt: "New independent user request: please return to architecture", systemPrompt: "base" });
+        const laterFirst = await (resetTool.execute ?? resetTool.handler)("reset-3", { persona_id: "architect", reason: "new request needs architecture" }, undefined, undefined, resetHarness.ctx);
+
+        const unlimitedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const unlimitedTool = unlimitedHarness.tools["larva_persona_switch"];
+        const unlimitedResults = [];
+        for (const [index, personaId] of ["python", "architect", "python", "architect"].entries()) {
+          unlimitedResults.push(await (unlimitedTool.execute ?? unlimitedTool.handler)(`unlimited-${index}`, {
+            persona_id: personaId,
+            reason: `unlimited switch ${index}`,
+            max_switches_per_chain: index === 0 ? 0 : undefined,
+          }, undefined, undefined, unlimitedHarness.ctx));
+        }
+        console.log(JSON.stringify({
+          resetFirst,
+          resetFollowUpBeforeAgent,
+          resetSameChainSecond,
+          independentBeforeAgent,
+          laterFirst,
+          resetFinalEnvelope: resetHarness.mod.getActiveEnvelope(),
+          unlimitedResults,
+          unlimitedFinalEnvelope: unlimitedHarness.mod.getActiveEnvelope(),
+        }));
         """,
     )
 
-    assert payload["first"]["status"] == "success"
-    assert payload["followUpBeforeAgent"]["systemPrompt"]
-    assert payload["sameChainSecond"]["status"] == "failed"
-    assert payload["sameChainSecond"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
+    assert payload["resetFirst"]["status"] == "success"
+    assert payload["resetFollowUpBeforeAgent"]["systemPrompt"]
+    assert payload["resetSameChainSecond"]["status"] == "failed"
+    assert payload["resetSameChainSecond"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
     assert payload["independentBeforeAgent"]["systemPrompt"]
     assert payload["laterFirst"]["status"] == "success"
     assert payload["laterFirst"].get("terminate") is True
-    assert payload["finalEnvelope"]["persona_id"] == "architect"
+    assert payload["resetFinalEnvelope"]["persona_id"] == "architect"
+    assert [result["status"] for result in payload["unlimitedResults"]] == ["success", "success", "success", "success"]
+    assert payload["unlimitedFinalEnvelope"]["persona_id"] == "architect"
 
 
 def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior(tmp_path: Path) -> None:
@@ -2722,6 +2769,8 @@ def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior
             "committed": True,
             "error_code": None,
             "continue_task": True,
+            "max_switches_per_chain": 20,
+            "switch_count_in_chain": 1,
         }
         for entry in payload["sessionEntries"]
     )

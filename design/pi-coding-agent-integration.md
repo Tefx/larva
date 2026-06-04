@@ -334,14 +334,18 @@ Mode contract:
   active tool set and defensive gates reject stale/forged calls. Manual
   `/larva-persona <id>` switching remains available and atomic.
 - `ask` exposes `larva_persona_switch(persona_id, reason, handoff?,
-  continue_task?)` plus read-only bounded `larva_personas(query?, limit?)`.
-  Commit requires UI approval; rejection, cancellation, timeout, or no UI leaves
-  persona/model/tool state unchanged.
+  continue_task?, max_switches_per_chain?)` plus read-only bounded
+  `larva_personas(query?, limit?)`. Commit requires UI approval; rejection,
+  cancellation, timeout, or no UI leaves persona/model/tool state unchanged.
 - `auto` exposes the same tools and commits an allowed self-switch without UI
-  approval.
+  approval while the request-chain switch budget remains. The default budget is
+  20 successful committed switches; `max_switches_per_chain: 0` means unlimited
+  for the current request chain. The budget is a tool parameter, not an env var
+  or PersonaSpec/opifex field.
 
 A successful model-facing switch returns `terminate=true` so the old persona turn
-stops before any continuation under the new prompt. Success details include
+stops before any continuation under the new prompt. Failed, rejected, and
+same-persona no-op requests do not consume switch budget. Success details include
 generic active-persona proof: `previous_persona`, `active_persona`,
 `spec_digest`, and `commit_source: "self-switch"`. If `continue_task` is true,
 the extension sends an explicit Larva-generated Pi follow-up (`deliverAs: "followUp"`)

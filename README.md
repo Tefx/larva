@@ -263,11 +263,13 @@ setting `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`, or during the session with
 `/larva-mode [off|ask|auto]`. In `off`, model-facing autonomous
 switch tools are hidden from the active tool set and stale or forged calls are
 rejected while manual `/larva-persona <id>` still works. In `ask`,
-`larva_persona_switch(persona_id, reason, handoff?, continue_task?)` and the
+`larva_persona_switch(persona_id, reason, handoff?, continue_task?, max_switches_per_chain?)` and the
 bounded read-only `larva_personas(query?, limit?)` discovery tool are exposed, but
 the switch commits only after UI approval and fails safely without UI, rejection,
 cancel, or timeout. In `auto`, those tools are exposed and an allowed switch
-commits without UI approval. A successful autonomous switch returns
+commits without UI approval while the request-chain switch budget remains. The
+default is 20 successful committed switches; `max_switches_per_chain: 0` means
+unlimited for the current request chain. A successful autonomous switch returns
 `terminate=true` with active persona proof (`previous_persona`, `active_persona`,
 `spec_digest`, `commit_source`); if `continue_task` is true, Larva queues an
 explicit `[Larva-generated continuation after persona switch]` follow-up for the

@@ -278,7 +278,7 @@ type PiContext = PiApi & {
   signal?: AbortSignal;
 };
 type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null };
-type PersonaSwitchToolInput = { persona_id?: unknown; reason?: unknown; handoff?: unknown; continue_task?: unknown };
+type PersonaSwitchToolInput = { persona_id?: unknown; reason?: unknown; handoff?: unknown; continue_task?: unknown; max_switches_per_chain?: unknown };
 type AgentPersonaSwitchToolResult = {
   status: "success" | "failed";
   content: PiTextContent[];
@@ -368,8 +368,10 @@ let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
 let toolEnumerationMode: ToolEnumerationMode = "strict";
+const DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN = 20;
 let agentPersonaSwitchMode: AgentPersonaSwitchMode = "off";
-let agentPersonaSwitchSucceededInChain = false;
+let agentPersonaSwitchCountInChain = 0;
+let agentPersonaSwitchMaxPerChain = DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN;
 let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 let sessionInitializationPromise: Promise<void> | null = null;
@@ -2529,10 +2531,15 @@ function appendActivePersonaCommitEntry(ctx: PiContext, pi: PiApi, envelope: Per
   }, pi);
 }
 
+function resetAgentPersonaSwitchRequestChain(): void {
+  agentPersonaSwitchCountInChain = 0;
+  agentPersonaSwitchMaxPerChain = DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN;
+  agentPersonaSwitchPendingFollowUpContinuations = 0;
+}
+
 function setAgentPersonaSwitchMode(mode: AgentPersonaSwitchMode): void {
   agentPersonaSwitchMode = mode;
-  agentPersonaSwitchSucceededInChain = false;
-  agentPersonaSwitchPendingFollowUpContinuations = 0;
+  resetAgentPersonaSwitchRequestChain();
 }
 
 function agentPersonaToolsAllowed(): boolean {
@@ -2983,6 +2990,14 @@ function boundedOptionalString(value: unknown, limit: number): string | undefine
   return Array.from(trimmed).slice(0, limit).join("");
 }
 
+function parseSwitchBudget(value: unknown): number | null | LarvaError {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    return error("LARVA_BAD_INPUT", "max_switches_per_chain must be a non-negative integer; 0 means unlimited.");
+  }
+  return value;
+}
+
 function appendPersonaSwitchAudit(ctx: PiContext, pi: PiApi, details: Record<string, unknown>): void {
   appendSessionCustomEntry(ctx, "larva-agent-persona-switch-audit", details, pi);
 }
@@ -3000,8 +3015,7 @@ function noteAgentPersonaSwitchRequestChainBoundary(event: unknown): void {
     agentPersonaSwitchPendingFollowUpContinuations -= 1;
     return;
   }
-  agentPersonaSwitchSucceededInChain = false;
-  agentPersonaSwitchPendingFollowUpContinuations = 0;
+  resetAgentPersonaSwitchRequestChain();
 }
 
 function continuationMessage(fromPersona: string, toPersona: string, reason: string, handoff: string | undefined): string {
@@ -3027,6 +3041,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   const reason = boundedOptionalString(request.reason, 1_000);
   const handoff = boundedOptionalString(request.handoff, 2_000);
   const continueTask = request.continue_task === true;
+  const requestedSwitchBudget = parseSwitchBudget(request.max_switches_per_chain);
   const auditBase = {
     source: "tool",
     mode,
@@ -3038,6 +3053,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     committed: false,
     error_code: null,
     continue_task: continueTask,
+    max_switches_per_chain: isLarvaError(requestedSwitchBudget) ? null : requestedSwitchBudget,
   };
   if (mode === "off") {
     const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_OFF", "Larva agent persona self-switch mode is off.");
@@ -3049,15 +3065,20 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
-  if (agentPersonaSwitchSucceededInChain) {
-    const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_LIMIT", "At most one successful self-switch is allowed for one user request chain.");
-    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", error_code: larvaError.code });
-    return switchToolFailure(larvaError);
+  if (isLarvaError(requestedSwitchBudget)) {
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", error_code: requestedSwitchBudget.code });
+    return switchToolFailure(requestedSwitchBudget);
   }
+  const effectiveSwitchBudget = requestedSwitchBudget ?? agentPersonaSwitchMaxPerChain;
   if (fromPersona === personaId) {
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: false });
     if (state.envelope === null) return switchToolSuccess(`Larva persona already active: ${personaId}`, { persona_id: personaId, committed: false }, false);
     return switchToolSuccess(`Larva persona already active: ${personaId}`, personaSwitchProof(fromPersona, state.envelope, false), false);
+  }
+  if (effectiveSwitchBudget !== 0 && agentPersonaSwitchCountInChain >= effectiveSwitchBudget) {
+    const larvaError = error("LARVA_AGENT_PERSONA_SWITCH_LIMIT", "Larva persona switch budget exhausted for this user request chain.");
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", max_switches_per_chain: effectiveSwitchBudget, error_code: larvaError.code });
+    return switchToolFailure(larvaError);
   }
   let approved = mode === "auto";
   if (mode === "ask") {
@@ -3082,7 +3103,8 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, error_code: committed.error.code });
     return switchToolFailure(committed.error);
   }
-  agentPersonaSwitchSucceededInChain = true;
+  agentPersonaSwitchMaxPerChain = effectiveSwitchBudget;
+  agentPersonaSwitchCountInChain += 1;
   appendPersonaSwitchAudit(ctx, pi, {
     source: "tool",
     mode,
@@ -3094,6 +3116,8 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     committed: true,
     error_code: null,
     continue_task: continueTask,
+    max_switches_per_chain: agentPersonaSwitchMaxPerChain,
+    switch_count_in_chain: agentPersonaSwitchCountInChain,
   });
   const sendUserMessage = ctx.sendUserMessage ?? (pi as PiContext).sendUserMessage;
   if (continueTask && typeof sendUserMessage === "function") {
@@ -3122,7 +3146,7 @@ export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ 
 
 function agentPersonaSwitchPromptGuidance(): string | null {
   if (agentPersonaSwitchMode === "auto") {
-    return "If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason and handoff. Do not call other tools in the same assistant message when switching persona. Do not switch for minor style mismatch. At most one self-switch may happen for one user request chain unless the user explicitly asks otherwise.";
+    return "If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason and handoff. Do not call other tools in the same assistant message when switching persona. Do not switch for minor style mismatch. The default request-chain budget is 20 successful switches. Only set max_switches_per_chain, including 0 for unlimited, when the user explicitly requests a different switch budget.";
   }
   if (agentPersonaSwitchMode === "ask") {
     return "You may request a persona switch with larva_persona_switch when another registered Larva persona is clearly better suited. Call larva_persona_switch alone. Do not call other tools in the same assistant message when switching persona. The user must approve before the switch is committed.";
@@ -4523,6 +4547,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
       reason: { type: "string", description: "Required concise reason for switching persona." },
       handoff: { type: "string", description: "Optional bounded handoff for the next persona." },
       continue_task: { type: "boolean", description: "Queue a Larva-generated continuation after a successful switch." },
+      max_switches_per_chain: { anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }], description: "Optional request-chain switch budget. Omit for default 20; 0 means unlimited." },
     },
     required: ["persona_id", "reason"],
     additionalProperties: false,

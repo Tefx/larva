@@ -13,7 +13,7 @@ The feature has three user-facing surfaces:
 ```text
 larva pi --agent-persona-switch off|ask|auto ...
 /larva-mode [off|ask|auto]
-larva_persona_switch(persona_id, reason, handoff?, continue_task?)
+larva_persona_switch(persona_id, reason, handoff?, continue_task?, max_switches_per_chain?)
 ```
 
 Optional but recommended read-only discovery tool:
@@ -79,6 +79,10 @@ Behavior:
 
 - The agent may switch to a better-suited persona without user confirmation.
 - The tool must require a clear `reason` and should include a concise `handoff`.
+- Successful committed switches consume a per-request-chain switch budget.
+- The default budget is 20 successful committed switches.
+- `max_switches_per_chain` may set the current request-chain budget; `0` means unlimited.
+- Failed, rejected, and same-persona no-op requests do not consume the budget.
 - Successful switch terminates the old persona turn.
 - If `continue_task` is true, the extension queues a Larva-generated continuation
   so the new persona can continue the same task on the next turn.
@@ -87,11 +91,11 @@ Behavior:
 
 ```text
 LLM current persona
-  -> calls larva_persona_switch(persona_id, reason, handoff?, continue_task?)
+  -> calls larva_persona_switch(persona_id, reason, handoff?, continue_task?, max_switches_per_chain?)
       -> extension checks session switch mode
       -> off: reject without commit
       -> ask: request user confirmation; reject without commit if not approved
-      -> auto: continue without confirmation
+      -> auto: continue without confirmation when request-chain switch budget remains
       -> extension calls internal commitPersona(persona_id)
           -> resolve persona
           -> validate/select model
@@ -160,6 +164,26 @@ human-authored request. It is also a generic hard-boundary reminder: the new
 persona's instructions take priority, and any previous execution plan that
 conflicts with the new persona's startup or decision protocol must be discarded.
 
+## Switch budget
+
+`larva_persona_switch` replaces the old one-switch-per-chain guard with a small
+numeric budget:
+
+- Default: 20 successful committed switches per user request chain.
+- `max_switches_per_chain: 0`: unlimited for the current request chain.
+- `max_switches_per_chain: N` for positive integer `N`: allow at most `N`
+  successful committed switches in the current request chain.
+- Invalid values fail with `LARVA_BAD_INPUT`.
+- Failed, rejected, and same-persona no-op calls do not consume budget.
+- Larva-generated continuation turns stay in the same request chain and inherit
+  the remaining budget.
+- A new human-authored request starts a new request chain and resets to the
+  default budget unless the next switch call supplies a new parameter.
+
+The parameter is intentionally not an environment variable and does not alter
+PersonaSpec/opifex shared contracts. Agents should omit it unless the user has
+explicitly requested a different budget or unlimited switching.
+
 Recommended first implementation path:
 
 ```text
@@ -217,9 +241,9 @@ For `auto`:
 ```text
 If the current active Larva persona is materially unsuitable and a clearly better
 registered Larva persona exists, call larva_persona_switch alone with a concise
-reason and handoff. Do not switch for minor style mismatch. At most one
-self-switch may happen for one user request chain unless the user explicitly asks
-otherwise.
+reason and handoff. Do not switch for minor style mismatch. The default request-chain
+budget is 20 successful switches. Only set max_switches_per_chain, including 0 for
+unlimited, when the user explicitly requests a different switch budget.
 ```
 
 For `ask`:
@@ -286,7 +310,7 @@ shared opifex contracts.
 Minimum guards:
 
 - Default mode is `off`.
-- At most one successful self-switch per user request chain by default.
+- Default request-chain switch budget is 20 successful committed switches; `0` means unlimited when explicitly supplied as a tool parameter.
 - Same-persona switch is a no-op and should not terminate.
 - `reason` is required and must be non-empty.
 - `handoff` should be bounded in length.
@@ -330,8 +354,8 @@ architecture_basis:
   runtime_contract:
     launch: "larva pi --agent-persona-switch off|ask|auto [--persona <id>] [--] <pi args...>"
     slash_mode: "/larva-mode [off|ask|auto]"
-    tool_switch: "larva_persona_switch(persona_id, reason, handoff?, continue_task?)"
-    success: "commit target persona atomically, append audit, return active-persona proof, terminate old turn, optionally queue hard-boundary continuation"
+    tool_switch: "larva_persona_switch(persona_id, reason, handoff?, continue_task?, max_switches_per_chain?)"
+    success: "commit target persona atomically when request-chain budget remains, append audit, return active-persona proof, terminate old turn, optionally queue hard-boundary continuation"
     failure: "do not commit; preserve previous persona/model/tools"
     default_mode: "off"
     child_default_mode: "off"
@@ -410,7 +434,7 @@ architecture_basis:
   resolved_implementation_decisions:
     continuation_transport: "Use explicit Larva-generated pi.sendUserMessage(..., { deliverAs: 'followUp' }) for first target auto-continuation. The message must be visibly marked as Larva-generated, auditable, and generic hard-boundary text; do not block implementation on custom-message triggerTurn exploration."
     mixed_tool_batch_enforcement: "Require larva_persona_switch to be called alone in tool description and prompt guidance. Runtime enforcement should defensively reject or neutralize sibling tool calls when Pi event ordering exposes enough context; if full sibling visibility is unavailable, the documented single-tool contract plus terminating result is the supported behavior."
-    request_chain_identity: "Use a simple in-memory guard for the first target: at most one successful self-switch within the original user turn plus its Larva-generated continuation chain. Persist audit entries for inspection only; do not introduce durable global counters."
+    request_chain_identity: "Use simple in-memory per-request-chain switch budget accounting: default 20 successful committed switches, explicit max_switches_per_chain=0 means unlimited, and Larva-generated continuations inherit remaining budget. Persist audit entries for inspection only; do not introduce durable global counters."
     child_policy: "Child Pi processes start with agent self-switch mode off. Do not add inherit/ask/auto child policy in the first target. Revisit only after parent self-switch has runtime proof."
 
   open_questions: []

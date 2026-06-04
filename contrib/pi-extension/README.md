@@ -335,15 +335,20 @@ Mode behavior:
   autonomous tools are rejected with `LARVA_AGENT_PERSONA_SWITCH_OFF`. Manual
   `/larva-persona <id>` remains available.
 - `ask` exposes `larva_persona_switch(persona_id, reason, handoff?,
-  continue_task?)` and read-only `larva_personas(query?, limit?)`. A requested
-  switch commits only after UI confirmation. Rejection, cancellation, timeout, or
-  missing UI fails safely without changing persona, model, or tool state.
+  continue_task?, max_switches_per_chain?)` and read-only
+  `larva_personas(query?, limit?)`. A requested switch commits only after UI
+  confirmation. Rejection, cancellation, timeout, or missing UI fails safely
+  without changing persona, model, or tool state.
 - `auto` exposes the same tools and commits an allowed self-switch without UI
-  confirmation.
+  confirmation while the request-chain switch budget remains. The default is 20
+  successful committed switches. `max_switches_per_chain: 0` means unlimited for
+  the current request chain. The budget is a tool parameter, not an environment
+  variable.
 
 `larva_personas` is bounded discovery metadata; it is not a prompt/spec catalogue
 injection surface. `larva_persona_switch` requires a non-empty `reason`; `handoff`
-is optional and bounded. A successful autonomous switch returns a tool result with
+is optional and bounded. Failed, rejected, and same-persona no-op calls do not
+consume switch budget. A successful autonomous switch returns a tool result with
 `terminate=true` because the current provider turn started under the old persona
 prompt. The success `details` include generic active-persona proof:
 `previous_persona`, `active_persona`, `spec_digest`, and
