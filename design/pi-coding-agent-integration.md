@@ -316,7 +316,9 @@ startup behavior.
 Session restore does not parse Larva prompt blocks, scan arbitrary JSONL history,
 read `/larva-log` cache, use `larva_subagent` task ids, mutate PersonaSpec, or
 restore one-turn agent self-switch guards. `/larva-mode` continues to use its own
-session-level mode entry and is restored independently.
+session-level mode entry and is restored independently from extension initialization,
+`session_start`, or `before_agent_start` event contexts so reload paths that lack
+factory-time session entries still recover the latest mode before model startup.
 
 ### Agent persona self-switch
 

@@ -4488,6 +4488,7 @@ async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
+  registerAgentPersonaSwitchTools(ctx, pi);
   const explicitPersonaId = env.LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
   if (explicitPersonaId.length > 0) {
     const committed = await commitPersonaWithOptions(explicitPersonaId, ctx, pi, { toolBaseline: startupToolBaseline, sessionCommitSource: "startup" });

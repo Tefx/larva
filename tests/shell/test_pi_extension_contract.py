@@ -1945,6 +1945,48 @@ def test_active_persona_session_restore_before_agent_start_uses_event_ctx_withou
     ]
 
 
+def test_agent_persona_switch_mode_restore_before_agent_start_uses_event_ctx_without_session_start_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const personaEntry = {
+          type: "custom",
+          customType: "larva-active-persona-commit",
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const modeEntry = {
+          type: "custom",
+          customType: "larva-agent-persona-switch-mode",
+          data: { mode: "auto", source: "slash-command" },
+        };
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { samePiAsCtx: true, skipSessionStart: true, omitSession: true });
+        const eventEntries = [personaEntry, modeEntry];
+        const eventCtx = {
+          ...harness.ctx,
+          session: {
+            entries: eventEntries,
+            getEntries: () => eventEntries,
+            appendEntry: (customType, data) => eventEntries.push({ type: "custom", customType, data }),
+          },
+        };
+        const before = await harness.handlers.before_agent_start({ systemPrompt: "Base prompt" }, eventCtx);
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          before,
+          registeredTools: Object.keys(harness.tools),
+          activeTools: harness.activeToolCalls.at(-1),
+          eventEntries,
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert "call larva_persona_switch alone" in payload["before"]["systemPrompt"]
+    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "registeredTools")
+    assert {"larva_persona_switch", "larva_personas"} <= set(payload["activeTools"])
+    assert len([entry for entry in payload["eventEntries"] if entry.get("customType") == "larva-agent-persona-switch-mode"]) == 1
+
+
 def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behavior(tmp_path: Path) -> None:
     fake_cli = _write_agent_switch_fake_cli(tmp_path)
     session_manager_js = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"

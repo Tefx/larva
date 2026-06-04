@@ -354,8 +354,8 @@ architecture_basis:
       - "Larva registry remains persona source of truth."
       - "Pi extension owns only session-local switch mode and committed envelope."
     lifecycle_ordering:
-      - "Resolve switch mode on session_start."
-      - "Register slash command and model-facing tools during extension initialization."
+      - "Resolve switch mode on extension initialization, session_start, and before_agent_start event contexts so reload/resume sees session-local mode entries even when factory context lacks session entries."
+      - "Register slash command during extension initialization and register model-facing switch/discovery tools whenever restored mode is ask or auto."
       - "Update active tool exposure when mode changes or persona commits."
       - "Inject mode guidance only during before_agent_start."
       - "On successful model-facing switch, terminate the old turn before continuation."
