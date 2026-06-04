@@ -348,6 +348,7 @@ const DEFAULT_SUBAGENT_PRESENTATION_CACHE_CONFIG: SubagentPresentationCacheConfi
 const SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT = 4_000;
 const SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT = 800;
 const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
+const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
@@ -1025,6 +1026,18 @@ function boundedToolArgsPreview(value: string): string {
 
 function boundedToolOutputPreview(value: string): string {
   return boundedPresentationPreview(value, SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT);
+}
+
+function boundedSubagentToolSnapshots(snapshots: SubagentToolSnapshot[] | undefined): SubagentToolSnapshot[] | undefined {
+  if (snapshots === undefined || snapshots.length === 0) return undefined;
+  return snapshots.slice(-SUBAGENT_TOOL_SNAPSHOT_LIMIT).map((snapshot) => ({
+    toolCallId: boundedVisible(snapshot.toolCallId, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT),
+    name: snapshot.name === undefined ? undefined : boundedVisible(snapshot.name, 120),
+    status: snapshot.status,
+    args_preview: snapshot.args_preview === undefined ? undefined : boundedToolArgsPreview(snapshot.args_preview),
+    output_preview: snapshot.output_preview === undefined ? undefined : boundedToolOutputPreview(snapshot.output_preview),
+    error_preview: snapshot.error_preview === undefined ? undefined : boundedToolOutputPreview(snapshot.error_preview),
+  }));
 }
 
 function subagentToolDisplayName(snapshot: SubagentToolSnapshot): string {
@@ -3097,8 +3110,11 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     const snapshots = [...(entry.tool_snapshots ?? [])];
     const snapshotIndex = snapshots.findIndex((snapshot) => snapshot.toolCallId === eventValue.toolCallId);
     const current = snapshotIndex >= 0 ? snapshots[snapshotIndex] : { toolCallId: eventValue.toolCallId, status: eventValue.status };
-    const nextSnapshot = { ...current, ...eventValue, kind: undefined } as SubagentToolSnapshot & { kind?: undefined };
-    delete nextSnapshot.kind;
+    const nextSnapshot: SubagentToolSnapshot = { ...current, toolCallId: eventValue.toolCallId, status: eventValue.status };
+    if (eventValue.name !== undefined) nextSnapshot.name = eventValue.name;
+    if (eventValue.args_preview !== undefined) nextSnapshot.args_preview = eventValue.args_preview;
+    if (eventValue.output_preview !== undefined) nextSnapshot.output_preview = eventValue.output_preview;
+    if (eventValue.error_preview !== undefined) nextSnapshot.error_preview = eventValue.error_preview;
     if (snapshotIndex >= 0) snapshots[snapshotIndex] = nextSnapshot;
     else snapshots.push(nextSnapshot);
     entry.tool_snapshots = snapshots;
@@ -3158,6 +3174,8 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
     error: result.error,
     call_id: callId ?? preserved?.call_id,
     started_at: preserved?.started_at,
+    tool_snapshots: boundedSubagentToolSnapshots(preserved?.tool_snapshots),
+    active_tool_state: null,
   };
   appendSubagentPresentationLog(statusEntry);
 }

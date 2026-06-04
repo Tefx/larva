@@ -213,6 +213,88 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
     }
 
 
+def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_path: Path) -> None:
+    """Same-process terminal entries retain bounded Events snapshots without cache persistence."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { readFile } = await import("node:fs/promises");
+        const cacheFile = join(tmpRoot, "terminal-tool-cache.json");
+        const childBin = join(tmpRoot, "fake-pi-child-streaming.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, "streaming-child.jsonl");
+          const rl = createInterface({ input: process.stdin });
+          function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
+          rl.on("line", async (line) => {
+            const msg = JSON.parse(line);
+            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile } }); }
+            else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
+            else if (msg.type === "prompt") {
+              send({ id: msg.id, success: true });
+              send({ type: "message_update", channel: "assistant", delta: "live assistant only" });
+              send({ type: "tool_execution_start", toolCallId: "call_terminal_snapshot", name: "read", args: JSON.stringify({ path: "contrib/pi-extension/README.md" }) });
+              send({ type: "tool_execution_update", toolCallId: "call_terminal_snapshot", name: "read", output: "partial output" });
+              send({ type: "tool_execution_end", toolCallId: "call_terminal_snapshot", name: "read", success: true, output: "final tool output" });
+              setTimeout(() => send({ type: "agent_end" }), 5);
+            }
+            else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "final child output" } }); setTimeout(() => process.exit(0), 1); }
+            else if (msg.type === "abort") { send({ id: msg.id, success: true }); process.exit(0); }
+          });
+        `, { mode: 0o755 });
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin, LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", ctx, piBase);
+        const result = await tools.find((tool) => tool.name === "larva_subagent").handler({ persona_id: "ok", task: "stream tool snapshots" });
+        const finalEntry = mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots");
+        const cacheData = JSON.parse(await readFile(cacheFile, "utf8"));
+        const cachedEntry = cacheData.entries.find((entry) => entry.task_id === result.task_id);
+        const overlayText = mod.renderSubagentPresentationOverlayForTests(result.task_id);
+        console.log(JSON.stringify({
+          resultStatus: result.status,
+          finalEntry: {
+            status: finalEntry?.status,
+            resultText: finalEntry?.result_text,
+            liveAssistantPreviewDropped: !("live_assistant_preview" in (finalEntry ?? {})),
+            activeToolStateCleared: finalEntry?.active_tool_state === null,
+            toolSnapshotCount: finalEntry?.tool_snapshots?.length ?? 0,
+            toolSnapshot: finalEntry?.tool_snapshots?.[0] ?? null,
+          },
+          overlayEventsUseful: overlayText.includes("[Events]") && overlayText.includes("read") && overlayText.includes("final tool output"),
+          cacheLiveFieldsDropped: cachedEntry !== undefined
+            && !("live_assistant_preview" in cachedEntry)
+            && !("tool_snapshots" in cachedEntry)
+            && !("active_tool_state" in cachedEntry)
+            && !("raw_rpc_events" in cachedEntry),
+        }, null, 2));
+        """,
+    )
+
+    assert payload["resultStatus"] == "success"
+    assert payload["finalEntry"] == {
+        "status": "success",
+        "resultText": "final child output",
+        "liveAssistantPreviewDropped": True,
+        "activeToolStateCleared": True,
+        "toolSnapshotCount": 1,
+        "toolSnapshot": {
+            "toolCallId": "call_terminal_snapshot",
+            "name": "read",
+            "status": "success",
+            "args_preview": '{"path":"contrib/pi-extension/README.md"}',
+            "output_preview": "final tool output",
+        },
+    }
+    assert payload["overlayEventsUseful"] is True
+    assert payload["cacheLiveFieldsDropped"] is True
+
+
 def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: Path) -> None:
     """Pin public resume task_id validation codes before child launch."""
 

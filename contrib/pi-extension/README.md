@@ -787,9 +787,13 @@ presentation-log mutations that already drive the live overlay.
 Live streaming state is intentionally process-local for this target. Live
 assistant output previews, grouped tool-call snapshots, active tool state, and
 raw child RPC event payloads are not persisted. The cache sanitizer must drop
-live-only fields if they are present in memory. The final assistant output still
-comes from the child `get_last_assistant_text` response; live text is only a
-realtime preview while the child is running.
+live-only fields if they are present in memory. Within the same parent Pi
+extension process, terminal result entries may retain the bounded normalized
+`tool_snapshots` copied from the running entry so the `Events` pane remains
+useful after success, failure, or cancellation; terminal entries must clear
+`active_tool_state` and still must not persist those snapshots across reload. The
+final assistant output still comes from the child `get_last_assistant_text`
+response; live text is only a realtime preview while the child is running.
 
 Cache defaults and configuration:
 

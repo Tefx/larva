@@ -952,7 +952,12 @@ Persistent cache target:
 - Live streaming fields are process-local only for this target. Assistant live
   text previews, normalized tool event snapshots, active tool state, and raw child
   RPC event payloads must not be persisted in the adapter cache. The cache
-  sanitizer must drop those fields if they are present in memory.
+  sanitizer must drop those fields if they are present in memory. In the same
+  parent Pi extension process, terminal presentation entries may retain the
+  bounded normalized `tool_snapshots` copied from the running entry so the
+  `Events` pane remains useful after success, failure, or cancellation; terminal
+  entries must clear `active_tool_state` and reload/cache roundtrips must still
+  drop those snapshots.
 - The persisted cache is a UI inspection cache only. It is not resume authority,
   not a child-session source of truth, not model-visible context, not a tool-policy
   input, and not a shared Larva/opifex schema.
@@ -977,7 +982,9 @@ Live streaming target:
   show only a bounded neutral state such as `thinking hidden` if useful.
 - The final `Output` content remains the final `get_last_assistant_text` result
   after child completion. Live assistant text is a realtime preview only and is
-  replaced or reconciled by the final result.
+  replaced or reconciled by the final result; preserving terminal
+  `tool_snapshots` for same-process `Events` inspection must not make live
+  assistant preview text a final-output authority.
 - Tool execution events are grouped by `toolCallId` into one changing tool row or
   snapshot per tool call. `tool_execution_start`, `tool_execution_update`, and
   `tool_execution_end` must not create an unbounded three-event firehose. Updates
