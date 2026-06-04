@@ -1658,6 +1658,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
           const modelCalls = [];
           const sentUserMessages = [];
           const confirmations = [];
+          const selectCalls = [];
           const pi = {{
             getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
             setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
@@ -1670,17 +1671,21 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             on: (event, handler) => {{ handlers[event] = handler; }},
             sendUserMessage: async (message, options) => {{ sentUserMessages.push({{ message, options }}); return true; }},
           }};
+          const ui = {{
+            setStatus: async (...args) => statuses.push(args),
+            notify: async (...args) => notifications.push(args),
+            confirm: async (...args) => {{ confirmations.push(args); return options.confirmResult ?? true; }},
+          }};
+          if (!options.omitSelect) {{
+            ui.select = async (...args) => {{ selectCalls.push(args); return options.selectResult; }};
+          }}
           const ctx = {{
             env: {{
               LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
               LARVA_PI_INTERACTIVE_TUI: "1",
               ...envOverrides,
             }},
-            ui: {{
-              setStatus: async (...args) => statuses.push(args),
-              notify: async (...args) => notifications.push(args),
-              confirm: async (...args) => {{ confirmations.push(args); return options.confirmResult ?? true; }},
-            }},
+            ui: options.omitUi ? undefined : ui,
             modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return {{ id: "model" }}; }} }},
             session: {{
               entries: sessionEntries,
@@ -1692,7 +1697,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
           }};
           await mod.initializeExtension(ctx, pi);
           if (typeof handlers.session_start === "function") await handlers.session_start({{ entries: sessionEntries }}, ctx);
-          return {{ mod, ctx, pi, commands, tools, handlers, sessionEntries, statuses, notifications, activeToolCalls, modelCalls, sentUserMessages, confirmations }};
+          return {{ mod, ctx, pi, commands, tools, handlers, sessionEntries, statuses, notifications, activeToolCalls, modelCalls, sentUserMessages, confirmations, selectCalls }};
         }}
 
         {textwrap.dedent(scenario_body)}
@@ -1746,6 +1751,7 @@ def test_agent_persona_switch_slash_command_persists_documented_session_entry_sh
     )
 
     assert "larva-agent-persona-switch" in _registered_names(payload, "commands")
+    assert payload["result"] == {"ok": True, "mode": "auto"}
     assert any(
         entry == {
             "customType": "larva-agent-persona-switch-mode",
@@ -1753,6 +1759,70 @@ def test_agent_persona_switch_slash_command_persists_documented_session_entry_sh
         }
         for entry in payload["sessionEntries"]
     )
+
+
+def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { selectResult: "ask" });
+        const command = harness.commands["larva-agent-persona-switch"];
+        const result = await (command.handler ?? command.options?.handler)("", harness.ctx);
+        console.log(JSON.stringify({
+          result,
+          selectCalls: harness.selectCalls,
+          sessionEntries: harness.sessionEntries,
+          activeTools: harness.activeToolCalls.at(-1),
+          tools: Object.keys(harness.tools),
+        }));
+        """,
+    )
+
+    assert payload["result"] == {"ok": True, "mode": "ask"}
+    assert payload["selectCalls"] == [["Larva agent persona self-switch mode", ["off", "ask", "auto"]]]
+    assert any(
+        entry == {
+            "customType": "larva-agent-persona-switch-mode",
+            "details": {"mode": "ask", "source": "slash-command"},
+        }
+        for entry in payload["sessionEntries"]
+    )
+    assert {"larva_persona_switch", "larva_personas"} <= set(payload["activeTools"])
+    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "tools")
+
+
+def test_agent_persona_switch_noarg_cancel_or_missing_ui_preserves_mode_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const canceledHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
+        const canceledCommand = canceledHarness.commands["larva-agent-persona-switch"];
+        const canceledResult = await (canceledCommand.handler ?? canceledCommand.options?.handler)("", canceledHarness.ctx);
+        const missingUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { omitUi: true });
+        const missingUiCommand = missingUiHarness.commands["larva-agent-persona-switch"];
+        const missingUiResult = await (missingUiCommand.handler ?? missingUiCommand.options?.handler)("", missingUiHarness.ctx);
+        console.log(JSON.stringify({
+          canceledResult,
+          canceledEntries: canceledHarness.sessionEntries,
+          canceledTools: Object.keys(canceledHarness.tools),
+          canceledActiveTools: canceledHarness.activeToolCalls.at(-1) ?? [],
+          missingUiResult,
+          missingUiEntries: missingUiHarness.sessionEntries,
+          missingUiTools: Object.keys(missingUiHarness.tools),
+          missingUiActiveTools: missingUiHarness.activeToolCalls.at(-1) ?? [],
+        }));
+        """,
+    )
+
+    assert payload["canceledResult"]["ok"] is False
+    assert payload["canceledResult"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert payload["missingUiResult"]["ok"] is False
+    assert payload["missingUiResult"]["error"]["code"] == "LARVA_BAD_INPUT"
+    for key in ("canceledEntries", "missingUiEntries"):
+        assert not any(entry.get("customType") == "larva-agent-persona-switch-mode" for entry in payload[key])
+    for key in ("canceledTools", "missingUiTools", "canceledActiveTools", "missingUiActiveTools"):
+        assert "larva_persona_switch" not in payload[key]
+        assert "larva_personas" not in payload[key]
 
 
 def test_agent_persona_switch_tool_exposure_ask_auto_vs_off_behavior(tmp_path: Path) -> None:

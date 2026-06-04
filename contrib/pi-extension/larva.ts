@@ -2373,8 +2373,22 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
     },
     handler: async (input?: string, commandCtx?: PiContext) => {
       const runtimeCtx = commandCtx ?? ctx;
-      const mode = input?.trim();
-      if (!isAgentPersonaSwitchMode(mode)) {
+      const trimmed = input?.trim() ?? "";
+      let mode: AgentPersonaSwitchMode | undefined;
+      if (trimmed.length === 0) {
+        const select = runtimeCtx.ui?.select;
+        if (typeof select !== "function") {
+          return { ok: false, error: error("LARVA_BAD_INPUT", "Larva agent persona self-switch mode selector UI is unavailable.") };
+        }
+        const selected = await select("Larva agent persona self-switch mode", ["off", "ask", "auto"]);
+        const selectedMode = typeof selected === "string" ? selected : selected?.id;
+        if (!isAgentPersonaSwitchMode(selectedMode)) {
+          return { ok: false, error: error("LARVA_BAD_INPUT", "Larva agent persona self-switch mode selection was canceled.") };
+        }
+        mode = selectedMode;
+      } else if (isAgentPersonaSwitchMode(trimmed)) {
+        mode = trimmed;
+      } else {
         return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-agent-persona-switch off|ask|auto") };
       }
       setAgentPersonaSwitchMode(mode);
