@@ -295,6 +295,8 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "parameters: subagentSchema" in tool_body
     assert 'required: ["persona_id", "task"]' in source
     assert "additionalProperties: false" in source
+    assert 'task_id: { anyOf: [{ type: "string" }, { type: "null" }]' in source
+    assert "Null is treated like omission and starts a new child session." in source
     assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
     assert "execute:" in tool_body
     assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
@@ -1262,6 +1264,8 @@ def test_subagent_bad_input_public_result_contract() -> None:
     source = _source()
     _assert_tokens(source, "LarvaSubagentResult", "LARVA_BAD_INPUT", "task_id: null")
     _assert_tokens(source, "persona_id", "result_text", "status: \"failed\"")
+    assert "input.task_id === undefined || input.task_id === null" in source
+    assert "task_id must be a non-empty string" in source
 
 
 def test_child_session_root_default_override_and_invalid_override() -> None:

@@ -851,7 +851,9 @@ Input contract:
 - `task`: required non-empty string; instruction to send to the child session for
   this invocation.
 - `task_id`: optional non-empty string; absolute child Pi session `.jsonl` file
-  path under the Larva child session root.
+  path under the Larva child session root. Omitted or explicit `null` means new
+  child session; empty, blank, non-string non-null, relative, or out-of-root
+  values remain invalid.
 
 Bad input returns `status: "failed"` with `LARVA_BAD_INPUT`; it does not create or
 resume a child process. For these pre-session failures, public `task_id` is
@@ -1848,7 +1850,7 @@ type ToolPolicyDecision =
 type LarvaSubagentInput = {
   persona_id: string;
   task: string;
-  task_id?: string;
+  task_id?: string | null;
 };
 
 type LarvaSubagentResult = {
@@ -2158,7 +2160,7 @@ architecture_basis:
     projection: "before_agent_start prompt composition + pi.setModel(model), committed at launch/switch/child startup"
     policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; initial startup tolerates absent/unsupported enumeration surfaces with an empty baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
     persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent; list results are projected into prompt-free PersonaCandidate cache before UI use"
-    subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
+    subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; explicit null task_id is treated as omitted/new session; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
     subagent_sessions_helper: "optional larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, or provenance proof"
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
     subagent_presentation_overlay: "/larva-log [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"

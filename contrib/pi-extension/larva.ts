@@ -4568,7 +4568,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     properties: {
       persona_id: { type: "string", description: "Target Larva persona id." },
       task: { type: "string", description: "Instruction to send to the child session." },
-      task_id: { type: "string", description: "Optional child session .jsonl path to resume." },
+      task_id: { anyOf: [{ type: "string" }, { type: "null" }], description: "Optional child session .jsonl path to resume. Null is treated like omission and starts a new child session." },
     },
     required: ["persona_id", "task"],
     additionalProperties: false,

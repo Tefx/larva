@@ -629,8 +629,9 @@ Input:
 - `persona_id`: required non-empty target Larva persona id.
 - `task`: required non-empty instruction for the child Pi session.
 - `task_id`: optional absolute child Pi `.jsonl` session path under the child
-  session root. Resume validation is path-based only; no sidecar or provenance
-  metadata is required.
+  session root. Omitted or explicit `null` starts a new child session; empty,
+  blank, non-string non-null, relative, or out-of-root values are rejected. Resume
+  validation is path-based only; no sidecar or provenance metadata is required.
 
 Semantic/domain result payload (`LarvaSubagentResult`):
 
