@@ -252,10 +252,14 @@ supports only exact tool-name `allow` and `deny` arrays; there is no `ask` actio
 wildcard matching, project-level policy hierarchy, or PersonaSpec schema change.
 
 Inside Pi, `/larva-persona <id>` switches the active Larva persona atomically for
-the next model invocation. With no argument, it opens a selector only in
-interactive TUI mode; non-interactive modes return an input error without
-changing state. This manual command remains available even when agent self-switch
-mode is `off`.
+the next model invocation. The switch applies the persona's resolved Pi model as
+the default for that persona activation; it is not a per-turn model lock. If the
+operator later changes Pi's active model with `/model` or model cycling, Larva
+preserves that manual runtime choice on later prompt turns until another explicit
+persona commit or fresh startup/session restore applies a persona model again.
+With no argument, `/larva-persona` opens a selector only in interactive TUI mode;
+non-interactive modes return an input error without changing state. This manual
+command remains available even when agent self-switch mode is `off`.
 
 Agent self-switch is session-level Pi policy, not PersonaSpec policy. The default
 is `off`; it can be set at launch with `--agent-persona-switch off|ask|auto`, by

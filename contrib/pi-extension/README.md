@@ -241,9 +241,15 @@ LLM tool. No separate refresh slash command or alias is registered.
 
 Switching resolves the target persona through the Larva CLI context supplied by
 the launcher, validates the target model and active policy entry, computes tool
-rules, and commits the persona atomically. If any step fails, the previous
-persona, model, and tool rules remain active. This user-driven command is
-preserved in every agent self-switch mode, including `off`.
+rules, and commits the persona atomically. A successful commit applies the
+persona's resolved Pi model as the default model for that activation, but it does
+not create a per-turn model lock. If the operator later changes Pi's active model
+with Pi's `/model` command or model-cycling shortcut, later prompt turns must not
+silently reapply `PersonaSpec.model`; the manual Pi runtime choice remains active
+until another explicit persona commit or fresh startup/session restore applies a
+persona model again. If any step fails, the previous persona, model, and tool
+rules remain active. This user-driven command is preserved in every agent
+self-switch mode, including `off`.
 
 With no argument, `/larva-persona` opens a selector only in interactive TUI mode.
 The selector is populated from the same adapter-local persona candidate cache as
@@ -296,11 +302,19 @@ explicit --persona / LARVA_PI_INITIAL_PERSONA_ID
 
 An explicit startup persona always wins over any stored session persona and writes
 a new commit entry after a successful commit. Session restore never directly
-mutates `state.envelope`; it reruns the same commit pipeline as `/larva-persona`
-so prompt injection, model selection, tool policy, active tools, and status are
-reconstructed together. The stored digest is diagnostic only: if the registry's
-current PersonaSpec digest differs, restore uses the current registry definition
-for the stored `persona_id`.
+mutates `state.envelope`; during the restore initialization pass it reruns the
+same commit pipeline as `/larva-persona` so prompt injection, model selection,
+tool policy, active tools, and status are reconstructed together. After that
+initialization pass, ordinary prompt turns reuse the in-memory active persona and
+must not rerun the commit pipeline merely because new session entries were
+appended. The restore guard is keyed by the startup persona or the latest stored
+active-persona entry's persona id, not by raw session entry count, so normal
+conversation turns do not clobber a later manual Pi model choice while
+branch/session changes whose latest stored persona id differs can still rehydrate
+the correct persona.
+The stored digest is diagnostic only: if the registry's current PersonaSpec
+digest differs, restore uses the current registry definition for the stored
+`persona_id`.
 
 If explicit startup persona commit fails, launcher startup remains fatal as
 documented above. If session restore fails because the stored persona is missing

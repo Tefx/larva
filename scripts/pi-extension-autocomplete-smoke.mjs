@@ -1,3 +1,5 @@
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -15,6 +17,8 @@ const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const extensionUrl = pathToFileURL(join(root, "contrib", "pi-extension", "larva.ts")).href;
 const mod = await import(extensionUrl);
 const fakeCli = join(root, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
+const cacheDir = await mkdtemp(join(tmpdir(), "larva-pi-autocomplete-cache-"));
+const cacheFile = join(cacheDir, "persona-candidates-cache.json");
 
 let installedFactory = null;
 let registeredCommand = null;
@@ -23,6 +27,7 @@ const env = {
   LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
   LARVA_PI_INITIAL_PERSONA_ID: "",
   LARVA_PI_LAUNCHED: "0",
+  LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: cacheFile,
 };
 const ctx = {
   env,

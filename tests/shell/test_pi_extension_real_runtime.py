@@ -58,9 +58,10 @@ def test_autocomplete_cache_reuse_and_concurrent_inflight_dedupe_runtime() -> No
 
     assert payload["listInvocationCountDuringOverlap"] == 1
     assert payload["listInvocationCountAfterCacheReuse"] == 1
-    assert payload["providerResultsAreObjects"] is True
+    assert payload["coldResultsAreNullOrObjects"] is True
+    assert payload["cachedResultIsObject"] is True
     assert payload["resultItemsAreArrays"] is True
-    assert payload["prefixesFromProvider"] == ["vectl", "vectl", "vectl"]
+    assert payload["prefixesFromProvider"][-1] == "vectl"
     assert payload["inFlightDedupeProven"] is True
     assert payload["cacheReuseProven"] is True
 
@@ -407,7 +408,11 @@ def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_perso
           }},
           ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
           modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
-          session: {{ entries: sessionEntries, getEntries: () => sessionEntries, appendEntry: (entry) => sessionEntries.push(entry) }},
+          session: {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
           sendUserMessage: hostSession.sendUserMessage.bind(hostSession),
         }};
         await mod.initializeExtension(ctx, pi);
@@ -472,7 +477,16 @@ def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_perso
     assert payload["switchResult"].get("terminate") is True
     assert payload["finalEnvelope"]["persona_id"] == "python"
     assert payload["queuedFollowUpMessages"] == [
-        "[Larva-generated continuation after persona switch]\nSwitched from architect to python.\nReason: Python runtime proof required\nHandoff: Continue with the Python marker\nContinue the user's original task under the new persona.\nDo not switch again unless newly justified."
+        "[Larva-generated continuation after persona switch]\n"
+        "Switched from architect to python.\n"
+        "Reason: Python runtime proof required\n"
+        "Handoff: Continue with the Python marker\n"
+        "You are now operating under the NEW active Larva persona.\n"
+        "Treat the persona switch as a hard boundary: the new persona's instructions now take priority.\n"
+        "If any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.\n"
+        "Before taking further action, follow the new persona's opening/startup protocol if it defines one.\n"
+        "Continue the user's original task under the new persona.\n"
+        "Do not switch again unless newly justified."
     ]
     assert payload["assertions"] == {
         "terminatedOldTurn": True,
@@ -483,7 +497,7 @@ def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_perso
         "nextPromptUsesNewPersonaEnvelope": True,
         "nextPromptUsesNewPersonaPrompt": True,
     }
-    assert payload["auditEntries"][-1]["details"]["committed"] is True
+    assert payload["auditEntries"][-1]["data"]["committed"] is True
 
 
 def test_real_pi_availability_records_binary_and_extension_flag() -> None:

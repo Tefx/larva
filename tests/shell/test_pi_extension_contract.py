@@ -1877,6 +1877,117 @@ def test_active_persona_session_restore_uses_latest_commit_without_rewriting_ses
     assert "read" in payload["activeTools"]
 
 
+def test_active_persona_restore_does_not_reapply_model_on_later_prompt_turn(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          type: "custom",
+          customType: "larva-active-persona-commit",
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness({}, { sessionEntries: [restoreEntry] });
+        const setModelCount = () => harness.modelCalls.filter((call) => Array.isArray(call) && call.length === 1 && call[0]?.id === "model").length;
+        const setModelCountAfterRestore = setModelCount();
+        const activeToolUpdatesAfterRestore = harness.activeToolCalls.length;
+        harness.sessionEntries.push({
+          type: "message",
+          message: { role: "user", content: [{ type: "text", text: "next turn" }] },
+          timestamp: Date.now(),
+        });
+        const before = await harness.handlers.before_agent_start({ systemPrompt: "Base prompt" }, harness.ctx);
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          before,
+          setModelCountAfterRestore,
+          setModelCountAfterPrompt: setModelCount(),
+          activeToolUpdatesAfterRestore,
+          activeToolUpdatesAfterPrompt: harness.activeToolCalls.length,
+          modelCalls: harness.modelCalls,
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert "Prompt for python" in payload["before"]["systemPrompt"]
+    assert payload["setModelCountAfterRestore"] == 1
+    assert payload["setModelCountAfterPrompt"] == 1
+    assert payload["activeToolUpdatesAfterPrompt"] == payload["activeToolUpdatesAfterRestore"]
+
+
+def test_larva_persona_command_does_not_reapply_model_on_later_prompt_turn(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness();
+        const command = harness.commands["larva-persona"];
+        const committed = await (command.handler ?? command.options?.handler)("python", harness.ctx);
+        const setModelCount = () => harness.modelCalls.filter((call) => Array.isArray(call) && call.length === 1 && call[0]?.id === "model").length;
+        const setModelCountAfterCommand = setModelCount();
+        const activeToolUpdatesAfterCommand = harness.activeToolCalls.length;
+        harness.sessionEntries.push({
+          type: "message",
+          message: { role: "user", content: [{ type: "text", text: "next turn" }] },
+          timestamp: Date.now(),
+        });
+        const before = await harness.handlers.before_agent_start({ systemPrompt: "Base prompt" }, harness.ctx);
+        console.log(JSON.stringify({
+          committed,
+          envelope: harness.mod.getActiveEnvelope(),
+          before,
+          setModelCountAfterCommand,
+          setModelCountAfterPrompt: setModelCount(),
+          activeToolUpdatesAfterCommand,
+          activeToolUpdatesAfterPrompt: harness.activeToolCalls.length,
+          sessionEntries: harness.sessionEntries,
+        }));
+        """,
+    )
+
+    assert payload["committed"]["ok"] is True
+    assert payload["envelope"]["persona_id"] == "python"
+    assert "Prompt for python" in payload["before"]["systemPrompt"]
+    assert payload["setModelCountAfterCommand"] == 1
+    assert payload["setModelCountAfterPrompt"] == 1
+    assert payload["activeToolUpdatesAfterPrompt"] == payload["activeToolUpdatesAfterCommand"]
+
+
+def test_active_persona_restore_rehydrates_when_latest_commit_changes(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          type: "custom",
+          customType: "larva-active-persona-commit",
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const nextRestoreEntry = {
+          type: "custom",
+          customType: "larva-active-persona-commit",
+          data: { schema_version: 1, persona_id: "architect", spec_digest: "sha256:architect", source: "slash-command", committed_at: "2026-06-04T00:01:00.000Z" },
+        };
+        const harness = await buildHarness({}, { sessionEntries: [restoreEntry] });
+        const setModelCount = () => harness.modelCalls.filter((call) => Array.isArray(call) && call.length === 1 && call[0]?.id === "model").length;
+        const setModelCountAfterRestore = setModelCount();
+        harness.sessionEntries.push(nextRestoreEntry);
+        const before = await harness.handlers.before_agent_start({ systemPrompt: "Base prompt" }, harness.ctx);
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          before,
+          setModelCountAfterRestore,
+          setModelCountAfterCommitChange: setModelCount(),
+          activeTools: harness.activeToolCalls.at(-1),
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "architect"
+    assert "Prompt for architect" in payload["before"]["systemPrompt"]
+    assert payload["setModelCountAfterRestore"] == 1
+    assert payload["setModelCountAfterCommitChange"] == 2
+    assert "read" in payload["activeTools"]
+
+
 def test_active_persona_session_restore_runs_on_extension_reload_without_session_start_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,

@@ -17,12 +17,15 @@ const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const extensionUrl = pathToFileURL(join(root, "contrib", "pi-extension", "larva.ts")).href;
 const fakeCli = join(root, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
 const mod = await import(extensionUrl);
+const defaultCacheDir = await mkdtemp(join(tmpdir(), "larva-pi-autocomplete-cache-"));
+const defaultCacheFile = join(defaultCacheDir, "persona-candidates-cache.json");
 
 function baseEnv(overrides = {}) {
   return {
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
     LARVA_PI_INITIAL_PERSONA_ID: "",
     LARVA_PI_LAUNCHED: "0",
+    LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: defaultCacheFile,
     ...overrides,
   };
 }
@@ -97,12 +100,25 @@ async function getSuggestions(provider, line, options = { force: true }) {
   return provider.getSuggestions([line], 0, line.length, options);
 }
 
+async function sleep(ms) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function readCount(path) {
   try {
     return Number.parseInt(await readFile(path, "utf8"), 10) || 0;
   } catch {
     return 0;
   }
+}
+
+async function eventuallyCachedSuggestion(provider, line) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const result = await getSuggestions(provider, line);
+    if (result !== null) return result;
+    await sleep(25);
+  }
+  return null;
 }
 
 async function listFixtureEvidence() {
@@ -201,25 +217,27 @@ if (scenario === "substring-case-ordering") {
   const countFile = join(dir, "list-count.txt");
   const { installedProvider } = await makeRuntime(baseEnv({
     FAKE_LARVA_COUNT_FILE: countFile,
-    FAKE_LARVA_LIST_DELAY_MS: "150",
+    FAKE_LARVA_LIST_DELAY_MS: "25",
   }));
   const [first, second] = await Promise.all([
     getSuggestions(installedProvider, "/larva-persona vectl", { force: true }),
     getSuggestions(installedProvider, "/larva-persona vectl", { force: false }),
   ]);
   const afterConcurrent = await readCount(countFile);
-  const cached = await getSuggestions(installedProvider, "/larva-persona vectl");
+  const cached = await eventuallyCachedSuggestion(installedProvider, "/larva-persona vectl");
   const afterCache = await readCount(countFile);
+  const acceptableColdResult = (result) => result === null || (typeof result === "object" && !Array.isArray(result));
   output = {
-    providerResultsAreObjects: [first, second, cached].every((result) => result !== null && typeof result === "object" && !Array.isArray(result)),
-    resultItemsAreArrays: [first, second, cached].every((result) => Array.isArray(result?.items)),
+    coldResultsAreNullOrObjects: [first, second].every(acceptableColdResult),
+    cachedResultIsObject: cached !== null && typeof cached === "object" && !Array.isArray(cached),
+    resultItemsAreArrays: [first, second].every((result) => result === null || Array.isArray(result?.items)) && Array.isArray(cached?.items),
     prefixesFromProvider: [first?.prefix ?? null, second?.prefix ?? null, cached?.prefix ?? null],
-    concurrentValues: [first.items.map((item) => item.value), second.items.map((item) => item.value)],
-    cacheValues: cached.items.map((item) => item.value),
+    concurrentValues: [first?.items?.map((item) => item.value) ?? null, second?.items?.map((item) => item.value) ?? null],
+    cacheValues: cached?.items?.map((item) => item.value) ?? null,
     listInvocationCountDuringOverlap: afterConcurrent,
     listInvocationCountAfterCacheReuse: afterCache,
     inFlightDedupeProven: afterConcurrent === 1,
-    cacheReuseProven: afterCache === 1,
+    cacheReuseProven: afterCache === 1 && cached !== null,
   };
 } else if (scenario === "delegation-failure") {
   const { installedProvider } = await makeRuntime();

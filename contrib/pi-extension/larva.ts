@@ -399,7 +399,7 @@ let agentPersonaSwitchMaxPerChain = DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN;
 let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 let sessionInitializationPromise: Promise<void> | null = null;
-const initializedPiSessionEntryCounts = new WeakMap<object, number>();
+const initializedPiSessionRestoreKeys = new WeakMap<object, string>();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
@@ -3040,6 +3040,7 @@ async function commitPersonaInternal(
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
     state.piModel = model;
     if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
+    rememberSessionInitialized(ctx);
     await setStatus(ctx);
     return { ok: true, envelope };
   } catch (caught) {
@@ -4705,18 +4706,34 @@ function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefi
   }
 }
 
-async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void> {
-  const sessionIdentity = typeof ctx.sessionManager === "object" && ctx.sessionManager !== null
+function piSessionIdentity(ctx: PiContext): object | null {
+  return typeof ctx.sessionManager === "object" && ctx.sessionManager !== null
     ? ctx.sessionManager
     : typeof ctx.session === "object" && ctx.session !== null
       ? ctx.session
       : null;
-  const entryCount = sessionEntries(ctx).length;
-  if (sessionIdentity !== null && initializedPiSessionEntryCounts.get(sessionIdentity) === entryCount) return;
+}
+
+function sessionInitializationRestoreKey(ctx: PiContext): string {
+  const explicitPersonaId = currentEnv(ctx).LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
+  if (explicitPersonaId.length > 0) return `explicit:${explicitPersonaId}`;
+  const stored = latestStoredActivePersonaCommit(ctx);
+  return stored === null ? "none" : `stored:${stored.personaId}`;
+}
+
+function rememberSessionInitialized(ctx: PiContext): void {
+  const sessionIdentity = piSessionIdentity(ctx);
+  if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, sessionInitializationRestoreKey(ctx));
+}
+
+async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void> {
+  const sessionIdentity = piSessionIdentity(ctx);
+  const restoreKey = sessionInitializationRestoreKey(ctx);
+  if (sessionIdentity !== null && initializedPiSessionRestoreKeys.get(sessionIdentity) === restoreKey) return;
   const initialization = initializeSession(ctx, pi);
   sessionInitializationPromise = initialization;
   await initialization;
-  if (sessionIdentity !== null) initializedPiSessionEntryCounts.set(sessionIdentity, entryCount);
+  if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, restoreKey);
 }
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
