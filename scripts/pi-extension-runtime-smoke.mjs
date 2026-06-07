@@ -1472,6 +1472,222 @@ async function asyncSubagentContractExpectedRed(evidence) {
     userCancelStartIndex: userCancelCallbackStart,
   };
 
+  const runSubagentConsoleRuntimeProbe = async () => {
+    const extensionRequire = createRequire(pathToFileURL(extensionPath).href);
+    const piTui = await import(pathToFileURL(extensionRequire.resolve("@earendil-works/pi-tui")).href);
+    const consoleRoot = join(sessionRoot, "a9-subagent-console-runtime");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(consoleRoot, { recursive: true });
+    mod.resetSubagentPresentationStateForTests();
+    const parentBeforeConsole = mod.getActiveEnvelope();
+
+    const selectedSession = join(childSessionRoot, "a9-selected-running.jsonl");
+    const siblingSession = join(childSessionRoot, "a9-sibling-running.jsonl");
+    const selectedChild = join(consoleRoot, "selected-child.mjs");
+    const siblingChildForConsole = join(consoleRoot, "sibling-child.mjs");
+    await writeDelayedAsyncSubagentChild(selectedChild, {
+      sessionFile: selectedSession,
+      finalText: "A9_SELECTED_FINAL_SHOULD_NOT_BE_REQUIRED_FOR_CANCEL",
+      terminalDelayMs: 1_200,
+      terminalMarkerFile: join(consoleRoot, "selected-terminal.txt"),
+    });
+    await writeDelayedAsyncSubagentChild(siblingChildForConsole, {
+      sessionFile: siblingSession,
+      finalText: "A9_SIBLING_FINAL_SHOULD_SURVIVE_SELECTED_CANCEL",
+      terminalDelayMs: 1_200,
+      terminalMarkerFile: join(consoleRoot, "sibling-terminal.txt"),
+    });
+
+    const unsafePrompt = `PROMPT_START ${"prompt body ".repeat(320)}\u001b[31mPROMPT_ANSI_UNSAFE\u001b[0m PROMPT_TAIL_SHOULD_NOT_RENDER`;
+    const unsafeOutput = `ASSISTANT_OUTPUT_START ${"assistant body ".repeat(320)}\u0007 OUTPUT_TAIL_SHOULD_NOT_RENDER`;
+    const unsafeTimeline = `TIMELINE_START ${"timeline body ".repeat(320)} TIMELINE_TAIL_SHOULD_NOT_RENDER`;
+    const rawRpcSecret = "RAW_RPC_SECRET_SHOULD_NOT_RENDER";
+    const selectedCtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: selectedChild, LARVA_PI_REAL_BIN: process.execPath } };
+    const siblingCtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: siblingChildForConsole, LARVA_PI_REAL_BIN: process.execPath } };
+    const selectedUpdates = [];
+    const siblingUpdatesForConsole = [];
+    const selectedPromise = runTool(subagentTool, "a9-console-selected", { persona_id: "child", task: unsafePrompt }, selectedCtx, undefined, (update) => selectedUpdates.push(update));
+    const siblingPromise = runTool(subagentTool, "a9-console-sibling", { persona_id: "child", task: "sibling task must survive exact selected cancel" }, siblingCtx, undefined, (update) => siblingUpdatesForConsole.push(update));
+    let selectedRunning = null;
+    let siblingRunningForConsole = null;
+    try { selectedRunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "a9-console-selected" && entry.status === "running"), { label: "A9 selected running task", timeoutMs: 700 }); } catch {}
+    try { siblingRunningForConsole = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "a9-console-sibling" && entry.status === "running"), { label: "A9 sibling running task", timeoutMs: 700 }); } catch {}
+
+    const selectedTaskId = selectedRunning?.task_id ?? selectedSession;
+    const siblingTaskIdForConsole = siblingRunningForConsole?.task_id ?? siblingSession;
+    if (!(await exists(selectedTaskId))) await writeFile(selectedTaskId, "{}\n", "utf8");
+    if (!(await exists(siblingTaskIdForConsole))) await writeFile(siblingTaskIdForConsole, "{}\n", "utf8");
+    mod.recordSubagentPresentationEntryForTests(siblingTaskIdForConsole, "sibling", "running", {
+      call_id: "a9-console-sibling",
+      phase: "waiting_for_child",
+      mode: "new",
+      task_preview: "sibling task must survive exact selected cancel",
+      task_prompt: "sibling prompt should remain observed",
+      live_assistant_preview: "SIBLING_STILL_RUNNING_PREVIEW",
+      updated_at: "2026-06-08T00:00:00.000Z",
+    });
+    mod.recordSubagentPresentationEntryForTests(selectedTaskId, "child", "running", {
+      call_id: "a9-console-selected",
+      phase: "waiting_for_child",
+      mode: "new",
+      task_preview: "selected task preview",
+      task_prompt: unsafePrompt,
+      result_text: "thinking_delta SHOULD_BE_HIDDEN_FROM_OUTPUT",
+      live_assistant_preview: unsafeOutput,
+      live_thinking_hidden: true,
+      timeline_events: [
+        { kind: "assistant", text: unsafeTimeline },
+        { kind: "thinking_hidden" },
+        { kind: "tool", toolCallId: "a9-internal-tool-id", snapshot: { toolCallId: "a9-internal-tool-id", name: "bash", status: "running", args_preview: JSON.stringify({ command: "printf safe", content: rawRpcSecret }), output_preview: unsafeTimeline } },
+      ],
+      raw_rpc_events: [{ raw: rawRpcSecret }],
+      updated_at: "2026-06-08T00:00:01.000Z",
+    });
+
+    const overlayResult = mod.larva_subagent_log(selectedTaskId);
+    const overlayEntry = overlayResult.details?.entries?.[0] ?? null;
+    const terminalWrites = [];
+    const requestRenderEvents = [];
+    const component = overlayEntry === null ? null : new mod.SubagentPresentationLogOverlay({
+      entry: overlayEntry,
+      generation: overlayResult.details?.overlay_generation ?? 1,
+      tui: { terminal: { rows: 42, write: (data) => terminalWrites.push(data) }, requestRender: () => requestRenderEvents.push("render") },
+    });
+    const renderTab = (key) => {
+      if (component === null) return { key, lines: [], plain: "" };
+      component.handleInput?.(key);
+      const lines = component.render(80);
+      return { key, lines, plain: renderedPlainText(lines) };
+    };
+    const summaryTab = renderTab("1");
+    const promptTab = renderTab("2");
+    const outputTab = renderTab("3");
+    const timelineTab = renderTab("4");
+    const metadataTab = renderTab("5");
+    const beforeCancelFrame = component?.render(80) ?? [];
+    component?.handleInput?.("c");
+    const afterOverlayCancelFrame = component?.render(80) ?? [];
+    const afterOverlayCancelEntries = mod.subagentPresentationLogForTests();
+    const cancelCtx = {
+      ...ctx,
+      hasUI: true,
+      ui: {
+        setStatus: async () => undefined,
+        notify: async () => undefined,
+        confirm: async () => true,
+        custom: async () => ({ opened: true }),
+      },
+    };
+    const canonicalCancel = await invokeUnifiedCommand(`--cancel ${selectedTaskId}`, cancelCtx);
+    const entriesAfterCancel = mod.subagentPresentationLogForTests();
+    const selectedAfterCancel = entriesAfterCancel.find((entry) => entry.task_id === selectedTaskId) ?? null;
+    const siblingAfterCancel = entriesAfterCancel.find((entry) => entry.task_id === siblingTaskIdForConsole) ?? null;
+    const parentAfterCancel = mod.getActiveEnvelope();
+    const canonicalCancelDetails = detailsOf(canonicalCancel.result);
+    const canonicalCancelStatus = canonicalCancelDetails?.status ?? null;
+
+    const childFilesBeforeClear = { selected: await exists(selectedTaskId), sibling: await exists(siblingTaskIdForConsole) };
+    const canonicalClear = await invokeUnifiedCommand("--clear", { ...ctx, hasUI: true, ui: { setStatus: async () => undefined, notify: async () => undefined, custom: async () => ({ opened: true }) } });
+    const entriesAfterCanonicalClear = mod.subagentPresentationLogForTests();
+    const childFilesAfterCanonicalClear = { selected: await exists(selectedTaskId), sibling: await exists(siblingTaskIdForConsole) };
+    const legacyClear = mod.larva_subagent_log("--clear");
+    const entriesAfterLegacyClear = mod.subagentPresentationLogForTests();
+    const childFilesAfterLegacyClear = { selected: await exists(selectedTaskId), sibling: await exists(siblingTaskIdForConsole) };
+    const parentAfterClear = mod.getActiveEnvelope();
+    component?.dispose?.();
+
+    const settleWithTimeout = async (promise, label) => Promise.race([
+      promise,
+      new Promise((resolve) => setTimeout(() => resolve({ timeout: true, label }), 1_800)),
+    ]);
+    const selectedSettled = await settleWithTimeout(selectedPromise, "selected");
+    const siblingSettled = await settleWithTimeout(siblingPromise, "sibling");
+    const cleanupHandler = handlers.get("shutdown") ?? handlers.get("session_end") ?? handlers.get("exit");
+    if (typeof cleanupHandler === "function") {
+      try { await cleanupHandler({ reason: "a9-subagent-console-runtime-probe" }, ctx); } catch {}
+    }
+
+    const renderedFrames = [summaryTab, promptTab, outputTab, timelineTab, metadataTab].map((tab) => tab.lines);
+    const combinedRendered = [summaryTab, promptTab, outputTab, timelineTab, metadataTab].map((tab) => tab.plain).join("\n");
+    const noRawControlOrAnsi = !/\x1b\[[0-9;]*m/.test(combinedRendered) && !/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(combinedRendered);
+    const parentBeforePersona = parentBeforeConsole?.persona_id ?? null;
+    const finalParentPersona = parentAfterClear?.persona_id ?? null;
+    const canonicalCancelAcceptedStatuses = new Set(["cancelling", "cancelled", "success"]);
+    const assertions = {
+      consolePaneSummaryObserved: summaryTab.plain.includes("● 1 Summary") && summaryTab.plain.includes("Status") && summaryTab.plain.includes("running"),
+      consolePanePromptObserved: promptTab.plain.includes("● 2 Prompt") && promptTab.plain.includes("Initial Prompt") && promptTab.plain.includes("PROMPT_START"),
+      consolePaneOutputObserved: outputTab.plain.includes("● 3 Output") && outputTab.plain.includes("ASSISTANT_OUTPUT_START") && outputTab.plain.includes("thinking hidden"),
+      consolePaneTimelineObserved: timelineTab.plain.includes("● 4 Timeline") && timelineTab.plain.includes("Timeline") && timelineTab.plain.includes("bash") && timelineTab.plain.includes("preview: output"),
+      consolePaneMetadataObserved: metadataTab.plain.includes("● 5 Metadata") && metadataTab.plain.includes("Metadata") && /sequence/i.test(metadataTab.plain),
+      exactSelectedCancelRouteRegistered: commands.has("larva-subagent"),
+      exactSelectedCancelInvokedCanonicalRoute: canonicalCancel.invoked === true && canonicalCancel.error === null,
+      exactSelectedCancelTargetsSelectedTask: canonicalCancelAcceptedStatuses.has(canonicalCancelStatus) || ["cancelling", "cancelled"].includes(selectedAfterCancel?.status ?? ""),
+      exactSelectedCancelPreservesSibling: siblingAfterCancel?.task_id === siblingTaskIdForConsole && siblingAfterCancel.status !== "cancelled",
+      exactSelectedCancelPreservesParent: parentAfterCancel?.persona_id === parentBeforePersona,
+      rendererBoundsAllLinesFit: renderedFrames.every((lines) => lines.every((line) => piTui.visibleWidth(line) <= 80)),
+      rendererBoundsPromptSafe: promptTab.lines.length <= 42 && noRawControlOrAnsi && !promptTab.plain.includes("PROMPT_TAIL_SHOULD_NOT_RENDER"),
+      rendererBoundsOutputSafe: outputTab.lines.length <= 42 && !outputTab.plain.includes("OUTPUT_TAIL_SHOULD_NOT_RENDER") && !outputTab.plain.includes("SHOULD_BE_HIDDEN_FROM_OUTPUT"),
+      rendererBoundsTimelineSafe: timelineTab.lines.length <= 42 && !timelineTab.plain.includes("TIMELINE_TAIL_SHOULD_NOT_RENDER") && !timelineTab.plain.includes("a9-internal-tool-id") && !timelineTab.plain.includes(rawRpcSecret),
+      rendererBoundsMetadataSafe: metadataTab.lines.length <= 42 && !metadataTab.plain.includes(rawRpcSecret) && !metadataTab.plain.includes("raw_rpc_events") && !metadataTab.plain.includes("{\"raw\""),
+      canonicalClearRouteRegistered: commands.has("larva-subagent"),
+      canonicalClearClearsPresentationOnly: canonicalClear.invoked === true && canonicalClear.error === null && entriesAfterCanonicalClear.length === 0,
+      clearDeletesNoChildSessionFiles: childFilesBeforeClear.selected === true && childFilesBeforeClear.sibling === true && childFilesAfterCanonicalClear.selected === true && childFilesAfterCanonicalClear.sibling === true && childFilesAfterLegacyClear.selected === true && childFilesAfterLegacyClear.sibling === true,
+      clearPreservesParentState: parentBeforePersona === finalParentPersona,
+      legacyClearDemonstratesAdapterLocalSemanticsOnly: legacyClear.ok === true && entriesAfterLegacyClear.length === 0,
+    };
+
+    return {
+      status: Object.values(assertions).every(Boolean) ? "PASS" : "EXPECTED_RED",
+      selectedTaskId,
+      siblingTaskId: siblingTaskIdForConsole,
+      registeredCommands: Array.from(commands.keys()),
+      registeredTools: tools.map((tool) => tool.name),
+      paneSamples: {
+        summary: summaryTab.plain.slice(0, 500),
+        prompt: promptTab.plain.slice(0, 500),
+        output: outputTab.plain.slice(0, 500),
+        timeline: timelineTab.plain.slice(0, 500),
+        metadata: metadataTab.plain.slice(0, 500),
+      },
+      cancelProbe: {
+        selectedRunningObserved: selectedRunning !== null,
+        siblingRunningObserved: siblingRunningForConsole !== null,
+        beforeCancelTaskIds: afterOverlayCancelEntries.map((entry) => ({ task_id: entry.task_id, status: entry.status })),
+        canonicalCancel,
+        canonicalCancelStatus,
+        selectedAfterCancel,
+        siblingAfterCancel,
+        parentAfterCancel,
+        beforeCancelFrame: renderedPlainText(beforeCancelFrame).slice(0, 300),
+        afterOverlayCancelFrame: renderedPlainText(afterOverlayCancelFrame).slice(0, 300),
+      },
+      rendererProbe: {
+        terminalWrites,
+        requestRenderEvents,
+        noRawControlOrAnsi,
+        renderedLineCounts: {
+          summary: summaryTab.lines.length,
+          prompt: promptTab.lines.length,
+          output: outputTab.lines.length,
+          timeline: timelineTab.lines.length,
+          metadata: metadataTab.lines.length,
+        },
+      },
+      clearProbe: {
+        canonicalClear,
+        entriesAfterCanonicalClear: entriesAfterCanonicalClear.map((entry) => ({ task_id: entry.task_id, status: entry.status })),
+        legacyClear: { ok: legacyClear.ok, text: legacyClear.content?.[0]?.text ?? "" },
+        childFilesBeforeClear,
+        childFilesAfterCanonicalClear,
+        childFilesAfterLegacyClear,
+        parentAfterClear,
+      },
+      settled: { selected: selectedSettled, sibling: siblingSettled, selectedUpdates, siblingUpdates: siblingUpdatesForConsole },
+      assertions,
+    };
+  };
+  const subagentConsoleRuntimeProbe = await runSubagentConsoleRuntimeProbe();
+
   const callbackCountsByTaskId = callbackEntries.reduce((counts, entry) => {
     const taskId = entry?.data?.task_id;
     if (typeof taskId === "string") counts[taskId] = (counts[taskId] ?? 0) + 1;
@@ -1603,6 +1819,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       sourceRegistersCanonicalCommand: docsParityProbe.sourceRegistersCanonicalCommand === true,
       sourceRegistersStatusAndCancelTools: docsParityProbe.sourceRegistersStatusAndCancelTools === true,
     },
+    subagent_console_runtime: subagentConsoleRuntimeProbe.assertions,
     cancel_reason_bound_500_and_overlong_bad_input: {
       exact500NormalizedCodePoints: cancelReasonBoundProbe.normalizedCounts.exact500 === 500,
       overlongNormalizedCodePoints: cancelReasonBoundProbe.normalizedCounts.overlong === 501,
@@ -1647,6 +1864,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     abortGraceProbe,
     lifecycleCleanupProbe: { rows: lifecycleRows },
     docsParityProbe,
+    subagentConsoleRuntimeProbe,
     callbackEntries,
     assertionGroups,
     assertions: {
@@ -1672,6 +1890,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       abortKillGrace1500ms: Object.values(assertionGroups.abort_kill_grace_1500ms).every(Boolean),
       runtimeLifecycleStaleCleanup: Object.values(assertionGroups.runtime_lifecycle_stale_cleanup).every(Boolean),
       docsParityAgainstReference: Object.values(assertionGroups.docs_parity_against_reference).every(Boolean),
+      subagentConsoleRuntime: Object.values(assertionGroups.subagent_console_runtime).every(Boolean),
       cancelReasonBound500AndOverlongBadInput: Object.values(assertionGroups.cancel_reason_bound_500_and_overlong_bad_input).every(Boolean),
     },
   };

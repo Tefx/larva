@@ -1568,6 +1568,7 @@ def _assert_async_contract_group_true(group_name: str) -> None:
             "abortGraceProbe": contract.get("abortGraceProbe"),
             "lifecycleCleanupProbe": contract.get("lifecycleCleanupProbe"),
             "docsParityProbe": contract.get("docsParityProbe"),
+            "subagentConsoleRuntimeProbe": contract.get("subagentConsoleRuntimeProbe"),
         },
         indent=2,
         sort_keys=True,
@@ -1804,23 +1805,9 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
 
 
 def test_async_subagent_a9_console_surface_controls_expected_red() -> None:
-    """Expected-red A9: Subagent Console panes, exact-task cancel, and safe bounds."""
+    """Expected-red A9: runtime Subagent Console panes, exact cancel, bounds, and clear semantics."""
 
-    source = EXTENSION.read_text(encoding="utf-8")
-    required_tokens = (
-        "Subagent Console",
-        "Summary",
-        "Prompt",
-        "Output",
-        "Timeline",
-        "Metadata",
-        "cancel selected",
-        "larva_subagent_cancel",
-        "LARVA_SUBAGENT_NOT_OBSERVED",
-        "renderer-safe",
-    )
-    missing = [token for token in required_tokens if token not in source]
-    assert not missing, "missing async Subagent Console contract tokens: " + ", ".join(missing)
+    _assert_async_contract_group_true("subagent_console_runtime")
 
 
 def test_async_subagent_cancel_reason_bound_500_and_overlong_bad_input_expected_red() -> None:
