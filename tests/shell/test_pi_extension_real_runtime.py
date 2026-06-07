@@ -696,3 +696,18 @@ def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:
     result = payload["runtime"]["toolCallResult"]
     assert result["block"] is True
     assert isinstance(result["reason"], str) and result["reason"]
+
+
+def test_runtime_smoke_async_subagent_streaming_command_and_callback_expected_red() -> None:
+    """Expected-red A11: smoke scaffolds streaming slash dispatch and single callback."""
+
+    payload = _run_runtime_scenario("async-subagent-contract")
+    assertions = payload["runtime"]["asyncSubagentContract"]["assertions"]
+
+    assert assertions == {
+        "hasUnifiedSlashCommand": True,
+        "deprecatedLarvaLogIsViewAliasOnly": True,
+        "streamingSlashCommandDispatch": True,
+        "singleCallbackEvent": True,
+        "callbackShape": True,
+    }

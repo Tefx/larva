@@ -1622,3 +1622,162 @@ def test_expected_red_larva_subagent_log_chrome_mouse_and_tall_terminal_frame() 
         "tallGreaterThanShort": True,
         "stableFrameAcrossSelectorTabsScroll": True,
     }
+
+
+def test_async_subagent_a1_accepted_background_execution_expected_red(tmp_path: Path) -> None:
+    """Expected-red A1: larva_subagent should accept work and return before final output."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "async-acceptance-child.mjs");
+        await writeFakeChild(childBin, "success");
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const updates = [];
+        const startedAt = Date.now();
+        const receipt = await subagent.execute(
+          "async-a1-call",
+          { persona_id: "child", task: "return a result through the later callback" },
+          undefined,
+          (update) => updates.push(update),
+          ctx,
+        );
+        console.log(JSON.stringify({
+          elapsedMs: Date.now() - startedAt,
+          accepted_receipt: {
+            task_id: receipt.task_id ?? null,
+            status: receipt.status ?? null,
+            result_pending: receipt.result_pending ?? false,
+            result_text: receipt.result_text ?? null,
+            hasDetails: Boolean(receipt.details),
+          },
+          updates,
+          presentationLog: mod.subagentPresentationLogForTests(),
+        }, null, 2));
+        """,
+    )
+
+    assert payload["accepted_receipt"]["status"] == "accepted"
+    assert payload["accepted_receipt"]["result_pending"] is True
+    assert isinstance(payload["accepted_receipt"]["task_id"], str)
+    assert payload["accepted_receipt"]["result_text"] in {"", None}
+
+
+def test_async_subagent_a5_targeted_cancellation_unobserved_exact_task_id_expected_red(tmp_path: Path) -> None:
+    """Expected-red A5: both user/Console and model cancel exact unobserved task_id."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const tools = [];
+        const commands = new Map();
+        const env = baseEnv();
+        const ctx = { env, modelRegistry, ui: { setStatus: () => undefined, notify: () => undefined } };
+        await mod.initializeExtension(ctx, {
+          ...piBase,
+          registerTool: (tool) => tools.push(tool),
+          registerCommand: (name, command) => {
+            if (typeof name === "string") commands.set(name, command);
+            else if (name && typeof name === "object") commands.set(name.name, name);
+          },
+        });
+        await mod.commitPersona("ok", ctx, piBase);
+        const unobservedTaskId = join(childRoot, "well-formed-unobserved.jsonl");
+        await writeFile(unobservedTaskId, "{}\\n");
+        const cancelTool = tools.find((tool) => tool.name === "larva_subagent_cancel");
+        const consoleCommand = commands.get("larva-subagent");
+        async function modelFacingCancel() {
+          if (!cancelTool) return { surface: "model", task_id: unobservedTaskId, errorCode: "TOOL_NOT_REGISTERED" };
+          const run = cancelTool.handler ?? ((input) => cancelTool.execute("cancel-model", input, undefined, undefined, ctx));
+          const result = await run({ task_id: unobservedTaskId, reason: "model requested exact cancellation" });
+          return { surface: "model", task_id: unobservedTaskId, errorCode: result.details?.error?.code ?? result.error?.code ?? null };
+        }
+        async function userConsoleCancel() {
+          if (!consoleCommand?.handler) return { surface: "user_console", task_id: unobservedTaskId, errorCode: "COMMAND_NOT_REGISTERED" };
+          const result = await consoleCommand.handler(`--cancel ${unobservedTaskId}`, ctx);
+          return { surface: "user_console", task_id: unobservedTaskId, errorCode: result.details?.error?.code ?? result.error?.code ?? null };
+        }
+        const rows = [await userConsoleCancel(), await modelFacingCancel()];
+        console.log(JSON.stringify({ rows, registeredTools: tools.map((tool) => tool.name), registeredCommands: Array.from(commands.keys()) }, null, 2));
+        """,
+    )
+
+    assert payload["rows"] == [
+        {
+            "surface": "user_console",
+            "task_id": payload["rows"][0]["task_id"],
+            "errorCode": "LARVA_SUBAGENT_NOT_OBSERVED",
+        },
+        {
+            "surface": "model",
+            "task_id": payload["rows"][1]["task_id"],
+            "errorCode": "LARVA_SUBAGENT_NOT_OBSERVED",
+        },
+    ]
+
+
+def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: Path) -> None:
+    """Expected-red A6: process-local status tool uses exact lookup and run schema."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const tools = [];
+        const env = baseEnv();
+        const ctx = { env, modelRegistry, ui: { setStatus: () => undefined, notify: () => undefined } };
+        await mod.initializeExtension(ctx, { ...piBase, registerTool: (tool) => tools.push(tool), registerCommand: () => undefined });
+        const statusTool = tools.find((tool) => tool.name === "larva_subagent_status");
+        const unobservedTaskId = join(childRoot, "status-unobserved.jsonl");
+        await writeFile(unobservedTaskId, "{}\\n");
+        const result = statusTool
+          ? await (statusTool.handler ?? ((input) => statusTool.execute("status-exact", input, undefined, undefined, ctx)))({ task_id: unobservedTaskId })
+          : null;
+        const defaultResult = statusTool
+          ? await (statusTool.handler ?? ((input) => statusTool.execute("status-default", input, undefined, undefined, ctx)))({ limit: 25 })
+          : null;
+        console.log(JSON.stringify({
+          registeredTools: tools.map((tool) => tool.name),
+          status_contract: {
+            registered: Boolean(statusTool),
+            unobservedRuns: result?.details?.runs ?? null,
+            defaultLimitCount: defaultResult?.details?.runs?.length ?? null,
+            invalidLimitCode: statusTool ? (await (statusTool.handler ?? ((input) => statusTool.execute("status-invalid", input, undefined, undefined, ctx)))({ limit: 26 })).details?.error?.code ?? null : null,
+            schemaFields: result?.details?.runs?.[0] ? Object.keys(result.details.runs[0]).sort() : [],
+          },
+        }, null, 2));
+        """,
+    )
+
+    assert payload["status_contract"] == {
+        "registered": True,
+        "unobservedRuns": [],
+        "defaultLimitCount": 0,
+        "invalidLimitCode": "LARVA_BAD_INPUT",
+        "schemaFields": [],
+    }
+
+
+def test_async_subagent_a9_console_surface_controls_expected_red() -> None:
+    """Expected-red A9: Subagent Console panes, exact-task cancel, and safe bounds."""
+
+    source = EXTENSION.read_text(encoding="utf-8")
+    required_tokens = (
+        "Subagent Console",
+        "Summary",
+        "Prompt",
+        "Output",
+        "Timeline",
+        "Metadata",
+        "cancel selected",
+        "larva_subagent_cancel",
+        "LARVA_SUBAGENT_NOT_OBSERVED",
+        "renderer-safe",
+    )
+    missing = [token for token in required_tokens if token not in source]
+    assert not missing, "missing async Subagent Console contract tokens: " + ", ".join(missing)

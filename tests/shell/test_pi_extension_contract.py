@@ -2969,3 +2969,86 @@ def test_agent_persona_switch_child_subagent_defaults_self_switch_off_behavior(t
     assert payload["childEnv"]["LARVA_PI_INTERACTIVE_TUI"] == "0"
     assert payload["childEnv"]["LARVA_PI_AGENT_PERSONA_SWITCH"] == "off"
 
+
+ASYNC_SUBAGENT_TRACEABILITY_EXPECTATIONS: Final[dict[str, tuple[str, ...]]] = {
+    "A1": ("test_async_subagent_a1_accepted_background_execution_expected_red",),
+    "A2": ("test_async_subagent_a2_a3_a6_expected_red_model_facing_tools_and_registry_source_contract",),
+    "A3": ("test_async_subagent_a2_a3_a6_expected_red_model_facing_tools_and_registry_source_contract",),
+    "A4": ("test_async_subagent_a4_a7_expected_red_result_callback_and_lifecycle_source_contract",),
+    "A5": ("test_async_subagent_a5_targeted_cancellation_unobserved_exact_task_id_expected_red",),
+    "A6": ("test_async_subagent_a6_status_tool_schema_unobserved_expected_red",),
+    "A7": ("test_async_subagent_a4_a7_expected_red_result_callback_and_lifecycle_source_contract",),
+    "A8": ("test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity",),
+    "A9": ("test_async_subagent_a9_console_surface_controls_expected_red",),
+    "A10": ("test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity",),
+    "A11": ("test_runtime_smoke_async_subagent_streaming_command_and_callback_expected_red",),
+}
+
+
+def test_async_subagent_expected_red_traceability_inventory_covers_a1_through_a11() -> None:
+    """Expected-red inventory: every async subagent matrix row has a named proof hook."""
+
+    assert set(ASYNC_SUBAGENT_TRACEABILITY_EXPECTATIONS) == {f"A{index}" for index in range(1, 12)}
+    assert all(test_names for test_names in ASYNC_SUBAGENT_TRACEABILITY_EXPECTATIONS.values())
+
+
+def test_async_subagent_a2_a3_a6_expected_red_model_facing_tools_and_registry_source_contract() -> None:
+    """Expected-red A2/A3/A6: exact task_id model tools and active-run registry."""
+
+    source = _source()
+    required_tokens = (
+        'name: "larva_subagent_status"',
+        'name: "larva_subagent_cancel"',
+        "LARVA_SUBAGENT_NOT_OBSERVED",
+        "result_pending",
+        "updated_at",
+        "phase",
+        "cancelling",
+    )
+    missing = [token for token in required_tokens if token not in source]
+    assert not missing, "missing async subagent registry/status/cancel contract tokens: " + ", ".join(missing)
+
+    subagent_schema = re.search(r"const subagentSchema = \{(?P<body>[\s\S]*?)\n  \};", source)
+    assert subagent_schema is not None
+    assert "task_id" in subagent_schema.group("body")
+    assert "run_id" not in subagent_schema.group("body")
+
+
+def test_async_subagent_a4_a7_expected_red_result_callback_and_lifecycle_source_contract() -> None:
+    """Expected-red A4/A7: Pi result callback boundary and stale-callback lifecycle cleanup."""
+
+    source = _source()
+    required_tokens = (
+        "larva-subagent-result",
+        "triggerTurn",
+        "deliverAs",
+        "steer",
+        "6000",
+        "callback_id",
+        "completed_at",
+        "stale",
+        "fork",
+        "quit",
+    )
+    missing = [token for token in required_tokens if token not in source]
+    assert not missing, "missing async subagent callback/lifecycle contract tokens: " + ", ".join(missing)
+
+
+def test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity() -> None:
+    """Expected-red A8/A10: canonical /larva-subagent command and README parity."""
+
+    source = _source()
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+    missing = [
+        token
+        for token in (
+            "/larva-subagent",
+            "canonical /larva-subagent",
+            "deprecated alias",
+            "larva: none",
+        )
+        if token not in source and token not in readme
+    ]
+    assert not missing, "README/source missing unified async subagent command parity tokens: " + ", ".join(missing)
+    assert "/larva-log" not in readme or "deprecated view-mode alias" in readme
+

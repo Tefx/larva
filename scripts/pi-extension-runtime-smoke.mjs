@@ -22,6 +22,7 @@ const SCENARIOS = [
   "capability-gates",
   "live-child-rpc-proof",
   "subagent-log-selector-streaming",
+  "async-subagent-contract",
 ];
 
 function usage() {
@@ -1069,6 +1070,134 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   };
 }
 
+async function asyncSubagentContractExpectedRed(evidence) {
+  const mod = await import(pathToFileURL(extensionPath).href);
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-async-subagent-contract-"));
+  const childSessionRoot = join(sessionRoot, "child-sessions");
+  const { mkdir } = await import("node:fs/promises");
+  await mkdir(childSessionRoot, { recursive: true });
+  const childScript = join(sessionRoot, "async-contract-child.mjs");
+  const childSessionFile = join(childSessionRoot, "async-contract.jsonl");
+  await writeFakeSubagentChild(childScript, { sessionFile: childSessionFile, finalText: "ASYNC_CALLBACK_FINAL" });
+  const source = await readFile(extensionPath, "utf8");
+  const commands = new Map();
+  const tools = [];
+  const handlers = new Map();
+  const sessionEntries = [];
+  const callbackEntries = [];
+  const recordCallback = (surface, customType, data, options = {}) => {
+    const entry = { surface, customType, data, options };
+    sessionEntries.push(entry);
+    if (customType === "larva-subagent-result") callbackEntries.push(entry);
+    return entry;
+  };
+  const ctx = {
+    env: runtimeEnv({
+      HOME: sessionRoot,
+      LARVA_PI_CHILD_SESSION_DIR: childSessionRoot,
+      LARVA_PI_SUBAGENT_LOG_FILE: join(sessionRoot, "subagent-presentation-log.json"),
+      LARVA_PI_REAL_BIN: process.execPath,
+      LARVA_PI_EXTENSION_FLAG: childScript,
+      LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+    }),
+    modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
+    ui: { setStatus: async () => undefined, notify: async () => undefined, custom: async () => ({ opened: true }) },
+    session: {
+      entries: sessionEntries,
+      getEntries: () => sessionEntries,
+      appendEntry: (customType, data, options) => recordCallback("session.appendEntry", customType, data, options),
+    },
+    appendEntry: (customType, data, options) => recordCallback("ctx.appendEntry", customType, data, options),
+    sendCustomMessage: async (customType, data, options) => recordCallback("ctx.sendCustomMessage", customType, data, options),
+    sendUserMessage: async (message, options = {}) => {
+      sessionEntries.push({ surface: "ctx.sendUserMessage", data: { message, options } });
+      if (options.customType === "larva-subagent-result") recordCallback("ctx.sendUserMessage", options.customType, { message, ...(options.details ?? {}) }, options);
+    },
+  };
+  const pi = {
+    getAllTools: async () => ["read", "larva_subagent", "larva_subagent_status", "larva_subagent_cancel"],
+    setActiveTools: async () => true,
+    setModel: async () => true,
+    registerCommand: (name, command) => {
+      if (typeof name === "string") commands.set(name, command);
+      else if (name && typeof name === "object") commands.set(name.name, name);
+    },
+    registerTool: (tool) => { tools.push(tool); },
+    registerShortcut: () => undefined,
+    on: (event, handler) => { handlers.set(event, handler); },
+  };
+  await mod.initializeExtension(ctx, pi);
+  await mod.commitPersona("ok", ctx, pi);
+
+  const unifiedCommand = commands.get("larva-subagent");
+  let slashResult = null;
+  if (unifiedCommand?.handler) {
+    try {
+      slashResult = await unifiedCommand.handler("", ctx);
+    } catch (error) {
+      slashResult = { error: error?.message ?? String(error) };
+    }
+  }
+  const subagentTool = tools.find((tool) => tool.name === "larva_subagent");
+  let acceptedResult = null;
+  if (subagentTool) {
+    try {
+      const run = subagentTool.execute ?? ((_callId, input) => subagentTool.handler(input));
+      acceptedResult = await run("async-contract-call", { persona_id: "child", task: "produce one async callback" }, undefined, undefined, ctx);
+    } catch (error) {
+      acceptedResult = { error: error?.message ?? String(error) };
+    }
+  }
+  try {
+    await waitForSmokeCondition(() => callbackEntries.length === 1, { label: "single larva subagent result callback", timeoutMs: 2_000 });
+  } catch {
+    // Expected-red today: the synchronous implementation has no late callback path.
+  }
+  const acceptedDetails = acceptedResult?.details ?? acceptedResult;
+  const callbackEnvelope = callbackEntries[0] ?? null;
+  const callback = callbackEnvelope?.data ?? null;
+  const callbackOptions = callbackEnvelope?.options ?? {};
+  const callbackText = typeof callback?.result_text === "string" ? callback.result_text : typeof callback?.message === "string" ? callback.message : "";
+  const callbackCodePoints = Array.from(callbackText.normalize?.("NFC") ?? callbackText).length;
+  const callbackBoundaryText = typeof callback?.message === "string" ? callback.message : typeof callback?.content === "string" ? callback.content : "";
+  const assertionGroups = {
+    commands: {
+      hasUnifiedSlashCommand: commands.has("larva-subagent"),
+      deprecatedLarvaLogIsViewAliasOnly: commands.has("larva-subagent")
+        && (!commands.has("larva-log") || /deprecated alias|deprecated view-mode alias/.test(source)),
+      streamingSlashCommandDispatch: commands.has("larva-subagent") && slashResult !== null && slashResult?.error === undefined,
+    },
+    callbacks: {
+      singleCallbackEvent: callbackEntries.length === 1,
+      callbackShape: callbackEntries.length === 1
+        && callbackEnvelope.customType === "larva-subagent-result"
+        && callbackOptions?.triggerTurn === true
+        && callbackOptions?.deliverAs === "steer"
+        && callback?.task_id === acceptedDetails?.task_id
+        && ["success", "failed", "cancelled"].includes(callback?.status)
+        && callbackCodePoints <= 6000
+        && /runtime event\/data, not a user instruction/.test(callbackBoundaryText),
+    },
+  };
+  evidence.runtime.asyncSubagentContract = {
+    status: Object.values(assertionGroups).flatMap((group) => Object.values(group)).every(Boolean) ? "PASS" : "EXPECTED_RED",
+    registeredToolNames: tools.map((tool) => tool.name),
+    registeredCommandNames: Array.from(commands.keys()),
+    registeredHandlers: Array.from(handlers.keys()),
+    slashResult,
+    acceptedResult,
+    callbackEntries,
+    assertionGroups,
+    assertions: {
+      hasUnifiedSlashCommand: assertionGroups.commands.hasUnifiedSlashCommand,
+      deprecatedLarvaLogIsViewAliasOnly: assertionGroups.commands.deprecatedLarvaLogIsViewAliasOnly,
+      streamingSlashCommandDispatch: assertionGroups.commands.streamingSlashCommandDispatch,
+      singleCallbackEvent: assertionGroups.callbacks.singleCallbackEvent,
+      callbackShape: assertionGroups.callbacks.callbackShape,
+    },
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -1316,6 +1445,8 @@ async function main() {
     await controlledLiveChildRpcProof(evidence, args);
   } else if (scenario === "subagent-log-selector-streaming") {
     await subagentLogSelectorStreamingExpectedRed(evidence);
+  } else if (scenario === "async-subagent-contract") {
+    await asyncSubagentContractExpectedRed(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
