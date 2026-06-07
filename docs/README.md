@@ -10,8 +10,9 @@ project documentation lives here by category.
 
 ## Reference
 
-- `reference/INTERFACES.md` — public interfaces and contract surfaces
-- `reference/ARCHITECTURE.md` — module boundaries and dependency rules
+- [`reference/ARCHITECTURE.md`](reference/ARCHITECTURE.md)
+- [`reference/INTERFACES.md`](reference/INTERFACES.md)
+- [`reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md) — accepted design basis for Pi async/background subagents, targeted cancellation, and `/larva-subagent` UX.
 
 ## Decisions
 

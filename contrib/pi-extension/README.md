@@ -322,7 +322,8 @@ or current model/policy/tool activation fails, startup is non-fatal: the extensi
 keeps no active persona, shows restore-unavailable status/notification, and does
 not silently claim the old persona. Restore does not recover one-turn
 self-switch guards, does not parse prompt blocks, does not scan JSONL history,
-and does not use `/larva-log` cache or `larva_subagent` task ids as authority.
+and does not use adapter-local subagent presentation cache or `larva_subagent`
+task ids as authority.
 
 ### Agent persona self-switch
 
@@ -565,8 +566,11 @@ node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
 ```
 
 The capability-gates output is evidence, not a replacement contract. Normative
-behavior remains in `design/pi-coding-agent-integration.md` under "Runtime
-capability and provenance matrix" and "Verification targets".
+behavior for async/background subagents, targeted cancellation, and the unified
+`/larva-subagent` UX lives in
+`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`. Older runtime capability notes
+in `design/pi-coding-agent-integration.md` remain historical unless they agree
+with that design basis.
 
 The supplemental gate uses `--offline` runtime scenarios and the deterministic
 fake Larva CLI bridge under `tests/fixtures/pi/fake-larva-cli.mjs`; it does not
@@ -642,96 +646,43 @@ must be reported as unsupported or blocked rather than as live support.
 
 ## `larva_subagent` custom tool
 
-When the active parent persona and Pi tool policy allow it, the extension exposes
-the primary child-session tool:
+The accepted design basis for the current subagent work is
+[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md).
+That document is authoritative for async/background behavior, targeted
+cancellation, result callback semantics, and the unified `/larva-subagent` UX.
+
+Target design: when the active parent persona and Pi tool policy allow it, the
+extension will expose these model-facing tools after the async subagent work is
+implemented:
 
 ```text
 larva_subagent(persona_id, task, task_id?)
+larva_subagent_status(task_id?, limit?)
+larva_subagent_cancel(task_id, reason)
 ```
 
-Input:
+`larva_subagent` starts or resumes one child Pi session and returns after the
+child prompt has been accepted, not after the child finishes. Its successful tool
+result is an accepted receipt with:
 
-- `persona_id`: required non-empty target Larva persona id.
-- `task`: required non-empty instruction for the child Pi session.
-- `task_id`: optional absolute child Pi `.jsonl` session path under the child
-  session root. Omitted or explicit `null` starts a new child session; empty,
-  blank, non-string non-null, relative, or out-of-root values are rejected. Resume
-  validation is path-based only; no sidecar or provenance metadata is required.
+- `status: "accepted"`
+- `result_pending: true`
+- non-null public `task_id`
+- `persona_id`
+- `error: null`
 
-Semantic/domain result payload (`LarvaSubagentResult`):
+The accepted result is not task evidence. The child final result returns later as
+a Larva custom runtime event delivered through Pi `sendMessage` with a hard
+boundary that the child output is data/evidence, not a user instruction. Pi stores
+that event as a custom message, but it is still converted into LLM-compatible
+user-role content before provider calls, so the boundary text is required.
 
-```json
-{
-  "task_id": "/absolute/path/to/child-session.jsonl",
-  "persona_id": "doc-reviewer",
-  "status": "success",
-  "result_text": "...",
-  "error": null
-}
-```
-
-The Pi custom-tool `handler`/`execute` return a renderer-safe ToolResult wrapper
-around that semantic payload, not a new Larva public schema. The wrapper includes
-`content: [{"type":"text","text":"..."}]` for Pi rendering and preserves the
-machine-readable `task_id`, `persona_id`, `status`, `result_text`, and `error`
-fields in `details`. For `larva_subagent`, those same five fields are also
-required as top-level metadata with values exactly matching `details`; this
-adapter-local duplication is for Pi/runtime consumers only. `status` is the Larva
-domain status (`success`, `failed`, or `cancelled`); Pi `isError` is derived
-separately from whether that status is not `success`.
-
-When `task_id` is non-null, the visible `content` text includes a short resume
-footer with the target `persona_id`, exact `task_id`, and instruction to pass that
-same `task_id` back to `larva_subagent` to continue the child session. The footer
-is presentation-only: it does not change `result_text`, `details`, or resume
-validation. If no child session path exists yet, `task_id` stays `null` and no
-resume footer is shown.
-
-The tool row also has custom Pi rendering so the parent UI does not show only the
-raw tool name. The collapsed call display shows the target persona, whether the
-call is new or a resume, and a task preview bounded to 120 visible characters:
-
-```text
-larva_subagent -> turing [new]
-  explain why self-attention matters...
-```
-
-For resume calls, the collapsed call display also shows an abbreviated resume
-handle bounded to 80 visible characters:
-
-```text
-larva_subagent -> turing [resume]
-  task_id: ~/.pi/larva/child-sessions/...
-  continue the previous task...
-```
-
-During execution, the tool streams coarse progress updates through Pi's custom
-tool update channel. The updates are intentionally small and user-facing: current
-phase, target `persona_id`, new/resume mode, task preview, and `task_id` once
-known. Each update text is bounded to 200 visible characters. They do not stream
-full child logs into the parent context. Typical phases are: `starting`,
-`session_ready`, `prompt_sent`, `waiting_for_child`,
-`collecting_final_text`, and terminal `success`, `failed`, or `cancelled`.
-
-Visible preview limits count Unicode NFC-normalized code points after stripping
-ANSI escape sequences and replacing newlines/control characters with a single
-space. If text is truncated, the ellipsis is included inside the stated bound.
-They do not count display columns or grapheme clusters.
-
-The final rendered result supports collapsed and expanded views. Collapsed view
-shows a compact renderer-safe status such as `turing completed`, `turing
-cancelled`, or `turing failed`. Expanded view renders Markdown UI sections for
-Summary, Task, Output, Error, and Resume while preserving persona id, mode, full
-task, `task_id` when known, final status, error if any, final output, the same
-resume footer, and the semantic `LarvaSubagentResult`/ToolResult metadata. This
-uses Pi custom rendering only; it does not overwrite the parent `larva: <id>`
-footer status or create a separate widget dashboard.
-
-Failure and cancellation paths also return renderer-safe `content`: failures use
-the stable error code/message text, and cancelled runs use cancellation text. On
-failures before a child session path exists, `task_id` is `null`; after a child
-session path is known, the metadata and visible footer include that public path
-with a non-null `{code, message}` error.
+The public `task_id` is the child Pi `.jsonl` session file path under the child
+session root. It is the only durable public resume/status/cancel handle. The
+extension must not expose public `run_id`, `last`, fuzzy matching, sidecar
+provenance handles, or batch cancellation. Internal private operation keys may
+exist before `task_id` allocation but must not appear in user-facing or
+model-facing APIs.
 
 The child session root defaults to:
 
@@ -739,249 +690,93 @@ The child session root defaults to:
 ~/.pi/larva/child-sessions
 ```
 
+`larva_subagent_status` is read-only process-local inspection. With `task_id`, it
+reports the exact observed run. Without `task_id`, it reports newest observed
+runs up to `limit`; `limit` defaults to 10 and must be an integer from 1 to 25.
+It does not scan child session directories and does not infer resume provenance.
+A well-formed but unobserved exact `task_id` returns an empty result rather than a
+guess.
+
+`larva_subagent_cancel` cancels one exact active child by `task_id` and requires a
+non-empty bounded reason. Cancellation must target only that child: it must not
+abort the parent agent, reset every child, delete child session files, or cancel
+sibling subagents. The adapter waits 1500 ms after child RPC abort before killing
+the child process as fallback. If the model-facing cancel tool returns a terminal
+result, duplicate terminal callback is suppressed; if it returns non-terminal
+`cancelling`, the eventual terminal result still delivers one callback. User
+command/Console cancellation delivers one terminal callback unless the parent
+session becomes stale. The stable terminal cancellation code is
+`LARVA_CHILD_CANCELLED`.
+
+The extension keeps active subagents in a process-local registry keyed by
+`task_id` once known. Terminal states are immutable for control purposes: stale or
+late child completions must not duplicate callbacks or revive cancelled tasks.
+Same-process duplicate resumes of an active `task_id` return `LARVA_SESSION_BUSY`.
+
+Failure and cancellation paths return renderer-safe Pi ToolResult wrappers with
+stable error text in `content` and machine-readable state in `details`. Existing
+stable errors such as `LARVA_NO_ACTIVE_PERSONA`, `LARVA_BAD_INPUT`,
+`LARVA_CHILD_PROTOCOL_FAILED`, `LARVA_CHILD_CANCELLED`, and
+`LARVA_SESSION_BUSY` remain stable.
+
 For runtime proof probes only, tests may set `LARVA_PI_CHILD_RPC_TRACE_FILE` to
-an explicit trace path. When set, the extension appends best-effort diagnostic
-JSONL events for child spawn/RPC/cleanup observations. This trace is not a
-model-facing helper, not a public resume handle, not a provenance record, not
-sidecar metadata, and not authority for `larva_subagent_sessions` or
-`/larva-log`; production operators should leave it unset unless
-collecting temporary integration proof. Trace write failures are ignored and must
-never change child runtime behavior.
+an explicit trace path. The trace is diagnostic only: it is not a public handle,
+not provenance authority, and not model-facing state.
 
-The public `task_id` is the child Pi `.jsonl` session file path under that root.
-It is the only durable public resume handle. A resume call validates that the
-supplied path is a readable `.jsonl` file under the child session root, starts a
-new child Pi RPC process, switches to that session, appends the new `task`, and
-returns the final assistant text from the resumed invocation. The child persona id
-is resolved from the current Larva registry on each new or resumed child startup.
+### `/larva-subagent` console
 
-For convenience, the extension may also expose a small read-only helper:
+Target design: the canonical user command after the async subagent work is
+implemented is:
 
 ```text
-larva_subagent_sessions(limit?)
+/larva-subagent
+/larva-subagent <task_id>
+/larva-subagent --cancel <task_id>
+/larva-subagent --clear
 ```
 
-Input:
+In TUI mode, `/larva-subagent` opens the Subagent Console through Pi custom TUI
+overlay support (`ctx.ui.custom(..., { overlay: true })`). The Console is an
+event-driven view over adapter-local presentation state with bounded panes for
+Summary, Prompt, Output, Timeline, and Metadata. It can cancel the selected exact
+running child after confirmation.
 
-- `limit`: optional positive integer; default `10`; maximum `25`. Non-integer,
-  zero, negative, or above-maximum values return `LARVA_BAD_INPUT` and do not
-  inspect session files.
+In RPC mode, Pi does not support custom overlays; command handlers return
+textual summaries, exact-task summaries, cancellation results, or cache-clear
+results. In print/json mode, interactive console actions return
+`LARVA_SUBAGENT_UI_UNAVAILABLE`; non-interactive exact summaries may still be
+returned for `/larva-subagent <task_id>`.
 
-It returns the recent child sessions seen by the current parent Pi extension
-process, newest first by process-local sequence number, including `task_id`,
-`persona_id`, latest status, and the process-local sequence number. The
-process-local index retains at most 25 entries; when a new entry exceeds that
-bound, the oldest retained entry is evicted. This helper is an in-memory UX aid
-only. It does not scan
-`~/.pi`, write sidecar metadata, prove provenance, create aliases such as
-`task_id: "last"`, or replace normal `larva_subagent(task_id=...)` validation.
-If multiple recent sessions could match a user request, the agent must ask the
-user which `task_id` to resume instead of guessing.
+Current implementations may still expose `/larva-log` until the async subagent
+work lands. In the target design, `/larva-log` is no longer the canonical UX. It
+may remain as a deprecated compatibility alias to `/larva-subagent` view mode,
+but new docs, tests, and user flows should use `/larva-subagent`.
 
-The helper returns a Pi ToolResult wrapper, not bare JSON. On success,
-machine-readable sessions live only under `details.sessions`:
+The Console and its cache are adapter-local UI inspection surfaces only. They are
+not resume authority, not model-visible log streams, not shared Larva/opifex
+schemas, and not child-session sources of truth. Clearing the Console/cache must
+not delete child Pi session files or mutate persona/model/tool-policy state.
 
-```json
-{
-  "content": [{"type": "text", "text": "Recent Larva subagent sessions: ..."}],
-  "details": {
-    "status": "success",
-    "sessions": [
-      {
-        "task_id": "/absolute/path/to/child-session.jsonl",
-        "persona_id": "turing",
-        "last_status": "cancelled",
-        "sequence": 12
-      }
-    ],
-    "error": null
-  },
-  "isError": false
-}
-```
+### Verification requirements
 
-Invalid `limit` returns the same wrapper shape with `isError: true`,
-`details.status` set to `"failed"`, `details.sessions` set to `[]`,
-`details.error.code` set to `"LARVA_BAD_INPUT"`, `details.error.message` set to
-`"limit must be an integer from 1 to 25."`, and `content[0].text` set to
-`LARVA_BAD_INPUT: limit must be an integer from 1 to 25.`.
+The async subagent implementation is not complete until tests or runtime smoke
+prove:
 
-The parent extension tracks same-`task_id` resumes in memory within one parent Pi
-process. If another active call in that same process is already resuming the same
-canonical path, the tool returns `failed` with `LARVA_SESSION_BUSY` before
-starting another child process. This is not a cross-process filesystem lock.
-
-If the parent tool call is aborted, the extension forwards a Pi RPC abort request
-to the child and may kill the child after a grace period. If the child is stopped
-by abort or kill, the result is `cancelled` with `LARVA_CHILD_CANCELLED`; if the
-child completes during the grace period, the normal success result is returned.
-
-### `/larva-log` view-only overlay
-
-The extension also registers the authorized slash command:
-
-```text
-/larva-log [task_id?]
-```
-
-This is a user-visible, view-only overlay over the parent extension's subagent
-presentation log and optional adapter-local persistent cache. It is not a
-model-facing tool, not a tool-policy input, not a resume authority, and not a
-shared Larva/opifex schema. With no argument it selects the newest observed
-presentation-log entry in detail mode; with an argument it selects one exact
-`task_id`. It does not scan the filesystem, parse raw Pi JSONL, read or write
-child-session sidecars, or support aliases such as `last`.
-
-The overlay is implemented as a Pi TUI-backed custom component. Its visible
-chrome title is the concise `Larva subagent log`; `presentation log` remains the
-internal/design term for adapter-local in-memory UI state. It must use Pi TUI
-width/wrap/truncate helpers for all bordered rows and content panes, and it must
-preserve the invariant that each rendered line fits the `render(width)` contract.
-Like the persona selector, it renders through the same modal chrome helpers:
-accent-colored border, solid ANSI background, stable frame height across
-tab, scroll, and selector states, and terminal-compatible right/bottom drop
-shadow. The custom overlay uses the same `90%` width and `90%` max-height budget
-so the shadow is not clipped by Pi's overlay frame. The component adapts its
-rendered height to the available terminal rows on tall terminals while keeping
-frame height stable across tabs and scroll positions. Long output is internally
-scrollable; the terminal transcript outside the overlay is not used as scroll
-authority.
-
-While open, the overlay is an event-driven live view over adapter-local
-presentation state. Presentation-log mutations (`running`, progress, final result,
-cancel, failure, or reset) and normalized child RPC stream events notify the open
-component, which re-reads the selected entry from in-memory state and requests a
-render. For the currently active child only, the adapter may also read the exact
-allocated `task_id`/session file already returned by Pi to extract bounded
-assistant text excerpts for the Timeline when RPC does not emit `message_update`.
-This is not timer polling, does not scan directories, does not parse arbitrary
-history, and does not make child JSONL resume/provenance authority.
-The component preserves the active tab, selector/detail mode, selected entry,
-selector cursor, and scroll offset where possible; if the selected entry
-disappears during reset, the overlay closes/clears through the normal cleanup
-path.
-
-Persistent cache target: the Pi adapter persists the newest renderer-safe
-presentation entries to an adapter-local cache file, defaulting to 100 entries
-and 7 days of retention. The cache is only a UI inspection cache; it is not
-resume authority, not a child-session source of truth, not a model-visible tool
-result stream, and not a shared Larva/opifex schema. The cache is never populated
-by scanning child session JSONL files; it is written only from the same
-presentation-log mutations that already drive the live overlay.
-
-Live streaming state is intentionally process-local for this target. Live
-assistant output previews, exact-session assistant excerpt ids, grouped tool-call
-snapshots, active tool state, and raw child RPC event payloads are not persisted.
-The cache sanitizer must drop live-only fields if they are present in memory.
-Within the same parent Pi extension process, terminal result entries may retain
-the bounded normalized `timeline_events` and `tool_snapshots` copied from the
-running entry so the `Timeline` pane remains useful after success, failure, or
-cancellation. The
-Timeline is chronological presentation state: assistant message excerpts and
-first-seen tool calls share one ordered stream, while tool start/update/end frames
-update the existing tool row instead of creating a firehose. Terminal entries must
-clear `active_tool_state` and still must not persist those timeline/tool snapshots
-across reload. The final assistant output still comes from the child
-`get_last_assistant_text` response; live text/timeline excerpts are process-local
-inspection aids only.
-
-Cache defaults and configuration:
-
-- Default enabled state: `enabled: true`.
-- Default cache file: `~/.pi/larva/subagent-presentation-log.json`.
-- Default retention: newest 100 entries and entries updated within the last 7
-  days.
-- Optional config file: `~/.pi/larva/subagent-log.json`.
-- Optional absolute test/user override: `LARVA_PI_SUBAGENT_LOG_FILE`.
-- Config fields: `enabled`, `max_entries`, `max_age_days`, `include_prompt`, and
-  `include_output`.
-- Valid ranges: `max_entries` is an integer from 1 to 1000; `max_age_days` is an
-  integer from 1 to 365. Boolean fields must be booleans.
-- Malformed config fails closed for persistence: do not write the cache for that
-  process, and report a user-visible `LARVA_SUBAGENT_LOG_CONFIG_INVALID` error.
-- Privacy escape hatch: setting `enabled: false` disables persistence; setting
-  `include_prompt: false` or `include_output: false` stores only summary metadata
-  for those fields.
-
-Cleanup surface: `/larva-log --clear` clears the adapter-local
-presentation cache and in-memory overlay entries, then closes any open overlay. It
-must not delete child Pi session files, mutate persona/model/tool-policy state,
-change recent-session resume UX authority, or remove the public child `task_id`.
-
-Target interaction model:
-
-- Default open: newest observed entry in detail mode.
-- `s`: enter/leave the in-overlay subagent selector. The selector is
-  event-driven: newly observed subagents appear on presentation-log refresh
-  without timer polling, while the cursor stays attached to the previously
-  selected entry when possible.
-- Selector ordering: running entries first, then newest `updated_at`, then highest
-  `sequence` as tie-breaker.
-- Selector rows: local started time (`HH:MM:SS`), status token, persona id, short
-  task label, phase/status, and bounded task preview; no full prompt, full output,
-  full task path, internal call/frame id, or raw event payload. Absolute local
-  time is preferred over relative age because the overlay is refresh-on-event
-  rather than timer-polled; a relative `3m ago` label would become stale while
-  the selector is idle.
-- Selector `Enter`: select highlighted entry and return to detail mode without
-  closing the overlay.
-- `Esc` or `q`: close.
-- `↑`/`↓`: scroll the active pane or move the selector cursor.
-- `PageUp`/`PageDown`: page scroll the active pane or selector.
-- `Home`/`End`: jump to start/end of the active pane or selector.
-- `1`/`2`/`3`/`4`/`5` or `←`/`→`: switch keyboard tabs in detail mode.
-- Mouse wheel: scroll the active pane or selector while the overlay is open.
-- Mouse click: intentionally unsupported for this target.
-
-Target panes:
-
-1. `Summary`: readable grouped/aligned fields for selected-entry status, persona,
-   progress, task id, prompt availability, output availability, live event
-   availability, error summary, and view-only provenance. It intentionally does
-   not inline full prompt, raw Markdown output, raw tool output, or raw RPC
-   payloads.
-2. `Prompt`: full initial prompt / subagent task text with width-safe Markdown
-   rendering and readable numbered-step formatting for compact task prompts.
-3. `Output`: live assistant text while running and Pi TUI Markdown-rendered final
-   assistant output after completion, otherwise a renderer-safe empty/fallback
-   message.
-4. `Timeline`: process-local, bounded, chronological stream presentation. It may
-   include assistant message excerpts, hidden-thinking markers, terminal status,
-   and grouped tool-call snapshots in the order they first appeared. A tool call
-   is displayed as one evolving human-readable action row keyed internally by
-   `toolCallId`; start, update, and end frames update that row rather than
-   appending an unbounded firehose. The default row is action-first, not
-   identifier-first: `↳ read(path="file") — success`, dimmed and indented under
-   assistant/terminal rows. Assistant excerpts use timeline-shaped plain preview
-   rows such as `• assistant <excerpt>` rather than field-table rows or full
-   Markdown rendering; the Output pane remains the Markdown-reading surface for
-   assistant text. Tool arguments are shown by default only as bounded summaries;
-   heavy fields such as full content, patches, diffs, or base64 data are
-   omitted/summarized. Bounded output or error previews appear as subordinate
-   preview rows such as `preview: 45 lines read`. Full internal
-   `toolCallId`/frame identifiers are hidden by default because they are debug
-   plumbing, not user intent; press `d` in the Timeline pane to reveal bounded
-   internal IDs when diagnosing adapter behavior.
-5. `Metadata`: adapter-local mode, sequence, phase, task preview, prompt pointer,
-   call id, selected task id, overlay generation, live-stream availability, error
-   object, debug tool IDs, and view-only provenance.
-
-Overlong selector rows, assistant messages, tool args, tool output, and debug IDs
-are always renderer-safe and bounded. Selector rows are single-line truncated
-summaries. Scrollable panes may wrap, but live buffers must still have a hard
-in-memory bound and visible truncation marker so a noisy child cannot turn the
-overlay into an unbounded log stream. `thinking_*` child deltas must not display
-thinking content; the overlay may show only a bounded neutral state such as
-`thinking hidden`.
-
-The overlay result carries `view_only: true`, renderer-safe text `content`, and
-adapter-local overlay `details`. It deliberately does not mirror
-`LarvaSubagentResult` top-level `task_id` or `result_text` fields. Missing
-observed entries return `LARVA_SUBAGENT_LOG_NOT_OBSERVED`; unavailable UI
-notification returns `LARVA_SUBAGENT_LOG_UI_UNAVAILABLE`. Opening, selecting,
-tabbing, scrolling, event-driven refresh, streaming updates, or resetting the
-overlay must not mutate persona state, model state, tool policy, active task
-markers, child session files, recent-session index contents, or resume authority.
+1. `larva_subagent` returns accepted while the child remains running.
+2. The parent agent can continue after the accepted result.
+3. Final child output returns through one bounded Larva custom runtime event.
+4. Cancelling child A does not cancel child B or the parent agent.
+5. Model-facing cancel suppresses duplicate callback only when the tool result is
+   already terminal; non-terminal `cancelling` later delivers one terminal
+   callback.
+6. User command/Console cancel emits one terminal callback unless the parent
+   session becomes stale.
+7. Stale/late completions do not duplicate callbacks or revive cancelled tasks.
+8. Reload/new/resume/fork/quit abort active children and never send callbacks
+   through stale Pi contexts.
+9. RPC and print/json command behavior matches the documented mode matrix.
+10. During parent streaming, `/larva-subagent` executes as an extension command
+    and can open the TUI overlay.
 
 ## Explicit non-goals and unsupported guarantees
 
@@ -1003,8 +798,9 @@ Do not infer these guarantees from `larva pi` or this extension:
 - No batch subagent tool or job scheduler.
 - No subagent catalogue dumped into the system prompt.
 - No Larva sidecar metadata or provenance file for child sessions.
-- No model-visible overlay log stream; `/larva-log` is user-visible,
-  view-only adapter-local presentation state. Persistent cache entries are UI
+- No model-visible overlay log stream; `/larva-subagent` is the canonical
+  user-visible adapter-local presentation/control surface. `/larva-log`, if
+  retained, is only a deprecated view-mode alias. Persistent cache entries are UI
   inspection state only, and live stream previews are process-local only.
 - No mouse click support for this target; keyboard controls and overlay mouse
   wheel scrolling are the supported TUI interactions.
