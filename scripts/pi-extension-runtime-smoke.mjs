@@ -503,6 +503,43 @@ async function writeFakeSubagentChild(scriptPath, { sessionFile, finalText = "fr
   `, "utf8");
 }
 
+async function writeDelayedAsyncSubagentChild(scriptPath, { sessionFile, finalText = "ASYNC_CALLBACK_FINAL", terminalDelayMs = 650, terminalMarkerFile }) {
+  await writeFile(scriptPath, `
+    import { createInterface } from "node:readline";
+    import { mkdir, writeFile } from "node:fs/promises";
+    import { dirname } from "node:path";
+    const sessionFile = ${JSON.stringify(sessionFile)};
+    const finalText = ${JSON.stringify(finalText)};
+    const terminalDelayMs = ${JSON.stringify(terminalDelayMs)};
+    const terminalMarkerFile = ${JSON.stringify(terminalMarkerFile)};
+    await mkdir(dirname(sessionFile), { recursive: true });
+    if (terminalMarkerFile) await mkdir(dirname(terminalMarkerFile), { recursive: true });
+    const rl = createInterface({ input: process.stdin });
+    const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+    rl.on("line", async (line) => {
+      const message = JSON.parse(line);
+      if (message.type === "get_state") {
+        await writeFile(sessionFile, "{}\\n", "utf8");
+        send({ id: message.id, success: true, data: { sessionFile } });
+      } else if (message.type === "switch_session") {
+        send({ id: message.id, success: true, data: { cancelled: false } });
+      } else if (message.type === "prompt") {
+        send({ id: message.id, success: true, data: {} });
+        setTimeout(async () => {
+          if (terminalMarkerFile) await writeFile(terminalMarkerFile, "agent_end\\n", "utf8");
+          send({ type: "agent_end" });
+        }, terminalDelayMs);
+      } else if (message.type === "get_last_assistant_text") {
+        send({ id: message.id, success: true, data: { text: finalText } });
+        setTimeout(() => process.exit(0), 5);
+      } else if (message.type === "abort") {
+        send({ id: message.id, success: true });
+        process.exit(0);
+      }
+    });
+  `, "utf8");
+}
+
 async function readJsonlTrace(traceFile) {
   try {
     const raw = await readFile(traceFile, "utf8");
@@ -1078,13 +1115,21 @@ async function asyncSubagentContractExpectedRed(evidence) {
   await mkdir(childSessionRoot, { recursive: true });
   const childScript = join(sessionRoot, "async-contract-child.mjs");
   const childSessionFile = join(childSessionRoot, "async-contract.jsonl");
-  await writeFakeSubagentChild(childScript, { sessionFile: childSessionFile, finalText: "ASYNC_CALLBACK_FINAL" });
+  const terminalMarkerFile = join(sessionRoot, "terminal-marker.txt");
+  const terminalDelayMs = 650;
+  await writeDelayedAsyncSubagentChild(childScript, {
+    sessionFile: childSessionFile,
+    finalText: "ASYNC_CALLBACK_FINAL",
+    terminalDelayMs,
+    terminalMarkerFile,
+  });
   const source = await readFile(extensionPath, "utf8");
   const commands = new Map();
   const tools = [];
   const handlers = new Map();
   const sessionEntries = [];
   const callbackEntries = [];
+  const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
   const recordCallback = (surface, customType, data, options = {}) => {
     const entry = { surface, customType, data, options };
     sessionEntries.push(entry);
@@ -1099,13 +1144,17 @@ async function asyncSubagentContractExpectedRed(evidence) {
       LARVA_PI_REAL_BIN: process.execPath,
       LARVA_PI_EXTENSION_FLAG: childScript,
       LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+      LARVA_PI_INTERACTIVE_TUI: "1",
     }),
     modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
     ui: { setStatus: async () => undefined, notify: async () => undefined, custom: async () => ({ opened: true }) },
+    hasUI: true,
     session: {
       entries: sessionEntries,
+      isStreaming: true,
       getEntries: () => sessionEntries,
       appendEntry: (customType, data, options) => recordCallback("session.appendEntry", customType, data, options),
+      addCustomEntry: (customType, data, options) => recordCallback("session.addCustomEntry", customType, data, options),
     },
     appendEntry: (customType, data, options) => recordCallback("ctx.appendEntry", customType, data, options),
     sendCustomMessage: async (customType, data, options) => recordCallback("ctx.sendCustomMessage", customType, data, options),
@@ -1128,32 +1177,120 @@ async function asyncSubagentContractExpectedRed(evidence) {
   };
   await mod.initializeExtension(ctx, pi);
   await mod.commitPersona("ok", ctx, pi);
+  mod.resetSubagentPresentationStateForTests();
 
   const unifiedCommand = commands.get("larva-subagent");
-  let slashResult = null;
-  if (unifiedCommand?.handler) {
-    try {
-      slashResult = await unifiedCommand.handler("", ctx);
-    } catch (error) {
-      slashResult = { error: error?.message ?? String(error) };
-    }
-  }
   const subagentTool = tools.find((tool) => tool.name === "larva_subagent");
-  let acceptedResult = null;
-  if (subagentTool) {
+  const commandText = (result) => {
+    if (typeof result?.content?.[0]?.text === "string") return result.content[0].text;
+    if (typeof result?.text === "string") return result.text;
+    if (typeof result === "string") return result;
+    return JSON.stringify(result ?? null);
+  };
+  const resultErrorCode = (result) => result?.details?.error?.code ?? result?.error?.code ?? null;
+  const invokeUnifiedCommand = async (input, commandCtx) => {
+    if (!unifiedCommand?.handler) return { invoked: false, input, result: null, error: "COMMAND_NOT_REGISTERED" };
     try {
-      const run = subagentTool.execute ?? ((_callId, input) => subagentTool.handler(input));
-      acceptedResult = await run("async-contract-call", { persona_id: "child", task: "produce one async callback" }, undefined, undefined, ctx);
+      return { invoked: true, input, result: await unifiedCommand.handler(input, commandCtx), error: null };
     } catch (error) {
-      acceptedResult = { error: error?.message ?? String(error) };
+      return { invoked: true, input, result: null, error: error?.message ?? String(error) };
     }
-  }
+  };
+
+  let acceptedResult = null;
+  let acceptedError = null;
+  let runningEntryBeforeCommand = null;
+  const updates = [];
+  const startedAt = Date.now();
+  const subagentPromise = subagentTool
+    ? (subagentTool.execute
+      ? subagentTool.execute("async-contract-call", { persona_id: "child", task: "produce one async callback" }, undefined, (update) => updates.push(update), ctx)
+      : subagentTool.handler({ persona_id: "child", task: "produce one async callback" }))
+    : Promise.resolve({ error: "TOOL_NOT_REGISTERED" });
   try {
-    await waitForSmokeCondition(() => callbackEntries.length === 1, { label: "single larva subagent result callback", timeoutMs: 2_000 });
+    runningEntryBeforeCommand = await waitForSmokeCondition(
+      () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "async-contract-call" && entry.status === "running" && typeof entry.task_id === "string" && ["session_ready", "prompt_sent", "waiting_for_child"].includes(entry.phase)),
+      { label: "async contract running entry before streaming command", timeoutMs: 1_000 },
+    );
+  } catch {
+    runningEntryBeforeCommand = null;
+  }
+
+  const streamingCustomCalls = [];
+  const streamingCtx = {
+    ...ctx,
+    isIdle: () => false,
+    ui: {
+      setStatus: async () => undefined,
+      notify: async () => undefined,
+      custom: async (_factory, options) => {
+        streamingCustomCalls.push({ options });
+        return { opened: true };
+      },
+    },
+  };
+  const streamingSlashResult = await invokeUnifiedCommand("", streamingCtx);
+
+  try {
+    acceptedResult = await subagentPromise;
+  } catch (error) {
+    acceptedError = error?.message ?? String(error);
+    acceptedResult = { error: acceptedError };
+  }
+  const elapsedMs = Date.now() - startedAt;
+  const terminalMarkerExistsAtReturn = await exists(terminalMarkerFile);
+  try {
+    await waitForSmokeCondition(() => callbackEntries.length >= 1, {
+      label: "single larva subagent result callback",
+      timeoutMs: terminalDelayMs + 2_000,
+    });
+    await sleep(100);
   } catch {
     // Expected-red today: the synchronous implementation has no late callback path.
   }
+
+  const matrixTaskId = join(childSessionRoot, "matrix-observed.jsonl");
+  mod.recordSubagentPresentationEntryForTests(matrixTaskId, "child", "success", {
+    phase: "success",
+    task_prompt: "mode matrix prompt",
+    task_preview: "mode matrix prompt",
+    result_text: "MODE_MATRIX_FINAL",
+    updated_at: "2026-06-08T00:00:00.000Z",
+  });
+  const rpcCustomCalls = [];
+  const rpcCtx = {
+    ...ctx,
+    env: { ...ctx.env, LARVA_PI_INTERACTIVE_TUI: "0" },
+    hasUI: true,
+    ui: {
+      setStatus: async () => undefined,
+      notify: async () => undefined,
+      custom: undefined,
+    },
+  };
+  const printJsonCtx = {
+    ...ctx,
+    env: { ...ctx.env, LARVA_PI_INTERACTIVE_TUI: "0" },
+    hasUI: false,
+    ui: undefined,
+  };
+  const rpcList = await invokeUnifiedCommand("", rpcCtx);
+  const rpcExact = await invokeUnifiedCommand(matrixTaskId, rpcCtx);
+  const printJsonExact = await invokeUnifiedCommand(matrixTaskId, printJsonCtx);
+  const printJsonView = await invokeUnifiedCommand("", printJsonCtx);
+  const printJsonCancel = await invokeUnifiedCommand(`--cancel ${matrixTaskId}`, printJsonCtx);
+  const printJsonClear = await invokeUnifiedCommand("--clear", printJsonCtx);
+  const modeMatrixFallbacks = {
+    rpcList: { ...rpcList, text: commandText(rpcList.result), errorCode: resultErrorCode(rpcList.result), customCallCount: rpcCustomCalls.length },
+    rpcExact: { ...rpcExact, text: commandText(rpcExact.result), errorCode: resultErrorCode(rpcExact.result), customCallCount: rpcCustomCalls.length },
+    printJsonExact: { ...printJsonExact, text: commandText(printJsonExact.result), errorCode: resultErrorCode(printJsonExact.result) },
+    printJsonView: { ...printJsonView, text: commandText(printJsonView.result), errorCode: resultErrorCode(printJsonView.result) },
+    printJsonCancel: { ...printJsonCancel, text: commandText(printJsonCancel.result), errorCode: resultErrorCode(printJsonCancel.result) },
+    printJsonClear: { ...printJsonClear, text: commandText(printJsonClear.result), errorCode: resultErrorCode(printJsonClear.result) },
+  };
+
   const acceptedDetails = acceptedResult?.details ?? acceptedResult;
+  const acceptedText = commandText(acceptedResult);
   const callbackEnvelope = callbackEntries[0] ?? null;
   const callback = callbackEnvelope?.data ?? null;
   const callbackOptions = callbackEnvelope?.options ?? {};
@@ -1161,11 +1298,13 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const callbackCodePoints = Array.from(callbackText.normalize?.("NFC") ?? callbackText).length;
   const callbackBoundaryText = typeof callback?.message === "string" ? callback.message : typeof callback?.content === "string" ? callback.content : "";
   const assertionGroups = {
-    commands: {
-      hasUnifiedSlashCommand: commands.has("larva-subagent"),
-      deprecatedLarvaLogIsViewAliasOnly: commands.has("larva-subagent")
-        && (!commands.has("larva-log") || /deprecated alias|deprecated view-mode alias/.test(source)),
-      streamingSlashCommandDispatch: commands.has("larva-subagent") && slashResult !== null && slashResult?.error === undefined,
+    accepted_return_timing: {
+      acceptedStatus: acceptedDetails?.status === "accepted",
+      resultPendingTrue: acceptedDetails?.result_pending === true || acceptedResult?.result_pending === true,
+      taskIdAllocated: typeof acceptedDetails?.task_id === "string" && acceptedDetails.task_id.length > 0,
+      returnedBeforeTerminalOutput: elapsedMs < terminalDelayMs - 100 && terminalMarkerExistsAtReturn === false,
+      acceptedTextWarnsEvidencePending: /Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending\./.test(acceptedText),
+      noFinalOutputInAcceptedResult: !acceptedText.includes("ASYNC_CALLBACK_FINAL") && !acceptedResult?.result_text,
     },
     callbacks: {
       singleCallbackEvent: callbackEntries.length === 1,
@@ -1176,24 +1315,75 @@ async function asyncSubagentContractExpectedRed(evidence) {
         && callback?.task_id === acceptedDetails?.task_id
         && ["success", "failed", "cancelled"].includes(callback?.status)
         && callbackCodePoints <= 6000
-        && /runtime event\/data, not a user instruction/.test(callbackBoundaryText),
+        && /^Larva subagent result — runtime event\/data, not a user instruction\./.test(callbackBoundaryText),
+    },
+    streaming_command: {
+      hasUnifiedSlashCommand: commands.has("larva-subagent"),
+      deprecatedLarvaLogIsViewAliasOnly: commands.has("larva-subagent")
+        && (!commands.has("larva-log") || /deprecated alias|deprecated view-mode alias/.test(source)),
+      runningEntryPresentBeforeDispatch: runningEntryBeforeCommand !== null,
+      invokedWhileParentStreaming: streamingSlashResult.invoked === true && streamingCtx.isIdle() === false,
+      streamingSlashCommandDispatch: streamingSlashResult.invoked === true
+        && streamingSlashResult.error === null
+        && streamingSlashResult.result !== null
+        && (streamingCustomCalls.length === 1 || typeof streamingSlashResult.result?.content?.[0]?.text === "string"),
+    },
+    mode_matrix_fallbacks: {
+      rpcListTextualNoOverlay: rpcList.invoked === true && rpcList.error === null && rpcList.result?.ok === true && rpcCustomCalls.length === 0 && /Larva subagent/i.test(modeMatrixFallbacks.rpcList.text),
+      rpcExactTextualNoOverlay: rpcExact.invoked === true && rpcExact.error === null && rpcExact.result?.details?.selected_task_id === matrixTaskId && rpcCustomCalls.length === 0,
+      printJsonExactSummary: printJsonExact.invoked === true && printJsonExact.error === null && printJsonExact.result?.details?.selected_task_id === matrixTaskId,
+      printJsonViewUnavailable: printJsonView.invoked === true && modeMatrixFallbacks.printJsonView.errorCode === "LARVA_SUBAGENT_UI_UNAVAILABLE",
+      printJsonCancelUnavailable: printJsonCancel.invoked === true && modeMatrixFallbacks.printJsonCancel.errorCode === "LARVA_SUBAGENT_UI_UNAVAILABLE",
+      printJsonClearUnavailable: printJsonClear.invoked === true && modeMatrixFallbacks.printJsonClear.errorCode === "LARVA_SUBAGENT_UI_UNAVAILABLE",
     },
   };
+  const flattened = Object.values(assertionGroups).flatMap((group) => Object.values(group));
   evidence.runtime.asyncSubagentContract = {
-    status: Object.values(assertionGroups).flatMap((group) => Object.values(group)).every(Boolean) ? "PASS" : "EXPECTED_RED",
+    status: flattened.every(Boolean) ? "PASS" : "EXPECTED_RED",
+    controlledChild: {
+      childScript,
+      childSessionFile,
+      terminalDelayMs,
+      terminalMarkerFile,
+      terminalMarkerExistsAtReturn,
+    },
     registeredToolNames: tools.map((tool) => tool.name),
     registeredCommandNames: Array.from(commands.keys()),
     registeredHandlers: Array.from(handlers.keys()),
-    slashResult,
-    acceptedResult,
+    acceptedTiming: {
+      elapsedMs,
+      terminalDelayMs,
+      terminalMarkerExistsAtReturn,
+      acceptedError,
+      acceptedResult,
+      acceptedText,
+      updates,
+    },
+    streamingCommandProbe: {
+      parentStreaming: streamingCtx.isIdle() === false,
+      runningEntryBeforeCommand,
+      streamingCustomCalls,
+      streamingSlashResult,
+    },
+    modeMatrixFallbacks,
     callbackEntries,
     assertionGroups,
     assertions: {
-      hasUnifiedSlashCommand: assertionGroups.commands.hasUnifiedSlashCommand,
-      deprecatedLarvaLogIsViewAliasOnly: assertionGroups.commands.deprecatedLarvaLogIsViewAliasOnly,
-      streamingSlashCommandDispatch: assertionGroups.commands.streamingSlashCommandDispatch,
+      acceptedStatus: assertionGroups.accepted_return_timing.acceptedStatus,
+      resultPendingTrue: assertionGroups.accepted_return_timing.resultPendingTrue,
+      returnedBeforeTerminalOutput: assertionGroups.accepted_return_timing.returnedBeforeTerminalOutput,
+      acceptedTextWarnsEvidencePending: assertionGroups.accepted_return_timing.acceptedTextWarnsEvidencePending,
       singleCallbackEvent: assertionGroups.callbacks.singleCallbackEvent,
       callbackShape: assertionGroups.callbacks.callbackShape,
+      hasUnifiedSlashCommand: assertionGroups.streaming_command.hasUnifiedSlashCommand,
+      deprecatedLarvaLogIsViewAliasOnly: assertionGroups.streaming_command.deprecatedLarvaLogIsViewAliasOnly,
+      streamingSlashCommandDispatch: assertionGroups.streaming_command.streamingSlashCommandDispatch,
+      rpcListTextualNoOverlay: assertionGroups.mode_matrix_fallbacks.rpcListTextualNoOverlay,
+      rpcExactTextualNoOverlay: assertionGroups.mode_matrix_fallbacks.rpcExactTextualNoOverlay,
+      printJsonExactSummary: assertionGroups.mode_matrix_fallbacks.printJsonExactSummary,
+      printJsonViewUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonViewUnavailable,
+      printJsonCancelUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonCancelUnavailable,
+      printJsonClearUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonClearUnavailable,
     },
   };
 }
@@ -1454,6 +1644,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "subagent-log-selector-streaming" && evidence.runtime.subagentLogSelectorStreaming?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "async-subagent-contract" && evidence.runtime.asyncSubagentContract?.status !== "PASS") {
     process.exitCode = 1;
   }
 }

@@ -200,7 +200,9 @@ def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash(
     }
 
 
-def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout: float = 8.0) -> dict[str, Any]:
+def _run_runtime_scenario_raw(
+    scenario: str, *, persona: str | None = None, timeout: float = 8.0
+) -> tuple[dict[str, Any], int, str, str]:
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is required for Pi extension runtime smoke")
@@ -214,8 +216,16 @@ def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout:
         text=True,
         timeout=timeout,
     )
-    assert completed.returncode == 0, completed.stderr
-    return json.loads(completed.stdout)
+    assert completed.stdout.strip(), completed.stderr
+    return json.loads(completed.stdout), completed.returncode, completed.stdout, completed.stderr
+
+
+def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout: float = 8.0) -> dict[str, Any]:
+    payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
+        scenario, persona=persona, timeout=timeout
+    )
+    assert returncode == 0, f"stdout:\n{raw_stdout}\nstderr:\n{raw_stderr}"
+    return payload
 
 
 def _run_node_inline(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str, Any]:
@@ -295,6 +305,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "tool-call-block",
         "capability-gates",
         "live-child-rpc-proof",
+        "async-subagent-contract",
     ):
         assert scenario in completed.stdout
 
@@ -698,16 +709,58 @@ def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:
     assert isinstance(result["reason"], str) and result["reason"]
 
 
-def test_runtime_smoke_async_subagent_streaming_command_and_callback_expected_red() -> None:
-    """Expected-red A11: smoke scaffolds streaming slash dispatch and single callback."""
+def test_runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence() -> None:
+    """Expected-red: async accepted receipt, one callback, streaming command, non-TUI fallbacks."""
 
-    payload = _run_runtime_scenario("async-subagent-contract")
-    assertions = payload["runtime"]["asyncSubagentContract"]["assertions"]
-
-    assert assertions == {
-        "hasUnifiedSlashCommand": True,
-        "deprecatedLarvaLogIsViewAliasOnly": True,
-        "streamingSlashCommandDispatch": True,
-        "singleCallbackEvent": True,
-        "callbackShape": True,
+    payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
+        "async-subagent-contract", timeout=12.0
+    )
+    contract = payload["runtime"]["asyncSubagentContract"]
+    assertion_groups = contract["assertionGroups"]
+    raw_json_evidence = {
+        "command": ["node", str(RUNTIME_SMOKE), "--scenario", "async-subagent-contract"],
+        "exit_code": returncode,
+        "raw_stdout": raw_stdout,
+        "raw_stderr": raw_stderr,
+        "status": contract["status"],
+        "assertionGroups": assertion_groups,
+        "acceptedTiming": contract["acceptedTiming"],
+        "streamingCommandProbe": contract["streamingCommandProbe"],
+        "modeMatrixFallbacks": contract["modeMatrixFallbacks"],
+        "callbackEntries": contract["callbackEntries"],
     }
+
+    assert payload["package"]["piTuiDependency"]["hardGateStatus"] == "PASS", json.dumps(
+        raw_json_evidence, indent=2, sort_keys=True
+    )
+    assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert contract["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert assertion_groups == {
+        "accepted_return_timing": {
+            "acceptedStatus": True,
+            "resultPendingTrue": True,
+            "taskIdAllocated": True,
+            "returnedBeforeTerminalOutput": True,
+            "acceptedTextWarnsEvidencePending": True,
+            "noFinalOutputInAcceptedResult": True,
+        },
+        "callbacks": {
+            "singleCallbackEvent": True,
+            "callbackShape": True,
+        },
+        "streaming_command": {
+            "hasUnifiedSlashCommand": True,
+            "deprecatedLarvaLogIsViewAliasOnly": True,
+            "runningEntryPresentBeforeDispatch": True,
+            "invokedWhileParentStreaming": True,
+            "streamingSlashCommandDispatch": True,
+        },
+        "mode_matrix_fallbacks": {
+            "rpcListTextualNoOverlay": True,
+            "rpcExactTextualNoOverlay": True,
+            "printJsonExactSummary": True,
+            "printJsonViewUnavailable": True,
+            "printJsonCancelUnavailable": True,
+            "printJsonClearUnavailable": True,
+        },
+    }, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
