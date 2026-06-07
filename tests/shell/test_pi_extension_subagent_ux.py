@@ -1534,6 +1534,46 @@ def _subagent_selector_streaming_payload() -> dict[str, Any]:
     return payload["runtime"]["subagentLogSelectorStreaming"]["assertions"]
 
 
+_ASYNC_SUBAGENT_CONTRACT_CACHE: dict[str, Any] | None = None
+
+
+def _async_subagent_contract_payload() -> dict[str, Any]:
+    global _ASYNC_SUBAGENT_CONTRACT_CACHE
+    if _ASYNC_SUBAGENT_CONTRACT_CACHE is None:
+        payload, returncode, stderr = _run_runtime_smoke_allow_expected_red(
+            "async-subagent-contract"
+        )
+        contract = payload["runtime"]["asyncSubagentContract"]
+        contract["_raw_receipt"] = {"returncode": returncode, "stderr": stderr}
+        _ASYNC_SUBAGENT_CONTRACT_CACHE = contract
+    return _ASYNC_SUBAGENT_CONTRACT_CACHE
+
+
+def _assert_async_contract_group_true(group_name: str) -> None:
+    contract = _async_subagent_contract_payload()
+    group = contract["assertionGroups"][group_name]
+    expected = {key: True for key in group}
+    assert group == expected, json.dumps(
+        {
+            "group_name": group_name,
+            "group": group,
+            "expected": expected,
+            "status": contract["status"],
+            "raw_receipt": contract["_raw_receipt"],
+            "statusSchemaProbe": contract.get("statusSchemaProbe"),
+            "cancelReasonBoundProbe": contract.get("cancelReasonBoundProbe"),
+            "callbackShapeProbe": contract.get("callbackShapeProbe"),
+            "idempotencyStaleProbe": contract.get("idempotencyStaleProbe"),
+            "cancellationSourceRulesProbe": contract.get("cancellationSourceRulesProbe"),
+            "abortGraceProbe": contract.get("abortGraceProbe"),
+            "lifecycleCleanupProbe": contract.get("lifecycleCleanupProbe"),
+            "docsParityProbe": contract.get("docsParityProbe"),
+        },
+        indent=2,
+        sort_keys=True,
+    )
+
+
 def test_expected_red_larva_subagent_log_selector_modes_ordering_and_task_id_args() -> None:
     """Expected-red R1/R2/R9: selector entrypoints, ordering, rows, exact args."""
 
@@ -1781,3 +1821,53 @@ def test_async_subagent_a9_console_surface_controls_expected_red() -> None:
     )
     missing = [token for token in required_tokens if token not in source]
     assert not missing, "missing async Subagent Console contract tokens: " + ", ".join(missing)
+
+
+def test_async_subagent_cancel_reason_bound_500_and_overlong_bad_input_expected_red() -> None:
+    """Expected-red: exact 500-code-point cancel reason is accepted; 501 is LARVA_BAD_INPUT."""
+
+    _assert_async_contract_group_true("cancel_reason_bound_500_and_overlong_bad_input")
+
+
+def test_async_subagent_failed_cancelled_callback_shape_expected_red() -> None:
+    """Expected-red: failed and cancelled callbacks expose separate bounded schemas."""
+
+    _assert_async_contract_group_true("failed_cancelled_callback_shape")
+
+
+def test_async_subagent_callback_idempotency_duplicate_suppression_expected_red() -> None:
+    """Expected-red: duplicate terminal and stale-late callbacks are suppressed deterministically."""
+
+    _assert_async_contract_group_true("callback_idempotency_duplicate_suppression")
+
+
+def test_async_subagent_status_schema_phase_result_pending_updated_at_error_expected_red() -> None:
+    """Expected-red: accepted/running/terminal status rows expose exact task_id and schema fields."""
+
+    _assert_async_contract_group_true("status_schema_phase_result_pending_updated_at_error")
+
+
+def test_async_subagent_cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression_expected_red() -> None:
+    """Expected-red: cancelling A preserves sibling B/parent and applies source-specific callbacks."""
+
+    _assert_async_contract_group_true(
+        "cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression"
+    )
+
+
+def test_async_subagent_abort_kill_grace_1500ms_expected_red() -> None:
+    """Expected-red: cancellation records the spec-mandated 1500 ms abort/kill grace."""
+
+    _assert_async_contract_group_true("abort_kill_grace_1500ms")
+
+
+def test_async_subagent_runtime_lifecycle_stale_cleanup_expected_red() -> None:
+    """Expected-red: reload/resume/fork/quit runtime handlers clean active children and stale callbacks."""
+
+    _assert_async_contract_group_true("runtime_lifecycle_stale_cleanup")
+
+
+def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
+    """Expected-red: README/source parity is checked against the reference async subagent authority."""
+
+    _assert_async_contract_group_true("docs_parity_against_reference")

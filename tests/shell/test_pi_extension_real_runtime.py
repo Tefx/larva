@@ -727,6 +727,14 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
         "acceptedTiming": contract["acceptedTiming"],
         "streamingCommandProbe": contract["streamingCommandProbe"],
         "modeMatrixFallbacks": contract["modeMatrixFallbacks"],
+        "statusSchemaProbe": contract.get("statusSchemaProbe"),
+        "cancelReasonBoundProbe": contract.get("cancelReasonBoundProbe"),
+        "callbackShapeProbe": contract.get("callbackShapeProbe"),
+        "idempotencyStaleProbe": contract.get("idempotencyStaleProbe"),
+        "cancellationSourceRulesProbe": contract.get("cancellationSourceRulesProbe"),
+        "abortGraceProbe": contract.get("abortGraceProbe"),
+        "lifecycleCleanupProbe": contract.get("lifecycleCleanupProbe"),
+        "docsParityProbe": contract.get("docsParityProbe"),
         "callbackEntries": contract["callbackEntries"],
     }
 
@@ -762,5 +770,51 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
             "printJsonViewUnavailable": True,
             "printJsonCancelUnavailable": True,
             "printJsonClearUnavailable": True,
+        },
+        "status_schema_phase_result_pending_updated_at_error": {
+            "statusToolRegistered": True,
+            "acceptedRecordSchema": True,
+            "runningRecordSchema": True,
+            "terminalRecordSchema": True,
+            "exactTaskIdOnly": True,
+        },
+        "failed_cancelled_callback_shape": {
+            "failedCallbackShape": True,
+            "cancelledCallbackShape": True,
+        },
+        "callback_idempotency_duplicate_suppression": {
+            "duplicateCallbackSuppressed": True,
+            "staleLateCallbackSuppressed": True,
+        },
+        "cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression": {
+            "taskACancelled": True,
+            "siblingBNotCancelled": True,
+            "parentNotAborted": True,
+            "modelTerminalCancelSuppressesDuplicateCallback": True,
+            "userOrConsoleCancelDeliversCallback": True,
+        },
+        "abort_kill_grace_1500ms": {
+            "expectedGraceRecorded": True,
+            "sourceUses1500Grace": True,
+            "noFiveSecondAbortFallback": True,
+        },
+        "runtime_lifecycle_stale_cleanup": {
+            "reloadCleanup": True,
+            "resumeCleanup": True,
+            "forkCleanup": True,
+            "quitCleanup": True,
+        },
+        "docs_parity_against_reference": {
+            "authorityReviewed": True,
+            "readmeNamesCanonicalSubagent": True,
+            "larvaLogDeprecatedOnly": True,
+            "sourceRegistersCanonicalCommand": True,
+            "sourceRegistersStatusAndCancelTools": True,
+        },
+        "cancel_reason_bound_500_and_overlong_bad_input": {
+            "exact500NormalizedCodePoints": True,
+            "overlongNormalizedCodePoints": True,
+            "exact500AcceptedForCancellation": True,
+            "overlongRejectedAsBadInput": True,
         },
     }, json.dumps(raw_json_evidence, indent=2, sort_keys=True)

@@ -1196,6 +1196,89 @@ async function asyncSubagentContractExpectedRed(evidence) {
       return { invoked: true, input, result: null, error: error?.message ?? String(error) };
     }
   };
+  const toolByName = (name) => tools.find((tool) => tool.name === name) ?? null;
+  const statusTool = toolByName("larva_subagent_status");
+  const cancelTool = toolByName("larva_subagent_cancel");
+  const runTool = async (tool, callId, input, toolCtx = ctx, signal = undefined, onUpdate = undefined) => {
+    if (!tool) return { invoked: false, input, result: null, error: "TOOL_NOT_REGISTERED" };
+    try {
+      if (typeof tool.execute === "function") {
+        return { invoked: true, input, result: await tool.execute(callId, input, signal, onUpdate, toolCtx), error: null };
+      }
+      if (typeof tool.handler === "function") {
+        return { invoked: true, input, result: await tool.handler(input), error: null };
+      }
+      return { invoked: false, input, result: null, error: "TOOL_HAS_NO_RUNNER" };
+    } catch (error) {
+      return { invoked: true, input, result: null, error: error?.message ?? String(error) };
+    }
+  };
+  const detailsOf = (result) => result?.details ?? result ?? null;
+  const errorCodeOf = (result) => detailsOf(result)?.error?.code ?? result?.error?.code ?? null;
+  const normalizeCodePointCount = (value) => Array.from(String(value ?? "").normalize("NFC")).length;
+  const invokeStatus = async (taskId, label, extra = {}) => {
+    const input = taskId === null ? { ...extra } : { task_id: taskId, ...extra };
+    const invoked = await runTool(statusTool, `status-${label}`, input, ctx);
+    const details = detailsOf(invoked.result);
+    return {
+      label,
+      task_id: taskId,
+      invoked: invoked.invoked,
+      error: invoked.error,
+      status: details?.status ?? null,
+      runs: Array.isArray(details?.runs) ? details.runs : null,
+      errorCode: errorCodeOf(invoked.result) ?? invoked.error,
+    };
+  };
+  const invokeCancel = async (taskId, reason, label, cancelCtx = ctx) => {
+    const input = { task_id: taskId, reason };
+    const invoked = await runTool(cancelTool, `cancel-${label}`, input, cancelCtx);
+    const details = detailsOf(invoked.result);
+    return {
+      label,
+      task_id: taskId,
+      reasonCodePoints: normalizeCodePointCount(reason),
+      invoked: invoked.invoked,
+      error: invoked.error,
+      status: details?.status ?? null,
+      errorCode: errorCodeOf(invoked.result) ?? invoked.error,
+      callbackCountAtReturn: callbackEntries.length,
+    };
+  };
+  const callbackForStatus = (status, startIndex = 0) => callbackEntries.slice(startIndex).find((entry) => entry?.data?.status === status) ?? null;
+  const callbackTextFrom = (entry) => {
+    const data = entry?.data ?? {};
+    return typeof data.result_text === "string" ? data.result_text : typeof data.message === "string" ? data.message : "";
+  };
+  const hasCallbackPayloadShape = (entry, expectedStatus) => {
+    const data = entry?.data ?? null;
+    const text = callbackTextFrom(entry);
+    const errorValue = data?.error ?? null;
+    return entry?.customType === "larva-subagent-result"
+      && entry?.options?.triggerTurn === true
+      && entry?.options?.deliverAs === "steer"
+      && typeof data?.task_id === "string"
+      && typeof data?.persona_id === "string"
+      && data?.status === expectedStatus
+      && typeof data?.result_text === "string"
+      && normalizeCodePointCount(text) <= 6000
+      && typeof data?.callback_id === "string"
+      && typeof data?.completed_at === "string"
+      && !Number.isNaN(Date.parse(data.completed_at))
+      && (expectedStatus === "success"
+        ? errorValue === null
+        : isRecord(errorValue) && typeof errorValue.code === "string" && typeof errorValue.message === "string");
+  };
+  const hasStatusRunShape = (run, taskId, expectedStatuses) => isRecord(run)
+    && run.task_id === taskId
+    && typeof run.persona_id === "string"
+    && expectedStatuses.includes(run.status)
+    && typeof run.phase === "string"
+    && typeof run.result_pending === "boolean"
+    && typeof run.updated_at === "string"
+    && !Number.isNaN(Date.parse(run.updated_at))
+    && "error" in run
+    && (run.error === null || (isRecord(run.error) && typeof run.error.code === "string" && typeof run.error.message === "string"));
 
   let acceptedResult = null;
   let acceptedError = null;
@@ -1215,6 +1298,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
   } catch {
     runningEntryBeforeCommand = null;
   }
+  const statusRunningObservation = await invokeStatus(runningEntryBeforeCommand?.task_id ?? childSessionFile, "running-observed");
 
   const streamingCustomCalls = [];
   const streamingCtx = {
@@ -1297,6 +1381,147 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const callbackText = typeof callback?.result_text === "string" ? callback.result_text : typeof callback?.message === "string" ? callback.message : "";
   const callbackCodePoints = Array.from(callbackText.normalize?.("NFC") ?? callbackText).length;
   const callbackBoundaryText = typeof callback?.message === "string" ? callback.message : typeof callback?.content === "string" ? callback.content : "";
+  const acceptedTaskIdForProbes = typeof acceptedDetails?.task_id === "string"
+    ? acceptedDetails.task_id
+    : runningEntryBeforeCommand?.task_id ?? childSessionFile;
+  const statusAcceptedObservation = await invokeStatus(acceptedTaskIdForProbes, "accepted-observed");
+  const statusTerminalObservation = await invokeStatus(acceptedTaskIdForProbes, "terminal-observed");
+  const statusObservationRows = [statusRunningObservation, statusAcceptedObservation, statusTerminalObservation];
+  const statusObservedRuns = statusObservationRows.flatMap((row) => Array.isArray(row.runs) ? row.runs : []);
+  const statusSchemaProbe = {
+    expectedTaskId: acceptedTaskIdForProbes,
+    observations: statusObservationRows,
+    observedRuns: statusObservedRuns,
+  };
+
+  const failedCallbackChild = join(sessionRoot, "failed-callback-child.mjs");
+  const failedCallbackSession = join(childSessionRoot, "failed-callback.jsonl");
+  await writeFile(failedCallbackChild, `
+    import { createInterface } from "node:readline";
+    import { mkdir, writeFile } from "node:fs/promises";
+    import { dirname } from "node:path";
+    const sessionFile = ${JSON.stringify(failedCallbackSession)};
+    await mkdir(dirname(sessionFile), { recursive: true });
+    const rl = createInterface({ input: process.stdin });
+    const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+    rl.on("line", async (line) => {
+      const message = JSON.parse(line);
+      if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
+      else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); send({ type: "agent_end" }); }
+      else if (message.type === "get_last_assistant_text") { send({ id: message.id, success: true, data: { text: null } }); setTimeout(() => process.exit(0), 5); }
+      else if (message.type === "abort") { send({ id: message.id, success: true }); process.exit(0); }
+    });
+  `, "utf8");
+  const failedCallbackStart = callbackEntries.length;
+  const failedCallbackInvocation = await runTool(
+    subagentTool,
+    "failed-callback-shape",
+    { persona_id: "child", task: "fail and send failed callback shape" },
+    { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: failedCallbackChild, LARVA_PI_REAL_BIN: process.execPath } },
+  );
+  try { await waitForSmokeCondition(() => callbackForStatus("failed", failedCallbackStart), { label: "failed callback shape", timeoutMs: 500 }); } catch {}
+  const failedCallback = callbackForStatus("failed", failedCallbackStart);
+
+  const exact500Reason = "x".repeat(500);
+  const overlongReason = "x".repeat(501);
+  const siblingChild = join(sessionRoot, "sibling-cancel-child.mjs");
+  const siblingASession = join(childSessionRoot, "cancel-source-a.jsonl");
+  const siblingBSession = join(childSessionRoot, "cancel-source-b.jsonl");
+  await writeDelayedAsyncSubagentChild(siblingChild, { sessionFile: siblingASession, finalText: "SIBLING_A_FINAL", terminalDelayMs: 450, terminalMarkerFile: join(sessionRoot, "sibling-a-terminal.txt") });
+  const siblingBCopy = join(sessionRoot, "sibling-b-child.mjs");
+  await writeDelayedAsyncSubagentChild(siblingBCopy, { sessionFile: siblingBSession, finalText: "SIBLING_B_FINAL", terminalDelayMs: 450, terminalMarkerFile: join(sessionRoot, "sibling-b-terminal.txt") });
+  const siblingACtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: siblingChild, LARVA_PI_REAL_BIN: process.execPath } };
+  const siblingBCtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: siblingBCopy, LARVA_PI_REAL_BIN: process.execPath } };
+  const siblingAUpdates = [];
+  const siblingBUpdates = [];
+  const siblingAPromise = runTool(subagentTool, "cancel-source-a", { persona_id: "child", task: "cancel only task A" }, siblingACtx, undefined, (update) => siblingAUpdates.push(update));
+  const siblingBPromise = runTool(subagentTool, "cancel-source-b", { persona_id: "child", task: "sibling B must continue" }, siblingBCtx, undefined, (update) => siblingBUpdates.push(update));
+  let siblingARunning = null;
+  let siblingBRunning = null;
+  try { siblingARunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "cancel-source-a" && entry.status === "running"), { label: "sibling A running", timeoutMs: 500 }); } catch {}
+  try { siblingBRunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "cancel-source-b" && entry.status === "running"), { label: "sibling B running", timeoutMs: 500 }); } catch {}
+  const siblingTaskId = siblingARunning?.task_id ?? siblingASession;
+  const userCancelCallbackStart = callbackEntries.length;
+  const userCancelResult = await invokeUnifiedCommand(`--cancel ${siblingTaskId}`, siblingACtx);
+  const modelCancelExact500 = await invokeCancel(siblingTaskId, exact500Reason, "reason-500", siblingACtx);
+  const modelCancelOverlong = await invokeCancel(siblingTaskId, overlongReason, "reason-overlong", siblingACtx);
+  const siblingResults = await Promise.all([siblingAPromise, siblingBPromise]);
+  try { await waitForSmokeCondition(() => callbackForStatus("cancelled", userCancelCallbackStart), { label: "cancelled callback shape", timeoutMs: 500 }); } catch {}
+  const cancelledCallback = callbackForStatus("cancelled", userCancelCallbackStart);
+  const parentEnvelopeAfterCancel = mod.getActiveEnvelope();
+  const cancellationSourceRulesProbe = {
+    taskA: { task_id: siblingTaskId, runningObserved: siblingARunning !== null, result: siblingResults[0] },
+    taskB: { task_id: siblingBRunning?.task_id ?? siblingBSession, runningObserved: siblingBRunning !== null, result: siblingResults[1] },
+    userCancelResult,
+    modelCancelExact500,
+    callbackEntriesAfterUserCancel: callbackEntries.slice(userCancelCallbackStart),
+    parentEnvelopeAfterCancel,
+    siblingAUpdates,
+    siblingBUpdates,
+  };
+  const cancelReasonBoundProbe = {
+    exact500: modelCancelExact500,
+    overlong: modelCancelOverlong,
+    normalizedCounts: { exact500: normalizeCodePointCount(exact500Reason), overlong: normalizeCodePointCount(overlongReason) },
+  };
+  const callbackShapeProbe = {
+    failedInvocation: failedCallbackInvocation,
+    failedCallback,
+    cancelledCallback,
+    failedStartIndex: failedCallbackStart,
+    userCancelStartIndex: userCancelCallbackStart,
+  };
+
+  const callbackCountsByTaskId = callbackEntries.reduce((counts, entry) => {
+    const taskId = entry?.data?.task_id;
+    if (typeof taskId === "string") counts[taskId] = (counts[taskId] ?? 0) + 1;
+    return counts;
+  }, {});
+  const lifecycleRows = [];
+  for (const eventName of ["reload", "resume", "fork", "quit"]) {
+    const handler = handlers.get(eventName);
+    let result = null;
+    let errorMessage = null;
+    if (typeof handler === "function") {
+      try { result = await handler({ reason: `async-contract-${eventName}` }, ctx); }
+      catch (error) { errorMessage = error?.message ?? String(error); }
+    }
+    lifecycleRows.push({
+      event: eventName,
+      handlerRegistered: typeof handler === "function",
+      result,
+      error: errorMessage,
+      callbackCountAfterEvent: callbackEntries.length,
+      registeredHandlers: Array.from(handlers.keys()),
+    });
+  }
+  const idempotencyStaleProbe = {
+    callbackCountsByTaskId,
+    duplicateTaskId: acceptedTaskIdForProbes,
+    duplicateCallbackCount: callbackCountsByTaskId[acceptedTaskIdForProbes] ?? 0,
+    staleLifecycleRows: lifecycleRows,
+  };
+  const abortGraceProbe = {
+    expectedGraceMs: 1500,
+    sourceHasAbortGrace1500: /1500|1_500/.test(source) && /abort|kill|grace/i.test(source),
+    sourceStillUsesFiveSecondAbortOrCleanup: /5_000|5000/.test(source.slice(source.indexOf("async abort()"), Math.min(source.length, source.indexOf("async abort()") + 2000)))
+      || /5_000|5000/.test(source.slice(source.indexOf("async function cleanupChild"), Math.min(source.length, source.indexOf("async function cleanupChild") + 2000))),
+  };
+  const authorityDocPath = join(root, "docs", "reference", "PI_EXTENSION_ASYNC_SUBAGENTS.md");
+  const authorityDoc = await readFile(authorityDocPath, "utf8");
+  let extensionReadme = "";
+  try { extensionReadme = await readFile(join(root, "contrib", "pi-extension", "README.md"), "utf8"); } catch {}
+  const docsParityProbe = {
+    authorityPath: authorityDocPath,
+    authorityReviewed: authorityDoc.includes("larva_subagent_status")
+      && authorityDoc.includes("larva_subagent_cancel")
+      && authorityDoc.includes("Accepted result requirements")
+      && authorityDoc.includes("1500 ms"),
+    readmeNamesCanonicalSubagent: extensionReadme.includes("/larva-subagent"),
+    readmeTreatsLarvaLogAsDeprecatedAlias: /deprecated alias|deprecated view-mode alias/i.test(extensionReadme),
+    sourceRegistersCanonicalCommand: commands.has("larva-subagent"),
+    sourceRegistersStatusAndCancelTools: Boolean(statusTool) && Boolean(cancelTool),
+  };
   const assertionGroups = {
     accepted_return_timing: {
       acceptedStatus: acceptedDetails?.status === "accepted",
@@ -1336,6 +1561,54 @@ async function asyncSubagentContractExpectedRed(evidence) {
       printJsonCancelUnavailable: printJsonCancel.invoked === true && modeMatrixFallbacks.printJsonCancel.errorCode === "LARVA_SUBAGENT_UI_UNAVAILABLE",
       printJsonClearUnavailable: printJsonClear.invoked === true && modeMatrixFallbacks.printJsonClear.errorCode === "LARVA_SUBAGENT_UI_UNAVAILABLE",
     },
+    status_schema_phase_result_pending_updated_at_error: {
+      statusToolRegistered: Boolean(statusTool),
+      acceptedRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["accepted"])),
+      runningRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["running"])),
+      terminalRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["success", "failed", "cancelled"])),
+      exactTaskIdOnly: statusObservedRuns.length >= 3 && statusObservedRuns.every((run) => run.task_id === acceptedTaskIdForProbes),
+    },
+    failed_cancelled_callback_shape: {
+      failedCallbackShape: hasCallbackPayloadShape(failedCallback, "failed"),
+      cancelledCallbackShape: hasCallbackPayloadShape(cancelledCallback, "cancelled"),
+    },
+    callback_idempotency_duplicate_suppression: {
+      duplicateCallbackSuppressed: (idempotencyStaleProbe.duplicateCallbackCount ?? 0) === 1,
+      staleLateCallbackSuppressed: lifecycleRows.every((row) => row.handlerRegistered && row.callbackCountAfterEvent === callbackEntries.length),
+    },
+    cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression: {
+      taskACancelled: detailsOf(siblingResults[0]?.result)?.status === "cancelled" || detailsOf(userCancelResult.result)?.status === "cancelled",
+      siblingBNotCancelled: detailsOf(siblingResults[1]?.result)?.status !== "cancelled",
+      parentNotAborted: parentEnvelopeAfterCancel?.persona_id === "ok",
+      modelTerminalCancelSuppressesDuplicateCallback: ["cancelled", "success", "failed"].includes(modelCancelExact500.status)
+        ? callbackEntries.slice(modelCancelExact500.callbackCountAtReturn).length === 0
+        : modelCancelExact500.status === "cancelling",
+      userOrConsoleCancelDeliversCallback: hasCallbackPayloadShape(cancelledCallback, "cancelled"),
+    },
+    abort_kill_grace_1500ms: {
+      expectedGraceRecorded: abortGraceProbe.expectedGraceMs === 1500,
+      sourceUses1500Grace: abortGraceProbe.sourceHasAbortGrace1500 === true,
+      noFiveSecondAbortFallback: abortGraceProbe.sourceStillUsesFiveSecondAbortOrCleanup === false,
+    },
+    runtime_lifecycle_stale_cleanup: {
+      reloadCleanup: lifecycleRows.find((row) => row.event === "reload")?.handlerRegistered === true,
+      resumeCleanup: lifecycleRows.find((row) => row.event === "resume")?.handlerRegistered === true,
+      forkCleanup: lifecycleRows.find((row) => row.event === "fork")?.handlerRegistered === true,
+      quitCleanup: lifecycleRows.find((row) => row.event === "quit")?.handlerRegistered === true,
+    },
+    docs_parity_against_reference: {
+      authorityReviewed: docsParityProbe.authorityReviewed === true,
+      readmeNamesCanonicalSubagent: docsParityProbe.readmeNamesCanonicalSubagent === true,
+      larvaLogDeprecatedOnly: docsParityProbe.readmeTreatsLarvaLogAsDeprecatedAlias === true,
+      sourceRegistersCanonicalCommand: docsParityProbe.sourceRegistersCanonicalCommand === true,
+      sourceRegistersStatusAndCancelTools: docsParityProbe.sourceRegistersStatusAndCancelTools === true,
+    },
+    cancel_reason_bound_500_and_overlong_bad_input: {
+      exact500NormalizedCodePoints: cancelReasonBoundProbe.normalizedCounts.exact500 === 500,
+      overlongNormalizedCodePoints: cancelReasonBoundProbe.normalizedCounts.overlong === 501,
+      exact500AcceptedForCancellation: modelCancelExact500.invoked === true && modelCancelExact500.errorCode !== "LARVA_BAD_INPUT" && modelCancelExact500.errorCode !== "TOOL_NOT_REGISTERED",
+      overlongRejectedAsBadInput: modelCancelOverlong.invoked === true && modelCancelOverlong.errorCode === "LARVA_BAD_INPUT",
+    },
   };
   const flattened = Object.values(assertionGroups).flatMap((group) => Object.values(group));
   evidence.runtime.asyncSubagentContract = {
@@ -1366,6 +1639,14 @@ async function asyncSubagentContractExpectedRed(evidence) {
       streamingSlashResult,
     },
     modeMatrixFallbacks,
+    statusSchemaProbe,
+    cancelReasonBoundProbe,
+    callbackShapeProbe,
+    idempotencyStaleProbe,
+    cancellationSourceRulesProbe,
+    abortGraceProbe,
+    lifecycleCleanupProbe: { rows: lifecycleRows },
+    docsParityProbe,
     callbackEntries,
     assertionGroups,
     assertions: {
@@ -1384,6 +1665,14 @@ async function asyncSubagentContractExpectedRed(evidence) {
       printJsonViewUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonViewUnavailable,
       printJsonCancelUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonCancelUnavailable,
       printJsonClearUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonClearUnavailable,
+      statusSchema: Object.values(assertionGroups.status_schema_phase_result_pending_updated_at_error).every(Boolean),
+      failedCancelledCallbackShape: Object.values(assertionGroups.failed_cancelled_callback_shape).every(Boolean),
+      callbackIdempotencyDuplicateSuppression: Object.values(assertionGroups.callback_idempotency_duplicate_suppression).every(Boolean),
+      cancellationSourceRules: Object.values(assertionGroups.cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression).every(Boolean),
+      abortKillGrace1500ms: Object.values(assertionGroups.abort_kill_grace_1500ms).every(Boolean),
+      runtimeLifecycleStaleCleanup: Object.values(assertionGroups.runtime_lifecycle_stale_cleanup).every(Boolean),
+      docsParityAgainstReference: Object.values(assertionGroups.docs_parity_against_reference).every(Boolean),
+      cancelReasonBound500AndOverlongBadInput: Object.values(assertionGroups.cancel_reason_bound_500_and_overlong_bad_input).every(Boolean),
     },
   };
 }

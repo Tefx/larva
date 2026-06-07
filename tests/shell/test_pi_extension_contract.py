@@ -22,6 +22,7 @@ ROOT: Final = Path(__file__).resolve().parents[2]
 CI_WORKFLOW: Final = ROOT / ".github" / "workflows" / "ci.yml"
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 PI_EXTENSION_README: Final = ROOT / "contrib" / "pi-extension" / "README.md"
+PI_EXTENSION_ASYNC_SPEC: Final = ROOT / "docs" / "reference" / "PI_EXTENSION_ASYNC_SUBAGENTS.md"
 PI_INTEGRATION_DESIGN: Final = ROOT / "design" / "pi-coding-agent-integration.md"
 PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-persona-selector-ui.mjs"
 PI_EXTENSION_PACKAGE_JSON: Final = ROOT / "contrib" / "pi-extension" / "package.json"
@@ -827,6 +828,49 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
             "height",
             "mouse click",
         )
+
+
+def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
+    """Expected-red: README/source parity is judged against the async subagent reference."""
+
+    authority = PI_EXTENSION_ASYNC_SPEC.read_text(encoding="utf-8")
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+    design = PI_INTEGRATION_DESIGN.read_text(encoding="utf-8")
+    source = _source()
+
+    authority_requirements = {
+        "authority_path": str(PI_EXTENSION_ASYNC_SPEC.relative_to(ROOT)),
+        "accepted_plus_callback": "accepted-plus-callback" in authority and "larva_subagent" in authority,
+        "canonical_command": "/larva-subagent" in authority,
+        "status_tool": "larva_subagent_status" in authority,
+        "cancel_tool": "larva_subagent_cancel" in authority,
+        "callback_boundary": "Larva subagent result — runtime event/data" in authority,
+        "cancel_grace_1500": "1500 ms" in authority,
+        "lifecycle_rules": "On parent session shutdown, reload, new session, resume, or fork" in authority,
+    }
+    assert all(value is True for key, value in authority_requirements.items() if key != "authority_path"), json.dumps(
+        authority_requirements, indent=2, sort_keys=True
+    )
+
+    parity = {
+        "readme_names_canonical_larva_subagent": "/larva-subagent" in readme,
+        "readme_larva_log_only_deprecated_alias": bool(re.search(r"/larva-log[\s\S]{0,240}deprecated", readme, re.IGNORECASE)),
+        "design_names_canonical_larva_subagent": "/larva-subagent" in design,
+        "source_registers_canonical_larva_subagent_command": '"larva-subagent"' in source,
+        "source_registers_status_tool": '"larva_subagent_status"' in source,
+        "source_registers_cancel_tool": '"larva_subagent_cancel"' in source,
+        "source_returns_accepted_result_pending": 'status: "accepted"' in source and "result_pending" in source,
+        "source_records_1500ms_abort_kill_grace": bool(re.search(r"(?:1500|1_500)[\s\S]{0,120}(?:abort|kill|grace)", source, re.IGNORECASE)),
+    }
+    assert parity == {key: True for key in parity}, json.dumps(
+        {
+            "authority": authority_requirements,
+            "parity": parity,
+            "reference": str(PI_EXTENSION_ASYNC_SPEC.relative_to(ROOT)),
+        },
+        indent=2,
+        sort_keys=True,
+    )
 
 
 def test_no_argument_non_interactive_returns_bad_input_without_state_change() -> None:
