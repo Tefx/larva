@@ -3065,20 +3065,6 @@ async function handleLarvaSubagentCommand(input: string | undefined, runtimeCtx:
   return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
 }
 
-async function handleDeprecatedLarvaLogCommand(input: string | undefined, runtimeCtx: PiContext): Promise<unknown> {
-  const trimmed = input?.trim() ?? "";
-  if (trimmed === "--clear" || /^--cancel(?:\s|$)/.test(trimmed)) {
-    return failedSubagentOverlay("LARVA_BAD_INPUT", "/larva-log is a deprecated view-mode alias only; use /larva-subagent for --clear or --cancel.");
-  }
-  const mode = subagentCommandMode(runtimeCtx);
-  if (trimmed.length === 0) {
-    if (mode === "headless") return subagentCommandUiUnavailable("Larva subagent console is unavailable in this Pi mode.");
-    const overlay = canonicalizeSubagentOverlayResult(larva_subagent_log({ list: true, limit: 25, select: true }));
-    return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
-  }
-  const overlay = canonicalizeSubagentOverlayResult(larva_subagent_log(trimmed));
-  return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
-}
 
 function registerLarvaSubagentCommand(ctx: PiContext, pi: PiApi): void {
   const command: CommandOptions = {
@@ -3086,11 +3072,6 @@ function registerLarvaSubagentCommand(ctx: PiContext, pi: PiApi): void {
     handler: async (input?: string, commandCtx?: PiContext) => handleLarvaSubagentCommand(input, commandCtx ?? ctx),
   };
   registerCommandCompat(pi, "larva-subagent", command);
-  const deprecatedAlias: CommandOptions = {
-    description: "deprecated view-mode alias: use canonical /larva-subagent for subagent status, cancellation, and clear.",
-    handler: async (input?: string, commandCtx?: PiContext) => handleDeprecatedLarvaLogCommand(input, commandCtx ?? ctx),
-  };
-  registerCommandCompat(pi, "larva-log", deprecatedAlias);
 }
 
 export function getActiveEnvelope(): PersonaEnvelope | null {

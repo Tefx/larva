@@ -206,13 +206,9 @@ Use one canonical command:
 /larva-subagent --clear
 ```
 
-`/larva-subagent` opens the Subagent Console in TUI mode. It replaces the separate
-`/larva-log` concept as the canonical UX.
-
-Compatibility policy:
-
-- `/larva-log` may remain as a deprecated alias to `/larva-subagent` view mode.
-- New docs and tests should use `/larva-subagent`.
+`/larva-subagent` opens the Subagent Console in TUI mode. The former separate
+log command has been removed; new docs, tests, and user flows should use only
+`/larva-subagent`.
 
 ### User-facing mode matrix
 
@@ -328,12 +324,11 @@ this model-facing tool returns any terminal status (`cancelled`, `success`, or
 ## Subagent Console
 
 The TUI Subagent Console is an overlay over adapter-local presentation state. The
-canonical command is `/larva-subagent`; `/larva-log` may remain only as a
-deprecated view-mode alias. The console may keep the concise `Larva subagent log`
-chrome title for continuity with the persona selector visual system: an
-accent-colored border, solid ANSI background, stable frame height,
-terminal-compatible drop shadow, 90% width, and 90% max-height. Rendering is
-event-driven, not timer polling.
+only user command is `/larva-subagent`; the former log alias has been removed.
+The console may keep the concise `Larva subagent log` chrome title for continuity
+with the persona selector visual system: an accent-colored border, solid ANSI background,
+stable frame height, terminal-compatible drop shadow, 90% width, and
+90% max-height. Rendering is event-driven, not timer polling.
 
 Minimum panes:
 
@@ -509,8 +504,8 @@ Implement in this order:
 2. Change `larva_subagent` to accepted-plus-background execution.
 3. Add result callback delivery with session identity guard.
 4. Add `larva_subagent_status` and `larva_subagent_cancel`.
-5. Rename/unify the user command as `/larva-subagent`; keep `/larva-log` only as
-   deprecated compatibility if desired.
+5. Rename/unify the user command as `/larva-subagent` and remove the former log
+   alias.
 6. Implement TUI Subagent Console cancel/status controls and non-TUI fallbacks.
 7. Add runtime smoke tests and update user docs.
 

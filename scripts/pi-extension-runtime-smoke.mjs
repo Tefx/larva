@@ -2013,7 +2013,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       && authorityDoc.includes("Accepted result requirements")
       && authorityDoc.includes("1500 ms"),
     readmeNamesCanonicalSubagent: extensionReadme.includes("/larva-subagent"),
-    readmeTreatsLarvaLogAsDeprecatedAlias: /deprecated alias|deprecated view-mode alias/i.test(extensionReadme),
+    readmeDocumentsRemovedLogAlias: /former log alias has been removed/i.test(extensionReadme),
     sourceRegistersCanonicalCommand: commands.has("larva-subagent"),
     sourceRegistersStatusAndCancelTools: Boolean(statusTool) && Boolean(cancelTool),
   };
@@ -2041,8 +2041,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
     },
     streaming_command: {
       hasUnifiedSlashCommand: commands.has("larva-subagent"),
-      deprecatedLarvaLogIsViewAliasOnly: commands.has("larva-subagent")
-        && (!commands.has("larva-log") || /deprecated alias|deprecated view-mode alias/.test(source)),
+      removedLogAliasNotRegistered: commands.has("larva-subagent")
+        && !source.includes('"larva-log"'),
       runningEntryPresentBeforeDispatch: runningEntryBeforeCommand !== null,
       invokedWhileParentStreaming: streamingSlashResult.invoked === true && streamingCtx.isIdle() === false,
       streamingSlashCommandDispatch: streamingSlashResult.invoked === true
@@ -2104,7 +2104,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     docs_parity_against_reference: {
       authorityReviewed: docsParityProbe.authorityReviewed === true,
       readmeNamesCanonicalSubagent: docsParityProbe.readmeNamesCanonicalSubagent === true,
-      larvaLogDeprecatedOnly: docsParityProbe.readmeTreatsLarvaLogAsDeprecatedAlias === true,
+      removedLogAliasDocumented: docsParityProbe.readmeDocumentsRemovedLogAlias === true,
       sourceRegistersCanonicalCommand: docsParityProbe.sourceRegistersCanonicalCommand === true,
       sourceRegistersStatusAndCancelTools: docsParityProbe.sourceRegistersStatusAndCancelTools === true,
     },
@@ -2164,7 +2164,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       singleCallbackEvent: assertionGroups.callbacks.singleCallbackEvent,
       callbackShape: assertionGroups.callbacks.callbackShape,
       hasUnifiedSlashCommand: assertionGroups.streaming_command.hasUnifiedSlashCommand,
-      deprecatedLarvaLogIsViewAliasOnly: assertionGroups.streaming_command.deprecatedLarvaLogIsViewAliasOnly,
+      removedLogAliasNotRegistered: assertionGroups.streaming_command.removedLogAliasNotRegistered,
       streamingSlashCommandDispatch: assertionGroups.streaming_command.streamingSlashCommandDispatch,
       rpcListTextualNoOverlay: assertionGroups.mode_matrix_fallbacks.rpcListTextualNoOverlay,
       rpcExactTextualNoOverlay: assertionGroups.mode_matrix_fallbacks.rpcExactTextualNoOverlay,
@@ -2423,7 +2423,7 @@ async function main() {
       },
       subagentLogOverlayCommand: {
         supported: evidence.runtime.registeredCommandNames.includes("larva-subagent"),
-        evidence: { requiredCommand: "larva-subagent", deprecatedAlias: "larva-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
+        evidence: { requiredCommand: "larva-subagent", registeredCommandNames: evidence.runtime.registeredCommandNames },
       },
       personaSelectorShortcut: {
         supported: evidence.runtime.registeredShortcuts.some((entry) => entry.shortcut === "ctrl+alt+p" && entry.description === "Open Larva persona selector"),

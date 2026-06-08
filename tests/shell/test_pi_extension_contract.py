@@ -830,8 +830,6 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
             "Markdown",
             "height",
             "mouse click",
-            "/larva-log",
-            "deprecated",
         )
 
 
@@ -859,7 +857,6 @@ def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
 
     parity = {
         "readme_names_canonical_larva_subagent": "/larva-subagent" in readme,
-        "readme_larva_log_only_deprecated_alias": bool(re.search(r"/larva-log[\s\S]{0,240}deprecated", readme, re.IGNORECASE)),
         "design_names_canonical_larva_subagent": "/larva-subagent" in design,
         "source_registers_canonical_larva_subagent_command": '"larva-subagent"' in source,
         "source_registers_status_tool": '"larva_subagent_status"' in source,
@@ -3424,11 +3421,9 @@ def test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity
         for token in (
             "/larva-subagent",
             "canonical /larva-subagent",
-            "deprecated alias",
             "larva: none",
         )
         if token not in source and token not in readme
     ]
     assert not missing, "README/source missing unified async subagent command parity tokens: " + ", ".join(missing)
-    assert "/larva-log" not in readme or "deprecated view-mode alias" in readme
 

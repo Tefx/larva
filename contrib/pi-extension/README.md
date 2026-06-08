@@ -787,8 +787,9 @@ Example exact command invocations:
 /larva-subagent --cancel /Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl
 ```
 
-In TUI mode, `/larva-subagent` opens the Subagent Console through Pi custom TUI
-overlay support (`ctx.ui.custom(..., { overlay: true })`). The Console keeps the
+In TUI mode, the canonical /larva-subagent command opens the Subagent Console
+through Pi custom TUI overlay support (`ctx.ui.custom(..., { overlay: true })`).
+The Console keeps the
 concise `Larva subagent log` chrome title for continuity with the persona
 selector visual language: accent-colored border, solid ANSI background, stable
 frame height, terminal-compatible drop shadow, 90% width, and 90% max-height. The
@@ -806,10 +807,8 @@ User-facing mode matrix:
 | RPC | Return textual summary list; no overlay. | Return textual exact summary or `LARVA_SUBAGENT_NOT_OBSERVED`. | Cancel exact active task without interactive confirmation and return textual result. | Clear adapter-local presentation cache only. |
 | print/json | Return `LARVA_SUBAGENT_UI_UNAVAILABLE`; no interactive console. | Return non-interactive exact summary or `LARVA_SUBAGENT_NOT_OBSERVED`. | Return `LARVA_SUBAGENT_UI_UNAVAILABLE`; model-facing cancel tool remains the supported non-interactive path. | Return `LARVA_SUBAGENT_UI_UNAVAILABLE`. |
 
-`/larva-log`, if present, is only a deprecated alias to `/larva-subagent` view
-mode (a deprecated view-mode alias). It is not the canonical UX and does not own
-cancellation or cache-clear semantics; new docs, tests, and user flows should use
-`/larva-subagent`.
+The former log alias has been removed. `/larva-subagent` is the only user-facing
+Subagent Console command and owns view, cancellation, and cache-clear semantics.
 
 The Console and its Persistent cache are adapter-local UI inspection surfaces
 only. The cache target is `subagent-presentation-log.json`; optional adapter-local
@@ -862,10 +861,10 @@ Do not infer these guarantees from `larva pi` or this extension:
   scan to discover active children.
 - No batch subagent tool, batch cancel surface, or job scheduler.
 - No subagent catalogue dumped into the system prompt.
-- No model-visible overlay log stream; `/larva-subagent` is the canonical
-  user-visible adapter-local presentation/control surface. `/larva-log`, if
-  retained, is only a deprecated view-mode alias. Persistent cache entries are UI
-  inspection state only, and live stream previews are process-local only.
+- No model-visible overlay log stream; `/larva-subagent` is the only
+  user-visible adapter-local presentation/control surface. The former log alias
+  has been removed. Persistent cache entries are UI inspection state only, and
+  live stream previews are process-local only.
 - No mouse click support for this target; keyboard controls and overlay mouse
   wheel scrolling are the supported TUI interactions.
 - No MCP transport implementation inside this integration; users may install a Pi

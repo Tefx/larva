@@ -342,9 +342,8 @@ mode, returns textual summaries/results in RPC mode, and returns
 still allowing non-interactive exact summaries for `/larva-subagent <task_id>`.
 Use `/larva-subagent /Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`
 or `/larva-subagent --cancel /Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`
-for exact task-id command examples. `/larva-log` may remain only as a deprecated
-view-mode alias; it is not canonical and does not own cancellation or cache-clear
-semantics.
+for exact task-id command examples. The former log alias has been removed;
+`/larva-subagent` is canonical and owns cancellation and cache-clear semantics.
 
 There is no public `run_id`, `last` alias, fuzzy selector, sidecar provenance
 handle, sidecar metadata file, batch cancel surface, scheduler, or shared
