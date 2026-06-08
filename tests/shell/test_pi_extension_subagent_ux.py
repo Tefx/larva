@@ -1809,6 +1809,110 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
     }
 
 
+def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not_protocol_failure(tmp_path: Path) -> None:
+    """Exact selected cancel wins its correlated stdout-close race; non-cancel EOF still fails."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const cancelRaceChild = join(tmpRoot, "cancel-race-child.mjs");
+        const cancelRaceSession = join(childRoot, "cancel-race-selected.jsonl");
+        await writeFile(cancelRaceChild, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { dirname } from "node:path";
+          const sessionFile = ${JSON.stringify(cancelRaceSession)};
+          await mkdir(dirname(sessionFile), { recursive: true });
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
+            else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
+            else if (message.type === "abort") { process.stdout.end(); setTimeout(() => process.exit(0), 120); }
+          });
+        `, { mode: 0o755 });
+
+        const eofChild = join(tmpRoot, "non-cancel-eof-child.mjs");
+        const eofSession = join(childRoot, "non-cancel-eof.jsonl");
+        await writeFile(eofChild, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { dirname } from "node:path";
+          const sessionFile = ${JSON.stringify(eofSession)};
+          await mkdir(dirname(sessionFile), { recursive: true });
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
+            else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); process.stdout.end(); setTimeout(() => process.exit(0), 120); }
+            else if (message.type === "abort") { process.exit(0); }
+          });
+        `, { mode: 0o755 });
+
+        const tools = [];
+        const commands = new Map();
+        const ctx = {
+          env: baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: cancelRaceChild, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" }),
+          modelRegistry,
+          ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true },
+          hasUI: true,
+        };
+        await mod.initializeExtension(ctx, {
+          ...piBase,
+          registerTool: (tool) => tools.push(tool),
+          registerCommand: (name, command) => { if (typeof name === "string") commands.set(name, command); else commands.set(name.name, name); },
+        });
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const command = commands.get("larva-subagent");
+        const selectedPromise = subagent.execute("exact-cancel-race", { persona_id: "child", task: "cancel me exactly" }, undefined, undefined, ctx);
+        let runningEntry = null;
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          runningEntry = mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "exact-cancel-race" && entry.status === "running" && typeof entry.task_id === "string") ?? null;
+          if (runningEntry) break;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        const taskId = runningEntry?.task_id ?? cancelRaceSession;
+        const cancelResult = await command.handler(`--cancel ${taskId}`, ctx);
+        const selectedResult = await selectedPromise;
+
+        const eofEnv = baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: eofChild, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" });
+        const eofCtx = { ...ctx, env: eofEnv };
+        await mod.commitPersona("ok", eofCtx, piBase);
+        const eofResult = await subagent.execute("non-cancel-eof", { persona_id: "child", task: "close stdout without cancellation" }, undefined, undefined, eofCtx);
+        let eofFinalEntry = null;
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          eofFinalEntry = mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "non-cancel-eof" && entry.status === "failed") ?? null;
+          if (eofFinalEntry) break;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        console.log(JSON.stringify({
+          taskId,
+          cancelResult: { status: cancelResult.details?.status ?? null, errorCode: cancelResult.details?.error?.code ?? null, text: cancelResult.content?.[0]?.text ?? "" },
+          selectedResult: { status: selectedResult.status, errorCode: selectedResult.error?.code ?? null },
+          eofAcceptedResult: { status: eofResult.status, errorCode: eofResult.error?.code ?? null },
+          eofFinalEntry: { status: eofFinalEntry?.status ?? null, errorCode: eofFinalEntry?.error?.code ?? null, message: eofFinalEntry?.error?.message ?? null },
+          exactPathUsed: taskId === cancelRaceSession,
+        }, null, 2));
+        """,
+        timeout=12.0,
+    )
+
+    assert payload["exactPathUsed"] is True
+    assert payload["cancelResult"]["status"] == "cancelled", payload
+    assert payload["cancelResult"]["errorCode"] == "LARVA_CHILD_CANCELLED", payload
+    assert "LARVA_CHILD_PROTOCOL_FAILED" not in payload["cancelResult"]["text"]
+    assert payload["selectedResult"] == {"status": "accepted", "errorCode": None}
+    assert payload["eofAcceptedResult"] == {"status": "accepted", "errorCode": None}
+    assert payload["eofFinalEntry"]["status"] == "failed"
+    assert payload["eofFinalEntry"]["errorCode"] == "LARVA_CHILD_PROTOCOL_FAILED"
+    assert "agent_end" in payload["eofFinalEntry"]["message"]
+
+
 def test_async_subagent_a9_console_surface_controls_expected_red() -> None:
     """Expected-red A9: runtime Subagent Console panes, exact cancel, bounds, and clear semantics."""
 
