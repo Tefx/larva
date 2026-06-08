@@ -1935,6 +1935,131 @@ def test_async_subagent_a1_accepted_background_execution_expected_red(tmp_path: 
     assert payload["accepted_receipt"]["result_text"] in {"", None}
 
 
+def test_async_subagent_real_tool_context_pushes_callback_via_pi_send_message_expected_red(tmp_path: Path) -> None:
+    """Regression: real Pi toolCtx lacks send methods, so callbacks must use pi.sendMessage."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const successChild = join(tmpRoot, "realctx-success-child.mjs");
+        await writeFakeChild(successChild, "success");
+        const hangChild = join(tmpRoot, "realctx-hang-child.mjs");
+        await writeFile(hangChild, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, "hang-${Date.now()}.jsonl");
+          const rl = createInterface({ input: process.stdin });
+          function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
+          rl.on("line", async (line) => {
+            const msg = JSON.parse(line);
+            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile } }); }
+            else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
+            else if (msg.type === "prompt") { send({ id: msg.id, success: true }); }
+            else if (msg.type === "abort") { send({ id: msg.id, success: true }); process.exit(0); }
+          });
+        `, { mode: 0o755 });
+
+        const sentMessages = [];
+        const piWithMessages = {
+          ...piBase,
+          sendMessage: async (message, options) => sentMessages.push({ message, options }),
+        };
+        const env = baseEnv({ LARVA_PI_REAL_BIN: successChild, LARVA_PI_EXTENSION_ENTRY: successChild });
+        const { tools, ctx } = await registeredTools(env, piWithMessages);
+        await mod.commitPersona("ok", ctx, piWithMessages);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const cancelTool = tools.find((tool) => tool.name === "larva_subagent_cancel");
+        const realToolCtx = { env, modelRegistry, ui: { setStatus: () => undefined } };
+        const successReceipt = await subagent.execute("realctx-success", { persona_id: "child", task: "complete and push" }, undefined, undefined, realToolCtx);
+        const successMessage = await waitFor(() => sentMessages.find((entry) => entry.message?.details?.task_id === successReceipt.task_id), 2000);
+        const successStatus = tools.find((tool) => tool.name === "larva_subagent_status");
+        const successStatusRows = await successStatus.execute("status-success", { task_id: successReceipt.task_id }, undefined, undefined, realToolCtx);
+
+        const cancelEnv = baseEnv({ LARVA_PI_REAL_BIN: hangChild, LARVA_PI_EXTENSION_ENTRY: hangChild });
+        const cancelCtx = { ...realToolCtx, env: cancelEnv };
+        await mod.commitPersona("ok", cancelCtx, piWithMessages);
+        const cancelReceipt = await subagent.execute("realctx-cancel", { persona_id: "child", task: "hang until exact cancel" }, undefined, undefined, cancelCtx);
+        await cancelTool.execute("realctx-cancel-tool", { task_id: cancelReceipt.task_id, reason: "real ctx cancel" }, undefined, undefined, cancelCtx);
+        const cancelMessage = await waitFor(() => sentMessages.find((entry) => entry.message?.details?.task_id === cancelReceipt.task_id), 2000);
+        const cancelStatusRows = await successStatus.execute("status-cancel", { task_id: cancelReceipt.task_id }, undefined, undefined, cancelCtx);
+
+        const throwingAttempts = [];
+        const piThrowingSendMessage = {
+          ...piBase,
+          sendMessage: async (message, options) => {
+            throwingAttempts.push({ message, options });
+            throw new Error("synthetic callback delivery failure");
+          },
+        };
+        const { tools: throwTools, ctx: throwCtx } = await registeredTools(env, piThrowingSendMessage);
+        await mod.commitPersona("ok", throwCtx, piThrowingSendMessage);
+        const throwingSubagent = throwTools.find((tool) => tool.name === "larva_subagent");
+        const throwingStatus = throwTools.find((tool) => tool.name === "larva_subagent_status");
+        const failedDeliveryReceipt = await throwingSubagent.execute("realctx-send-fails", { persona_id: "child", task: "complete but callback send throws" }, undefined, undefined, realToolCtx);
+        const failedDeliveryStatusRows = await waitFor(async () => {
+          const rows = await throwingStatus.execute("status-send-fails", { task_id: failedDeliveryReceipt.task_id }, undefined, undefined, realToolCtx);
+          return rows.details.runs[0]?.callback_delivery === "failed" ? rows : null;
+        }, 2000);
+
+        const shape = (entry, expectedStatus) => Boolean(entry)
+          && entry.message.customType === "larva-subagent-result"
+          && typeof entry.message.content === "string"
+          && entry.message.content.includes("Larva subagent result — runtime event/data")
+          && entry.message.display === true
+          && entry.message.details.status === expectedStatus
+          && entry.options.triggerTurn === true
+          && entry.options.deliverAs === "steer";
+
+        console.log(JSON.stringify({
+          sentCount: sentMessages.length,
+          success: {
+            receiptStatus: successReceipt.status,
+            callbackShape: shape(successMessage, "success"),
+            statusCallbackDelivery: successStatusRows.details.runs[0]?.callback_delivery ?? null,
+          },
+          cancelled: {
+            receiptStatus: cancelReceipt.status,
+            receiptError: cancelReceipt.error?.code ?? cancelReceipt.details?.error?.code ?? null,
+            taskId: cancelReceipt.task_id ?? null,
+            callbackStatus: cancelMessage?.message?.details?.status ?? null,
+            callbackShape: shape(cancelMessage, "cancelled"),
+            statusCallbackDelivery: cancelStatusRows.details.runs[0]?.callback_delivery ?? null,
+          },
+          failedDelivery: {
+            receiptStatus: failedDeliveryReceipt.status,
+            sendAttempts: throwingAttempts.length,
+            statusCallbackDelivery: failedDeliveryStatusRows?.details?.runs?.[0]?.callback_delivery ?? null,
+          },
+          realToolCtxHasSendSurface: Boolean(realToolCtx.sendMessage || realToolCtx.sendCustomMessage || realToolCtx.sendUserMessage || realToolCtx.appendEntry),
+        }, null, 2));
+        """,
+        timeout=12,
+    )
+
+    assert payload["realToolCtxHasSendSurface"] is False
+    assert payload["success"] == {
+        "receiptStatus": "accepted",
+        "callbackShape": True,
+        "statusCallbackDelivery": "delivered",
+    }
+    assert payload["cancelled"]["receiptStatus"] == "accepted"
+    assert payload["cancelled"]["receiptError"] is None
+    assert isinstance(payload["cancelled"]["taskId"], str)
+    assert payload["cancelled"]["callbackStatus"] == "cancelled"
+    assert payload["cancelled"]["callbackShape"] is True
+    assert payload["cancelled"]["statusCallbackDelivery"] == "delivered"
+    assert payload["failedDelivery"] == {
+        "receiptStatus": "accepted",
+        "sendAttempts": 1,
+        "statusCallbackDelivery": "failed",
+    }
+    assert payload["sentCount"] >= 2
+
+
 def test_async_subagent_a5_targeted_cancellation_unobserved_exact_task_id_expected_red(tmp_path: Path) -> None:
     """Expected-red A5: both user/Console and model cancel exact unobserved task_id."""
 
@@ -2118,6 +2243,7 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
 
     contract = payload["status_contract"]
     expected_schema_fields = [
+        "callback_delivery",
         "error",
         "persona_id",
         "phase",

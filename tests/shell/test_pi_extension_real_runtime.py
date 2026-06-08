@@ -14,6 +14,7 @@ EXTENSION = ROOT / "contrib" / "pi-extension" / "larva.ts"
 SMOKE = ROOT / "scripts" / "pi-extension-autocomplete-smoke.mjs"
 RUNTIME_SMOKE = ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"
 AUTOCOMPLETE_RUNTIME = ROOT / "contrib" / "pi-extension" / "test-autocomplete-runtime.mjs"
+FAKE_LARVA_CLI = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 
 
 def _run_autocomplete_case(case: str, *, prefix: str | None = None) -> dict[str, Any]:
@@ -244,6 +245,154 @@ def _run_node_inline(tmp_path: Path, script: str, *, timeout: float = 8.0) -> di
     assert completed.returncode == 0, completed.stderr
     return json.loads(completed.stdout)
 
+
+
+def test_async_subagent_push_uses_real_agent_session_send_custom_message_when_toolctx_lacks_send_surface(tmp_path: Path) -> None:
+    """Regression: tool execution must route callbacks through Pi's real sendMessage core hook."""
+
+    child_source = r'''#!/usr/bin/env node
+import { createInterface } from "node:readline";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+const root = process.argv[process.argv.length - 1];
+await mkdir(root, { recursive: true });
+const sessionFile = join(root, `real-send-${Date.now()}.jsonl`);
+const rl = createInterface({ input: process.stdin });
+function send(value) { process.stdout.write(JSON.stringify(value) + "\n"); }
+rl.on("line", async (line) => {
+  const msg = JSON.parse(line);
+  if (msg.type === "get_state") { await writeFile(sessionFile, "{}\n", "utf8"); send({ id: msg.id, success: true, data: { sessionFile } }); }
+  else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
+  else if (msg.type === "prompt") { send({ id: msg.id, success: true }); setTimeout(() => send({ type: "agent_end" }), 5); }
+  else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "real AgentSession callback output" } }); setTimeout(() => process.exit(0), 1); }
+  else if (msg.type === "abort") { send({ id: msg.id, success: true }); process.exit(0); }
+});
+'''
+
+    payload = _run_node_inline(
+        tmp_path,
+        textwrap.dedent(
+            f"""
+            import {{ mkdtemp, writeFile }} from "node:fs/promises";
+            import {{ tmpdir }} from "node:os";
+            import {{ join }} from "node:path";
+            const mod = await import({json.dumps(EXTENSION.as_uri())});
+            const {{ AgentSession }} = await import("file:///opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js");
+
+            const tmpRoot = await mkdtemp(join(tmpdir(), "larva-real-send-message-"));
+            const childRoot = join(tmpRoot, "child-sessions");
+            const childPath = join(tmpRoot, "child.mjs");
+            await writeFile(childPath, {json.dumps(child_source)}, {{ mode: 0o755 }});
+
+            const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            async function waitFor(predicate, timeoutMs = 2000, intervalMs = 10) {{
+              const start = Date.now();
+              while (Date.now() - start < timeoutMs) {{
+                const value = await predicate();
+                if (value) return value;
+                await sleep(intervalMs);
+              }}
+              return null;
+            }}
+
+            const modelRegistry = {{ find: () => ({{ provider: "openai-codex", model: "gpt-5.5" }}) }};
+            const env = {{
+              ...process.env,
+              HOME: tmpRoot,
+              LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(FAKE_LARVA_CLI))}]),
+              LARVA_PI_CHILD_SESSION_DIR: childRoot,
+              LARVA_PI_REAL_BIN: childPath,
+              LARVA_PI_EXTENSION_ENTRY: childPath,
+              LARVA_PI_INITIAL_PERSONA_ID: "",
+            }};
+            const tools = [];
+            const ctx = {{ env, modelRegistry, ui: {{ setStatus: () => undefined }} }};
+            const capturedAgentPrompts = [];
+            const capturedSteers = [];
+            const capturedFollowUps = [];
+            const hostAgent = {{
+              state: {{ messages: [], isStreaming: false }},
+              prompt: async (message) => {{ capturedAgentPrompts.push(message); hostAgent.state.messages.push(message); }},
+              continue: async () => undefined,
+              steer: (message) => capturedSteers.push(message),
+              followUp: (message) => capturedFollowUps.push(message),
+            }};
+            const hostSession = Object.create(AgentSession.prototype);
+            Object.assign(hostSession, {{
+              agent: hostAgent,
+              sessionManager: {{ appendCustomMessageEntry: () => undefined }},
+              _pendingNextTurnMessages: [],
+              _handlePostAgentRun: async () => false,
+              _flushPendingBashMessages: () => undefined,
+              _emit: () => undefined,
+            }});
+            const piRuntimeCore = {{
+              setModel: () => true,
+              getAllTools: () => ["read", "grep", "larva_subagent"],
+              setActiveTools: () => true,
+              on: () => undefined,
+              registerTool: (tool) => tools.push(tool),
+              sendMessage: (message, options) => hostSession.sendCustomMessage(message, options),
+            }};
+            await mod.initializeExtension(ctx, piRuntimeCore);
+            await mod.commitPersona("ok", ctx, piRuntimeCore);
+
+            const subagent = tools.find((tool) => tool.name === "larva_subagent");
+            const statusTool = tools.find((tool) => tool.name === "larva_subagent_status");
+            const realToolCtx = {{ env, modelRegistry, ui: {{ setStatus: () => undefined }} }};
+            const receipt = await subagent.execute("real-agent-session-send", {{ persona_id: "child", task: "finish and push through real AgentSession" }}, undefined, undefined, realToolCtx);
+            const deliveredPrompt = await waitFor(() => capturedAgentPrompts.find((message) => message?.details?.task_id === receipt.task_id));
+            const statusRows = await waitFor(async () => {{
+              const rows = await statusTool.execute("real-agent-session-status", {{ task_id: receipt.task_id }}, undefined, undefined, realToolCtx);
+              return rows.details.runs[0]?.callback_delivery === "delivered" ? rows : null;
+            }});
+
+            console.log(JSON.stringify({{
+              proofClass: "real_pi_agent_session_send_custom_message_callback_delivery",
+              piRuntimeSeams: [
+                "AgentSession.sendCustomMessage",
+                "AgentSession._runAgentPrompt",
+                "PiApi.sendMessage callback surface",
+              ],
+              toolCtxHasSendSurface: Boolean(realToolCtx.sendMessage || realToolCtx.sendCustomMessage || realToolCtx.sendUserMessage || realToolCtx.appendEntry),
+              receiptStatus: receipt.status,
+              callbackDelivery: statusRows?.details?.runs?.[0]?.callback_delivery ?? null,
+              capturedPrompt: deliveredPrompt ? {{
+                role: deliveredPrompt.role,
+                customType: deliveredPrompt.customType,
+                display: deliveredPrompt.display,
+                contentIncludesBoundary: typeof deliveredPrompt.content === "string" && deliveredPrompt.content.includes("Larva subagent result — runtime event/data"),
+                detailsStatus: deliveredPrompt.details?.status,
+                detailsTaskId: deliveredPrompt.details?.task_id,
+              }} : null,
+              capturedSteers: capturedSteers.length,
+              capturedFollowUps: capturedFollowUps.length,
+            }}, null, 2));
+            """
+        ),
+        timeout=8.0,
+    )
+
+    assert payload["proofClass"] == "real_pi_agent_session_send_custom_message_callback_delivery"
+    assert payload["piRuntimeSeams"] == [
+        "AgentSession.sendCustomMessage",
+        "AgentSession._runAgentPrompt",
+        "PiApi.sendMessage callback surface",
+    ]
+    assert payload["toolCtxHasSendSurface"] is False
+    assert payload["receiptStatus"] == "accepted"
+    assert payload["callbackDelivery"] == "delivered"
+    assert payload["capturedPrompt"] == {
+        "role": "custom",
+        "customType": "larva-subagent-result",
+        "display": True,
+        "contentIncludesBoundary": True,
+        "detailsStatus": "success",
+        "detailsTaskId": payload["capturedPrompt"]["detailsTaskId"],
+    }
+    assert isinstance(payload["capturedPrompt"]["detailsTaskId"], str)
+    assert payload["capturedSteers"] == 0
+    assert payload["capturedFollowUps"] == 0
 
 def _skip_if_pi_absent(payload: dict[str, Any]) -> None:
     pi = payload.get("pi", {})
@@ -815,7 +964,7 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
         },
         "streaming_command": {
             "hasUnifiedSlashCommand": True,
-            "deprecatedLarvaLogIsViewAliasOnly": True,
+            "removedLogAliasNotRegistered": True,
             "runningEntryPresentBeforeDispatch": True,
             "invokedWhileParentStreaming": True,
             "streamingSlashCommandDispatch": True,
@@ -870,7 +1019,7 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
         "docs_parity_against_reference": {
             "authorityReviewed": True,
             "readmeNamesCanonicalSubagent": True,
-            "larvaLogDeprecatedOnly": True,
+            "removedLogAliasDocumented": True,
             "sourceRegistersCanonicalCommand": True,
             "sourceRegistersStatusAndCancelTools": True,
         },

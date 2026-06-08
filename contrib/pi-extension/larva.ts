@@ -158,6 +158,7 @@ type LarvaSubagentRunSnapshot = {
   result_pending: boolean;
   updated_at: string;
   error: LarvaError | null;
+  callback_delivery: SubagentCallbackDeliveryState;
 };
 type LarvaSubagentStatusResult = {
   content: PiTextContent[];
@@ -308,8 +309,20 @@ type PiUi = {
   custom?: (factory: PiCustomFactory, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
 };
+type SubagentCallbackMessage = {
+  customType: string;
+  content: string | Array<Record<string, unknown>>;
+  display?: boolean;
+  details?: Record<string, unknown>;
+};
+type SubagentCallbackMessageOptions = {
+  triggerTurn?: boolean;
+  deliverAs?: "steer" | "followUp" | "nextTurn";
+};
 type PiApi = {
   appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
+  sendMessage?: (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => unknown | Promise<unknown>;
+  sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
@@ -331,12 +344,18 @@ type PiContext = PiApi & {
     addCustomEntry?: (customType: string, data: Record<string, unknown>, options?: Record<string, unknown>) => unknown;
   };
   appendEntry?: (customType: string, data: Record<string, unknown>, options?: Record<string, unknown>) => unknown;
+  sendMessage?: (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => unknown | Promise<unknown>;
   sendCustomMessage?: (customType: string, data: Record<string, unknown>, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   hasUI?: boolean;
   openSelector?: (options: SelectorOption[]) => Promise<string | null>;
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
+};
+type SubagentCallbackSurface = {
+  sendMessage?: (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => unknown | Promise<unknown>;
+  sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
+  appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
 };
 type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null };
 type PersonaSwitchToolInput = { persona_id?: unknown; reason?: unknown; handoff?: unknown; continue_task?: unknown; max_switches_per_chain?: unknown };
@@ -396,7 +415,7 @@ const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
 };
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 
-type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale";
+type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale" | "failed";
 type SubagentCancellationSource = "model" | "user" | "console" | "lifecycle";
 type SubagentTerminalSnapshot = Readonly<{
   task_id: string | null;
@@ -425,6 +444,7 @@ type ActiveSubagentRun = {
   env: RuntimeEnv;
   parent_session_identity: object | null;
   callback_ctx: PiContext | null;
+  callback_surface: SubagentCallbackSurface;
   cancellation_reason: string | null;
   cancellation_source: SubagentCancellationSource | null;
   callback_delivery: SubagentCallbackDeliveryState;
@@ -3759,6 +3779,7 @@ function statusSnapshotForRun(record: ActiveSubagentRun, status: LarvaSubagentPu
     result_pending: !isTerminalSubagentStatus(status),
     updated_at: record.updated_at,
     error: record.error,
+    callback_delivery: record.callback_delivery,
   };
 }
 
@@ -3774,7 +3795,7 @@ function appendSubagentRunSnapshot(record: ActiveSubagentRun, status: LarvaSubag
   while (record.status_history.length > 8) record.status_history.shift();
 }
 
-function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId: string, taskId: string | null, ctx?: PiContext & { presentationCallId?: string }): ActiveSubagentRun {
+function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId: string, taskId: string | null, ctx?: PiContext & { presentationCallId?: string; callbackSurface?: SubagentCallbackSurface }): ActiveSubagentRun {
   const now = timestampNow();
   const record: ActiveSubagentRun = {
     private_key: taskId ?? newSubagentPrivateKey(),
@@ -3791,6 +3812,11 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     env,
     parent_session_identity: ctx ? piSessionIdentity(ctx) : null,
     callback_ctx: ctx ?? null,
+    callback_surface: ctx?.callbackSurface ?? {
+      sendMessage: ctx?.sendMessage,
+      sendUserMessage: ctx?.sendUserMessage,
+      appendEntry: ctx?.appendEntry,
+    },
     cancellation_reason: null,
     cancellation_source: null,
     callback_delivery: "pending",
@@ -3864,9 +3890,33 @@ function pruneTerminalSubagentRuns(): void {
   }
 }
 
+function callbackSurfaceFrom(ctx: PiContext | undefined, pi: PiApi | undefined): SubagentCallbackSurface {
+  const sendMessage = typeof pi?.sendMessage === "function"
+    ? (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => pi.sendMessage?.(message, options)
+    : typeof ctx?.sendMessage === "function"
+      ? (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => ctx.sendMessage?.(message, options)
+      : undefined;
+  const sendUserMessage = typeof pi?.sendUserMessage === "function"
+    ? (message: string, options?: Record<string, unknown>) => pi.sendUserMessage?.(message, options)
+    : typeof ctx?.sendUserMessage === "function"
+      ? (message: string, options?: Record<string, unknown>) => ctx.sendUserMessage?.(message, options)
+      : undefined;
+  const appendEntry = typeof pi?.appendEntry === "function"
+    ? (customType: string, data: Record<string, unknown>) => pi.appendEntry?.(customType, data)
+    : typeof ctx?.appendEntry === "function"
+      ? (customType: string, data: Record<string, unknown>) => ctx.appendEntry?.(customType, data)
+      : undefined;
+  return { sendMessage, sendUserMessage, appendEntry };
+}
+
 function parentSessionStillCurrent(record: ActiveSubagentRun): boolean {
   if (record.callback_ctx === null || record.parent_session_identity === null) return true;
   return piSessionIdentity(record.callback_ctx) === record.parent_session_identity;
+}
+
+function setSubagentCallbackDelivery(record: ActiveSubagentRun, delivery: SubagentCallbackDeliveryState): void {
+  record.callback_delivery = delivery;
+  if (record.terminal_snapshot !== null) appendSubagentRunSnapshot(record, record.terminal_snapshot.status);
 }
 
 function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot): Record<string, unknown> {
@@ -3886,31 +3936,40 @@ function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot): Record
 async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise<void> {
   if (record.callback_delivery !== "pending" || record.terminal_snapshot === null) return;
   if (!parentSessionStillCurrent(record)) {
-    record.callback_delivery = "stale";
+    setSubagentCallbackDelivery(record, "stale");
     return;
   }
   const ctx = record.callback_ctx;
-  if (ctx === null) {
-    record.callback_delivery = "suppressed";
-    return;
-  }
   const payload = callbackPayloadFromSnapshot(record.terminal_snapshot);
-  const options = { triggerTurn: true, deliverAs: "steer" };
-  if (typeof ctx.sendCustomMessage === "function") {
+  const options: SubagentCallbackMessageOptions = { triggerTurn: true, deliverAs: "steer" };
+  if (typeof record.callback_surface.sendMessage === "function") {
+    await record.callback_surface.sendMessage({
+      customType: "larva-subagent-result",
+      content: payload.message as string,
+      display: true,
+      details: payload,
+    }, options);
+  } else if (typeof ctx?.sendMessage === "function") {
+    await ctx.sendMessage({ customType: "larva-subagent-result", content: payload.message as string, display: true, details: payload }, options);
+  } else if (typeof ctx?.sendCustomMessage === "function") {
     await ctx.sendCustomMessage("larva-subagent-result", payload, options);
-  } else if (typeof ctx.session?.appendEntry === "function") {
+  } else if (typeof ctx?.session?.appendEntry === "function") {
     ctx.session.appendEntry("larva-subagent-result", payload, options);
-  } else if (typeof ctx.session?.addCustomEntry === "function") {
+  } else if (typeof ctx?.session?.addCustomEntry === "function") {
     ctx.session.addCustomEntry("larva-subagent-result", payload, options);
-  } else if (typeof ctx.appendEntry === "function") {
+  } else if (typeof record.callback_surface.appendEntry === "function") {
+    record.callback_surface.appendEntry("larva-subagent-result", payload);
+  } else if (typeof ctx?.appendEntry === "function") {
     ctx.appendEntry("larva-subagent-result", payload, options);
-  } else if (typeof ctx.sendUserMessage === "function") {
+  } else if (typeof record.callback_surface.sendUserMessage === "function") {
+    await record.callback_surface.sendUserMessage(payload.message as string, { customType: "larva-subagent-result", details: payload, ...options });
+  } else if (typeof ctx?.sendUserMessage === "function") {
     await ctx.sendUserMessage(payload.message as string, { customType: "larva-subagent-result", details: payload, ...options });
   } else {
-    record.callback_delivery = "suppressed";
+    setSubagentCallbackDelivery(record, "suppressed");
     return;
   }
-  record.callback_delivery = "delivered";
+  setSubagentCallbackDelivery(record, "delivered");
 }
 
 function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentResult, options: { suppressCallback?: boolean } = {}): SubagentTerminalSnapshot {
@@ -3939,8 +3998,8 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   });
   appendSubagentRunSnapshot(record, terminal.status);
   if (record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
-  if (options.suppressCallback) record.callback_delivery = "suppressed";
-  else void deliverSubagentResultCallback(record);
+  if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed");
+  else void deliverSubagentResultCallback(record).catch(() => setSubagentCallbackDelivery(record, "failed"));
   pruneTerminalSubagentRuns();
   return record.terminal_snapshot;
 }
@@ -4284,7 +4343,7 @@ async function cancelSubagentByTaskId(taskId: string, reason: string, source: Su
     return wrapSubagentCancelResult(validated, "", "failed", error("LARVA_SUBAGENT_NOT_OBSERVED", `Larva subagent task_id not observed in this parent process: ${validated}`), true);
   }
   if (record.terminal_snapshot !== null) {
-    if (source === "model" && record.callback_delivery === "pending") record.callback_delivery = "suppressed";
+    if (source === "model" && record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "suppressed");
     const terminal = record.terminal_snapshot;
     return wrapSubagentCancelResult(terminal.task_id, terminal.persona_id, terminal.status, terminal.error, terminal.status === "failed");
   }
@@ -5150,7 +5209,7 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
   const activeChildren = Array.from(activeSubagentChildren);
   const recordChildren = new Set(activeRecords.map((record) => record.child).filter((child): child is ChildProcessWithoutNullStreams => child !== null));
   for (const record of activeSubagentRuns.values()) {
-    if (record.callback_delivery === "pending") record.callback_delivery = "stale";
+    if (record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "stale");
   }
   await Promise.all(activeRecords.map((record) => abortSubagentRun(record, "lifecycle", reason, { awaitTerminal: true })));
   for (const entry of activeChildren) {
@@ -5174,7 +5233,7 @@ async function abortSubagentRun(record: ActiveSubagentRun, source: SubagentCance
   if (record.terminal_snapshot !== null) return record.terminal_snapshot;
   record.cancellation_source = source;
   record.cancellation_reason = boundedNormalizedCodePoints(reason, SUBAGENT_CANCEL_REASON_LIMIT);
-  if (source === "lifecycle" && record.callback_delivery === "pending") record.callback_delivery = "stale";
+  if (source === "lifecycle" && record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "stale");
   touchSubagentRun(record, "cancelling", "cancelling");
   if (record.cancel_task === null) {
     record.cancel_task = (async () => {
@@ -5320,7 +5379,7 @@ async function runChildSequence(
   }
 }
 
-export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext & { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void; presentationCallId?: string }): Promise<LarvaSubagentResult> {
+export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext & { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void; presentationCallId?: string; callbackSurface?: SubagentCallbackSurface }): Promise<LarvaSubagentResult> {
   const presentationGeneration = subagentUiResetGeneration;
   const parsed = validateInput(input);
   if ("status" in parsed) {
@@ -5506,7 +5565,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending.",
     inputSchema: subagentSchema,
     parameters: subagentSchema,
-    handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal }).then((result) => wrapLarvaSubagentToolResult(result)),
+    handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal, callbackSurface: callbackSurfaceFrom(ctx, pi) }).then((result) => wrapLarvaSubagentToolResult(result)),
     execute: (_toolCallId, input, signal, onUpdate, toolCtx) => {
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
       const callId = typeof _toolCallId === "string" && _toolCallId.length > 0 ? _toolCallId : undefined;
@@ -5522,6 +5581,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
         abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal,
         onPhase: emitProgress,
         presentationCallId: callId,
+        callbackSurface: callbackSurfaceFrom(runtimeCtx, pi),
       }).then((result) => {
         safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, result.status, result.task_id));
         return wrapLarvaSubagentToolResult(result);

@@ -1453,6 +1453,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     && expectedStatuses.includes(run.status)
     && typeof run.phase === "string"
     && typeof run.result_pending === "boolean"
+    && ["pending", "delivered", "suppressed", "stale", "failed"].includes(run.callback_delivery)
     && typeof run.updated_at === "string"
     && !Number.isNaN(Date.parse(run.updated_at))
     && "error" in run

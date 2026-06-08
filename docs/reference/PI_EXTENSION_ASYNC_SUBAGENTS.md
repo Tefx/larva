@@ -278,6 +278,7 @@ Success details schema:
       "status": "running",
       "phase": "waiting_for_child",
       "result_pending": true,
+      "callback_delivery": "pending",
       "updated_at": "RFC3339 timestamp",
       "error": null
     }
@@ -293,6 +294,16 @@ run: the latest process-local registry snapshot for that public handle.
 
 Allowed run statuses: `accepted`, `running`, `cancelling`, `cancelled`,
 `success`, `failed`.
+
+Allowed callback delivery states:
+
+- `pending`: no terminal callback attempt has completed yet.
+- `delivered`: a terminal callback was handed to Pi's message surface.
+- `suppressed`: callback intentionally not delivered, e.g. model-side duplicate
+  terminal cancellation.
+- `stale`: parent session/lifecycle changed before callback delivery.
+- `failed`: Pi callback delivery threw; final status remains available via the
+  status tool.
 
 ### `larva_subagent_cancel(task_id, reason)`
 
