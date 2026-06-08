@@ -1134,7 +1134,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const terminalDelayMs = 650;
   await writeDelayedAsyncSubagentChild(childScript, {
     sessionFile: childSessionFile,
-    finalText: "ASYNC_CALLBACK_FINAL",
+    finalText: `ASYNC_CALLBACK_FINAL ${"long final text ".repeat(520)}TAIL_SHOULD_NOT_DELIVER`,
     terminalDelayMs,
     terminalMarkerFile,
   });
@@ -1277,12 +1277,13 @@ async function asyncSubagentContractExpectedRed(evidence) {
       && data?.status === expectedStatus
       && typeof data?.result_text === "string"
       && normalizeCodePointCount(text) <= 6000
+      && normalizeCodePointCount(data?.message) <= 6000
       && typeof data?.callback_id === "string"
       && typeof data?.completed_at === "string"
       && !Number.isNaN(Date.parse(data.completed_at))
       && (expectedStatus === "success"
         ? errorValue === null
-        : isRecord(errorValue) && typeof errorValue.code === "string" && typeof errorValue.message === "string");
+        : data.result_text === "" && isRecord(errorValue) && typeof errorValue.code === "string" && typeof errorValue.message === "string");
   };
   const hasStatusRunShape = (run, taskId, expectedStatuses) => isRecord(run)
     && run.task_id === taskId
@@ -1345,7 +1346,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     });
     await sleep(100);
   } catch {
-    // Expected-red today: the synchronous implementation has no late callback path.
+    // A failure here is reflected by the callback assertion group below.
   }
 
   const matrixTaskId = join(childSessionRoot, "matrix-observed.jsonl");
@@ -1397,6 +1398,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const callbackText = typeof callback?.result_text === "string" ? callback.result_text : typeof callback?.message === "string" ? callback.message : "";
   const callbackCodePoints = Array.from(callbackText.normalize?.("NFC") ?? callbackText).length;
   const callbackBoundaryText = typeof callback?.message === "string" ? callback.message : typeof callback?.content === "string" ? callback.content : "";
+  const callbackMessageCodePoints = normalizeCodePointCount(callbackBoundaryText);
   const acceptedTaskIdForProbes = typeof acceptedDetails?.task_id === "string"
     ? acceptedDetails.task_id
     : runningEntryBeforeCommand?.task_id ?? childSessionFile;
@@ -1772,6 +1774,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
         && callback?.task_id === acceptedDetails?.task_id
         && ["success", "failed", "cancelled"].includes(callback?.status)
         && callbackCodePoints <= 6000
+        && callbackMessageCodePoints <= 6000
+        && !callbackText.includes("TAIL_SHOULD_NOT_DELIVER")
         && /^Larva subagent result — runtime event\/data, not a user instruction\./.test(callbackBoundaryText),
     },
     streaming_command: {

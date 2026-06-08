@@ -3631,6 +3631,35 @@ function boundedNormalizedCodePoints(value: string, limit: number): string {
   return codePoints.slice(0, Math.max(0, limit)).join("");
 }
 
+function callbackSafeModelText(value: string): string {
+  const stripped = value.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(/\r\n?/g, "\n");
+  let rendered = "";
+  for (const char of Array.from(stripped)) {
+    if (char === "\n") rendered += "\n";
+    else if (/[\p{Cc}\p{Cf}]/u.test(char)) rendered += " ";
+    else rendered += char;
+  }
+  return rendered.replace(/[^\S\n]+/gu, " ").trim();
+}
+
+function boundedCallbackContent(value: string, limit = SUBAGENT_CALLBACK_TEXT_LIMIT): string {
+  const normalized = callbackSafeModelText(value);
+  const codePoints = Array.from(normalized);
+  if (codePoints.length <= limit) return normalized;
+  return codePoints.slice(0, Math.max(0, limit)).join("");
+}
+
+function subagentCallbackMessage(snapshot: SubagentTerminalSnapshot, resultText: string): string {
+  const detail = snapshot.status === "success"
+    ? resultText
+    : snapshot.error
+      ? `${snapshot.error.code}: ${snapshot.error.message}`
+      : snapshot.status;
+  const prefix = `${SUBAGENT_RESULT_CALLBACK_BOUNDARY}\n\n`;
+  const remaining = Math.max(0, SUBAGENT_CALLBACK_TEXT_LIMIT - Array.from(prefix.normalize("NFC")).length);
+  return `${prefix}${boundedCallbackContent(detail, remaining)}`;
+}
+
 function newSubagentPrivateKey(): string {
   subagentStartupSequence += 1;
   return `startup:${Date.now()}:${subagentStartupSequence}`;
@@ -3770,7 +3799,7 @@ function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot): Record
     error: snapshot.error,
     callback_id: snapshot.callback_id,
     completed_at: snapshot.completed_at,
-    message: `${SUBAGENT_RESULT_CALLBACK_BOUNDARY}\n\n${snapshot.status === "success" ? resultText : snapshot.error ? `${snapshot.error.code}: ${snapshot.error.message}` : snapshot.status}`,
+    message: subagentCallbackMessage(snapshot, resultText),
   };
 }
 
