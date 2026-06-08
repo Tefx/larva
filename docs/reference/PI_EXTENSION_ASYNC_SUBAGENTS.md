@@ -101,7 +101,6 @@ that is the exact decision point where a parent agent otherwise tends to retain
 control by calling `sleep` and polling status.
 
 ### Result callback
-
 Final child results return to the parent agent through a Pi custom message:
 
 ```text
@@ -161,8 +160,9 @@ Callback details schema:
 For `failed` and `cancelled`, `result_text` is an empty string unless a bounded
 safe final assistant text was already collected, and `error` is `{ "code":
 "...", "message": "..." }`. Callback content and `result_text` must be bounded
-to 6000 normalized code points for model delivery; the UI/cache may retain a
-separate bounded presentation preview but must not stream an unbounded log.
+to 6000 normalized code points for model delivery. The Subagent Console may keep
+a separate bounded adapter-local presentation/cache preview, but that cache is
+never orchestration authority and must not stream an unbounded log.
 
 Before sending, the extension must verify parent-session identity, terminal-state
 idempotency, and callback suppression state. Each terminal run may deliver at
@@ -218,7 +218,6 @@ model workaround for missing wait/yield guidance, not a reliable runtime
 contract.
 
 ### Background activity indicator
-
 Interactive Pi sessions should expose a minimal read-only status indicator for
 human awareness of background subagent work. This is not a control surface and
 not an orchestration API.
@@ -239,7 +238,9 @@ Required behavior:
 
 Rationale: accepted-plus-background execution otherwise gives humans no compact
 signal that work is still running. A count-only indicator improves awareness
-without adding scheduler behavior or another UI dashboard.
+without adding scheduler behavior or another UI dashboard. The persistent
+Subagent Console presentation cache is intentionally excluded from the indicator
+so stale UI history cannot masquerade as live background work.
 
 ### Targeted cancellation
 
@@ -310,7 +311,6 @@ log command has been removed; new docs, tests, and user flows should use only
 `/larva-subagent`.
 
 ### User-facing mode matrix
-
 | Pi mode | `/larva-subagent` | `/larva-subagent <task_id>` | `--cancel <task_id>` | `--clear` |
 | --- | --- | --- | --- | --- |
 | TUI | Open overlay console. | Open overlay focused on exact observed task or show `LARVA_SUBAGENT_NOT_OBSERVED`. | Confirm, then cancel exact active task. | Clear adapter-local presentation cache only. |
@@ -321,6 +321,8 @@ Rationale: Pi source proves custom UI is unavailable in RPC mode, so the design
 must not claim a universal overlay. `--clear` is allowed in TUI/RPC where command
 handlers can intentionally mutate adapter-local presentation state; print/json
 mode stays read-only and reports `LARVA_SUBAGENT_UI_UNAVAILABLE` for clear.
+The cleared state is presentation-only: no child session files are deleted, no
+active run is cancelled, and no model-facing orchestration event is consumed.
 
 ## Model-facing tools
 
@@ -736,7 +738,6 @@ internal implementation path. It exists as a compact readiness verb only; it mus
 not grow independent semantics.
 
 ## Subagent Console
-
 The TUI Subagent Console is an overlay over adapter-local presentation state. The
 only user command is `/larva-subagent`; the former log alias has been removed.
 The console may keep the concise `Larva subagent log` chrome title for continuity
@@ -769,13 +770,21 @@ Minimum controls:
 Overlay invariants:
 
 - view-only inspection must not mutate persona/model/tool policy,
-- cancel mutates only the selected exact task,
+- cancel mutates only the selected exact active task,
 - no child session files are deleted by console clear,
 - no raw RPC firehose or hidden thinking text is displayed,
-- all visible rows are bounded and renderer-safe.
+- all visible rows are bounded and renderer-safe,
+- cached presentation rows must never be used by `status`, `events`, `wait`,
+  `select`, the background indicator, or cancellation authority.
 
-Persistent cache:
+Persistent presentation cache:
 
+- This cache is an adapter-local UI continuity feature only. It is not a second
+  orchestration source of truth, not a resume registry, not a scheduler queue,
+  and not a fuzzy handle index.
+- The cache may contain stale rows after parent reload/process exit. Such rows
+  are view-only historical presentation data; they do not imply that a child is
+  active, observable by deterministic tools, or cancellable.
 - The adapter-local presentation cache target defaults to
   `$HOME/.pi/larva/subagent-presentation-log.json` and may be overridden only by
   absolute `LARVA_PI_SUBAGENT_LOG_FILE`.
@@ -786,11 +795,12 @@ Persistent cache:
   `1..365`; `enabled`, `include_prompt`, and `include_output` booleans.
 - Malformed config, malformed cache, cache write failure, and cache clear failure
   fail closed with `LARVA_SUBAGENT_LOG_CONFIG_INVALID` and must not mutate
-  persona/model/tool policy.
+  persona/model/tool policy or active-run state.
 - `/larva-subagent --clear` clears only adapter-local presentation/cache state.
+  It must not delete child session files, cancel a child, consume an
+  orchestration event, or change the exact-`task_id` rule.
 
 ## Runtime state model
-
 Replace process-global sets with one active-run registry keyed by public
 `task_id` once known. The implementation authority is the process-local
 `activeSubagentRuns` registry; `moveSubagentRunToTaskId` moves startup records to
@@ -843,10 +853,11 @@ running -> cancelling -> success
 No transition may leave a child untracked after the accepted result is returned.
 Terminal states are immutable except for bounded presentation/cache annotation.
 Events are also immutable once appended, but events older than the latest `1000`
-may be dropped; callers must honor `cursor_expired`.
+may be dropped; callers must honor `cursor_expired`. Cache annotation is for UI
+continuity only and must not mutate terminal state, event history, or active-run
+authority.
 
 ## Session lifecycle rules
-
 On parent session shutdown, reload, new session, resume, or fork:
 
 - mark active callbacks stale,
@@ -861,6 +872,11 @@ Before a background result callback is sent, the extension must verify that the
 parent session identity still matches the acceptance-time identity and that the
 callback was not already delivered or suppressed.
 
+Lifecycle preservation does not make cached rows authoritative. After reload or
+process exit, cached presentation rows may be displayed for human continuity, but
+`status`, `events`, `wait`, `select`, cancellation, and the background indicator
+must still rely only on process-local observed runtime state.
+
 ## Trace-file proof instrumentation
 
 `LARVA_PI_CHILD_RPC_TRACE_FILE` is available for runtime proof probes only. Trace
@@ -870,7 +886,6 @@ Trace write failures are ignored so diagnostic proof instrumentation cannot alte
 child runtime behavior.
 
 ## Error and duplicate rules
-
 - `LARVA_BAD_INPUT`: malformed tool/command input, including invalid path,
   invalid `limit`, invalid `since_sequence`, invalid `return_when`, invalid
   `timeout_ms`, blank required strings, or overlong cancel reason.
@@ -889,7 +904,8 @@ child runtime behavior.
   print/json `--clear`.
 - `LARVA_SUBAGENT_LOG_CONFIG_INVALID`: adapter-local presentation cache/config
   path, parse, bounds, write, or clear failure. It may appear in `/larva-subagent`
-  command output and diagnostics; it is not a child terminal error.
+  command output and diagnostics; it is not a child terminal error and must not
+  affect active-run registry authority.
 - `LARVA_CHILD_CANCELLED`: exact child cancelled by user/model/parent lifecycle.
 - stale callback suppression is not model-visible as an error; it is recorded as
   adapter-local diagnostic state and appears in `callback_delivery`.
