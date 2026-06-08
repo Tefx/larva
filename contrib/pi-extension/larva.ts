@@ -5146,6 +5146,10 @@ function finalText(value: unknown): string | LarvaError {
   const text = (value as { data?: { text?: unknown } }).data?.text;
   // Contract token for static harness: typeof data.text === "string"
   if (typeof text === "string") return text;
+  // Pi AgentSession.getLastAssistantText() returns undefined when the last
+  // assistant message has no text parts or only whitespace. RPC JSON omits
+  // undefined fields, so successful empty final text may arrive as data: {}.
+  if (text === undefined || text === null) return "";
   return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_last_assistant_text data.text was malformed.");
 }
 

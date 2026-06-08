@@ -1597,7 +1597,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       const message = JSON.parse(line);
       if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
       else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); send({ type: "agent_end" }); }
-      else if (message.type === "get_last_assistant_text") { send({ id: message.id, success: true, data: { text: null } }); setTimeout(() => process.exit(0), 5); }
+      else if (message.type === "get_last_assistant_text") { send({ id: message.id, success: true, data: { text: { malformed: true } } }); setTimeout(() => process.exit(0), 5); }
       else if (message.type === "abort") { send({ id: message.id, success: true }); process.exit(0); }
     });
   `, "utf8");

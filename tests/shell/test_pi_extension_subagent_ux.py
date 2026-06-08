@@ -95,7 +95,8 @@ def _node_prelude(tmp_path: Path) -> str:
               else if (msg.type === "switch_session") {{ send({{ id: msg.id, success: true, data: {{ cancelled: false }} }}); }}
               else if (msg.type === "prompt") {{ send({{ id: msg.id, success: true }}); setTimeout(() => send({{ type: "agent_end" }}), 5); }}
               else if (msg.type === "get_last_assistant_text") {{
-                if (${{JSON.stringify(scenario)}} === "malformed-final") send({{ id: msg.id, success: true, data: {{ text: null }} }});
+                if (${{JSON.stringify(scenario)}} === "empty-final") send({{ id: msg.id, success: true, data: {{}} }});
+                else if (${{JSON.stringify(scenario)}} === "malformed-final") send({{ id: msg.id, success: true, data: {{ text: {{ bad: true }} }} }});
                 else send({{ id: msg.id, success: true, data: {{ text: "final child output" }} }});
                 setTimeout(() => process.exit(0), 1);
               }}
@@ -517,7 +518,7 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
                 send({ id: msg.id, success: true });
                 setTimeout(() => send({ type: "agent_end" }), 5);
               } else if (msg.type === "get_last_assistant_text") {
-                if (scenario === "final-text-failure") send({ id: msg.id, success: true, data: { text: null } });
+                if (scenario === "final-text-failure") send({ id: msg.id, success: true, data: { text: { bad: true } } });
                 else send({ id: msg.id, success: true, data: { text: "final child output" } });
                 setTimeout(() => process.exit(0), 1);
               } else if (msg.type === "abort") {
@@ -683,6 +684,39 @@ def test_larva_subagent_exact_cancel_owns_aborted_agent_end_without_final_text_p
     assert payload["terminal"] == {"status": "cancelled", "errorCode": "LARVA_CHILD_CANCELLED"}
     assert payload["getLastRequested"] is False
     assert payload["orphan"] is False
+
+
+def test_async_subagent_empty_final_text_is_success_expected_red(tmp_path: Path) -> None:
+    """Regression: Pi getLastAssistantText undefined/omitted means empty final text, not protocol failure."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "empty-final-child.mjs");
+        await writeFakeChild(childBin, "empty-final");
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const result = await subagent.handler({ persona_id: "ok", task: "produce no text parts" });
+        const terminal = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_prompt === "produce no text parts" && entry.status !== "running"), 2000);
+        console.log(JSON.stringify({
+          acceptedStatus: result.status,
+          terminalStatus: terminal?.status ?? null,
+          terminalResultText: terminal?.result_text ?? null,
+          terminalErrorCode: terminal?.error?.code ?? null,
+        }, null, 2));
+        """,
+    )
+
+    assert payload == {
+        "acceptedStatus": "accepted",
+        "terminalStatus": "success",
+        "terminalResultText": "",
+        "terminalErrorCode": None,
+    }
+
 
 
 def test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases(tmp_path: Path) -> None:
