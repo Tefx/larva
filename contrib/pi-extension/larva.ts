@@ -3654,7 +3654,7 @@ function isTerminalSubagentStatus(status: string): status is LarvaSubagentTermin
 }
 
 function larvaSubagentResultText(result: LarvaSubagentResult): string {
-  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending.";
+  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. If your next step depends on the child result, do not use shell sleep polling; wait for the larva-subagent-result push, or use wait/select/events when available.";
   if (result.status === "success") return result.result_text || "Larva subagent completed without final assistant text.";
   if (result.error) return `${result.error.code}: ${result.error.message}`;
   return result.status === "cancelled" ? "Larva subagent was cancelled." : "Larva subagent failed.";
@@ -5591,7 +5591,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",
-    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending.",
+    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Do not use shell sleep polling for completion; wait for the push callback or use wait/select/events when available.",
     inputSchema: subagentSchema,
     parameters: subagentSchema,
     handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal, callbackSurface: callbackSurfaceFrom(ctx, pi) }).then((result) => wrapLarvaSubagentToolResult(result)),

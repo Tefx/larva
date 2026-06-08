@@ -89,11 +89,16 @@ Accepted result requirements:
 - `task_id` present and non-null
 - visible text includes: `Do not treat this accepted result as task evidence; a
   Larva subagent result callback is still pending.`
+- visible text also instructs agents not to use shell sleep polling when their
+  next step depends on the child result; they should wait for the
+  `larva-subagent-result` push, or use `wait`/`select`/`events` when available.
 - `isError: false`
 
 Rationale: Pi awaits tool calls and has no late ToolResult channel. Returning
 `accepted` quickly releases the main agent while the child continues under the
-extension runtime.
+extension runtime. The no-sleep guidance belongs in the accepted result because
+that is the exact decision point where a parent agent otherwise tends to retain
+control by calling `sleep` and polling status.
 
 ### Result callback
 
@@ -175,7 +180,18 @@ are not enough for deterministic orchestration, because a parent agent may need
 to wait on several exact child handles, replay missed terminal events, or inspect
 readiness without relying on fixed sleeps.
 
-Add three read-only model-facing tools for that deterministic path:
+No shell sleep polling:
+
+- Agents must not use `bash sleep`, timer loops, or repeated status polling as a
+  subagent completion primitive.
+- Before deterministic tools are available, conversational Pi flows should yield
+  the turn and wait for the `larva-subagent-result` push.
+- After deterministic tools are available, automation should use
+  `larva_subagent_wait`, `larva_subagent_select`, or `larva_subagent_events`.
+- `larva_subagent_status` is for inspection/debugging and exact handle checks; it
+  is not a blocking wait substitute.
+
+Add three read-only model-facing tools for the deterministic path:
 
 - `larva_subagent_events`: read the ordered process-local event stream.
 - `larva_subagent_wait`: wait for exact observed task handles to satisfy a small
@@ -197,7 +213,9 @@ Hard boundary:
 Rationale: this keeps orchestration boring and explicit. `task_id` remains the
 only public handle; push callbacks remain useful for interactive Pi sessions;
 `events/wait/select` give tests and agents deterministic visibility without
-creating a scheduler.
+creating a scheduler. Sleep polling is specifically forbidden because it is a
+model workaround for missing wait/yield guidance, not a reliable runtime
+contract.
 
 ### Background activity indicator
 
@@ -959,7 +977,11 @@ Implement in this order:
    model as `wait(return_when: "any")`.
 6. Add the interactive count-only background activity indicator from the same
    registry/event update points.
-7. Update tool descriptions, README/reference docs, and runtime smoke coverage.
+7. Update tool descriptions, accepted-result guidance, README/reference docs,
+   and runtime smoke coverage. Once `wait`/`select`/`events` exist, accepted text
+   should prefer deterministic tools for automation (`use wait/select/events`) and
+   keep push callback guidance for conversational Pi continuation only; it must
+   still explicitly forbid shell sleep polling.
 8. Re-run real Pi API/session proof so push callbacks and deterministic tools are
    both shown to observe the same child terminal result.
 
