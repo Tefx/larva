@@ -1295,6 +1295,14 @@ async function asyncSubagentContractExpectedRed(evidence) {
     && !Number.isNaN(Date.parse(run.updated_at))
     && "error" in run
     && (run.error === null || (isRecord(run.error) && typeof run.error.code === "string" && typeof run.error.message === "string"));
+  // Exact status probes may race before the child reaches waiting_for_child;
+  // accepted/session_ready and accepted/prompt_sent are still schema-complete
+  // process-local pending rows under the async subagent contract.
+  const hasPendingPreTerminalStatusRunShape = (run, taskId) => hasStatusRunShape(run, taskId, ["accepted", "running"])
+    && run.result_pending === true
+    && run.error === null
+    && ((run.status === "accepted" && ["session_ready", "prompt_sent", "waiting_for_child"].includes(run.phase))
+      || (run.status === "running" && run.phase === "waiting_for_child"));
 
   let acceptedResult = null;
   let acceptedError = null;
@@ -1800,7 +1808,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     status_schema_phase_result_pending_updated_at_error: {
       statusToolRegistered: Boolean(statusTool),
       activeRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["accepted", "running", "cancelling"])),
-      runningRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["running"])),
+      runningRecordSchema: statusObservedRuns.some((run) => hasPendingPreTerminalStatusRunShape(run, acceptedTaskIdForProbes)),
       terminalRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["success", "failed", "cancelled"])),
       exactTaskIdOnly: statusObservedRuns.length >= 3 && statusObservedRuns.every((run) => run.task_id === acceptedTaskIdForProbes),
     },

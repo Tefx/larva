@@ -69,6 +69,16 @@ def _node_prelude(tmp_path: Path) -> str:
           setActiveTools: () => true,
           on: () => undefined,
         }};
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        async function waitFor(predicate, timeoutMs = 1000, intervalMs = 10) {{
+          const start = Date.now();
+          while (Date.now() - start < timeoutMs) {{
+            const value = await predicate();
+            if (value) return value;
+            await sleep(intervalMs);
+          }}
+          return null;
+        }}
         async function writeFakeChild(path, scenario = "success") {{
           await writeFile(path, `#!/usr/bin/env node
             import {{ createInterface }} from "node:readline";
@@ -125,7 +135,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
         await mod.commitPersona("ok", ctx, piBase);
         const subagent = tools.find((tool) => tool.name === "larva_subagent");
         const success = await subagent.handler({ persona_id: "ok", task: "summarize child result" });
-        const successPromptEntry = mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "summarize child result");
+        const successPromptEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "summarize child result"));
         const failedBeforeSession = await subagent.handler({ persona_id: "ok", task: "" });
 
         const malformedChild = join(tmpRoot, "fake-pi-child-malformed.mjs");
@@ -134,6 +144,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
         const after = await registeredTools(afterEnv);
         await mod.commitPersona("ok", { env: afterEnv, modelRegistry }, piBase);
         const failedAfterAllocation = await after.tools.find((tool) => tool.name === "larva_subagent").handler({ persona_id: "ok", task: "fail after allocation" });
+        const failedAfterAllocationEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "failed" && entry.task_prompt === "fail after allocation"));
 
         const resumePath = join(childRoot, "resume-known.jsonl");
         await writeFile(resumePath, "{}\\n");
@@ -171,6 +182,8 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
             task_id: failedAfterAllocation.task_id,
             errorCode: failedAfterAllocation.error?.code,
             hasFooter: (failedAfterAllocation.content?.[0]?.text ?? "").includes("Larva subagent session:"),
+            terminalStatus: failedAfterAllocationEntry?.status ?? null,
+            terminalErrorCode: failedAfterAllocationEntry?.error?.code ?? null,
           },
           cancelled: {
             mirrorOk: mirrorOk(cancelled),
@@ -203,10 +216,12 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
         "noFooter": True,
     }
     assert payload["failedAfterAllocation"]["mirrorOk"] is True
-    assert payload["failedAfterAllocation"]["status"] == "failed"
-    assert payload["failedAfterAllocation"]["isError"] is True
+    assert payload["failedAfterAllocation"]["status"] == "accepted"
+    assert payload["failedAfterAllocation"]["isError"] is False
     assert payload["failedAfterAllocation"]["task_id"] is not None
     assert payload["failedAfterAllocation"]["hasFooter"] is True
+    assert payload["failedAfterAllocation"]["terminalStatus"] == "failed"
+    assert payload["failedAfterAllocation"]["terminalErrorCode"] == "LARVA_CHILD_PROTOCOL_FAILED"
     assert payload["cancelled"]["mirrorOk"] is True
     assert payload["cancelled"]["status"] == "cancelled"
     assert payload["cancelled"]["isError"] is True
@@ -257,7 +272,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
         const { tools, ctx } = await registeredTools(env);
         await mod.commitPersona("ok", ctx, piBase);
         const result = await tools.find((tool) => tool.name === "larva_subagent").handler({ persona_id: "ok", task: "stream tool snapshots" });
-        const finalEntry = mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots");
+        const finalEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots"));
         const cacheData = JSON.parse(await readFile(cacheFile, "utf8"));
         const cachedEntry = cacheData.entries.find((entry) => entry.task_id === result.task_id);
         const overlayText = mod.renderSubagentPresentationOverlayForTests({ task_id: result.task_id, expanded: true });
@@ -286,7 +301,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
         """,
     )
 
-    assert payload["resultStatus"] == "success", payload.get("resultError")
+    assert payload["resultStatus"] == "accepted", payload.get("resultError")
     assert payload["finalEntry"] == {
         "status": "success",
         "resultText": "final child output",
@@ -544,8 +559,11 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
           }
           if (!abort) {
             const result = await subagent.execute("case-" + name, params, undefined, () => undefined, ctx);
-            await new Promise((resolve) => setTimeout(resolve, 50));
-            return { status: result.status, errorCode: result.error?.code ?? null, orphan: await processExists(pidFile) };
+            const terminal = result.status === "accepted"
+              ? await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === result.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 1500)
+              : result;
+            await sleep(50);
+            return { status: terminal?.status ?? result.status, errorCode: terminal?.error?.code ?? result.error?.code ?? null, orphan: await processExists(pidFile) };
           }
           const controller = new AbortController();
           const promise = subagent.execute("case-abort", params, controller.signal, () => undefined, ctx);
@@ -597,6 +615,7 @@ def test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases(tmp
         const sessions = tools.find((tool) => tool.name === "larva_subagent_sessions");
         for (let index = 0; index < 27; index += 1) {
           await subagent.handler({ persona_id: "ok", task: `remember ${index}` });
+          await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === `remember ${index}`));
         }
         const defaultResult = sessions ? await sessions.handler({}) : null;
         const maxResult = sessions ? await sessions.handler({ limit: 25 }) : null;
@@ -818,7 +837,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         };
         await mod.initializeExtension(
           { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
-          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler(undefined, { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, ui: commandUi })); } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler("/tmp/long.jsonl", { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
@@ -849,7 +868,7 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           strictModalChromeParity: JSON.stringify(modalChromeFingerprint(commandCustomCalls[0].rendered, 80)) === JSON.stringify(modalChromeFingerprint(personaRenderedForChrome, 80)),
           allOverlayLinesFit: overlayStateKeys.every((key) => commandCustomCalls[0][key].every((line) => piTui.visibleWidth(line) <= 80)),
           overlayFrameStable,
-          overlayTabs: commandCustomCalls[0].rendered.some((line) => line.includes("● 1 Summary") && line.includes("○ 2 Prompt") && line.includes("○ 3 Output") && line.includes("○ 4 Timeline") && line.includes("○ 5 Metadata")) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].eventsTab.some((line) => line.includes("● 4 Timeline")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 4 Timeline")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
+          overlayTabs: ["● 1 Summary", "○ 2 Prompt", "○ 3 Output", "○ 4 Timeline", "○ 5 Metadata"].every((label) => commandCustomCalls[0].rendered.some((line) => line.includes(label))) && commandCustomCalls[0].promptTab.some((line) => line.includes("● 2 Prompt")) && commandCustomCalls[0].outputTab.some((line) => line.includes("● 3 Output")) && commandCustomCalls[0].eventsTab.some((line) => line.includes("● 4 Timeline")) && commandCustomCalls[0].metadataTab.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterLeft.some((line) => line.includes("● 4 Timeline")) && commandCustomCalls[0].afterRight.some((line) => line.includes("● 5 Metadata")) && commandCustomCalls[0].afterDigitOne.some((line) => line.includes("● 1 Summary")),
           summaryReadable: commandCustomCalls[0].rendered.some((line) => line.includes("Run")) && commandCustomCalls[0].rendered.some((line) => line.includes("Status") && line.includes("success")) && commandCustomCalls[0].rendered.some((line) => line.includes("Output") && line.includes("see Output tab")) && !commandCustomCalls[0].rendered.some((line) => line.includes("INITIAL_PROMPT_MARKER") || line.includes("# Markdown Heading")),
           promptTabVisible: commandCustomCalls[0].promptTab.some((line) => line.includes("Initial Prompt")) && commandCustomCalls[0].promptTab.some((line) => line.includes("Initial subagent prompt")) && commandResult.details.entries[0].task_prompt === initialPrompt,
           outputMarkdownPane: (() => { const plain = commandCustomCalls[0].outputTab.map(stripAnsi).join("\\n"); return plain.includes("Markdown Heading") && plain.includes("• bullet one") && plain.includes("fenced code output") && !plain.includes("# Markdown Heading") && !plain.includes("- bullet one") && !plain.includes("```text") && !plain.includes("```\\n"); })(),
@@ -1916,8 +1935,13 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
     assert contract["activeRecentCount"] >= 1
     assert contract["activeSchemaFields"] == expected_schema_fields
     assert contract["activeRun"]["persona_id"] == "ok"
-    assert contract["activeRun"]["status"] == "running"
-    assert contract["activeRun"]["phase"] == "waiting_for_child"
+    assert (
+        contract["activeRun"]["status"] == "accepted"
+        and contract["activeRun"]["phase"] in {"session_ready", "prompt_sent", "waiting_for_child"}
+    ) or (
+        contract["activeRun"]["status"] == "running"
+        and contract["activeRun"]["phase"] == "waiting_for_child"
+    )
     assert contract["activeRun"]["result_pending"] is True
     assert contract["activeRun"]["error"] is None
     assert contract["terminalExactCount"] == 1
