@@ -291,7 +291,9 @@ Success details schema:
 ```
 
 If an exact well-formed `task_id` is not observed by this parent process, return
-success with `runs: []`; do not guess or scan the filesystem.
+success with `runs: []`; do not guess, stat candidate files, canonicalize via the
+filesystem, or scan the filesystem. Exact observed `task_id` lookup returns one
+run: the latest process-local registry snapshot for that public handle.
 
 Allowed run statuses: `accepted`, `running`, `cancelling`, `cancelled`,
 `success`, `failed`.

@@ -872,10 +872,41 @@ resume a child process. For these pre-session failures, public `task_id` is
 `null`. `persona_id` in the result is the requested target id only after it passed
 basic non-empty string validation; otherwise it is an empty string.
 
+### Canonical process-local status tool
+
+The extension registers the canonical read-only model-facing status tool:
+
+```text
+larva_subagent_status(task_id?, limit?)
+```
+
+Input contract:
+
+- `task_id`: optional exact public child `.jsonl` path. Omitted or `null` lists
+  recent active-run registry snapshots. A string must be non-empty, absolute,
+  end in `.jsonl`, and stay under the child session root by lexical path
+  semantics. Invalid strings return `LARVA_BAD_INPUT`.
+- `limit`: optional integer; default `10`; allowed range `1..25`. Invalid values
+  return `LARVA_BAD_INPUT`.
+
+Success returns a Pi ToolResult wrapper with `details.status: "success"`,
+`details.runs`, and `details.error: null`. Each run contains only
+`task_id`, `persona_id`, `status`, `phase`, `result_pending`, `updated_at`, and
+`error`. Allowed run statuses are `accepted`, `running`, `cancelling`,
+`cancelled`, `success`, and `failed`.
+
+With an exact observed `task_id`, status returns exactly one latest registry
+snapshot for that public handle. A well-formed but unobserved exact `task_id`
+returns success with `runs: []`. The status tool never scans child session
+directories, stats candidate files, reads sidecars, uses a `last` alias, exposes a
+public `run_id`, or infers provenance from the filesystem.
+
 ### Recent sessions helper
 
-For medium-frequency subagent reuse, the extension may expose one small read-only
-helper:
+For compatibility and medium-frequency subagent reuse UX, the extension may
+retain one small read-only helper. It is non-authoritative: new model-facing docs
+and tests use `larva_subagent_status` for status, and this helper must not be used
+as resume, status, or provenance authority.
 
 ```text
 larva_subagent_sessions(limit?)
@@ -2180,7 +2211,8 @@ architecture_basis:
     policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; initial startup tolerates absent/unsupported enumeration surfaces with an empty baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
     persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent; list results are projected into prompt-free PersonaCandidate cache before UI use"
     subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; explicit null task_id is treated as omitted/new session; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
-    subagent_sessions_helper: "optional larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, or provenance proof"
+    subagent_status_tool: "canonical larva_subagent_status(task_id?, limit?: int = 10, 1..25) -> process-local active/recent registry snapshots with task_id/persona_id/status/phase/result_pending/updated_at/error; exact observed task_id returns one run; well-formed unobserved exact task_id returns runs: []; invalid input returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, public run_id, or provenance inference"
+    subagent_sessions_helper: "optional compatibility-only larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; non-authoritative for status/resume/provenance; no filesystem scan, sidecar, alias, or provenance proof"
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
     subagent_presentation_overlay: "/larva-subagent [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; /larva-log is only a deprecated view-mode alias; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"
     persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show candidates from the adapter-local persona cache while preserving Pi file-reference suggestions"
@@ -2234,8 +2266,8 @@ architecture_basis:
       - "Pi custom tool for subagent spawn/resume."
       - "Pi RPC JSONL for child sessions."
       - "Child stderr fatal-startup line before RPC readiness."
-      - "In-memory active-run registry for same-parent same-task resume exclusion."
-      - "In-memory recent-session index capped at 25 entries for optional larva_subagent_sessions(limit?) helper."
+      - "In-memory active-run registry for same-parent same-task resume exclusion and canonical larva_subagent_status(task_id?, limit?) snapshots."
+      - "In-memory recent-session index capped at 25 entries for optional compatibility-only larva_subagent_sessions(limit?) helper."
       - "Pi custom-tool row renderer for bounded subagent call, progress, and result visibility."
       - "Pi slash command /larva-subagent for view-only user-visible presentation-log overlay; /larva-log may remain as a deprecated view-mode alias."
       - "Adapter-local memory/disk persona candidate cache with background stale-while-revalidate refresh from public larva list --json."
@@ -2269,10 +2301,14 @@ architecture_basis:
         owner_module: "contrib/pi-extension"
         consumers: ["larva_subagent semantic result", "Pi ToolResult wrapper details", "Pi ToolResult top-level mirrors"]
         rationale: "Minimal semantic result shape: task_id, persona_id, status, result_text, error. Pi handler/execute wrap it with renderer-safe content, matching top-level/details fields, and isError; no semantic result is produced when tool_call blocks the tool before handler invocation."
+      - name: "LarvaSubagentRunSnapshot"
+        owner_module: "contrib/pi-extension"
+        consumers: ["canonical larva_subagent_status helper"]
+        rationale: "Process-local active/recent run inspection shape: task_id, persona_id, status, phase, result_pending, updated_at, error. It is not backed by filesystem discovery and exposes no public run_id."
       - name: "LarvaSubagentSessionSummary"
         owner_module: "contrib/pi-extension"
-        consumers: ["optional larva_subagent_sessions helper", "resume UX"]
-        rationale: "Small process-local UX/recovery shape capped at 25 retained entries: task_id, persona_id, last_status, sequence. It is not resume authority."
+        consumers: ["optional compatibility-only larva_subagent_sessions helper", "resume UX"]
+        rationale: "Small process-local UX/recovery shape capped at 25 retained entries: task_id, persona_id, last_status, sequence. It is not resume, status, or provenance authority."
       - name: "LarvaSubagentOverlayResult"
         owner_module: "contrib/pi-extension"
         consumers: ["/larva-subagent command", "/larva-log deprecated alias", "view-only presentation overlay"]
@@ -2645,7 +2681,17 @@ Implementation gates must prove these observable behaviors:
     resume footer in `content[0].text` containing `persona_id`, exact `task_id`,
     and an instruction to pass that `task_id` back to `larva_subagent`. Results
     with `task_id: null` do not show a resume footer.
-43. `larva_subagent_sessions(limit?)`, if exposed, accepts only an optional
+43. `larva_subagent_status(task_id?, limit?)` is the canonical model-facing
+    status tool. It accepts `limit` as an optional integer with default `10` and
+    range `1..25`; invalid values return `LARVA_BAD_INPUT`. Optional `task_id`
+    must be an exact absolute child `.jsonl` path string; invalid strings return
+    `LARVA_BAD_INPUT`. Exact observed `task_id` returns exactly one run from the
+    active-run registry; well-formed but unobserved exact `task_id` returns
+    success with `details.runs: []`. Each run includes `task_id`, `persona_id`,
+    `status`, `phase`, `result_pending`, `updated_at`, and `error`. It does not
+    scan the filesystem, stat candidate files, write sidecar metadata, expose a
+    public `run_id`, create a `last` alias, or infer provenance.
+    `larva_subagent_sessions(limit?)`, if exposed, accepts only an optional
     positive integer `limit` with default `10` and maximum `25`; invalid values
     return a Pi-facing ToolResult with `isError: true`, `details.status` set to
     `"failed"`, `details.sessions` set to `[]`, and `details.error.code` set to
@@ -2656,8 +2702,9 @@ Implementation gates must prove these observable behaviors:
     entries already observed by this parent extension, and `details.error: null`;
     the process-local index retains at most 25 entries and evicts the oldest
     retained entry when a new entry exceeds that bound; the response has no top-level
-    `sessions` field. It does not scan the filesystem, write sidecar metadata,
-    create a `last` alias, or relax normal `task_id` resume validation.
+    `sessions` field. It is compatibility-only and non-authoritative for status,
+    resume, or provenance. It does not scan the filesystem, write sidecar
+    metadata, create a `last` alias, or relax normal `task_id` resume validation.
 
 44. `larva_subagent` custom rendering uses `renderCall` to show target
     `persona_id`, new/resume mode, and a task preview bounded to 120 visible

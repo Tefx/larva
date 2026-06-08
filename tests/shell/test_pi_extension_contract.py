@@ -3087,6 +3087,18 @@ def test_async_subagent_a2_a3_a6_expected_red_model_facing_tools_and_registry_so
     assert "task_id" in subagent_schema.group("body")
     assert "run_id" not in subagent_schema.group("body")
 
+    status_match = re.search(
+        r"export async function larva_subagent_status[\s\S]*?\n}\n\ntype ParsedSubagentCancelInput",
+        source,
+    )
+    assert status_match is not None
+    status_body = status_match.group(0)
+    assert "validatePublicTaskIdForStatus" in status_body
+    assert "activeSubagentRunByTaskId" in source
+    assert "validatePublicTaskIdForControl" not in status_body
+    assert "validateTaskId" not in status_body
+    assert "childSessionRoot(" not in status_body
+
 
 def test_async_subagent_a4_a7_expected_red_result_callback_and_lifecycle_source_contract() -> None:
     """Expected-red A4/A7: Pi result callback boundary and stale-callback lifecycle cleanup."""

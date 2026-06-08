@@ -1844,35 +1844,90 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
         const env = baseEnv();
         const ctx = { env, modelRegistry, ui: { setStatus: () => undefined, notify: () => undefined } };
         await mod.initializeExtension(ctx, { ...piBase, registerTool: (tool) => tools.push(tool), registerCommand: () => undefined });
+        await mod.commitPersona("ok", ctx, piBase);
         const statusTool = tools.find((tool) => tool.name === "larva_subagent_status");
-        const unobservedTaskId = join(childRoot, "status-unobserved.jsonl");
-        await writeFile(unobservedTaskId, "{}\\n");
-        const result = statusTool
-          ? await (statusTool.handler ?? ((input) => statusTool.execute("status-exact", input, undefined, undefined, ctx)))({ task_id: unobservedTaskId })
-          : null;
-        const defaultResult = statusTool
-          ? await (statusTool.handler ?? ((input) => statusTool.execute("status-default", input, undefined, undefined, ctx)))({ limit: 25 })
-          : null;
+        const status = (input) => statusTool.handler?.(input) ?? statusTool.execute("status", input, undefined, undefined, ctx);
+        const unobservedTaskId = join(childRoot, "status-unobserved-missing-file.jsonl");
+        const unobserved = statusTool ? await status({ task_id: unobservedTaskId }) : null;
+        const invalidInputs = statusTool ? await Promise.all([
+          { task_id: "last" },
+          { task_id: "relative.jsonl" },
+          { task_id: join(tmpRoot, "outside-root.jsonl") },
+          { task_id: join(childRoot, "wrong-suffix.txt") },
+          { limit: 0 },
+          { limit: 26 },
+          { limit: 1.5 },
+          { limit: "10" },
+        ].map((input) => status(input))) : [];
+
+        const statusChild = join(tmpRoot, "status-success-child.mjs");
+        await writeFakeChild(statusChild, "success");
+        const statusCtx = { ...ctx, env: baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: statusChild, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" }) };
+        const acceptedStatusRun = await mod.larva_subagent({ persona_id: "ok", task: "status active then terminal proof" }, statusCtx);
+        const activeExact = statusTool ? await status({ task_id: acceptedStatusRun.task_id, limit: 25 }) : null;
+        const activeRecent = statusTool ? await status({ limit: 25 }) : null;
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        const terminalExact = statusTool ? await status({ task_id: acceptedStatusRun.task_id }) : null;
+
         console.log(JSON.stringify({
           registeredTools: tools.map((tool) => tool.name),
           status_contract: {
             registered: Boolean(statusTool),
-            unobservedRuns: result?.details?.runs ?? null,
-            defaultLimitCount: defaultResult?.details?.runs?.length ?? null,
-            invalidLimitCode: statusTool ? (await (statusTool.handler ?? ((input) => statusTool.execute("status-invalid", input, undefined, undefined, ctx)))({ limit: 26 })).details?.error?.code ?? null : null,
-            schemaFields: result?.details?.runs?.[0] ? Object.keys(result.details.runs[0]).sort() : [],
+            unobservedRuns: unobserved?.details?.runs ?? null,
+            unobservedIsError: unobserved?.isError ?? null,
+            defaultLimitDescription: statusTool?.parameters?.properties?.limit?.description ?? null,
+            invalidLimitAndTaskCodes: invalidInputs.map((result) => result.details?.error?.code ?? null),
+            acceptedStatus: acceptedStatusRun.status,
+            acceptedError: acceptedStatusRun.error?.code ?? null,
+            acceptedTaskId: acceptedStatusRun.task_id ?? null,
+            activeExactError: activeExact?.details?.error?.code ?? null,
+            activeExactCount: activeExact?.details?.runs?.length ?? null,
+            activeRecentCount: activeRecent?.details?.runs?.length ?? null,
+            activeSchemaFields: activeExact?.details?.runs?.[0] ? Object.keys(activeExact.details.runs[0]).sort() : [],
+            activeRun: activeExact?.details?.runs?.[0] ?? null,
+            terminalExactCount: terminalExact?.details?.runs?.length ?? null,
+            terminalSchemaFields: terminalExact?.details?.runs?.[0] ? Object.keys(terminalExact.details.runs[0]).sort() : [],
+            terminalRun: terminalExact?.details?.runs?.[0] ?? null,
+            topLevelRunsAbsent: activeExact !== null && !("runs" in activeExact),
           },
         }, null, 2));
         """,
     )
 
-    assert payload["status_contract"] == {
-        "registered": True,
-        "unobservedRuns": [],
-        "defaultLimitCount": 0,
-        "invalidLimitCode": "LARVA_BAD_INPUT",
-        "schemaFields": [],
-    }
+    contract = payload["status_contract"]
+    expected_schema_fields = [
+        "error",
+        "persona_id",
+        "phase",
+        "result_pending",
+        "status",
+        "task_id",
+        "updated_at",
+    ]
+    assert contract["registered"] is True
+    assert contract["unobservedRuns"] == []
+    assert contract["unobservedIsError"] is False
+    assert "default 10" in contract["defaultLimitDescription"]
+    assert contract["invalidLimitAndTaskCodes"] == ["LARVA_BAD_INPUT"] * 8
+    assert contract["acceptedStatus"] == "accepted"
+    assert contract["acceptedError"] is None
+    assert isinstance(contract["acceptedTaskId"], str) and contract["acceptedTaskId"].endswith(".jsonl")
+    assert contract["activeExactCount"] == 1
+    assert contract["activeRecentCount"] >= 1
+    assert contract["activeSchemaFields"] == expected_schema_fields
+    assert contract["activeRun"]["persona_id"] == "ok"
+    assert contract["activeRun"]["status"] == "running"
+    assert contract["activeRun"]["phase"] == "waiting_for_child"
+    assert contract["activeRun"]["result_pending"] is True
+    assert contract["activeRun"]["error"] is None
+    assert contract["terminalExactCount"] == 1
+    assert contract["terminalSchemaFields"] == expected_schema_fields
+    assert contract["terminalRun"]["persona_id"] == "ok"
+    assert contract["terminalRun"]["status"] == "success"
+    assert contract["terminalRun"]["phase"] == "success"
+    assert contract["terminalRun"]["result_pending"] is False
+    assert contract["terminalRun"]["error"] is None
+    assert contract["topLevelRunsAbsent"] is True
 
 
 def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not_protocol_failure(tmp_path: Path) -> None:

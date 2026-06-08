@@ -690,12 +690,15 @@ The child session root defaults to:
 ~/.pi/larva/child-sessions
 ```
 
-`larva_subagent_status` is read-only process-local inspection. With `task_id`, it
-reports the exact observed run. Without `task_id`, it reports newest observed
-runs up to `limit`; `limit` defaults to 10 and must be an integer from 1 to 25.
-It does not scan child session directories and does not infer resume provenance.
-A well-formed but unobserved exact `task_id` returns an empty result rather than a
-guess.
+`larva_subagent_status` is the canonical model-facing read-only process-local
+inspection tool. With `task_id`, it reports exactly one observed run. Without
+`task_id`, it reports newest observed active/recent runs up to `limit`; `limit`
+defaults to 10 and must be an integer from 1 to 25. It validates the `task_id`
+string lexically as an absolute child `.jsonl` path and does not scan child
+session directories, stat candidate files, or infer resume provenance. A
+well-formed but unobserved exact `task_id` returns an empty result rather than a
+guess. `larva_subagent_sessions`, if retained, is only a compatibility UX helper
+and is non-authoritative for status, resume, or provenance.
 
 `larva_subagent_cancel` cancels one exact active child by `task_id` and requires a
 non-empty bounded reason. Cancellation must target only that child: it must not

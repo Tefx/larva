@@ -1799,7 +1799,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     },
     status_schema_phase_result_pending_updated_at_error: {
       statusToolRegistered: Boolean(statusTool),
-      acceptedRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["accepted"])),
+      activeRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["accepted", "running", "cancelling"])),
       runningRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["running"])),
       terminalRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["success", "failed", "cancelled"])),
       exactTaskIdOnly: statusObservedRuns.length >= 3 && statusObservedRuns.every((run) => run.task_id === acceptedTaskIdForProbes),

@@ -4115,11 +4115,29 @@ async function validatePublicTaskIdForControl(taskId: string, env: RuntimeEnv): 
   return validated;
 }
 
-function statusSnapshotsForExactTask(taskId: string): LarvaSubagentRunSnapshot[] {
+function lexicalStatusChildSessionRoot(env: RuntimeEnv): string | LarvaError {
+  const configured = env.LARVA_PI_CHILD_SESSION_DIR;
+  if (configured !== undefined && configured.length === 0) return error("LARVA_BAD_INPUT", "Child session root override must be non-empty.");
+  const root = configured ?? join(homedir(), DEFAULT_CHILD_SESSION_ROOT_SUFFIX);
+  if (!isAbsolute(root)) return error("LARVA_BAD_INPUT", "Child session root must be absolute.");
+  return resolve(root);
+}
+
+function validatePublicTaskIdForStatus(taskId: string, env: RuntimeEnv): string | LarvaError {
+  if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
+  if (!taskId.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
+  if (activeSubagentRunByTaskId(taskId) !== null) return taskId;
+  const root = lexicalStatusChildSessionRoot(env);
+  if (isLarvaError(root)) return root;
+  const normalizedTaskId = resolve(taskId);
+  if (!isUnderRoot(root, normalizedTaskId)) return error("LARVA_BAD_INPUT", "task_id must stay inside childSessionRoot.");
+  return normalizedTaskId;
+}
+
+function statusSnapshotForExactTask(taskId: string): LarvaSubagentRunSnapshot[] {
   const record = activeSubagentRunByTaskId(taskId);
-  if (record === null) return [];
-  const snapshots = record.status_history.length > 0 ? record.status_history : [statusSnapshotForRun(record)].filter((snapshot): snapshot is LarvaSubagentRunSnapshot => snapshot !== null);
-  return snapshots.map((snapshot) => ({ ...snapshot }));
+  const latest = record?.status_history.at(-1) ?? (record === null ? null : statusSnapshotForRun(record));
+  return latest === null ? [] : [{ ...latest }];
 }
 
 function latestStatusSnapshots(limit: number): LarvaSubagentRunSnapshot[] {
@@ -4144,9 +4162,9 @@ export async function larva_subagent_status(input?: unknown, ctx?: { env?: Runti
   const parsed = parseSubagentStatusInput(input);
   if (isLarvaError(parsed)) return wrapSubagentStatusResult([], parsed);
   if (parsed.taskId !== null) {
-    const validated = await validatePublicTaskIdForControl(parsed.taskId, currentEnv(ctx));
+    const validated = validatePublicTaskIdForStatus(parsed.taskId, currentEnv(ctx));
     if (isLarvaError(validated)) return wrapSubagentStatusResult([], validated);
-    return wrapSubagentStatusResult(statusSnapshotsForExactTask(validated).slice(-parsed.limit));
+    return wrapSubagentStatusResult(statusSnapshotForExactTask(validated));
   }
   return wrapSubagentStatusResult(latestStatusSnapshots(parsed.limit));
 }

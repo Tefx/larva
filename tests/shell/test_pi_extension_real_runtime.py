@@ -786,7 +786,7 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
         },
         "status_schema_phase_result_pending_updated_at_error": {
             "statusToolRegistered": True,
-            "acceptedRecordSchema": True,
+            "activeRecordSchema": True,
             "runningRecordSchema": True,
             "terminalRecordSchema": True,
             "exactTaskIdOnly": True,
