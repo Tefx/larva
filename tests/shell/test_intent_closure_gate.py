@@ -222,6 +222,130 @@ phases:
     assert data["checks"][0]["expected_red"] is True
 
 
+def test_description_metadata_fallback_accepts_exact_expected_red_owner(fake_worktree, tmp_path):
+    worktree, base_sha = fake_worktree
+    plan = tmp_path / "plan.yaml"
+    plan.write_text("""
+phases:
+  - steps:
+      - id: "test_step"
+        description: |
+          step_type: test
+          step_intent: test_define_red
+          expected_result: red
+          <intent_closure_contract>
+          allowed_paths:
+            - "scripts/intent_closure_gate.py"
+            - "plan.yaml"
+          blocked_paths: []
+          required_claims:
+            - description_metadata_fallback_accepts_exact_expected_red_owner
+          required_checks:
+            - id: expected_red_check
+              command: ["python", "-c", "import sys; print('known async gap exposed'); sys.exit(7)"]
+              expected_exit_codes: [7]
+              expected_output_patterns_all:
+                - "known async gap"
+              covers_claims:
+                - description_metadata_fallback_accepts_exact_expected_red_owner
+          </intent_closure_contract>
+""")
+    out_json = tmp_path / "out.json"
+
+    result = _run_gate(plan, "test_step", worktree, base_sha, out_json)
+
+    assert result.returncode == 0
+    data = json.loads(out_json.read_text())
+    assert data["status"] == "CONFORMANT"
+    assert data["checks"][0]["status"] == "PASS"
+    assert data["checks"][0]["expected_red"] is True
+
+
+@pytest.mark.parametrize(
+    "description_metadata",
+    [
+        "This step is a test_define_red expected red test.",
+        "step_type: test\nstep_intent: test_define_red",
+        "step_type: implementation\nstep_intent: test_define_red\nexpected_result: red",
+        "step_type: verification\nstep_intent: test_define_red\nexpected_result: red",
+        "step_type: gate\nstep_intent: test_define_red\nexpected_result: red",
+    ],
+)
+def test_description_metadata_fallback_rejects_non_exact_expected_red_owner(
+    fake_worktree, tmp_path, description_metadata
+):
+    worktree, base_sha = fake_worktree
+    plan = tmp_path / "plan.yaml"
+    plan.write_text(f"""
+phases:
+  - steps:
+      - id: "test_step"
+        description: |
+{chr(10).join(f"          {line}" for line in description_metadata.splitlines())}
+          <intent_closure_contract>
+          allowed_paths:
+            - "scripts/intent_closure_gate.py"
+            - "plan.yaml"
+          blocked_paths: []
+          required_claims:
+            - description_metadata_fallback_rejects_non_exact_expected_red_owner
+          required_checks:
+            - id: expected_red_check
+              command: ["python", "-c", "import sys; print('known async gap exposed'); sys.exit(7)"]
+              expected_exit_codes: [7]
+              expected_output_patterns_all:
+                - "known async gap"
+              covers_claims:
+                - description_metadata_fallback_rejects_non_exact_expected_red_owner
+          </intent_closure_contract>
+""")
+    out_json = tmp_path / "out.json"
+
+    result = _run_gate(plan, "test_step", worktree, base_sha, out_json)
+
+    assert result.returncode == 2
+    data = json.loads(out_json.read_text())
+    assert data["status"] == "REJECTED"
+    assert data["checks"][0]["status"] == "FAIL"
+    assert "expected-red metadata is only honored" in data["checks"][0]["failure_reason"]
+
+
+def test_description_metadata_fallback_still_requires_check_expected_red_metadata(fake_worktree, tmp_path):
+    worktree, base_sha = fake_worktree
+    plan = tmp_path / "plan.yaml"
+    plan.write_text("""
+phases:
+  - steps:
+      - id: "test_step"
+        description: |
+          step_type: test
+          step_intent: test_define_red
+          expected_result: red
+          <intent_closure_contract>
+          allowed_paths:
+            - "scripts/intent_closure_gate.py"
+            - "plan.yaml"
+          blocked_paths: []
+          required_claims:
+            - description_metadata_fallback_still_requires_check_expected_red_metadata
+          required_checks:
+            - id: missing_metadata_check
+              command: ["python", "-c", "import sys; print('known async gap exposed'); sys.exit(7)"]
+              covers_claims:
+                - description_metadata_fallback_still_requires_check_expected_red_metadata
+          </intent_closure_contract>
+""")
+    out_json = tmp_path / "out.json"
+
+    result = _run_gate(plan, "test_step", worktree, base_sha, out_json)
+
+    assert result.returncode == 2
+    data = json.loads(out_json.read_text())
+    assert data["status"] == "REJECTED"
+    assert data["checks"][0]["status"] == "FAIL"
+    assert data["checks"][0]["failure_reason"] == "exit code 7; expected 0"
+
+
 def test_expected_red_checks_reject_unmatched_failures(fake_worktree, tmp_path):
     worktree, base_sha = fake_worktree
     plan = tmp_path / "plan.yaml"

@@ -133,11 +133,37 @@ def validate_claims_coverage(contract: Dict[str, Any]) -> Tuple[bool, List[str]]
          
     return len(errors) == 0, errors
 
+def _description_owner_metadata(step_desc: str) -> Dict[str, str]:
+    description_without_contract = re.sub(
+        r"<intent_closure_contract>.*?</intent_closure_contract>",
+        "",
+        step_desc,
+        flags=re.DOTALL,
+    )
+    metadata: Dict[str, str] = {}
+    for line in description_without_contract.splitlines():
+        match = re.fullmatch(r"\s*(step_type|step_intent|expected_result):\s*(\S+)\s*", line)
+        if match:
+            metadata[match.group(1)] = match.group(2)
+    return metadata
+
+
 def step_allows_expected_red(step: Dict[str, Any]) -> bool:
+    if all(key in step for key in ("step_type", "step_intent", "expected_result")):
+        return (
+            step.get("step_type") == "test"
+            and step.get("step_intent") == "test_define_red"
+            and step.get("expected_result") == "red"
+        )
+
+    if any(key in step for key in ("step_type", "step_intent", "expected_result")):
+        return False
+
+    metadata = _description_owner_metadata(str(step.get("description", "")))
     return (
-        step.get("step_type") == "test"
-        and step.get("step_intent") == "test_define_red"
-        and step.get("expected_result") == "red"
+        metadata.get("step_type") == "test"
+        and metadata.get("step_intent") == "test_define_red"
+        and metadata.get("expected_result") == "red"
     )
 
 def expected_patterns(check: Dict[str, Any]) -> List[str]:
