@@ -303,6 +303,87 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
 
 
+@pytest.mark.parametrize(
+    ("tool_name", "required_tokens"),
+    [
+        (
+            "larva_subagent_events",
+            (
+                'name: "larva_subagent_events"',
+                "since_sequence",
+                "cursor_expired",
+                "next_sequence",
+                "latest 1000 recent events",
+                "sequence > since_sequence",
+            ),
+        ),
+        (
+            "larva_subagent_wait",
+            (
+                'name: "larva_subagent_wait"',
+                'return_when: "all"',
+                'return_when: "any"',
+                'return_when: "first_error"',
+                "timeout_ms",
+                "LARVA_SUBAGENT_NOT_OBSERVED",
+            ),
+        ),
+        (
+            "larva_subagent_select",
+            (
+                'name: "larva_subagent_select"',
+                'return_when: "any"',
+                "same output model as wait",
+                "task_ids",
+                "timeout_ms",
+            ),
+        ),
+    ],
+)
+def test_async_subagent_deterministic_orchestration_tools_expected_red(
+    tool_name: str, required_tokens: tuple[str, ...]
+) -> None:
+    """Expected-red: deterministic async tools must be model-facing registered contracts."""
+    source = _source()
+
+    missing = [token for token in required_tokens if token not in source]
+    assert not missing, f"{tool_name} deterministic orchestration gap; missing tokens: {missing}"
+
+
+def test_async_subagent_accepted_result_guides_against_shell_sleep_polling_expected_red() -> None:
+    """Expected-red: accepted receipts must steer agents away from bash sleep polling."""
+    source = _source()
+    guidance_tokens = (
+        "Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending.",
+        "Do not use shell sleep polling",
+        "larva_subagent_wait",
+        "larva_subagent_select",
+        "larva_subagent_events",
+    )
+
+    missing = [token for token in guidance_tokens if token not in source]
+    assert not missing, f"accepted async receipt guidance gap; missing tokens: {missing}"
+
+
+def test_async_subagent_background_activity_indicator_count_only_expected_red() -> None:
+    """Expected-red: live subagent status indicator must be aggregate/count-only."""
+    source = _source()
+    indicator_tokens = (
+        "updateSubagentBackgroundIndicator",
+        "Larva: idle",
+        "Larva: ",
+        " bg",
+        "activeSubagentRuns",
+        "task_preview",
+    )
+
+    missing = [token for token in indicator_tokens if token not in source]
+    assert not missing, f"count-only background indicator gap; missing tokens: {missing}"
+    indicator_source = source[source.index("updateSubagentBackgroundIndicator") :]
+    assert "setTimeout" not in indicator_source[:1200]
+    assert "task_preview" not in indicator_source[:1200]
+
+
 def test_live_pi_command_registration_uses_two_arg_argument_completion_shape(tmp_path: Path) -> None:
     """Mirror Pi v0.75.5 slash autocomplete's registered command contract.
 

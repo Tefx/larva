@@ -1306,6 +1306,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const handlers = new Map();
   const sessionEntries = [];
   const callbackEntries = [];
+  const statusCalls = [];
   const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
   const recordCallback = (surface, customType, data, options = {}) => {
     const entry = { surface, customType, data, options };
@@ -1324,7 +1325,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       LARVA_PI_INTERACTIVE_TUI: "1",
     }),
     modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
-    ui: { setStatus: async () => undefined, notify: async () => undefined, custom: async () => ({ opened: true }) },
+    ui: { setStatus: async (...args) => { statusCalls.push(args); }, notify: async () => undefined, custom: async () => ({ opened: true }) },
     hasUI: true,
     session: {
       entries: sessionEntries,
@@ -1376,6 +1377,9 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const toolByName = (name) => tools.find((tool) => tool.name === name) ?? null;
   const statusTool = toolByName("larva_subagent_status");
   const cancelTool = toolByName("larva_subagent_cancel");
+  const eventsTool = toolByName("larva_subagent_events");
+  const waitTool = toolByName("larva_subagent_wait");
+  const selectTool = toolByName("larva_subagent_select");
   const runTool = async (tool, callId, input, toolCtx = ctx, signal = undefined, onUpdate = undefined) => {
     if (!tool) return { invoked: false, input, result: null, error: "TOOL_NOT_REGISTERED" };
     try {
@@ -1420,6 +1424,59 @@ async function asyncSubagentContractExpectedRed(evidence) {
       status: details?.status ?? null,
       errorCode: errorCodeOf(invoked.result) ?? invoked.error,
       callbackCountAtReturn: callbackEntries.length,
+    };
+  };
+  const invokeEvents = async (label, input, eventsCtx = ctx) => {
+    const invoked = await runTool(eventsTool, `events-${label}`, input, eventsCtx);
+    const details = detailsOf(invoked.result);
+    return {
+      label,
+      input,
+      invoked: invoked.invoked,
+      error: invoked.error,
+      status: details?.status ?? null,
+      events: Array.isArray(details?.events) ? details.events : null,
+      next_sequence: Number.isInteger(details?.next_sequence) ? details.next_sequence : null,
+      cursor_expired: typeof details?.cursor_expired === "boolean" ? details.cursor_expired : null,
+      errorCode: errorCodeOf(invoked.result) ?? invoked.error,
+    };
+  };
+  const invokeWait = async (label, input, waitCtx = ctx) => {
+    const invoked = await runTool(waitTool, `wait-${label}`, input, waitCtx);
+    const details = detailsOf(invoked.result);
+    return {
+      label,
+      input,
+      invoked: invoked.invoked,
+      error: invoked.error,
+      status: details?.status ?? null,
+      return_when: details?.return_when ?? null,
+      satisfied: typeof details?.satisfied === "boolean" ? details.satisfied : null,
+      timed_out: typeof details?.timed_out === "boolean" ? details.timed_out : null,
+      runs: Array.isArray(details?.runs) ? details.runs : null,
+      ready_task_ids: Array.isArray(details?.ready_task_ids) ? details.ready_task_ids : null,
+      pending_task_ids: Array.isArray(details?.pending_task_ids) ? details.pending_task_ids : null,
+      next_sequence: Number.isInteger(details?.next_sequence) ? details.next_sequence : null,
+      errorCode: errorCodeOf(invoked.result) ?? invoked.error,
+    };
+  };
+  const invokeSelect = async (label, input, selectCtx = ctx) => {
+    const invoked = await runTool(selectTool, `select-${label}`, input, selectCtx);
+    const details = detailsOf(invoked.result);
+    return {
+      label,
+      input,
+      invoked: invoked.invoked,
+      error: invoked.error,
+      status: details?.status ?? null,
+      return_when: details?.return_when ?? null,
+      satisfied: typeof details?.satisfied === "boolean" ? details.satisfied : null,
+      timed_out: typeof details?.timed_out === "boolean" ? details.timed_out : null,
+      runs: Array.isArray(details?.runs) ? details.runs : null,
+      ready_task_ids: Array.isArray(details?.ready_task_ids) ? details.ready_task_ids : null,
+      pending_task_ids: Array.isArray(details?.pending_task_ids) ? details.pending_task_ids : null,
+      next_sequence: Number.isInteger(details?.next_sequence) ? details.next_sequence : null,
+      errorCode: errorCodeOf(invoked.result) ?? invoked.error,
     };
   };
   const callbackForStatus = (status, startIndex = 0) => callbackEntries.slice(startIndex).find((entry) => entry?.data?.status === status) ?? null;
@@ -1590,6 +1647,68 @@ async function asyncSubagentContractExpectedRed(evidence) {
     expectedTaskId: acceptedTaskIdForProbes,
     observations: statusObservationRows,
     observedRuns: statusObservedRuns,
+  };
+
+  const eventsAfterTerminal = await invokeEvents("after-terminal", {
+    since_sequence: 0,
+    task_ids: [acceptedTaskIdForProbes],
+    limit: 100,
+  });
+  const eventsFilteredNoMatch = await invokeEvents("filtered-no-match", {
+    since_sequence: eventsAfterTerminal.next_sequence ?? 0,
+    task_ids: [join(childSessionRoot, "well-formed-but-unobserved.jsonl")],
+    limit: 10,
+  });
+  const waitAllTerminal = await invokeWait("all-terminal", {
+    task_ids: [acceptedTaskIdForProbes],
+    return_when: "all",
+    timeout_ms: 0,
+  });
+  const waitAnyTerminal = await invokeWait("any-terminal", {
+    task_ids: [acceptedTaskIdForProbes],
+    return_when: "any",
+    timeout_ms: 0,
+  });
+  const waitFirstErrorOnSuccess = await invokeWait("first-error-success", {
+    task_ids: [acceptedTaskIdForProbes],
+    return_when: "first_error",
+    timeout_ms: 0,
+  });
+  const waitUnobserved = await invokeWait("unobserved", {
+    task_ids: [join(childSessionRoot, "well-formed-unobserved-wait.jsonl")],
+    return_when: "all",
+    timeout_ms: 0,
+  });
+  const selectAnyTerminal = await invokeSelect("any-terminal", {
+    task_ids: [acceptedTaskIdForProbes],
+    timeout_ms: 0,
+  });
+  const deterministicOrchestrationProbe = {
+    registeredToolNames: tools.map((tool) => tool.name),
+    eventsAfterTerminal,
+    eventsFilteredNoMatch,
+    waitAllTerminal,
+    waitAnyTerminal,
+    waitFirstErrorOnSuccess,
+    waitUnobserved,
+    selectAnyTerminal,
+    sourceProbe: {
+      noJoinTool: !source.includes('name: "larva_subagent_join"') && !source.includes("larva_subagent_join"),
+      retentionBoundPinned: source.includes("1000") && source.includes("cursor_expired"),
+      noFilesystemDiscoveryForEvents: !/larva_subagent_events[\s\S]{0,2000}(readFile|readdir|glob|jsonl)/.test(source),
+    },
+  };
+  const statusTextEntries = statusCalls.map((args) => args.filter((value) => typeof value === "string").join(" "));
+  const backgroundIndicatorTexts = statusTextEntries.filter((text) => /Larva: (?:idle|\d+ (?:bg|running|cancelling))/.test(text));
+  const backgroundIndicatorProbe = {
+    statusCalls,
+    statusTextEntries,
+    backgroundIndicatorTexts,
+    taskId: acceptedTaskIdForProbes,
+    activeCountOnlyTextObserved: backgroundIndicatorTexts.some((text) => /Larva: \d+ (?:bg|running)/.test(text)),
+    taskTextAndHandleHidden: backgroundIndicatorTexts.every((text) => !text.includes("produce one async callback") && !text.includes(acceptedTaskIdForProbes)),
+    noControlSurfaceText: backgroundIndicatorTexts.every((text) => !/cancel|clear|select|task_id/i.test(text)),
+    idleOrHiddenAfterTerminal: backgroundIndicatorTexts.length === 0 || backgroundIndicatorTexts.at(-1) === "Larva: idle" || /Larva: 0 /.test(backgroundIndicatorTexts.at(-1)),
   };
 
   const failedCallbackChild = join(sessionRoot, "failed-callback-child.mjs");
@@ -2034,6 +2153,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
       taskIdAllocated: typeof acceptedDetails?.task_id === "string" && acceptedDetails.task_id.length > 0,
       returnedBeforeTerminalOutput: elapsedMs < terminalDelayMs - 100 && terminalMarkerExistsAtReturn === false,
       acceptedTextWarnsEvidencePending: /Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending\./.test(acceptedText),
+      acceptedTextGuidesNoShellSleep: /Do not use shell sleep polling/i.test(acceptedText)
+        && /larva_subagent_(?:events|wait|select)/.test(acceptedText),
       noFinalOutputInAcceptedResult: !acceptedText.includes("ASYNC_CALLBACK_FINAL") && !acceptedResult?.result_text,
     },
     callbacks: {
@@ -2079,6 +2200,52 @@ async function asyncSubagentContractExpectedRed(evidence) {
       runningRecordSchema: statusObservedRuns.some((run) => hasPendingPreTerminalStatusRunShape(run, acceptedTaskIdForProbes)),
       terminalRecordSchema: statusObservedRuns.some((run) => hasStatusRunShape(run, acceptedTaskIdForProbes, ["success", "failed", "cancelled"])),
       exactTaskIdOnly: statusObservedRuns.length >= 3 && statusObservedRuns.every((run) => run.task_id === acceptedTaskIdForProbes),
+    },
+    deterministic_events_contract: {
+      eventsToolRegistered: Boolean(eventsTool),
+      eventsReadObservedTask: eventsAfterTerminal.status === "success"
+        && Array.isArray(eventsAfterTerminal.events)
+        && eventsAfterTerminal.events.some((event) => event.task_id === acceptedTaskIdForProbes && event.kind === "accepted")
+        && eventsAfterTerminal.events.some((event) => event.task_id === acceptedTaskIdForProbes && event.kind === "terminal" && event.result_pending === false),
+      eventsCursorShape: eventsAfterTerminal.status === "success"
+        && Number.isInteger(eventsAfterTerminal.next_sequence)
+        && typeof eventsAfterTerminal.cursor_expired === "boolean",
+      filteredCursorAdvancesWithoutFilesystemDiscovery: eventsFilteredNoMatch.status === "success"
+        && Array.isArray(eventsFilteredNoMatch.events)
+        && eventsFilteredNoMatch.events.length === 0
+        && Number.isInteger(eventsFilteredNoMatch.next_sequence)
+        && deterministicOrchestrationProbe.sourceProbe.noFilesystemDiscoveryForEvents === true,
+      retentionCursorRulesPinned: deterministicOrchestrationProbe.sourceProbe.retentionBoundPinned === true,
+      noJoinTool: deterministicOrchestrationProbe.sourceProbe.noJoinTool === true,
+    },
+    deterministic_wait_select_contract: {
+      waitToolRegistered: Boolean(waitTool),
+      selectToolRegistered: Boolean(selectTool),
+      waitAllTerminalSatisfied: waitAllTerminal.status === "success"
+        && waitAllTerminal.return_when === "all"
+        && waitAllTerminal.satisfied === true
+        && waitAllTerminal.timed_out === false
+        && Array.isArray(waitAllTerminal.ready_task_ids)
+        && waitAllTerminal.ready_task_ids.includes(acceptedTaskIdForProbes),
+      waitAnyTerminalSatisfied: waitAnyTerminal.status === "success"
+        && waitAnyTerminal.return_when === "any"
+        && waitAnyTerminal.satisfied === true
+        && waitAnyTerminal.timed_out === false,
+      waitFirstErrorIgnoresSuccessfulCallbackDeliveryDiagnostics: waitFirstErrorOnSuccess.status === "success"
+        && waitFirstErrorOnSuccess.return_when === "first_error"
+        && waitFirstErrorOnSuccess.satisfied === false
+        && waitFirstErrorOnSuccess.timed_out === true,
+      waitUnobservedExactHandleErrors: waitUnobserved.errorCode === "LARVA_SUBAGENT_NOT_OBSERVED",
+      selectMatchesWaitAnyModel: selectAnyTerminal.status === "success"
+        && selectAnyTerminal.return_when === "any"
+        && selectAnyTerminal.satisfied === waitAnyTerminal.satisfied
+        && JSON.stringify(selectAnyTerminal.ready_task_ids) === JSON.stringify(waitAnyTerminal.ready_task_ids),
+    },
+    background_activity_indicator_count_only: {
+      activeCountOnlyTextObserved: backgroundIndicatorProbe.activeCountOnlyTextObserved === true,
+      taskTextAndHandleHidden: backgroundIndicatorProbe.taskTextAndHandleHidden === true,
+      noControlSurfaceText: backgroundIndicatorProbe.noControlSurfaceText === true,
+      idleOrHiddenAfterTerminal: backgroundIndicatorProbe.idleOrHiddenAfterTerminal === true,
     },
     failed_cancelled_callback_shape: {
       failedCallbackShape: hasCallbackPayloadShape(failedCallback, "failed"),
@@ -2161,6 +2328,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
     },
     modeMatrixFallbacks,
     statusSchemaProbe,
+    deterministicOrchestrationProbe,
+    backgroundIndicatorProbe,
     cancelReasonBoundProbe,
     callbackShapeProbe,
     idempotencyStaleProbe,
@@ -2176,6 +2345,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       resultPendingTrue: assertionGroups.accepted_return_timing.resultPendingTrue,
       returnedBeforeTerminalOutput: assertionGroups.accepted_return_timing.returnedBeforeTerminalOutput,
       acceptedTextWarnsEvidencePending: assertionGroups.accepted_return_timing.acceptedTextWarnsEvidencePending,
+      acceptedTextGuidesNoShellSleep: assertionGroups.accepted_return_timing.acceptedTextGuidesNoShellSleep,
       singleCallbackEvent: assertionGroups.callbacks.singleCallbackEvent,
       callbackShape: assertionGroups.callbacks.callbackShape,
       hasUnifiedSlashCommand: assertionGroups.streaming_command.hasUnifiedSlashCommand,
@@ -2188,6 +2358,9 @@ async function asyncSubagentContractExpectedRed(evidence) {
       printJsonCancelUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonCancelUnavailable,
       printJsonClearUnavailable: assertionGroups.mode_matrix_fallbacks.printJsonClearUnavailable,
       statusSchema: Object.values(assertionGroups.status_schema_phase_result_pending_updated_at_error).every(Boolean),
+      deterministicEventsContract: Object.values(assertionGroups.deterministic_events_contract).every(Boolean),
+      deterministicWaitSelectContract: Object.values(assertionGroups.deterministic_wait_select_contract).every(Boolean),
+      backgroundActivityIndicatorCountOnly: Object.values(assertionGroups.background_activity_indicator_count_only).every(Boolean),
       failedCancelledCallbackShape: Object.values(assertionGroups.failed_cancelled_callback_shape).every(Boolean),
       callbackIdempotencyDuplicateSuppression: Object.values(assertionGroups.callback_idempotency_duplicate_suppression).every(Boolean),
       cancellationSourceRules: Object.values(assertionGroups.cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression).every(Boolean),

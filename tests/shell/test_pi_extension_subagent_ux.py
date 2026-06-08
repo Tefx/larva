@@ -323,6 +323,67 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
     assert payload["cacheLiveFieldsDropped"] is True
 
 
+def test_larva_subagent_background_indicator_count_only_expected_red(tmp_path: Path) -> None:
+    """Expected-red: background status updates show only aggregate live counts, not task detail."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "fake-pi-child-background-indicator.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, "background-indicator-child.jsonl");
+          const rl = createInterface({ input: process.stdin });
+          function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
+          rl.on("line", async (line) => {
+            const msg = JSON.parse(line);
+            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile } }); }
+            else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
+            else if (msg.type === "prompt") { send({ id: msg.id, success: true }); setTimeout(() => send({ type: "agent_end" }), 400); }
+            else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "background indicator final output" } }); setTimeout(() => process.exit(0), 1); }
+            else if (msg.type === "abort") { send({ id: msg.id, success: true }); process.exit(0); }
+          });
+        `, { mode: 0o755 });
+        const statusCalls = [];
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin });
+        const tools = [];
+        const ctx = { env, modelRegistry, ui: { setStatus: (...args) => statusCalls.push(args), notify: () => undefined } };
+        await mod.initializeExtension(ctx, { ...piBase, registerTool: (tool) => tools.push(tool) });
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const receipt = await subagent.execute("background-indicator", { persona_id: "child", task: "SECRET_TASK_TEXT_MUST_NOT_APPEAR_IN_INDICATOR" }, undefined, () => undefined, ctx);
+        const runningEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === receipt.task_id && ["accepted", "running"].includes(entry.status)), 800);
+        const terminalEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === receipt.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 1500);
+        const statusTexts = statusCalls.map((args) => args.filter((value) => typeof value === "string").join(" "));
+        const backgroundTexts = statusTexts.filter((text) => /Larva: (?:idle|\\d+ (?:bg|running|cancelling))/.test(text));
+        console.log(JSON.stringify({
+          receiptStatus: receipt.status,
+          runningObserved: runningEntry !== null,
+          terminalObserved: terminalEntry !== null,
+          statusTexts,
+          backgroundTexts,
+          activeCountOnly: backgroundTexts.some((text) => /Larva: \\d+ (?:bg|running)/.test(text)),
+          idleOrHiddenAfterTerminal: backgroundTexts.length === 0 || backgroundTexts.at(-1) === "Larva: idle" || /Larva: 0 /.test(backgroundTexts.at(-1)),
+          taskTextHidden: backgroundTexts.every((text) => !text.includes("SECRET_TASK_TEXT") && !text.includes(receipt.task_id)),
+          noControlSurface: backgroundTexts.every((text) => !/cancel|clear|select|task_id/i.test(text)),
+        }, null, 2));
+        """,
+    )
+
+    assert payload["receiptStatus"] == "accepted"
+    assert payload["runningObserved"] is True
+    assert payload["terminalObserved"] is True
+    assert payload["activeCountOnly"] is True, json.dumps(payload, indent=2, sort_keys=True)
+    assert payload["idleOrHiddenAfterTerminal"] is True, json.dumps(payload, indent=2, sort_keys=True)
+    assert payload["taskTextHidden"] is True, json.dumps(payload, indent=2, sort_keys=True)
+    assert payload["noControlSurface"] is True, json.dumps(payload, indent=2, sort_keys=True)
+
+
 def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: Path) -> None:
     """Timeline rows show bounded args with terminal-safe hierarchy and no heavy payloads."""
 
