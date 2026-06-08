@@ -3705,7 +3705,7 @@ function isTerminalSubagentStatus(status: string): status is LarvaSubagentTermin
 }
 
 function larvaSubagentResultText(result: LarvaSubagentResult): string {
-  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. If your next step depends on the child result, Do not use shell sleep polling; wait for the larva-subagent-result push, or use larva_subagent_wait, larva_subagent_select, or larva_subagent_events when available.";
+  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. Do not use shell sleep polling. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. For conversational Pi continuation, yield for the larva-subagent-result push callback.";
   if (result.status === "success") return result.result_text || "Larva subagent completed without final assistant text.";
   if (result.error) return `${result.error.code}: ${result.error.message}`;
   return result.status === "cancelled" ? "Larva subagent was cancelled." : "Larva subagent failed.";
@@ -5920,7 +5920,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",
-    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Do not use shell sleep polling for completion; wait for the push callback or use wait/select/events when available.",
+    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Automation must use larva_subagent_wait, larva_subagent_select, or larva_subagent_events for completion; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
     inputSchema: subagentSchema,
     parameters: subagentSchema,
     handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal, callbackSurface: callbackSurfaceFrom(ctx, pi) }).then((result) => wrapLarvaSubagentToolResult(result)),
@@ -5981,7 +5981,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent_status",
     label: "Larva Subagent Status",
-    description: "Report active and recent process-local Larva subagent runs by exact public task_id.",
+    description: "Inspect active and recent process-local Larva subagent runs by exact public task_id. Inspection/debugging only; use wait/select/events for orchestration, not repeated status polling.",
     inputSchema: statusSchema,
     parameters: statusSchema,
     handler: async (input: unknown) => larva_subagent_status(input, { env }),
@@ -5999,7 +5999,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent_events",
     label: "Larva Subagent Events",
-    description: "Read ordered process-local Larva subagent orchestration events from the latest 1000 recent events. Events are returned where sequence > since_sequence and include cursor_expired plus next_sequence; this tool never scans files, consumes results, or accepts fuzzy handles.",
+    description: "Read ordered process-local Larva subagent orchestration events from the latest 1000 recent events for deterministic automation. Events are returned where sequence > since_sequence and include cursor_expired plus next_sequence; this tool never scans files, consumes results, or accepts fuzzy handles.",
     inputSchema: eventsSchema,
     parameters: eventsSchema,
     handler: async (input: unknown) => larva_subagent_events(input, { env }),
@@ -6018,7 +6018,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent_wait",
     label: "Larva Subagent Wait",
-    description: "Wait for exact observed Larva subagent task_ids to satisfy return_when: \"all\", \"any\", or \"first_error\". Returns snapshots and readiness only; never consumes, spawns, resumes, cancels, schedules, joins, or scans files.",
+    description: "Wait for exact observed Larva subagent task_ids to satisfy return_when: \"all\", \"any\", or \"first_error\" for deterministic automation. Returns snapshots and readiness only; never consumes, spawns, resumes, cancels, or scans files.",
     inputSchema: waitSchema,
     parameters: waitSchema,
     handler: async (input: unknown) => larva_subagent_wait(input, { env }),
@@ -6036,7 +6036,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent_select",
     label: "Larva Subagent Select",
-    description: "Compact readiness helper with the same output model as wait(return_when: \"any\") for exact observed Larva subagent task_ids. It never consumes results or accepts aliases.",
+    description: "Compact deterministic readiness helper with the same output model as wait(return_when: \"any\") for exact observed Larva subagent task_ids. It never consumes results or accepts aliases.",
     inputSchema: selectSchema,
     parameters: selectSchema,
     handler: async (input: unknown) => larva_subagent_select(input, { env }),

@@ -664,6 +664,9 @@ exposes these model-facing tools:
 ```text
 larva_subagent(persona_id, task, task_id?)
 larva_subagent_status(task_id?, limit?)
+larva_subagent_events(since_sequence?, task_ids?, limit?)
+larva_subagent_wait(task_ids, return_when?, timeout_ms?)
+larva_subagent_select(task_ids, timeout_ms?)
 larva_subagent_cancel(task_id, reason)
 ```
 
@@ -683,6 +686,12 @@ The accepted ToolResult is not final evidence. The visible receipt includes:
 ```text
 Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending.
 ```
+
+It also forbids shell sleep polling. For automation that depends on the child
+result, use `larva_subagent_wait`, `larva_subagent_select`, or
+`larva_subagent_events` with exact `task_id` handles. For conversational Pi
+continuation, yield to the `larva-subagent-result` push callback instead of
+building a shell sleep/status-polling loop.
 
 The child final result returns later through one bounded Larva runtime event/data
 callback. The primary Pi delivery path is `ctx.sendCustomMessage` with:
@@ -724,16 +733,27 @@ provenance handles, sidecar metadata, batch cancel, or scheduler handles.
 Internal private operation keys may exist before `task_id` allocation but must
 not appear in user-facing or model-facing APIs.
 
-`larva_subagent_status` is the canonical model-facing read-only process-local
-inspection tool. With `task_id`, it reports exactly one observed run. Without
-`task_id`, it reports newest observed active/recent runs up to `limit`; `limit`
-defaults to 10 and must be an integer from 1 to 25. It validates the `task_id`
-string lexically as an absolute child `.jsonl` path and does not scan child
-session directories, stat candidate files, canonicalize by filesystem lookup, or
-infer resume provenance. A well-formed but unobserved exact `task_id` returns
-success with `runs: []` rather than a guess. `larva_subagent_sessions`, if
-retained, is only a compatibility UX helper and is non-authoritative for status,
-resume, or provenance.
+`larva_subagent_status` is a model-facing read-only process-local inspection and
+debugging tool only; it is not an orchestration wait primitive and must not be
+used through repeated polling as a substitute for deterministic readiness tools.
+With `task_id`, it reports exactly one observed run. Without `task_id`, it
+reports newest observed active/recent runs up to `limit`; `limit` defaults to 10
+and must be an integer from 1 to 25. It validates the `task_id` string lexically
+as an absolute child `.jsonl` path and does not scan child session directories,
+stat candidate files, canonicalize by filesystem lookup, or infer resume
+provenance. A well-formed but unobserved exact `task_id` returns success with
+`runs: []` rather than a guess. `larva_subagent_sessions`, if retained, is only a
+compatibility UX helper and is non-authoritative for status, resume, or
+provenance.
+
+`larva_subagent_events`, `larva_subagent_wait`, and `larva_subagent_select` are
+the deterministic orchestration channel for automation. They observe only the
+current parent process's active/recent registry and event log, require exact
+observed `task_id` handles where a handle is needed, never scan child-session
+files or the presentation cache, and never consume results. `wait` covers
+`all`/`any`/`first_error`; `select` is the compact readiness helper equivalent to
+`wait(return_when: "any")`; `events` replays ordered retained events with
+`cursor_expired` and `next_sequence`.
 
 `larva_subagent_cancel` cancels one exact active child by `task_id` and requires a
 non-empty renderer-safe reason bounded to 500 normalized code points. Cancellation
@@ -813,10 +833,12 @@ Subagent Console command and owns view, cancellation, and cache-clear semantics.
 The Console and its Persistent cache are adapter-local UI inspection surfaces
 only. The cache target is `subagent-presentation-log.json`; optional adapter-local
 configuration remains `subagent-log.json`, and invalid config surfaces
-`LARVA_SUBAGENT_LOG_CONFIG_INVALID`. They are not resume authority, not
-model-visible log streams, not shared Larva/opifex schemas, and not child-session
-sources of truth. Clearing the Console/cache with `--clear` must not delete child
-Pi session files or mutate persona/model/tool-policy state.
+`LARVA_SUBAGENT_LOG_CONFIG_INVALID`. They are adapter-local UI continuity only,
+never orchestration authority, not a model-facing handle index, not resume
+authority, not model-visible log streams, not shared Larva/opifex schemas, and
+not child-session sources of truth. Clearing the Console/cache with `--clear`
+must not delete child Pi session files, consume orchestration events, change
+exact-`task_id` rules, or mutate persona/model/tool-policy state.
 
 ### Verification requirements
 
@@ -838,6 +860,9 @@ prove:
 9. RPC and print/json command behavior matches the documented mode matrix.
 10. During parent streaming, `/larva-subagent` executes as an extension command
     and can open the TUI overlay.
+11. The `larva-subagent-result` push callback and `larva_subagent_events`,
+    `larva_subagent_wait`, and `larva_subagent_select` observe the same exact
+    child terminal result without shell sleep polling or repeated status polling.
 
 ## Explicit non-goals and unsupported guarantees
 

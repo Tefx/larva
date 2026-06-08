@@ -90,8 +90,10 @@ Accepted result requirements:
 - visible text includes: `Do not treat this accepted result as task evidence; a
   Larva subagent result callback is still pending.`
 - visible text also instructs agents not to use shell sleep polling when their
-  next step depends on the child result; they should wait for the
-  `larva-subagent-result` push, or use `wait`/`select`/`events` when available.
+  next step depends on the child result; automation should use
+  `larva_subagent_wait`, `larva_subagent_select`, or `larva_subagent_events` with
+  exact `task_id` handles, while conversational Pi continuation should yield for
+  the `larva-subagent-result` push callback.
 - `isError: false`
 
 Rationale: Pi awaits tool calls and has no late ToolResult channel. Returning
@@ -184,12 +186,13 @@ No shell sleep polling:
 
 - Agents must not use `bash sleep`, timer loops, or repeated status polling as a
   subagent completion primitive.
-- Before deterministic tools are available, conversational Pi flows should yield
-  the turn and wait for the `larva-subagent-result` push.
-- After deterministic tools are available, automation should use
-  `larva_subagent_wait`, `larva_subagent_select`, or `larva_subagent_events`.
+- Conversational Pi flows should yield the turn and wait for the
+  `larva-subagent-result` push callback.
+- Automation should use `larva_subagent_wait`, `larva_subagent_select`, or
+  `larva_subagent_events` with exact `task_id` handles.
 - `larva_subagent_status` is for inspection/debugging and exact handle checks; it
-  is not a blocking wait substitute.
+  is not a blocking wait substitute and must not be used through repeated polling
+  as an orchestration primitive.
 
 Add three read-only model-facing tools for the deterministic path:
 
@@ -430,7 +433,9 @@ The visible accepted text must include that final evidence is pending.
 
 ### `larva_subagent_status(task_id?, limit?)`
 
-Reports active and recent process-local subagent runs.
+Reports active and recent process-local subagent runs for inspection/debugging only.
+Use `larva_subagent_wait`, `larva_subagent_select`, or `larva_subagent_events`
+for deterministic orchestration instead of repeated status polling.
 
 Input contract:
 
@@ -799,6 +804,9 @@ Persistent cache:
 - `/larva-subagent --clear` clears only adapter-local presentation/cache state.
   It must not delete child session files, cancel a child, consume an
   orchestration event, or change the exact-`task_id` rule.
+- Persistent presentation cache is adapter-local UI continuity only. It is never
+  orchestration authority, never a model-facing handle index, and never authority
+  for model-facing tools or cancellation.
 
 ## Runtime state model
 Replace process-global sets with one active-run registry keyed by public

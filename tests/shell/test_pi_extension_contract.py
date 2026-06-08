@@ -340,33 +340,33 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
         ),
     ],
 )
-def test_async_subagent_deterministic_orchestration_tools_expected_red(
+def test_async_subagent_deterministic_orchestration_tools_registered(
     tool_name: str, required_tokens: tuple[str, ...]
 ) -> None:
-    """Expected-red: deterministic async tools must be model-facing registered contracts."""
+    """Deterministic async tools must be model-facing registered contracts."""
     source = _source()
 
     missing = [token for token in required_tokens if token not in source]
     assert not missing, f"{tool_name} deterministic orchestration gap; missing tokens: {missing}"
 
 
-def test_async_subagent_accepted_result_guides_against_shell_sleep_polling_expected_red() -> None:
-    """Expected-red: accepted receipts must steer agents away from bash sleep polling."""
+def test_async_subagent_guidance_separates_automation_from_conversation() -> None:
+    """Accepted receipts steer automation to deterministic tools and conversation to push callbacks."""
     source = _source()
     guidance_tokens = (
         "Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending.",
         "Do not use shell sleep polling",
-        "larva_subagent_wait",
-        "larva_subagent_select",
-        "larva_subagent_events",
+        "For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles.",
+        "For conversational Pi continuation, yield for the larva-subagent-result push callback.",
+        "Inspection/debugging only; use wait/select/events for orchestration, not repeated status polling.",
     )
 
     missing = [token for token in guidance_tokens if token not in source]
     assert not missing, f"accepted async receipt guidance gap; missing tokens: {missing}"
 
 
-def test_async_subagent_background_activity_indicator_count_only_expected_red() -> None:
-    """Expected-red: live subagent status indicator must be aggregate/count-only."""
+def test_async_subagent_background_activity_indicator_count_only() -> None:
+    """Live subagent status indicator must be aggregate/count-only."""
     source = _source()
     indicator_tokens = (
         "updateSubagentBackgroundIndicator",
@@ -914,8 +914,8 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
         )
 
 
-def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
-    """Expected-red: README/source parity is judged against the async subagent reference."""
+def test_async_subagent_docs_parity_against_reference() -> None:
+    """README/source parity is judged against the async subagent reference."""
 
     authority = PI_EXTENSION_ASYNC_SPEC.read_text(encoding="utf-8")
     readme = PI_EXTENSION_README.read_text(encoding="utf-8")
@@ -929,6 +929,10 @@ def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
         "status_tool": "larva_subagent_status" in authority,
         "cancel_tool": "larva_subagent_cancel" in authority,
         "callback_boundary": "Larva subagent result — runtime event/data" in authority,
+        "deterministic_automation_guidance": "Automation should use `larva_subagent_wait`, `larva_subagent_select`, or" in authority,
+        "conversational_push_guidance": "Conversational Pi flows should yield the turn and wait for the" in authority,
+        "status_inspection_only": "inspection/debugging only" in authority,
+        "persistent_cache_not_authority": "Persistent presentation cache is adapter-local UI continuity only" in authority,
         "cancel_grace_1500": "1500 ms" in authority,
         "lifecycle_rules": "On parent session shutdown, reload, new session, resume, or fork" in authority,
     }
@@ -941,8 +945,16 @@ def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
         "design_names_canonical_larva_subagent": "/larva-subagent" in design,
         "source_registers_canonical_larva_subagent_command": '"larva-subagent"' in source,
         "source_registers_status_tool": '"larva_subagent_status"' in source,
+        "source_registers_events_wait_select_tools": all(token in source for token in ('"larva_subagent_events"', '"larva_subagent_wait"', '"larva_subagent_select"')),
         "source_registers_cancel_tool": '"larva_subagent_cancel"' in source,
         "source_returns_accepted_result_pending": 'status: "accepted"' in source and "result_pending" in source,
+        "source_guides_automation_to_deterministic_tools": "For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles." in source,
+        "source_guides_conversation_to_push_callback": "For conversational Pi continuation, yield for the larva-subagent-result push callback." in source,
+        "source_marks_status_inspection_only": "Inspection/debugging only; use wait/select/events for orchestration, not repeated status polling." in source,
+        "readme_lists_events_wait_select": all(token in readme for token in ("larva_subagent_events(since_sequence?, task_ids?, limit?)", "larva_subagent_wait(task_ids, return_when?, timeout_ms?)", "larva_subagent_select(task_ids, timeout_ms?)")),
+        "readme_guides_automation_to_deterministic_tools": "For automation that depends on the child" in readme and "building a shell sleep/status-polling loop" in readme,
+        "readme_marks_status_inspection_only": "inspection and\ndebugging tool only" in readme,
+        "readme_marks_persistent_cache_ui_only": "adapter-local UI continuity only" in readme and "never orchestration authority" in readme,
         "source_records_1500ms_abort_kill_grace": bool(re.search(r"(?:1500|1_500)[\s\S]{0,120}(?:abort|kill|grace)", source, re.IGNORECASE)),
     }
     assert parity == {key: True for key in parity}, json.dumps(
