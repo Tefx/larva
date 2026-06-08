@@ -854,6 +854,12 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
             "expectedGraceRecorded": True,
             "sourceUses1500Grace": True,
             "noFiveSecondAbortFallback": True,
+            "nonresponsiveAccepted": True,
+            "nonresponsiveCancelled": True,
+            "nonresponsiveElapsedWithinSingleDeadline": True,
+            "nonresponsiveKillObserved": True,
+            "nonresponsiveTraceDeadlineRecorded": True,
+            "nonresponsiveKillAtSingleDeadline": True,
         },
         "runtime_lifecycle_stale_cleanup": {
             "reloadCleanup": True,
