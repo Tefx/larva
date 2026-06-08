@@ -134,7 +134,7 @@ const compactOverlay = mod.larva_subagent_log({ limit: 4 });
 const expandedOverlay = mod.larva_subagent_log({ expanded: true, limit: 4 });
 const compactText = compactOverlay.content[0].text;
 const expandedText = expandedOverlay.content[0].text;
-for (const token of ["view-only", "source: in-memory presentation log", "active alpha", "final beta", "error gamma", "cancelled delta"]) {
+for (const token of ["view-only", "source: in-memory presentation log", "RUN alpha", "OK beta", "FAIL gamma", "CANC delta"]) {
   assert.ok(compactText.includes(token), `compact overlay missing ${token}`);
 }
 for (const token of ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child"]) {
@@ -148,7 +148,7 @@ assert.equal(mod.larva_subagent_sessions({ limit: 10 }).details.sessions.length,
 const exactOverlay = mod.larva_subagent_log("/tmp/error.jsonl");
 assert.equal(exactOverlay.ok, true);
 assert.equal(exactOverlay.details.selected_task_id, "/tmp/error.jsonl");
-assert.match(exactOverlay.content[0].text, /error gamma/);
+assert.match(exactOverlay.content[0].text, /FAIL gamma/);
 const exactGeneration = mod.currentSubagentOverlayForTests().generation;
 const newestOverlay = mod.larva_subagent_log("");
 assert.equal(newestOverlay.details.selected_task_id, "/tmp/cancelled.jsonl");
@@ -194,6 +194,16 @@ const pi = {
   registerTool: () => undefined,
   on: () => undefined,
 };
+
+async function waitForPresentationEntry(predicate, label) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const entry = mod.subagentPresentationLogForTests().find(predicate);
+    if (entry) return entry;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.fail(`timed out waiting for ${label}`);
+}
+
 const committed = await mod.handlePersonaCommand("parent", ctx, pi);
 assert.equal(committed.ok, true);
 
@@ -215,8 +225,9 @@ assert.equal(busyResume.error.code, "LARVA_SESSION_BUSY");
 
 await writeFile(releaseFile, "release", "utf8");
 const finalResult = await runningPromise;
-assert.equal(finalResult.status, "success");
+assert.equal(finalResult.status, "accepted");
 assert.equal(finalResult.task_id, runningSummary.task_id);
+await waitForPresentationEntry((entry) => entry.task_id === runningSummary.task_id && entry.status === "success", "running child terminal entry");
 assert.equal(mod.isSubagentTaskBusyForTests(runningSummary.task_id), false);
 const finalSummary = mod.larva_subagent_sessions({ limit: 10 }).details.sessions[0];
 assert.equal(finalSummary.task_id, runningSummary.task_id);
@@ -233,33 +244,29 @@ await mod.initializeExtension(ctx, {
 });
 const subagentTool = capturedTools.find((tool) => tool.name === "larva_subagent");
 let callbackSawLogBeforeThrow = false;
-let terminalCallbackSawTerminalLog = false;
 const executeResult = await subagentTool.execute("call-id-proof", { persona_id: "child", task: "onUpdate may throw" }, undefined, (update) => {
   const log = mod.subagentPresentationLogForTests();
   callbackSawLogBeforeThrow ||= log.some((entry) => entry.call_id === "call-id-proof" && entry.phase === update.details.phase);
-  if (update.details.phase === "success") {
-    terminalCallbackSawTerminalLog = log.some((entry) => entry.call_id === "call-id-proof" && entry.status === "success" && entry.phase === "success");
-  }
   throw new Error("presentation callback failed");
 }, ctx);
-assert.equal(executeResult.status, "success");
+assert.equal(executeResult.status, "accepted");
 assert.equal(callbackSawLogBeforeThrow, true);
-assert.equal(terminalCallbackSawTerminalLog, true);
+await waitForPresentationEntry((entry) => entry.call_id === "call-id-proof" && entry.status === "success" && entry.phase === "success", "call-id-proof terminal log");
 const noUpdateResult = await subagentTool.execute("call-id-no-update", { persona_id: "child", task: "no update callback" }, undefined, undefined, ctx);
-assert.equal(noUpdateResult.status, "success");
-assert.ok(mod.subagentPresentationLogForTests().some((entry) => entry.call_id === "call-id-no-update" && entry.status === "success"));
+assert.equal(noUpdateResult.status, "accepted");
+await waitForPresentationEntry((entry) => entry.call_id === "call-id-no-update" && entry.status === "success", "call-id-no-update terminal log");
 console.log("safe onUpdate ordering and call_id mapping: PASS");
 
-const commandResult = await capturedCommands.get("larva-log").handler(executeResult.task_id);
+const commandResult = await capturedCommands.get("larva-subagent").handler(executeResult.task_id);
 assert.equal(commandResult.ok, true);
 assert.equal(commandResult.details.selected_task_id, executeResult.task_id);
 assert.equal(commandResult.view_only, true);
-const unavailableCommands = new Map();
-await mod.initializeExtension({ env, modelRegistry: ctx.modelRegistry }, { ...pi, registerTool: () => undefined, registerCommand: (name, command) => unavailableCommands.set(name, command) });
-const unavailableResult = await unavailableCommands.get("larva-log").handler(executeResult.task_id);
-assert.equal(unavailableResult.ok, false);
-assert.equal(unavailableResult.details.error.code, "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE");
-console.log("exact task_id overlay command and stable errors: PASS");
+const headlessCommands = new Map();
+await mod.initializeExtension({ env, modelRegistry: ctx.modelRegistry }, { ...pi, registerTool: () => undefined, registerCommand: (name, command) => headlessCommands.set(name, command) });
+const headlessExactResult = await headlessCommands.get("larva-subagent").handler(executeResult.task_id);
+assert.equal(headlessExactResult.ok, true);
+assert.equal(headlessExactResult.details.selected_task_id, executeResult.task_id);
+console.log("exact task_id canonical command and headless exact summary: PASS");
 
 const resetReleaseFile = join(runtimeDir, "reset-release");
 try { await rm(resetReleaseFile); } catch {}
@@ -279,7 +286,7 @@ assert.equal(mod.isSubagentTaskBusyForTests(resetRunningSummary.task_id), true);
 mod.larva_subagent_log(resetRunningSummary.task_id);
 const resetReceipt = await mod.resetExtensionUI("test-reset");
 const resetResult = await resetPromise;
-assert.ok(["failed", "cancelled"].includes(resetResult.status));
+assert.equal(resetResult.status, "accepted");
 assert.ok(resetReceipt.active_children_reaped >= 1);
 assert.equal(mod.isSubagentTaskBusyForTests(resetRunningSummary.task_id), false);
 assert.equal(mod.larva_subagent_sessions({ limit: 10 }).details.sessions.length, 0);

@@ -2942,18 +2942,28 @@ function canonicalizeSubagentOverlayResult(overlay: LarvaSubagentOverlayResult):
   return overlay;
 }
 
-function subagentCommandCannotUseInteractiveConsole(runtimeCtx: PiContext): boolean {
-  return runtimeCtx.hasUI === false || runtimeCtx.ui === undefined;
+type SubagentCommandMode = "tui" | "rpc" | "headless";
+
+function subagentCommandMode(runtimeCtx: PiContext): SubagentCommandMode {
+  if (runtimeCtx.hasUI === false || runtimeCtx.ui === undefined) return "headless";
+  const envMode = currentEnv(runtimeCtx).LARVA_PI_INTERACTIVE_TUI;
+  if (envMode === "0") return "rpc";
+  if (typeof runtimeCtx.ui.custom === "function") return "tui";
+  return "rpc";
 }
 
-async function presentSubagentOverlayIfAvailable(runtimeCtx: PiContext, overlay: LarvaSubagentOverlayResult): Promise<LarvaSubagentOverlayResult> {
+function subagentCommandUiUnavailable(message: string): LarvaSubagentOverlayResult {
+  return failedSubagentOverlay("LARVA_SUBAGENT_UI_UNAVAILABLE", message);
+}
+
+async function presentSubagentOverlayIfAvailable(runtimeCtx: PiContext, overlay: LarvaSubagentOverlayResult, mode: SubagentCommandMode): Promise<LarvaSubagentOverlayResult> {
+  if (mode !== "tui") return overlay;
   const text = overlay.content[0]?.text ?? "Larva subagent console is empty.";
   if (overlay.isError) {
     await notify(runtimeCtx, text, "error");
     return overlay;
   }
   if (overlay.details.entries.length === 0) return overlay;
-  if (typeof runtimeCtx.ui?.custom !== "function") return overlay;
   if (await openSubagentPresentationOverlay(runtimeCtx, overlay)) return overlay;
   const unavailable = failedSubagentOverlay("LARVA_SUBAGENT_UI_UNAVAILABLE", "Larva subagent console UI is unavailable.");
   await notify(runtimeCtx, unavailable.content[0]?.text ?? unavailable.details.error?.message ?? "Larva subagent console UI is unavailable.", "error");
@@ -2962,34 +2972,52 @@ async function presentSubagentOverlayIfAvailable(runtimeCtx: PiContext, overlay:
 
 async function handleLarvaSubagentCommand(input: string | undefined, runtimeCtx: PiContext): Promise<unknown> {
   const trimmed = input?.trim() ?? "";
+  const mode = subagentCommandMode(runtimeCtx);
   if (trimmed === "--clear") {
-    if (subagentCommandCannotUseInteractiveConsole(runtimeCtx)) return failedSubagentOverlay("LARVA_SUBAGENT_UI_UNAVAILABLE", "Larva subagent console clear is unavailable in this Pi mode.");
+    if (mode === "headless") return subagentCommandUiUnavailable("Larva subagent console clear is unavailable in this Pi mode.");
     return larva_subagent_log("--clear");
   }
   const cancelMatch = /^--cancel\s+(.+)$/.exec(trimmed);
   if (cancelMatch !== null) {
-    if (subagentCommandCannotUseInteractiveConsole(runtimeCtx)) return failedSubagentOverlay("LARVA_SUBAGENT_UI_UNAVAILABLE", "Larva subagent console cancellation is unavailable in this Pi mode.");
+    if (mode === "headless") return subagentCommandUiUnavailable("Larva subagent console cancellation is unavailable in this Pi mode.");
     const taskId = cancelMatch[1].trim();
-    const confirmed = typeof runtimeCtx.ui?.confirm === "function" ? await runtimeCtx.ui.confirm(`Cancel Larva subagent ${taskId}?`) : true;
+    const confirmed = mode === "tui" && typeof runtimeCtx.ui?.confirm === "function" ? await runtimeCtx.ui.confirm(`Cancel Larva subagent ${taskId}?`) : true;
     if (!confirmed) return wrapSubagentCancelResult(taskId, "", "running", null, false);
     return await cancelSubagentByTaskId(taskId, "user requested /larva-subagent cancellation", "user", runtimeCtx, true);
   }
   if (trimmed.length === 0) {
-    if (subagentCommandCannotUseInteractiveConsole(runtimeCtx)) return failedSubagentOverlay("LARVA_SUBAGENT_UI_UNAVAILABLE", "Larva subagent console is unavailable in this Pi mode.");
-    return await presentSubagentOverlayIfAvailable(runtimeCtx, canonicalizeSubagentOverlayResult(larva_subagent_log({ list: true, limit: 25, select: true })));
+    if (mode === "headless") return subagentCommandUiUnavailable("Larva subagent console is unavailable in this Pi mode.");
+    const overlay = canonicalizeSubagentOverlayResult(larva_subagent_log({ list: true, limit: 25, select: true }));
+    return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
   }
-  return await presentSubagentOverlayIfAvailable(runtimeCtx, canonicalizeSubagentOverlayResult(larva_subagent_log(trimmed)));
+  const overlay = canonicalizeSubagentOverlayResult(larva_subagent_log(trimmed));
+  return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
 }
 
-function registerLarvaSubagentLogCommand(ctx: PiContext, pi: PiApi): void {
+async function handleDeprecatedLarvaLogCommand(input: string | undefined, runtimeCtx: PiContext): Promise<unknown> {
+  const trimmed = input?.trim() ?? "";
+  if (trimmed === "--clear" || /^--cancel(?:\s|$)/.test(trimmed)) {
+    return failedSubagentOverlay("LARVA_BAD_INPUT", "/larva-log is a deprecated view-mode alias only; use /larva-subagent for --clear or --cancel.");
+  }
+  const mode = subagentCommandMode(runtimeCtx);
+  if (trimmed.length === 0) {
+    if (mode === "headless") return subagentCommandUiUnavailable("Larva subagent console is unavailable in this Pi mode.");
+    const overlay = canonicalizeSubagentOverlayResult(larva_subagent_log({ list: true, limit: 25, select: true }));
+    return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
+  }
+  const overlay = canonicalizeSubagentOverlayResult(larva_subagent_log(trimmed));
+  return await presentSubagentOverlayIfAvailable(runtimeCtx, overlay, mode);
+}
+
+function registerLarvaSubagentCommand(ctx: PiContext, pi: PiApi): void {
   const command: CommandOptions = {
-    description: "Open the canonical /larva-subagent console for exact task_id status and cancellation.",
+    description: "Canonical Larva subagent console: /larva-subagent [task_id], --cancel <task_id>, or --clear.",
     handler: async (input?: string, commandCtx?: PiContext) => handleLarvaSubagentCommand(input, commandCtx ?? ctx),
   };
   registerCommandCompat(pi, "larva-subagent", command);
   const deprecatedAlias: CommandOptions = {
-    description: "deprecated alias: use canonical /larva-subagent for the Larva subagent console.",
-    handler: async (input?: string, commandCtx?: PiContext) => handleLarvaSubagentCommand(input, commandCtx ?? ctx),
+    description: "deprecated view-mode alias: use canonical /larva-subagent for subagent status, cancellation, and clear.",
+    handler: async (input?: string, commandCtx?: PiContext) => handleDeprecatedLarvaLogCommand(input, commandCtx ?? ctx),
   };
   registerCommandCompat(pi, "larva-log", deprecatedAlias);
 }
@@ -4397,7 +4425,7 @@ function subagentOverlayDetailsEntry(entry: SubagentPresentationLogEntry): Subag
   return detailsEntry;
 }
 
-function failedSubagentOverlay(code: Extract<LarvaErrorCode, "LARVA_SUBAGENT_NOT_OBSERVED" | "LARVA_SUBAGENT_UI_UNAVAILABLE" | "LARVA_SUBAGENT_LOG_NOT_OBSERVED" | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE" | "LARVA_SUBAGENT_LOG_CONFIG_INVALID">, message: string): LarvaSubagentOverlayResult {
+function failedSubagentOverlay(code: LarvaErrorCode, message: string): LarvaSubagentOverlayResult {
   const larvaError = error(code, message);
   return {
     ok: false,
@@ -4444,7 +4472,7 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
     : [options.taskId === null ? newestOverlayEntry() : exactOverlayEntry(options.taskId)].filter((entry): entry is SubagentPresentationLogEntry => entry !== null);
   if (entries.length === 0) {
     const target = options.taskId === null
-      ? "No Larva subagent run has been observed in this parent extension process since the last reload/reset. Run a subagent in this session, then reopen /larva-log."
+      ? "No Larva subagent run has been observed in this parent extension process since the last reload/reset. Run a subagent in this session, then reopen /larva-subagent."
       : `Larva subagent run not observed for task_id ${options.taskId} in this parent extension process since the last reload/reset.`;
     closeSubagentPresentationOverlay();
     return failedSubagentOverlay("LARVA_SUBAGENT_LOG_NOT_OBSERVED", target);
@@ -5416,7 +5444,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   agentPersonaSwitchToolsRegistered = false;
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   loadSubagentPresentationCache(env);
-  registerLarvaSubagentLogCommand(ctx, pi);
+  registerLarvaSubagentCommand(ctx, pi);
   registerLarvaAgentPersonaSwitchCommand(ctx, pi);
   registerLarvaPersonaCommand(ctx, pi);
   const subagentSchema = {

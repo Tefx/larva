@@ -734,8 +734,7 @@ runtime behavior.
 
 ### `/larva-subagent` console
 
-Target design: the canonical user command after the async subagent work is
-implemented is:
+The canonical user command is:
 
 ```text
 /larva-subagent
@@ -761,10 +760,10 @@ results. In print/json mode, interactive console actions return
 `LARVA_SUBAGENT_UI_UNAVAILABLE`; non-interactive exact summaries may still be
 returned for `/larva-subagent <task_id>`.
 
-Current implementations may still expose `/larva-log` until the async subagent
-work lands. In the target design, `/larva-log` is no longer the canonical UX. It
-may remain as a deprecated compatibility alias to `/larva-subagent` view mode,
-but new docs, tests, and user flows should use `/larva-subagent`.
+`/larva-log`, if present, is only a deprecated alias to `/larva-subagent`
+view mode (a deprecated view-mode alias). It is not the canonical UX and does not
+own cancellation or cache-clear semantics; new docs, tests, and user flows should
+use `/larva-subagent`.
 
 The Console and its Persistent cache are adapter-local UI inspection surfaces
 only. The cache target is `subagent-presentation-log.json`; optional adapter-local

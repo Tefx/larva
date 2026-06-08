@@ -1774,7 +1774,7 @@ def test_fake_contract_scenarios_are_documented_for_future_runtime_harness() -> 
 
 
 def test_expected_red_subagent_log_selector_streaming_runtime_contract_tokens() -> None:
-    """Expected-red source contract for `/larva-log` selector + streaming delta."""
+    """Expected-red source contract for canonical `/larva-subagent` selector + streaming delta."""
 
     source = _source()
     assert '"--select"' in source

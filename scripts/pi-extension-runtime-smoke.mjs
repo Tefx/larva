@@ -856,8 +856,8 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   await mod.initializeExtension(ctx, pi);
   await mod.commitPersona("ok", ctx, pi);
   const subagent = tools.find((tool) => tool.name === "larva_subagent");
-  const command = commands.get("larva-log");
-  if (!subagent || typeof subagent.execute !== "function" || !command) throw new Error("runtime proof setup missing subagent tool or log command");
+  const command = commands.get("larva-subagent");
+  if (!subagent || typeof subagent.execute !== "function" || !command) throw new Error("runtime proof setup missing subagent tool or canonical subagent command");
 
   let component = null;
   const requestRenderEvents = [];
@@ -885,7 +885,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
     () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "running"),
     { label: "running presentation entry" },
   );
-  const commandResult = await command.handler("", { env, modelRegistry: ctx.modelRegistry, ui: commandUi });
+  const commandResult = await command.handler("", { env: { ...env, LARVA_PI_INTERACTIVE_TUI: "1" }, modelRegistry: ctx.modelRegistry, ui: commandUi });
   if (component === null || commandResult?.ok !== true) throw new Error("subagent log overlay did not open during RPC stream proof");
   const rendersBeforeLive = requestRenderEvents.length;
   const liveEntry = await waitForSmokeCondition(
@@ -903,7 +903,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const cacheDuringLive = JSON.parse(await readFile(cacheFile, "utf8"));
   const cacheDuringLiveText = JSON.stringify(cacheDuringLive);
   const result = await execution;
-  await waitForSmokeCondition(
+  const finalEntry = await waitForSmokeCondition(
     () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "success"),
     { label: "final presentation entry" },
   );
@@ -950,7 +950,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
       timelineIncludesAssistantAndGroupedTool: timelineDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE") && toolRowCount === 1 && toolIdCount === 0 && timelineDuringPlain.includes("bash") && timelineDuringPlain.includes('command="echo rpc"') && timelineDuringPlain.includes("content=<omitted>") && timelineDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && timelineDuringPlain.includes("success"),
       rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !combinedVisible.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER"),
       liveStateNotPersisted: !cacheDuringLiveText.includes("RPC_ASSISTANT_DELTA_VISIBLE") && !cacheDuringLiveText.includes("RPC_TOOL_OUTPUT_FINAL"),
-      finalOutputAuthorityPreserved: result?.details?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
+      finalOutputAuthorityPreserved: finalEntry?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
       activeTabAndSelectionPreservedAcrossRefresh: timelineAfterFinalPlain.includes("● 4 Timeline") && currentAfterFinal?.task_id === result?.details?.task_id,
       resetCleanupClosedAndCleared: resetResult.overlay_closed === true && resetResult.presentation_cleared === true && afterReset.details?.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED" && terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
     },
@@ -961,7 +961,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const extensionRequire = createRequire(pathToFileURL(extensionPath).href);
   const piTui = await import(pathToFileURL(extensionRequire.resolve("@earendil-works/pi-tui")).href);
-  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-log-selector-streaming-"));
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-subagent-selector-streaming-"));
   const cacheFile = join(sessionRoot, "subagent-presentation-log.json");
   const env = runtimeEnv({ HOME: sessionRoot, LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
   await mod.initializeExtension(
@@ -2153,8 +2153,8 @@ async function main() {
         evidence: { hasRenderCall: typeof tool?.renderCall, hasRenderResult: typeof tool?.renderResult, hasExecute: typeof tool?.execute },
       },
       subagentLogOverlayCommand: {
-        supported: evidence.runtime.registeredCommandNames.includes("larva-log"),
-        evidence: { requiredCommand: "larva-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
+        supported: evidence.runtime.registeredCommandNames.includes("larva-subagent"),
+        evidence: { requiredCommand: "larva-subagent", deprecatedAlias: "larva-log", registeredCommandNames: evidence.runtime.registeredCommandNames },
       },
       personaSelectorShortcut: {
         supported: evidence.runtime.registeredShortcuts.some((entry) => entry.shortcut === "ctrl+alt+p" && entry.description === "Open Larva persona selector"),
