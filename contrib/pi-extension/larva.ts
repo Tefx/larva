@@ -3749,15 +3749,33 @@ function boundedCallbackContent(value: string, limit = SUBAGENT_CALLBACK_TEXT_LI
   return codePoints.slice(0, Math.max(0, limit)).join("");
 }
 
+function callbackHeaderValue(value: string): string {
+  return boundedVisible(value, 1000);
+}
+
 function subagentCallbackMessage(snapshot: SubagentTerminalSnapshot, resultText: string): string {
   const detail = snapshot.status === "success"
     ? resultText
     : snapshot.error
       ? `${snapshot.error.code}: ${snapshot.error.message}`
       : snapshot.status;
-  const prefix = `${SUBAGENT_RESULT_CALLBACK_BOUNDARY}\n\n`;
-  const remaining = Math.max(0, SUBAGENT_CALLBACK_TEXT_LIMIT - Array.from(prefix.normalize("NFC")).length);
-  return `${prefix}${boundedCallbackContent(detail, remaining)}`;
+  const prefix = [
+    SUBAGENT_RESULT_CALLBACK_BOUNDARY,
+    "",
+    `task_id: ${callbackHeaderValue(snapshot.task_id ?? "unallocated")}`,
+    `persona_id: ${callbackHeaderValue(snapshot.persona_id)}`,
+    `status: ${snapshot.status}`,
+    `phase: ${callbackHeaderValue(snapshot.phase)}`,
+    "result_pending: false",
+    "callback_delivery: delivered",
+    `callback_id: ${callbackHeaderValue(snapshot.callback_id)}`,
+    `completed_at: ${callbackHeaderValue(snapshot.completed_at)}`,
+    "---",
+    "child_output:",
+  ].join("\n");
+  const prefixWithTrailingNewline = `${prefix}\n`;
+  const remaining = Math.max(0, SUBAGENT_CALLBACK_TEXT_LIMIT - Array.from(prefixWithTrailingNewline.normalize("NFC")).length);
+  return `${prefixWithTrailingNewline}${boundedCallbackContent(detail, remaining)}`;
 }
 
 function newSubagentPrivateKey(): string {
@@ -3925,10 +3943,14 @@ function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot): Record
     task_id: snapshot.task_id,
     persona_id: snapshot.persona_id,
     status: snapshot.status,
+    phase: snapshot.phase,
+    result_pending: false,
+    callback_delivery: "delivered",
     result_text: resultText,
     error: snapshot.error,
     callback_id: snapshot.callback_id,
     completed_at: snapshot.completed_at,
+    updated_at: snapshot.updated_at,
     message: subagentCallbackMessage(snapshot, resultText),
   };
 }

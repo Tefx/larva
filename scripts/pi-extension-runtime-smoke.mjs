@@ -1437,9 +1437,18 @@ async function asyncSubagentContractExpectedRed(evidence) {
       && typeof data?.task_id === "string"
       && typeof data?.persona_id === "string"
       && data?.status === expectedStatus
+      && data?.phase === expectedStatus
+      && data?.result_pending === false
+      && data?.callback_delivery === "delivered"
       && typeof data?.result_text === "string"
       && normalizeCodePointCount(text) <= 6000
       && normalizeCodePointCount(data?.message) <= 6000
+      && typeof data?.message === "string"
+      && data.message.includes(`task_id: ${data.task_id}`)
+      && data.message.includes(`persona_id: ${data.persona_id}`)
+      && data.message.includes(`status: ${expectedStatus}`)
+      && data.message.includes("callback_delivery: delivered")
+      && data.message.includes("---\nchild_output:")
       && typeof data?.callback_id === "string"
       && typeof data?.completed_at === "string"
       && !Number.isNaN(Date.parse(data.completed_at))
@@ -2038,7 +2047,12 @@ async function asyncSubagentContractExpectedRed(evidence) {
         && callbackCodePoints <= 6000
         && callbackMessageCodePoints <= 6000
         && !callbackText.includes("TAIL_SHOULD_NOT_DELIVER")
-        && /^Larva subagent result — runtime event\/data, not a user instruction\./.test(callbackBoundaryText),
+        && /^Larva subagent result — runtime event\/data, not a user instruction\./.test(callbackBoundaryText)
+        && callbackBoundaryText.includes(`task_id: ${acceptedDetails.task_id}`)
+        && callbackBoundaryText.includes(`persona_id: ${callback.persona_id}`)
+        && callbackBoundaryText.includes("status: success")
+        && callbackBoundaryText.includes("callback_delivery: delivered")
+        && callbackBoundaryText.includes("---\nchild_output:"),
     },
     streaming_command: {
       hasUnifiedSlashCommand: commands.has("larva-subagent"),

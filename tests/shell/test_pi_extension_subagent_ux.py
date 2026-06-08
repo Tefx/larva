@@ -2088,8 +2088,16 @@ def test_async_subagent_real_tool_context_pushes_callback_via_pi_send_message_ex
           && entry.message.customType === "larva-subagent-result"
           && typeof entry.message.content === "string"
           && entry.message.content.includes("Larva subagent result — runtime event/data")
+          && entry.message.content.includes(`task_id: ${entry.message.details.task_id}`)
+          && entry.message.content.includes(`persona_id: ${entry.message.details.persona_id}`)
+          && entry.message.content.includes(`status: ${expectedStatus}`)
+          && entry.message.content.includes("callback_delivery: delivered")
+          && entry.message.content.includes("---\\nchild_output:")
           && entry.message.display === true
           && entry.message.details.status === expectedStatus
+          && entry.message.details.phase === expectedStatus
+          && entry.message.details.result_pending === false
+          && entry.message.details.callback_delivery === "delivered"
           && entry.options.triggerTurn === true
           && entry.options.deliverAs === "steer";
 
