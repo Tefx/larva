@@ -929,6 +929,123 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
     assert payload["resetEmpty"] is True
 
 
+def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tmp_path: Path) -> None:
+    """Pin Subagent Console c-control confirmation and exact selected-task cancellation."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "overlay-c-child.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, "overlay-c-" + process.pid + ".jsonl");
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
+            else if (message.type === "switch_session") { send({ id: message.id, success: true, data: { cancelled: false } }); }
+            else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
+            else if (message.type === "abort") { send({ id: message.id, success: true, data: {} }); setTimeout(() => process.exit(0), 10); }
+          });
+        `, { mode: 0o755 });
+
+        const tools = [];
+        const commands = new Map();
+        const env = baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: childBin, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" });
+        const ctx = { env, modelRegistry, hasUI: true, ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true } };
+        await mod.initializeExtension(ctx, {
+          ...piBase,
+          registerTool: (tool) => tools.push(tool),
+          registerCommand: (name, command) => { if (typeof name === "string") commands.set(name, command); else commands.set(name.name, name); },
+        });
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const command = commands.get("larva-subagent");
+        const selectedReceipt = await subagent.execute("overlay-c-selected", { persona_id: "child", task: "selected c cancel" }, undefined, undefined, ctx);
+        const siblingReceipt = await subagent.execute("overlay-c-sibling", { persona_id: "child", task: "sibling must survive c cancel" }, undefined, undefined, ctx);
+        const activeStatuses = new Set(["accepted", "running"]);
+        const selectedBefore = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === selectedReceipt.task_id && activeStatuses.has(entry.status)));
+        const siblingBefore = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === siblingReceipt.task_id && activeStatuses.has(entry.status)));
+        const logBeforeCommand = mod.subagentPresentationLogForTests().map((entry) => ({ task_id: entry.task_id, status: entry.status, call_id: entry.call_id, errorCode: entry.error?.code ?? null }));
+        const parentBefore = JSON.stringify(mod.getActiveEnvelope());
+        const confirmCalls = [];
+        const notifications = [];
+        let opened = false;
+        const commandResult = await command.handler(selectedReceipt.task_id, {
+          ...ctx,
+          env: { ...env, LARVA_PI_INTERACTIVE_TUI: "1" },
+          ui: {
+            setStatus: () => undefined,
+            notify: (...args) => notifications.push(args),
+            confirm: async (message, options) => { confirmCalls.push({ message, options }); return true; },
+            custom: async (factory, options) => {
+              opened = options?.overlay === true;
+              const terminalWrites = [];
+              const component = factory(
+                { requestRender: () => undefined, terminal: { rows: 50, write: (data) => terminalWrites.push(data) } },
+                { fg: (_token, text) => text, bold: (text) => text },
+                { matches: () => false },
+                () => undefined,
+              );
+              component.handleInput?.("c");
+              await waitFor(() => confirmCalls.length === 1, 500);
+              await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === selectedReceipt.task_id && entry.status === "cancelled"), 1000);
+              component.dispose?.();
+              return null;
+            },
+          },
+        });
+        const selectedAfter = mod.subagentPresentationLogForTests().find((entry) => entry.task_id === selectedReceipt.task_id) ?? null;
+        const siblingAfter = mod.subagentPresentationLogForTests().find((entry) => entry.task_id === siblingReceipt.task_id) ?? null;
+        const parentAfter = JSON.stringify(mod.getActiveEnvelope());
+        await mod.resetExtensionUI("overlay-c-test-cleanup");
+        console.log(JSON.stringify({
+          opened,
+          commandOk: commandResult.ok === true,
+          receipts: { selected: { status: selectedReceipt.status, task_id: selectedReceipt.task_id, errorCode: selectedReceipt.error?.code ?? null }, sibling: { status: siblingReceipt.status, task_id: siblingReceipt.task_id, errorCode: siblingReceipt.error?.code ?? null } },
+          logBeforeCommand,
+          selectedBefore: selectedBefore ? { status: selectedBefore.status, task_id: selectedBefore.task_id } : null,
+          siblingBefore: siblingBefore ? { status: siblingBefore.status, task_id: siblingBefore.task_id } : null,
+          confirmCalls,
+          selectedAfter: selectedAfter ? { status: selectedAfter.status, errorCode: selectedAfter.error?.code ?? null, task_id: selectedAfter.task_id } : null,
+          siblingAfter: siblingAfter ? { status: siblingAfter.status, errorCode: siblingAfter.error?.code ?? null, task_id: siblingAfter.task_id } : null,
+          parentPreserved: parentBefore === parentAfter,
+          notifications,
+        }, null, 2));
+        """,
+        timeout=12.0,
+    )
+
+    assert payload["opened"] is True
+    assert payload["commandOk"] is True
+    assert payload["selectedBefore"] is not None, json.dumps(payload, indent=2, sort_keys=True)
+    assert payload["siblingBefore"] is not None, payload
+    assert payload["selectedBefore"]["status"] in {"accepted", "running"}
+    assert isinstance(payload["selectedBefore"]["task_id"], str)
+    assert payload["siblingBefore"]["status"] in {"accepted", "running"}
+    assert isinstance(payload["siblingBefore"]["task_id"], str)
+    assert len(payload["confirmCalls"]) == 1
+    assert payload["confirmCalls"][0]["options"] == {"task_id": payload["selectedBefore"]["task_id"]}
+    assert payload["selectedAfter"] == {
+        "status": "cancelled",
+        "errorCode": "LARVA_CHILD_CANCELLED",
+        "task_id": payload["selectedBefore"]["task_id"],
+    }
+    assert payload["siblingAfter"] == {
+        "status": payload["siblingBefore"]["status"],
+        "errorCode": None,
+        "task_id": payload["siblingBefore"]["task_id"],
+    }
+    assert payload["parentPreserved"] is True
+    assert any("cancelled" in notification[0] for notification in payload["notifications"])
+
+
 def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: Path) -> None:
     """Pin Scheme B: open subagent log overlays refresh on presentation mutations, not polling."""
 

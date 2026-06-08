@@ -1091,6 +1091,7 @@ type SubagentPresentationLogOverlayOptions = {
   maxBoxLines?: number;
   maxWidth?: number;
   initialMode?: "detail" | "selector";
+  onCancelSelected?: (taskId: string) => Promise<LarvaSubagentCancelResult>;
 };
 
 type SubagentOverlaySelection = {
@@ -1391,9 +1392,12 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private readonly keybindings?: PiKeybindings;
   private readonly tui?: PiTui;
   private readonly done?: (result: unknown) => void;
+  private readonly onCancelSelected?: (taskId: string) => Promise<LarvaSubagentCancelResult>;
   private readonly maxBoxLines: number;
   private readonly maxWidth: number;
   private lastRenderedViewportLines = 1;
+  private cancelInFlight = false;
+  private cancelStatusLine: string | null = null;
 
   constructor(options: SubagentPresentationLogOverlayOptions) {
     this.entry = { ...options.entry, result_text: options.entry.result_text };
@@ -1403,6 +1407,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.keybindings = options.keybindings;
     this.tui = options.tui;
     this.done = options.done;
+    this.onCancelSelected = options.onCancelSelected;
     this.maxBoxLines = subagentOverlaySurfaceLineCount(options.tui, options.maxBoxLines);
     this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? Number.MAX_SAFE_INTEGER));
     this.selectorMode = options.initialMode === "selector";
@@ -1497,9 +1502,13 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.requestRender();
   }
 
-  private selectSelectorCursor(): void {
+  private selectorCursorEntry(): SubagentPresentationLogEntry | null {
     const entries = this.selectorEntries();
-    const selected = entries[selectorClamp(this.selectorCursorIndex, 0, Math.max(0, entries.length - 1))];
+    return entries[selectorClamp(this.selectorCursorIndex, 0, Math.max(0, entries.length - 1))] ?? null;
+  }
+
+  private selectSelectorCursor(): void {
+    const selected = this.selectorCursorEntry();
     if (!selected) return;
     this.entry = selected;
     this.selection = subagentOverlaySelection(selected);
@@ -1507,6 +1516,52 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     currentSubagentOverlay = { entry: selected, text: renderSubagentPresentationOverlay([selected], true, this.generation), generation: this.generation };
     this.invalidate();
     this.requestRender();
+  }
+
+  private cancellableEntry(): SubagentPresentationLogEntry | null {
+    const candidate = this.selectorMode ? this.selectorCursorEntry() : this.entry;
+    if (candidate === null || typeof candidate.task_id !== "string" || candidate.task_id.trim().length === 0) return null;
+    if (candidate.status !== "accepted" && candidate.status !== "running") return null;
+    return candidate;
+  }
+
+  private cancelSelectedExactTask(): void {
+    if (this.cancelInFlight) return;
+    const candidate = this.cancellableEntry();
+    if (candidate === null) {
+      this.cancelStatusLine = "No exact running subagent is selected for cancellation.";
+      this.invalidate();
+      this.requestRender();
+      return;
+    }
+    const cancelSelected = this.onCancelSelected;
+    if (cancelSelected === undefined) {
+      this.cancelStatusLine = "Cancellation is unavailable in this Pi surface.";
+      this.invalidate();
+      this.requestRender();
+      return;
+    }
+    const taskId = candidate.task_id;
+    this.cancelInFlight = true;
+    this.cancelStatusLine = `Cancellation requested for ${boundedPresentationPreview(taskId, 72)}.`;
+    this.invalidate();
+    this.requestRender();
+    void cancelSelected(taskId)
+      .then((result) => {
+        const status = result.details?.status ?? "failed";
+        const errorCode = result.details?.error?.code;
+        this.cancelStatusLine = errorCode === undefined
+          ? `Cancellation result for selected task: ${status}.`
+          : `Cancellation result for selected task: ${status} (${errorCode}).`;
+      })
+      .catch((caught: unknown) => {
+        const message = caught instanceof Error ? caught.message : "unknown cancellation failure";
+        this.cancelStatusLine = `Cancellation failed: ${boundedPresentationPreview(message, 120)}.`;
+      })
+      .finally(() => {
+        this.cancelInFlight = false;
+        this.refreshFromPresentationLog();
+      });
   }
 
   private sectionLine(title: string, contentWidth: number): string {
@@ -1531,6 +1586,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Started", localSubagentTimeLabel(this.entry.started_at ?? this.entry.updated_at), contentWidth),
       ...this.fieldLines("Updated", localSubagentTimeLabel(this.entry.updated_at), contentWidth),
       ...this.fieldLines("Task ID", this.entry.task_id ?? "pending", contentWidth),
+      ...this.fieldLines("Cancellation", this.cancelStatusLine ?? (this.cancellableEntry() !== null ? "press c to cancel selected exact running task" : "not available for this selection"), contentWidth),
       "",
       this.sectionLine("Prompt", contentWidth),
       ...this.fieldLines("Initial", this.entry.task_prompt ? `recorded (${Array.from(this.entry.task_prompt).length} chars) — see Prompt tab` : "not recorded", contentWidth),
@@ -1716,10 +1772,11 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const start = innerLines.length === 0 ? 0 : scrollOffset + 1;
     const end = Math.min(innerLines.length, scrollOffset + viewportLines);
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
-    const debugHint = !this.selectorMode && tab === "timeline" ? " • d debug ids" : "";
+    const debugHint = !this.selectorMode && tab === "timeline" ? " • d ids" : "";
+    const cancelHint = this.onCancelSelected !== undefined ? " • c cancel" : "";
     const scrollInfo = this.selectorMode
-      ? `selector • Enter select • s detail • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`
-      : `1/2/3/4/5 ←→ tabs • s selector${debugHint} • Wheel/↑↓ PgUp/PgDn Home/End • Esc/q close${scrollRange}`;
+      ? `Esc/q close • Enter select • s detail${cancelHint} • Wheel/↑↓ PgUp/PgDn Home/End${scrollRange}`
+      : `Esc/q close${cancelHint} • s selector • 1-5${debugHint} • Wheel/↑↓ PgUp/PgDn Home/End${scrollRange}`;
     const rows = [
       selectorFullBorderRow("╭", topMiddle, "╮", withShadow),
       selectorBoxRow(this.selectorMode ? overlayPadLine("Select subagent", contentWidth) : this.tabLine(contentWidth), contentWidth, withShadow),
@@ -1745,6 +1802,10 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     }
     if (matchesInputKey(this.keybindings, data, ["tui.confirm", "tui.select.confirm"], [Key.enter], ["\r", "\n"], ["enter"])) {
       if (this.selectorMode) this.selectSelectorCursor();
+      return;
+    }
+    if (data === "c" || data === "C") {
+      this.cancelSelectedExactTask();
       return;
     }
     if (!this.selectorMode && this.activeTab() === "timeline" && (data === "d" || data === "D")) {
@@ -1798,6 +1859,16 @@ async function openSubagentPresentationOverlay(ctx: PiContext, overlay: LarvaSub
       done: (result) => {
         component.dispose();
         done(result);
+      },
+      onCancelSelected: async (taskId: string) => {
+        const confirmed = typeof ctx.ui?.confirm === "function"
+          ? await ctx.ui.confirm(`Cancel Larva subagent ${taskId}?`, { task_id: taskId }) === true
+          : false;
+        if (!confirmed) return wrapSubagentCancelResult(taskId, "", "running", null, false);
+        const result = await cancelSubagentByTaskId(taskId, "user requested Subagent Console cancellation", "console", ctx, true);
+        const resultText = result.content[0]?.text ?? "Larva subagent cancellation completed.";
+        await notify(ctx, resultText, result.isError ? "error" : "info");
+        return result;
       },
     });
     currentSubagentOverlayComponent = component;
