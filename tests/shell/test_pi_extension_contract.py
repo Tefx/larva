@@ -3078,6 +3078,267 @@ def test_async_subagent_a4_a7_expected_red_result_callback_and_lifecycle_source_
     assert not missing, "missing async subagent callback/lifecycle contract tokens: " + ", ".join(missing)
 
 
+def test_async_subagent_lifecycle_cleanup_aborts_via_child_rpc_stales_callbacks_and_preserves_session_file(tmp_path: Path) -> None:
+    """Lifecycle cleanup must use child RPC abort, stale callbacks, and preserve .jsonl authority."""
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    child_session_root = tmp_path / "child-sessions"
+    child_session = child_session_root / "lifecycle-child.jsonl"
+    child_events = tmp_path / "child-events.jsonl"
+    child = tmp_path / "fake-lifecycle-child.mjs"
+    child.write_text(
+        textwrap.dedent(
+            f"""
+            import {{ createInterface }} from "node:readline";
+            import {{ appendFile, mkdir, writeFile }} from "node:fs/promises";
+            import {{ dirname }} from "node:path";
+            const sessionFile = {json.dumps(str(child_session))};
+            const eventsFile = {json.dumps(str(child_events))};
+            await mkdir(dirname(sessionFile), {{ recursive: true }});
+            const log = async (event) => appendFile(eventsFile, JSON.stringify({{ ...event, pid: process.pid, at: Date.now() }}) + "\\n", "utf8");
+            const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+            process.on("SIGTERM", async () => {{ await log({{ event: "sigterm" }}); process.exit(0); }});
+            process.on("SIGINT", async () => {{ await log({{ event: "sigint" }}); process.exit(0); }});
+            setInterval(() => undefined, 1000);
+            const rl = createInterface({{ input: process.stdin }});
+            rl.on("line", async (line) => {{
+              const message = JSON.parse(line);
+              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); await log({{ event: "get_state" }}); send({{ id: message.id, success: true, data: {{ sessionFile }} }}); }}
+              else if (message.type === "prompt") {{ await log({{ event: "prompt" }}); send({{ id: message.id, success: true, data: {{}} }}); }}
+              else if (message.type === "abort") {{ await log({{ event: "abort_rpc" }}); send({{ id: message.id, success: true, data: {{}} }}); }}
+              else if (message.type === "get_last_assistant_text") {{ await log({{ event: "last_text" }}); send({{ id: message.id, success: true, data: {{ text: "SHOULD_NOT_CALLBACK" }} }}); }}
+            }});
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const fs = await import("node:fs");
+        const fsp = await import("node:fs/promises");
+        const handlers = new Map();
+        const tools = new Map();
+        const callbacks = [];
+        const sessionEntries = [];
+        const recordCallback = (surface, customType, data, options = {{}}) => {{
+          const entry = {{ surface, customType, data, options }};
+          sessionEntries.push(entry);
+          if (customType === "larva-subagent-result") callbacks.push(entry);
+          return entry;
+        }};
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_REAL_BIN: process.execPath,
+            LARVA_PI_EXTENSION_FLAG: {json.dumps(str(child))},
+            LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+            LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_session_root))},
+            LARVA_PI_LAUNCHED: "1",
+            HOME: {json.dumps(str(tmp_path))},
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+          session: {{ entries: sessionEntries, getEntries: () => sessionEntries, appendEntry: (customType, data, options) => recordCallback("session.appendEntry", customType, data, options) }},
+          appendEntry: (customType, data, options) => recordCallback("ctx.appendEntry", customType, data, options),
+          sendCustomMessage: async (customType, data, options) => recordCallback("ctx.sendCustomMessage", customType, data, options),
+          sendUserMessage: async (message, options = {{}}) => recordCallback("ctx.sendUserMessage", options.customType ?? "user", {{ message, ...(options.details ?? {{}}) }}, options),
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "larva_subagent", "larva_subagent_status", "larva_subagent_cancel"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: (tool) => tools.set(tool.name, tool),
+          on: (event, handler) => handlers.set(event, handler),
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("parent", ctx, pi);
+        mod.resetSubagentPresentationStateForTests();
+        const result = await tools.get("larva_subagent").execute("lifecycle-cleanup", {{ persona_id: "child", task: "remain active until lifecycle cleanup" }}, undefined, undefined, ctx);
+        const taskId = result.details?.task_id;
+        const beforeDiagnostics = mod.subagentActiveRunDiagnosticsForTests();
+        const childPid = beforeDiagnostics[0]?.child_pid ?? null;
+        const started = Date.now();
+        const cleanupResult = await handlers.get("reload")({{ reason: "test reload" }}, ctx);
+        const elapsedMs = Date.now() - started;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const afterDiagnostics = mod.subagentActiveRunDiagnosticsForTests();
+        let childAlive = false;
+        if (Number.isInteger(childPid)) {{ try {{ process.kill(childPid, 0); childAlive = true; }} catch {{ childAlive = false; }} }}
+        const events = fs.existsSync({json.dumps(str(child_events))})
+          ? (await fsp.readFile({json.dumps(str(child_events))}, "utf8")).trim().split(/\\n+/).filter(Boolean).map((line) => JSON.parse(line))
+          : [];
+        console.log(JSON.stringify({{
+          result,
+          taskId,
+          beforeDiagnostics,
+          cleanupResult,
+          elapsedMs,
+          afterDiagnostics,
+          childAlive,
+          events,
+          callbackCount: callbacks.length,
+          sessionFileExists: typeof taskId === "string" && fs.existsSync(taskId),
+          requiredHandlers: Object.fromEntries(["session_start", "shutdown", "reload", "new_session", "session_new", "resume", "fork", "quit"].map((name) => [name, typeof handlers.get(name) === "function"])),
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["result"]["details"]["status"] == "accepted"
+    assert payload["sessionFileExists"] is True
+    assert payload["cleanupResult"]["active_children_reaped"] == 1
+    assert payload["elapsedMs"] >= 1300
+    assert {event["event"] for event in payload["events"]} >= {"get_state", "prompt", "abort_rpc", "sigterm"}
+    assert payload["childAlive"] is False
+    assert payload["callbackCount"] == 0
+    diagnostic = payload["afterDiagnostics"][0]
+    assert diagnostic["callback_delivery"] == "stale"
+    assert diagnostic["cancellation_source"] == "lifecycle"
+    assert diagnostic["terminal_status"] == "cancelled"
+    assert diagnostic["child_running"] is False
+    assert payload["requiredHandlers"] == {key: True for key in payload["requiredHandlers"]}
+
+
+def test_async_subagent_stale_parent_session_identity_suppresses_late_callback(tmp_path: Path) -> None:
+    """A late terminal result from an old parent session must not call custom callback surfaces."""
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    child_session_root = tmp_path / "child-sessions"
+    child_session = child_session_root / "stale-callback-child.jsonl"
+    child = tmp_path / "fake-stale-callback-child.mjs"
+    child.write_text(
+        textwrap.dedent(
+            f"""
+            import {{ createInterface }} from "node:readline";
+            import {{ mkdir, writeFile }} from "node:fs/promises";
+            import {{ dirname }} from "node:path";
+            const sessionFile = {json.dumps(str(child_session))};
+            await mkdir(dirname(sessionFile), {{ recursive: true }});
+            const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+            const rl = createInterface({{ input: process.stdin }});
+            rl.on("line", async (line) => {{
+              const message = JSON.parse(line);
+              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); send({{ id: message.id, success: true, data: {{ sessionFile }} }}); }}
+              else if (message.type === "prompt") {{ send({{ id: message.id, success: true, data: {{}} }}); setTimeout(() => send({{ type: "agent_end" }}), 80); }}
+              else if (message.type === "get_last_assistant_text") {{ send({{ id: message.id, success: true, data: {{ text: "LATE_STALE_FINAL" }} }}); setTimeout(() => process.exit(0), 5); }}
+              else if (message.type === "abort") {{ send({{ id: message.id, success: true }}); process.exit(0); }}
+            }});
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const callbacks = [];
+        const oldEntries = [];
+        const newEntries = [];
+        const recordCallback = (surface, customType, data, options = {{}}) => {{
+          const entry = {{ surface, customType, data, options }};
+          if (customType === "larva-subagent-result") callbacks.push(entry);
+          return entry;
+        }};
+        const oldSession = {{ entries: oldEntries, getEntries: () => oldEntries, appendEntry: (customType, data, options) => recordCallback("old.appendEntry", customType, data, options) }};
+        const newSession = {{ entries: newEntries, getEntries: () => newEntries, appendEntry: (customType, data, options) => recordCallback("new.appendEntry", customType, data, options) }};
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_REAL_BIN: process.execPath,
+            LARVA_PI_EXTENSION_FLAG: {json.dumps(str(child))},
+            LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+            LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_session_root))},
+            LARVA_PI_LAUNCHED: "1",
+            HOME: {json.dumps(str(tmp_path))},
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+          session: oldSession,
+          appendEntry: (customType, data, options) => recordCallback("ctx.appendEntry", customType, data, options),
+          sendCustomMessage: async (customType, data, options) => recordCallback("ctx.sendCustomMessage", customType, data, options),
+          sendUserMessage: async (message, options = {{}}) => recordCallback("ctx.sendUserMessage", options.customType ?? "user", {{ message, ...(options.details ?? {{}}) }}, options),
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "larva_subagent", "larva_subagent_status", "larva_subagent_cancel"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("parent", ctx, pi);
+        mod.resetSubagentPresentationStateForTests();
+        const accepted = await mod.larva_subagent({{ persona_id: "child", task: "finish after parent session identity changes" }}, ctx);
+        ctx.session = newSession;
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        console.log(JSON.stringify({{
+          accepted,
+          diagnostics: mod.subagentActiveRunDiagnosticsForTests(),
+          callbackCount: callbacks.length,
+          oldEntries,
+          newEntries,
+        }}));
+        """,
+        timeout=6,
+    )
+
+    assert payload["accepted"]["status"] == "accepted"
+    assert payload["callbackCount"] == 0
+    diagnostic = payload["diagnostics"][0]
+    assert diagnostic["terminal_status"] == "success"
+    assert diagnostic["callback_delivery"] == "stale"
+    assert payload["oldEntries"] == []
+    assert payload["newEntries"] == []
+
+
 def test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity() -> None:
     """Expected-red A8/A10: canonical /larva-subagent command and README parity."""
 

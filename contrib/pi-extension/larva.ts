@@ -4456,6 +4456,22 @@ export function subagentActiveRunRegistryForTests(): LarvaSubagentRunSnapshot[] 
   return Array.from(activeSubagentRuns.values()).flatMap((record) => record.status_history.length > 0 ? record.status_history : [statusSnapshotForRun(record)].filter((snapshot): snapshot is LarvaSubagentRunSnapshot => snapshot !== null));
 }
 
+export function subagentActiveRunDiagnosticsForTests(): Array<Record<string, unknown>> {
+  return Array.from(new Set(activeSubagentRuns.values())).map((record) => ({
+    task_id: record.task_id,
+    persona_id: record.persona_id,
+    status: record.status,
+    phase: record.phase,
+    result_pending: record.result_pending,
+    callback_delivery: record.callback_delivery,
+    cancellation_source: record.cancellation_source,
+    cancellation_reason: record.cancellation_reason,
+    terminal_status: record.terminal_snapshot?.status ?? null,
+    child_pid: record.child?.pid ?? null,
+    child_running: record.child !== null && childStillRunning(record.child),
+  }));
+}
+
 function subagentMode(input: LarvaSubagentInput): "new" | "resume" {
   return typeof input.task_id === "string" && input.task_id.trim().length > 0 ? "resume" : "new";
 }
@@ -5011,28 +5027,25 @@ async function cleanupSubagentRunChild(record: ActiveSubagentRun): Promise<void>
   await cleanupChild(child, record.env);
 }
 
-async function resetActiveSubagentChildren(): Promise<number> {
-  const activeRecords = Array.from(activeSubagentRuns.values()).filter(isSubagentRunActive);
+async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promise<number> {
+  const activeRecords = Array.from(new Set(activeSubagentRuns.values())).filter(isSubagentRunActive);
   const activeChildren = Array.from(activeSubagentChildren);
   const recordChildren = new Set(activeRecords.map((record) => record.child).filter((child): child is ChildProcessWithoutNullStreams => child !== null));
-  for (const record of activeRecords) {
-    record.callback_delivery = "stale";
-    record.cancellation_source = "lifecycle";
-    record.cancellation_reason = "parent lifecycle reset";
-    if (record.terminal_snapshot === null) touchSubagentRun(record, "cancelling", "cancelling");
+  for (const record of activeSubagentRuns.values()) {
+    if (record.callback_delivery === "pending") record.callback_delivery = "stale";
   }
-  await Promise.all(activeRecords.map(async (record) => cleanupSubagentRunChild(record)));
-  activeSubagentChildren.clear();
+  await Promise.all(activeRecords.map((record) => abortSubagentRun(record, "lifecycle", reason, { awaitTerminal: true })));
   for (const entry of activeChildren) {
     if (!recordChildren.has(entry.child)) await cleanupChild(entry.child, entry.env);
   }
-  activeSubagentRuns.clear();
+  activeSubagentChildren.clear();
   activeTaskIds.clear();
+  pruneTerminalSubagentRuns();
   return activeChildren.length;
 }
 
-export async function resetExtensionUI(_reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
-  const activeChildrenReaped = await resetActiveSubagentChildren();
+export async function resetExtensionUI(reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
+  const activeChildrenReaped = await cleanupActiveSubagentRegistryForLifecycle(reason);
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
   subagentUiResetGeneration += 1;
@@ -5044,6 +5057,7 @@ async function abortSubagentRun(record: ActiveSubagentRun, source: SubagentCance
   if (record.terminal_snapshot !== null) return record.terminal_snapshot;
   record.cancellation_source = source;
   record.cancellation_reason = boundedNormalizedCodePoints(reason, SUBAGENT_CANCEL_REASON_LIMIT);
+  if (source === "lifecycle" && record.callback_delivery === "pending") record.callback_delivery = "stale";
   touchSubagentRun(record, "cancelling", "cancelling");
   if (record.cancel_task === null) {
     record.cancel_task = (async () => {
@@ -5059,7 +5073,7 @@ async function abortSubagentRun(record: ActiveSubagentRun, source: SubagentCance
         : abortOutcome === "cancelled"
           ? cancelled(record.task_id, record.persona_id)
           : failed(record.task_id, record.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Child abort state became unknowable."));
-      const snapshot = finalizeSubagentRun(record, result, { suppressCallback: source === "lifecycle" || (options.suppressCallbackOnTerminalReturn === true && options.awaitTerminal === true) });
+      const snapshot = finalizeSubagentRun(record, result, { suppressCallback: options.suppressCallbackOnTerminalReturn === true && options.awaitTerminal === true });
       await cleanupSubagentRunChild(record);
       return snapshot;
     })();
@@ -5446,7 +5460,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     await resetExtensionUI("session_start");
     await ensureSessionInitialized(runtimeCtx, pi);
   });
-  for (const lifecycleEvent of ["shutdown", "session_end", "exit", "reload", "resume", "fork", "quit"]) {
+  for (const lifecycleEvent of ["shutdown", "session_end", "exit", "reload", "new_session", "session_new", "resume", "fork", "quit"]) {
     pi.on?.(lifecycleEvent, async () => resetExtensionUI(lifecycleEvent));
   }
   pi.on?.("before_agent_start", async (payload: unknown, eventCtx?: PiContext) => {
