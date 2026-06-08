@@ -231,6 +231,39 @@ type LarvaSubagentSessionsResult = {
   };
   isError: boolean;
 };
+type LarvaSubagentEventKind = "accepted" | "phase" | "terminal" | "callback_delivery" | "lifecycle";
+type LarvaSubagentEvent = {
+  sequence: number;
+  task_id: string;
+  kind: LarvaSubagentEventKind;
+  status: LarvaSubagentPublicStatus;
+  phase: string;
+  callback_delivery: SubagentCallbackDeliveryState;
+  result_pending: boolean;
+  updated_at: string;
+  error: LarvaError | null;
+};
+type LarvaSubagentEventsResult = {
+  content: PiTextContent[];
+  details: { status: "success" | "failed"; events: LarvaSubagentEvent[]; next_sequence: number; cursor_expired: boolean; error: LarvaError | null };
+  isError: boolean;
+};
+type LarvaSubagentWaitReturnWhen = "all" | "any" | "first_error";
+type LarvaSubagentWaitResult = {
+  content: PiTextContent[];
+  details: {
+    status: "success" | "failed";
+    return_when: LarvaSubagentWaitReturnWhen;
+    satisfied: boolean;
+    timed_out: boolean;
+    runs: LarvaSubagentRunSnapshot[];
+    ready_task_ids: string[];
+    pending_task_ids: string[];
+    next_sequence: number;
+    error: LarvaError | null;
+  };
+  isError: boolean;
+};
 type LarvaSubagentProgressUpdate = {
   text: string;
   content: PiTextContent[];
@@ -460,6 +493,11 @@ type ActiveSubagentRun = {
   cancel_task: Promise<SubagentTerminalSnapshot> | null;
 };
 const activeSubagentRuns: Map<string, ActiveSubagentRun> = new Map();
+const SUBAGENT_EVENT_RETENTION_LIMIT = 1000;
+const subagentEventLog: LarvaSubagentEvent[] = [];
+const subagentEventWaiters = new Set<() => void>();
+let subagentEventSequence = 0;
+const subagentBackgroundIndicatorContexts = new Set<PiContext>();
 let subagentStartupSequence = 0;
 const retainedSubagentPresentationLog: SubagentPresentationLogEntry[] = [];
 const activeSubagentChildren: Set<{ child: ChildProcessWithoutNullStreams; env: RuntimeEnv }> = new Set();
@@ -3667,7 +3705,7 @@ function isTerminalSubagentStatus(status: string): status is LarvaSubagentTermin
 }
 
 function larvaSubagentResultText(result: LarvaSubagentResult): string {
-  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. If your next step depends on the child result, do not use shell sleep polling; wait for the larva-subagent-result push, or use wait/select/events when available.";
+  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. If your next step depends on the child result, Do not use shell sleep polling; wait for the larva-subagent-result push, or use larva_subagent_wait, larva_subagent_select, or larva_subagent_events when available.";
   if (result.status === "success") return result.result_text || "Larva subagent completed without final assistant text.";
   if (result.error) return `${result.error.code}: ${result.error.message}`;
   return result.status === "cancelled" ? "Larva subagent was cancelled." : "Larva subagent failed.";
@@ -3800,6 +3838,78 @@ function isSubagentRunActive(record: ActiveSubagentRun): boolean {
   return record.terminal_snapshot === null && (record.status === "starting" || record.status === "accepted" || record.status === "running" || record.status === "cancelling");
 }
 
+function cloneLarvaError(value: LarvaError | null): LarvaError | null {
+  return value === null ? null : { code: value.code, message: value.message };
+}
+
+function notifySubagentEventWaiters(): void {
+  for (const waiter of Array.from(subagentEventWaiters)) {
+    try { waiter(); } catch { /* wait notification is best-effort */ }
+  }
+}
+
+function highestSubagentEventSequence(): number {
+  return subagentEventSequence;
+}
+
+function subagentEventFromSnapshot(snapshot: LarvaSubagentRunSnapshot, kind: LarvaSubagentEventKind): LarvaSubagentEvent {
+  subagentEventSequence += 1;
+  return {
+    sequence: subagentEventSequence,
+    task_id: snapshot.task_id,
+    kind,
+    status: snapshot.status,
+    phase: snapshot.phase,
+    callback_delivery: snapshot.callback_delivery,
+    result_pending: snapshot.result_pending,
+    updated_at: snapshot.updated_at,
+    error: cloneLarvaError(snapshot.error),
+  };
+}
+
+function appendSubagentEvent(snapshot: LarvaSubagentRunSnapshot, kind: LarvaSubagentEventKind): void {
+  subagentEventLog.push(subagentEventFromSnapshot(snapshot, kind));
+  while (subagentEventLog.length > SUBAGENT_EVENT_RETENTION_LIMIT) subagentEventLog.shift();
+  updateSubagentBackgroundIndicator();
+  notifySubagentEventWaiters();
+}
+
+function appendSubagentLifecycleEvent(record: ActiveSubagentRun, phase: string): void {
+  const snapshot = statusSnapshotForRun(record);
+  if (snapshot === null) return;
+  appendSubagentEvent({ ...snapshot, phase, updated_at: timestampNow(), error: cloneLarvaError(snapshot.error) }, "lifecycle");
+}
+
+function registerSubagentBackgroundIndicatorContext(ctx: PiContext): void {
+  subagentBackgroundIndicatorContexts.add(ctx);
+}
+
+function subagentBackgroundIndicatorText(): string {
+  const records = Array.from(new Set(activeSubagentRuns.values())).filter(isSubagentRunActive);
+  if (records.length === 0) return "Larva: idle";
+  const cancelling = records.filter((record) => record.status === "cancelling").length;
+  const running = records.length - cancelling;
+  if (running > 0 && cancelling > 0) return `Larva: ${running} running · ${cancelling} cancelling`;
+  if (cancelling > 0) return `Larva: ${cancelling} cancelling`;
+  return `Larva: ${records.length} bg`;
+}
+
+function updateSubagentBackgroundIndicator(ctx?: PiContext): void {
+  if (ctx !== undefined) registerSubagentBackgroundIndicatorContext(ctx);
+  const contexts = ctx === undefined ? Array.from(subagentBackgroundIndicatorContexts) : [ctx];
+  const text = subagentBackgroundIndicatorText();
+  for (const indicatorCtx of contexts) {
+    const setter = indicatorCtx.ui?.setStatus as ((keyOrStatus: string, status?: string) => void | Promise<void>) | undefined;
+    if (!setter) continue;
+    try {
+      if (setter.length >= 2) void setter("larva-subagents", text);
+      else void setter(text);
+    } catch {
+      // Background indicator failures are UI-only and must not affect orchestration authority.
+    }
+  }
+}
+
 function statusSnapshotForRun(record: ActiveSubagentRun, status: LarvaSubagentPublicStatus = record.status === "starting" ? "accepted" : record.status): LarvaSubagentRunSnapshot | null {
   if (record.task_id === null) return null;
   return {
@@ -3818,12 +3928,30 @@ function appendSubagentRunSnapshot(record: ActiveSubagentRun, status: LarvaSubag
   const snapshot = statusSnapshotForRun(record, status);
   if (snapshot === null) return;
   const previous = record.status_history.at(-1);
-  if (previous?.status === snapshot.status && previous.phase === snapshot.phase && previous.error === snapshot.error) {
+  const sameError = JSON.stringify(previous?.error ?? null) === JSON.stringify(snapshot.error ?? null);
+  const sameSnapshot = previous?.status === snapshot.status
+    && previous.phase === snapshot.phase
+    && previous.callback_delivery === snapshot.callback_delivery
+    && previous.result_pending === snapshot.result_pending
+    && sameError;
+  if (sameSnapshot) {
     record.status_history[record.status_history.length - 1] = snapshot;
-  } else {
-    record.status_history.push(snapshot);
+    return;
   }
+  record.status_history.push(snapshot);
   while (record.status_history.length > 8) record.status_history.shift();
+  const kind: LarvaSubagentEventKind = previous === undefined
+    ? (isTerminalSubagentStatus(snapshot.status) ? "terminal" : "accepted")
+    : previous.callback_delivery !== snapshot.callback_delivery
+      ? "callback_delivery"
+      : isTerminalSubagentStatus(snapshot.status)
+        ? "terminal"
+        : previous.status === snapshot.status
+          ? "phase"
+          : snapshot.status === "accepted"
+            ? "accepted"
+            : "phase";
+  appendSubagentEvent(snapshot, kind);
 }
 
 function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId: string, taskId: string | null, ctx?: PiContext & { presentationCallId?: string; callbackSurface?: SubagentCallbackSurface }): ActiveSubagentRun {
@@ -4281,15 +4409,24 @@ function parseSubagentStatusInput(input: unknown): ParsedSubagentStatusInput | L
   return { taskId, limit };
 }
 
-function validatePublicTaskIdForControl(taskId: string, env: RuntimeEnv): string | LarvaError {
+function validateExactPublicTaskIdLexical(taskId: string, env: RuntimeEnv): string | LarvaError {
+  if (taskId.trim() !== taskId || taskId.length === 0) return error("LARVA_BAD_INPUT", "task_id must be an exact, unmodified absolute .jsonl path.");
   if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
   if (!taskId.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
+  if (taskId.endsWith(sep) || taskId.includes("~") || taskId.includes("%") || taskId.includes("\\")) return error("LARVA_BAD_INPUT", "task_id must be an exact normalized public handle.");
+  const segments = taskId.split(sep);
+  const internalSegments = segments.slice(1);
+  if (internalSegments.some((segment) => segment.length === 0 || segment === "." || segment === "..")) return error("LARVA_BAD_INPUT", "task_id must not contain empty, dot, or dot-dot path segments.");
   if (activeSubagentRunByTaskId(taskId) !== null) return taskId;
   const root = lexicalStatusChildSessionRoot(env);
   if (isLarvaError(root)) return root;
-  const normalizedTaskId = resolve(taskId);
-  if (!isUnderRoot(root, normalizedTaskId)) return error("LARVA_BAD_INPUT", "task_id must stay inside childSessionRoot.");
-  return normalizedTaskId;
+  if (!isUnderRoot(root, taskId)) return error("LARVA_BAD_INPUT", "task_id must stay inside childSessionRoot.");
+  if (resolve(taskId) !== taskId) return error("LARVA_BAD_INPUT", "task_id must already be normalized; refusing to clean it.");
+  return taskId;
+}
+
+function validatePublicTaskIdForControl(taskId: string, env: RuntimeEnv): string | LarvaError {
+  return validateExactPublicTaskIdLexical(taskId, env);
 }
 
 function lexicalStatusChildSessionRoot(env: RuntimeEnv): string | LarvaError {
@@ -4301,14 +4438,7 @@ function lexicalStatusChildSessionRoot(env: RuntimeEnv): string | LarvaError {
 }
 
 function validatePublicTaskIdForStatus(taskId: string, env: RuntimeEnv): string | LarvaError {
-  if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
-  if (!taskId.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
-  if (activeSubagentRunByTaskId(taskId) !== null) return taskId;
-  const root = lexicalStatusChildSessionRoot(env);
-  if (isLarvaError(root)) return root;
-  const normalizedTaskId = resolve(taskId);
-  if (!isUnderRoot(root, normalizedTaskId)) return error("LARVA_BAD_INPUT", "task_id must stay inside childSessionRoot.");
-  return normalizedTaskId;
+  return validateExactPublicTaskIdLexical(taskId, env);
 }
 
 function statusSnapshotForExactTask(taskId: string): LarvaSubagentRunSnapshot[] {
@@ -4344,6 +4474,180 @@ export async function larva_subagent_status(input?: unknown, ctx?: { env?: Runti
     return wrapSubagentStatusResult(statusSnapshotForExactTask(validated));
   }
   return wrapSubagentStatusResult(latestStatusSnapshots(parsed.limit));
+}
+
+type ParsedSubagentEventsInput = { sinceSequence: number; taskIds: string[] | null; limit: number };
+type ParsedSubagentWaitInput = { taskIds: string[]; returnWhen: LarvaSubagentWaitReturnWhen; timeoutMs: number };
+// Contract tokens pinned for source-level parity: return_when: "all", return_when: "any", return_when: "first_error".
+
+function rejectUnexpectedKeys(input: Record<string, unknown>, allowed: string[]): LarvaError | null {
+  const allowedSet = new Set(allowed);
+  const unexpected = Object.keys(input).filter((key) => !allowedSet.has(key));
+  return unexpected.length === 0 ? null : error("LARVA_BAD_INPUT", `unexpected input field: ${unexpected[0]}`);
+}
+
+function parseOptionalInteger(value: unknown, fieldName: string, minimum: number, maximum: number, fallback: number): number | LarvaError {
+  const candidate = value === undefined || value === null ? fallback : value;
+  if (typeof candidate !== "number" || !Number.isInteger(candidate) || candidate < minimum || candidate > maximum) return error("LARVA_BAD_INPUT", `${fieldName} must be an integer from ${minimum} to ${maximum}.`);
+  return candidate;
+}
+
+function parseTaskIdArray(value: unknown, env: RuntimeEnv, fieldName = "task_ids"): string[] | LarvaError {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 25) return error("LARVA_BAD_INPUT", `${fieldName} must be an array of 1 to 25 exact task_id strings.`);
+  const seen = new Set<string>();
+  const taskIds: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string" || item.trim().length === 0) return error("LARVA_BAD_INPUT", `${fieldName} entries must be non-empty strings.`);
+    const validated = validateExactPublicTaskIdLexical(item, env);
+    if (isLarvaError(validated)) return validated;
+    if (seen.has(validated)) return error("LARVA_BAD_INPUT", `${fieldName} must not contain duplicate task_id values.`);
+    seen.add(validated);
+    taskIds.push(validated);
+  }
+  return taskIds;
+}
+
+function parseSubagentEventsInput(input: unknown, env: RuntimeEnv): ParsedSubagentEventsInput | LarvaError {
+  if (input !== undefined && input !== null && !isRecord(input)) return error("LARVA_BAD_INPUT", "events input must be an object.");
+  if (isRecord(input)) {
+    const unexpected = rejectUnexpectedKeys(input, ["since_sequence", "task_ids", "limit"]);
+    if (unexpected !== null) return unexpected;
+  }
+  const sinceSequence = parseOptionalInteger(isRecord(input) ? input.since_sequence : undefined, "since_sequence", 0, Number.MAX_SAFE_INTEGER, 0);
+  if (isLarvaError(sinceSequence)) return sinceSequence;
+  const limit = parseOptionalInteger(isRecord(input) ? input.limit : undefined, "limit", 1, 100, 50);
+  if (isLarvaError(limit)) return limit;
+  let taskIds: string[] | null = null;
+  if (isRecord(input) && input.task_ids !== undefined && input.task_ids !== null) {
+    const parsedTaskIds = parseTaskIdArray(input.task_ids, env);
+    if (isLarvaError(parsedTaskIds)) return parsedTaskIds;
+    taskIds = parsedTaskIds;
+  }
+  return { sinceSequence, taskIds, limit };
+}
+
+function wrapSubagentEventsResult(events: LarvaSubagentEvent[], nextSequence: number, cursorExpired: boolean, larvaError: LarvaError | null = null): LarvaSubagentEventsResult {
+  const failedStatus = larvaError !== null;
+  const text = failedStatus
+    ? `${larvaError.code}: ${larvaError.message}`
+    : events.length === 0
+      ? `Larva subagent events: no events after cursor ${nextSequence}`
+      : `Larva subagent events: ${events.length} event(s), next_sequence ${nextSequence}`;
+  return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", events, next_sequence: nextSequence, cursor_expired: cursorExpired, error: larvaError }, isError: failedStatus };
+}
+
+function cloneSubagentEvent(eventValue: LarvaSubagentEvent): LarvaSubagentEvent {
+  return { ...eventValue, error: cloneLarvaError(eventValue.error) };
+}
+
+export function larva_subagent_events(input?: unknown, ctx?: { env?: RuntimeEnv }): LarvaSubagentEventsResult {
+  const parsed = parseSubagentEventsInput(input, currentEnv(ctx));
+  if (isLarvaError(parsed)) return wrapSubagentEventsResult([], highestSubagentEventSequence(), false, parsed);
+  const highestRetained = subagentEventLog.at(-1)?.sequence ?? highestSubagentEventSequence();
+  const oldestRetained = subagentEventLog[0]?.sequence ?? 0;
+  const cursorExpired = subagentEventLog.length > 0 && parsed.sinceSequence < oldestRetained - 1;
+  const effectiveSince = cursorExpired ? oldestRetained - 1 : parsed.sinceSequence;
+  const candidateWindow = subagentEventLog.filter((eventValue) => eventValue.sequence > effectiveSince);
+  const taskFilter = parsed.taskIds === null ? null : new Set(parsed.taskIds);
+  const filtered = taskFilter === null ? candidateWindow : candidateWindow.filter((eventValue) => taskFilter.has(eventValue.task_id));
+  const returned = filtered.slice(0, parsed.limit).map(cloneSubagentEvent);
+  const paging = filtered.length > parsed.limit;
+  const nextSequence = paging && returned.length > 0 ? returned[returned.length - 1].sequence : highestRetained;
+  return wrapSubagentEventsResult(returned, nextSequence, cursorExpired);
+}
+
+function parseSubagentWaitInput(input: unknown, env: RuntimeEnv, forceReturnWhen?: LarvaSubagentWaitReturnWhen): ParsedSubagentWaitInput | LarvaError {
+  if (!isRecord(input)) return error("LARVA_BAD_INPUT", "wait input must be an object.");
+  const unexpected = rejectUnexpectedKeys(input, forceReturnWhen === undefined ? ["task_ids", "return_when", "timeout_ms"] : ["task_ids", "timeout_ms"]);
+  if (unexpected !== null) return unexpected;
+  const taskIds = parseTaskIdArray(input.task_ids, env);
+  if (isLarvaError(taskIds)) return taskIds;
+  const returnWhenValue = forceReturnWhen ?? (input.return_when === undefined || input.return_when === null ? "all" : input.return_when);
+  if (returnWhenValue !== "all" && returnWhenValue !== "any" && returnWhenValue !== "first_error") return error("LARVA_BAD_INPUT", "return_when must be all, any, or first_error.");
+  const timeoutMs = parseOptionalInteger(input.timeout_ms, "timeout_ms", 0, 60000, 10000);
+  if (isLarvaError(timeoutMs)) return timeoutMs;
+  return { taskIds, returnWhen: returnWhenValue, timeoutMs };
+}
+
+function observedSnapshotsForTaskIds(taskIds: string[]): LarvaSubagentRunSnapshot[] | LarvaError {
+  const snapshots: LarvaSubagentRunSnapshot[] = [];
+  for (const taskId of taskIds) {
+    const snapshot = statusSnapshotForExactTask(taskId)[0] ?? null;
+    if (snapshot === null) return error("LARVA_SUBAGENT_NOT_OBSERVED", `Larva subagent task_id not observed in this parent process: ${taskId}`);
+    snapshots.push(snapshot);
+  }
+  return snapshots;
+}
+
+function snapshotIsFirstErrorReady(snapshot: LarvaSubagentRunSnapshot): boolean {
+  return isTerminalSubagentStatus(snapshot.status) && (snapshot.status === "failed" || snapshot.status === "cancelled" || snapshot.error !== null);
+}
+
+function evaluateSubagentWait(taskIds: string[], returnWhen: LarvaSubagentWaitReturnWhen): { runs: LarvaSubagentRunSnapshot[]; readyTaskIds: string[]; pendingTaskIds: string[]; satisfied: boolean } | LarvaError {
+  const runs = observedSnapshotsForTaskIds(taskIds);
+  if (isLarvaError(runs)) return runs;
+  const terminalReady = runs.filter((run) => isTerminalSubagentStatus(run.status)).map((run) => run.task_id);
+  const errorReady = runs.filter(snapshotIsFirstErrorReady).map((run) => run.task_id);
+  const readyTaskIds = returnWhen === "first_error" ? errorReady : terminalReady;
+  const pendingTaskIds = taskIds.filter((taskId) => !readyTaskIds.includes(taskId));
+  const satisfied = returnWhen === "all"
+    ? readyTaskIds.length === taskIds.length
+    : returnWhen === "any"
+      ? readyTaskIds.length > 0
+      : readyTaskIds.length > 0;
+  return { runs, readyTaskIds, pendingTaskIds, satisfied };
+}
+
+function wrapSubagentWaitResult(returnWhen: LarvaSubagentWaitReturnWhen, satisfied: boolean, timedOut: boolean, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[], larvaError: LarvaError | null = null): LarvaSubagentWaitResult {
+  const failedStatus = larvaError !== null;
+  const text = failedStatus
+    ? `${larvaError.code}: ${larvaError.message}`
+    : `Larva subagent wait ${returnWhen}: ${satisfied ? "satisfied" : timedOut ? "timed out" : "pending"}`;
+  return {
+    content: [{ type: "text", text }],
+    details: { status: failedStatus ? "failed" : "success", return_when: returnWhen, satisfied, timed_out: timedOut, runs, ready_task_ids: readyTaskIds, pending_task_ids: pendingTaskIds, next_sequence: highestSubagentEventSequence(), error: larvaError },
+    isError: failedStatus,
+  };
+}
+
+export async function larva_subagent_wait(input: unknown, ctx?: { env?: RuntimeEnv }): Promise<LarvaSubagentWaitResult> {
+  const parsed = parseSubagentWaitInput(input, currentEnv(ctx));
+  if (isLarvaError(parsed)) return wrapSubagentWaitResult("all", false, false, [], [], [], parsed);
+  const initial = evaluateSubagentWait(parsed.taskIds, parsed.returnWhen);
+  if (isLarvaError(initial)) return wrapSubagentWaitResult(parsed.returnWhen, false, false, [], [], parsed.taskIds, initial);
+  if (initial.satisfied || parsed.timeoutMs === 0) return wrapSubagentWaitResult(parsed.returnWhen, initial.satisfied, !initial.satisfied, initial.runs, initial.readyTaskIds, initial.pendingTaskIds);
+  const deadline = Date.now() + parsed.timeoutMs;
+  return await new Promise<LarvaSubagentWaitResult>((resolveWait) => {
+    let finished = false;
+    let timer: NodeJS.Timeout | null = null;
+    const finish = (value: LarvaSubagentWaitResult): void => {
+      if (finished) return;
+      finished = true;
+      if (timer !== null) clearTimeout(timer);
+      subagentEventWaiters.delete(check);
+      resolveWait(value);
+    };
+    const check = (): void => {
+      const evaluated = evaluateSubagentWait(parsed.taskIds, parsed.returnWhen);
+      if (isLarvaError(evaluated)) {
+        finish(wrapSubagentWaitResult(parsed.returnWhen, false, false, [], [], parsed.taskIds, evaluated));
+        return;
+      }
+      if (evaluated.satisfied) {
+        finish(wrapSubagentWaitResult(parsed.returnWhen, true, false, evaluated.runs, evaluated.readyTaskIds, evaluated.pendingTaskIds));
+        return;
+      }
+      if (Date.now() >= deadline) finish(wrapSubagentWaitResult(parsed.returnWhen, false, true, evaluated.runs, evaluated.readyTaskIds, evaluated.pendingTaskIds));
+    };
+    subagentEventWaiters.add(check);
+    timer = setTimeout(check, Math.max(0, deadline - Date.now()));
+  });
+}
+
+export async function larva_subagent_select(input: unknown, ctx?: { env?: RuntimeEnv }): Promise<LarvaSubagentWaitResult> {
+  const parsed = parseSubagentWaitInput(input, currentEnv(ctx), "any");
+  if (isLarvaError(parsed)) return wrapSubagentWaitResult("any", false, false, [], [], [], parsed);
+  return await larva_subagent_wait({ task_ids: parsed.taskIds, return_when: "any", timeout_ms: parsed.timeoutMs }, ctx);
 }
 
 type ParsedSubagentCancelInput = { taskId: string; reason: string };
@@ -4653,6 +4957,10 @@ export function resetSubagentPresentationStateForTests(): void {
   subagentPresentationSequence = 0;
   subagentUiResetGeneration += 1;
   activeSubagentRuns.clear();
+  subagentEventLog.length = 0;
+  subagentEventSequence = 0;
+  notifySubagentEventWaiters();
+  updateSubagentBackgroundIndicator();
   closeSubagentPresentationOverlay();
 }
 
@@ -5250,6 +5558,7 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
   for (const record of activeSubagentRuns.values()) {
     if (record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "stale");
   }
+  for (const record of activeRecords) appendSubagentLifecycleEvent(record, reason);
   await Promise.all(activeRecords.map((record) => abortSubagentRun(record, "lifecycle", reason, { awaitTerminal: true })));
   for (const entry of activeChildren) {
     if (!recordChildren.has(entry.child)) await cleanupChild(entry.child, entry.env);
@@ -5587,6 +5896,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
 
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
   const env = currentEnv(ctx);
+  registerSubagentBackgroundIndicatorContext(ctx);
   agentPersonaSwitchToolsRegistered = false;
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   loadSubagentPresentationCache(env);
@@ -5673,6 +5983,61 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     handler: async (input: unknown) => larva_subagent_status(input, { env }),
     execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_status(input, withRuntimeEnv(toolCtx ?? ctx, env)),
   });
+  const eventsSchema = {
+    type: "object",
+    properties: {
+      since_sequence: { anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }], description: "Exclusive cursor; returns events with sequence > since_sequence. Cursor expiry is reported when older than the latest 1000 recent events." },
+      task_ids: { anyOf: [{ type: "array", minItems: 1, maxItems: 25, items: { type: "string" } }, { type: "null" }], description: "Optional exact public task_id filters. Duplicates and fuzzy handles are rejected." },
+      limit: { type: "integer", minimum: 1, maximum: 100, description: "Maximum events to return (default 50, max 100)." },
+    },
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_subagent_events",
+    label: "Larva Subagent Events",
+    description: "Read ordered process-local Larva subagent orchestration events from the latest 1000 recent events. Events are returned where sequence > since_sequence and include cursor_expired plus next_sequence; this tool never scans files, consumes results, or accepts fuzzy handles.",
+    inputSchema: eventsSchema,
+    parameters: eventsSchema,
+    handler: async (input: unknown) => larva_subagent_events(input, { env }),
+    execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_events(input, withRuntimeEnv(toolCtx ?? ctx, env)),
+  });
+  const waitSchema = {
+    type: "object",
+    properties: {
+      task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected." },
+      return_when: { anyOf: [{ enum: ["all", "any", "first_error"] }, { type: "null" }], description: "Completion condition. Defaults to all." },
+      timeout_ms: { anyOf: [{ type: "integer", minimum: 0, maximum: 60000 }, { type: "null" }], description: "Maximum wait time. 0 polls once and returns immediately." },
+    },
+    required: ["task_ids"],
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_subagent_wait",
+    label: "Larva Subagent Wait",
+    description: "Wait for exact observed Larva subagent task_ids to satisfy return_when: \"all\", \"any\", or \"first_error\". Returns snapshots and readiness only; never consumes, spawns, resumes, cancels, schedules, joins, or scans files.",
+    inputSchema: waitSchema,
+    parameters: waitSchema,
+    handler: async (input: unknown) => larva_subagent_wait(input, { env }),
+    execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_wait(input, withRuntimeEnv(toolCtx ?? ctx, env)),
+  });
+  const selectSchema = {
+    type: "object",
+    properties: {
+      task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Exact observed public task_id handles to wait on; fuzzy handles are rejected." },
+      timeout_ms: { anyOf: [{ type: "integer", minimum: 0, maximum: 60000 }, { type: "null" }], description: "Maximum wait time. 0 polls once and returns immediately." },
+    },
+    required: ["task_ids"],
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_subagent_select",
+    label: "Larva Subagent Select",
+    description: "Compact readiness helper with the same output model as wait(return_when: \"any\") for exact observed Larva subagent task_ids. It never consumes results or accepts aliases.",
+    inputSchema: selectSchema,
+    parameters: selectSchema,
+    handler: async (input: unknown) => larva_subagent_select(input, { env }),
+    execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_select(input, withRuntimeEnv(toolCtx ?? ctx, env)),
+  });
   const cancelSchema = {
     type: "object",
     properties: {
@@ -5696,6 +6061,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi);
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    registerSubagentBackgroundIndicatorContext(runtimeCtx);
     registerLarvaPersonaAutocompleteProvider(runtimeCtx);
     await resetExtensionUI("session_start");
     await ensureSessionInitialized(runtimeCtx, pi);
