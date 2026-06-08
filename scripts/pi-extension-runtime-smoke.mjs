@@ -557,6 +557,32 @@ async function writeDelayedAsyncSubagentChild(scriptPath, { sessionFile, finalTe
   `, "utf8");
 }
 
+async function writeNonresponsiveAbortSubagentChild(scriptPath, { sessionFile }) {
+  await writeFile(scriptPath, `
+    import { createInterface } from "node:readline";
+    import { mkdir, writeFile } from "node:fs/promises";
+    import { dirname } from "node:path";
+    const sessionFile = ${JSON.stringify(sessionFile)};
+    await mkdir(dirname(sessionFile), { recursive: true });
+    setInterval(() => undefined, 1000);
+    const rl = createInterface({ input: process.stdin });
+    const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+    rl.on("line", async (line) => {
+      const message = JSON.parse(line);
+      if (message.type === "get_state") {
+        await writeFile(sessionFile, "{}\\n", "utf8");
+        send({ id: message.id, success: true, data: { sessionFile } });
+      } else if (message.type === "switch_session") {
+        send({ id: message.id, success: true, data: { cancelled: false } });
+      } else if (message.type === "prompt") {
+        send({ id: message.id, success: true, data: {} });
+      } else if (message.type === "abort") {
+        // Intentionally do not respond or exit: proves adapter kill deadline without a cooperative child.
+      }
+    });
+  `, "utf8");
+}
+
 async function readJsonlTrace(traceFile) {
   try {
     const raw = await readFile(traceFile, "utf8");
@@ -1367,9 +1393,9 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const detailsOf = (result) => result?.details ?? result ?? null;
   const errorCodeOf = (result) => detailsOf(result)?.error?.code ?? result?.error?.code ?? null;
   const normalizeCodePointCount = (value) => Array.from(String(value ?? "").normalize("NFC")).length;
-  const invokeStatus = async (taskId, label, extra = {}) => {
+  const invokeStatus = async (taskId, label, extra = {}, statusCtx = ctx) => {
     const input = taskId === null ? { ...extra } : { task_id: taskId, ...extra };
-    const invoked = await runTool(statusTool, `status-${label}`, input, ctx);
+    const invoked = await runTool(statusTool, `status-${label}`, input, statusCtx);
     const details = detailsOf(invoked.result);
     return {
       label,
@@ -1873,17 +1899,108 @@ async function asyncSubagentContractExpectedRed(evidence) {
       registeredHandlers: Array.from(handlers.keys()),
     });
   }
+  const callbackCountAfterLifecycle = callbackEntries.length;
   const idempotencyStaleProbe = {
     callbackCountsByTaskId,
     duplicateTaskId: acceptedTaskIdForProbes,
     duplicateCallbackCount: callbackCountsByTaskId[acceptedTaskIdForProbes] ?? 0,
+    callbackCountAfterLifecycle,
     staleLifecycleRows: lifecycleRows,
   };
+  const runNonresponsiveAbortDeadlineProof = async () => {
+    const proofChild = join(sessionRoot, "abort-deadline-nonresponsive-child.mjs");
+    const proofSessionFile = join(childSessionRoot, "abort-deadline-nonresponsive.jsonl");
+    const proofTraceFile = join(sessionRoot, "abort-deadline-trace.jsonl");
+    await writeNonresponsiveAbortSubagentChild(proofChild, { sessionFile: proofSessionFile });
+    const proofCtx = {
+      ...ctx,
+      env: {
+        ...ctx.env,
+        LARVA_PI_REAL_BIN: process.execPath,
+        LARVA_PI_EXTENSION_FLAG: proofChild,
+        LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+        LARVA_PI_CHILD_RPC_TRACE_FILE: proofTraceFile,
+      },
+    };
+    const updates = [];
+    const acceptedCall = await runTool(
+      subagentTool,
+      "abort-deadline-nonresponsive",
+      { persona_id: "child", task: "stay running until the adapter abort deadline proof cancels this child" },
+      proofCtx,
+      undefined,
+      (update) => updates.push(update),
+    );
+    const acceptedDetails = detailsOf(acceptedCall.result);
+    const taskId = acceptedDetails?.task_id ?? null;
+    const observations = [];
+    if (typeof taskId !== "string") {
+      return {
+        status: "not-accepted",
+        expectedGraceMs: 1500,
+        deadlineUpperBoundMs: 2400,
+        childScript: proofChild,
+        traceFile: proofTraceFile,
+        acceptedCall,
+        taskId,
+        updates,
+        observations,
+      };
+    }
+    const cancelStartedAtMs = Date.now();
+    const cancelCall = await runTool(
+      cancelTool,
+      "cancel-abort-deadline-nonresponsive",
+      { task_id: taskId, reason: "nonresponsive child abort deadline proof" },
+      proofCtx,
+    );
+    let terminalObservation = null;
+    while (Date.now() - cancelStartedAtMs < 3_500) {
+      const observation = await invokeStatus(taskId, `abort-deadline-${observations.length}`, {}, proofCtx);
+      observations.push(observation);
+      const run = Array.isArray(observation.runs) ? observation.runs[0] : null;
+      if (["success", "failed", "cancelled"].includes(run?.status)) {
+        terminalObservation = observation;
+        break;
+      }
+      await sleep(50);
+    }
+    const terminalElapsedMs = Date.now() - cancelStartedAtMs;
+    await sleep(100);
+    const traceEvents = await readJsonlTrace(proofTraceFile);
+    const abortEvents = traceEvents.filter((event) => typeof event?.event === "string" && event.event.startsWith("abort_"));
+    const abortStartEvent = abortEvents.find((event) => event.event === "abort_start") ?? null;
+    const abortRpcResultEvent = abortEvents.find((event) => event.event === "abort_rpc_result") ?? null;
+    const abortKillEvent = abortEvents.find((event) => event.event === "abort_kill" || event.event === "abort_kill_after_grace") ?? null;
+    const cleanupEndEvent = traceEvents.find((event) => event?.event === "cleanup_end") ?? null;
+    return {
+      status: "observed",
+      expectedGraceMs: 1500,
+      deadlineUpperBoundMs: 2400,
+      childScript: proofChild,
+      traceFile: proofTraceFile,
+      taskId,
+      acceptedStatus: acceptedDetails?.status ?? null,
+      cancelStatus: detailsOf(cancelCall.result)?.status ?? null,
+      terminalStatus: terminalObservation?.runs?.[0]?.status ?? null,
+      terminalElapsedMs,
+      cancelCall,
+      observations,
+      updates,
+      abortEvents,
+      abortStartEvent,
+      abortRpcResultEvent,
+      abortKillEvent,
+      cleanupEndEvent,
+    };
+  };
+  const abortGraceRuntimeProbe = await runNonresponsiveAbortDeadlineProof();
   const abortGraceProbe = {
     expectedGraceMs: 1500,
     sourceHasAbortGrace1500: /1500|1_500/.test(source) && /abort|kill|grace/i.test(source),
     sourceStillUsesFiveSecondAbortOrCleanup: /5_000|5000/.test(source.slice(source.indexOf("async abort()"), Math.min(source.length, source.indexOf("async abort()") + 2000)))
       || /5_000|5000/.test(source.slice(source.indexOf("async function cleanupChild"), Math.min(source.length, source.indexOf("async function cleanupChild") + 2000))),
+    nonresponsiveRuntime: abortGraceRuntimeProbe,
   };
   const authorityDocPath = join(root, "docs", "reference", "PI_EXTENSION_ASYNC_SUBAGENTS.md");
   const authorityDoc = await readFile(authorityDocPath, "utf8");
@@ -1954,7 +2071,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     },
     callback_idempotency_duplicate_suppression: {
       duplicateCallbackSuppressed: (idempotencyStaleProbe.duplicateCallbackCount ?? 0) === 1,
-      staleLateCallbackSuppressed: lifecycleRows.every((row) => row.handlerRegistered && row.callbackCountAfterEvent === callbackEntries.length),
+      staleLateCallbackSuppressed: lifecycleRows.every((row) => row.handlerRegistered && row.callbackCountAfterEvent === idempotencyStaleProbe.callbackCountAfterLifecycle),
     },
     cancellation_source_rules_sibling_parent_non_cancel_and_callback_suppression: {
       taskACancelled: detailsOf(siblingResults[0]?.result)?.status === "cancelled" || detailsOf(userCancelResult.result)?.status === "cancelled",
@@ -1969,6 +2086,14 @@ async function asyncSubagentContractExpectedRed(evidence) {
       expectedGraceRecorded: abortGraceProbe.expectedGraceMs === 1500,
       sourceUses1500Grace: abortGraceProbe.sourceHasAbortGrace1500 === true,
       noFiveSecondAbortFallback: abortGraceProbe.sourceStillUsesFiveSecondAbortOrCleanup === false,
+      nonresponsiveAccepted: abortGraceProbe.nonresponsiveRuntime.acceptedStatus === "accepted",
+      nonresponsiveCancelled: abortGraceProbe.nonresponsiveRuntime.terminalStatus === "cancelled",
+      nonresponsiveElapsedWithinSingleDeadline: abortGraceProbe.nonresponsiveRuntime.terminalElapsedMs >= 1_000
+        && abortGraceProbe.nonresponsiveRuntime.terminalElapsedMs <= abortGraceProbe.nonresponsiveRuntime.deadlineUpperBoundMs,
+      nonresponsiveKillObserved: abortGraceProbe.nonresponsiveRuntime.abortKillEvent?.killed === true,
+      nonresponsiveTraceDeadlineRecorded: abortGraceProbe.nonresponsiveRuntime.abortStartEvent?.deadline_at_ms - abortGraceProbe.nonresponsiveRuntime.abortStartEvent?.started_at_ms === 1_500,
+      nonresponsiveKillAtSingleDeadline: abortGraceProbe.nonresponsiveRuntime.abortKillEvent?.elapsed_ms >= 1_000
+        && abortGraceProbe.nonresponsiveRuntime.abortKillEvent?.elapsed_ms <= abortGraceProbe.nonresponsiveRuntime.deadlineUpperBoundMs,
     },
     runtime_lifecycle_stale_cleanup: {
       reloadCleanup: lifecycleRows.find((row) => row.event === "reload")?.handlerRegistered === true,
@@ -2258,7 +2383,7 @@ async function main() {
         && freshMissingBeforePrompt.result_text === ""
         && freshMissingBeforePrompt.task_id.endsWith("fresh-created-on-prompt.jsonl"),
       strictResumeMissingRejected: missingResume.status === "failed"
-        && missingResume.error?.code === "LARVA_SESSION_NOT_FOUND"
+        && missingResume.error?.code === "LARVA_BAD_INPUT"
         && resumeSpawned === false,
       invalidFreshRejected: Object.values(invalidFresh).every((result) => result.status === "failed" && result.error?.code === "LARVA_CHILD_PROTOCOL_FAILED"),
       authorityAndToolResultPreserved: freshMissingBeforePrompt.isError === false

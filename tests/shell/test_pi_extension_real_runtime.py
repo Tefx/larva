@@ -693,7 +693,7 @@ def test_larva_subagent_fresh_child_sessionfile_validation_split() -> None:
 
     missing_resume = validation["missingResume"]
     assert missing_resume["status"] == "failed"
-    assert missing_resume["error"]["code"] == "LARVA_SESSION_NOT_FOUND"
+    assert missing_resume["error"]["code"] == "LARVA_BAD_INPUT"
     assert validation["resumeSpawned"] is False
 
     invalid = validation["invalidFresh"]

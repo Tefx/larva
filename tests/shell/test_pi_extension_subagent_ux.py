@@ -437,6 +437,7 @@ def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: P
           return { status: result.status, task_id: result.task_id, errorCode: result.error?.code ?? null };
         }
         const cases = {
+          empty: await invoke(""),
           relative: await invoke("relative.jsonl"),
           outsideRoot: await invoke(outsideFile),
           wrongSuffix: await invoke(wrongSuffix),
@@ -453,13 +454,14 @@ def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: P
     )
 
     assert payload["cases"] == {
+        "empty": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
         "relative": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
         "outsideRoot": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
-        "wrongSuffix": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_INVALID"},
-        "missing": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_NOT_FOUND"},
+        "wrongSuffix": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "missing": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
         "realpathEscape": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
-        "nonRegular": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_INVALID"},
-        "unreadable": {"status": "failed", "task_id": None, "errorCode": "LARVA_SESSION_INVALID"},
+        "nonRegular": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "unreadable": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
     }
     assert payload["spawned"] is False
 
@@ -1746,7 +1748,7 @@ def _run_runtime_smoke_allow_expected_red(scenario: str) -> tuple[dict[str, Any]
         check=False,
         capture_output=True,
         text=True,
-        timeout=12,
+        timeout=16,
     )
     assert completed.stdout.strip(), completed.stderr
     return json.loads(completed.stdout), completed.returncode, completed.stderr

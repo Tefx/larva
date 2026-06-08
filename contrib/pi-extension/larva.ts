@@ -4793,7 +4793,7 @@ function isUnderRoot(root: string, path: string): boolean {
 }
 
 async function validateTaskId(taskId: string, root: string): Promise<string | LarvaError> {
-  if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute path.");
+  if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute readable .jsonl path.");
   let canonicalParent: string;
   try {
     canonicalParent = await realpath(dirname(taskId));
@@ -4802,21 +4802,21 @@ async function validateTaskId(taskId: string, root: string): Promise<string | La
   }
   const canonical = resolve(canonicalParent, taskId.split(/[\\/]/).pop() || "");
   if (!isUnderRoot(root, canonical)) return error("LARVA_BAD_INPUT", "task_id must stay inside childSessionRoot.");
+  if (!canonical.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute readable .jsonl path.");
   let sessionPath: string;
   try {
     sessionPath = await realpath(canonical);
   } catch {
-    if (!canonical.endsWith(".jsonl")) return error("LARVA_SESSION_INVALID", "Child session path must end in .jsonl.");
-    return error("LARVA_SESSION_NOT_FOUND", "Child session file is missing.");
+    return error("LARVA_BAD_INPUT", "task_id must be an existing readable .jsonl path.");
   }
   if (!isUnderRoot(root, sessionPath)) return error("LARVA_BAD_INPUT", "task_id symlink escape outside childSessionRoot.");
-  if (!sessionPath.endsWith(".jsonl")) return error("LARVA_SESSION_INVALID", "Child session path must end in .jsonl.");
+  if (!sessionPath.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute readable .jsonl path.");
   try {
     const sessionStat = await stat(sessionPath);
-    if (!sessionStat.isFile()) return error("LARVA_SESSION_INVALID", "Child session path is not a readable file.");
+    if (!sessionStat.isFile()) return error("LARVA_BAD_INPUT", "task_id must be a readable .jsonl file.");
     await access(sessionPath, constants.R_OK);
   } catch {
-    return error("LARVA_SESSION_INVALID", "Child session path is invalid or unreadable.");
+    return error("LARVA_BAD_INPUT", "task_id must be a readable .jsonl file.");
   }
   return sessionPath;
 }
@@ -5017,7 +5017,7 @@ class RpcClient {
         if (!this.closed && this.rpcReady) settle(this.stdoutClosedError());
       };
       const timer = setTimeout(() => {
-        settle(error("LARVA_CHILD_PROTOCOL_FAILED", "Child RPC command timed out after ten seconds."));
+        settle(error("LARVA_CHILD_PROTOCOL_FAILED", `Child RPC command timed out after ${timeoutMs} ms.`));
       }, timeoutMs);
       this.pending.set(id, (value) => {
         this.rpcReady = true;
@@ -5068,31 +5068,21 @@ class RpcClient {
   }
 
   async abort(): Promise<"success" | "cancelled" | "unknowable"> {
-    void traceChildRpc(this.traceEnv, "abort_start", { pid: this.child.pid ?? null, grace_ms: SUBAGENT_ABORT_KILL_GRACE_MS });
-    const aborted = await this.command("abort-1", { type: "abort" }, SUBAGENT_ABORT_KILL_GRACE_MS);
-    void traceChildRpc(this.traceEnv, "abort_rpc_result", { pid: this.child.pid ?? null, result: aborted });
-    if (isSuccessResponse(aborted)) {
-      await waitForChildClose(this.child, SUBAGENT_ABORT_KILL_GRACE_MS);
-      if (childStillRunning(this.child)) {
-        try {
-          const killed = this.child.kill();
-          void traceChildRpc(this.traceEnv, "abort_kill_after_grace", { pid: this.child.pid ?? null, killed });
-          return killed ? "cancelled" : "unknowable";
-        } catch {
-          void traceChildRpc(this.traceEnv, "abort_kill_error", { pid: this.child.pid ?? null });
-          return "unknowable";
-        }
-      }
-      return "cancelled";
-    }
-    await waitForChildClose(this.child, SUBAGENT_ABORT_KILL_GRACE_MS);
+    const startedAtMs = Date.now();
+    const deadlineAtMs = startedAtMs + SUBAGENT_ABORT_KILL_GRACE_MS;
+    const elapsedMs = (): number => Date.now() - startedAtMs;
+    const remainingMs = (): number => Math.max(0, deadlineAtMs - Date.now());
+    void traceChildRpc(this.traceEnv, "abort_start", { pid: this.child.pid ?? null, grace_ms: SUBAGENT_ABORT_KILL_GRACE_MS, started_at_ms: startedAtMs, deadline_at_ms: deadlineAtMs });
+    const aborted = await this.command("abort-1", { type: "abort" }, remainingMs());
+    void traceChildRpc(this.traceEnv, "abort_rpc_result", { pid: this.child.pid ?? null, result: aborted, elapsed_ms: elapsedMs(), remaining_ms: remainingMs(), deadline_at_ms: deadlineAtMs });
+    await waitForChildClose(this.child, remainingMs());
     if (!childStillRunning(this.child)) return "cancelled";
     try {
       const killed = this.child.kill();
-      void traceChildRpc(this.traceEnv, "abort_kill", { pid: this.child.pid ?? null, killed });
+      void traceChildRpc(this.traceEnv, isSuccessResponse(aborted) ? "abort_kill_after_grace" : "abort_kill", { pid: this.child.pid ?? null, killed, elapsed_ms: elapsedMs(), remaining_ms: remainingMs(), deadline_at_ms: deadlineAtMs, grace_ms: SUBAGENT_ABORT_KILL_GRACE_MS });
       return killed ? "cancelled" : "unknowable";
     } catch {
-      void traceChildRpc(this.traceEnv, "abort_kill_error", { pid: this.child.pid ?? null });
+      void traceChildRpc(this.traceEnv, "abort_kill_error", { pid: this.child.pid ?? null, elapsed_ms: elapsedMs(), remaining_ms: remainingMs(), deadline_at_ms: deadlineAtMs });
       return "unknowable";
     }
   }
