@@ -130,9 +130,17 @@ type LarvaSubagentAcceptedResult = {
 };
 export type LarvaSubagentResult = LarvaSubagentTerminalResult | LarvaSubagentAcceptedResult;
 type PiTextContent = { type: "text"; text: string };
+type LarvaSubagentAcceptedToolDetails = {
+  task_id: string;
+  persona_id: string;
+  status: "accepted";
+  result_pending: true;
+  error: null;
+};
+type LarvaSubagentToolDetails = LarvaSubagentTerminalResult | LarvaSubagentAcceptedToolDetails;
 type LarvaSubagentToolResult = LarvaSubagentResult & {
   content: PiTextContent[];
-  details: LarvaSubagentResult;
+  details: LarvaSubagentToolDetails;
   isError: boolean;
 };
 type SubagentPresentationStatus = LarvaSubagentPublicStatus;
@@ -3593,11 +3601,21 @@ function withResumeFooter(result: LarvaSubagentResult): string {
   return footer.length > 0 ? `${base}\n${footer}` : base;
 }
 
+function acceptedToolDetails(result: LarvaSubagentAcceptedResult): LarvaSubagentAcceptedToolDetails {
+  return {
+    task_id: result.task_id,
+    persona_id: result.persona_id,
+    status: "accepted",
+    result_pending: true,
+    error: null,
+  };
+}
+
 function wrapLarvaSubagentToolResult(result: LarvaSubagentResult): LarvaSubagentToolResult {
   return {
     ...result,
     content: [{ type: "text", text: withResumeFooter(result) }],
-    details: result,
+    details: result.status === "accepted" ? acceptedToolDetails(result) : result,
     isError: result.status === "failed" || result.status === "cancelled",
   };
 }
@@ -4519,8 +4537,11 @@ function progressUpdate(input: LarvaSubagentInput, phase: string, taskId?: strin
 
 function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { expanded?: boolean; input?: LarvaSubagentInput }): PiRenderableText {
   const details = result.details ?? result;
+  const textItem = Array.isArray(result.content) ? result.content.find((item) => item.type === "text") : undefined;
+  if (isRecord(details) && details.status === "accepted") {
+    return renderTextComponent(textItem?.text ?? larvaSubagentResultText(result));
+  }
   if (isRecord(details) && typeof details.phase === "string") {
-    const textItem = Array.isArray(result.content) ? result.content.find((item) => item.type === "text") : undefined;
     return renderTextComponent(textItem?.text ?? `${details.persona_id ?? ""} ${details.phase}`.trim());
   }
   const terminal = details.status === "success" ? "completed" : details.status;
