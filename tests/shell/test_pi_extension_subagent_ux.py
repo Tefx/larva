@@ -1767,6 +1767,72 @@ def test_async_subagent_a5_targeted_cancellation_unobserved_exact_task_id_expect
     ]
 
 
+def test_async_subagent_cancel_presentation_only_running_row_is_not_control_authority(tmp_path: Path) -> None:
+    """A running presentation/cache row alone cannot synthesize cancellation."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const commands = new Map();
+        const env = baseEnv();
+        const ctx = {
+          env,
+          modelRegistry,
+          hasUI: true,
+          ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true },
+        };
+        await mod.initializeExtension(ctx, {
+          ...piBase,
+          registerTool: () => undefined,
+          registerCommand: (name, command) => {
+            if (typeof name === "string") commands.set(name, command);
+            else if (name && typeof name === "object") commands.set(name.name, name);
+          },
+        });
+        mod.resetSubagentPresentationStateForTests();
+        const presentationOnlyTaskId = join(childRoot, "presentation-only-running.jsonl");
+        await writeFile(presentationOnlyTaskId, "{}\\n");
+        mod.recordSubagentPresentationEntryForTests(presentationOnlyTaskId, "child", "running", {
+          phase: "waiting_for_child",
+          task_prompt: "presentation-only prompt",
+          task_preview: "presentation-only prompt",
+          updated_at: "2026-06-08T00:00:00.000Z",
+          call_id: "presentation-only-call",
+        });
+        const before = mod.subagentPresentationLogForTests().find((entry) => entry.task_id === presentationOnlyTaskId) ?? null;
+        const activeBefore = mod.subagentActiveRunRegistryForTests();
+        const command = commands.get("larva-subagent");
+        const result = command?.handler
+          ? await command.handler(`--cancel ${presentationOnlyTaskId}`, ctx)
+          : { details: { error: { code: "COMMAND_NOT_REGISTERED" } } };
+        const after = mod.subagentPresentationLogForTests().find((entry) => entry.task_id === presentationOnlyTaskId) ?? null;
+        const activeAfter = mod.subagentActiveRunRegistryForTests();
+        console.log(JSON.stringify({
+          result: {
+            status: result.details?.status ?? null,
+            errorCode: result.details?.error?.code ?? null,
+            isError: result.isError ?? null,
+          },
+          before: before ? { status: before.status, errorCode: before.error?.code ?? null, resultText: before.result_text ?? null } : null,
+          after: after ? { status: after.status, errorCode: after.error?.code ?? null, resultText: after.result_text ?? null } : null,
+          activeBeforeCount: activeBefore.length,
+          activeAfterCount: activeAfter.length,
+        }, null, 2));
+        """,
+    )
+
+    assert payload["activeBeforeCount"] == 0
+    assert payload["activeAfterCount"] == 0
+    assert payload["result"] == {
+        "status": "failed",
+        "errorCode": "LARVA_SUBAGENT_NOT_OBSERVED",
+        "isError": True,
+    }
+    assert payload["before"] == {"status": "running", "errorCode": None, "resultText": None}
+    assert payload["after"] == {"status": "running", "errorCode": None, "resultText": None}
+
+
 def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: Path) -> None:
     """Expected-red A6: process-local status tool uses exact lookup and run schema."""
 

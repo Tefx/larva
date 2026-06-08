@@ -4139,20 +4139,11 @@ function wrapSubagentCancelResult(taskId: string | null, personaId: string, stat
   return { content: [{ type: "text", text }], details: { task_id: taskId, persona_id: personaId, status, error: larvaError }, isError: isErrorValue };
 }
 
-function cancelObservedPresentationOnlyTask(taskId: string, validated: string): LarvaSubagentCancelResult | null {
-  const entry = exactOverlayEntry(taskId) ?? exactOverlayEntry(validated);
-  if (entry === null || entry.status !== "running") return null;
-  recordSubagentPresentationResult(cancelled(entry.task_id, entry.persona_id), undefined, entry.call_id);
-  return wrapSubagentCancelResult(entry.task_id, entry.persona_id, "cancelled", error("LARVA_CHILD_CANCELLED", "Child run was cancelled."), false);
-}
-
 async function cancelSubagentByTaskId(taskId: string, reason: string, source: SubagentCancellationSource, ctx?: { env?: RuntimeEnv }, awaitTerminal = false): Promise<LarvaSubagentCancelResult> {
   const validated = await validatePublicTaskIdForControl(taskId, currentEnv(ctx));
   if (isLarvaError(validated)) return wrapSubagentCancelResult(null, "", "failed", validated, true);
   const record = activeSubagentRunByTaskId(validated) ?? activeSubagentRunByTaskId(taskId);
   if (record === null) {
-    const presentationOnly = source === "model" ? null : cancelObservedPresentationOnlyTask(taskId, validated);
-    if (presentationOnly !== null) return presentationOnly;
     return wrapSubagentCancelResult(validated, "", "failed", error("LARVA_SUBAGENT_NOT_OBSERVED", `Larva subagent task_id not observed in this parent process: ${validated}`), true);
   }
   if (record.terminal_snapshot !== null) {

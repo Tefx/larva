@@ -1526,6 +1526,14 @@ def test_concurrent_same_task_resume_uses_in_memory_active_run_registry() -> Non
     )
 
 
+def test_cancel_authority_does_not_fall_back_to_presentation_only_rows() -> None:
+    source = _source()
+    body = _function_body(source, "awaitTerminal = false): Promise<LarvaSubagentCancelResult> {")
+    _assert_tokens(body, "activeSubagentRunByTaskId", "LARVA_SUBAGENT_NOT_OBSERVED")
+    assert "cancelObservedPresentationOnlyTask" not in source
+    assert "recordSubagentPresentationResult(cancelled(" not in body
+
+
 def test_busy_state_is_process_local_without_lock_files() -> None:
     source = _source()
     _assert_tokens(source, "activeSubagentRuns", "subagentTaskIdBusyInRegistry")
