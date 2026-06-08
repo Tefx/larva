@@ -2,6 +2,7 @@ import argparse
 import glob
 import json
 import logging
+import re
 import shlex
 import subprocess
 import sys
@@ -11,6 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+UNTRACKED_ENVIRONMENT_BOOTSTRAP_PREFIXES = ("contrib/pi-extension/node_modules/",)
 
 class IntentClosureError(Exception):
     def __init__(self, message: str, exit_code: int):
@@ -62,7 +65,7 @@ def get_changed_files(worktree_dir: Path, base_ref: str) -> List[str]:
         
         # Also check untracked but tracked in index (git status --porcelain)
         status_res = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--untracked-files=all"],
             cwd=worktree_dir,
             capture_output=True,
             text=True,
@@ -70,7 +73,11 @@ def get_changed_files(worktree_dir: Path, base_ref: str) -> List[str]:
         )
         for line in status_res.stdout.splitlines():
             if line:
-                files.add(line[3:].strip())
+                status_code = line[:2]
+                path = line[3:].strip()
+                if status_code == "??" and is_untracked_environment_bootstrap_path(path):
+                    continue
+                files.add(path)
 
         return sorted(list(files))
     except subprocess.CalledProcessError as e:
@@ -106,6 +113,10 @@ def check_path_boundaries(changed_files: List[str], allowed_paths: List[str], bl
              
     return len(violations) == 0, violations
 
+def is_untracked_environment_bootstrap_path(path: str) -> bool:
+    normalized = path.rstrip("/") + "/"
+    return any(normalized.startswith(prefix) for prefix in UNTRACKED_ENVIRONMENT_BOOTSTRAP_PREFIXES)
+
 def validate_claims_coverage(contract: Dict[str, Any]) -> Tuple[bool, List[str]]:
     required_claims = set(contract.get("required_claims", []))
     covered_claims = set()
@@ -122,9 +133,73 @@ def validate_claims_coverage(contract: Dict[str, Any]) -> Tuple[bool, List[str]]
          
     return len(errors) == 0, errors
 
-def run_checks(contract: Dict[str, Any], worktree_dir: Path) -> Tuple[bool, List[Dict[str, Any]]]:
+def step_allows_expected_red(step: Dict[str, Any]) -> bool:
+    return (
+        step.get("step_type") == "test"
+        and step.get("step_intent") == "test_define_red"
+        and step.get("expected_result") == "red"
+    )
+
+def expected_patterns(check: Dict[str, Any]) -> List[str]:
+    patterns: List[str] = []
+    for key in ("expected_output_patterns_all", "expected_failure_patterns_all"):
+        value = check.get(key) or []
+        if isinstance(value, list):
+            patterns.extend(str(pattern) for pattern in value)
+        else:
+            patterns.append(str(value))
+    return patterns
+
+def evaluate_check_result(
+    check: Dict[str, Any],
+    returncode: int,
+    stdout: str,
+    stderr: str,
+    owner_allows_expected_red: bool,
+) -> Tuple[bool, bool, Optional[str]]:
+    expected_exit_codes = check.get("expected_exit_codes")
+    if expected_exit_codes is None:
+        if returncode == 0:
+            return True, False, None
+        return False, False, f"exit code {returncode}; expected 0"
+
+    if not isinstance(expected_exit_codes, list) or not all(isinstance(code, int) for code in expected_exit_codes):
+        return False, False, "expected_exit_codes must be a list of integer exit codes"
+
+    if not owner_allows_expected_red:
+        return False, False, (
+            "expected-red metadata is only honored for owner steps with "
+            "step_type=test, step_intent=test_define_red, expected_result=red"
+        )
+
+    if returncode == 0:
+        return False, False, "expected-red check returned zero; expected a declared non-zero exit code"
+
+    if returncode not in expected_exit_codes:
+        return False, False, f"exit code {returncode} did not match expected_exit_codes {expected_exit_codes}"
+
+    patterns = expected_patterns(check)
+    if not patterns:
+        return False, False, "expected-red metadata requires expected output/failure patterns"
+
+    combined_output = f"{stdout}\n{stderr}"
+    missing_patterns = []
+    for pattern in patterns:
+        try:
+            if re.search(pattern, combined_output, flags=re.MULTILINE) is None:
+                missing_patterns.append(pattern)
+        except re.error as exc:
+            return False, False, f"invalid expected output pattern {pattern!r}: {exc}"
+
+    if missing_patterns:
+        return False, False, f"expected output patterns not matched: {missing_patterns}"
+
+    return True, True, None
+
+def run_checks(contract: Dict[str, Any], worktree_dir: Path, step: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
     checks_results = []
     all_passed = True
+    owner_allows_expected_red = step_allows_expected_red(step)
     
     for check in contract.get("required_checks", []):
         cmd = check.get("command", [])
@@ -140,18 +215,29 @@ def run_checks(contract: Dict[str, Any], worktree_dir: Path) -> Tuple[bool, List
                  text=True,
                  timeout=300
              )
-             passed = result.returncode == 0
-             checks_results.append({
+             passed, expected_red, failure_reason = evaluate_check_result(
+                 check,
+                 result.returncode,
+                 result.stdout,
+                 result.stderr,
+                 owner_allows_expected_red,
+             )
+             check_result = {
                  "id": check.get("id"),
                  "command": shlex.join(cmd),
                  "exit_code": result.returncode,
                  "stdout": result.stdout[-2000:], # keep reasonable bounds
                  "stderr": result.stderr[-2000:],
                  "status": "PASS" if passed else "FAIL"
-             })
+             }
+             if expected_red:
+                 check_result["expected_red"] = True
+             if failure_reason:
+                 check_result["failure_reason"] = failure_reason
+             checks_results.append(check_result)
              if not passed:
                   all_passed = False
-                  logging.error(f"Check failed: {check.get('id')}\nstderr: {result.stderr}")
+                  logging.error(f"Check failed: {check.get('id')}: {failure_reason}\nstderr: {result.stderr}")
         except Exception as e:
              all_passed = False
              checks_results.append({
@@ -231,11 +317,16 @@ def main():
              verdict["reasons"].extend(claims_violations)
              write_output_and_exit("INVALID", 3)
              
-        checks_ok, checks_results = run_checks(contract, worktree_dir)
+        checks_ok, checks_results = run_checks(contract, worktree_dir, step)
         verdict["checks"] = checks_results
         
         if not checks_ok:
              verdict["reasons"].append("One or more required checks failed.")
+             for check_result in checks_results:
+                 if check_result.get("status") != "PASS" and check_result.get("failure_reason"):
+                     verdict["reasons"].append(
+                         f"Check {check_result.get('id')} failed: {check_result.get('failure_reason')}"
+                     )
              write_output_and_exit("REJECTED", 2)
              
         write_output_and_exit("CONFORMANT", 0)
