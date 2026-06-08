@@ -2887,7 +2887,7 @@ function appendSessionCustomEntry(ctx: PiContext, customType: string, data: Reco
   if (Array.isArray(session.entries)) session.entries.push(entry);
 }
 
-function latestStoredActivePersonaCommit(ctx: PiContext): { personaId: string; specDigest: string } | null {
+function latestStoredActivePersonaCommit(ctx: PiContext): { personaId: string; specDigest: string; entryIndex: number } | null {
   const entries = sessionEntries(ctx);
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const data = sessionCustomData(entries[index], "larva-active-persona-commit");
@@ -2896,9 +2896,18 @@ function latestStoredActivePersonaCommit(ctx: PiContext): { personaId: string; s
     const personaId = data.persona_id;
     if (typeof personaId !== "string" || personaId.trim().length === 0) continue;
     const specDigest = typeof data.spec_digest === "string" ? data.spec_digest : "";
-    return { personaId: personaId.trim(), specDigest };
+    return { personaId: personaId.trim(), specDigest, entryIndex: index };
   }
   return null;
+}
+
+function sessionHasModelChangeAfter(ctx: PiContext, entryIndex: number): boolean {
+  const entries = sessionEntries(ctx);
+  for (let index = entryIndex + 1; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (isRecord(entry) && entry.type === "model_change") return true;
+  }
+  return false;
 }
 
 function appendActivePersonaCommitEntry(ctx: PiContext, pi: PiApi, envelope: PersonaEnvelope, source: ActivePersonaCommitSource): void {
@@ -3207,7 +3216,7 @@ async function startupToolBaseline(pi: PiApi): Promise<string[]> {
 }
 
 type ActivePersonaCommitSource = "startup" | "slash-command" | "selector" | "self-switch" | "api";
-type CommitPersonaOptions = { toolBaseline?: (pi: PiApi) => Promise<string[]>; sessionCommitSource?: ActivePersonaCommitSource | null };
+type CommitPersonaOptions = { toolBaseline?: (pi: PiApi) => Promise<string[]>; sessionCommitSource?: ActivePersonaCommitSource | null; applyModel?: boolean };
 
 async function commitPersonaWithOptions(
   personaId: string,
@@ -3217,7 +3226,8 @@ async function commitPersonaWithOptions(
 ): Promise<PersonaSwitchResult> {
   const toolBaseline = options.toolBaseline ?? enumerateTools;
   const sessionCommitSource = Object.prototype.hasOwnProperty.call(options, "sessionCommitSource") ? options.sessionCommitSource ?? null : "api";
-  return commitPersonaInternal(personaId, ctx, pi, toolBaseline, sessionCommitSource);
+  const applyModel = options.applyModel ?? true;
+  return commitPersonaInternal(personaId, ctx, pi, toolBaseline, sessionCommitSource, applyModel);
 }
 
 async function commitPersonaInternal(
@@ -3226,6 +3236,7 @@ async function commitPersonaInternal(
   pi: PiApi,
   toolBaseline: (pi: PiApi) => Promise<string[]>,
   sessionCommitSource: ActivePersonaCommitSource | null,
+  applyModel: boolean,
 ): Promise<PersonaSwitchResult> {
   const previousEnvelope = state.envelope;
   const previousActiveTools = new Set(state.activeTools);
@@ -3235,14 +3246,16 @@ async function commitPersonaInternal(
   let activeToolsUpdated = false;
   try {
     const spec = await resolvePersona(personaId, ctx);
-    const model = await validateModel(spec, ctx);
+    const model = applyModel ? await validateModel(spec, ctx) : null;
     const baseline = await toolBaseline(pi);
     rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
     const activeTools = applyAgentPersonaToolExposure(filterPolicyTools(baseline, tool_policy));
 
-    await setPiModel(pi, model, spec.model);
-    modelUpdated = true;
+    if (applyModel && model !== null) {
+      await setPiModel(pi, model, spec.model);
+      modelUpdated = true;
+    }
     let applied: boolean | void | undefined;
     try {
       applied = await pi.setActiveTools?.(activeTools);
@@ -3262,7 +3275,7 @@ async function commitPersonaInternal(
     };
     state.envelope = envelope;
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
-    state.piModel = model;
+    if (applyModel) state.piModel = model;
     if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
     rememberSessionInitialized(ctx);
     await setStatus(ctx);
@@ -5478,10 +5491,11 @@ function piSessionIdentity(ctx: PiContext): object | null {
 }
 
 function sessionInitializationRestoreKey(ctx: PiContext): string {
+  const stored = latestStoredActivePersonaCommit(ctx);
+  if (stored !== null) return `stored:${stored.personaId}:${stored.entryIndex}:${sessionHasModelChangeAfter(ctx, stored.entryIndex) ? "model-after" : "persona-model"}`;
   const explicitPersonaId = currentEnv(ctx).LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
   if (explicitPersonaId.length > 0) return `explicit:${explicitPersonaId}`;
-  const stored = latestStoredActivePersonaCommit(ctx);
-  return stored === null ? "none" : `stored:${stored.personaId}`;
+  return "none";
 }
 
 function rememberSessionInitialized(ctx: PiContext): void {
@@ -5496,13 +5510,25 @@ async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void
   const initialization = initializeSession(ctx, pi);
   sessionInitializationPromise = initialization;
   await initialization;
-  if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, restoreKey);
+  if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, sessionInitializationRestoreKey(ctx));
 }
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   registerAgentPersonaSwitchTools(ctx, pi);
+  const stored = latestStoredActivePersonaCommit(ctx);
+  if (stored !== null) {
+    const modelChangedAfterPersona = sessionHasModelChangeAfter(ctx, stored.entryIndex);
+    const restored = await commitPersonaWithOptions(stored.personaId, ctx, pi, { toolBaseline: startupToolBaseline, sessionCommitSource: null, applyModel: !modelChangedAfterPersona });
+    if (!restored.ok) {
+      await setStartupUnavailableStatus(ctx, stored.personaId, restored.error);
+      await notify(ctx, `Larva session persona restore unavailable: ${restored.error.code}: ${restored.error.message}`, "warning");
+    } else if (stored.specDigest.length > 0 && restored.envelope.spec_digest !== stored.specDigest) {
+      await notify(ctx, `Larva session persona restored with updated spec: ${stored.personaId}`, "info");
+    }
+    return;
+  }
   const explicitPersonaId = env.LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
   if (explicitPersonaId.length > 0) {
     const committed = await commitPersonaWithOptions(explicitPersonaId, ctx, pi, { toolBaseline: startupToolBaseline, sessionCommitSource: "startup" });
@@ -5513,18 +5539,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
     }
     return;
   }
-  const stored = latestStoredActivePersonaCommit(ctx);
-  if (stored === null) {
-    await setStatus(ctx);
-    return;
-  }
-  const restored = await commitPersonaWithOptions(stored.personaId, ctx, pi, { toolBaseline: startupToolBaseline, sessionCommitSource: null });
-  if (!restored.ok) {
-    await setStartupUnavailableStatus(ctx, stored.personaId, restored.error);
-    await notify(ctx, `Larva session persona restore unavailable: ${restored.error.code}: ${restored.error.message}`, "warning");
-  } else if (stored.specDigest.length > 0 && restored.envelope.spec_digest !== stored.specDigest) {
-    await notify(ctx, `Larva session persona restored with updated spec: ${stored.personaId}`, "info");
-  }
+  await setStatus(ctx);
 }
 
 function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {

@@ -777,7 +777,7 @@ Overlay invariants:
 - cached presentation rows must never be used by `status`, `events`, `wait`,
   `select`, the background indicator, or cancellation authority.
 
-Persistent presentation cache:
+Persistent cache:
 
 - This cache is an adapter-local UI continuity feature only. It is not a second
   orchestration source of truth, not a resume registry, not a scheduler queue,

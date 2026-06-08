@@ -2365,7 +2365,7 @@ def test_active_persona_session_restore_from_real_pi_session_manager_reopen_beha
     ]
 
 
-def test_active_persona_session_restore_explicit_startup_persona_wins_behavior(tmp_path: Path) -> None:
+def test_active_persona_session_restore_session_commit_wins_over_explicit_startup_persona_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
@@ -2375,15 +2375,64 @@ def test_active_persona_session_restore_explicit_startup_persona_wins_behavior(t
           data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
         };
         const harness = await buildHarness({ LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { sessionEntries: [restoreEntry] });
-        console.log(JSON.stringify({ envelope: harness.mod.getActiveEnvelope(), sessionEntries: harness.sessionEntries }));
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          sessionEntries: harness.sessionEntries,
+          statuses: harness.statuses,
+        }));
         """,
     )
 
-    assert payload["envelope"]["persona_id"] == "architect"
+    assert payload["envelope"]["persona_id"] == "python"
     active_entries = [entry for entry in payload["sessionEntries"] if entry.get("customType") == "larva-active-persona-commit"]
+    assert len(active_entries) == 1
     assert active_entries[0]["data"]["persona_id"] == "python"
-    assert active_entries[-1]["data"]["persona_id"] == "architect"
-    assert active_entries[-1]["data"]["source"] == "startup"
+    assert active_entries[0]["data"]["source"] == "slash-command"
+    assert any(status == ["larva: python"] for status in payload["statuses"])
+
+
+def test_active_persona_restore_preserves_session_model_change_after_persona_commit_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          type: "custom",
+          customType: "larva-active-persona-commit",
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const modelChange = { type: "model_change", provider: "manual-provider", modelId: "manual-model" };
+        const harness = await buildHarness({ LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { sessionEntries: [restoreEntry, modelChange] });
+        const setModelCalls = harness.modelCalls.filter((call) => Array.isArray(call) && call.length === 1 && call[0]?.id === "model");
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          sessionEntries: harness.sessionEntries,
+          setModelCalls,
+          modelCalls: harness.modelCalls,
+          activeTools: harness.activeToolCalls.at(-1),
+          statuses: harness.statuses,
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert payload["setModelCalls"] == []
+    assert not any(call[:3] == ["find", "provider", "model"] for call in payload["modelCalls"])
+    assert "read" in payload["activeTools"]
+    assert payload["sessionEntries"] == [
+        {
+            "type": "custom",
+            "customType": "larva-active-persona-commit",
+            "data": {
+                "schema_version": 1,
+                "persona_id": "python",
+                "spec_digest": "sha256:python",
+                "source": "slash-command",
+                "committed_at": "2026-06-04T00:00:00.000Z",
+            },
+        },
+        {"type": "model_change", "provider": "manual-provider", "modelId": "manual-model"},
+    ]
+    assert any(status == ["larva: python"] for status in payload["statuses"])
 
 
 def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: Path) -> None:
