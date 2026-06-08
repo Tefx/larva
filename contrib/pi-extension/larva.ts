@@ -5237,17 +5237,18 @@ async function collectAcceptedSubagentTerminalState(record: ActiveSubagentRun, r
   try {
     const ended = await rpc.waitForAgentEnd();
     if (record.terminal_snapshot !== null) return;
+    // Selected exact cancellation can race with either child stdout closing
+    // before agent_end or Pi emitting an agent_end frame whose assistant content
+    // is intentionally empty because the turn was aborted. Once cancellation is
+    // correlated through the activeSubagentRuns task_id registry, the
+    // cancellation path owns the canonical terminal outcome unless the child had
+    // already completed before cancellation started.
+    if (record.cancel_task !== null || record.cancellation_source !== null || record.status === "cancelling") {
+      if (record.cancel_task !== null) await record.cancel_task;
+      else finalizeSubagentRun(record, cancelled(record.task_id, record.persona_id));
+      return;
+    }
     if (ended) {
-      // Selected exact cancellation can race with child stdout closing before an
-      // agent_end frame.  Once cancellation is correlated through the
-      // activeSubagentRuns task_id registry, the cancellation path owns the
-      // canonical terminal outcome; otherwise this remains a real protocol
-      // failure for non-cancelled children.
-      if (record.cancel_task !== null || record.cancellation_source !== null || record.status === "cancelling") {
-        if (record.cancel_task !== null) await record.cancel_task;
-        else finalizeSubagentRun(record, cancelled(record.task_id, record.persona_id));
-        return;
-      }
       finalizeSubagentRun(record, failed(record.task_id, record.persona_id, ended));
       return;
     }

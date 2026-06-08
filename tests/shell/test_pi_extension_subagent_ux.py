@@ -599,6 +599,90 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
     assert payload["cases"]["newSessionProtocolFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
 
 
+def test_larva_subagent_exact_cancel_owns_aborted_agent_end_without_final_text_probe(tmp_path: Path) -> None:
+    """Exact task_id cancellation wins when Pi emits agent_end with empty aborted content."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { appendFile, readFile } = await import("node:fs/promises");
+        const childBin = join(tmpRoot, "abort-agent-end-child.mjs");
+        const transcriptFile = join(tmpRoot, "abort-agent-end-transcript.jsonl");
+        const pidFile = join(tmpRoot, "abort-agent-end-pid.txt");
+        const sessionFile = join(childRoot, "abort-agent-end.jsonl");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { appendFile, mkdir, writeFile } from "node:fs/promises";
+          import { dirname } from "node:path";
+          const sessionFile = ${JSON.stringify(sessionFile)};
+          const transcriptFile = ${JSON.stringify(transcriptFile)};
+          const pidFile = ${JSON.stringify(pidFile)};
+          await mkdir(dirname(sessionFile), { recursive: true });
+          await writeFile(pidFile, String(process.pid));
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          const record = async (value) => appendFile(transcriptFile, JSON.stringify(value) + "\\\\n");
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            await record({ rx: message.type });
+            if (message.type === "get_state") {
+              await writeFile(sessionFile, "{}\\\\n", "utf8");
+              send({ id: message.id, success: true, data: { sessionFile } });
+            } else if (message.type === "prompt") {
+              send({ id: message.id, success: true, data: {} });
+            } else if (message.type === "abort") {
+              send({ type: "message_start", message: { role: "assistant", content: [], stopReason: "aborted", errorMessage: "Request was aborted" } });
+              send({ type: "message_end", message: { role: "assistant", content: [], stopReason: "aborted", errorMessage: "Request was aborted" } });
+              send({ type: "turn_end", message: { role: "assistant", content: [], stopReason: "aborted", errorMessage: "Request was aborted" }, toolResults: [] });
+              send({ type: "agent_end", messages: [{ role: "user", content: [{ type: "text", text: "cancel race" }] }, { role: "assistant", content: [], stopReason: "aborted", errorMessage: "Request was aborted" }], willRetry: false });
+              send({ id: message.id, type: "response", command: "abort", success: true });
+              setInterval(() => undefined, 1000);
+            } else if (message.type === "get_last_assistant_text") {
+              send({ id: message.id, type: "response", command: "get_last_assistant_text", success: true, data: {} });
+            }
+          });
+        `, { mode: 0o755 });
+        async function processExists() {
+          try {
+            const pid = Number.parseInt(await readFile(pidFile, "utf8"), 10);
+            process.kill(pid, 0);
+            return true;
+          } catch (_) {
+            return false;
+          }
+        }
+        const env = baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: childBin, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const cancel = tools.find((tool) => tool.name === "larva_subagent_cancel");
+        const accepted = await subagent.execute("abort-agent-end", { persona_id: "ok", task: "cancel race" }, undefined, () => undefined, ctx);
+        const cancelResult = await cancel.execute("cancel-abort-agent-end", { task_id: accepted.task_id, reason: "exact cancel race" }, undefined, undefined, ctx);
+        const terminal = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === accepted.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 3000);
+        await sleep(100);
+        const transcript = (await readFile(transcriptFile, "utf8")).trim().split(/\\r?\\n/).filter(Boolean).map((line) => JSON.parse(line));
+        console.log(JSON.stringify({
+          accepted: { status: accepted.status, resultPending: accepted.result_pending, task_id: accepted.task_id },
+          cancel: { status: cancelResult.details?.status ?? cancelResult.status, errorCode: cancelResult.details?.error?.code ?? cancelResult.error?.code ?? null },
+          terminal: { status: terminal?.status ?? null, errorCode: terminal?.error?.code ?? null },
+          transcript,
+          getLastRequested: transcript.some((entry) => entry.rx === "get_last_assistant_text"),
+          orphan: await processExists(),
+        }, null, 2));
+        """,
+        timeout=8.0,
+    )
+
+    assert payload["accepted"]["status"] == "accepted"
+    assert payload["accepted"]["resultPending"] is True
+    assert payload["accepted"]["task_id"].endswith("abort-agent-end.jsonl")
+    assert payload["cancel"]["status"] in {"cancelling", "cancelled"}
+    assert payload["terminal"] == {"status": "cancelled", "errorCode": "LARVA_CHILD_CANCELLED"}
+    assert payload["getLastRequested"] is False
+    assert payload["orphan"] is False
+
+
 def test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases(tmp_path: Path) -> None:
     """Pin optional recent-session helper shape, limits, retention, and non-goals."""
 

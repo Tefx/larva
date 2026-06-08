@@ -721,6 +721,50 @@ def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:
     assert isinstance(result["reason"], str) and result["reason"]
 
 
+def test_live_child_rpc_terminal_cancel_and_orphan_cleanup_proof_passes() -> None:
+    """Live Pi child RPC proof preserves accepted receipts while proving terminal cleanup."""
+
+    payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
+        "live-child-rpc-proof", timeout=120.0
+    )
+    _skip_if_pi_absent(payload)
+    proof = payload["runtime"]["controlledLive"]
+    raw_json_evidence = {
+        "command": ["node", str(RUNTIME_SMOKE), "--scenario", "live-child-rpc-proof"],
+        "exit_code": returncode,
+        "raw_stdout": raw_stdout,
+        "raw_stderr": raw_stderr,
+        "status": proof["status"],
+        "B1_startup": proof["B1_startup"],
+        "B2_resume": proof["B2_resume"],
+        "B3_abort": proof["B3_abort"],
+        "B4_orphans": proof["B4_orphans"],
+        "orphanProof": proof["orphanProof"],
+    }
+
+    assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert proof["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert proof["B1_startup"]["status"] == "PASS"
+    assert proof["B1_startup"]["acceptedStatus"] == "accepted"
+    assert proof["B1_startup"]["terminalStatus"] == "success"
+    assert proof["B1_startup"]["agentEndObserved"] is True
+    assert proof["B1_startup"]["getLastAssistantTextObserved"] is True
+    assert proof["B2_resume"]["status"] == "PASS"
+    assert proof["B2_resume"]["acceptedStatus"] == "accepted"
+    assert proof["B2_resume"]["terminalStatus"] == "success"
+    assert proof["B2_resume"]["switchSessionObserved"] is True
+    assert proof["B3_abort"]["status"] == "PASS"
+    assert proof["B3_abort"]["acceptedStatus"] == "accepted"
+    assert proof["B3_abort"]["cancelStatus"] in {"cancelling", "cancelled"}
+    assert proof["B3_abort"]["terminalStatus"] == "cancelled"
+    assert proof["B3_abort"]["abortEvents"]
+    assert proof["B3_abort"]["cleanupObserved"] is True
+    assert proof["B4_orphans"]["status"] == "PASS"
+    assert proof["B4_orphans"]["allObservedPids"]
+    assert all(alive is False for alive in proof["B4_orphans"]["postCleanupPidAlive"].values())
+    assert proof["B4_orphans"]["postCleanupPs"]["survivors"] == []
+
+
 def test_runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence() -> None:
     """Expected-red: async accepted receipt, one callback, streaming command, non-TUI fallbacks."""
 
