@@ -708,10 +708,13 @@ command/Console cancellation delivers one terminal callback unless the parent
 session becomes stale. The stable terminal cancellation code is
 `LARVA_CHILD_CANCELLED`.
 
-The extension keeps active subagents in a process-local registry keyed by
-`task_id` once known. Terminal states are immutable for control purposes: stale or
-late child completions must not duplicate callbacks or revive cancelled tasks.
-Same-process duplicate resumes of an active `task_id` return `LARVA_SESSION_BUSY`.
+The extension keeps active subagents in the process-local `activeSubagentRuns`
+registry keyed by the public `task_id` once known. `moveSubagentRunToTaskId`
+transfers startup records to that public key, `activeSubagentRunByTaskId` owns
+exact lookup, and `cancelSubagentByTaskId` owns targeted cancellation. Terminal
+states are immutable for control purposes: stale or late child completions must
+not duplicate callbacks or revive cancelled tasks. Same-process duplicate resumes
+of an active `task_id` return `LARVA_SESSION_BUSY`.
 
 Failure and cancellation paths return renderer-safe Pi ToolResult wrappers with
 stable error text in `content` and machine-readable state in `details`. Existing
@@ -720,8 +723,11 @@ stable errors such as `LARVA_NO_ACTIVE_PERSONA`, `LARVA_BAD_INPUT`,
 `LARVA_SESSION_BUSY` remain stable.
 
 For runtime proof probes only, tests may set `LARVA_PI_CHILD_RPC_TRACE_FILE` to
-an explicit trace path. The trace is diagnostic only: it is not a public handle,
-not provenance authority, and not model-facing state.
+an explicit trace path. The trace is diagnostic only: it is for runtime proof
+probes only, not a public resume handle, not a provenance record, not sidecar
+metadata, not model-facing helper state, and not authority for `larva_subagent_sessions`.
+Trace write failures are ignored so proof instrumentation cannot change child
+runtime behavior.
 
 ### `/larva-subagent` console
 
@@ -736,10 +742,15 @@ implemented is:
 ```
 
 In TUI mode, `/larva-subagent` opens the Subagent Console through Pi custom TUI
-overlay support (`ctx.ui.custom(..., { overlay: true })`). The Console is an
-event-driven view over adapter-local presentation state with bounded panes for
-Summary, Prompt, Output, Timeline, and Metadata. It can cancel the selected exact
-running child after confirmation.
+overlay support (`ctx.ui.custom(..., { overlay: true })`). The Console keeps the
+concise `Larva subagent log` chrome title for continuity with the persona
+selector visual language: accent-colored border, solid ANSI background, stable
+frame height, terminal-compatible drop shadow, 90% width, and 90% max-height. The
+Console is an event-driven view over adapter-local presentation state, with
+bounded Markdown-capable panes for Summary, Prompt, Output, Timeline, and
+Metadata; the Prompt pane contains the full initial prompt. It is not timer polling.
+It can cancel the selected exact running child after confirmation, and mouse click
+input remains unsupported/no-op.
 
 In RPC mode, Pi does not support custom overlays; command handlers return
 textual summaries, exact-task summaries, cancellation results, or cache-clear
@@ -752,10 +763,13 @@ work lands. In the target design, `/larva-log` is no longer the canonical UX. It
 may remain as a deprecated compatibility alias to `/larva-subagent` view mode,
 but new docs, tests, and user flows should use `/larva-subagent`.
 
-The Console and its cache are adapter-local UI inspection surfaces only. They are
-not resume authority, not model-visible log streams, not shared Larva/opifex
-schemas, and not child-session sources of truth. Clearing the Console/cache must
-not delete child Pi session files or mutate persona/model/tool-policy state.
+The Console and its Persistent cache are adapter-local UI inspection surfaces
+only. The cache target is `subagent-presentation-log.json`; optional adapter-local
+configuration remains `subagent-log.json`, and invalid config surfaces
+`LARVA_SUBAGENT_LOG_CONFIG_INVALID`. They are not resume authority, not
+model-visible log streams, not shared Larva/opifex schemas, and not child-session
+sources of truth. Clearing the Console/cache with `--clear` must not delete child
+Pi session files or mutate persona/model/tool-policy state.
 
 ### Verification requirements
 

@@ -799,11 +799,13 @@ def test_persona_selector_surface_layout_shadow_docs_are_synchronized() -> None:
 def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
     readme = PI_EXTENSION_README.read_text(encoding="utf-8")
     design = PI_INTEGRATION_DESIGN.read_text(encoding="utf-8")
+    authority = PI_EXTENSION_ASYNC_SPEC.read_text(encoding="utf-8")
 
-    for document in (readme, design):
+    for document in (readme, design, authority):
         _assert_tokens(
             document,
-            "/larva-log",
+            "/larva-subagent",
+            "Subagent Console",
             "Larva subagent log",
             "persona selector",
             "accent-colored border",
@@ -823,10 +825,13 @@ def test_subagent_log_overlay_surface_docs_are_synchronized() -> None:
             "Summary",
             "Prompt",
             "Output",
+            "Timeline",
             "Metadata",
             "Markdown",
             "height",
             "mouse click",
+            "/larva-log",
+            "deprecated",
         )
 
 
@@ -1447,17 +1452,19 @@ def test_no_sidecar_resume_contract() -> None:
 
 def test_child_rpc_trace_file_is_documented_as_proof_only_not_authority() -> None:
     readme = PI_EXTENSION_README.read_text(encoding="utf-8")
-    _assert_tokens(
-        readme,
-        "LARVA_PI_CHILD_RPC_TRACE_FILE",
-        "runtime proof probes only",
-        "model-facing helper",
-        "not a public resume handle",
-        "not a provenance record",
-        "sidecar metadata",
-        "not authority for `larva_subagent_sessions`",
-        "Trace write failures are ignored",
-    )
+    authority = PI_EXTENSION_ASYNC_SPEC.read_text(encoding="utf-8")
+    for document in (readme, authority):
+        _assert_tokens(
+            document,
+            "LARVA_PI_CHILD_RPC_TRACE_FILE",
+            "runtime proof probes only",
+            "model-facing helper",
+            "not a public resume handle",
+            "not a provenance record",
+            "sidecar metadata",
+            "not authority for `larva_subagent_sessions`",
+            "Trace write failures are ignored",
+        )
 
 
 def test_resume_switches_session_appends_task_and_uses_new_output() -> None:
@@ -1483,7 +1490,13 @@ def test_resume_path_taxonomy() -> None:
 
 
 def test_resume_busy_same_task_returns_session_busy() -> None:
-    _assert_tokens(_source(), "activeTaskIds", "LARVA_SESSION_BUSY")
+    _assert_tokens(
+        _source(),
+        "activeSubagentRuns",
+        "subagentTaskIdBusyInRegistry",
+        "activeSubagentRunByTaskId",
+        "LARVA_SESSION_BUSY",
+    )
 
 
 def test_resume_parent_preflight_defers_child_persona_initialization() -> None:
@@ -1493,21 +1506,30 @@ def test_resume_parent_preflight_defers_child_persona_initialization() -> None:
     _assert_tokens(source, "switch_session", "LARVA_PI_INITIAL_PERSONA_ID")
     _assert_regex(
         source,
-        r"validateTaskId[\s\S]+canSpawn[\s\S]+activeTaskIds",
-        "parent resume preflight should validate path, spawn authority, and busy state only",
+        r"validateTaskId[\s\S]+canSpawn[\s\S]+subagentTaskIdBusyInRegistry",
+        "parent resume preflight should validate path, spawn authority, and active-run registry busy state only",
     )
     assert "resolvePersona" not in subagent_body
     assert "resolvePersona" not in child_sequence_body
     assert child_sequence_body.index("startChild(env, root, personaId)") < child_sequence_body.index('rpc.command("switch-1"')
 
 
-def test_concurrent_same_task_resume_uses_in_memory_busy_set() -> None:
-    _assert_tokens(_source(), "Set<string>", "activeTaskIds", "finally")
+def test_concurrent_same_task_resume_uses_in_memory_active_run_registry() -> None:
+    _assert_tokens(
+        _source(),
+        "Map<string, ActiveSubagentRun>",
+        "activeSubagentRuns",
+        "moveSubagentRunToTaskId",
+        "activeSubagentRunByTaskId",
+        "cancelSubagentByTaskId",
+        "finally",
+    )
 
 
 def test_busy_state_is_process_local_without_lock_files() -> None:
     source = _source()
-    _assert_tokens(source, "activeTaskIds")
+    _assert_tokens(source, "activeSubagentRuns", "subagentTaskIdBusyInRegistry")
+    assert "activeTaskIds" not in source
     assert "lockfile" not in source.lower()
     assert ".lock" not in source
 

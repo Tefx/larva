@@ -316,13 +316,21 @@ Pi-owned file-reference completion.
 
 The bundled extension exposes `larva_subagent(persona_id, task, task_id?)` when
 the active parent persona and tool policy allow it. Results are Pi ToolResult
-wrappers around `LarvaSubagentResult`; `task_id` is the public resume handle and
-is the child Pi `.jsonl` session path under `~/.pi/larva/child-sessions`. Resumes
-reuse that path, append the new `task`, and re-resolve the requested child
-persona from the current registry. The authorized `/larva-log [task_id?]`
-slash command is a view-only, user-visible overlay over the parent extension's
-in-memory presentation log; it is not a model-facing tool, not resume authority,
-and not a shared opifex surface.
+wrappers around `LarvaSubagentResult`; `task_id` is the public resume/status/cancel
+handle and is the child Pi `.jsonl` session path under
+`~/.pi/larva/child-sessions`. Resumes reuse that path, append the new `task`, and
+re-resolve the requested child persona from the current registry. Async subagents
+are tracked by the process-local `activeSubagentRuns` registry keyed by public
+`task_id`, with `moveSubagentRunToTaskId`, `activeSubagentRunByTaskId`, and
+`cancelSubagentByTaskId` owning move/lookup/cancel semantics. The canonical
+`/larva-subagent [task_id?]` slash command opens a view-only, user-visible
+Subagent Console over the parent extension's presentation log and adapter-local
+cache. `/larva-log` may remain only as a deprecated view-mode alias; neither
+surface is a model-facing tool, resume authority, or shared opifex surface. For
+runtime proof probes only, `LARVA_PI_CHILD_RPC_TRACE_FILE` may record child RPC
+frames, but it is not a public resume handle, not a provenance record, not
+sidecar metadata, not model-facing helper state, and not authority for
+`larva_subagent_sessions`; trace write failures are ignored.
 
 Runtime proof summaries live in `design/pi-coding-agent-integration.md` under
 "Runtime capability and provenance matrix". See `contrib/pi-extension/README.md`

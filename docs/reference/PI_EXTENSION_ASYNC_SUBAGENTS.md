@@ -325,15 +325,24 @@ this model-facing tool returns any terminal status (`cancelled`, `success`, or
 
 ## Subagent Console
 
-The TUI Subagent Console is an overlay over adapter-local presentation state.
+The TUI Subagent Console is an overlay over adapter-local presentation state. The
+canonical command is `/larva-subagent`; `/larva-log` may remain only as a
+deprecated view-mode alias. The console may keep the concise `Larva subagent log`
+chrome title for continuity with the persona selector visual system: an
+accent-colored border, solid ANSI background, stable frame height,
+terminal-compatible drop shadow, 90% width, and 90% max-height. Rendering is
+event-driven, not timer polling.
 
 Minimum panes:
 
 1. Summary: status, persona, phase, task id, cancellation state, error summary.
-2. Prompt: full bounded task prompt.
+2. Prompt: full bounded initial prompt/task prompt.
 3. Output: live bounded assistant preview and final assistant output.
 4. Timeline: bounded chronological events; no hidden thinking content.
 5. Metadata: adapter-local diagnostics and source evidence.
+
+The panes may use renderer-safe Markdown where useful, but all visible content
+must remain bounded by terminal height and width.
 
 Minimum controls:
 
@@ -344,6 +353,7 @@ Minimum controls:
 - `1`-`5` or left/right: switch panes.
 - `c`: cancel selected running task after confirmation.
 - `d`: toggle bounded debug ids in Metadata/Timeline.
+- mouse click: unsupported/no-op for this target.
 
 Overlay invariants:
 
@@ -353,10 +363,20 @@ Overlay invariants:
 - no raw RPC firehose or hidden thinking text is displayed,
 - all visible rows are bounded and renderer-safe.
 
+Persistent cache:
+
+- The adapter-local Persistent cache target is `subagent-presentation-log.json`.
+- Optional adapter-local config may remain `subagent-log.json`.
+- Malformed config fails closed with `LARVA_SUBAGENT_LOG_CONFIG_INVALID`.
+- `/larva-subagent --clear` clears only adapter-local presentation/cache state.
+
 ## Runtime state model
 
 Replace process-global sets with one active-run registry keyed by public
-`task_id` once known.
+`task_id` once known. The implementation authority is the process-local
+`activeSubagentRuns` registry; `moveSubagentRunToTaskId` moves startup records to
+the public key, `activeSubagentRunByTaskId` performs exact public-handle lookup,
+and `cancelSubagentByTaskId` performs exact targeted cancellation.
 
 Conceptual fields:
 
@@ -406,6 +426,14 @@ On parent session shutdown, reload, new session, resume, or fork:
 Before a background result callback is sent, the extension must verify that the
 parent session identity still matches the acceptance-time identity and that the
 callback was not already delivered or suppressed.
+
+## Trace-file proof instrumentation
+
+`LARVA_PI_CHILD_RPC_TRACE_FILE` is available for runtime proof probes only. Trace
+frames are not a public resume handle, not a provenance record, not sidecar metadata,
+not model-facing helper state, and not authority for `larva_subagent_sessions`.
+Trace write failures are ignored so diagnostic proof instrumentation cannot alter
+child runtime behavior.
 
 ## Error and duplicate rules
 
