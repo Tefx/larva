@@ -4107,12 +4107,15 @@ function parseSubagentStatusInput(input: unknown): ParsedSubagentStatusInput | L
   return { taskId, limit };
 }
 
-async function validatePublicTaskIdForControl(taskId: string, env: RuntimeEnv): Promise<string | LarvaError> {
-  const root = await childSessionRoot(env);
+function validatePublicTaskIdForControl(taskId: string, env: RuntimeEnv): string | LarvaError {
+  if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
+  if (!taskId.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
+  if (activeSubagentRunByTaskId(taskId) !== null) return taskId;
+  const root = lexicalStatusChildSessionRoot(env);
   if (isLarvaError(root)) return root;
-  const validated = await validateTaskId(taskId, root);
-  if (isLarvaError(validated)) return error("LARVA_BAD_INPUT", validated.message);
-  return validated;
+  const normalizedTaskId = resolve(taskId);
+  if (!isUnderRoot(root, normalizedTaskId)) return error("LARVA_BAD_INPUT", "task_id must stay inside childSessionRoot.");
+  return normalizedTaskId;
 }
 
 function lexicalStatusChildSessionRoot(env: RuntimeEnv): string | LarvaError {
@@ -4171,14 +4174,21 @@ export async function larva_subagent_status(input?: unknown, ctx?: { env?: Runti
 
 type ParsedSubagentCancelInput = { taskId: string; reason: string };
 
+function normalizeCancelReason(value: unknown): string | LarvaError {
+  if (typeof value !== "string") return error("LARVA_BAD_INPUT", "reason must be a non-empty string.");
+  const reason = callbackSafeModelText(value).normalize("NFC");
+  if (reason.length === 0) return error("LARVA_BAD_INPUT", "reason must be a non-empty string.");
+  if (Array.from(reason).length > SUBAGENT_CANCEL_REASON_LIMIT) return error("LARVA_BAD_INPUT", "reason must be 500 normalized code points or fewer.");
+  return reason;
+}
+
 function parseSubagentCancelInput(input: unknown): ParsedSubagentCancelInput | LarvaError {
   if (!isRecord(input)) return error("LARVA_BAD_INPUT", "cancel input must be an object.");
   const taskId = normalizeString(input.task_id);
   if (taskId === null) return error("LARVA_BAD_INPUT", "task_id must be a non-empty string.");
-  const reason = normalizeString(input.reason);
-  if (reason === null) return error("LARVA_BAD_INPUT", "reason must be a non-empty string.");
-  if (Array.from(reason.normalize("NFC")).length > SUBAGENT_CANCEL_REASON_LIMIT) return error("LARVA_BAD_INPUT", "reason must be 500 normalized code points or fewer.");
-  return { taskId, reason: reason.normalize("NFC") };
+  const reason = normalizeCancelReason(input.reason);
+  if (isLarvaError(reason)) return reason;
+  return { taskId, reason };
 }
 
 function wrapSubagentCancelResult(taskId: string | null, personaId: string, status: LarvaSubagentPublicStatus | "failed", larvaError: LarvaError | null, isErrorValue: boolean): LarvaSubagentCancelResult {
@@ -4187,7 +4197,7 @@ function wrapSubagentCancelResult(taskId: string | null, personaId: string, stat
 }
 
 async function cancelSubagentByTaskId(taskId: string, reason: string, source: SubagentCancellationSource, ctx?: { env?: RuntimeEnv }, awaitTerminal = false): Promise<LarvaSubagentCancelResult> {
-  const validated = await validatePublicTaskIdForControl(taskId, currentEnv(ctx));
+  const validated = validatePublicTaskIdForControl(taskId, currentEnv(ctx));
   if (isLarvaError(validated)) return wrapSubagentCancelResult(null, "", "failed", validated, true);
   const record = activeSubagentRunByTaskId(validated) ?? activeSubagentRunByTaskId(taskId);
   if (record === null) {

@@ -1534,6 +1534,39 @@ def test_cancel_authority_does_not_fall_back_to_presentation_only_rows() -> None
     assert "recordSubagentPresentationResult(cancelled(" not in body
 
 
+def test_larva_subagent_cancel_unobserved_exact_task_id_is_not_bad_input_or_filesystem_discovered(tmp_path: Path) -> None:
+    """Well-formed exact cancel task ids are process-local registry lookups only."""
+
+    child_root = tmp_path / "child-sessions"
+    missing_task_id = child_root / "missing-observed-only.jsonl"
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{ LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_root))} }};
+        const unobserved = await mod.larva_subagent_cancel({{ task_id: {json.dumps(str(missing_task_id))}, reason: "valid model reason" }}, {{ env }});
+        const exact500 = await mod.larva_subagent_cancel({{ task_id: {json.dumps(str(missing_task_id))}, reason: "x".repeat(500) }}, {{ env }});
+        const overlong = await mod.larva_subagent_cancel({{ task_id: {json.dumps(str(missing_task_id))}, reason: "x".repeat(501) }}, {{ env }});
+        const relative = await mod.larva_subagent_cancel({{ task_id: "missing-observed-only.jsonl", reason: "valid model reason" }}, {{ env }});
+        console.log(JSON.stringify({{
+          unobserved,
+          exact500,
+          overlong,
+          relative,
+          childRootExistsAfterCancel: (await import("node:fs")).existsSync({json.dumps(str(child_root))}),
+        }}));
+        """,
+    )
+
+    assert payload["unobserved"]["isError"] is True
+    assert payload["unobserved"]["details"]["task_id"] == str(missing_task_id)
+    assert payload["unobserved"]["details"]["error"]["code"] == "LARVA_SUBAGENT_NOT_OBSERVED"
+    assert payload["exact500"]["details"]["error"]["code"] == "LARVA_SUBAGENT_NOT_OBSERVED"
+    assert payload["overlong"]["details"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert payload["relative"]["details"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert payload["childRootExistsAfterCancel"] is False
+
+
 def test_busy_state_is_process_local_without_lock_files() -> None:
     source = _source()
     _assert_tokens(source, "activeSubagentRuns", "subagentTaskIdBusyInRegistry")
