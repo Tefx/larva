@@ -1511,6 +1511,51 @@ def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) 
     assert payload["noFullTranscriptStreaming"] is True
 
 
+def test_async_subagent_execute_onupdate_lifetime_stops_at_accepted_expected_red(tmp_path: Path) -> None:
+    """Regression: background terminal collection must not call Pi onUpdate after accepted."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "onupdate-lifetime-child.mjs");
+        await writeFakeChild(childBin, "success");
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const updates = [];
+        let acceptedReturned = false;
+        const onUpdate = (update) => {
+          updates.push({ phase: update?.details?.phase ?? null, afterAcceptedReturned: acceptedReturned });
+          return Promise.reject(new Error("synthetic async onUpdate rejection"));
+        };
+        const result = await subagent.execute(
+          "call-onupdate-lifetime",
+          { persona_id: "ok", task: "prove no post-accepted onUpdate" },
+          undefined,
+          onUpdate,
+          { env, modelRegistry },
+        );
+        acceptedReturned = true;
+        const finalEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_prompt === "prove no post-accepted onUpdate" && entry.status === "success"), 2000);
+        await Promise.resolve();
+        console.log(JSON.stringify({
+          resultStatus: result.status,
+          finalObserved: Boolean(finalEntry),
+          updatePhases: updates.map((item) => item.phase),
+          postAcceptedUpdates: updates.filter((item) => item.afterAcceptedReturned),
+        }, null, 2));
+        """,
+    )
+
+    assert payload["resultStatus"] == "accepted"
+    assert payload["finalObserved"] is True
+    assert payload["postAcceptedUpdates"] == []
+    assert payload["updatePhases"][-1] == "accepted"
+
+
+
 def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path: Path) -> None:
     """Pin VT46 collapsed/expanded final views and parent footer isolation."""
 

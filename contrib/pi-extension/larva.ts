@@ -5432,9 +5432,12 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   return result;
 }
 
-function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => void) | undefined, update: LarvaSubagentProgressUpdate): void {
+function safelyEmitSubagentUpdate(onUpdate: ((update: unknown) => unknown) | undefined, update: LarvaSubagentProgressUpdate): void {
   try {
-    onUpdate?.(update);
+    const emitted = onUpdate?.(update);
+    if (typeof (emitted as { catch?: unknown } | undefined)?.catch === "function") {
+      void (emitted as Promise<unknown>).catch(() => undefined);
+    }
   } catch {
     // Pi update callbacks are presentation-only; callback failures must not invalidate child RPC lifecycle or public result contracts.
   }
@@ -5570,9 +5573,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
       const callId = typeof _toolCallId === "string" && _toolCallId.length > 0 ? _toolCallId : undefined;
       const executeGeneration = subagentUiResetGeneration;
+      let toolUpdateActive = true;
       const emitProgress = (phase: string, taskId?: string | null): void => {
         if (executeGeneration === subagentUiResetGeneration) upsertSubagentPresentationProgress(input, phase, taskId, callId);
-        safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, phase, taskId));
+        if (toolUpdateActive) safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, phase, taskId));
       };
       emitProgress("starting");
       return larva_subagent(input, {
@@ -5583,8 +5587,15 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
         presentationCallId: callId,
         callbackSurface: callbackSurfaceFrom(runtimeCtx, pi),
       }).then((result) => {
-        safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, result.status, result.task_id));
-        return wrapLarvaSubagentToolResult(result);
+        try {
+          if (toolUpdateActive) safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, result.status, result.task_id));
+          return wrapLarvaSubagentToolResult(result);
+        } finally {
+          toolUpdateActive = false;
+        }
+      }, (caught) => {
+        toolUpdateActive = false;
+        throw caught;
       });
     },
     renderCall: renderLarvaSubagentCall,
