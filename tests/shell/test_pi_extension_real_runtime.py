@@ -641,9 +641,10 @@ def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> No
     cases = payload["runtime"]["toolResultCases"]
     assertions = payload["runtime"]["assertions"]
 
-    assert cases["success"]["status"] == "success"
-    assert cases["success"]["result_text"] == "child final text"
-    assert cases["success"]["details"]["result_text"] == "child final text"
+    assert cases["success"]["status"] == "accepted"
+    assert cases["success"]["result_pending"] is True
+    assert cases["success"]["result_text"] == ""
+    assert "result_text" not in cases["success"]["details"]
     assert cases["failedBeforeSession"]["status"] == "failed"
     assert cases["failedBeforeSession"]["error"]["code"] == "LARVA_NO_ACTIVE_PERSONA"
     assert cases["failedBeforeSession"]["details"]["error"]["code"] == "LARVA_NO_ACTIVE_PERSONA"
@@ -658,13 +659,23 @@ def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> No
         assert assertion["rendererSafeContent"] is True
         assert assertion["textItem"]["type"] == "text"
         assert isinstance(assertion["textItem"]["text"], str)
-        assert assertion["detailsPreserve"] == {
-            "task_id": case["task_id"],
-            "persona_id": case["persona_id"],
-            "status": case["status"],
-            "result_text": case["result_text"],
-            "error": case["error"],
-        }
+        if case["status"] == "accepted":
+            assert assertion["detailsPreserve"] == {
+                "task_id": case["task_id"],
+                "persona_id": case["persona_id"],
+                "status": "accepted",
+                "result_pending": True,
+                "error": case["error"],
+                "no_terminal_result_text": True,
+            }
+        else:
+            assert assertion["detailsPreserve"] == {
+                "task_id": case["task_id"],
+                "persona_id": case["persona_id"],
+                "status": case["status"],
+                "result_text": case["result_text"],
+                "error": case["error"],
+            }
 
 
 def test_larva_subagent_fresh_child_sessionfile_validation_split() -> None:
@@ -675,8 +686,9 @@ def test_larva_subagent_fresh_child_sessionfile_validation_split() -> None:
     fresh = validation["freshMissingBeforePrompt"]
     assert validation["missingBeforePrompt"] is True
     assert validation["createdDuringPrompt"] is True
-    assert fresh["status"] == "success"
-    assert fresh["result_text"] == "fresh child final text"
+    assert fresh["status"] == "accepted"
+    assert fresh["result_pending"] is True
+    assert fresh["result_text"] == ""
     assert fresh["task_id"].endswith("fresh-created-on-prompt.jsonl")
 
     missing_resume = validation["missingResume"]

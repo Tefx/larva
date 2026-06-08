@@ -438,12 +438,18 @@ function assertLarvaSubagentToolResultShape(name, result) {
   if (!isRecord(result?.details)) {
     failures.push("ToolResult.details must be a machine-readable metadata object");
   } else {
-    for (const field of ["task_id", "persona_id", "status", "result_text", "error"]) {
+    const semanticFields = result.details.status === "accepted"
+      ? ["task_id", "persona_id", "status", "result_pending", "error"]
+      : ["task_id", "persona_id", "status", "result_text", "error"];
+    for (const field of semanticFields) {
       if (!(field in result.details)) {
         failures.push(`ToolResult.details missing semantic field ${field}`);
       } else if (JSON.stringify(result.details[field]) !== JSON.stringify(result[field])) {
         failures.push(`ToolResult.details.${field} does not preserve top-level ${field}`);
       }
+    }
+    if (result.details.status === "accepted" && "result_text" in result.details) {
+      failures.push("accepted ToolResult.details must not carry terminal result_text evidence");
     }
     if (result.details.error !== null) {
       if (!isRecord(result.details.error)) {
@@ -460,13 +466,22 @@ function assertLarvaSubagentToolResultShape(name, result) {
   return {
     rendererSafeContent: true,
     textItem,
-    detailsPreserve: {
-      task_id: result.details.task_id,
-      persona_id: result.details.persona_id,
-      status: result.details.status,
-      result_text: result.details.result_text,
-      error: result.details.error,
-    },
+    detailsPreserve: result.details.status === "accepted"
+      ? {
+        task_id: result.details.task_id,
+        persona_id: result.details.persona_id,
+        status: result.details.status,
+        result_pending: result.details.result_pending,
+        error: result.details.error,
+        no_terminal_result_text: !("result_text" in result.details),
+      }
+      : {
+        task_id: result.details.task_id,
+        persona_id: result.details.persona_id,
+        status: result.details.status,
+        result_text: result.details.result_text,
+        error: result.details.error,
+      },
   };
 }
 
@@ -1375,7 +1390,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
 
   const acceptedDetails = acceptedResult?.details ?? acceptedResult;
   const acceptedText = commandText(acceptedResult);
-  const callbackEnvelope = callbackEntries[0] ?? null;
+  const callbacksForAcceptedTask = callbackEntries.filter((entry) => entry?.data?.task_id === acceptedDetails?.task_id);
+  const callbackEnvelope = callbacksForAcceptedTask[0] ?? null;
   const callback = callbackEnvelope?.data ?? null;
   const callbackOptions = callbackEnvelope?.options ?? {};
   const callbackText = typeof callback?.result_text === "string" ? callback.result_text : typeof callback?.message === "string" ? callback.message : "";
@@ -1748,8 +1764,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
       noFinalOutputInAcceptedResult: !acceptedText.includes("ASYNC_CALLBACK_FINAL") && !acceptedResult?.result_text,
     },
     callbacks: {
-      singleCallbackEvent: callbackEntries.length === 1,
-      callbackShape: callbackEntries.length === 1
+      singleCallbackEvent: callbacksForAcceptedTask.length === 1,
+      callbackShape: callbacksForAcceptedTask.length === 1
         && callbackEnvelope.customType === "larva-subagent-result"
         && callbackOptions?.triggerTurn === true
         && callbackOptions?.deliverAs === "steer"
@@ -1797,7 +1813,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
       siblingBNotCancelled: detailsOf(siblingResults[1]?.result)?.status !== "cancelled",
       parentNotAborted: parentEnvelopeAfterCancel?.persona_id === "ok",
       modelTerminalCancelSuppressesDuplicateCallback: ["cancelled", "success", "failed"].includes(modelCancelExact500.status)
-        ? callbackEntries.slice(modelCancelExact500.callbackCountAtReturn).length === 0
+        ? callbackEntries.slice(modelCancelExact500.callbackCountAtReturn).every((entry) => entry?.data?.task_id !== siblingTaskId)
         : modelCancelExact500.status === "cancelling",
       userOrConsoleCancelDeliversCallback: hasCallbackPayloadShape(cancelledCallback, "cancelled"),
     },
@@ -2089,8 +2105,9 @@ async function main() {
     evidence.runtime.assertions = {
       freshMissingBeforePromptAccepted: missingBeforePrompt === true
         && createdDuringPrompt === true
-        && freshMissingBeforePrompt.status === "success"
-        && freshMissingBeforePrompt.result_text === "fresh child final text"
+        && freshMissingBeforePrompt.status === "accepted"
+        && freshMissingBeforePrompt.result_pending === true
+        && freshMissingBeforePrompt.result_text === ""
         && freshMissingBeforePrompt.task_id.endsWith("fresh-created-on-prompt.jsonl"),
       strictResumeMissingRejected: missingResume.status === "failed"
         && missingResume.error?.code === "LARVA_SESSION_NOT_FOUND"
@@ -2098,7 +2115,8 @@ async function main() {
       invalidFreshRejected: Object.values(invalidFresh).every((result) => result.status === "failed" && result.error?.code === "LARVA_CHILD_PROTOCOL_FAILED"),
       authorityAndToolResultPreserved: freshMissingBeforePrompt.isError === false
         && Array.isArray(freshMissingBeforePrompt.content)
-        && freshMissingBeforePrompt.details?.status === "success",
+        && freshMissingBeforePrompt.details?.status === "accepted"
+        && freshMissingBeforePrompt.details?.result_pending === true,
     };
   } else if (scenario === "tool-call-block") {
     await runtimeHarness(evidence);

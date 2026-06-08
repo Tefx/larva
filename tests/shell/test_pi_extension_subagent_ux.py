@@ -100,6 +100,11 @@ def _node_prelude(tmp_path: Path) -> str:
           return {{ tools, ctx }};
         }}
         function mirrorOk(result) {{
+          if (result?.details?.status === "accepted") {{
+            return ["task_id", "persona_id", "status", "result_pending", "error"].every((key) =>
+              JSON.stringify(result[key]) === JSON.stringify(result.details?.[key])
+            ) && !("result_text" in result.details);
+          }}
           return ["task_id", "persona_id", "status", "result_text", "error"].every((key) =>
             JSON.stringify(result[key]) === JSON.stringify(result.details?.[key])
           );

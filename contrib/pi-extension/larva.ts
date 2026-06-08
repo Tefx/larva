@@ -395,7 +395,6 @@ const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
   codeBlockIndent: "  ",
 };
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
-const activeTaskIds: Set<string> = new Set<string>();
 
 type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale";
 type SubagentCancellationSource = "model" | "user" | "console" | "lifecycle";
@@ -3698,26 +3697,30 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     cancel_task: null,
   };
   activeSubagentRuns.set(record.private_key, record);
-  if (taskId !== null) activeTaskIds.add(taskId);
   return record;
 }
 
+function activeSubagentRunByTaskId(taskId: string): ActiveSubagentRun | null {
+  for (const record of new Set(activeSubagentRuns.values())) {
+    if (record.task_id === taskId) return record;
+  }
+  return null;
+}
+
+function subagentTaskIdBusyInRegistry(taskId: string, except?: ActiveSubagentRun): boolean {
+  const record = activeSubagentRunByTaskId(taskId);
+  return record !== null && record !== except && isSubagentRunActive(record);
+}
+
 function moveSubagentRunToTaskId(record: ActiveSubagentRun, taskId: string): LarvaError | null {
-  const existing = activeSubagentRuns.get(taskId);
-  if (existing !== undefined && existing !== record && isSubagentRunActive(existing)) {
+  if (subagentTaskIdBusyInRegistry(taskId, record)) {
     return error("LARVA_SESSION_BUSY", "Child session is already active.");
   }
   if (record.private_key !== taskId) activeSubagentRuns.delete(record.private_key);
   record.private_key = taskId;
   record.task_id = taskId;
   activeSubagentRuns.set(taskId, record);
-  activeTaskIds.add(taskId);
   return null;
-}
-
-function activeSubagentRunByTaskId(taskId: string): ActiveSubagentRun | null {
-  const record = activeSubagentRuns.get(taskId) ?? null;
-  return record !== null && record.task_id === taskId ? record : null;
 }
 
 function touchSubagentRun(record: ActiveSubagentRun, phase: string, status?: LarvaSubagentPublicStatus): void {
@@ -3812,7 +3815,6 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   record.error = terminal.error;
   record.updated_at = completedAt;
   if (terminal.task_id !== null && record.task_id === null) void moveSubagentRunToTaskId(record, terminal.task_id);
-  if (record.task_id !== null) activeTaskIds.delete(record.task_id);
   const callbackId = `larva-subagent-result:${record.task_id ?? "unallocated"}:${completedAt}`;
   record.terminal_snapshot = Object.freeze({
     task_id: record.task_id,
@@ -4428,7 +4430,6 @@ export function resetSubagentPresentationStateForTests(): void {
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
   subagentUiResetGeneration += 1;
-  activeTaskIds.clear();
   activeSubagentRuns.clear();
   closeSubagentPresentationOverlay();
 }
@@ -4448,8 +4449,7 @@ export function recordSubagentPresentationEntryForTests(
 }
 
 export function isSubagentTaskBusyForTests(taskId: string): boolean {
-  const record = activeSubagentRunByTaskId(taskId);
-  return activeTaskIds.has(taskId) || (record !== null && isSubagentRunActive(record));
+  return subagentTaskIdBusyInRegistry(taskId);
 }
 
 export function subagentActiveRunRegistryForTests(): LarvaSubagentRunSnapshot[] {
@@ -5039,7 +5039,6 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
     if (!recordChildren.has(entry.child)) await cleanupChild(entry.child, entry.env);
   }
   activeSubagentChildren.clear();
-  activeTaskIds.clear();
   pruneTerminalSubagentRuns();
   return activeChildren.length;
 }
@@ -5160,7 +5159,7 @@ async function runChildSequence(
       if (isLarvaError(sessionFile)) return await finishSubagentRunEarly(activeRecord, failed(null, personaId, sessionFile));
       const canonical = await validateFreshChildSessionFile(sessionFile, root);
       if (isLarvaError(canonical)) return await finishSubagentRunEarly(activeRecord, failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child returned invalid sessionFile.")));
-      const busy = activeTaskIds.has(canonical) || (activeSubagentRunByTaskId(canonical) !== null && activeSubagentRunByTaskId(canonical) !== activeRecord && isSubagentRunActive(activeSubagentRunByTaskId(canonical) as ActiveSubagentRun));
+      const busy = subagentTaskIdBusyInRegistry(canonical, activeRecord);
       if (busy) return await finishSubagentRunEarly(activeRecord, failed(canonical, personaId, error("LARVA_SESSION_BUSY", "Child session is already active.")));
       const moved = moveSubagentRunToTaskId(activeRecord, canonical);
       if (moved !== null) return await finishSubagentRunEarly(activeRecord, failed(canonical, personaId, moved));
@@ -5224,7 +5223,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
-  if (canonicalTaskId !== null && (activeTaskIds.has(canonicalTaskId) || (activeSubagentRunByTaskId(canonicalTaskId) !== null && isSubagentRunActive(activeSubagentRunByTaskId(canonicalTaskId) as ActiveSubagentRun)))) {
+  if (canonicalTaskId !== null && subagentTaskIdBusyInRegistry(canonicalTaskId)) {
     const result = failed(canonicalTaskId, personaId, error("LARVA_SESSION_BUSY", "Child session is already being resumed."));
     if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
