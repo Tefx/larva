@@ -384,6 +384,47 @@ def test_larva_subagent_background_indicator_count_only_expected_red(tmp_path: P
     assert payload["noControlSurface"] is True, json.dumps(payload, indent=2, sort_keys=True)
 
 
+def test_larva_subagent_background_indicator_ignores_view_only_presentation_cache(tmp_path: Path) -> None:
+    """Stale Subagent Console continuity rows never become live indicator authority."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const statusCalls = [];
+        const env = baseEnv();
+        const ctx = { env, modelRegistry, ui: { setStatus: (...args) => statusCalls.push(args), notify: () => undefined } };
+        await mod.initializeExtension(ctx, { ...piBase, registerTool: () => undefined });
+        mod.recordSubagentPresentationEntryForTests(
+          "/tmp/stale-cache-task.jsonl",
+          "cache-only",
+          "running",
+          { task_preview: "SECRET_CACHE_TASK_TEXT", result_text: "SECRET_CACHE_OUTPUT", phase: "cached-running" },
+        );
+        statusCalls.length = 0;
+        mod.resetSubagentPresentationStateForTests();
+        const statusTexts = statusCalls.map((args) => args.filter((value) => typeof value === "string").join(" "));
+        console.log(JSON.stringify({
+          presentationRowsAfterReset: mod.subagentPresentationLogForTests().length,
+          statusTexts,
+          indicatorTexts: statusTexts.filter((text) => /Larva:/.test(text)),
+          reportedIdle: statusTexts.includes("larva-subagents Larva: idle") || statusTexts.includes("Larva: idle"),
+          noCacheContent: statusTexts.every((text) => !text.includes("SECRET_CACHE") && !text.includes("/tmp/stale-cache-task.jsonl")),
+          noControls: statusTexts.every((text) => !/cancel|clear|select|task_id/i.test(text)),
+        }, null, 2));
+        """,
+    )
+
+    assert payload == {
+        "presentationRowsAfterReset": 0,
+        "statusTexts": ["Larva: idle"],
+        "indicatorTexts": ["Larva: idle"],
+        "reportedIdle": True,
+        "noCacheContent": True,
+        "noControls": True,
+    }
+
+
 def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: Path) -> None:
     """Timeline rows show bounded args with terminal-safe hierarchy and no heavy payloads."""
 

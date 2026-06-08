@@ -3884,8 +3884,12 @@ function registerSubagentBackgroundIndicatorContext(ctx: PiContext): void {
   subagentBackgroundIndicatorContexts.add(ctx);
 }
 
+function subagentRunVisibleInBackgroundIndicator(record: ActiveSubagentRun): boolean {
+  return record.task_id !== null && isSubagentRunActive(record);
+}
+
 function subagentBackgroundIndicatorText(): string {
-  const records = Array.from(new Set(activeSubagentRuns.values())).filter(isSubagentRunActive);
+  const records = Array.from(new Set(activeSubagentRuns.values())).filter(subagentRunVisibleInBackgroundIndicator);
   if (records.length === 0) return "Larva: idle";
   const cancelling = records.filter((record) => record.status === "cancelling").length;
   const running = records.length - cancelling;
