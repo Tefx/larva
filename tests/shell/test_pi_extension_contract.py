@@ -365,6 +365,29 @@ def test_async_subagent_guidance_separates_automation_from_conversation() -> Non
     assert not missing, f"accepted async receipt guidance gap; missing tokens: {missing}"
 
 
+def test_async_subagent_resume_task_id_lexical_validation_precedes_filesystem_checks() -> None:
+    """Resume task_id validation must reject non-normalized strings before filesystem checks."""
+    source = _source()
+    function_start = source.index("export async function larva_subagent(")
+    body = source[function_start:source.index("function safelyEmitSubagentUpdate", function_start)]
+
+    assert "validateExactPublicTaskIdLexical(taskId, env)" in body
+    assert body.index("validateExactPublicTaskIdLexical(taskId, env)") < body.index("childSessionRoot(env)")
+    assert body.index("validateExactPublicTaskIdLexical(taskId, env)") < body.index("validateTaskId(lexicallyValidTaskId, root)")
+    lexical_body = _function_body(source, "function validateExactPublicTaskIdLexical")
+    for token in (
+        'taskId.trim() !== taskId',
+        'taskId.normalize("NFC") !== taskId',
+        'taskId.includes("~")',
+        'taskId.includes("%")',
+        'segment.length === 0',
+        'segment === "."',
+        'segment === ".."',
+        'resolve(taskId) !== taskId',
+    ):
+        assert token in lexical_body
+
+
 def test_async_subagent_background_activity_indicator_count_only() -> None:
     """Live subagent status indicator must be aggregate/count-only."""
     source = _source()
@@ -933,6 +956,10 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "conversational_push_guidance": "Conversational Pi flows should yield the turn and wait for the" in authority,
         "status_inspection_only": "inspection/debugging only" in authority,
         "persistent_cache_not_authority": "Persistent presentation cache is adapter-local UI continuity only" in authority,
+        "indicator_source_active_registry": "Source of truth is the same process-local active-run registry" in authority,
+        "indicator_count_only_aggregate": "Show only aggregate non-terminal activity" in authority,
+        "indicator_no_controls_or_content": "Never expose task text, child output, fuzzy selectors, or cancel-all actions." in authority,
+        "indicator_cache_not_authority": "Persistent presentation cache" in authority and "excluded from the indicator" in authority,
         "cancel_grace_1500": "1500 ms" in authority,
         "lifecycle_rules": "On parent session shutdown, reload, new session, resume, or fork" in authority,
     }
@@ -955,6 +982,11 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "readme_guides_automation_to_deterministic_tools": "For automation that depends on the child" in readme and "building a shell sleep/status-polling loop" in readme,
         "readme_marks_status_inspection_only": "inspection and\ndebugging tool only" in readme,
         "readme_marks_persistent_cache_ui_only": "adapter-local UI continuity only" in readme and "never orchestration authority" in readme,
+        "readme_indicator_count_only": "status/background indicator is count-only" in readme,
+        "readme_indicator_active_registry_source": "process-local active-run registry and event-driven\nupdates" in readme,
+        "readme_indicator_aggregate_only": "shows only aggregate\nnon-terminal activity" in readme,
+        "readme_indicator_no_controls_or_content": all(token in readme for token in ("task prompts", "child output", "cancellation\nbuttons", "control/content surface")),
+        "readme_indicator_cache_non_authority": "presentation cache remains UI-only continuity data and is never\nauthoritative for this indicator" in readme,
         "source_records_1500ms_abort_kill_grace": bool(re.search(r"(?:1500|1_500)[\s\S]{0,120}(?:abort|kill|grace)", source, re.IGNORECASE)),
     }
     assert parity == {key: True for key in parity}, json.dumps(

@@ -755,6 +755,17 @@ files or the presentation cache, and never consume results. `wait` covers
 `wait(return_when: "any")`; `events` replays ordered retained events with
 `cursor_expired` and `next_sequence`.
 
+The interactive status/background indicator is count-only and read-only. Its
+source of truth is the same process-local active-run registry and event-driven
+updates used by `larva_subagent_status`, `larva_subagent_events`,
+`larva_subagent_wait`, and `larva_subagent_select`; it must not scan child-session
+files or read the presentation cache. The indicator shows only aggregate
+non-terminal activity such as `Larva: 2 bg` or `Larva: idle`. It must not expose
+`task_id` handles, task prompts, child output, selector details, cancellation
+buttons, clear actions, or any other control/content surface. The Subagent
+Console's presentation cache remains UI-only continuity data and is never
+authoritative for this indicator or any orchestration decision.
+
 `larva_subagent_cancel` cancels one exact active child by `task_id` and requires a
 non-empty renderer-safe reason bounded to 500 normalized code points. Cancellation
 must target only that child: it must not abort the parent agent, reset every child,

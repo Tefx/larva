@@ -4415,6 +4415,7 @@ function parseSubagentStatusInput(input: unknown): ParsedSubagentStatusInput | L
 
 function validateExactPublicTaskIdLexical(taskId: string, env: RuntimeEnv): string | LarvaError {
   if (taskId.trim() !== taskId || taskId.length === 0) return error("LARVA_BAD_INPUT", "task_id must be an exact, unmodified absolute .jsonl path.");
+  if (taskId.normalize("NFC") !== taskId) return error("LARVA_BAD_INPUT", "task_id must already be Unicode-normalized NFC; refusing to clean it.");
   if (!isAbsolute(taskId)) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
   if (!taskId.endsWith(".jsonl")) return error("LARVA_BAD_INPUT", "task_id must be an absolute .jsonl path.");
   if (taskId.endsWith(sep) || taskId.includes("~") || taskId.includes("%") || taskId.includes("\\")) return error("LARVA_BAD_INPUT", "task_id must be an exact normalized public handle.");
@@ -5740,6 +5741,12 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   }
   const { personaId, task, taskId } = parsed;
   const env = currentEnv(ctx);
+  const lexicallyValidTaskId = taskId === null ? null : validateExactPublicTaskIdLexical(taskId, env);
+  if (isLarvaError(lexicallyValidTaskId)) {
+    const result = failed(null, personaId, lexicallyValidTaskId);
+    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    return result;
+  }
   const root = await childSessionRoot(env);
   if (isLarvaError(root)) {
     const result = failed(null, personaId, root);
@@ -5748,8 +5755,8 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   }
 
   let canonicalTaskId: string | null = null;
-  if (taskId !== null) {
-    const validated = await validateTaskId(taskId, root);
+  if (lexicallyValidTaskId !== null) {
+    const validated = await validateTaskId(lexicallyValidTaskId, root);
     if (isLarvaError(validated)) {
       const result = failed(null, personaId, validated);
       if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);

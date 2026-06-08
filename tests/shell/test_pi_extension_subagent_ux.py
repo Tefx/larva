@@ -505,12 +505,22 @@ def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: P
         _node_prelude(tmp_path)
         + """
         const { access, chmod, symlink } = await import("node:fs/promises");
+        const { sep } = await import("node:path");
         const marker = join(tmpRoot, "spawned.txt");
         const childBin = join(tmpRoot, "must-not-spawn.mjs");
         await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
           import { writeFile } from "node:fs/promises";
           await writeFile(process.env.LARVA_FAKE_SPAWN_MARKER, "spawned");
-          setInterval(() => undefined, 1000);
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+          rl.on("line", async (line) => {
+            const msg = JSON.parse(line);
+            if (msg.type === "switch_session") send({ id: msg.id, success: true, data: { cancelled: false } });
+            else if (msg.type === "prompt") { send({ id: msg.id, success: true }); setTimeout(() => send({ type: "agent_end" }), 1); }
+            else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "unexpected resume spawn" } }); setTimeout(() => process.exit(0), 1); }
+            else if (msg.type === "abort") { send({ id: msg.id, success: true }); process.exit(0); }
+          });
         `, { mode: 0o755 });
         const outsideRoot = join(tmpRoot, "outside-root");
         const outsideFile = join(outsideRoot, "outside.jsonl");
@@ -530,7 +540,16 @@ def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: P
         const symlinkEscape = join(childRoot, "escape.jsonl");
         const directory = join(childRoot, "directory.jsonl");
         const unreadable = join(childRoot, "unreadable.jsonl");
+        const validResume = join(childRoot, "valid-resume.jsonl");
+        const tildeResume = join(childRoot, "~resume.jsonl");
+        const percentResume = join(childRoot, "%72esume.jsonl");
+        const nfdResume = join(childRoot, "cafe\u0301.jsonl");
         await writeFile(wrongSuffix, "{}\\n");
+        await writeFile(validResume, "{}\\n");
+        await writeFile(tildeResume, "{}\\n");
+        await writeFile(percentResume, "{}\\n");
+        await writeFile(nfdResume, "{}\\n");
+        await mkdir(join(childRoot, "nested"), { recursive: true });
         await symlink(outsideFile, symlinkEscape);
         await mkdir(directory, { recursive: true });
         await writeFile(unreadable, "{}\\n");
@@ -548,6 +567,15 @@ def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: P
           realpathEscape: await invoke(symlinkEscape),
           nonRegular: await invoke(directory),
           unreadable: await invoke(unreadable),
+          dotDot: await invoke(`${childRoot}${sep}nested${sep}..${sep}valid-resume.jsonl`),
+          repeatedSeparators: await invoke(`${childRoot}${sep}${sep}valid-resume.jsonl`),
+          dotSegment: await invoke(`${childRoot}${sep}.${sep}valid-resume.jsonl`),
+          trailingSlash: await invoke(`${validResume}${sep}`),
+          tilde: await invoke(tildeResume),
+          percent: await invoke(percentResume),
+          whitespace: await invoke(`${validResume} `),
+          unicodeNormalization: await invoke(nfdResume),
+          caseFoldRoot: await invoke(`${childRoot.toUpperCase()}${sep}valid-resume.jsonl`),
         };
         await chmod(unreadable, 0o600);
         let spawned = false;
@@ -565,6 +593,15 @@ def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: P
         "realpathEscape": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
         "nonRegular": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
         "unreadable": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "dotDot": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "repeatedSeparators": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "dotSegment": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "trailingSlash": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "tilde": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "percent": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "whitespace": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "unicodeNormalization": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
+        "caseFoldRoot": {"status": "failed", "task_id": None, "errorCode": "LARVA_BAD_INPUT"},
     }
     assert payload["spawned"] is False
 
