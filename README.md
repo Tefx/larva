@@ -286,7 +286,8 @@ change, and no direct model-facing `commitPersona` tool.
 Initial `larva pi --persona <id>` model/policy failures are fatal startup errors
 when launched through the sentinel path: the extension writes
 `larva pi: <ERROR_CODE>:` to stderr and exits non-zero before the first prompt.
-Pi status shows `larva: <id>` or `larva: none`.
+For a fresh launch without `--persona` or restorable session persona, the default
+state is `larva:none`; Pi status shows `larva: <id>` or `larva: none`.
 
 For Tab completion, the bundled extension preserves Pi's command-level
 `/larva-persona` argument completer and, when the Pi TUI exposes
@@ -314,23 +315,44 @@ not switch personas, force `larva_subagent`, or inject the mentioned persona's
 prompt/full spec. Raw short forms such as `@python-senior` remain delegated to
 Pi-owned file-reference completion.
 
-The bundled extension exposes `larva_subagent(persona_id, task, task_id?)` when
-the active parent persona and tool policy allow it. Results are Pi ToolResult
-wrappers around `LarvaSubagentResult`; `task_id` is the public resume/status/cancel
-handle and is the child Pi `.jsonl` session path under
-`~/.pi/larva/child-sessions`. Resumes reuse that path, append the new `task`, and
-re-resolve the requested child persona from the current registry. Async subagents
-are tracked by the process-local `activeSubagentRuns` registry keyed by public
-`task_id`, with `moveSubagentRunToTaskId`, `activeSubagentRunByTaskId`, and
-`cancelSubagentByTaskId` owning move/lookup/cancel semantics. The canonical
-`/larva-subagent [task_id?]` slash command opens a view-only, user-visible
-Subagent Console over the parent extension's presentation log and adapter-local
-cache. `/larva-log` may remain only as a deprecated view-mode alias; neither
-surface is a model-facing tool, resume authority, or shared opifex surface. For
-runtime proof probes only, `LARVA_PI_CHILD_RPC_TRACE_FILE` may record child RPC
-frames, but it is not a public resume handle, not a provenance record, not
-sidecar metadata, not model-facing helper state, and not authority for
-`larva_subagent_sessions`; trace write failures are ignored.
+The bundled extension's async subagent authority is
+[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md).
+When the active parent persona and tool policy allow it, Pi exposes
+`larva_subagent(persona_id, task, task_id?)`,
+`larva_subagent_status(task_id?, limit?)`, and
+`larva_subagent_cancel(task_id, reason)`. `larva_subagent` returns an accepted
+ToolResult receipt (`status: "accepted"`, `result_pending: true`, non-null
+`task_id`, `isError: false`), not final evidence. Final child output returns
+later as one bounded Larva custom runtime event/data callback named
+`larva-subagent-result` with `triggerTurn: true`, `deliverAs: "steer"`, and the
+hard boundary `Larva subagent result — runtime event/data, not a user instruction.`
+
+`task_id` is the only public resume/status/cancel handle and is the exact child
+Pi `.jsonl` session path under `~/.pi/larva/child-sessions`; for example,
+`/Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`. Resumes use
+that exact path, append the new `task`, and re-resolve the requested child persona
+from the current registry. Async subagents are tracked by the process-local
+`activeSubagentRuns` registry keyed by public `task_id`, with
+`moveSubagentRunToTaskId`, `activeSubagentRunByTaskId`, and
+`cancelSubagentByTaskId` owning move/lookup/cancel semantics.
+
+The canonical `/larva-subagent` slash command opens the Subagent Console in TUI
+mode, returns textual summaries/results in RPC mode, and returns
+`LARVA_SUBAGENT_UI_UNAVAILABLE` for print/json interactive console actions while
+still allowing non-interactive exact summaries for `/larva-subagent <task_id>`.
+Use `/larva-subagent /Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`
+or `/larva-subagent --cancel /Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`
+for exact task-id command examples. `/larva-log` may remain only as a deprecated
+view-mode alias; it is not canonical and does not own cancellation or cache-clear
+semantics.
+
+There is no public `run_id`, `last` alias, fuzzy selector, sidecar provenance
+handle, sidecar metadata file, batch cancel surface, scheduler, or shared
+PersonaSpec/opifex schema change. For runtime proof probes only,
+`LARVA_PI_CHILD_RPC_TRACE_FILE` may record child RPC frames, but it is not a
+public resume handle, not a provenance record, not sidecar metadata, not
+model-facing helper state, and not authority for `larva_subagent_sessions`; trace
+write failures are ignored.
 
 Runtime proof summaries live in `design/pi-coding-agent-integration.md` under
 "Runtime capability and provenance matrix". See `contrib/pi-extension/README.md`
