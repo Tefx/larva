@@ -650,7 +650,7 @@ state, tab state, and mouse-reporting lifecycle cleanup.
 
 Enhanced UI proof is split between deterministic component harnesses and runtime
 smoke provenance. Harnesses prove direct Pi TUI imports, width-safe rendering,
-Markdown output, overlay tabs, selector detail behavior, and mouse-click no-op
+newline-preserving raw/fenced output and Markdown output, overlay tabs, selector detail behavior, and mouse-click no-op
 behavior. `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`
 records runtime hard-gate provenance; mock-only or unavailable Pi/TUI evidence
 must be reported as unsupported or blocked rather than as live support.
@@ -838,8 +838,11 @@ concise `Larva subagent log` chrome title for continuity with the persona
 selector visual language: accent-colored border, solid ANSI background, stable
 frame height, terminal-compatible drop shadow, 90% width, and 90% max-height. The
 Console is an event-driven view over adapter-local presentation state, with
-bounded Markdown-capable panes for Summary, Prompt, Output, Timeline, and
-Metadata; the Prompt pane contains the full initial prompt. It is not timer polling.
+bounded panes for Summary, Prompt, Output, Timeline, and Metadata; the Prompt pane
+contains the full initial prompt. Output presentation preserves literal line
+breaks for evidence: Markdown-looking output may render as Markdown, while
+plain/YAML/log-like multiline output is fenced/raw so newlines, blank lines, and
+indentation are not collapsed. It is not timer polling.
 It can cancel the selected exact running child after confirmation, and
 mouse click input remains unsupported/no-op.
 

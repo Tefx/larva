@@ -97,6 +97,7 @@ def _node_prelude(tmp_path: Path) -> str:
               else if (msg.type === "get_last_assistant_text") {{
                 if (${{JSON.stringify(scenario)}} === "empty-final") send({{ id: msg.id, success: true, data: {{}} }});
                 else if (${{JSON.stringify(scenario)}} === "malformed-final") send({{ id: msg.id, success: true, data: {{ text: {{ bad: true }} }} }});
+                else if (${{JSON.stringify(scenario)}} === "multiline-final") send({{ id: msg.id, success: true, data: {{ text: "status: SUCCESS\\\\nevidence: |\\\\n  line one\\\\n\\\\n  line three" }} }});
                 else send({{ id: msg.id, success: true, data: {{ text: "final child output" }} }});
                 setTimeout(() => process.exit(0), 1);
               }}
@@ -232,6 +233,58 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
         "errorCode": "LARVA_TOOL_DENIED",
         "noLarvaSubagentResult": True,
     }
+
+
+def test_larva_subagent_multiline_child_output_is_fenced_in_callback_and_overlay(tmp_path: Path) -> None:
+    """Multiline child evidence must not collapse into one unreadable paragraph."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "multiline-child.mjs");
+        await writeFakeChild(childBin, "multiline-final");
+        const callbacks = [];
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin });
+        const { tools, ctx } = await registeredTools(env, { sendMessage: async (message, options) => { callbacks.push({ message, options }); } });
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const receipt = await subagent.execute("multiline-call", { persona_id: "ok", task: "return multiline evidence" }, undefined, undefined, ctx);
+        const waited = await mod.larva_subagent_wait({ task_ids: [receipt.task_id], timeout_ms: 5000 }, ctx);
+        const callback = await waitFor(() => callbacks.find((item) => item.message?.details?.task_id === receipt.task_id), 3000);
+        const entry = mod.subagentPresentationLogForTests().find((item) => item.task_id === receipt.task_id) ?? null;
+        const overlay = mod.renderSubagentPresentationOverlayForTests({ task_id: receipt.task_id, expanded: true });
+        const component = new mod.SubagentPresentationLogOverlay({ entry, generation: 1, initialMode: "detail", tui: { terminal: { rows: 50 } } });
+        component.handleInput?.("3");
+        const ansiRe = new RegExp("\\\\x1b\\\\[[0-9;]*m", "g");
+        const outputTab = component.render(100).map((line) => line.replace(ansiRe, "")).join("\\n");
+        const callbackText = callback?.message?.content ?? "";
+        console.log(JSON.stringify({
+          callbackFenced: callbackText.includes("child_output:\\n```text\\nstatus: SUCCESS\\nevidence: |\\n  line one\\n\\n  line three\\n```"),
+          callbackCollapsed: callbackText.includes("status: SUCCESS evidence: |"),
+          receipt,
+          waited: waited.details,
+          callbacksLength: callbacks.length,
+          callbackText,
+          entries: mod.subagentPresentationLogForTests(),
+          entryOutput: entry?.result_text ?? null,
+          overlayText: overlay,
+          overlayFenced: overlay.includes("output:\\n  ```text\\n  status: SUCCESS\\n  evidence: |\\n    line one\\n  \\n    line three\\n  ```"),
+          overlayCollapsed: overlay.includes("result: status: SUCCESS evidence: |"),
+          outputTabReadable: outputTab.includes("status: SUCCESS") && outputTab.includes("evidence: |") && outputTab.includes("line three"),
+          outputTabCollapsed: outputTab.includes("status: SUCCESS evidence: |"),
+        }));
+        """,
+        timeout=8,
+    )
+
+    assert payload["callbacksLength"] >= 1, payload
+    assert payload["callbackFenced"] is True, payload
+    assert payload["callbackCollapsed"] is False, payload
+    assert payload["overlayFenced"] is True, payload
+    assert payload["overlayCollapsed"] is False, payload
+    assert payload["outputTabReadable"] is True, payload
+    assert payload["outputTabCollapsed"] is False, payload
 
 
 def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_path: Path) -> None:
@@ -1120,9 +1173,9 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           compactText: compact.content[0].text,
           expandedText: expanded.content[0].text,
           viewOnlyShape: { ok: compact.ok, view_only: compact.view_only, isError: compact.isError, noTaskId: !("task_id" in compact), noResultText: !("result_text" in compact) },
-          detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child", "initial_prompt: final prompt body"].every((needle) => expanded.content[0].text.includes(needle)),
+          detailFieldsPresent: ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: available — see [Output]", "output:\\n  ```text\\n  final child output\\n  ```", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child", "initial_prompt:\\n  ```text\\n  final prompt body\\n  ```"].every((needle) => expanded.content[0].text.includes(needle)),
           rowStatesPresent: ["RUN alpha", "OK beta", "FAIL gamma", "CANC delta"].every((needle) => compact.content[0].text.includes(needle)),
-          pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run") && pendingNewest.content[0].text.includes("initial_prompt: pending initial prompt"),
+          pendingNewestVisible: pendingNewest.ok === true && pendingNewest.details.selected_task_id === null && pendingNewest.content[0].text.includes("task_id: pending") && pendingNewest.content[0].text.includes("pending fresh run") && pendingNewest.content[0].text.includes("initial_prompt:\\n  ```text\\n  pending initial prompt\\n  ```"),
           viewOnlyNoMutation: beforeSessions === afterSessions && commandResult.view_only === true,
           overlayRenderedLines: commandCustomCalls[0].rendered,
           overlayOpened: commandCustomCalls.length === 1 && commandCustomCalls[0].options?.overlay === true && commandCustomCalls[0].options?.overlayOptions?.width === "90%" && commandCustomCalls[0].options?.overlayOptions?.maxHeight === "90%" && commandCustomCalls[0].focused === true && commandCustomCalls[0].terminalWrites[0] === "\x1b[?1000h\x1b[?1006h" && commandCustomCalls[0].terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l" && commandCustomCalls[0].rendered.some((line) => line.includes("Larva subagent log")),

@@ -128,12 +128,17 @@ callback_id: larva-subagent-result:/absolute/child-session.jsonl:2026-06-08T00:0
 completed_at: 2026-06-08T00:00:00.000Z
 ---
 child_output:
+```text
+bounded final child assistant text
 ```
 
 The header is intentionally metadata-only. It exists so humans and agents can
 correlate the push with an exact handle without status fan-out. It must not add
 control affordances, fuzzy selectors, result consumption, scheduler semantics, or
-any alias for `task_id`. `child_output` remains evidence/data only.
+any alias for `task_id`. `child_output` remains evidence/data only. The child
+output body is always fenced as a renderer-safe text code block so Markdown
+surfaces preserve literal newlines, indentation, blank lines, YAML, logs, and
+other non-Markdown evidence instead of collapsing them into one paragraph.
 
 Rationale: Pi stores this as `role: custom`, but custom messages are converted to
 LLM-compatible user-role content before provider calls. The boundary text is
@@ -749,7 +754,10 @@ Minimum panes:
 
 1. Summary: status, persona, phase, task id, cancellation state, error summary.
 2. Prompt: full bounded initial prompt/task prompt.
-3. Output: live bounded assistant preview and final assistant output.
+3. Output: live bounded assistant preview and final assistant output. Final
+   output is shown with newline-preserving formatting: intentionally formatted
+   Markdown may render as Markdown, while plain/YAML/log-like multiline evidence
+   is fenced/raw so line breaks and indentation remain readable.
 4. Timeline: bounded chronological events; no hidden thinking content.
 5. Metadata: adapter-local diagnostics and source evidence.
 

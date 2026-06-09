@@ -1244,6 +1244,28 @@ function markdownFence(value: string): string {
   return `${fence}text\n${safe}\n${fence}`;
 }
 
+function indentedFenceLines(value: string, label: string): string[] {
+  const safe = rendererSafeMarkdownSource(value);
+  const fence = safe.includes("```") ? "````" : "```";
+  return [
+    `${label}:`,
+    `  ${fence}text`,
+    ...safe.split(/\r?\n/).map((line) => `  ${line}`),
+    `  ${fence}`,
+  ];
+}
+
+function markdownLooksIntentionallyFormatted(value: string): boolean {
+  const trimmed = rendererSafeMarkdownSource(value).trimStart();
+  return /^(#{1,6}\s|[-*+]\s|\d+\.\s|```|>|\|)/u.test(trimmed);
+}
+
+function subagentOutputMarkdownSource(value: string): string {
+  const safe = rendererSafeMarkdownSource(value);
+  if (!safe.includes("\n")) return safe;
+  return markdownLooksIntentionallyFormatted(safe) ? safe : markdownFence(safe);
+}
+
 function boundedPresentationPreview(value: string, limit: number): string {
   const safe = rendererSafeMarkdownSource(value).replace(/\s+/g, " ").trim();
   const codePoints = Array.from(safe);
@@ -1680,7 +1702,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Initial", this.entry.task_prompt ? `recorded (${Array.from(this.entry.task_prompt).length} chars) — see Prompt tab` : "not recorded", contentWidth),
       "",
       this.sectionLine("Result", contentWidth),
-      ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview available — see Output tab" : "available — see Output tab (Markdown rendered)") : "No final output observed.", contentWidth),
+      ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview available — see Output tab" : "available — see Output tab (newline-preserving)") : "No final output observed.", contentWidth),
       ...this.fieldLines("Timeline", (this.entry.timeline_events?.length ?? 0) > 0 || (this.entry.tool_snapshots?.length ?? 0) > 0 || this.entry.live_assistant_preview ? "available — see Timeline/Output tabs" : "not observed", contentWidth),
       ...this.fieldLines("Error", subagentEntryErrorText(this.entry), contentWidth),
       "",
@@ -1770,7 +1792,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       if (output.trim().length === 0) {
         return renderRendererSafePlainLines(thinkingLine ?? "No final subagent output is available for this observed entry.", contentWidth);
       }
-      const rendered = this.entry.status === "running" ? renderRendererSafePlainLines(output, contentWidth) : renderMarkdownLines(output, contentWidth);
+      const rendered = this.entry.status === "running" ? renderRendererSafePlainLines(output, contentWidth) : renderMarkdownLines(subagentOutputMarkdownSource(output), contentWidth);
       return thinkingLine === null ? rendered : [...renderRendererSafePlainLines(thinkingLine, contentWidth), "", ...rendered];
     }
     if (tab === "prompt") return this.promptPaneLines(contentWidth);
@@ -4024,7 +4046,7 @@ function callbackSafeModelText(value: string): string {
     else if (/[\p{Cc}\p{Cf}]/u.test(char)) rendered += " ";
     else rendered += char;
   }
-  return rendered.replace(/[^\S\n]+/gu, " ").trim();
+  return rendered.trim();
 }
 
 function boundedCallbackContent(value: string, limit = SUBAGENT_CALLBACK_TEXT_LIMIT): string {
@@ -4032,6 +4054,17 @@ function boundedCallbackContent(value: string, limit = SUBAGENT_CALLBACK_TEXT_LI
   const codePoints = Array.from(normalized);
   if (codePoints.length <= limit) return normalized;
   return codePoints.slice(0, Math.max(0, limit)).join("");
+}
+
+function fencedCallbackContent(value: string, limit: number): string {
+  const normalized = callbackSafeModelText(value);
+  const fence = normalized.includes("```") ? "````" : "```";
+  const open = `${fence}text\n`;
+  const close = `\n${fence}`;
+  const bodyLimit = Math.max(0, limit - Array.from(`${open}${close}`).length);
+  const codePoints = Array.from(normalized);
+  const body = codePoints.length <= bodyLimit ? normalized : codePoints.slice(0, bodyLimit).join("");
+  return `${open}${body}${close}`;
 }
 
 function callbackHeaderValue(value: string): string {
@@ -4060,7 +4093,7 @@ function subagentCallbackMessage(snapshot: SubagentTerminalSnapshot, resultText:
   ].join("\n");
   const prefixWithTrailingNewline = `${prefix}\n`;
   const remaining = Math.max(0, SUBAGENT_CALLBACK_TEXT_LIMIT - Array.from(prefixWithTrailingNewline.normalize("NFC")).length);
-  return `${prefixWithTrailingNewline}${boundedCallbackContent(detail, remaining)}`;
+  return `${prefixWithTrailingNewline}${fencedCallbackContent(detail, remaining)}`;
 }
 
 function newSubagentPrivateKey(): string {
@@ -4338,7 +4371,7 @@ function setSubagentCallbackDelivery(record: ActiveSubagentRun, delivery: Subage
 }
 
 function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot): Record<string, unknown> {
-  const resultText = boundedNormalizedCodePoints(snapshot.result_text, SUBAGENT_CALLBACK_TEXT_LIMIT);
+  const resultText = boundedCallbackContent(snapshot.result_text, SUBAGENT_CALLBACK_TEXT_LIMIT);
   return {
     task_id: snapshot.task_id,
     persona_id: snapshot.persona_id,
@@ -4401,7 +4434,7 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   record.status = terminal.status;
   record.phase = terminal.status;
   record.result_pending = false;
-  record.result_text = boundedNormalizedCodePoints(terminal.result_text, SUBAGENT_CALLBACK_TEXT_LIMIT);
+  record.result_text = boundedCallbackContent(terminal.result_text, SUBAGENT_CALLBACK_TEXT_LIMIT);
   record.error = terminal.error;
   record.updated_at = completedAt;
   if (terminal.task_id !== null && record.task_id === null) void moveSubagentRunToTaskId(record, terminal.task_id);
@@ -5117,15 +5150,16 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push(`  persona_id: ${entry.persona_id}`);
     lines.push(`  status: ${entry.status}`);
     lines.push(`  progress: ${entry.phase ?? entry.status}`);
-    lines.push(`  result: ${entry.result_text ?? ""}`);
+    lines.push(`  result: ${subagentEntryOutputIsPresent(entry) ? "available — see [Output]" : "not observed"}`);
     const entryError = entry.error ? `${entry.error.code}: ${entry.error.message}` : "";
     lines.push(`  error: ${entryError}`);
     lines.push("  [Prompt]");
-    if (entry.task_prompt) lines.push(`  initial_prompt: ${entry.task_prompt}`);
+    if (entry.task_prompt) lines.push(...indentedFenceLines(entry.task_prompt, "  initial_prompt"));
     lines.push("  [Output]");
     const thinkingLine = subagentThinkingHiddenLine(entry);
     if (thinkingLine !== null) lines.push(`  ${thinkingLine}`);
-    lines.push(subagentEntryOutputIsPresent(entry) ? subagentEntryOutput(entry) : "  No final subagent output is available for this observed entry.");
+    if (subagentEntryOutputIsPresent(entry)) lines.push(...indentedFenceLines(subagentEntryOutput(entry), "  output"));
+    else lines.push("  No final subagent output is available for this observed entry.");
     lines.push("  [Timeline]");
     for (const eventValue of timelineEventsForEntry(entry)) {
       if (eventValue.kind === "assistant") lines.push(`  assistant: ${boundedTimelineAssistantEvent(eventValue.text)}`);
@@ -5142,8 +5176,8 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push(`  sequence: ${entry.sequence}`);
     lines.push(`  phase: ${entry.phase ?? entry.status}`);
     if (entry.task_preview) lines.push(`  task_preview: ${entry.task_preview}`);
-    if (entry.task_prompt) lines.push(`  initial_prompt: ${entry.task_prompt}`);
-    lines.push(`  output_render_mode: ${subagentEntryOutputIsPresent(entry) ? "markdown" : "fallback"}`);
+    if (entry.task_prompt) lines.push(`  initial_prompt: recorded — see [Prompt]`);
+    lines.push(`  output_render_mode: ${subagentEntryOutputIsPresent(entry) ? "raw/fenced" : "fallback"}`);
     lines.push(`  overlay_generation: ${generation}`);
   }
   return lines.join("\n");
@@ -5408,7 +5442,7 @@ function renderLarvaSubagentResult(result: LarvaSubagentToolResult, options?: { 
     markdownFence(task),
     "",
     "## Output",
-    output,
+    subagentOutputMarkdownSource(output),
   ];
   if (details.error) markdownSections.push("", "## Error", `- ${details.error.code}: ${details.error.message}`);
   if (footer.length > 0) markdownSections.push("", "## Resume", markdownFence(footer));
