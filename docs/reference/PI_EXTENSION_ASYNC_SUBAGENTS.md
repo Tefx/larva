@@ -230,10 +230,10 @@ Required behavior:
 - Source of truth is the same process-local active-run registry used by
   `status`/`events`/`wait`/`select`; never scan child-session files or
   presentation cache.
-- Show only aggregate non-terminal activity, e.g. `Larva: 2 bg` or
-  `Larva: 2 running · 1 cancelling`.
-- Hide the indicator or show `Larva: idle` when no non-terminal child is
-  observed in this parent process.
+- Show only aggregate non-terminal activity, e.g. `subagents: 2 running` or
+  `subagents: 2 running · 1 cancelling`.
+- Hide the indicator when no non-terminal child is observed in this parent
+  process.
 - Update on accepted, phase, terminal, callback-delivery, and lifecycle cleanup
   events; do not use timer polling.
 - Never expose task text, child output, fuzzy selectors, or cancel-all actions.

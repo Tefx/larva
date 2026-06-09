@@ -277,8 +277,15 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     assert "await ensureSessionInitialized(runtimeCtx, pi)" in session_body.group("body")
     assert 'on?.("before_agent_start", async (payload: unknown, eventCtx?: PiContext)' in body
     assert "await sessionInitializationPromise" in body
-    assert "await ensureSessionInitialized(withRuntimeEnv(eventCtx ?? ctx, env), pi)" in body
-    assert "return before_agent_start(payload)" in body
+    before_agent_start_registration = re.search(r"on\?\.\(\"before_agent_start\", async \(payload: unknown, eventCtx\?: PiContext\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
+    assert before_agent_start_registration is not None
+    before_agent_body = before_agent_start_registration.group("body")
+    assert "const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env)" in before_agent_body
+    assert "await ensureSessionInitialized(runtimeCtx, pi)" in before_agent_body
+    assert "return before_agent_start(payload, runtimeCtx, pi)" in before_agent_body
+    agent_end_registration = re.search(r"on\?\.\(\"agent_end\", async \(payload: unknown, eventCtx\?: PiContext\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
+    assert agent_end_registration is not None
+    assert "attemptPersonaLeaseRestore(runtimeCtx, pi, terminalRestorePath(payload) ?? \"success\")" in agent_end_registration.group("body")
     tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None
     assert "decideToolCall(name)" in tool_call_registration.group("body")
@@ -393,9 +400,9 @@ def test_async_subagent_background_activity_indicator_count_only() -> None:
     source = _source()
     indicator_tokens = (
         "updateSubagentBackgroundIndicator",
-        "Larva: idle",
-        "Larva: ",
-        " bg",
+        "subagents:",
+        " running",
+        "cancelling",
         "activeSubagentRuns",
         "task_preview",
     )
@@ -1990,7 +1997,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             sendUserMessage: async (message, options) => {{ sentUserMessages.push({{ message, options }}); return true; }},
           }};
           const ui = {{
-            setStatus: async (...args) => statuses.push(args),
+            setStatus: async (status) => statuses.push([status]),
             notify: async (...args) => notifications.push(args),
             confirm: async (...args) => {{ confirmations.push(args); return options.confirmResult ?? true; }},
           }};
@@ -2383,7 +2390,7 @@ def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behav
             LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             LARVA_PI_INTERACTIVE_TUI: "1",
           }},
-          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
+          ui: {{ setStatus: async (status) => statuses.push([status]), notify: async () => undefined }},
           modelRegistry: {{ find: async () => {{ return {{ id: "model" }}; }} }},
           sessionManager: manager,
         }};
@@ -2462,7 +2469,7 @@ def test_active_persona_session_restore_from_real_pi_session_manager_reopen_beha
             LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             LARVA_PI_INTERACTIVE_TUI: "1",
           }},
-          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
+          ui: {{ setStatus: async (status) => statuses.push([status]), notify: async () => undefined }},
           modelRegistry: {{ find: async (...args) => {{ modelCalls.push(args); return {{ id: "model" }}; }} }},
           sessionManager: reopened,
         }};
@@ -2881,7 +2888,7 @@ def test_agent_persona_switch_prompt_guidance_for_confirm_auto_free_without_cata
 
 
 
-def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: Path) -> None:
+def test_agent_personas_read_only_bounded_and_hidden_in_manual_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
@@ -2894,18 +2901,18 @@ def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: P
           hasOwnPrompt: Object.prototype.hasOwnProperty.call(firstPersona, "prompt"),
           allowlistedKeysOnly: Object.keys(firstPersona).every((key) => ["id", "description", "model", "spec_digest", "capabilities"].includes(key)),
         };
-        const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
-        const directOff = await offHarness.mod.larva_personas({ limit: 100 }, offHarness.ctx);
+        const manualHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
+        const directManual = await manualHarness.mod.larva_personas({ limit: 100 }, manualHarness.ctx);
         console.log(JSON.stringify({
-          offTools: Object.keys(offHarness.tools),
+          manualTools: Object.keys(manualHarness.tools),
           result,
           firstPersonaShape,
-          directOff,
+          directManual,
         }));
         """,
     )
 
-    assert "larva_personas" not in _registered_names(payload, "offTools")
+    assert "larva_personas" not in _registered_names(payload, "manualTools")
     assert payload["result"]["details"]["status"] == "success"
     assert len(payload["result"]["details"]["personas"]) <= 25
     assert "prompt" not in payload["result"]["details"]["personas"][0]
@@ -2914,8 +2921,8 @@ def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: P
         "hasOwnPrompt": False,
         "allowlistedKeysOnly": True,
     }
-    assert payload["directOff"]["isError"] is True
-    assert payload["directOff"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
+    assert payload["directManual"]["isError"] is True
+    assert payload["directManual"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
 
 
 def test_agent_persona_switch_confirm_outcomes_and_no_ui_preserve_state_behavior(tmp_path: Path) -> None:

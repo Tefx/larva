@@ -1699,16 +1699,18 @@ async function asyncSubagentContractExpectedRed(evidence) {
     },
   };
   const statusTextEntries = statusCalls.map((args) => args.filter((value) => typeof value === "string").join(" "));
-  const backgroundIndicatorTexts = statusTextEntries.filter((text) => /Larva: (?:idle|\d+ (?:bg|running|cancelling))/.test(text));
+  const backgroundIndicatorTexts = statusTextEntries.filter((text) => /subagents: \d+ (?:running|cancelling)(?: · \d+ cancelling)?/.test(text));
+  const backgroundIndicatorCleared = statusCalls.some((args) => args[0] === "larva-subagents" && args.length >= 2 && args[1] === undefined);
   const backgroundIndicatorProbe = {
     statusCalls,
     statusTextEntries,
     backgroundIndicatorTexts,
+    backgroundIndicatorCleared,
     taskId: acceptedTaskIdForProbes,
-    activeCountOnlyTextObserved: backgroundIndicatorTexts.some((text) => /Larva: \d+ (?:bg|running)/.test(text)),
+    activeCountOnlyTextObserved: backgroundIndicatorTexts.some((text) => /subagents: \d+ running/.test(text)),
     taskTextAndHandleHidden: backgroundIndicatorTexts.every((text) => !text.includes("produce one async callback") && !text.includes(acceptedTaskIdForProbes)),
     noControlSurfaceText: backgroundIndicatorTexts.every((text) => !/cancel|clear|select|task_id/i.test(text)),
-    idleOrHiddenAfterTerminal: backgroundIndicatorTexts.length === 0 || backgroundIndicatorTexts.at(-1) === "Larva: idle" || /Larva: 0 /.test(backgroundIndicatorTexts.at(-1)),
+    idleOrHiddenAfterTerminal: backgroundIndicatorTexts.length === 0 || backgroundIndicatorCleared,
   };
 
   const failedCallbackChild = join(sessionRoot, "failed-callback-child.mjs");

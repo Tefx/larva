@@ -459,18 +459,13 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         assert scenario in completed.stdout
 
 
-def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_persona_prompt(tmp_path: Path) -> None:
-    """Accepted host-runtime AgentSession hook artifact for B2.
+def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_path: Path) -> None:
+    """Accepted host-runtime proof for current auto-borrow semantics.
 
-    The live Pi RPC surface does not currently expose a stable way to force a
-    model tool call and then drain Pi's queued follow-up in this test
-    environment. This harness therefore imports Pi's installed
-    ``dist/core/agent-session.js`` and binds Larva's continuation to the real
-    ``AgentSession.sendUserMessage`` implementation. The proof exercises the
-    actual Pi queue routing path
-    ``sendUserMessage -> prompt(streamingBehavior='followUp') -> _queueFollowUp``
-    and then the next non-streaming AgentSession prompt path that invokes the
-    extension ``before_agent_start`` hook against the committed persona envelope.
+    The current policy does not terminate the active tool result or enqueue a
+    Larva-generated follow-up. Instead, auto mode creates a turn-scoped lease,
+    updates the active persona envelope, and relies on the Pi ``agent_end`` hook
+    to restore the origin persona on success, failure, cancellation, or timeout.
     """
 
     fake_cli = tmp_path / "fake-larva-followup-cli.mjs"
@@ -507,21 +502,13 @@ def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_perso
         const tools = {{}};
         const handlers = {{}};
         const sessionEntries = [];
-        const queueUpdates = [];
-        const capturedAgentPrompts = [];
         const hostAgent = {{
-          state: {{
-            isStreaming: true,
-            model: {{ provider: "provider", id: "model" }},
-            messages: [],
-            tools: [],
-            systemPrompt: "base prompt before next provider call",
-          }},
+          state: {{ isStreaming: true, model: {{ provider: "provider", id: "model" }}, messages: [], tools: [], systemPrompt: "base" }},
           followUp: (message) => {{ hostAgent.queuedFollowUps.push(message); }},
           steer: (message) => {{ hostAgent.queuedSteers.push(message); }},
           hasQueuedMessages: () => hostAgent.queuedFollowUps.length > 0 || hostAgent.queuedSteers.length > 0,
           clearAllQueues: () => {{ hostAgent.queuedFollowUps = []; hostAgent.queuedSteers = []; }},
-          prompt: async (messages) => {{ capturedAgentPrompts.push({{ messages, systemPrompt: hostAgent.state.systemPrompt }}); hostAgent.state.messages.push(...messages); }},
+          prompt: async () => undefined,
           abort: () => undefined,
           waitForIdle: async () => undefined,
           queuedFollowUps: [],
@@ -534,19 +521,10 @@ def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_perso
           _steeringMessages: [],
           _pendingNextTurnMessages: [],
           _pendingBashMessages: [],
-          _eventListeners: [(event) => {{ if (event.type === "queue_update") queueUpdates.push(event); }}],
-          _baseSystemPrompt: "base prompt before next provider call",
+          _eventListeners: [],
+          _baseSystemPrompt: "base",
           _baseSystemPromptOptions: {{}},
-          _lastAssistantMessage: undefined,
-          _retryAttempt: 0,
-          _overflowRecoveryAttempted: false,
-          _extensionRunner: {{
-            hasHandlers: (name) => name === "before_agent_start",
-            emitInput: async (text, images) => ({{ action: "continue" }}),
-            emitBeforeAgentStart: async (_text, _images, systemPrompt) => mod.before_agent_start({{ systemPrompt }}),
-            emit: async () => undefined,
-          }},
-          _modelRegistry: {{ hasConfiguredAuth: () => true, isUsingOAuth: () => false }},
+          _extensionRunner: {{ emitInput: async () => ({{ action: "continue" }}), emit: async () => undefined }},
           sessionManager: {{ appendMessage: () => undefined }},
           settingsManager: {{}},
         }});
@@ -587,77 +565,59 @@ def test_agent_persona_switch_followup_queue_equivalent_next_turn_uses_new_perso
 
         const queuedFollowUpMessages = hostSession.getFollowUpMessages();
         const queuedAgentFollowUps = hostAgent.queuedFollowUps;
-        const queuedText = queuedFollowUpMessages[0];
-        if (switchResult.terminate === true && queuedText) {{
-          hostAgent.state.isStreaming = false;
-          await hostSession.sendUserMessage(queuedText, {{}});
-        }}
-        const nextPrompt = capturedAgentPrompts.at(-1)?.systemPrompt ?? "";
+        const borrowedPrompt = mod.before_agent_start({{ systemPrompt: "base prompt before next provider call" }})?.systemPrompt ?? "";
+        const borrowedEnvelope = mod.getActiveEnvelope();
+        await handlers.agent_end?.({{ messages: [{{ role: "assistant", stopReason: "aborted" }}] }}, ctx);
+        const restoredEnvelope = mod.getActiveEnvelope();
+        const restoredPrompt = mod.before_agent_start({{ systemPrompt: "base prompt after restore" }})?.systemPrompt ?? "";
         console.log(JSON.stringify({{
-          proofClass: "accepted_host_runtime_agent_session_hooks",
+          proofClass: "accepted_runtime_persona_borrow_and_agent_end_restore",
           piRuntimeSeams: [
-            "AgentSession.sendUserMessage",
-            "AgentSession.prompt streamingBehavior followUp routing",
-            "AgentSession._queueFollowUp",
-            "AgentSession.prompt next turn delivery",
-            "AgentSession.prompt emitBeforeAgentStart hook",
+            "Pi extension larva_persona_switch tool execution",
+            "Pi extension before_agent_start prompt envelope injection",
+            "Pi extension agent_end terminal restore hook",
           ],
           switchResult,
           queuedFollowUpMessages,
           queuedAgentFollowUps,
-          queueUpdates,
-          capturedAgentPrompts,
-          nextPrompt,
-          remainingFollowUpsAfterDelivery: hostSession.getFollowUpMessages(),
-          finalEnvelope: mod.getActiveEnvelope(),
+          borrowedPrompt,
+          restoredPrompt,
+          borrowedEnvelope,
+          restoredEnvelope,
           activeToolCalls,
           auditEntries: sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
           assertions: {{
-            terminatedOldTurn: switchResult.terminate === true,
-            followUpQueuedByAgentSession: queuedFollowUpMessages.length === 1 && queuedAgentFollowUps.length === 1,
-            followUpDeliveryModeReachedPiAgentQueue: queuedAgentFollowUps[0]?.role === "user" && queuedAgentFollowUps[0]?.content?.[0]?.text === queuedText,
-            nextTurnDeliveredThroughAgentSessionPrompt: capturedAgentPrompts.at(-1)?.messages?.[0]?.content?.[0]?.text === queuedText,
-            larvaGeneratedMarkerPresent: queuedText?.startsWith("[Larva-generated continuation after persona switch]") === true,
-            nextPromptUsesNewPersonaEnvelope: nextPrompt.includes("<!-- larva-spec: python@sha256:python -->"),
-            nextPromptUsesNewPersonaPrompt: nextPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER") && !nextPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER"),
+            oldTurnNotTerminatedByToolResult: switchResult.terminate === false,
+            noGeneratedFollowUpQueued: queuedFollowUpMessages.length === 0 && queuedAgentFollowUps.length === 0,
+            borrowedPromptUsesNewPersonaEnvelope: borrowedPrompt.includes("<!-- larva-spec: python@sha256:python -->"),
+            borrowedPromptUsesNewPersonaPrompt: borrowedPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER") && !borrowedPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER"),
+            cancellationAgentEndRestoredOrigin: restoredEnvelope?.persona_id === "architect",
+            restoredPromptUsesOriginPersona: restoredPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER") && !restoredPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER"),
           }},
         }}));
         """,
     )
 
-    assert payload["proofClass"] == "accepted_host_runtime_agent_session_hooks"
+    assert payload["proofClass"] == "accepted_runtime_persona_borrow_and_agent_end_restore"
     assert payload["piRuntimeSeams"] == [
-        "AgentSession.sendUserMessage",
-        "AgentSession.prompt streamingBehavior followUp routing",
-        "AgentSession._queueFollowUp",
-        "AgentSession.prompt next turn delivery",
-        "AgentSession.prompt emitBeforeAgentStart hook",
+        "Pi extension larva_persona_switch tool execution",
+        "Pi extension before_agent_start prompt envelope injection",
+        "Pi extension agent_end terminal restore hook",
     ]
     assert payload["switchResult"]["status"] == "success"
-    assert payload["switchResult"].get("terminate") is True
-    assert payload["finalEnvelope"]["persona_id"] == "python"
-    assert payload["queuedFollowUpMessages"] == [
-        "[Larva-generated continuation after persona switch]\n"
-        "Switched from architect to python.\n"
-        "Reason: Python runtime proof required\n"
-        "Handoff: Continue with the Python marker\n"
-        "You are now operating under the NEW active Larva persona.\n"
-        "Treat the persona switch as a hard boundary: the new persona's instructions now take priority.\n"
-        "If any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.\n"
-        "Before taking further action, follow the new persona's opening/startup protocol if it defines one.\n"
-        "Continue the user's original task under the new persona.\n"
-        "Do not switch again unless newly justified."
-    ]
+    assert payload["switchResult"].get("terminate") is False
+    assert payload["borrowedEnvelope"]["persona_id"] == "python"
+    assert payload["restoredEnvelope"]["persona_id"] == "architect"
+    assert payload["queuedFollowUpMessages"] == []
     assert payload["assertions"] == {
-        "terminatedOldTurn": True,
-        "followUpQueuedByAgentSession": True,
-        "followUpDeliveryModeReachedPiAgentQueue": True,
-        "nextTurnDeliveredThroughAgentSessionPrompt": True,
-        "larvaGeneratedMarkerPresent": True,
-        "nextPromptUsesNewPersonaEnvelope": True,
-        "nextPromptUsesNewPersonaPrompt": True,
+        "oldTurnNotTerminatedByToolResult": True,
+        "noGeneratedFollowUpQueued": True,
+        "borrowedPromptUsesNewPersonaEnvelope": True,
+        "borrowedPromptUsesNewPersonaPrompt": True,
+        "cancellationAgentEndRestoredOrigin": True,
+        "restoredPromptUsesOriginPersona": True,
     }
-    assert payload["auditEntries"][-1]["data"]["committed"] is True
+    assert any(entry["data"].get("committed") is True for entry in payload["auditEntries"])
 
 
 def test_real_pi_availability_records_binary_and_extension_flag() -> None:

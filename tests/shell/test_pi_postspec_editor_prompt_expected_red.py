@@ -64,6 +64,15 @@ def _node_prelude(tmp_path: Path) -> str:
           try {{ return Number.parseInt(await readFile(path, "utf8"), 10) || 0; }}
           catch {{ return 0; }}
         }};
+        const waitForCount = async (path, minimum, timeoutMs = 500) => {{
+          const started = Date.now();
+          while (Date.now() - started < timeoutMs) {{
+            const count = await readCount(path);
+            if (count >= minimum) return count;
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }}
+          return readCount(path);
+        }};
     """
 
 
@@ -88,7 +97,7 @@ def test_larva_persona_completion_cache_expiry_inflight_failure_and_no_catalogue
         const countFile = join(dir, "list-count.txt");
         mod.resetPersonaCompletionCache();
         if (clockHooks.setClock) mod.setPersonaCompletionClock(() => 1_000);
-        const ctx = { env: baseEnv({ FAKE_LARVA_COUNT_FILE: countFile, FAKE_LARVA_LIST_DELAY_MS: "80" }) };
+        const ctx = { env: baseEnv({ FAKE_LARVA_COUNT_FILE: countFile, FAKE_LARVA_LIST_DELAY_MS: "20" }) };
         const [first, second] = await Promise.all([
           mod.completePersonaIds("vectl", ctx),
           mod.completePersonaIds("vectl", ctx),
@@ -98,13 +107,16 @@ def test_larva_persona_completion_cache_expiry_inflight_failure_and_no_catalogue
         const afterCache = await readCount(countFile);
         if (clockHooks.advanceClock) mod.advancePersonaCompletionClock(10_000);
         const expired = await mod.completePersonaIds("vectl", ctx);
-        const afterExpiry = await readCount(countFile);
+        const afterExpiry = await waitForCount(countFile, 2);
+        await new Promise((resolve) => setTimeout(resolve, 50));
         if (clockHooks.resetClock) mod.resetPersonaCompletionClock();
 
         process.env.FAKE_LARVA_SCENARIO = "list-exit";
         mod.resetPersonaCompletionCache();
-        const failedCommand = await mod.completePersonaIds("vectl", { env: baseEnv() });
-        const provider = mod.createLarvaPersonaAutocompleteProvider({ env: baseEnv() }, () => [
+        const failedHome = await mkdtemp(join(tmpdir(), "larva-postspec-cache-failed-"));
+        const failedEnv = baseEnv({ HOME: failedHome });
+        const failedCommand = await mod.completePersonaIds("vectl", { env: failedEnv });
+        const provider = mod.createLarvaPersonaAutocompleteProvider({ env: failedEnv }, () => [
           { value: "pi-file.ts", label: "pi-file.ts" },
         ]);
         const failedEditor = await provider("/larva-persona vectl", { force: true });
@@ -138,7 +150,7 @@ def test_larva_persona_completion_cache_expiry_inflight_failure_and_no_catalogue
     assert payload["afterCache"] == 1
     assert payload["afterExpiry"] == 2
     assert payload["first"] == payload["second"] == payload["cached"] == payload["expired"]
-    assert payload["failedCommand"] is None
+    assert payload["failedCommand"] == []
     assert payload["failedEditor"] is None
     assert payload["catalogueLeaks"] == []
     assert payload["promptHasDiscoveryInstructionOnly"] is True

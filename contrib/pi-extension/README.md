@@ -763,8 +763,8 @@ source of truth is the same process-local active-run registry and event-driven
 updates used by `larva_subagent_status`, `larva_subagent_events`,
 `larva_subagent_wait`, and `larva_subagent_select`; it must not scan child-session
 files or read the presentation cache. The indicator shows only aggregate
-non-terminal activity such as `Larva: 2 bg` or `Larva: idle`. It must not expose
-`task_id` handles, task prompts, child output, selector details, cancellation
+non-terminal activity such as `subagents: 2 running` and is hidden when idle. It
+must not expose `task_id` handles, task prompts, child output, selector details, cancellation
 buttons, clear actions, or any other control/content surface. The Subagent
 Console's presentation cache remains UI-only continuity data and is never
 authoritative for this indicator or any orchestration decision.

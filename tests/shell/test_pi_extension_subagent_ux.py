@@ -359,16 +359,20 @@ def test_larva_subagent_background_indicator_count_only_expected_red(tmp_path: P
         const receipt = await subagent.execute("background-indicator", { persona_id: "child", task: "SECRET_TASK_TEXT_MUST_NOT_APPEAR_IN_INDICATOR" }, undefined, () => undefined, ctx);
         const runningEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === receipt.task_id && ["accepted", "running"].includes(entry.status)), 800);
         const terminalEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === receipt.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 1500);
-        const statusTexts = statusCalls.map((args) => args.filter((value) => typeof value === "string").join(" "));
-        const backgroundTexts = statusTexts.filter((text) => /Larva: (?:idle|\\d+ (?:bg|running|cancelling))/.test(text));
+        const keyedStatuses = statusCalls.map((args) => ({ key: args[0], value: args.length >= 2 ? args[1] : args[0] }));
+        const statusTexts = keyedStatuses.map((item) => typeof item.value === "string" ? item.value : `${item.key}:<cleared>`);
+        const backgroundTexts = keyedStatuses
+          .filter((item) => item.key === "larva-subagents" && typeof item.value === "string")
+          .map((item) => item.value);
         console.log(JSON.stringify({
           receiptStatus: receipt.status,
           runningObserved: runningEntry !== null,
           terminalObserved: terminalEntry !== null,
           statusTexts,
           backgroundTexts,
-          activeCountOnly: backgroundTexts.some((text) => /Larva: \\d+ (?:bg|running)/.test(text)),
-          idleOrHiddenAfterTerminal: backgroundTexts.length === 0 || backgroundTexts.at(-1) === "Larva: idle" || /Larva: 0 /.test(backgroundTexts.at(-1)),
+          activeCountOnly: backgroundTexts.some((text) => /^subagents: \\d+ running$/.test(text)),
+          labelOptimized: backgroundTexts.every((text) => text.startsWith("subagents:") && !text.includes("bg") && !text.startsWith("Larva:")),
+          idleOrHiddenAfterTerminal: statusCalls.some((args) => args[0] === "larva-subagents" && args.length >= 2 && args[1] === undefined),
           taskTextHidden: backgroundTexts.every((text) => !text.includes("SECRET_TASK_TEXT") && !text.includes(receipt.task_id)),
           noControlSurface: backgroundTexts.every((text) => !/cancel|clear|select|task_id/i.test(text)),
         }, null, 2));
@@ -379,6 +383,7 @@ def test_larva_subagent_background_indicator_count_only_expected_red(tmp_path: P
     assert payload["runningObserved"] is True
     assert payload["terminalObserved"] is True
     assert payload["activeCountOnly"] is True, json.dumps(payload, indent=2, sort_keys=True)
+    assert payload["labelOptimized"] is True, json.dumps(payload, indent=2, sort_keys=True)
     assert payload["idleOrHiddenAfterTerminal"] is True, json.dumps(payload, indent=2, sort_keys=True)
     assert payload["taskTextHidden"] is True, json.dumps(payload, indent=2, sort_keys=True)
     assert payload["noControlSurface"] is True, json.dumps(payload, indent=2, sort_keys=True)
@@ -403,12 +408,12 @@ def test_larva_subagent_background_indicator_ignores_view_only_presentation_cach
         );
         statusCalls.length = 0;
         mod.resetSubagentPresentationStateForTests();
-        const statusTexts = statusCalls.map((args) => args.filter((value) => typeof value === "string").join(" "));
+        const statusTexts = statusCalls.map((args) => args.length >= 2 ? `${args[0]}:${args[1] === undefined ? "<unset>" : args[1]}` : String(args[0]));
         console.log(JSON.stringify({
           presentationRowsAfterReset: mod.subagentPresentationLogForTests().length,
           statusTexts,
-          indicatorTexts: statusTexts.filter((text) => /Larva:/.test(text)),
-          reportedIdle: statusTexts.includes("larva-subagents Larva: idle") || statusTexts.includes("Larva: idle"),
+          indicatorTexts: statusTexts.filter((text) => /^larva-subagents:/.test(text)),
+          reportedIdle: statusTexts.includes("larva-subagents:<unset>"),
           noCacheContent: statusTexts.every((text) => !text.includes("SECRET_CACHE") && !text.includes("/tmp/stale-cache-task.jsonl")),
           noControls: statusTexts.every((text) => !/cancel|clear|select|task_id/i.test(text)),
         }, null, 2));
@@ -417,8 +422,8 @@ def test_larva_subagent_background_indicator_ignores_view_only_presentation_cach
 
     assert payload == {
         "presentationRowsAfterReset": 0,
-        "statusTexts": ["Larva: idle"],
-        "indicatorTexts": ["Larva: idle"],
+        "statusTexts": ["larva-subagents:<unset>"],
+        "indicatorTexts": ["larva-subagents:<unset>"],
         "reportedIdle": True,
         "noCacheContent": True,
         "noControls": True,
@@ -1797,7 +1802,7 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
             "Resume",
             "reuse: pass this exact task_id to larva_subagent",
           ].every((needle) => expandedText.includes(needle)),
-          parentFooterPreserved: statuses.some(([key, value]) => key === "larva" && value === "ok"),
+          parentFooterPreserved: statuses.some(([key, value]) => key === "larva" && value === "larva: ok"),
           noWidgetDashboard: !/dashboard|widget/i.test(`${collapsedText}\\n${expandedText}`),
           immutableToolResult: beforeRenderResult === afterRenderResult,
           plainTextFallbackPreserved: expandedText.includes("output: final output body"),

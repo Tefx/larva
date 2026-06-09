@@ -297,6 +297,69 @@ def test_restore_attempted_on_all_terminal_paths(terminal_path: str) -> None:
     assert "restore" in source
     assert "active lease" in source or "personalease" in source
     assert terminal_path in source
+    assert 'pi.on?.("agent_end"' in source or 'pi.on("agent_end"' in source
+
+
+def test_agent_end_cancellation_restores_turn_scoped_persona_lease(tmp_path: Path) -> None:
+    """Esc/abort terminal events must restore auto-borrowed personas via agent_end."""
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        import {{ mkdtemp, writeFile }} from "node:fs/promises";
+        import {{ tmpdir }} from "node:os";
+        import {{ join }} from "node:path";
+        import {{ pathToFileURL }} from "node:url";
+        const dir = await mkdtemp(join(tmpdir(), "larva-agent-end-restore-"));
+        const cli = join(dir, "fake-larva-cli.mjs");
+        await writeFile(cli, `
+        const [, , command, personaId, jsonFlag] = process.argv;
+        if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+        process.stdout.write(JSON.stringify({{ data: {{
+          id: personaId, description: "Persona " + personaId, prompt: "Prompt " + personaId,
+          model: "provider/model", capabilities: {{}}, spec_version: "0.1.0", spec_digest: "sha256:" + personaId,
+          can_spawn: true
+        }} }}));
+        `, "utf8");
+        const mod = await import(pathToFileURL({json.dumps(str(EXTENSION))}).href + "?case=agent-end-restore-" + Date.now());
+        const handlers = {{}};
+        const statuses = [];
+        const entries = [];
+        const ctx = {{
+          env: {{ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]) }},
+          ui: {{ setStatus: async (...args) => statuses.push(args), notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          appendEntry: (customType, data) => entries.push({{ customType, data }}),
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: (name, handler) => {{ handlers[name] = handler; }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("origin", ctx, pi);
+        const switched = await mod.larva_persona_switch({{ persona_id: "target", reason: "test turn-scoped cancellation restore" }}, ctx, pi);
+        const during = mod.getActiveEnvelope()?.persona_id ?? null;
+        await handlers.agent_end({{ messages: [{{ role: "assistant", stopReason: "aborted", content: [] }}] }}, ctx);
+        const after = mod.getActiveEnvelope()?.persona_id ?? null;
+        console.log(JSON.stringify({{
+          switchedStatus: switched.status,
+          during,
+          after,
+          statusTexts: statuses.map((args) => args.filter((value) => typeof value === "string").join(" ")),
+          restoreAudit: entries.some((entry) => entry.customType === "larva-agent-persona-switch-audit" && entry.data?.event === "restore" && entry.data?.terminal === "cancellation" && entry.data?.restored === true),
+        }}));
+        """,
+    )
+
+    assert result["switchedStatus"] == "success"
+    assert result["during"] == "target"
+    assert result["after"] == "origin"
+    assert result["restoreAudit"] is True
+    assert any("Restored persona: origin" in text for text in result["statusTexts"])
 
 
 def test_restore_notices_never_chat_body() -> None:

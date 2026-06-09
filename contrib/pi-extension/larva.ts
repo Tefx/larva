@@ -616,16 +616,12 @@ function canInitializeSessionNow(ctx: PiContext | undefined): boolean {
 async function setLarvaStatus(ctx: PiContext, statusText: string): Promise<void> {
   const setter = ctx.ui?.setStatus as ((keyOrStatus: string, status?: string) => void | Promise<void>) | undefined;
   if (!setter) return;
-  if (setter.length >= 2) {
-    const footerValue = statusText.startsWith("larva: ") ? statusText.slice("larva: ".length) : statusText;
-    await setter("larva", statusText);
-    if (footerValue !== statusText) {
-      await setter("larva", footerValue);
-      await setter("larva", statusText);
-    }
+  const footerText = statusText;
+  if (setter.length === 1) {
+    await setter(footerText);
     return;
   }
-  await setter(statusText);
+  await setter("larva", footerText);
 }
 
 async function notify(ctx: PiContext, message: string, notifyType: "info" | "warning" | "error" = "info"): Promise<void> {
@@ -3031,7 +3027,7 @@ function createTurnScopedPersonaLease(originPersonaId: string | null, borrowedPe
 }
 
 function deterministicTasksHaveNoPersonaLease(): string {
-  return "deterministic status/wait/events/select/cancel tasks have no persona; only model-calling agent execution contexts may own an agent_session PersonaLease that calls a model; exact task_id only, no public `run_id`, no last alias, no fuzzy selector, no sidecar metadata, never orchestration authority";
+  return "deterministic status/wait/events/select/cancel tasks have no persona; only model-calling agent execution contexts may own an agent_session PersonaLease that calls a model; exact task_id only, no public `run_id`, no last alias, no fuzzy selector, no auxiliary metadata, never orchestration authority";
 }
 
 function applyAgentPersonaToolExposure(tools: string[]): string[] {
@@ -3780,6 +3776,18 @@ function terminalRestorePath(event: unknown): "success" | "failure" | "cancellat
   if (!isRecord(event)) return null;
   const terminal = event.terminal ?? event.status ?? event.reason;
   if (terminal === "success" || terminal === "failure" || terminal === "cancellation" || terminal === "timeout") return terminal;
+  if (Array.isArray(event.messages)) {
+    for (let index = event.messages.length - 1; index >= 0; index -= 1) {
+      const message = event.messages[index];
+      if (!isRecord(message) || message.role !== "assistant") continue;
+      const stopReason = typeof message.stopReason === "string" ? message.stopReason : typeof message.reason === "string" ? message.reason : "";
+      if (stopReason === "aborted" || stopReason === "abort" || stopReason === "cancelled" || stopReason === "canceled") return "cancellation";
+      if (stopReason === "timeout") return "timeout";
+      if (stopReason === "error" || typeof message.errorMessage === "string") return "failure";
+      return "success";
+    }
+    return "success";
+  }
   return null;
 }
 
@@ -4045,14 +4053,14 @@ function subagentRunVisibleInBackgroundIndicator(record: ActiveSubagentRun): boo
   return record.task_id !== null && isSubagentRunActive(record);
 }
 
-function subagentBackgroundIndicatorText(): string {
+function subagentBackgroundIndicatorText(): string | undefined {
   const records = Array.from(new Set(activeSubagentRuns.values())).filter(subagentRunVisibleInBackgroundIndicator);
-  if (records.length === 0) return "Larva: idle";
+  if (records.length === 0) return undefined;
   const cancelling = records.filter((record) => record.status === "cancelling").length;
   const running = records.length - cancelling;
-  if (running > 0 && cancelling > 0) return `Larva: ${running} running · ${cancelling} cancelling`;
-  if (cancelling > 0) return `Larva: ${cancelling} cancelling`;
-  return `Larva: ${records.length} bg`;
+  if (running > 0 && cancelling > 0) return `subagents: ${running} running · ${cancelling} cancelling`;
+  if (cancelling > 0) return `subagents: ${cancelling} cancelling`;
+  return `subagents: ${records.length} running`;
 }
 
 function updateSubagentBackgroundIndicator(ctx?: PiContext): void {
@@ -4063,8 +4071,11 @@ function updateSubagentBackgroundIndicator(ctx?: PiContext): void {
     const setter = indicatorCtx.ui?.setStatus as ((keyOrStatus: string, status?: string) => void | Promise<void>) | undefined;
     if (!setter) continue;
     try {
-      if (setter.length >= 2) void setter("larva-subagents", text);
-      else void setter(text);
+      if (setter.length === 1) {
+        if (text !== undefined) void setter(text);
+      } else {
+        void setter("larva-subagents", text);
+      }
     } catch {
       // Background indicator failures are UI-only and must not affect orchestration authority.
     }
@@ -6249,6 +6260,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     await ensureSessionInitialized(runtimeCtx, pi);
     return before_agent_start(payload, runtimeCtx, pi);
+  });
+  pi.on?.("agent_end", async (payload: unknown, eventCtx?: PiContext) => {
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    await attemptPersonaLeaseRestore(runtimeCtx, pi, terminalRestorePath(payload) ?? "success");
   });
   pi.on?.("tool_call", (payload: unknown) => {
     const name = isRecord(payload) && typeof payload.toolName === "string"
