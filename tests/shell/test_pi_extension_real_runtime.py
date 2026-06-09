@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 EXTENSION = ROOT / "contrib" / "pi-extension" / "larva.ts"
 SMOKE = ROOT / "scripts" / "pi-extension-autocomplete-smoke.mjs"
 RUNTIME_SMOKE = ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"
+AGENT_PERSONA_POLICY_SMOKE = ROOT / "scripts" / "pi-agent-persona-switch-policy-smoke.mjs"
 AUTOCOMPLETE_RUNTIME = ROOT / "contrib" / "pi-extension" / "test-autocomplete-runtime.mjs"
 FAKE_LARVA_CLI = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 
@@ -457,6 +458,48 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "async-subagent-contract",
     ):
         assert scenario in completed.stdout
+
+
+def test_agent_persona_switch_policy_smoke_outputs_complete_offline_register() -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi agent persona switch policy smoke")
+    completed = subprocess.run(
+        [node, str(AGENT_PERSONA_POLICY_SMOKE), "--offline"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    required_refs = {
+        "default_confirm_registers_request_tools",
+        "confirm_request_only_autonomous_surface",
+        "manual_mode_autonomous_unavailable",
+        "stale_or_forged_manual_request_fail_closed",
+        "explicit_user_slash_persona_success_no_lease",
+        "manual_switch_active_lease_precedence",
+        "restore_terminal_success",
+        "restore_terminal_failure",
+        "restore_terminal_cancellation",
+        "restore_terminal_timeout",
+        "restore_failure_state_preservation_reporting_audit_user_choice_no_fallback",
+        "restore_notices_outside_assistant_chat_body",
+        "async_exact_handle_no_alias_constraints",
+        "unsupported_live_not_required",
+    }
+    register = payload["behavioralProofRegister"]
+    observed_refs = {row["requirement_ref"] for row in register if row["status"] == "PASS"}
+
+    assert payload["status"] == "PASS"
+    assert required_refs <= observed_refs
+    assert payload["liveModeDisposition"] == {
+        "unsupported_live_requirement_removed_or_supported": "unsupported --live is not required; this smoke harness intentionally supports --offline only",
+        "required": False,
+        "supported": False,
+    }
+    assert all(check["status"] == "PASS" for check in payload["checks"])
 
 
 def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_path: Path) -> None:
