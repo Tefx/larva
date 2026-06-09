@@ -411,9 +411,9 @@ Input contract:
 
 - `persona_id: string`; required; non-empty after trimming.
 - `task: string`; required; non-empty after trimming.
-- `task_id: string | null | omitted`; optional. `null` or omission starts a new
-  child. A string must satisfy common exact `task_id` lexical validation and the
-  resume-path file checks. Empty, relative, out-of-root, non-`.jsonl`,
+- `task_id: string | omitted`; optional. Omit this field to start a new child.
+  A string must satisfy common exact `task_id` lexical validation and the
+  resume-path file checks. Empty, `null`, relative, out-of-root, non-`.jsonl`,
   non-normalized, unreadable, non-regular, or symlink-escaping paths return
   `LARVA_BAD_INPUT`.
 

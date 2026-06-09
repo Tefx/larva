@@ -303,8 +303,8 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "parameters: subagentSchema" in tool_body
     assert 'required: ["persona_id", "task"]' in source
     assert "additionalProperties: false" in source
-    assert 'task_id: { anyOf: [{ type: "string" }, { type: "null" }]' in source
-    assert "Null is treated like omission and starts a new child session." in source
+    assert 'task_id: { type: "string", description: "Optional child session .jsonl path to resume. Omit this field to start a new child session." }' in source
+    assert "Null is treated like omission and starts a new child session." not in source
     assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
     assert "execute:" in tool_body
     assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
