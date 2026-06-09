@@ -6,7 +6,7 @@ Canonical contract authority: opifex-owned PersonaSpec schema
 
 > Supersession note: the current target policy for `/larva-mode` and
 > `--agent-persona-switch` uses four canonical modes: `manual`, `confirm`,
-> `auto`, and `free`, with default `confirm`. `confirm` and `auto` are temporary
+> `auto`, and `free`. The default is `confirm`. `confirm` and `auto` are temporary
 > persona-borrow modes that restore at assistant-turn end. Use
 > [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) for current mode semantics.
 
@@ -356,7 +356,8 @@ Mode contract authority is pointer-only here: implementers must use
 [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
 for the default mode, mode semantics, required `confirm` UI outcomes,
 temporary-borrow lease rules, restore boundary, restore-failure behavior,
-unknown-mode handling, and verification cases.
+unknown-mode handling, and verification cases. Unknown mode values fail safe to `confirm`
+with a warning.
 
 The model-facing surface remains the facade tool only; there is no direct
 model-facing `commitPersona` tool.

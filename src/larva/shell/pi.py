@@ -72,7 +72,7 @@ def _parse_launcher_args(args: Sequence[str]) -> Result[tuple[str | None, str | 
                     _launcher_failure("LARVA_PI_BAD_ARGS", "invalid --agent-persona-switch usage").unwrap()
                 )
             agent_persona_switch = args[index + 1]
-            if agent_persona_switch not in {"off", "ask", "auto"}:
+            if agent_persona_switch not in {"manual", "confirm", "auto", "free"}:
                 return Failure(
                     _launcher_failure("LARVA_PI_BAD_ARGS", "invalid --agent-persona-switch value").unwrap()
                 )
@@ -264,6 +264,8 @@ def _build_child_env(
         child_env["LARVA_PI_INITIAL_PERSONA_ID"] = persona_id
     if agent_persona_switch is not None:
         child_env["LARVA_PI_AGENT_PERSONA_SWITCH"] = agent_persona_switch
+    elif child_env.get("LARVA_PI_AGENT_PERSONA_SWITCH") not in {"manual", "confirm", "auto", "free"}:
+        child_env["LARVA_PI_AGENT_PERSONA_SWITCH"] = "confirm"
     child_env["LARVA_PI_REAL_BIN"] = pi_bin
     child_env["LARVA_PI_EXTENSION_FLAG"] = extension_flag
     child_env["LARVA_PI_EXTENSION_ENTRY"] = str(extension_entry)

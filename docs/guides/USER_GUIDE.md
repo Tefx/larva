@@ -426,7 +426,7 @@ current session can be changed with `/larva-mode [manual|confirm|auto|free]`.
 
 - `manual` hides autonomous model-facing switch tools and rejects stale calls, but
   the user can still run `/larva-persona <id>` manually.
-- `confirm` is the default. The agent/runtime may request a temporary persona
+- The default is `confirm`. The agent/runtime may request a temporary persona
   borrow, but it commits only after UI approval and fails safely if no approval UI
   is available. Any `confirm` UI must provide four outcomes: `Borrow once`,
   `Deny`, `Auto-borrow for this session`, and `Switch persistently`; the normal

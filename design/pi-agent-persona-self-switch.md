@@ -6,7 +6,7 @@ Canonical contract authority: opifex-owned PersonaSpec schema remains unchanged
 
 > Supersession note: this document records the first implemented self-switch target.
 > The current target policy uses four canonical modes — `manual`, `confirm`,
-> `auto`, and `free` — with default `confirm`; `confirm` and `auto` are temporary
+`auto`, and `free` — with default `confirm`; `confirm` and `auto` are temporary
 > persona-borrow modes that restore at assistant-turn end. Use
 > [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) as the current policy source
 > for new implementation and documentation work.

@@ -19,8 +19,7 @@ is `larva:none`: Pi starts with no active Larva persona until one is selected in
 the session. When omitted while opening an existing Pi `--session`, resuming, or
 reloading, the extension restores the last active Larva persona recorded in that
 Pi session when possible.
-`--agent-persona-switch manual|confirm|auto|free` is also optional and defaults
-to `confirm`; the same default can be supplied through
+`--agent-persona-switch manual|confirm|auto|free` is also optional and defaults to `confirm`; the same default can be supplied through
 `LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`. Arguments after
 `larva pi` are forwarded to the real Pi executable.
 
@@ -351,7 +350,7 @@ Mode behavior:
 - `manual` hides `larva_persona_switch` and `larva_personas` from the active
   model-facing tool set, and stale or forged calls to autonomous switch tools are
   rejected. Manual `/larva-persona <id>` remains available.
-- `confirm` is the default. The agent/runtime may request a temporary persona
+- The default is `confirm`. The agent/runtime may request a temporary persona
   borrow. The borrow commits only after UI confirmation; rejection,
   cancellation, timeout, or missing UI fails safely without changing persona,
   model, or tool state. The normal approval is "borrow once", not a persistent
@@ -367,9 +366,8 @@ injection surface. `larva_persona_switch` requires a non-empty `reason`; `handof
 is optional and bounded. A temporary borrow is represented by a runtime persona
 lease whose restore target is the persona active immediately before the borrow.
 User manual persona switching has highest priority: it clears any active lease and
-must not later be undone by automatic restore. Unknown mode values fail safe to
-`confirm` with a status/event warning rather than being treated as compatibility
-aliases.
+must not later be undone by automatic restore. Unknown mode values fail safe to `confirm`
+with a status/event warning rather than being treated as compatibility aliases.
 
 In `confirm`, the required confirmation choices are:
 

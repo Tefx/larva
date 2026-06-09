@@ -18,9 +18,7 @@ manual < confirm < auto < free
 
 The default mode is `confirm`.
 
-Mode names are exact. The target policy does not define compatibility aliases
-such as `off` or `ask`; unknown persisted values fail safe to `confirm` with a
-warning rather than being interpreted as aliases.
+Mode names are exact: no `off`/`ask` aliases. The target policy does not define compatibility aliases such as `off` or `ask`; unknown persisted values fail safe to `confirm` with a warning rather than being interpreted as aliases.
 
 ## What the mode controls
 

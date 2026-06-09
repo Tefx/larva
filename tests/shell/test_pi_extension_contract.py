@@ -2036,21 +2036,28 @@ def _registered_names(payload: dict[str, Any], key: str) -> set[str]:
     return set(payload.get(key, []))
 
 
-def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_off_behavior(tmp_path: Path) -> None:
+def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_confirm_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const defaultHarness = await buildHarness({});
-        const envAskHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask" });
+        const envManualHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
+        const envConfirmHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm" });
         const envAutoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+        const envFreeHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "free" });
+        const legacyHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
         const customAutoHarness = await buildHarness(
-          { LARVA_PI_AGENT_PERSONA_SWITCH: "off" },
+          { LARVA_PI_AGENT_PERSONA_SWITCH: "manual" },
           { sessionEntries: [{ type: "custom", customType: "larva-agent-persona-switch-mode", data: { mode: "auto", source: "slash-command" } }] }
         );
         console.log(JSON.stringify({
           defaultTools: Object.keys(defaultHarness.tools),
-          envAskTools: Object.keys(envAskHarness.tools),
+          envManualTools: Object.keys(envManualHarness.tools),
+          envConfirmTools: Object.keys(envConfirmHarness.tools),
           envAutoTools: Object.keys(envAutoHarness.tools),
+          envFreeTools: Object.keys(envFreeHarness.tools),
+          legacyTools: Object.keys(legacyHarness.tools),
+          legacyNotifications: legacyHarness.notifications,
           customAutoTools: Object.keys(customAutoHarness.tools),
           customEntries: customAutoHarness.sessionEntries,
           commands: Object.keys(defaultHarness.commands),
@@ -2060,10 +2067,12 @@ def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_o
 
     assert "larva-mode" in _registered_names(payload, "commands")
     assert "larva-agent-persona-switch" not in _registered_names(payload, "commands")
-    assert "larva_persona_switch" not in _registered_names(payload, "defaultTools")
-    assert "larva_personas" not in _registered_names(payload, "defaultTools")
-    for key in ("envAskTools", "envAutoTools", "customAutoTools"):
+    for key in ("defaultTools", "envConfirmTools", "envAutoTools", "envFreeTools", "legacyTools", "customAutoTools"):
         assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, key)
+    assert "larva_persona_switch" not in _registered_names(payload, "envManualTools")
+    assert "larva_personas" not in _registered_names(payload, "envManualTools")
+    assert any("unknown" in note[0].lower() and "confirm" in note[0] for note in payload["legacyNotifications"])
+
 
 
 def test_active_persona_session_restore_uses_latest_commit_without_rewriting_session_behavior(tmp_path: Path) -> None:
@@ -2303,7 +2312,7 @@ def test_agent_persona_switch_mode_restore_before_agent_start_uses_event_ctx_wit
           customType: "larva-agent-persona-switch-mode",
           data: { mode: "auto", source: "slash-command" },
         };
-        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { samePiAsCtx: true, skipSessionStart: true, omitSession: true });
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" }, { samePiAsCtx: true, skipSessionStart: true, omitSession: true });
         const eventEntries = [personaEntry, modeEntry];
         const eventCtx = {
           ...harness.ctx,
@@ -2325,10 +2334,11 @@ def test_agent_persona_switch_mode_restore_before_agent_start_uses_event_ctx_wit
     )
 
     assert payload["envelope"]["persona_id"] == "python"
-    assert "call larva_persona_switch alone" in payload["before"]["systemPrompt"]
+    assert "larva_persona_switch" in payload["before"]["systemPrompt"]
     assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "registeredTools")
     assert {"larva_persona_switch", "larva_personas"} <= set(payload["activeTools"])
     assert len([entry for entry in payload["eventEntries"] if entry.get("customType") == "larva-agent-persona-switch-mode"]) == 1
+
 
 
 def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behavior(tmp_path: Path) -> None:
@@ -2625,7 +2635,7 @@ def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { selectResult: "ask" });
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" }, { selectResult: "auto" });
         const command = harness.commands["larva-mode"];
         const result = await (command.handler ?? command.options?.handler)("", harness.ctx);
         console.log(JSON.stringify({
@@ -2638,13 +2648,13 @@ def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp
         """,
     )
 
-    assert payload["result"] == {"ok": True, "mode": "ask"}
-    assert payload["selectCalls"] == [["Larva agent persona self-switch mode", ["off", "ask", "auto"]]]
+    assert payload["result"] == {"ok": True, "mode": "auto"}
+    assert payload["selectCalls"] == [["Larva agent persona self-switch mode", ["manual", "confirm", "auto", "free"]]]
     assert any(
         entry == {
             "type": "custom",
             "customType": "larva-agent-persona-switch-mode",
-            "data": {"mode": "ask", "source": "slash-command"},
+            "data": {"mode": "auto", "source": "slash-command"},
         }
         for entry in payload["sessionEntries"]
     )
@@ -2652,14 +2662,15 @@ def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp
     assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "tools")
 
 
+
 def test_agent_persona_switch_noarg_cancel_or_missing_ui_preserves_mode_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const canceledHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
+        const canceledHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
         const canceledCommand = canceledHarness.commands["larva-mode"];
         const canceledResult = await (canceledCommand.handler ?? canceledCommand.options?.handler)("", canceledHarness.ctx);
-        const missingUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" }, { omitUi: true });
+        const missingUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" }, { omitUi: true });
         const missingUiCommand = missingUiHarness.commands["larva-mode"];
         const missingUiResult = await (missingUiCommand.handler ?? missingUiCommand.options?.handler)("", missingUiHarness.ctx);
         console.log(JSON.stringify({
@@ -2686,78 +2697,86 @@ def test_agent_persona_switch_noarg_cancel_or_missing_ui_preserves_mode_behavior
         assert "larva_personas" not in payload[key]
 
 
-def test_agent_persona_switch_tool_exposure_ask_auto_vs_off_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_tool_exposure_manual_confirm_auto_free_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off" });
-        const askHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask" });
+        const manualHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
+        const confirmHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm" });
         const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+        const freeHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "free" });
         console.log(JSON.stringify({
-          offTools: Object.keys(offHarness.tools),
-          askTools: Object.keys(askHarness.tools),
+          manualTools: Object.keys(manualHarness.tools),
+          confirmTools: Object.keys(confirmHarness.tools),
           autoTools: Object.keys(autoHarness.tools),
+          freeTools: Object.keys(freeHarness.tools),
           autoSwitchSchema: autoHarness.tools["larva_persona_switch"]?.inputSchema ?? null,
         }));
         """,
     )
 
-    assert "larva_persona_switch" not in _registered_names(payload, "offTools")
-    assert "larva_personas" not in _registered_names(payload, "offTools")
-    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "askTools")
-    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "autoTools")
+    assert "larva_persona_switch" not in _registered_names(payload, "manualTools")
+    assert "larva_personas" not in _registered_names(payload, "manualTools")
+    for key in ("confirmTools", "autoTools", "freeTools"):
+        assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, key)
     max_switches_schema = payload["autoSwitchSchema"]["properties"]["max_switches_per_chain"]
     assert {option["type"] for option in max_switches_schema["anyOf"]} == {"integer", "null"}
     assert max_switches_schema["anyOf"][0]["minimum"] == 0
     assert "0 means unlimited" in max_switches_schema["description"]
 
 
-def test_agent_persona_switch_invalid_stored_mode_falls_back_to_env_then_off_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_invalid_stored_or_env_mode_fails_safe_to_confirm_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const envAskHarness = await buildHarness(
-          { LARVA_PI_AGENT_PERSONA_SWITCH: "ask" },
+        const invalidStoredHarness = await buildHarness(
+          { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" },
           { sessionEntries: [{ type: "custom", customType: "larva-agent-persona-switch-mode", data: { mode: "bogus", source: "slash-command" } }] }
         );
         const invalidEnvHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "bogus" });
         console.log(JSON.stringify({
-          envAskTools: Object.keys(envAskHarness.tools),
+          invalidStoredTools: Object.keys(invalidStoredHarness.tools),
+          invalidStoredNotifications: invalidStoredHarness.notifications,
           invalidEnvTools: Object.keys(invalidEnvHarness.tools),
+          invalidEnvNotifications: invalidEnvHarness.notifications,
         }));
         """,
     )
 
-    assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, "envAskTools")
-    assert "larva_persona_switch" not in _registered_names(payload, "invalidEnvTools")
-    assert "larva_personas" not in _registered_names(payload, "invalidEnvTools")
+    for key in ("invalidStoredTools", "invalidEnvTools"):
+        assert {"larva_persona_switch", "larva_personas"} <= _registered_names(payload, key)
+    for key in ("invalidStoredNotifications", "invalidEnvNotifications"):
+        assert any("unknown" in note[0].lower() and "confirm" in note[0] for note in payload[key])
 
 
-def test_agent_persona_switch_slash_off_recomputes_active_tools_and_preserves_manual_switch_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_slash_manual_recomputes_active_tools_and_preserves_manual_switch_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const cases = [];
-        for (const mode of ["ask", "auto"]) {
+        for (const mode of ["confirm", "auto", "free"]) {
           const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: mode, LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-          const beforeOffActiveTools = harness.activeToolCalls.at(-1);
+          const beforeManualActiveTools = harness.activeToolCalls.at(-1);
           const modeCommand = harness.commands["larva-mode"];
-          const offResult = await (modeCommand.handler ?? modeCommand.options?.handler)("off", harness.ctx);
-          const afterOffActiveTools = harness.activeToolCalls.at(-1);
+          const manualModeResult = await (modeCommand.handler ?? modeCommand.options?.handler)("manual", harness.ctx);
+          const afterManualActiveTools = harness.activeToolCalls.at(-1);
           const staleSwitchDecision = harness.mod.decideToolCall("larva_persona_switch");
           const stalePersonasDecision = harness.mod.decideToolCall("larva_personas");
           const manual = harness.commands["larva-persona"];
           const manualResult = await (manual.handler ?? manual.options?.handler)("python", harness.ctx);
-          const afterManualActiveTools = harness.activeToolCalls.at(-1);
+          const afterManualSwitchActiveTools = harness.activeToolCalls.at(-1);
           cases.push({
             mode,
-            beforeOffActiveTools,
-            offResult,
-            afterOffActiveTools,
+            beforeManualActiveTools,
+            manualModeResult,
+            afterManualActiveTools,
             staleSwitchDecision,
             stalePersonasDecision,
             manualResult,
-            afterManualActiveTools,
+            afterManualSwitchActiveTools,
             finalEnvelope: harness.mod.getActiveEnvelope(),
             commands: Object.keys(harness.commands),
           });
@@ -2766,30 +2785,30 @@ def test_agent_persona_switch_slash_off_recomputes_active_tools_and_preserves_ma
         """,
     )
 
-    assert {case["mode"] for case in payload["cases"]} == {"ask", "auto"}
+    assert {case["mode"] for case in payload["cases"]} == {"confirm", "auto", "free"}
     for case in payload["cases"]:
-        assert {"larva_persona_switch", "larva_personas"} <= set(case["beforeOffActiveTools"])
-        assert case["offResult"] == {"ok": True, "mode": "off"}
-        assert "larva_persona_switch" not in case["afterOffActiveTools"]
-        assert "larva_personas" not in case["afterOffActiveTools"]
+        assert {"larva_persona_switch", "larva_personas"} <= set(case["beforeManualActiveTools"])
+        assert case["manualModeResult"] == {"ok": True, "mode": "manual"}
+        assert "larva_persona_switch" not in case["afterManualActiveTools"]
+        assert "larva_personas" not in case["afterManualActiveTools"]
         assert case["staleSwitchDecision"]["action"] == "deny"
-        assert case["staleSwitchDecision"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
+        assert case["staleSwitchDecision"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
         assert case["stalePersonasDecision"]["action"] == "deny"
         assert "larva-persona" in case["commands"]
         assert case["manualResult"]["ok"] is True
         assert case["finalEnvelope"]["persona_id"] == "python"
-        assert "larva_persona_switch" not in case["afterManualActiveTools"]
-        assert "larva_personas" not in case["afterManualActiveTools"]
+        assert "larva_persona_switch" not in case["afterManualSwitchActiveTools"]
+        assert "larva_personas" not in case["afterManualSwitchActiveTools"]
 
 
-def test_agent_persona_switch_stale_off_rejects_forged_tool_call_without_commit_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_stale_manual_rejects_forged_tool_call_without_commit_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const forgedEventDecision = await harness.handlers.tool_call?.({ toolName: "larva_persona_switch" });
-        const forgedTool = harness.tools["larva_persona_switch"];
-        const directResult = forgedTool ? await (forgedTool.execute ?? forgedTool.handler)("call-1", { persona_id: "python", reason: "need implementation" }, undefined, undefined, harness.ctx) : null;
+        const directResult = await harness.mod.larva_persona_switch({ persona_id: "python", reason: "need implementation" }, harness.ctx, harness.pi);
         console.log(JSON.stringify({
           forgedEventDecision,
           directResult,
@@ -2800,19 +2819,20 @@ def test_agent_persona_switch_stale_off_rejects_forged_tool_call_without_commit_
     )
 
     assert payload["forgedEventDecision"]["block"] is True
-    assert "off" in payload["forgedEventDecision"]["reason"].lower()
-    if payload["directResult"] is not None:
-        assert payload["directResult"]["status"] == "failed"
-        assert payload["directResult"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
+    assert "manual" in payload["forgedEventDecision"]["reason"].lower()
+    assert payload["directResult"]["status"] == "failed"
+    assert payload["directResult"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
     assert payload["finalEnvelope"]["persona_id"] == "architect"
+    assert "larva_persona_switch" not in payload["tools"]
 
 
-def test_agent_persona_switch_manual_larva_persona_preserved_in_off_ask_auto_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_manual_larva_persona_preserved_in_all_modes_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const results = [];
-        for (const mode of ["off", "ask", "auto"]) {
+        for (const mode of ["manual", "confirm", "auto", "free"]) {
           const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: mode });
           const manual = harness.commands["larva-persona"];
           const result = await (manual.handler ?? manual.options?.handler)("python", harness.ctx);
@@ -2825,34 +2845,40 @@ def test_agent_persona_switch_manual_larva_persona_preserved_in_off_ask_auto_beh
     for case in payload["results"]:
         assert case["result"]["ok"] is True
         assert case["finalEnvelope"]["persona_id"] == "python"
-    off_case = next(case for case in payload["results"] if case["mode"] == "off")
-    assert "larva_persona_switch" not in off_case["toolNames"]
+    manual_case = next(case for case in payload["results"] if case["mode"] == "manual")
+    assert "larva_persona_switch" not in manual_case["toolNames"]
+    for mode in ("confirm", "auto", "free"):
+        case = next(item for item in payload["results"] if item["mode"] == mode)
+        assert "larva_persona_switch" in case["toolNames"]
 
 
-def test_agent_persona_switch_prompt_guidance_only_for_ask_auto_without_catalogue_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_prompt_guidance_for_confirm_auto_free_without_catalogue_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const prompt = (harness) => harness.mod.before_agent_start({ systemPrompt: "base" })?.systemPrompt ?? "";
-        const offHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "off", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-        const offPrompt = prompt(offHarness);
-        const askHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-        const askPrompt = prompt(askHarness);
+        const manualHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const manualPrompt = prompt(manualHarness);
+        const confirmHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const confirmPrompt = prompt(confirmHarness);
         const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const autoPrompt = prompt(autoHarness);
-        console.log(JSON.stringify({ offPrompt, askPrompt, autoPrompt }));
+        const freeHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "free", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const freePrompt = prompt(freeHarness);
+        console.log(JSON.stringify({ manualPrompt, confirmPrompt, autoPrompt, freePrompt }));
         """,
     )
 
-    assert "larva_persona_switch" not in payload["offPrompt"]
-    for key in ("askPrompt", "autoPrompt"):
-        assert "larva_persona_switch alone" in payload[key]
-        assert "Do not call other tools in the same assistant message" in payload[key]
+    assert "larva_persona_switch" not in payload["manualPrompt"]
+    assert "Borrow once" in payload["confirmPrompt"]
+    assert "temporary" in payload["confirmPrompt"]
+    assert "restores at assistant turn end" in payload["autoPrompt"]
+    assert "persistent" in payload["freePrompt"]
+    for key in ("confirmPrompt", "autoPrompt", "freePrompt"):
         assert "Python persona" not in payload[key]
         assert "Architecture persona" not in payload[key]
-    assert "default request-chain budget is 20" in payload["autoPrompt"]
-    assert "max_switches_per_chain" in payload["autoPrompt"]
-    assert "At most one" not in payload["autoPrompt"]
+
 
 
 def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: Path) -> None:
@@ -2892,66 +2918,71 @@ def test_agent_personas_read_only_bounded_and_hidden_in_off_behavior(tmp_path: P
     assert payload["directOff"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_OFF"
 
 
-def test_agent_persona_switch_ask_approval_rejection_no_ui_and_cancel_preserve_state_behavior(tmp_path: Path) -> None:
+def test_agent_persona_switch_confirm_outcomes_and_no_ui_preserve_state_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const approvedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { confirmResult: true });
-        const approvedTool = approvedHarness.tools["larva_persona_switch"];
-        const approved = await (approvedTool.execute ?? approvedTool.handler)("call-approved", { persona_id: "python", reason: "implementation required" }, undefined, undefined, approvedHarness.ctx);
-        const approvedEnvelope = approvedHarness.mod.getActiveEnvelope();
+        const borrowHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { selectResult: "borrow_once" });
+        const borrowTool = borrowHarness.tools["larva_persona_switch"];
+        const borrow = await (borrowTool.execute ?? borrowTool.handler)("call-borrow", { persona_id: "python", reason: "implementation required" }, undefined, undefined, borrowHarness.ctx);
+        const borrowEnvelope = borrowHarness.mod.getActiveEnvelope();
+        await borrowHarness.mod.before_agent_start({ systemPrompt: "base", terminal: "success" });
+        const restoredEnvelope = borrowHarness.mod.getActiveEnvelope();
 
-        const rejectedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { confirmResult: false });
-        const rejectedTool = rejectedHarness.tools["larva_persona_switch"];
-        const rejected = await (rejectedTool.execute ?? rejectedTool.handler)("call-rejected", { persona_id: "python", reason: "implementation required" }, undefined, undefined, rejectedHarness.ctx);
-        const rejectedEnvelope = rejectedHarness.mod.getActiveEnvelope();
+        const deniedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { selectResult: "deny" });
+        const deniedTool = deniedHarness.tools["larva_persona_switch"];
+        const denied = await (deniedTool.execute ?? deniedTool.handler)("call-denied", { persona_id: "python", reason: "implementation required" }, undefined, undefined, deniedHarness.ctx);
+        const deniedEnvelope = deniedHarness.mod.getActiveEnvelope();
 
-        const noUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        const autoHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { selectResult: "auto_session" });
+        const autoTool = autoHarness.tools["larva_persona_switch"];
+        const autoBorrow = await (autoTool.execute ?? autoTool.handler)("call-auto", { persona_id: "python", reason: "implementation required" }, undefined, undefined, autoHarness.ctx);
+        const autoModeEntry = autoHarness.sessionEntries.find((entry) => entry.customType === "larva-agent-persona-switch-mode" && entry.data?.mode === "auto");
+
+        const persistentHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { selectResult: "persistent" });
+        const persistentTool = persistentHarness.tools["larva_persona_switch"];
+        const persistent = await (persistentTool.execute ?? persistentTool.handler)("call-persistent", { persona_id: "python", reason: "implementation required" }, undefined, undefined, persistentHarness.ctx);
+        await persistentHarness.mod.before_agent_start({ systemPrompt: "base", terminal: "success" });
+        const persistentEnvelope = persistentHarness.mod.getActiveEnvelope();
+
+        const noUiHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_PI_INITIAL_PERSONA_ID: "architect" }, { omitSelect: true });
         delete noUiHarness.ctx.ui.confirm;
         const noUiTool = noUiHarness.tools["larva_persona_switch"];
         const noUi = await (noUiTool.execute ?? noUiTool.handler)("call-no-ui", { persona_id: "python", reason: "implementation required" }, undefined, undefined, noUiHarness.ctx);
         const noUiEnvelope = noUiHarness.mod.getActiveEnvelope();
 
-        const cancelledHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "ask", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-        cancelledHarness.ctx.ui.confirm = async () => { throw new Error("dialog cancelled or timed out"); };
-        const cancelledTool = cancelledHarness.tools["larva_persona_switch"];
-        const cancelled = await (cancelledTool.execute ?? cancelledTool.handler)("call-cancelled", { persona_id: "python", reason: "implementation required" }, undefined, undefined, cancelledHarness.ctx);
-        const cancelledEnvelope = cancelledHarness.mod.getActiveEnvelope();
-
         console.log(JSON.stringify({
-          approved,
-          approvedEnvelope,
-          approvedConfirmations: approvedHarness.confirmations,
-          rejected,
-          rejectedEnvelope,
+          borrow,
+          borrowEnvelope,
+          restoredEnvelope,
+          denied,
+          deniedEnvelope,
+          autoBorrow,
+          autoModeEntry,
+          persistent,
+          persistentEnvelope,
           noUi,
           noUiEnvelope,
-          cancelled,
-          cancelledEnvelope,
-          rejectedAudit: rejectedHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
-          noUiAudit: noUiHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
-          cancelledAudit: cancelledHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
         }));
         """,
     )
 
-    assert payload["approved"]["status"] == "success"
-    assert payload["approved"].get("terminate") is True
-    assert payload["approved"]["details"]["active_persona"] == "python"
-    assert payload["approved"]["details"]["previous_persona"] == "architect"
-    assert payload["approved"]["details"]["spec_digest"] == "sha256:python"
-    assert payload["approved"]["details"]["commit_source"] == "self-switch"
-    assert payload["approvedEnvelope"]["persona_id"] == "python"
-    assert len(payload["approvedConfirmations"]) == 1
-    for key in ("rejected", "noUi", "cancelled"):
-        assert payload[key]["status"] == "failed"
-        assert payload[key]["error"]["code"] == "LARVA_BAD_INPUT"
-    for key in ("rejectedEnvelope", "noUiEnvelope", "cancelledEnvelope"):
-        assert payload[key]["persona_id"] == "architect"
-    for key in ("rejectedAudit", "noUiAudit", "cancelledAudit"):
-        assert payload[key]
-        assert payload[key][-1]["data"]["approved"] is False
-        assert payload[key][-1]["data"]["committed"] is False
+    assert payload["borrow"]["status"] == "success"
+    assert payload["borrow"]["details"]["lease"]["scope"] == "turn"
+    assert payload["borrow"]["details"]["lease"]["originPersonaId"] == "architect"
+    assert payload["borrowEnvelope"]["persona_id"] == "python"
+    assert payload["restoredEnvelope"]["persona_id"] == "architect"
+    assert payload["denied"]["status"] == "failed"
+    assert payload["deniedEnvelope"]["persona_id"] == "architect"
+    assert payload["autoBorrow"]["status"] == "success"
+    assert payload["autoModeEntry"]["data"]["mode"] == "auto"
+    assert payload["persistent"]["status"] == "success"
+    assert payload["persistent"]["details"]["lease"] is None
+    assert payload["persistentEnvelope"]["persona_id"] == "python"
+    assert payload["noUi"]["status"] == "failed"
+    assert payload["noUi"]["error"]["code"] == "LARVA_CONFIRMATION_UNAVAILABLE"
+    assert payload["noUiEnvelope"]["persona_id"] == "architect"
+
 
 
 def test_agent_persona_switch_reason_required_before_commit_behavior(tmp_path: Path) -> None:
@@ -3047,137 +3078,92 @@ def test_agent_persona_switch_same_persona_no_op_no_termination_or_extra_commit_
     assert payload["finalEnvelope"]["persona_id"] == "architect"
 
 
-def test_agent_persona_switch_finite_budget_allows_multiple_successes_then_rejects_behavior(tmp_path: Path) -> None:
+def test_agent_persona_switch_multiple_auto_borrows_restore_first_origin_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const tool = harness.tools["larva_persona_switch"];
-        const first = tool ? await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation", continue_task: true, max_switches_per_chain: 2 }, undefined, undefined, harness.ctx) : null;
-        const followUpPrompt = harness.sentUserMessages[0]?.message ?? "";
-        const followUpBeforeAgent = harness.mod.before_agent_start({ prompt: followUpPrompt, systemPrompt: "base" });
-        const second = tool ? await (tool.execute ?? tool.handler)("call-2", { persona_id: "architect", reason: "switch back" }, undefined, undefined, harness.ctx) : null;
-        const third = tool ? await (tool.execute ?? tool.handler)("call-3", { persona_id: "python", reason: "budget exhausted" }, undefined, undefined, harness.ctx) : null;
-        console.log(JSON.stringify({ first, followUpBeforeAgent, second, third, sentUserMessages: harness.sentUserMessages, finalEnvelope: harness.mod.getActiveEnvelope(), tools: Object.keys(harness.tools) }));
+        const first = await (tool.execute ?? tool.handler)("call-1", { persona_id: "python", reason: "need implementation" }, undefined, undefined, harness.ctx);
+        const second = await (tool.execute ?? tool.handler)("call-2", { persona_id: "critic", reason: "need review" }, undefined, undefined, harness.ctx);
+        const beforeRestore = harness.mod.getActiveEnvelope();
+        await harness.mod.before_agent_start({ systemPrompt: "base", terminal: "success" });
+        const afterRestore = harness.mod.getActiveEnvelope();
+        console.log(JSON.stringify({ first, second, beforeRestore, afterRestore, sessionEntries: harness.sessionEntries }));
         """,
     )
 
     assert payload["first"]["status"] == "success"
-    assert payload["first"].get("terminate") is True
-    assert payload["sentUserMessages"][0]["options"] == {"deliverAs": "followUp"}
-    assert payload["followUpBeforeAgent"]["systemPrompt"]
+    assert payload["first"]["details"]["lease"]["originPersonaId"] == "architect"
     assert payload["second"]["status"] == "success"
-    assert payload["second"].get("terminate") is True
-    assert payload["third"]["status"] == "failed"
-    assert payload["third"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
-    assert "budget" in payload["third"]["error"]["message"].lower()
-    assert payload["finalEnvelope"]["persona_id"] == "architect"
+    assert payload["second"]["details"]["lease"]["originPersonaId"] == "architect"
+    assert payload["beforeRestore"]["persona_id"] == "critic"
+    assert payload["afterRestore"]["persona_id"] == "architect"
 
 
-def test_agent_persona_switch_budget_resets_for_later_request_and_zero_allows_unlimited_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_restore_on_failure_cancellation_and_timeout_terminal_paths_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
-        const resetHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-        const resetTool = resetHarness.tools["larva_persona_switch"];
-        const resetFirst = await (resetTool.execute ?? resetTool.handler)("reset-1", { persona_id: "python", reason: "need implementation", max_switches_per_chain: 1, continue_task: true }, undefined, undefined, resetHarness.ctx);
-        const resetFollowUpPrompt = resetHarness.sentUserMessages[0]?.message ?? "";
-        const resetFollowUpBeforeAgent = resetHarness.mod.before_agent_start({ prompt: resetFollowUpPrompt, systemPrompt: "base" });
-        const resetSameChainSecond = await (resetTool.execute ?? resetTool.handler)("reset-2", { persona_id: "architect", reason: "budget exhausted" }, undefined, undefined, resetHarness.ctx);
-        const independentBeforeAgent = resetHarness.mod.before_agent_start({ prompt: "New independent user request: please return to architecture", systemPrompt: "base" });
-        const laterFirst = await (resetTool.execute ?? resetTool.handler)("reset-3", { persona_id: "architect", reason: "new request needs architecture" }, undefined, undefined, resetHarness.ctx);
-
-        const unlimitedHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
-        const unlimitedTool = unlimitedHarness.tools["larva_persona_switch"];
-        const unlimitedResults = [];
-        for (const [index, personaId] of ["python", "architect", "python", "architect"].entries()) {
-          unlimitedResults.push(await (unlimitedTool.execute ?? unlimitedTool.handler)(`unlimited-${index}`, {
-            persona_id: personaId,
-            reason: `unlimited switch ${index}`,
-            max_switches_per_chain: index === 0 ? 0 : undefined,
-          }, undefined, undefined, unlimitedHarness.ctx));
+        const outcomes = [];
+        for (const terminal of ["failure", "cancellation", "timeout"]) {
+          const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+          const tool = harness.tools["larva_persona_switch"];
+          const borrow = await (tool.execute ?? tool.handler)(`call-${terminal}`, { persona_id: "python", reason: `terminal ${terminal}` }, undefined, undefined, harness.ctx);
+          const beforeRestore = harness.mod.getActiveEnvelope();
+          await harness.mod.before_agent_start({ systemPrompt: "base", terminal });
+          const afterRestore = harness.mod.getActiveEnvelope();
+          outcomes.push({ terminal, borrow, beforeRestore, afterRestore, sessionEntries: harness.sessionEntries, statuses: harness.statuses });
         }
-        console.log(JSON.stringify({
-          resetFirst,
-          resetFollowUpBeforeAgent,
-          resetSameChainSecond,
-          independentBeforeAgent,
-          laterFirst,
-          resetFinalEnvelope: resetHarness.mod.getActiveEnvelope(),
-          unlimitedResults,
-          unlimitedFinalEnvelope: unlimitedHarness.mod.getActiveEnvelope(),
-        }));
+        console.log(JSON.stringify({ outcomes }));
         """,
     )
 
-    assert payload["resetFirst"]["status"] == "success"
-    assert payload["resetFollowUpBeforeAgent"]["systemPrompt"]
-    assert payload["resetSameChainSecond"]["status"] == "failed"
-    assert payload["resetSameChainSecond"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
-    assert payload["independentBeforeAgent"]["systemPrompt"]
-    assert payload["laterFirst"]["status"] == "success"
-    assert payload["laterFirst"].get("terminate") is True
-    assert payload["resetFinalEnvelope"]["persona_id"] == "architect"
-    assert [result["status"] for result in payload["unlimitedResults"]] == ["success", "success", "success", "success"]
-    assert payload["unlimitedFinalEnvelope"]["persona_id"] == "architect"
+    assert {item["terminal"] for item in payload["outcomes"]} == {"failure", "cancellation", "timeout"}
+    for item in payload["outcomes"]:
+        assert item["borrow"]["status"] == "success"
+        assert item["beforeRestore"]["persona_id"] == "python"
+        assert item["afterRestore"]["persona_id"] == "architect"
+        assert any(entry.get("customType") == "larva-agent-persona-switch-audit" and entry.get("data", {}).get("event") == "restore" for entry in item["sessionEntries"])
 
 
-def test_agent_persona_switch_termination_followup_and_audit_on_success_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_restore_notices_status_event_audit_not_chat_body_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,
         """
         const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const tool = harness.tools["larva_persona_switch"];
-        const result = tool ? await (tool.execute ?? tool.handler)("call-1", {
+        const result = await (tool.execute ?? tool.handler)("call-1", {
           persona_id: "python",
           reason: "Python implementation is now required",
           handoff: "Implement the agreed test boundary",
           continue_task: true,
-        }, undefined, undefined, harness.ctx) : null;
+        }, undefined, undefined, harness.ctx);
+        await harness.mod.before_agent_start({ systemPrompt: "base", terminal: "success" });
         console.log(JSON.stringify({
           result,
           finalEnvelope: harness.mod.getActiveEnvelope(),
           sentUserMessages: harness.sentUserMessages,
           sessionEntries: harness.sessionEntries,
+          statuses: harness.statuses,
           tools: Object.keys(harness.tools),
         }));
         """,
     )
 
     assert payload["result"]["status"] == "success"
-    assert payload["result"].get("terminate") is True
-    assert payload["finalEnvelope"]["persona_id"] == "python"
-    assert payload["result"]["details"]["active_persona"] == "python"
-    assert payload["result"]["details"]["previous_persona"] == "architect"
-    assert payload["result"]["details"]["spec_digest"] == "sha256:python"
-    assert payload["result"]["details"]["commit_source"] == "self-switch"
-    assert payload["sentUserMessages"] == [
-        {
-            "message": "[Larva-generated continuation after persona switch]\nSwitched from architect to python.\nReason: Python implementation is now required\nHandoff: Implement the agreed test boundary\nYou are now operating under the NEW active Larva persona.\nTreat the persona switch as a hard boundary: the new persona's instructions now take priority.\nIf any previous execution plan conflicts with the new persona's mandatory startup or decision protocol, discard that plan.\nBefore taking further action, follow the new persona's opening/startup protocol if it defines one.\nContinue the user's original task under the new persona.\nDo not switch again unless newly justified.",
-            "options": {"deliverAs": "followUp"},
-        }
-    ]
-    assert any(
-        entry.get("customType") == "larva-agent-persona-switch-audit"
-        and entry.get("data") == {
-            "source": "tool",
-            "mode": "auto",
-            "from_persona_id": "architect",
-            "to_persona_id": "python",
-            "reason": "Python implementation is now required",
-            "handoff": "Implement the agreed test boundary",
-            "approved": True,
-            "committed": True,
-            "error_code": None,
-            "continue_task": True,
-            "max_switches_per_chain": 20,
-            "switch_count_in_chain": 1,
-        }
-        for entry in payload["sessionEntries"]
-    )
+    assert payload["result"].get("terminate") is False
+    assert payload["result"]["details"]["lease"]["originPersonaId"] == "architect"
+    assert payload["finalEnvelope"]["persona_id"] == "architect"
+    assert payload["sentUserMessages"] == []
+    assert any(entry.get("customType") == "larva-agent-persona-switch-audit" and entry.get("data", {}).get("event") == "restore" for entry in payload["sessionEntries"])
+    assert any(status and "Restored persona: architect" in status[0] for status in payload["statuses"])
 
 
-def test_agent_persona_switch_child_subagent_defaults_self_switch_off_behavior(tmp_path: Path) -> None:
+
+def test_agent_persona_switch_child_subagent_defaults_self_switch_manual_behavior(tmp_path: Path) -> None:
     fake_cli = _write_agent_switch_fake_cli(tmp_path)
     child_env_artifact = tmp_path / "child-env.json"
     fake_pi = tmp_path / "fake-pi-child-env.mjs"
@@ -3245,7 +3231,8 @@ def test_agent_persona_switch_child_subagent_defaults_self_switch_off_behavior(t
     assert payload["childEnv"]["LARVA_PI_INITIAL_PERSONA_ID"] == "python"
     assert payload["childEnv"]["LARVA_PI_PARENT_PERSONA_ID"] == "architect"
     assert payload["childEnv"]["LARVA_PI_INTERACTIVE_TUI"] == "0"
-    assert payload["childEnv"]["LARVA_PI_AGENT_PERSONA_SWITCH"] == "off"
+    assert payload["childEnv"]["LARVA_PI_AGENT_PERSONA_SWITCH"] == "manual"
+
 
 
 ASYNC_SUBAGENT_TRACEABILITY_EXPECTATIONS: Final[dict[str, tuple[str, ...]]] = {
