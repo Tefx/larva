@@ -516,3 +516,63 @@ def test_launcher_agent_persona_switch_invalid_value(mock_shutil_which, mock_sub
     assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
     # Confirm Pi wasn't launched
     assert mock_subprocess_run.call_count == 0
+
+
+@pytest.mark.parametrize("mode", ["manual", "confirm", "auto", "free"])
+def test_launcher_agent_persona_switch_accepts_only_canonical_policy_modes(
+    mock_shutil_which, mock_subprocess_run, mode
+):
+    """Current policy modes are exactly manual/confirm/auto/free."""
+    import io
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(
+        ["pi", "--persona", "known", "--agent-persona-switch", mode, "--", "--version"],
+        facade=_make_facade(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code == 0, f"{mode} must be accepted. stderr={stderr.getvalue()}"
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == mode
+
+
+@pytest.mark.parametrize("legacy_or_unknown", ["off", "ask", "invalid_mode"])
+def test_launcher_agent_persona_switch_rejects_legacy_aliases_before_pi_launch(
+    mock_shutil_which, mock_subprocess_run, legacy_or_unknown
+):
+    """Launcher must not accept legacy off/ask aliases or other unknown values."""
+    import io
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(
+        ["pi", "--persona", "known", "--agent-persona-switch", legacy_or_unknown],
+        facade=_make_facade(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert code != 0
+    assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
+    assert mock_subprocess_run.call_count == 0
+
+
+def test_launcher_agent_persona_switch_default_is_confirm_when_flag_absent(
+    mock_shutil_which, mock_subprocess_run
+):
+    """The launcher-owned session policy default is confirm, not legacy off."""
+    import io
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi", "--persona", "known", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+
+    assert code == 0, stderr.getvalue()
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == "confirm"
