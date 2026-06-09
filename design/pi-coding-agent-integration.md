@@ -459,16 +459,6 @@ this integration target. Do not switch to a semver range until live Pi runtime
 compatibility is proven; Pi upgrades must update both package and lock files in
 the same pass and rerun the Pi-extension UI/runtime gates.
 
-Local Pi runtime hardening expected by this integration target:
-
-- Extension shortcut contexts must tolerate an absent `session.agent` by exposing
-  `signal: undefined` rather than throwing while the UI is otherwise usable.
-- Context-overflow auto-compaction must keep its abort controller in a local
-  variable for each `_runAutoCompaction` call and clear the shared field only when
-  it still references that same controller. This prevents concurrent/reentrant
-  overflow recovery from failing with `Cannot read properties of undefined
-  (reading 'signal')`.
-
 The adapter must prefer Pi TUI primitives over handwritten terminal UI code:
 
 - Import primitives directly from `@earendil-works/pi-tui`; host-global module

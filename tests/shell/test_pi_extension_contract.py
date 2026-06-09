@@ -27,8 +27,6 @@ PI_INTEGRATION_DESIGN: Final = ROOT / "design" / "pi-coding-agent-integration.md
 PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-persona-selector-ui.mjs"
 PI_EXTENSION_PACKAGE_JSON: Final = ROOT / "contrib" / "pi-extension" / "package.json"
 PI_EXTENSION_PACKAGE_LOCK: Final = ROOT / "contrib" / "pi-extension" / "package-lock.json"
-PI_AGENT_SESSION_JS: Final = Path("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js")
-PI_INTERACTIVE_MODE_JS: Final = Path("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/interactive-mode.js")
 PYPROJECT: Final = ROOT / "pyproject.toml"
 PI_TUI_PINNED_VERSION: Final = "0.78.0"
 PI_EXTENSION_NPM_CI_COMMAND: Final = "npm --prefix contrib/pi-extension ci"
@@ -394,18 +392,6 @@ def test_unknown_session_persona_switch_mode_warning_is_deduped_and_scans_histor
     assert "const emittedAgentPersonaSwitchModeWarnings = new Set<string>();" in source
     assert "if (emittedAgentPersonaSwitchModeWarnings.has(message)) continue;" in source
 
-
-def test_installed_pi_runtime_signal_hotfixes_present() -> None:
-    """Local Pi runtime must not read undefined.signal in shortcut/overflow paths."""
-    if not PI_AGENT_SESSION_JS.exists() or not PI_INTERACTIVE_MODE_JS.exists():
-        pytest.skip("installed pi runtime not available")
-    agent_session = PI_AGENT_SESSION_JS.read_text(encoding="utf-8")
-    interactive_mode = PI_INTERACTIVE_MODE_JS.read_text(encoding="utf-8")
-    assert "const controller = new AbortController();" in agent_session
-    assert "signal: controller.signal" in agent_session
-    assert "compact(preparation, this.model, apiKey, headers, undefined, controller.signal" in agent_session
-    assert "if (this._autoCompactionAbortController === controller)" in agent_session
-    assert "signal: this.session.agent?.signal" in interactive_mode
 
 
 def test_async_subagent_guidance_separates_automation_from_conversation() -> None:
