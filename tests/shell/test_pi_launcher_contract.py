@@ -485,14 +485,14 @@ def test_launcher_propagates_extension_fatal_startup_errors(mock_shutil_which, m
     assert code != 0
     assert "larva pi: LARVA_MODEL_UNAVAILABLE:" in stderr.getvalue()
 
-def test_launcher_agent_persona_switch_flag_handles_off_ask_auto(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+def test_launcher_agent_persona_switch_flag_handles_manual_confirm_auto_free(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
     """
     Verification target:
-    CLI forwards LARVA_PI_AGENT_PERSONA_SWITCH correctly for off, ask, auto.
+    CLI forwards LARVA_PI_AGENT_PERSONA_SWITCH correctly for manual, confirm, auto, free.
     """
     import io
 
-    for mode in ("off", "ask", "auto"):
+    for mode in ("manual", "confirm", "auto", "free"):
         stdout = io.StringIO()
         stderr = io.StringIO()
         
