@@ -1,0 +1,23 @@
+$ uv run pytest tests/shell/test_pi_extension_real_runtime.py -k agent_persona_switch or async_subagent -v
+warning: `VIRTUAL_ENV=/Users/tefx/Projects/larva/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+   Building larva @ file:///Users/tefx/Projects/larva/.vectl/worktrees/runtime-smoke-proof
+      Built larva @ file:///Users/tefx/Projects/larva/.vectl/worktrees/runtime-smoke-proof
+Uninstalled 19 packages in 77ms
+Installed 65 packages in 118ms
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0 -- /Users/tefx/Projects/larva/.vectl/worktrees/runtime-smoke-proof/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /Users/tefx/Projects/larva/.vectl/worktrees/runtime-smoke-proof
+configfile: pyproject.toml
+plugins: anyio-4.12.1, returns-0.26.0, hypothesis-6.151.9
+collecting ... collected 32 items / 28 deselected / 4 selected
+
+tests/shell/test_pi_extension_real_runtime.py::test_async_subagent_push_uses_real_agent_session_send_custom_message_when_toolctx_lacks_send_surface PASSED [ 25%]
+tests/shell/test_pi_extension_real_runtime.py::test_agent_persona_switch_policy_smoke_outputs_complete_offline_register PASSED [ 50%]
+tests/shell/test_pi_extension_real_runtime.py::test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime PASSED [ 75%]
+tests/shell/test_pi_extension_real_runtime.py::test_runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence PASSED [100%]
+
+======================= 4 passed, 28 deselected in 6.27s =======================
+
+[exit_code=0]

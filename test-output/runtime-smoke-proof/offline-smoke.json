@@ -1,0 +1,451 @@
+$ node scripts/pi-agent-persona-switch-policy-smoke.mjs --offline
+{
+  "offline": true,
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "extension mode enum has no legacy off or ask aliases",
+      "status": "PASS"
+    },
+    {
+      "name": "runtime default confirm registers request-only autonomous tools",
+      "status": "PASS",
+      "evidence": {
+        "registeredToolNames": [
+          "larva_persona_switch",
+          "larva_personas"
+        ]
+      }
+    },
+    {
+      "name": "manual mode hides or rejects autonomous persona surfaces and stale forged calls fail closed",
+      "status": "PASS",
+      "evidence": {
+        "decision": {
+          "action": "deny",
+          "error": {
+            "code": "LARVA_AGENT_PERSONA_SWITCH_MANUAL",
+            "message": "Larva agent persona self-switch mode is manual; larva_persona_switch is unavailable"
+          }
+        },
+        "forgedStatus": "failed",
+        "audit": {
+          "source": "tool",
+          "mode": "manual",
+          "from_persona_id": null,
+          "to_persona_id": "python",
+          "reason": "stale forged call",
+          "handoff": "",
+          "approved": false,
+          "committed": false,
+          "error_code": "LARVA_AGENT_PERSONA_SWITCH_MANUAL",
+          "continue_task": false,
+          "max_switches_per_chain": null,
+          "forged_or_stale": true
+        }
+      }
+    },
+    {
+      "name": "explicit user /larva-persona switch succeeds without creating a restore lease",
+      "status": "PASS",
+      "evidence": {
+        "activePersonaAfterAgentEnd": "python",
+        "restoreAuditCount": 0
+      }
+    },
+    {
+      "name": "manual switch clears an active autonomous lease before restore",
+      "status": "PASS",
+      "evidence": {
+        "activePersonaAfterAgentEnd": "reviewer",
+        "clearAudit": {
+          "source": "runtime",
+          "event": "manual switch clears active lease",
+          "reason": "manual switch via /larva-persona: do not later restore old origin",
+          "lease": {
+            "originPersonaId": "architect",
+            "borrowedPersonaId": "python",
+            "scope": "turn",
+            "initiatedBy": "agent",
+            "originPiModelCaptured": true,
+            "originPiModelLabel": "provider/origin-default-model"
+          }
+        }
+      }
+    },
+    {
+      "name": "restore terminal success",
+      "status": "PASS",
+      "evidence": {
+        "terminal": "success",
+        "activePersonaAfterRestore": "architect",
+        "audit": {
+          "source": "runtime",
+          "event": "restore",
+          "terminal": "success",
+          "lease": {
+            "originPersonaId": "architect",
+            "borrowedPersonaId": "python",
+            "scope": "turn",
+            "initiatedBy": "agent",
+            "originPiModelCaptured": true,
+            "originPiModelLabel": "provider/origin-default-model"
+          },
+          "restored": true,
+          "restored_pi_model": true,
+          "audit": "status/event/audit only; not assistant chat-body text"
+        },
+        "chatMessages": 0
+      }
+    },
+    {
+      "name": "restore terminal failure",
+      "status": "PASS",
+      "evidence": {
+        "terminal": "failure",
+        "activePersonaAfterRestore": "architect",
+        "audit": {
+          "source": "runtime",
+          "event": "restore",
+          "terminal": "failure",
+          "lease": {
+            "originPersonaId": "architect",
+            "borrowedPersonaId": "python",
+            "scope": "turn",
+            "initiatedBy": "agent",
+            "originPiModelCaptured": true,
+            "originPiModelLabel": "provider/origin-default-model"
+          },
+          "restored": true,
+          "restored_pi_model": true,
+          "audit": "status/event/audit only; not assistant chat-body text"
+        },
+        "chatMessages": 0
+      }
+    },
+    {
+      "name": "restore terminal cancellation",
+      "status": "PASS",
+      "evidence": {
+        "terminal": "cancellation",
+        "activePersonaAfterRestore": "architect",
+        "audit": {
+          "source": "runtime",
+          "event": "restore",
+          "terminal": "cancellation",
+          "lease": {
+            "originPersonaId": "architect",
+            "borrowedPersonaId": "python",
+            "scope": "turn",
+            "initiatedBy": "agent",
+            "originPiModelCaptured": true,
+            "originPiModelLabel": "provider/origin-default-model"
+          },
+          "restored": true,
+          "restored_pi_model": true,
+          "audit": "status/event/audit only; not assistant chat-body text"
+        },
+        "chatMessages": 0
+      }
+    },
+    {
+      "name": "restore terminal timeout",
+      "status": "PASS",
+      "evidence": {
+        "terminal": "timeout",
+        "activePersonaAfterRestore": "architect",
+        "audit": {
+          "source": "runtime",
+          "event": "restore",
+          "terminal": "timeout",
+          "lease": {
+            "originPersonaId": "architect",
+            "borrowedPersonaId": "python",
+            "scope": "turn",
+            "initiatedBy": "agent",
+            "originPiModelCaptured": true,
+            "originPiModelLabel": "provider/origin-default-model"
+          },
+          "restored": true,
+          "restored_pi_model": true,
+          "audit": "status/event/audit only; not assistant chat-body text"
+        },
+        "chatMessages": 0
+      }
+    },
+    {
+      "name": "restore failure preserves state, reports, audits, requires user choice, and avoids fallback",
+      "status": "PASS",
+      "evidence": {
+        "activeAfterFailedRestore": "python",
+        "activeAfterUserChoice": "reviewer",
+        "failureAudit": {
+          "source": "runtime",
+          "event": "restore",
+          "terminal": "success",
+          "lease": {
+            "originPersonaId": "architect",
+            "borrowedPersonaId": "python",
+            "scope": "turn",
+            "initiatedBy": "agent",
+            "originPiModelCaptured": true,
+            "originPiModelLabel": "provider/origin-default-model"
+          },
+          "restored": false,
+          "error_code": "LARVA_PERSONA_RESTORE_FAILED",
+          "preserve_current_runtime_state": true,
+          "explicit_user_persona_choice_required": true,
+          "safe_default_fallback": false,
+          "audit": {
+            "terminal": "success",
+            "lease": {
+              "originPersonaId": "architect",
+              "borrowedPersonaId": "python",
+              "scope": "turn",
+              "initiatedBy": "agent",
+              "originPiModelCaptured": true,
+              "originPiModelLabel": "provider/origin-default-model"
+            },
+            "cause": {
+              "code": "LARVA_PERSONA_NOT_FOUND",
+              "message": "Unable to resolve persona architect"
+            }
+          }
+        },
+        "notifications": [
+          [
+            "LARVA_PERSONA_RESTORE_FAILED: Failed to restore persona architect: Unable to resolve persona architect. Preserve current runtime state; explicit user persona choice required; no safe-default fallback.",
+            "error"
+          ],
+          [
+            "Larva persona active: reviewer",
+            "info"
+          ]
+        ],
+        "chatMessages": 0,
+        "autonomousAfterFailure": {
+          "code": "LARVA_PERSONA_RESTORE_FAILED",
+          "message": "Previous persona restore failed; explicit user persona choice is required before further persona-changing action."
+        }
+      }
+    },
+    {
+      "name": "pre-borrow runtime model restore records distinct manual runtime model",
+      "status": "PASS",
+      "evidence": {
+        "origin_persona_default_model": "provider/origin-default-model",
+        "manual_pre_borrow_runtime_model": "manual-provider/manual-runtime-before-borrow",
+        "borrowed_persona_or_model": "python/provider/borrowed-python-model",
+        "restored_runtime_model": "manual-provider/manual-runtime-before-borrow",
+        "non_equality_assertion": "manual-provider/manual-runtime-before-borrow !== provider/origin-default-model",
+        "model_set_call_labels": [
+          "provider/origin-default-model",
+          "provider/borrowed-python-model",
+          "manual-provider/manual-runtime-before-borrow"
+        ]
+      }
+    },
+    {
+      "name": "async subagent exact-handle and no-alias constraints remain enforced",
+      "status": "PASS",
+      "evidence": {
+        "aliasErrors": [
+          "task_id must be an absolute .jsonl path.",
+          "task_id must be an absolute .jsonl path.",
+          "task_id must be an absolute .jsonl path.",
+          "task_id must be an absolute .jsonl path."
+        ],
+        "larvaSubagentTaskIdSchema": {
+          "type": "string",
+          "description": "Optional child session .jsonl path to resume. Omit this field to start a new child session."
+        }
+      }
+    },
+    {
+      "name": "unsupported live mode is not part of the local proof contract",
+      "status": "PASS",
+      "evidence": {
+        "required": false,
+        "supported": false,
+        "proofPath": [
+          "node scripts/pi-agent-persona-switch-policy-smoke.mjs --offline",
+          "uv run pytest tests/shell/test_pi_extension_real_runtime.py -k \"agent_persona_switch or async_subagent\" -v"
+        ]
+      }
+    },
+    {
+      "name": "behavioral proof register is complete and fail-closed",
+      "status": "PASS",
+      "evidence": {
+        "required": 15,
+        "observed": 15
+      }
+    }
+  ],
+  "behavioralProofRegister": [
+    {
+      "requirement_ref": "default_confirm_registers_request_tools",
+      "behavior_claim": "Default confirm mode registers larva_persona_switch and larva_personas from the bundled extension",
+      "runtime_proof_expected": "registerTool observes both tools and decideToolCall allows larva_persona_switch",
+      "evidence_ref": "check:runtime default confirm registers request-only autonomous tools",
+      "status": "PASS",
+      "closure_path": "runtime registration",
+      "gate_decision_basis": "real initializeExtension import with inherited manual env neutralized by explicit undefined ctx.env"
+    },
+    {
+      "requirement_ref": "confirm_request_only_autonomous_surface",
+      "behavior_claim": "Confirm-mode surface is request-only and exposes all four user outcomes",
+      "runtime_proof_expected": "registered tool description names request semantics and Borrow once/Deny/Auto-borrow/Switch persistently outcomes",
+      "evidence_ref": "check:runtime default confirm registers request-only autonomous tools",
+      "status": "PASS",
+      "closure_path": "runtime registered tool metadata",
+      "gate_decision_basis": "tool comes from real extension registerTool, not duplicate policy model"
+    },
+    {
+      "requirement_ref": "manual_mode_autonomous_unavailable",
+      "behavior_claim": "Manual mode does not register autonomous persona tools and tool-call policy denies them",
+      "runtime_proof_expected": "registered tools omit larva_persona_switch/larva_personas and decideToolCall denies",
+      "evidence_ref": "check:manual mode hides or rejects autonomous persona surfaces and stale forged calls fail closed",
+      "status": "PASS",
+      "closure_path": "runtime registration and policy hook",
+      "gate_decision_basis": "manual mode from real initializeExtension"
+    },
+    {
+      "requirement_ref": "stale_or_forged_manual_request_fail_closed",
+      "behavior_claim": "A stale/forged direct larva_persona_switch call in manual mode fails closed",
+      "runtime_proof_expected": "exported handler returns LARVA_AGENT_PERSONA_SWITCH_MANUAL and audit marks forged_or_stale",
+      "evidence_ref": "check:manual mode hides or rejects autonomous persona surfaces and stale forged calls fail closed",
+      "status": "PASS",
+      "closure_path": "runtime handler fail-closed",
+      "gate_decision_basis": "no persona/model/tool commit occurs"
+    },
+    {
+      "requirement_ref": "explicit_user_slash_persona_success_no_lease",
+      "behavior_claim": "Explicit user /larva-persona <id> commits the chosen persona and creates no automatic restore lease",
+      "runtime_proof_expected": "after /larva-persona python, agent_end does not restore architect and no restore audit appears",
+      "evidence_ref": "check:explicit user /larva-persona switch succeeds without creating a restore lease",
+      "status": "PASS",
+      "closure_path": "runtime slash-command handler",
+      "gate_decision_basis": "manual user authority has precedence over autonomous lease model"
+    },
+    {
+      "requirement_ref": "manual_switch_active_lease_precedence",
+      "behavior_claim": "A user manual switch during an active autonomous lease clears the lease and prevents old-origin restore",
+      "runtime_proof_expected": "borrow architect->python, /larva-persona reviewer, agent_end leaves reviewer active",
+      "evidence_ref": "check:manual switch clears an active autonomous lease before restore",
+      "status": "PASS",
+      "closure_path": "runtime lease precedence",
+      "gate_decision_basis": "audit records manual switch clears active lease"
+    },
+    {
+      "requirement_ref": "restore_terminal_success",
+      "behavior_claim": "Turn-scoped lease restores origin persona on assistant terminal success",
+      "runtime_proof_expected": "auto borrow python from architect then agent_end success restores architect",
+      "evidence_ref": "check:restore terminal success",
+      "status": "PASS",
+      "closure_path": "runtime agent_end restore hook",
+      "gate_decision_basis": "status/event/audit only; no chat messages captured"
+    },
+    {
+      "requirement_ref": "restore_terminal_failure",
+      "behavior_claim": "Turn-scoped lease restores origin persona on assistant terminal failure",
+      "runtime_proof_expected": "auto borrow python from architect then agent_end failure restores architect",
+      "evidence_ref": "check:restore terminal failure",
+      "status": "PASS",
+      "closure_path": "runtime agent_end restore hook",
+      "gate_decision_basis": "status/event/audit only; no chat messages captured"
+    },
+    {
+      "requirement_ref": "restore_terminal_cancellation",
+      "behavior_claim": "Turn-scoped lease restores origin persona on assistant terminal cancellation",
+      "runtime_proof_expected": "auto borrow python from architect then agent_end cancellation restores architect",
+      "evidence_ref": "check:restore terminal cancellation",
+      "status": "PASS",
+      "closure_path": "runtime agent_end restore hook",
+      "gate_decision_basis": "status/event/audit only; no chat messages captured"
+    },
+    {
+      "requirement_ref": "restore_terminal_timeout",
+      "behavior_claim": "Turn-scoped lease restores origin persona on assistant terminal timeout",
+      "runtime_proof_expected": "auto borrow python from architect then agent_end timeout restores architect",
+      "evidence_ref": "check:restore terminal timeout",
+      "status": "PASS",
+      "closure_path": "runtime agent_end restore hook",
+      "gate_decision_basis": "status/event/audit only; no chat messages captured"
+    },
+    {
+      "requirement_ref": "restore_failure_state_preservation_reporting_audit_user_choice_no_fallback",
+      "behavior_claim": "Restore failure preserves borrowed runtime state, reports through UI, audits required fields, blocks further autonomous changes until explicit user choice, and performs no safe-default fallback",
+      "runtime_proof_expected": "failed architect restore leaves python active, emits notification/audit, autonomous switch fails with LARVA_PERSONA_RESTORE_FAILED, /larva-persona reviewer succeeds",
+      "evidence_ref": "check:restore failure preserves state, reports, audits, requires user choice, and avoids fallback",
+      "status": "PASS",
+      "closure_path": "runtime restore failure path",
+      "gate_decision_basis": "active persona remains borrowed until explicit user choice; audit safe_default_fallback=false"
+    },
+    {
+      "requirement_ref": "restore_notices_outside_assistant_chat_body",
+      "behavior_claim": "Restore success/failure notices use status/notify/audit surfaces and never assistant chat body",
+      "runtime_proof_expected": "restore probes capture status/audit/notify and zero sendUserMessage/sendMessage calls",
+      "evidence_ref": "checks:restore terminal * + restore failure preserves state",
+      "status": "PASS",
+      "closure_path": "runtime surface capture",
+      "gate_decision_basis": "chatMessages length remains zero across restore paths"
+    },
+    {
+      "requirement_ref": "pre_borrow_runtime_model_restore",
+      "behavior_claim": "Borrow restore returns to the manually selected pre-borrow Pi runtime model rather than collapsing to the origin persona default model",
+      "runtime_proof_expected": "origin persona default model, manual pre-borrow runtime model, borrowed persona/model, and restored runtime model are all captured with manual/default non-equality",
+      "evidence_ref": "check:pre-borrow runtime model restore records distinct manual runtime model",
+      "status": "PASS",
+      "closure_path": "runtime lease model capture and agent_end restore hook",
+      "gate_decision_basis": "manual-provider/manual-runtime-before-borrow !== provider/origin-default-model",
+      "origin_persona_default_model": "provider/origin-default-model",
+      "manual_pre_borrow_runtime_model": "manual-provider/manual-runtime-before-borrow",
+      "borrowed_persona_or_model": "python/provider/borrowed-python-model",
+      "restored_runtime_model": "manual-provider/manual-runtime-before-borrow",
+      "non_equality_assertion": "manual-provider/manual-runtime-before-borrow !== provider/origin-default-model",
+      "restore_audit": {
+        "source": "runtime",
+        "event": "restore",
+        "terminal": "success",
+        "lease": {
+          "originPersonaId": "architect",
+          "borrowedPersonaId": "python",
+          "scope": "turn",
+          "initiatedBy": "agent",
+          "originPiModelCaptured": true,
+          "originPiModelLabel": "manual-provider/manual-runtime-before-borrow"
+        },
+        "restored": true,
+        "restored_pi_model": true,
+        "audit": "status/event/audit only; not assistant chat-body text"
+      }
+    },
+    {
+      "requirement_ref": "async_exact_handle_no_alias_constraints",
+      "behavior_claim": "Async subagent public tools require exact task_id handles and reject last/latest/persona/fuzzy aliases; larva_subagent fresh sessions omit task_id instead of accepting null",
+      "runtime_proof_expected": "registered schemas/descriptions and runtime execute calls reject alias handles with LARVA_BAD_INPUT",
+      "evidence_ref": "check:async subagent exact-handle and no-alias constraints remain enforced",
+      "status": "PASS",
+      "closure_path": "runtime registered tools",
+      "gate_decision_basis": "real tool execute paths reject aliases; larva_subagent task_id schema has no null"
+    },
+    {
+      "requirement_ref": "unsupported_live_not_required",
+      "behavior_claim": "Unsupported node ... --live is not required by the downstream local proof path",
+      "runtime_proof_expected": "offline output records liveModeDisposition.required=false and supported=false",
+      "evidence_ref": "check:unsupported live mode is not part of the local proof contract",
+      "status": "PASS",
+      "closure_path": "contract disposition",
+      "gate_decision_basis": "script only accepts --offline; targeted pytest is the runtime companion proof"
+    }
+  ],
+  "behavioralProofRegisterMarkdown": "| requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- | --- | --- | --- |\n| default_confirm_registers_request_tools | Default confirm mode registers larva_persona_switch and larva_personas from the bundled extension | registerTool observes both tools and decideToolCall allows larva_persona_switch | check:runtime default confirm registers request-only autonomous tools | PASS | runtime registration | real initializeExtension import with inherited manual env neutralized by explicit undefined ctx.env |\n| confirm_request_only_autonomous_surface | Confirm-mode surface is request-only and exposes all four user outcomes | registered tool description names request semantics and Borrow once/Deny/Auto-borrow/Switch persistently outcomes | check:runtime default confirm registers request-only autonomous tools | PASS | runtime registered tool metadata | tool comes from real extension registerTool, not duplicate policy model |\n| manual_mode_autonomous_unavailable | Manual mode does not register autonomous persona tools and tool-call policy denies them | registered tools omit larva_persona_switch/larva_personas and decideToolCall denies | check:manual mode hides or rejects autonomous persona surfaces and stale forged calls fail closed | PASS | runtime registration and policy hook | manual mode from real initializeExtension |\n| stale_or_forged_manual_request_fail_closed | A stale/forged direct larva_persona_switch call in manual mode fails closed | exported handler returns LARVA_AGENT_PERSONA_SWITCH_MANUAL and audit marks forged_or_stale | check:manual mode hides or rejects autonomous persona surfaces and stale forged calls fail closed | PASS | runtime handler fail-closed | no persona/model/tool commit occurs |\n| explicit_user_slash_persona_success_no_lease | Explicit user /larva-persona <id> commits the chosen persona and creates no automatic restore lease | after /larva-persona python, agent_end does not restore architect and no restore audit appears | check:explicit user /larva-persona switch succeeds without creating a restore lease | PASS | runtime slash-command handler | manual user authority has precedence over autonomous lease model |\n| manual_switch_active_lease_precedence | A user manual switch during an active autonomous lease clears the lease and prevents old-origin restore | borrow architect->python, /larva-persona reviewer, agent_end leaves reviewer active | check:manual switch clears an active autonomous lease before restore | PASS | runtime lease precedence | audit records manual switch clears active lease |\n| restore_terminal_success | Turn-scoped lease restores origin persona on assistant terminal success | auto borrow python from architect then agent_end success restores architect | check:restore terminal success | PASS | runtime agent_end restore hook | status/event/audit only; no chat messages captured |\n| restore_terminal_failure | Turn-scoped lease restores origin persona on assistant terminal failure | auto borrow python from architect then agent_end failure restores architect | check:restore terminal failure | PASS | runtime agent_end restore hook | status/event/audit only; no chat messages captured |\n| restore_terminal_cancellation | Turn-scoped lease restores origin persona on assistant terminal cancellation | auto borrow python from architect then agent_end cancellation restores architect | check:restore terminal cancellation | PASS | runtime agent_end restore hook | status/event/audit only; no chat messages captured |\n| restore_terminal_timeout | Turn-scoped lease restores origin persona on assistant terminal timeout | auto borrow python from architect then agent_end timeout restores architect | check:restore terminal timeout | PASS | runtime agent_end restore hook | status/event/audit only; no chat messages captured |\n| restore_failure_state_preservation_reporting_audit_user_choice_no_fallback | Restore failure preserves borrowed runtime state, reports through UI, audits required fields, blocks further autonomous changes until explicit user choice, and performs no safe-default fallback | failed architect restore leaves python active, emits notification/audit, autonomous switch fails with LARVA_PERSONA_RESTORE_FAILED, /larva-persona reviewer succeeds | check:restore failure preserves state, reports, audits, requires user choice, and avoids fallback | PASS | runtime restore failure path | active persona remains borrowed until explicit user choice; audit safe_default_fallback=false |\n| restore_notices_outside_assistant_chat_body | Restore success/failure notices use status/notify/audit surfaces and never assistant chat body | restore probes capture status/audit/notify and zero sendUserMessage/sendMessage calls | checks:restore terminal * + restore failure preserves state | PASS | runtime surface capture | chatMessages length remains zero across restore paths |\n| pre_borrow_runtime_model_restore | Borrow restore returns to the manually selected pre-borrow Pi runtime model rather than collapsing to the origin persona default model | origin persona default model, manual pre-borrow runtime model, borrowed persona/model, and restored runtime model are all captured with manual/default non-equality | check:pre-borrow runtime model restore records distinct manual runtime model | PASS | runtime lease model capture and agent_end restore hook | manual-provider/manual-runtime-before-borrow !== provider/origin-default-model |\n| async_exact_handle_no_alias_constraints | Async subagent public tools require exact task_id handles and reject last/latest/persona/fuzzy aliases; larva_subagent fresh sessions omit task_id instead of accepting null | registered schemas/descriptions and runtime execute calls reject alias handles with LARVA_BAD_INPUT | check:async subagent exact-handle and no-alias constraints remain enforced | PASS | runtime registered tools | real tool execute paths reject aliases; larva_subagent task_id schema has no null |\n| unsupported_live_not_required | Unsupported node ... --live is not required by the downstream local proof path | offline output records liveModeDisposition.required=false and supported=false | check:unsupported live mode is not part of the local proof contract | PASS | contract disposition | script only accepts --offline; targeted pytest is the runtime companion proof |",
+  "liveModeDisposition": {
+    "unsupported_live_requirement_removed_or_supported": "unsupported --live is not required; this smoke harness intentionally supports --offline only",
+    "required": false,
+    "supported": false
+  }
+}
+
+[exit_code=0]
