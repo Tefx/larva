@@ -1,8 +1,14 @@
 # Pi Coding Agent Integration
 
-Status: implementation authority for the current `larva pi` target
+Status: implementation authority for the current `larva pi` target except agent persona switch mode semantics, which are superseded by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
 Scope: `larva pi` launcher, bundled Pi extension, persona switching, adapter-local Pi tool policy keyed by persona id, and Larva-backed subagent spawning  
 Canonical contract authority: opifex-owned PersonaSpec schema
+
+> Supersession note: the current target policy for `/larva-mode` and
+> `--agent-persona-switch` uses four canonical modes: `manual`, `confirm`,
+> `auto`, and `free`, with default `confirm`. `confirm` and `auto` are temporary
+> persona-borrow modes that restore at assistant-turn end. Use
+> [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) for current mode semantics.
 
 ## Decision
 
@@ -176,9 +182,9 @@ maintenance:
 ```
 
 No additional persona-list refresh slash command or alias is introduced. Keeping
-refresh under `/larva-persona` preserves the small command surface: `/larva-persona`,
-`/larva-mode`, and the canonical `/larva-subagent` console (`/larva-log` may remain
-only as a deprecated view-mode alias).
+refresh under `/larva-persona` preserves the small command surface:
+`/larva-persona`, `/larva-mode`, and the canonical `/larva-subagent` console.
+`/larva-log` is not part of the current command surface.
 
 The command supports argument completion for persona ids.
 
@@ -329,44 +335,31 @@ factory-time session entries still recover the latest mode before model startup.
 
 ### Agent persona self-switch
 
-The implemented self-switch policy is a Pi session mode, not a PersonaSpec field
-or opifex shared-contract change. Launch-time configuration accepts
-`larva pi --agent-persona-switch off|ask|auto ...` and
-`LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`; the in-session command is
-`/larva-mode [off|ask|auto]`.
+Agent self-switch policy is a Pi session mode, not a PersonaSpec field or opifex
+shared-contract change. Current target mode semantics are owned by
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
-Mode contract:
+Launch-time configuration accepts:
 
-- `off` is the default. Autonomous model-facing switch tools are hidden from the
-  active tool set and defensive gates reject stale/forged calls. Manual
-  `/larva-persona <id>` switching remains available and atomic.
-- `ask` exposes `larva_persona_switch(persona_id, reason, handoff?,
-  continue_task?, max_switches_per_chain?)` plus read-only bounded
-  `larva_personas(query?, limit?)`. Commit requires UI approval; rejection,
-  cancellation, timeout, or no UI leaves persona/model/tool state unchanged.
-- `auto` exposes the same tools and commits an allowed self-switch without UI
-  approval while the request-chain switch budget remains. The default budget is
-  20 successful committed switches; `max_switches_per_chain: 0` means unlimited
-  for the current request chain. The budget is a tool parameter, not an env var
-  or PersonaSpec/opifex field.
+```text
+larva pi --agent-persona-switch manual|confirm|auto|free ...
+LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free
+```
 
-A successful model-facing switch returns `terminate=true` so the old persona turn
-stops before any continuation under the new prompt. Failed, rejected, and
-same-persona no-op requests do not consume switch budget. Success details include
-generic active-persona proof: `previous_persona`, `active_persona`,
-`spec_digest`, and `commit_source: "self-switch"`. If `continue_task` is true,
-the extension sends an explicit Larva-generated Pi follow-up (`deliverAs: "followUp"`)
-containing the reason, handoff, and generic hard-boundary text: the new persona's
-instructions take priority, and any old execution plan that conflicts with the
-new persona's startup or decision protocol must be discarded. This continuation
-is auditable runtime text and must not be represented as human-authored input.
+The in-session command is:
+
+```text
+/larva-mode [manual|confirm|auto|free]
+```
+
+Mode contract authority is pointer-only here: implementers must use
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
+for the default mode, mode semantics, required `confirm` UI outcomes,
+temporary-borrow lease rules, restore boundary, restore-failure behavior,
+unknown-mode handling, and verification cases.
+
 The model-facing surface remains the facade tool only; there is no direct
 model-facing `commitPersona` tool.
-
-Child subagent Pi processes start with `LARVA_PI_AGENT_PERSONA_SWITCH=off` even
-when the parent session is `ask` or `auto`. The current implementation does not
-provide `LARVA_PI_CHILD_AGENT_PERSONA_SWITCH` and does not implement child
-inherit/ask/auto self-switch modes.
 
 ### Persona mentions
 
@@ -443,9 +436,9 @@ choose how to display them.
 Subagent execution details are shown in the `larva_subagent` tool row through
 custom tool rendering and partial updates. The canonical `/larva-subagent`
 command shows the same adapter-local presentation log as a view-only,
-user-visible Subagent Console; `/larva-log` may remain only as a deprecated
-view-mode alias. Neither surface replaces this footer status:
-`larva: <persona-id>` continues to mean the active parent persona.
+user-visible Subagent Console. `/larva-log` is not part of the current command
+surface. This console does not replace the footer status: `larva: <persona-id>`
+continues to mean the active parent persona.
 
 
 ### Pi TUI dependency and reusable UI components
@@ -1027,11 +1020,11 @@ P2 result rendering:
 
 `/larva-subagent [task_id?]` is the canonical Pi-adapter slash command for
 viewing the parent extension's subagent presentation log and optional
-adapter-local persistent cache. `/larva-log` may remain only as a deprecated
-view-mode alias to this canonical command. It is not a model-facing tool, not a
-shared Larva/opifex schema, and not a tool-policy input. It exists only so the
-human user can inspect recent subagent row/progress/result presentation without
-streaming full child logs into the parent model context.
+adapter-local persistent cache. `/larva-log` is not part of the current command
+surface. The console is not a model-facing tool, not a shared Larva/opifex
+schema, and not a tool-policy input. It exists only so the human user can inspect
+recent subagent row/progress/result presentation without streaming full child
+logs into the parent model context.
 
 Overlay selection contract:
 
@@ -2474,7 +2467,7 @@ Prompt identity overlay delta:
 #### Subagent selector and live streaming overlay delta
 
 - `/larva-subagent` is the canonical authorized user-visible overlay for this
-  target. `/larva-log` may remain only as a deprecated view-mode alias. The default
+  target. `/larva-log` is not part of the current command surface. The default
   command opens newest-detail mode; selector mode is entered with `s` or directly
   via `/larva-subagent --select`.
 - Selector state is adapter-local overlay state. It selects among parent-observed

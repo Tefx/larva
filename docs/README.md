@@ -13,6 +13,7 @@ project documentation lives here by category.
 - [`reference/ARCHITECTURE.md`](reference/ARCHITECTURE.md)
 - [`reference/INTERFACES.md`](reference/INTERFACES.md)
 - [`reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md) — accepted design basis for Pi async/background subagents, targeted cancellation, and `/larva-subagent` UX.
+- [`reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) — target four-level Pi agent/runtime persona switch policy: `manual`, `confirm`, `auto`, `free`.
 
 ## Decisions
 
@@ -23,8 +24,15 @@ project documentation lives here by category.
 - `../design/registry-local-variants-and-assembly-removal.md` — accepted design
   for removing assembly/component surfaces and adding registry-local variants
   without changing PersonaSpec
+- `../design/pi-agent-persona-self-switch.md` — historical first-target design;
+  its `off|ask|auto` mode semantics are obsolete for new work. Current mode
+  semantics are owned by `reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`.
+- `../design/pi-coding-agent-integration.md` — current Pi integration design
+  except `/larva-mode` / `--agent-persona-switch` mode semantics, which are owned
+  by `reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`.
 - `../design/` — design and adjudication history. Older component/assembly docs
   are historical unless restated by the accepted registry-local variants design.
+
 ## Still intentionally at repo root
 
 - `../README.md` — project entrypoint for GitHub and package metadata

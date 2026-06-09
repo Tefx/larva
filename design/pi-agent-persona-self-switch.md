@@ -1,14 +1,26 @@
 # Larva Pi Agent Persona Self-Switch Design
 
-Status: implemented first target; future child inherit/ask/auto policy remains unimplemented
+Status: historical first-target design; superseded for future mode semantics by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
 Scope: `larva pi` launcher and bundled Pi extension only
 Canonical contract authority: opifex-owned PersonaSpec schema remains unchanged
 
+> Supersession note: this document records the first implemented self-switch target.
+> The current target policy uses four canonical modes — `manual`, `confirm`,
+> `auto`, and `free` — with default `confirm`; `confirm` and `auto` are temporary
+> persona-borrow modes that restore at assistant-turn end. Use
+> [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) as the current policy source
+> for new implementation and documentation work.
+
 ## Decision
 
-Add a session-level agent persona switch policy for Larva's Pi integration.
+This section is a historical first-target snapshot. The mode names, default, and
+switch persistence semantics in this section are obsolete for new work. Current
+mode authority is [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
-The feature has three user-facing surfaces:
+The historical first target added a session-level agent persona switch policy for
+Larva's Pi integration.
+
+The historical feature had three user-facing surfaces:
 
 ```text
 larva pi --agent-persona-switch off|ask|auto ...
@@ -51,13 +63,17 @@ persona prompt.
 - No child-to-parent persona mutation.
 - No automatic child self-switch in the first target.
 
-## User-facing policy modes
+## Historical first-target policy modes
+
+The following `off|ask|auto` modes are legacy/historical and are superseded by
+`manual|confirm|auto|free` with default `confirm` in
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 ### `off`
 
-Default mode.
+Historical first-target default mode.
 
-Behavior:
+Historical behavior:
 
 - The agent cannot self-switch persona.
 - `larva_persona_switch` is not active or visible to the model.
@@ -87,7 +103,12 @@ Behavior:
 - If `continue_task` is true, the extension queues a Larva-generated continuation
   so the new persona can continue the same task on the next turn.
 
-## Runtime flow
+## Historical runtime flow
+
+This runtime flow is obsolete and non-authoritative for new work because it uses
+the first-target `off|ask|auto` policy. Current runtime semantics for
+`/larva-mode` and `--agent-persona-switch` are owned by
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 ```text
 LLM current persona
@@ -114,7 +135,10 @@ The model calls `larva_persona_switch`. It never calls `commitPersona(...)`.
 - `larva_persona_switch(...)` model-facing tool;
 - startup initial persona commit.
 
-## Termination semantics
+## Historical termination semantics
+
+This section describes the first-target persistent-switch flow. It is historical
+unless restated by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 A successful self-switch must return a terminating tool result.
 
@@ -138,7 +162,10 @@ message when switching persona.
 
 The extension should also defend against mixed tool batches where possible.
 
-## Auto-continuation
+## Historical auto-continuation
+
+This section describes the first-target persistent-switch flow. It is historical
+unless restated by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 Committing a persona changes runtime state but does not by itself start another
 model turn.
@@ -164,7 +191,10 @@ human-authored request. It is also a generic hard-boundary reminder: the new
 persona's instructions take priority, and any previous execution plan that
 conflicts with the new persona's startup or decision protocol must be discarded.
 
-## Switch budget
+## Historical switch budget
+
+This section describes the first-target `off|ask|auto` budget model. It is
+historical unless restated by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 `larva_persona_switch` replaces the old one-switch-per-chain guard with a small
 numeric budget:
@@ -192,7 +222,10 @@ pi.sendUserMessage(<Larva-generated continuation>, { deliverAs: "followUp" })
 
 This should be runtime-tested against Pi's queue and termination behavior.
 
-## Session state
+## Historical session state
+
+This section describes obsolete first-target mode persistence. Current mode names
+and default are owned by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 CLI startup sets the default mode through environment:
 
@@ -224,7 +257,11 @@ On session start, mode resolution order is:
 2. launcher environment default;
 3. hard default `off`.
 
-## Tool exposure and prompt guidance
+## Historical tool exposure and prompt guidance
+
+This section describes obsolete first-target mode exposure. Current mode names,
+default, and borrow/restore semantics are owned by
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 The active tool set must reflect session mode.
 
@@ -256,7 +293,12 @@ committed.
 
 For `off`, do not inject self-switch guidance.
 
-## Child subagent policy
+## Historical child subagent policy
+
+This section is obsolete and non-authoritative for current mode-semantics work.
+It records first-target `off|inherit|ask|auto` child-policy thinking only.
+Current parent-session mode semantics are owned by
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 A child subagent is a separate Pi process and session. It should use the same
 implementation machinery, but it needs an explicit policy boundary.
@@ -281,11 +323,16 @@ LARVA_PI_CHILD_AGENT_PERSONA_SWITCH=off|inherit|ask|auto
 
 Do not add this until parent-session self-switch is proven stable.
 
-## Audit entries
+## Historical audit entries
+
+This section is obsolete and non-authoritative for current mode-semantics work.
+The example below uses first-target `off|ask|auto` mode names and must not be
+used as current mode authority. Current mode names and audit expectations are
+owned by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 Every attempted switch should create a non-model-context custom entry.
 
-Suggested details shape:
+Historical suggested details shape:
 
 ```json
 {
@@ -305,7 +352,10 @@ Suggested details shape:
 These entries are for user inspection, tests, and session recovery. They are not
 shared opifex contracts.
 
-## Loop and abuse guards
+## Historical loop and abuse guards
+
+This section describes obsolete first-target guards. Current guard requirements
+are owned by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 Minimum guards:
 
@@ -318,7 +368,15 @@ Minimum guards:
 - `ask` mode requires live UI confirmation.
 - Child sessions default to `off`.
 
-## Architecture basis
+## Historical architecture basis
+
+This structured architecture basis is obsolete and non-authoritative for new
+mode-semantics work. It remains only as a record of the first-target
+`off|ask|auto` design. Current implementers must use
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
+for canonical mode names, default mode, confirm UI outcomes, borrow/restore
+semantics, unknown-mode handling, restore-failure behavior, and verification
+cases.
 
 ```yaml
 architecture_basis:
@@ -442,9 +500,14 @@ architecture_basis:
   readiness: "READY_FOR_PLANNING"
 ```
 
-## Implementation handoff
+## Historical implementation handoff
 
-Suggested order:
+This section is obsolete for new work. It remains only as a record of the first
+implemented target. Current implementation planning must use
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
+for mode names, default mode, borrow/restore semantics, and verification edges.
+
+Historical suggested order:
 
 1. Add CLI flag parsing and env forwarding.
 2. Add extension mode enum, mode resolution, and session persistence.
@@ -457,7 +520,11 @@ Suggested order:
 9. Add terminate behavior and auto-continuation.
 10. Force child process default mode to `off`.
 
-## Verification targets
+## Historical verification targets
+
+These targets are obsolete for new mode-semantics work because they refer to the
+first-target `off|ask|auto` policy. Current verification targets are in
+[`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 - CLI forwards `LARVA_PI_AGENT_PERSONA_SWITCH` correctly.
 - Invalid CLI mode fails before Pi launch.

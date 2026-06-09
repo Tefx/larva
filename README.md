@@ -229,7 +229,7 @@ behavior, target refresh semantics, and failure handling.
 ## Pi Coding Agent integration
 
 ```bash
-larva pi --persona python-senior --agent-persona-switch ask -- <pi args...>
+larva pi --persona python-senior --agent-persona-switch confirm -- <pi args...>
 ```
 
 `larva pi` launches the real Pi CLI with the bundled Larva Pi extension loaded
@@ -239,8 +239,9 @@ other Pi settings file as a fallback. The launcher-owned environment includes th
 resolved real Pi binary, selected extension flag, bundled extension entry, Larva
 CLI argv prefix, optional initial persona id, explicit adapter-config overrides,
 interactive-mode classification, the agent self-switch default from
-`--agent-persona-switch off|ask|auto` / `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`,
-and `LARVA_PI_LAUNCHED=1`. The sentinel prevents recursive child/RPC launches;
+`--agent-persona-switch manual|confirm|auto|free` /
+`LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`, and
+`LARVA_PI_LAUNCHED=1`. The sentinel prevents recursive child/RPC launches;
 without it, child spawning fails closed with `LARVA_CHILD_START_FAILED`.
 
 Persona-specific Pi tool rules live in adapter-local
@@ -259,29 +260,34 @@ preserves that manual runtime choice on later prompt turns until another explici
 persona commit or fresh startup/session restore applies a persona model again.
 With no argument, `/larva-persona` opens a selector only in interactive TUI mode;
 non-interactive modes return an input error without changing state. This manual
-command remains available even when agent self-switch mode is `off`.
+command remains available even when agent self-switch mode is `manual`.
 
-Agent self-switch is session-level Pi policy, not PersonaSpec policy. The default
-is `off`; it can be set at launch with `--agent-persona-switch off|ask|auto`, by
-setting `LARVA_PI_AGENT_PERSONA_SWITCH=off|ask|auto`, or during the session with
-`/larva-mode [off|ask|auto]`. In `off`, model-facing autonomous
-switch tools are hidden from the active tool set and stale or forged calls are
-rejected while manual `/larva-persona <id>` still works. In `ask`,
-`larva_persona_switch(persona_id, reason, handoff?, continue_task?, max_switches_per_chain?)` and the
-bounded read-only `larva_personas(query?, limit?)` discovery tool are exposed, but
-the switch commits only after UI approval and fails safely without UI, rejection,
-cancel, or timeout. In `auto`, those tools are exposed and an allowed switch
-commits without UI approval while the request-chain switch budget remains. The
-default is 20 successful committed switches; `max_switches_per_chain: 0` means
-unlimited for the current request chain. A successful autonomous switch returns
-`terminate=true` with active persona proof (`previous_persona`, `active_persona`,
-`spec_digest`, `commit_source`); if `continue_task` is true, Larva queues an
-explicit `[Larva-generated continuation after persona switch]` follow-up for the
-new persona with generic hard-boundary text rather than pretending a human wrote a
-new request. Child subagent Pi
-sessions currently start with agent self-switch mode `off`; there is no
-implemented child inherit/ask/auto switch policy, no PersonaSpec/opifex contract
-change, and no direct model-facing `commitPersona` tool.
+Agent self-switch is session-level Pi policy, not PersonaSpec policy. The target
+policy defines four exact modes: `manual`, `confirm`, `auto`, and `free`; the
+full policy is documented in
+[`docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
+The default is `confirm`. It can be set at launch with
+`--agent-persona-switch manual|confirm|auto|free`, by setting
+`LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`, or during the session
+with `/larva-mode [manual|confirm|auto|free]`. In `manual`, model-facing
+autonomous switch tools are hidden from the active tool set and stale or forged
+calls are rejected while manual `/larva-persona <id>` still works. In `confirm`,
+those tools may request a temporary persona borrow, but the borrow commits only
+after UI approval and fails safely without UI, rejection, cancel, or timeout. Any
+`confirm` UI must provide four outcomes: `Borrow once`, `Deny`, `Auto-borrow for
+this session`, and `Switch persistently`; the normal approval is temporary
+borrow, not persistent switch. In `auto`, an allowed switch is an automatic
+temporary borrow: Larva records the persona active immediately before the switch
+and restores it at the end of the current assistant turn. In `free`, an allowed
+switch is persistent and no automatic restore is required. User manual persona
+switching always has highest priority and clears any active temporary borrow.
+Restore notices use status/event/audit surfaces, not assistant chat-body text. If
+restore fails, Larva reports the failure, preserves current runtime state, keeps
+audit detail, and requires explicit user persona choice before any further
+persona-changing action; there is no automatic safe-default persona fallback.
+Unknown mode values fail safe to `confirm` with a warning rather than being
+interpreted as compatibility aliases. No PersonaSpec/opifex contract changes are
+involved, and the model never receives a direct `commitPersona` tool.
 
 Initial `larva pi --persona <id>` model/policy failures are fatal startup errors
 when launched through the sentinel path: the extension writes
