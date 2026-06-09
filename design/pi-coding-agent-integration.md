@@ -459,6 +459,16 @@ this integration target. Do not switch to a semver range until live Pi runtime
 compatibility is proven; Pi upgrades must update both package and lock files in
 the same pass and rerun the Pi-extension UI/runtime gates.
 
+Local Pi runtime hardening expected by this integration target:
+
+- Extension shortcut contexts must tolerate an absent `session.agent` by exposing
+  `signal: undefined` rather than throwing while the UI is otherwise usable.
+- Context-overflow auto-compaction must keep its abort controller in a local
+  variable for each `_runAutoCompaction` call and clear the shared field only when
+  it still references that same controller. This prevents concurrent/reentrant
+  overflow recovery from failing with `Cannot read properties of undefined
+  (reading 'signal')`.
+
 The adapter must prefer Pi TUI primitives over handwritten terminal UI code:
 
 - Import primitives directly from `@earendil-works/pi-tui`; host-global module
@@ -876,17 +886,17 @@ larva_subagent_status(task_id?, limit?)
 
 Input contract:
 
-- `task_id`: optional exact public child `.jsonl` path. Omitted or `null` lists
-  recent active-run registry snapshots. A string must be non-empty, absolute,
-  end in `.jsonl`, and stay under the child session root by lexical path
-  semantics. Invalid strings return `LARVA_BAD_INPUT`.
+- `task_id`: optional exact public child `.jsonl` path. Omit it to list recent
+  active-run registry snapshots; public schemas do not accept `null`. A string
+  must be non-empty, absolute, end in `.jsonl`, and stay under the child session
+  root by lexical path semantics. Invalid strings return `LARVA_BAD_INPUT`.
 - `limit`: optional integer; default `10`; allowed range `1..25`. Invalid values
   return `LARVA_BAD_INPUT`.
 
 Success returns a Pi ToolResult wrapper with `details.status: "success"`,
 `details.runs`, and `details.error: null`. Each run contains only
-`task_id`, `persona_id`, `status`, `phase`, `result_pending`, `updated_at`, and
-`error`. Allowed run statuses are `accepted`, `running`, `cancelling`,
+`task_id`, `persona_id`, `status`, `phase`, `result_pending`, `started_at`,
+`updated_at`, `elapsed_ms`, `age_ms`, `sequence_latest`, and `error`. Allowed run statuses are `accepted`, `running`, `cancelling`,
 `cancelled`, `success`, and `failed`.
 
 With an exact observed `task_id`, status returns exactly one latest registry
@@ -1890,7 +1900,7 @@ type ToolPolicyDecision =
 type LarvaSubagentInput = {
   persona_id: string;
   task: string;
-  task_id?: string | null;
+  task_id?: string;
 };
 
 type LarvaSubagentResult = {
@@ -2205,7 +2215,7 @@ architecture_basis:
     policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; initial startup tolerates absent/unsupported enumeration surfaces with an empty baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
     persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent; list results are projected into prompt-free PersonaCandidate cache before UI use"
     subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; omit task_id for a new session; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
-    subagent_status_tool: "canonical larva_subagent_status(task_id?, limit?: int = 10, 1..25) -> process-local active/recent registry snapshots with task_id/persona_id/status/phase/result_pending/updated_at/error; exact observed task_id returns one run; well-formed unobserved exact task_id returns runs: []; invalid input returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, public run_id, or provenance inference"
+    subagent_status_tool: "canonical larva_subagent_status(task_id?, limit?: int = 10, 1..25) -> process-local active/recent registry snapshots with task_id/persona_id/status/phase/result_pending/started_at/updated_at/elapsed_ms/age_ms/sequence_latest/error; omit task_id for recent runs; public schemas do not accept null; exact observed task_id returns one run; well-formed unobserved exact task_id returns runs: []; invalid input returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, public run_id, or provenance inference"
     subagent_sessions_helper: "optional compatibility-only larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; non-authoritative for status/resume/provenance; no filesystem scan, sidecar, alias, or provenance proof"
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
     subagent_presentation_overlay: "/larva-subagent [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; /larva-log is only a deprecated view-mode alias; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"

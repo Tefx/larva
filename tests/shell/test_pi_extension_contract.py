@@ -27,6 +27,8 @@ PI_INTEGRATION_DESIGN: Final = ROOT / "design" / "pi-coding-agent-integration.md
 PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-persona-selector-ui.mjs"
 PI_EXTENSION_PACKAGE_JSON: Final = ROOT / "contrib" / "pi-extension" / "package.json"
 PI_EXTENSION_PACKAGE_LOCK: Final = ROOT / "contrib" / "pi-extension" / "package-lock.json"
+PI_AGENT_SESSION_JS: Final = Path("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js")
+PI_INTERACTIVE_MODE_JS: Final = Path("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/interactive-mode.js")
 PYPROJECT: Final = ROOT / "pyproject.toml"
 PI_TUI_PINNED_VERSION: Final = "0.78.0"
 PI_EXTENSION_NPM_CI_COMMAND: Final = "npm --prefix contrib/pi-extension ci"
@@ -355,6 +357,55 @@ def test_async_subagent_deterministic_orchestration_tools_registered(
 
     missing = [token for token in required_tokens if token not in source]
     assert not missing, f"{tool_name} deterministic orchestration gap; missing tokens: {missing}"
+
+
+def test_subagent_wait_supports_long_deadlines_and_visible_snapshots() -> None:
+    """Long-running subagents need long waits and self-contained timeout evidence."""
+    source = _source()
+    assert "SUBAGENT_WAIT_MAX_TIMEOUT_MS = 86_400_000" in source
+    assert "maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS" in source
+    assert "recommended_next_action" in source
+    assert "snapshots: snapshotsByTaskId(runs)" in source
+    assert "runs.map(subagentSnapshotLine)" in source
+    assert "maximum: 60000" not in source
+    for forbidden in (
+        'return_when: { anyOf: [{ enum: ["all", "any", "first_error"] }, { type: "null" }]',
+        'timeout_ms: { anyOf: [{ type: "integer", minimum: 0, maximum: 60000 }, { type: "null" }]',
+        'task_id: { anyOf: [{ type: "string" }, { type: "null" }]',
+    ):
+        assert forbidden not in source
+
+
+def test_persona_shortcut_cold_cache_errors_are_larva_results_not_plain_rejections() -> None:
+    """Ctrl+Alt+P must not surface `[object Object]` on cold cache failure."""
+    source = _source()
+    assert "const personas = await listPersonas(ctx);" in source
+    assert "catch (caught)" in source
+    assert "if (isLarvaError(caught)) return { ok: false, error: caught };" in source
+    assert "openPersonaSelector(ctx);" in source
+
+
+def test_unknown_session_persona_switch_mode_warning_is_deduped_and_scans_history() -> None:
+    """Bad historical mode entries should fail safe without warning spam."""
+    source = _source()
+    assert "let sawUnknownMode = false;" in source
+    assert "if (isAgentPersonaSwitchMode(mode)) return mode;" in source
+    assert "sawUnknownMode = true;" in source
+    assert "const emittedAgentPersonaSwitchModeWarnings = new Set<string>();" in source
+    assert "if (emittedAgentPersonaSwitchModeWarnings.has(message)) continue;" in source
+
+
+def test_installed_pi_runtime_signal_hotfixes_present() -> None:
+    """Local Pi runtime must not read undefined.signal in shortcut/overflow paths."""
+    if not PI_AGENT_SESSION_JS.exists() or not PI_INTERACTIVE_MODE_JS.exists():
+        pytest.skip("installed pi runtime not available")
+    agent_session = PI_AGENT_SESSION_JS.read_text(encoding="utf-8")
+    interactive_mode = PI_INTERACTIVE_MODE_JS.read_text(encoding="utf-8")
+    assert "const controller = new AbortController();" in agent_session
+    assert "signal: controller.signal" in agent_session
+    assert "compact(preparation, this.model, apiKey, headers, undefined, controller.signal" in agent_session
+    assert "if (this._autoCompactionAbortController === controller)" in agent_session
+    assert "signal: this.session.agent?.signal" in interactive_mode
 
 
 def test_async_subagent_guidance_separates_automation_from_conversation() -> None:

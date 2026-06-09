@@ -1878,6 +1878,48 @@ def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
     assert "mock/local harness hook evidence is never sufficient" in autocomplete_gate["supportRule"]
 
 
+def test_persona_selector_cold_cache_waits_and_plain_larva_errors_do_not_reject(tmp_path: Path) -> None:
+    """The persona shortcut path must not fail first press as `[object Object]`."""
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        {_node_prelude(tmp_path)}
+        mod.resetPersonaCompletionCache();
+        const cachePath = join(tmpRoot, "persona-cache.json");
+        const ctx = {{
+          env: baseEnv({{ FAKE_LARVA_LIST_DELAY_MS: "250", LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: cachePath }}),
+          ui: {{
+            select: async (_title, options) => options[0]?.id ?? null,
+            notify: () => undefined,
+            setStatus: () => undefined,
+          }},
+          modelRegistry,
+        }};
+        const selected = await mod.openPersonaSelector(ctx);
+
+        mod.resetPersonaCompletionCache();
+        const failed = await mod.handlePersonaCommand("", {{
+          ...ctx,
+          env: baseEnv({{ FAKE_LARVA_SCENARIO: "list-exit", LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: join(tmpRoot, "persona-cache-failed.json") }}),
+        }}, piBase);
+
+        console.log(JSON.stringify({{
+          selected,
+          failedOk: failed.ok === false,
+          failedErrorCode: failed.error?.code ?? null,
+          failedStringified: String(failed.error),
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["selected"] == "ok"
+    assert payload["failedOk"] is True
+    assert payload["failedErrorCode"] == "LARVA_PERSONA_NOT_FOUND"
+    assert payload["failedStringified"] == "[object Object]"
+
+
 def test_subagent_log_overlay_command_green_without_live_credentials() -> None:
     """Expose the realtime/log UI gap without depending on live Pi credentials."""
 
@@ -2474,11 +2516,15 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
 
     contract = payload["status_contract"]
     expected_schema_fields = [
+        "age_ms",
         "callback_delivery",
+        "elapsed_ms",
         "error",
         "persona_id",
         "phase",
         "result_pending",
+        "sequence_latest",
+        "started_at",
         "status",
         "task_id",
         "updated_at",

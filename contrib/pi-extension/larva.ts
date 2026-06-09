@@ -172,7 +172,11 @@ type LarvaSubagentRunSnapshot = {
   status: LarvaSubagentPublicStatus;
   phase: string;
   result_pending: boolean;
+  started_at: string;
   updated_at: string;
+  elapsed_ms: number;
+  age_ms: number;
+  sequence_latest: number;
   error: LarvaError | null;
   callback_delivery: SubagentCallbackDeliveryState;
 };
@@ -276,6 +280,8 @@ type LarvaSubagentWaitResult = {
     ready_task_ids: string[];
     pending_task_ids: string[];
     next_sequence: number;
+    snapshots: Record<string, LarvaSubagentRunSnapshot>;
+    recommended_next_action: "none" | "continue_waiting" | "inspect_error";
     error: LarvaError | null;
   };
   isError: boolean;
@@ -432,6 +438,8 @@ type PersonaListCache = { key: string; fetchedAtMs: number; items: PersonaCandid
 type PersonaListInFlight = { key: string; promise: Promise<PersonaCandidate[] | null> } | null;
 
 const CLI_TIMEOUT_MS = 10_000;
+const SUBAGENT_WAIT_DEFAULT_TIMEOUT_MS = 10_000;
+const SUBAGENT_WAIT_MAX_TIMEOUT_MS = 86_400_000; // 24h: subagents may run for minutes or hours.
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
 const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 75;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
@@ -2915,12 +2923,16 @@ function sessionCustomData(entry: unknown, customType: string): Record<string, u
 
 function latestStoredAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode | null | "unknown" {
   const entries = sessionEntries(ctx);
+  let sawUnknownMode = false;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const data = sessionCustomData(entries[index], "larva-agent-persona-switch-mode");
     if (data === null) continue;
     const mode = data.mode;
     if (isAgentPersonaSwitchMode(mode)) return mode;
-    agentPersonaSwitchModeWarnings.push(`unknown agent persona switch mode in session; using confirm`);
+    sawUnknownMode = true;
+  }
+  if (sawUnknownMode) {
+    agentPersonaSwitchModeWarnings.push("unknown agent persona switch mode in session; using confirm");
     return "unknown";
   }
   return null;
@@ -2937,9 +2949,13 @@ function resolveAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode {
   return isAgentPersonaSwitchMode(envMode) ? envMode : "confirm";
 }
 
+const emittedAgentPersonaSwitchModeWarnings = new Set<string>();
+
 async function emitAgentPersonaSwitchModeWarnings(ctx: PiContext): Promise<void> {
   const warnings = agentPersonaSwitchModeWarnings.splice(0);
   for (const message of warnings) {
+    if (emittedAgentPersonaSwitchModeWarnings.has(message)) continue;
+    emittedAgentPersonaSwitchModeWarnings.add(message);
     await notify(ctx, message, "warning");
     appendSessionCustomEntry(ctx, "larva-agent-persona-switch-warning", { message, effective_mode: "confirm", emitted_at: new Date().toISOString() });
   }
@@ -3480,7 +3496,7 @@ async function openEnhancedPersonaSelector(ctx: PiContext, personas: BridgeListI
 }
 
 export async function openPersonaSelector(ctx: PiContext): Promise<string | null> {
-  const personas = await cachedPersonaListHotPath(ctx);
+  const personas = await listPersonas(ctx);
   if (personas.length === 0) throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
   const enhanced = await openEnhancedPersonaSelector(ctx, personas);
   if (enhanced.handled) return enhanced.selected;
@@ -3504,7 +3520,13 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
   if (currentEnv(ctx).LARVA_PI_INTERACTIVE_TUI !== "1") {
     return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selector is interactive TUI only; preserve previousEnvelope") };
   }
-  const selected = await openPersonaSelector(ctx);
+  let selected: string | null;
+  try {
+    selected = await openPersonaSelector(ctx);
+  } catch (caught) {
+    if (isLarvaError(caught)) return { ok: false, error: caught };
+    throw caught;
+  }
   if (!selected) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selection cancelled") };
   const result = await commitPersonaWithOptions(selected, ctx, pi, { sessionCommitSource: "selector" });
   if (result.ok) clearActivePersonaLease("manual switch via selector clears active lease and skip restore", ctx, pi);
@@ -4082,15 +4104,33 @@ function updateSubagentBackgroundIndicator(ctx?: PiContext): void {
   }
 }
 
+function nonNegativeElapsedMs(since: string, now = Date.now()): number {
+  const parsed = Date.parse(since);
+  return Number.isFinite(parsed) ? Math.max(0, now - parsed) : 0;
+}
+
+function latestSubagentEventSequenceForTask(taskId: string): number {
+  for (let index = subagentEventLog.length - 1; index >= 0; index -= 1) {
+    const eventValue = subagentEventLog[index];
+    if (eventValue.task_id === taskId) return eventValue.sequence;
+  }
+  return 0;
+}
+
 function statusSnapshotForRun(record: ActiveSubagentRun, status: LarvaSubagentPublicStatus = record.status === "starting" ? "accepted" : record.status): LarvaSubagentRunSnapshot | null {
   if (record.task_id === null) return null;
+  const now = Date.now();
   return {
     task_id: record.task_id,
     persona_id: record.persona_id,
     status,
     phase: record.phase,
     result_pending: !isTerminalSubagentStatus(status),
+    started_at: record.started_at,
     updated_at: record.updated_at,
+    elapsed_ms: nonNegativeElapsedMs(record.started_at, now),
+    age_ms: nonNegativeElapsedMs(record.updated_at, now),
+    sequence_latest: latestSubagentEventSequenceForTask(record.task_id),
     error: record.error,
     callback_delivery: record.callback_delivery,
   };
@@ -4628,13 +4668,26 @@ function latestStatusSnapshots(limit: number): LarvaSubagentRunSnapshot[] {
   return snapshots.sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at)).slice(0, limit);
 }
 
+function subagentSnapshotLine(run: LarvaSubagentRunSnapshot): string {
+  const elapsed = Math.round(run.elapsed_ms / 1000);
+  const age = Math.round(run.age_ms / 1000);
+  const pending = run.result_pending ? "pending" : "terminal";
+  const callback = `callback=${run.callback_delivery}`;
+  const errorCode = run.error === null ? "" : ` error=${run.error.code}`;
+  return `- ${run.task_id} ${run.persona_id}:${run.status}:${run.phase} ${pending} elapsed=${elapsed}s age=${age}s seq=${run.sequence_latest} ${callback}${errorCode}`;
+}
+
+function snapshotsByTaskId(runs: LarvaSubagentRunSnapshot[]): Record<string, LarvaSubagentRunSnapshot> {
+  return Object.fromEntries(runs.map((run) => [run.task_id, run]));
+}
+
 function wrapSubagentStatusResult(runs: LarvaSubagentRunSnapshot[], larvaError: LarvaError | null = null): LarvaSubagentStatusResult {
   const failedStatus = larvaError !== null;
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
     : runs.length === 0
       ? "Larva subagent status: no observed runs"
-      : `Larva subagent status: ${runs.map((run) => `${run.persona_id}:${run.status}:${run.phase}`).join(", ")}`;
+      : [`Larva subagent status: ${runs.length} observed run(s)`, ...runs.map(subagentSnapshotLine)].join("\n");
   return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", runs, error: larvaError }, isError: failedStatus };
 }
 
@@ -4737,7 +4790,7 @@ function parseSubagentWaitInput(input: unknown, env: RuntimeEnv, forceReturnWhen
   if (isLarvaError(taskIds)) return taskIds;
   const returnWhenValue = forceReturnWhen ?? (input.return_when === undefined || input.return_when === null ? "all" : input.return_when);
   if (returnWhenValue !== "all" && returnWhenValue !== "any" && returnWhenValue !== "first_error") return error("LARVA_BAD_INPUT", "return_when must be all, any, or first_error.");
-  const timeoutMs = parseOptionalInteger(input.timeout_ms, "timeout_ms", 0, 60000, 10000);
+  const timeoutMs = parseOptionalInteger(input.timeout_ms, "timeout_ms", 0, SUBAGENT_WAIT_MAX_TIMEOUT_MS, SUBAGENT_WAIT_DEFAULT_TIMEOUT_MS);
   if (isLarvaError(timeoutMs)) return timeoutMs;
   return { taskIds, returnWhen: returnWhenValue, timeoutMs };
 }
@@ -4771,14 +4824,24 @@ function evaluateSubagentWait(taskIds: string[], returnWhen: LarvaSubagentWaitRe
   return { runs, readyTaskIds, pendingTaskIds, satisfied };
 }
 
+function waitRecommendedNextAction(failedStatus: boolean, satisfied: boolean, pendingTaskIds: string[]): "none" | "continue_waiting" | "inspect_error" {
+  if (failedStatus) return "inspect_error";
+  if (satisfied || pendingTaskIds.length === 0) return "none";
+  return "continue_waiting";
+}
+
 function wrapSubagentWaitResult(returnWhen: LarvaSubagentWaitReturnWhen, satisfied: boolean, timedOut: boolean, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[], larvaError: LarvaError | null = null): LarvaSubagentWaitResult {
   const failedStatus = larvaError !== null;
+  const nextAction = waitRecommendedNextAction(failedStatus, satisfied, pendingTaskIds);
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
-    : `Larva subagent wait ${returnWhen}: ${satisfied ? "satisfied" : timedOut ? "timed out" : "pending"}`;
+    : [
+      `Larva subagent wait ${returnWhen}: ${satisfied ? "satisfied" : timedOut ? "timed out" : "pending"}; ready=${readyTaskIds.length}; pending=${pendingTaskIds.length}; next=${nextAction}`,
+      ...runs.map(subagentSnapshotLine),
+    ].join("\n");
   return {
     content: [{ type: "text", text }],
-    details: { status: failedStatus ? "failed" : "success", return_when: returnWhen, satisfied, timed_out: timedOut, runs, ready_task_ids: readyTaskIds, pending_task_ids: pendingTaskIds, next_sequence: highestSubagentEventSequence(), error: larvaError },
+    details: { status: failedStatus ? "failed" : "success", return_when: returnWhen, satisfied, timed_out: timedOut, runs, ready_task_ids: readyTaskIds, pending_task_ids: pendingTaskIds, next_sequence: highestSubagentEventSequence(), snapshots: snapshotsByTaskId(runs), recommended_next_action: nextAction, error: larvaError },
     isError: failedStatus,
   };
 }
@@ -6155,7 +6218,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   const statusSchema = {
     type: "object",
     properties: {
-      task_id: { anyOf: [{ type: "string" }, { type: "null" }], description: "Optional exact public child .jsonl task_id. Omit for recent runs." },
+      task_id: { type: "string", description: "Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null." },
       limit: { type: "integer", minimum: 1, maximum: 25, description: "Maximum runs to return (default 10, max 25)." },
     },
     additionalProperties: false,
@@ -6172,8 +6235,8 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   const eventsSchema = {
     type: "object",
     properties: {
-      since_sequence: { anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }], description: "Exclusive cursor; returns events with sequence > since_sequence. Cursor expiry is reported when older than the latest 1000 recent events." },
-      task_ids: { anyOf: [{ type: "array", minItems: 1, maxItems: 25, items: { type: "string" } }, { type: "null" }], description: "Optional exact public task_id filters. Duplicates and fuzzy handles are rejected." },
+      since_sequence: { type: "integer", minimum: 0, description: "Exclusive cursor; returns events with sequence > since_sequence. Omit for 0. Cursor expiry is reported when older than the latest 1000 recent events." },
+      task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Optional exact public task_id filters. Omit for all observed tasks; do not pass null. Duplicates and fuzzy handles are rejected." },
       limit: { type: "integer", minimum: 1, maximum: 100, description: "Maximum events to return (default 50, max 100)." },
     },
     additionalProperties: false,
@@ -6191,8 +6254,8 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     type: "object",
     properties: {
       task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected." },
-      return_when: { anyOf: [{ enum: ["all", "any", "first_error"] }, { type: "null" }], description: "Completion condition. Defaults to all." },
-      timeout_ms: { anyOf: [{ type: "integer", minimum: 0, maximum: 60000 }, { type: "null" }], description: "Maximum wait time. 0 polls once and returns immediately." },
+      return_when: { enum: ["all", "any", "first_error"], description: "Completion condition. Omit for all; do not pass null." },
+      timeout_ms: { type: "integer", minimum: 0, maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS, description: "Maximum wait time, up to 24h. 0 polls once and returns immediately. Long waits return snapshots; do not replace wait with status polling." },
     },
     required: ["task_ids"],
     additionalProperties: false,
@@ -6210,7 +6273,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     type: "object",
     properties: {
       task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Exact observed public task_id handles to wait on; fuzzy handles are rejected." },
-      timeout_ms: { anyOf: [{ type: "integer", minimum: 0, maximum: 60000 }, { type: "null" }], description: "Maximum wait time. 0 polls once and returns immediately." },
+      timeout_ms: { type: "integer", minimum: 0, maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS, description: "Maximum wait time, up to 24h. 0 polls once and returns immediately. Long waits return snapshots; do not replace wait with status polling." },
     },
     required: ["task_ids"],
     additionalProperties: false,

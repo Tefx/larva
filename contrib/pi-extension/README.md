@@ -267,9 +267,12 @@ unsupported no-ops.
 Interactive TUI mode also registers `ctrl+alt+p` as a conflict-screened Pi
 extension shortcut for opening the same no-argument selector path. The shortcut
 is intentionally an extension shortcut, not a `keybindings.json` command alias;
-if Pi is not idle it shows a warning and leaves active state unchanged. If the
-enhanced custom UI cannot be opened but Pi's simpler selector API is available,
-the command or shortcut may fall back to that selector. In RPC, print, JSON, SDK,
+if Pi is not idle it shows a warning and leaves active state unchanged. On a cold
+persona candidate cache, the no-argument selector path may wait for a foreground
+`larva list --json` refresh instead of failing through Pi as `[object Object]`;
+a refresh failure is reported as a Larva notification and leaves active state
+unchanged. If the enhanced custom UI cannot be opened but Pi's simpler selector
+API is available, the command or shortcut may fall back to that selector. In RPC, print, JSON, SDK,
 malformed mode, unknown mode, or other non-interactive launcher classifications,
 the command returns an input error and leaves active state unchanged. The Pi
 status line shows:
@@ -754,9 +757,12 @@ the deterministic orchestration channel for automation. They observe only the
 current parent process's active/recent registry and event log, require exact
 observed `task_id` handles where a handle is needed, never scan child-session
 files or the presentation cache, and never consume results. `wait` covers
-`all`/`any`/`first_error`; `select` is the compact readiness helper equivalent to
-`wait(return_when: "any")`; `events` replays ordered retained events with
-`cursor_expired` and `next_sequence`.
+`all`/`any`/`first_error` and supports long `timeout_ms` values up to 24h for
+minute-scale or hour-scale child work; timeout responses include bounded visible
+snapshot lines plus machine-readable `runs`/`snapshots`, so agents should not call
+`status` merely to discover whether a timed-out wait is still alive. `select` is
+the compact readiness helper equivalent to `wait(return_when: "any")`; `events`
+replays ordered retained events with `cursor_expired` and `next_sequence`.
 
 The interactive status/background indicator is count-only and read-only. Its
 source of truth is the same process-local active-run registry and event-driven

@@ -396,8 +396,10 @@ Common exact `task_id` validation:
 
 Shared numeric bounds:
 
-- `timeout_ms`: default `10000`; allowed integer range `0..60000`; `0` means
-  poll once and return immediately.
+- `timeout_ms`: default `10000`; allowed integer range `0..86400000` (24h);
+  `0` means poll once and return immediately. Subagents may run for minutes or
+  hours; `wait`/`select` are allowed to block for long deadlines and must return
+  current snapshots on timeout rather than forcing repeated status polling.
 - event retention: keep the latest `1000` orchestration events per parent
   process. When event `sequence` exceeds this window, older cursors expire
   deterministically.
@@ -439,10 +441,11 @@ for deterministic orchestration instead of repeated status polling.
 
 Input contract:
 
-- `task_id: string | null | omitted`; when present, it must satisfy common exact
-  `task_id` lexical validation. Invalid strings return `LARVA_BAD_INPUT`.
-- `limit: integer | null | omitted`; default `10`; allowed range `1..25`.
-  Invalid values return `LARVA_BAD_INPUT`.
+- `task_id: string | omitted`; when present, it must satisfy common exact
+  `task_id` lexical validation. Invalid strings return `LARVA_BAD_INPUT`. Omit
+  this field for recent runs; do not pass `null`.
+- `limit: integer | omitted`; default `10`; allowed range `1..25`. Invalid
+  values return `LARVA_BAD_INPUT`.
 
 Success details schema:
 
@@ -491,8 +494,8 @@ change the exact-`task_id` control rule.
 
 Input contract:
 
-- `limit: integer | null | omitted`; default `10`; allowed range `1..25`.
-  Invalid values return `LARVA_BAD_INPUT`.
+- `limit: integer | omitted`; default `10`; allowed range `1..25`. Invalid
+  values return `LARVA_BAD_INPUT`.
 
 Success details schema:
 
@@ -562,15 +565,16 @@ not a scheduler.
 
 Input contract:
 
-- `since_sequence: integer | null | omitted`; default `0`; allowed range
+- `since_sequence: integer | omitted`; default `0`; allowed range
   `0..9007199254740991`. Return events with `sequence > since_sequence` after
   applying retention-reset rules below. Invalid values return `LARVA_BAD_INPUT`.
-- `task_ids: string[] | null | omitted`; optional; allowed length `1..25` when
-  present. Every entry must satisfy common exact `task_id` lexical validation.
-  Invalid strings or duplicates return `LARVA_BAD_INPUT`. Well-formed but
-  unobserved task ids simply match no events.
-- `limit: integer | null | omitted`; default `50`; allowed range `1..100`.
-  Invalid values return `LARVA_BAD_INPUT`.
+- `task_ids: string[] | omitted`; optional; allowed length `1..25` when present.
+  Every entry must satisfy common exact `task_id` lexical validation. Invalid
+  strings or duplicates return `LARVA_BAD_INPUT`. Well-formed but unobserved task
+  ids simply match no events. Omit this field for all observed tasks; do not pass
+  `null`.
+- `limit: integer | omitted`; default `50`; allowed range `1..100`. Invalid
+  values return `LARVA_BAD_INPUT`.
 
 Success details schema:
 
@@ -635,9 +639,9 @@ The implementation must retain the latest `1000` recent events. Cursor rules:
 Do not fabricate old events by reading child JSONL files.
 
 ### `larva_subagent_wait(task_ids, return_when?, timeout_ms?)`
-
 Waits for exact observed task handles to satisfy one small condition. This tool
-returns snapshots; it does not consume results.
+returns snapshots; it does not consume results. It is the primary automation
+waiting surface for minute-scale and hour-scale subagent work.
 
 Input contract:
 
@@ -645,10 +649,12 @@ Input contract:
   exact `task_id` lexical validation. Invalid strings or duplicates return
   `LARVA_BAD_INPUT`. Well-formed but unobserved task ids return
   `LARVA_SUBAGENT_NOT_OBSERVED`.
-- `return_when: "all" | "any" | "first_error" | null | omitted`; default
-  `"all"`.
-- `timeout_ms: integer | null | omitted`; default `10000`; allowed range
-  `0..60000`. `0` means poll once. Invalid values return `LARVA_BAD_INPUT`.
+- `return_when: "all" | "any" | "first_error" | omitted`; default `"all"`.
+  Do not pass `null`.
+- `timeout_ms: integer | omitted`; default `10000`; allowed range
+  `0..86400000` (24h). `0` means poll once. Invalid values return
+  `LARVA_BAD_INPUT`. Long waits are valid; do not replace them with repeated
+  status polling.
 
 Success details schema:
 
@@ -666,13 +672,21 @@ Success details schema:
       "phase": "success",
       "result_pending": false,
       "callback_delivery": "delivered",
+      "started_at": "RFC3339 timestamp",
       "updated_at": "RFC3339 timestamp",
+      "elapsed_ms": 420000,
+      "age_ms": 0,
+      "sequence_latest": 13,
       "error": null
     }
   ],
   "ready_task_ids": ["/absolute/child-session.jsonl"],
   "pending_task_ids": [],
   "next_sequence": 13,
+  "snapshots": {
+    "/absolute/child-session.jsonl": { "status": "success", "phase": "success" }
+  },
+  "recommended_next_action": "none",
   "error": null
 }
 ```
@@ -688,15 +702,18 @@ Condition semantics:
   terminal status is `success`.
 
 Timeout is not an error. On timeout, return `status: "success"`,
-`satisfied: false`, and `timed_out: true` with the latest observed snapshots.
+`satisfied: false`, `timed_out: true`, `recommended_next_action:
+"continue_waiting"`, and the latest observed snapshots in both `runs` and the
+keyed `snapshots` map. The visible tool text must include a bounded snapshot line
+for each requested handle so agents do not need a follow-up `status` call merely
+to learn whether the task is still alive.
+
 For success, timeout, and partial readiness, `next_sequence` is the current
 highest event sequence observed by the parent process at response time, or `0` if
 no event has ever been recorded. It is compatible with
 `larva_subagent_events(since_sequence=next_sequence)` for future events; it is a
 high-water mark, not a replay cursor for events that caused this wait response.
-
 ### `larva_subagent_select(task_ids, timeout_ms?)`
-
 Waits until at least one exact observed task handle is terminal, then returns the
 same snapshot model as `wait(return_when: "any")`. It is a compact readiness tool
 for agents that only need to know which handle to inspect next.
@@ -707,41 +724,19 @@ Input contract:
   exact `task_id` lexical validation. Invalid strings or duplicates return
   `LARVA_BAD_INPUT`. Well-formed but unobserved task ids return
   `LARVA_SUBAGENT_NOT_OBSERVED`.
-- `timeout_ms: integer | null | omitted`; default `10000`; allowed range
-  `0..60000`. `0` means poll once. Invalid values return `LARVA_BAD_INPUT`.
+- `timeout_ms: integer | omitted`; default `10000`; allowed range
+  `0..86400000` (24h). `0` means poll once. Invalid values return
+  `LARVA_BAD_INPUT`. Long waits are valid; do not replace them with repeated
+  status polling.
 
-Success details schema is the same shape as `wait`, with `return_when: "any"`:
-
-```json
-{
-  "status": "success",
-  "return_when": "any",
-  "satisfied": true,
-  "timed_out": false,
-  "runs": [
-    {
-      "task_id": "/absolute/child-session.jsonl",
-      "persona_id": "doc-reviewer",
-      "status": "success",
-      "phase": "success",
-      "result_pending": false,
-      "callback_delivery": "delivered",
-      "updated_at": "RFC3339 timestamp",
-      "error": null
-    }
-  ],
-  "ready_task_ids": ["/absolute/child-session.jsonl"],
-  "pending_task_ids": [],
-  "next_sequence": 13,
-  "error": null
-}
-```
+Success details schema is the same shape as `wait`, with `return_when: "any"`.
+The output includes `runs`, keyed `snapshots`, `ready_task_ids`,
+`pending_task_ids`, `next_sequence`, and `recommended_next_action`.
 
 `select` is a thin input-only convenience wrapper over
 `wait(return_when: "any")`: fewer arguments, identical output model, and the same
 internal implementation path. It exists as a compact readiness verb only; it must
 not grow independent semantics.
-
 ## Subagent Console
 The TUI Subagent Console is an overlay over adapter-local presentation state. The
 only user command is `/larva-subagent`; the former log alias has been removed.
@@ -823,6 +818,7 @@ Conceptual run fields:
 - `phase`
 - `task_preview`
 - `started_at`, `updated_at`
+- `elapsed_ms`, `age_ms`, `sequence_latest` for orchestration diagnostics
 - child RPC/process handle
 - parent session identity at acceptance time
 - cancellation reason, if any
