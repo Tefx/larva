@@ -486,14 +486,32 @@ def test_agent_persona_switch_policy_smoke_outputs_complete_offline_register() -
         "restore_terminal_timeout",
         "restore_failure_state_preservation_reporting_audit_user_choice_no_fallback",
         "restore_notices_outside_assistant_chat_body",
+        "pre_borrow_runtime_model_restore",
         "async_exact_handle_no_alias_constraints",
         "unsupported_live_not_required",
     }
     register = payload["behavioralProofRegister"]
-    observed_refs = {row["requirement_ref"] for row in register if row["status"] == "PASS"}
+    positive_statuses = {"PASS", "PROVEN"}
+    rows_by_ref = {row["requirement_ref"]: row for row in register}
+    observed_refs = {row["requirement_ref"] for row in register if row["status"] in positive_statuses}
 
     assert payload["status"] == "PASS"
     assert required_refs <= observed_refs
+    runtime_model_row = rows_by_ref["pre_borrow_runtime_model_restore"]
+    assert runtime_model_row["status"] in positive_statuses
+    assert runtime_model_row["origin_persona_default_model"] == "provider/origin-default-model"
+    assert runtime_model_row["manual_pre_borrow_runtime_model"] == "manual-provider/manual-runtime-before-borrow"
+    assert runtime_model_row["borrowed_persona_or_model"] == "python/provider/borrowed-python-model"
+    assert runtime_model_row["restored_runtime_model"] == runtime_model_row["manual_pre_borrow_runtime_model"]
+    assert runtime_model_row["manual_pre_borrow_runtime_model"] != runtime_model_row["origin_persona_default_model"]
+    assert runtime_model_row["non_equality_assertion"] == (
+        "manual-provider/manual-runtime-before-borrow !== provider/origin-default-model"
+    )
+    restore_audit = runtime_model_row["restore_audit"]
+    assert restore_audit["restored"] is True
+    assert restore_audit["restored_pi_model"] is True
+    assert restore_audit["lease"]["originPiModelCaptured"] is True
+    assert restore_audit["lease"]["originPiModelLabel"] == runtime_model_row["manual_pre_borrow_runtime_model"]
     assert payload["liveModeDisposition"] == {
         "unsupported_live_requirement_removed_or_supported": "unsupported --live is not required; this smoke harness intentionally supports --offline only",
         "required": False,

@@ -32,6 +32,7 @@ const REQUIRED_REQUIREMENTS = [
   "restore_terminal_timeout",
   "restore_failure_state_preservation_reporting_audit_user_choice_no_fallback",
   "restore_notices_outside_assistant_chat_body",
+  "pre_borrow_runtime_model_restore",
   "async_exact_handle_no_alias_constraints",
   "unsupported_live_not_required",
 ];
@@ -45,7 +46,7 @@ async function check(name, fn) {
   }
 }
 
-function recordProof(requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref, status = "PASS", closure_path = "offline real-extension runtime probe", gate_decision_basis = "assertions passed") {
+function recordProof(requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref, status = "PASS", closure_path = "offline real-extension runtime probe", gate_decision_basis = "assertions passed", extraFields = {}) {
   behavioralProofRegister.push({
     requirement_ref,
     behavior_claim,
@@ -54,6 +55,7 @@ function recordProof(requirement_ref, behavior_claim, runtime_proof_expected, ev
     status,
     closure_path,
     gate_decision_basis,
+    ...extraFields,
   });
 }
 
@@ -69,20 +71,20 @@ function latestAudit(entries, predicate = () => true) {
 }
 
 function specs() {
-  const make = (id, marker) => ({
+  const make = (id, marker, model) => ({
     id,
     description: `Persona ${id}`,
     prompt: `Prompt for ${id}\n${marker}`,
-    model: "provider/model",
+    model,
     capabilities: {},
     spec_version: "0.1.0",
     spec_digest: `sha256:${id}`,
     can_spawn: true,
   });
   return {
-    architect: make("architect", "ARCHITECT_RUNTIME_PROMPT_MARKER"),
-    python: make("python", "PYTHON_RUNTIME_PROMPT_MARKER"),
-    reviewer: make("reviewer", "REVIEWER_RUNTIME_PROMPT_MARKER"),
+    architect: make("architect", "ARCHITECT_RUNTIME_PROMPT_MARKER", "provider/origin-default-model"),
+    python: make("python", "PYTHON_RUNTIME_PROMPT_MARKER", "provider/borrowed-python-model"),
+    reviewer: make("reviewer", "REVIEWER_RUNTIME_PROMPT_MARKER", "provider/reviewer-model"),
   };
 }
 
@@ -144,6 +146,7 @@ async function createRuntime({ mode, initialPersonaId = "", selectOutcome = "bor
   const notifications = [];
   const activeToolCalls = [];
   const chatMessages = [];
+  const modelSetCalls = [];
   const ctx = {
     env,
     ui: {
@@ -152,7 +155,7 @@ async function createRuntime({ mode, initialPersonaId = "", selectOutcome = "bor
       select: async () => ({ id: selectOutcome }),
       confirm: async () => confirmResult,
     },
-    modelRegistry: { find: async () => ({ provider: "provider", id: "model" }) },
+    modelRegistry: { find: async (provider, id) => ({ provider, id }) },
     session: {
       entries: sessionEntries,
       getEntries: () => sessionEntries,
@@ -166,7 +169,7 @@ async function createRuntime({ mode, initialPersonaId = "", selectOutcome = "bor
     appendEntry: (customType, data) => sessionEntries.push({ type: "custom", customType, data }),
     getAllTools: async () => ["read", "grep", "larva_persona_switch", "larva_personas", "larva_subagent"],
     setActiveTools: async (activeTools) => { activeToolCalls.push(activeTools); return true; },
-    setModel: async () => true,
+    setModel: async (model) => { modelSetCalls.push(model); ctx.model = model; return true; },
     registerCommand: (name, options) => commands.set(name, options),
     registerTool: (tool) => tools.set(tool.name, tool),
     on: (event, handler) => handlers.set(event, handler),
@@ -174,13 +177,24 @@ async function createRuntime({ mode, initialPersonaId = "", selectOutcome = "bor
     sendMessage: (...args) => chatMessages.push(["pi.sendMessage", args]),
   };
   await mod.initializeExtension(ctx, pi);
-  return { tmpRoot, statePath, env, mod, ctx, pi, tools, commands, handlers, sessionEntries, statuses, notifications, activeToolCalls, chatMessages };
+  return { tmpRoot, statePath, env, mod, ctx, pi, tools, commands, handlers, sessionEntries, statuses, notifications, activeToolCalls, chatMessages, modelSetCalls };
 }
 
 async function executeSwitch(rt, personaId, reason = "runtime smoke proof") {
   const tool = rt.tools.get("larva_persona_switch");
   assert.ok(tool, "larva_persona_switch must be registered for this scenario");
   return tool.execute("policy-smoke-switch", { persona_id: personaId, reason, handoff: "handoff" }, undefined, undefined, rt.ctx);
+}
+
+function modelLabel(model) {
+  if (typeof model === "string") return model;
+  if (model && typeof model === "object") {
+    const provider = typeof model.provider === "string" ? model.provider : "";
+    const id = typeof model.id === "string" ? model.id : typeof model.modelId === "string" ? model.modelId : typeof model.model_id === "string" ? model.model_id : "";
+    if (provider && id) return `${provider}/${id}`;
+    if (id) return id;
+  }
+  return model === null || model === undefined ? null : "captured-runtime-model";
 }
 
 await check("extension mode enum has no legacy off or ask aliases", () => {
@@ -293,6 +307,62 @@ await check("restore failure preserves state, reports, audits, requires user cho
   recordProof("restore_failure_state_preservation_reporting_audit_user_choice_no_fallback", "Restore failure preserves borrowed runtime state, reports through UI, audits required fields, blocks further autonomous changes until explicit user choice, and performs no safe-default fallback", "failed architect restore leaves python active, emits notification/audit, autonomous switch fails with LARVA_PERSONA_RESTORE_FAILED, /larva-persona reviewer succeeds", "check:restore failure preserves state, reports, audits, requires user choice, and avoids fallback", "PASS", "runtime restore failure path", "active persona remains borrowed until explicit user choice; audit safe_default_fallback=false");
   recordProof("restore_notices_outside_assistant_chat_body", "Restore success/failure notices use status/notify/audit surfaces and never assistant chat body", "restore probes capture status/audit/notify and zero sendUserMessage/sendMessage calls", "checks:restore terminal * + restore failure preserves state", "PASS", "runtime surface capture", "chatMessages length remains zero across restore paths");
   return { activeAfterFailedRestore: "python", activeAfterUserChoice: rt.mod.getActiveEnvelope()?.persona_id, failureAudit: failureAudit.data, notifications: rt.notifications, chatMessages: rt.chatMessages.length, autonomousAfterFailure: autonomousAfterFailure.error };
+});
+
+await check("pre-borrow runtime model restore records distinct manual runtime model", async () => {
+  const allSpecs = specs();
+  const rt = await createRuntime({ mode: "auto", initialPersonaId: "architect" });
+  const originPersonaDefaultModel = allSpecs.architect.model;
+  const borrowedPersonaOrModel = `python/${allSpecs.python.model}`;
+  const initialRuntimeModel = modelLabel(rt.ctx.model);
+  assert.equal(initialRuntimeModel, originPersonaDefaultModel);
+
+  const manualRuntimeModel = { provider: "manual-provider", id: "manual-runtime-before-borrow" };
+  rt.ctx.model = manualRuntimeModel;
+  const manualPreBorrowRuntimeModel = modelLabel(rt.ctx.model);
+  assert.notEqual(manualPreBorrowRuntimeModel, originPersonaDefaultModel, "manual runtime model must differ from origin persona default model");
+
+  const borrowed = await executeSwitch(rt, "python", "prove manual runtime model restoration after persona borrow");
+  assert.equal(borrowed.status, "success");
+  assert.equal(rt.mod.getActiveEnvelope()?.persona_id, "python");
+  assert.equal(modelLabel(rt.ctx.model), allSpecs.python.model);
+
+  await rt.handlers.get("agent_end")?.({ terminal: "success" }, rt.ctx);
+  const restoredRuntimeModel = modelLabel(rt.ctx.model);
+  assert.equal(rt.mod.getActiveEnvelope()?.persona_id, "architect");
+  assert.equal(restoredRuntimeModel, manualPreBorrowRuntimeModel);
+  assert.notEqual(restoredRuntimeModel, originPersonaDefaultModel);
+  const restoreAudit = latestAudit(rt.sessionEntries, (data) => data.event === "restore" && data.restored === true);
+  assert.ok(restoreAudit, "missing successful runtime-model restore audit");
+  assert.equal(restoreAudit.data.lease?.originPiModelCaptured, true);
+  assert.equal(restoreAudit.data.lease?.originPiModelLabel, manualPreBorrowRuntimeModel);
+  assert.equal(restoreAudit.data.restored_pi_model, true);
+  const nonEqualityAssertion = `${manualPreBorrowRuntimeModel} !== ${originPersonaDefaultModel}`;
+  recordProof(
+    "pre_borrow_runtime_model_restore",
+    "Borrow restore returns to the manually selected pre-borrow Pi runtime model rather than collapsing to the origin persona default model",
+    "origin persona default model, manual pre-borrow runtime model, borrowed persona/model, and restored runtime model are all captured with manual/default non-equality",
+    "check:pre-borrow runtime model restore records distinct manual runtime model",
+    "PASS",
+    "runtime lease model capture and agent_end restore hook",
+    nonEqualityAssertion,
+    {
+      origin_persona_default_model: originPersonaDefaultModel,
+      manual_pre_borrow_runtime_model: manualPreBorrowRuntimeModel,
+      borrowed_persona_or_model: borrowedPersonaOrModel,
+      restored_runtime_model: restoredRuntimeModel,
+      non_equality_assertion: nonEqualityAssertion,
+      restore_audit: restoreAudit.data,
+    },
+  );
+  return {
+    origin_persona_default_model: originPersonaDefaultModel,
+    manual_pre_borrow_runtime_model: manualPreBorrowRuntimeModel,
+    borrowed_persona_or_model: borrowedPersonaOrModel,
+    restored_runtime_model: restoredRuntimeModel,
+    non_equality_assertion: nonEqualityAssertion,
+    model_set_call_labels: rt.modelSetCalls.map(modelLabel),
+  };
 });
 
 await check("async subagent exact-handle and no-alias constraints remain enforced", async () => {
