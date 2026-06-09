@@ -66,11 +66,15 @@ A target implementation that exposes `confirm` UI must provide these four
 outcomes with the following semantics:
 
 - `Borrow once`: create a turn-scoped persona lease and restore the origin
-  persona when the current assistant turn ends.
+  persona and the Pi model that was active immediately before the borrow when the
+  current assistant turn ends. Restore must not reapply the origin persona's
+  default `PersonaSpec.model` if the user had manually selected a different Pi
+  model before the borrow.
 - `Deny`: do not change persona, model, or tool state.
 - `Auto-borrow for this session`: set a session-local mode override to `auto`,
-  then create the same turn-scoped lease for the current request. The override is
-  not persisted as a global/user preference.
+  then create the same turn-scoped lease for the current request, including the
+  same origin Pi model snapshot. The override is not persisted as a global/user
+  preference.
 - `Switch persistently`: treat the action as an explicit user manual switch;
   set the active persona to the target and clear any active lease.
 
@@ -84,9 +88,10 @@ The agent/runtime may automatically borrow another persona without confirmation.
 `auto` means temporary borrow. It does not mean persistent switch.
 
 - A persona lease is created before the switch is committed.
-- The lease records the persona that was active immediately before the automatic
-  switch.
-- The origin persona is restored when the current assistant turn ends.
+- The lease records the persona and Pi model that were active immediately before
+  the automatic switch.
+- The origin persona and origin Pi model are restored when the current assistant
+  turn ends.
 - Restore is runtime-enforced and must not rely on the model remembering to
   switch back.
 
@@ -111,6 +116,7 @@ A persona lease represents a temporary borrow:
 PersonaLease:
   originPersonaId
   borrowedPersonaId
+  originPiModelSnapshot
   scope
   initiatedBy
 ```
@@ -120,6 +126,9 @@ Field meaning:
 - `originPersonaId`: the active persona immediately before the automatic or
   confirmed borrow. This may be the process-start persona, a restored session
   persona, or a persona selected manually by the user.
+- `originPiModelSnapshot`: the actual Pi model active immediately before the
+  borrow, if observable. This is a runtime model snapshot, not the origin
+  persona's default `PersonaSpec.model`.
 - `borrowedPersonaId`: the persona temporarily borrowed for the current scope.
 - `scope`: `turn` by default. `agent_session` is allowed only for a real agent
   execution context.
@@ -207,7 +216,7 @@ Required `confirm` prompt content:
 Borrow persona?
 
 The assistant wants to borrow {targetPersona} for this response.
-Current persona {originPersona} will be restored afterward.
+Current persona {originPersona} and current Pi model will be restored afterward.
 
 Reason:
 {shortReason}
@@ -267,8 +276,8 @@ This policy intentionally defines no automatic safe-default persona fallback.
 | Mode | Agent/runtime may initiate | User confirmation | Automatic restore | Restore target |
 | --- | --- | --- | --- | --- |
 | `manual` | No | N/A | N/A | N/A |
-| `confirm` | Request only | Yes | Yes | Persona active before borrow |
-| `auto` | Yes | No | Yes | Persona active before borrow |
+| `confirm` | Request only | Yes | Yes | Persona and Pi model active before borrow |
+| `auto` | Yes | No | Yes | Persona and Pi model active before borrow |
 | `free` | Yes | No | No | N/A |
 
 ## Runtime invariants
@@ -281,7 +290,8 @@ This policy intentionally defines no automatic safe-default persona fallback.
 - `auto` is automatic temporary borrow.
 - `free` is automatic persistent switch.
 - `manual` forbids agent/runtime-initiated switches.
-- Turn-scoped leases restore at current assistant turn end.
+- Turn-scoped leases restore the origin persona and captured origin Pi model at
+  current assistant turn end.
 - Agent-session-scoped leases are allowed only for model-calling agent execution
   contexts.
 - Generic tasks do not own persona.
@@ -297,14 +307,16 @@ This policy intentionally defines no automatic safe-default persona fallback.
 - `confirm` with no confirmation UI fails safely without changing
   persona/model/tools.
 - `confirm` + `Deny` leaves persona/model/tools unchanged.
-- `confirm` + `Borrow once` creates a turn-scoped lease and restores at turn end.
+- `confirm` + `Borrow once` creates a turn-scoped lease and restores the origin
+  persona plus the actual pre-borrow Pi model at turn end.
 - `confirm` while already borrowing requires a new confirmation before borrowing
   another persona, and the restore target remains the first origin.
 - `confirm` + `Auto-borrow for this session` changes only session-local mode to
   `auto`; a new session still starts from configured default.
 - `confirm` + `Switch persistently` is treated as a user manual switch and does
   not create a lease.
-- `auto` creates a turn-scoped lease and restores at turn end.
+- `auto` creates a turn-scoped lease and restores the origin persona plus the
+  actual pre-borrow Pi model at turn end.
 - `free` switches without creating a lease and does not restore.
 - User manual switching during a lease clears the lease and prevents later
   restore to the old origin.

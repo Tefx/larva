@@ -2962,6 +2962,37 @@ def test_agent_personas_read_only_bounded_and_hidden_in_manual_behavior(tmp_path
     assert payload["directManual"]["details"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
 
 
+def test_agent_persona_switch_borrow_restore_preserves_runtime_model_active_before_borrow_behavior(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const harness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
+        harness.ctx.model = { provider: "manual-provider", id: "manual-model" };
+        const switchTool = harness.tools["larva_persona_switch"];
+        const borrowed = await (switchTool.execute ?? switchTool.handler)("call-borrow", { persona_id: "python", reason: "implementation required" }, undefined, undefined, harness.ctx);
+        const during = harness.mod.getActiveEnvelope();
+        await harness.handlers.agent_end({ terminal: "success" }, harness.ctx);
+        const after = harness.mod.getActiveEnvelope();
+        console.log(JSON.stringify({
+          borrowedStatus: borrowed.status,
+          during,
+          after,
+          modelCalls: harness.modelCalls,
+          finalSetModel: harness.modelCalls.filter((call) => Array.isArray(call) && call.length === 1).at(-1),
+          restoreAudit: harness.sessionEntries.findLast((entry) => entry.customType === "larva-agent-persona-switch-audit" && entry.data?.event === "restore")?.data ?? null,
+        }));
+        """,
+    )
+
+    assert payload["borrowedStatus"] == "success"
+    assert payload["during"]["persona_id"] == "python"
+    assert payload["after"]["persona_id"] == "architect"
+    assert payload["finalSetModel"] == [{"provider": "manual-provider", "id": "manual-model"}]
+    assert payload["restoreAudit"]["restored"] is True
+    assert payload["restoreAudit"]["restored_pi_model"] is True
+    assert payload["restoreAudit"]["lease"]["originPiModelLabel"] == "manual-provider/manual-model"
+
+
 def test_agent_persona_switch_confirm_outcomes_and_no_ui_preserve_state_behavior(tmp_path: Path) -> None:
     payload = _run_agent_persona_switch_harness(
         tmp_path,

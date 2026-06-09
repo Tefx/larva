@@ -359,15 +359,18 @@ Mode behavior:
   model, or tool state. The normal approval is "borrow once", not a persistent
   switch.
 - `auto` exposes the same tools and performs the same temporary borrow without UI
-  confirmation. The extension records the persona active immediately before the
-  switch and restores it when the current assistant turn ends.
+  confirmation. The extension records the persona and actual Pi model active
+  immediately before the switch and restores both when the current assistant turn
+  ends. If the user manually selected a different Pi model before the borrow,
+  restore returns to that runtime model, not the origin persona's default model.
 - `free` exposes the same tools and allows a persistent self-switch without
   automatic restore.
 
 `larva_personas` is bounded discovery metadata; it is not a prompt/spec catalogue
 injection surface. `larva_persona_switch` requires a non-empty `reason`; `handoff`
 is optional and bounded. A temporary borrow is represented by a runtime persona
-lease whose restore target is the persona active immediately before the borrow.
+lease whose restore target is the persona and actual Pi model active immediately
+before the borrow.
 User manual persona switching has highest priority: it clears any active lease and
 must not later be undone by automatic restore. Unknown mode values fail safe to `confirm`
 with a status/event warning rather than being treated as compatibility aliases.
@@ -380,8 +383,8 @@ In `confirm`, the required confirmation choices are:
 
 Any `confirm` UI must provide all four outcomes.
 
-- `Borrow once` creates a turn-scoped lease and restores at current assistant
-  turn end.
+- `Borrow once` creates a turn-scoped lease and restores the origin persona plus
+  the actual pre-borrow Pi model at current assistant turn end.
 - `Deny` leaves persona, model, and tool state unchanged.
 - `Auto-borrow for this session` sets a session-local mode override to `auto` and
   creates the same turn-scoped lease for the current request. It is not persisted
@@ -391,7 +394,8 @@ Any `confirm` UI must provide all four outcomes.
 
 Restore notices are emitted through status UI, event logs, or audit entries, not
 assistant chat-body text. Restore is attempted on success, failure, cancellation,
-and timeout paths. If restore fails, the extension must report the failure,
+and timeout paths, and includes the captured pre-borrow Pi model when available.
+If restore fails, the extension must report the failure,
 preserve current runtime state, keep audit detail, and require explicit user
 persona choice before any further persona-changing action. There is no automatic
 safe-default persona fallback.

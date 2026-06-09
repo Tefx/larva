@@ -101,6 +101,8 @@ type PersonaLease = {
   borrowedPersonaId: string;
   scope: "turn" | "agent_session";
   initiatedBy: "agent" | "runtime";
+  originPiModelCaptured: boolean;
+  originPiModelLabel: string | null;
 };
 
 type PersonaRestoreFailureState = {
@@ -404,6 +406,7 @@ type PiContext = PiApi & {
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   hasUI?: boolean;
   openSelector?: (options: SelectorOption[]) => Promise<string | null>;
+  model?: unknown;
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
 };
@@ -569,6 +572,7 @@ let toolEnumerationMode: ToolEnumerationMode = "strict";
 const DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN = 20;
 let agentPersonaSwitchMode: AgentPersonaSwitchMode = "confirm";
 let activePersonaLease: PersonaLease | null = null;
+let activePersonaLeaseOriginPiModel: unknown | null = null;
 let restoreFailureState: PersonaRestoreFailureState | null = null;
 let lastPersonaLeaseRuntimeCtx: PiContext | null = null;
 let lastPersonaLeasePi: PiApi | null = null;
@@ -3026,9 +3030,29 @@ function clearActivePersonaLease(reason: string, ctx?: PiContext, pi?: PiApi): v
     appendPersonaSwitchAudit(ctx, pi ?? ctx, { source: "runtime", event: "manual switch clears active lease", reason, lease: activePersonaLease });
   }
   activePersonaLease = null;
+  activePersonaLeaseOriginPiModel = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;
   lastPersonaLeasePi = null;
+}
+
+function piModelAuditLabel(model: unknown): string | null {
+  if (typeof model === "string" && model.length > 0) return model;
+  if (isRecord(model)) {
+    const provider = typeof model.provider === "string" ? model.provider : "";
+    const id = typeof model.id === "string" ? model.id : typeof model.modelId === "string" ? model.modelId : typeof model.model_id === "string" ? model.model_id : "";
+    if (provider.length > 0 && id.length > 0) return `${provider}/${id}`;
+    if (id.length > 0) return id;
+  }
+  return model === null || model === undefined ? null : "captured-runtime-model";
+}
+
+function currentPiModelSnapshot(ctx?: PiContext): { captured: boolean; model: unknown | null; label: string | null } {
+  if (ctx !== undefined && Object.prototype.hasOwnProperty.call(ctx, "model") && ctx.model !== undefined && ctx.model !== null) {
+    return { captured: true, model: ctx.model, label: piModelAuditLabel(ctx.model) };
+  }
+  if (state.piModel !== null) return { captured: true, model: state.piModel, label: piModelAuditLabel(state.piModel) };
+  return { captured: false, model: null, label: null };
 }
 
 function createTurnScopedPersonaLease(originPersonaId: string | null, borrowedPersonaId: string, initiatedBy: "agent" | "runtime", ctx?: PiContext, pi?: PiApi): PersonaLease {
@@ -3038,7 +3062,9 @@ function createTurnScopedPersonaLease(originPersonaId: string | null, borrowedPe
     activePersonaLease = { ...activePersonaLease, borrowedPersonaId };
     return activePersonaLease;
   }
-  activePersonaLease = { originPersonaId, borrowedPersonaId, scope: "turn", initiatedBy };
+  const originModel = currentPiModelSnapshot(ctx);
+  activePersonaLeaseOriginPiModel = originModel.model;
+  activePersonaLease = { originPersonaId, borrowedPersonaId, scope: "turn", initiatedBy, originPiModelCaptured: originModel.captured, originPiModelLabel: originModel.label };
   return activePersonaLease;
 }
 
@@ -3813,34 +3839,55 @@ function terminalRestorePath(event: unknown): "success" | "failure" | "cancellat
   return null;
 }
 
+async function restoreLeaseOriginPiModel(lease: PersonaLease, pi: PiApi): Promise<LarvaError | null> {
+  if (!lease.originPiModelCaptured) return null;
+  const model = activePersonaLeaseOriginPiModel;
+  if (model === null || model === undefined) return null;
+  const accepted = await pi.setModel?.(model);
+  if (accepted === false) return error("LARVA_MODEL_UNAVAILABLE", `Pi rejected restore model ${lease.originPiModelLabel ?? "captured origin model"}`);
+  state.piModel = model;
+  return null;
+}
+
+async function failPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", lease: PersonaLease, cause: LarvaError): Promise<void> {
+  const restoreError = error("LARVA_PERSONA_RESTORE_FAILED", `Failed to restore persona ${lease.originPersonaId}: ${cause.message}`);
+  restoreFailureState = {
+    failedRestoreTarget: lease.originPersonaId,
+    borrowedPersonaId: state.envelope?.persona_id ?? lease.borrowedPersonaId,
+    error: restoreError,
+    audit: { terminal, lease, cause },
+  };
+  await notify(ctx, `${restoreError.code}: ${restoreError.message}. Preserve current runtime state; explicit user persona choice required; no safe-default fallback.`, "error");
+  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: false, error_code: restoreError.code, preserve_current_runtime_state: true, explicit_user_persona_choice_required: true, safe_default_fallback: false, audit: restoreFailureState.audit });
+}
+
 async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout"): Promise<void> {
   if (activePersonaLease === null) return;
   const lease = activePersonaLease;
   if (lease.scope !== "turn") return;
   if (lease.originPersonaId === null) {
     activePersonaLease = null;
+    activePersonaLeaseOriginPiModel = null;
     appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: false, reason: "no origin persona" });
     return;
   }
-  const restored = await commitPersonaWithOptions(lease.originPersonaId, ctx, pi, { sessionCommitSource: null });
-  if (restored.ok) {
-    activePersonaLease = null;
-    restoreFailureState = null;
-    lastPersonaLeaseRuntimeCtx = null;
-    lastPersonaLeasePi = null;
-    await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
-    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, audit: "status/event/audit only; not assistant chat-body text" });
+  const restored = await commitPersonaWithOptions(lease.originPersonaId, ctx, pi, { sessionCommitSource: null, applyModel: !lease.originPiModelCaptured });
+  if (!restored.ok) {
+    await failPersonaLeaseRestore(ctx, pi, terminal, lease, restored.error);
     return;
   }
-  const restoreError = error("LARVA_PERSONA_RESTORE_FAILED", `Failed to restore persona ${lease.originPersonaId}: ${restored.error.message}`);
-  restoreFailureState = {
-    failedRestoreTarget: lease.originPersonaId,
-    borrowedPersonaId: state.envelope?.persona_id ?? lease.borrowedPersonaId,
-    error: restoreError,
-    audit: { terminal, lease, cause: restored.error },
-  };
-  await notify(ctx, `${restoreError.code}: ${restoreError.message}. Preserve current runtime state; explicit user persona choice required; no safe-default fallback.`, "error");
-  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: false, error_code: restoreError.code, preserve_current_runtime_state: true, explicit_user_persona_choice_required: true, safe_default_fallback: false, audit: restoreFailureState.audit });
+  const modelRestoreError = await restoreLeaseOriginPiModel(lease, pi);
+  if (modelRestoreError !== null) {
+    await failPersonaLeaseRestore(ctx, pi, terminal, lease, modelRestoreError);
+    return;
+  }
+  activePersonaLease = null;
+  activePersonaLeaseOriginPiModel = null;
+  restoreFailureState = null;
+  lastPersonaLeaseRuntimeCtx = null;
+  lastPersonaLeasePi = null;
+  await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
+  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "status/event/audit only; not assistant chat-body text" });
 }
 
 export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = ctx ?? {}): { systemPrompt: string } | null | Promise<{ systemPrompt: string } | null> {
@@ -6143,6 +6190,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   registerSubagentBackgroundIndicatorContext(ctx);
   agentPersonaSwitchToolsRegistered = false;
   activePersonaLease = null;
+  activePersonaLeaseOriginPiModel = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;
   lastPersonaLeasePi = null;
