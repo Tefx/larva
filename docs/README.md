@@ -14,6 +14,7 @@ project documentation lives here by category.
 - [`reference/INTERFACES.md`](reference/INTERFACES.md)
 - [`reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md) — accepted design basis for Pi async/background subagents, targeted cancellation, and `/larva-subagent` UX.
 - [`reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) — target four-level Pi agent/runtime persona switch policy: `manual`, `confirm`, `auto`, `free`.
+- [`reference/PI_EXTENSION_COMPACTION_FOCUS.md`](reference/PI_EXTENSION_COMPACTION_FOCUS.md) — target design for adding Larva/persona compaction focus while preserving Pi's default compaction prompts.
 
 ## Decisions
 

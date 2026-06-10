@@ -554,6 +554,25 @@ The raw short form `@<id>` is reserved for a possible future usability pass and
 is not part of the first target. Id-like raw short-form prefixes must not trigger
 Larva persona matching until short form is explicitly implemented.
 
+## Compaction focus design
+
+Larva's proposed compaction focus behavior is documented in
+[`docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md`](../../docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md).
+This behavior is a target design, not the current implemented runtime behavior.
+
+The design keeps Pi's default compaction prompts intact and appends bounded focus
+through Pi's `customInstructions` path. Focus is assembled from manual
+`/compact ...` instructions, the active persona's `compaction_prompt`, and an
+adapter-local carry-forward rule configured by `~/.pi/larva/compaction.json`
+(or absolute `LARVA_PI_COMPACTION_CONFIG_FILE` override). The carry-forward rule
+exists to preserve unfinished work, next actions, files, commands, failing tests,
+and blockers in the generated summary.
+
+Malformed configuration or unavailable model/auth/runtime prerequisites must
+fall back to native Pi compaction rather than cancelling compaction or writing a
+partial summary. User-aborted focused compaction is the exception: cancellation
+must remain cancellation and must not restart native compaction.
+
 ## Supplemental local/CI runtime gate
 
 Pi extension work is not complete with source-token contract checks or Invar
