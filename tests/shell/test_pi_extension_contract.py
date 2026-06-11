@@ -3663,3 +3663,23 @@ def test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity
     ]
     assert not missing, "README/source missing unified async subagent command parity tokens: " + ", ".join(missing)
 
+def test_compaction_focus_expected_red_gap_exposed():
+    """R1: Test must fail until compaction-focus integration is present.
+    It expects exact appended focus using customInstructions."""
+    assert False, "compaction-focus integration missing"
+
+def test_compaction_focus_non_overreach_guards_defined():
+    """R2: Non-goals - guards failing if forbidden changes occur (installed pi edits, prompt replacement, configs)."""
+    assert False, "non-overreach guards missing"
+
+def test_compaction_focus_config_case_table():
+    """R3: Configuration Cases - tests must enforce parser defaults, switches, bounds."""
+    assert False, "config parsing tests missing"
+
+def test_compaction_focus_fixture_table():
+    """R4: Focus composition bounds - fixture tests checking marker-inclusive truncation."""
+    assert False, "focus composition tests missing"
+
+def test_compaction_focus_hook_case_table():
+    """R5: Fallback behavior - tests checking native fallback & diagnostic rules."""
+    assert False, "fallback and diagnostics tests missing"
