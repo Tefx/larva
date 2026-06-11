@@ -427,10 +427,12 @@ current session can be changed with `/larva-mode [manual|confirm|auto|free]`.
 - `manual` hides autonomous model-facing switch tools and rejects stale calls, but
   the user can still run `/larva-persona <id>` manually.
 - The default is `confirm`. The agent/runtime may request a temporary persona
-  borrow, but it commits only after UI approval and fails safely if no approval UI
-  is available. Any `confirm` UI must provide four outcomes: `Borrow once`,
-  `Deny`, `Auto-borrow for this session`, and `Switch persistently`; the normal
-  approval is temporary borrow, not persistent switch.
+  borrow, but it commits only after UI approval. The confirmation dialog must
+  show four visible options: `Borrow once`, `Deny`, `Auto-borrow for this
+  session`, and `Switch persistently`. `Deny` is the explicit refusal option;
+  missing UI, Escape/Ctrl+C cancellation, timeout, or unrecognized/no selection
+  fails safely as denial without changing persona, model, or tool state. The
+  normal approval is temporary borrow, not persistent switch.
 - `auto` performs the same temporary borrow without UI approval. Larva records the
   persona active immediately before the switch and restores it at the end of the
   current assistant turn.

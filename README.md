@@ -273,14 +273,17 @@ with `/larva-mode [manual|confirm|auto|free]`. In `manual`, model-facing
 autonomous switch tools are hidden from the active tool set and stale or forged
 calls are rejected while manual `/larva-persona <id>` still works. In `confirm`,
 those tools may request a temporary persona borrow, but the borrow commits only
-after UI approval and fails safely without UI, rejection, cancel, or timeout. Any
-`confirm` UI must provide four outcomes: `Borrow once`, `Deny`, `Auto-borrow for
-this session`, and `Switch persistently`; the normal approval is temporary
-borrow, not persistent switch. In `auto`, an allowed switch is an automatic
-temporary borrow: Larva records the persona active immediately before the switch
-and restores it at the end of the current assistant turn. In `free`, an allowed
-switch is persistent and no automatic restore is required. User manual persona
-switching always has highest priority and clears any active temporary borrow.
+after UI approval. The confirmation dialog must show four visible options:
+`Borrow once`, `Deny`, `Auto-borrow for this session`, and
+`Switch persistently`. `Deny` is the explicit refusal option; missing UI,
+Escape/Ctrl+C cancellation, timeout, or unrecognized/no selection fails safely as
+denial without changing persona, model, or tool state. The normal approval is
+temporary borrow, not persistent switch. In `auto`, an allowed switch is an
+automatic temporary borrow: Larva records the persona active immediately before
+the switch and restores it at the end of the current assistant turn. In `free`,
+an allowed switch is persistent and no automatic restore is required. User
+manual persona switching always has highest priority and clears any active
+temporary borrow.
 Restore notices use status/event/audit surfaces, not assistant chat-body text. If
 restore fails, Larva reports the failure, preserves current runtime state, keeps
 audit detail, and requires explicit user persona choice before any further

@@ -62,15 +62,16 @@ Required confirmation choices:
 [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]
 ```
 
-A target implementation that exposes `confirm` UI must provide these four
-outcomes with the following semantics:
+These are the four visible, human-readable dialog labels. A target implementation
+that exposes `confirm` UI must provide exactly those four rows with the following
+semantics:
 
 - `Borrow once`: create a turn-scoped persona lease and restore the origin
   persona and the Pi model that was active immediately before the borrow when the
   current assistant turn ends. Restore must not reapply the origin persona's
   default `PersonaSpec.model` if the user had manually selected a different Pi
   model before the borrow.
-- `Deny`: do not change persona, model, or tool state.
+- `Deny`: explicit refusal; do not change persona, model, or tool state.
 - `Auto-borrow for this session`: set a session-local mode override to `auto`,
   then create the same turn-scoped lease for the current request, including the
   same origin Pi model snapshot. The override is not persisted as a global/user
@@ -78,8 +79,13 @@ outcomes with the following semantics:
 - `Switch persistently`: treat the action as an explicit user manual switch;
   set the active persona to the target and clear any active lease.
 
-If no confirmation UI is available, `confirm` fails safely without changing the
-active persona.
+`Deny` is the explicit refusal option. Cancellation is a separate fail-safe
+denial path: Escape, Ctrl+C, timeout, no available UI, or an unrecognized/no
+selection must fail without changing persona, model, or tool state. These
+cancellation paths are not additional visible choices.
+
+If no confirmation UI is available, `confirm` follows the same fail-safe denial
+path without changing persona, model, or tool state.
 
 ### `auto`
 
@@ -307,6 +313,8 @@ This policy intentionally defines no automatic safe-default persona fallback.
 - `confirm` with no confirmation UI fails safely without changing
   persona/model/tools.
 - `confirm` + `Deny` leaves persona/model/tools unchanged.
+- `confirm` cancellation via Escape, Ctrl+C, timeout, or unrecognized/no
+  selection fails safely without changing persona/model/tools.
 - `confirm` + `Borrow once` creates a turn-scoped lease and restores the origin
   persona plus the actual pre-borrow Pi model at turn end.
 - `confirm` while already borrowing requires a new confirmation before borrowing

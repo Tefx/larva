@@ -269,7 +269,7 @@ extension shortcut for opening the same no-argument selector path. The shortcut
 is intentionally an extension shortcut, not a `keybindings.json` command alias;
 if Pi is not idle it shows a warning and leaves active state unchanged. On a cold
 persona candidate cache, the no-argument selector path may wait for a foreground
-`larva list --json` refresh instead of failing through Pi as `[object Object]`;
+`larva list --json` refresh instead of showing an unreadable fallback label;
 a refresh failure is reported as a Larva notification and leaves active state
 unchanged. If the enhanced custom UI cannot be opened but Pi's simpler selector
 API is available, the command or shortcut may fall back to that selector. In RPC, print, JSON, SDK,
@@ -354,10 +354,10 @@ Mode behavior:
   model-facing tool set, and stale or forged calls to autonomous switch tools are
   rejected. Manual `/larva-persona <id>` remains available.
 - The default is `confirm`. The agent/runtime may request a temporary persona
-  borrow. The borrow commits only after UI confirmation; rejection,
-  cancellation, timeout, or missing UI fails safely without changing persona,
-  model, or tool state. The normal approval is "borrow once", not a persistent
-  switch.
+  borrow. The borrow commits only after UI confirmation. Explicit `Deny`
+  refusal, Escape/Ctrl+C cancellation, timeout, or missing UI fails safely
+  without changing persona, model, or tool state. The normal approval is
+  "borrow once", not a persistent switch.
 - `auto` exposes the same tools and performs the same temporary borrow without UI
   confirmation. The extension records the persona and actual Pi model active
   immediately before the switch and restores both when the current assistant turn
@@ -381,16 +381,21 @@ In `confirm`, the required confirmation choices are:
 [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]
 ```
 
-Any `confirm` UI must provide all four outcomes.
+Any `confirm` UI must provide all four outcomes as visible text rows.
 
 - `Borrow once` creates a turn-scoped lease and restores the origin persona plus
   the actual pre-borrow Pi model at current assistant turn end.
-- `Deny` leaves persona, model, and tool state unchanged.
+- `Deny` is the explicit refusal option and leaves persona, model, and tool state
+  unchanged.
 - `Auto-borrow for this session` sets a session-local mode override to `auto` and
   creates the same turn-scoped lease for the current request. It is not persisted
   as a global preference.
 - `Switch persistently` is treated as a user manual switch, clears any active
   lease, and does not automatically restore.
+
+Escape, Ctrl+C, timeout, missing UI, or an unrecognized/no selection is a
+fail-safe denial path with the same no-state-change result as `Deny`; these paths
+are not additional visible choices.
 
 Restore notices are emitted through status UI, event logs, or audit entries, not
 assistant chat-body text. Restore is attempted on success, failure, cancellation,
