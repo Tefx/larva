@@ -2027,6 +2027,15 @@ function homeDir(env: RuntimeEnv): string {
 
 const DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT = "If the task is unfinished, keep it in Progress/In Progress and Next Steps.\nDo not mark work as complete unless completion evidence exists.\nPreserve next concrete action, files changed, commands run, failing tests, and blockers.";
 const LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS = 4_000;
+const LARVA_COMPACTION_MANUAL_FOCUS_MAX_CODE_POINTS = 2_000;
+const LARVA_COMPACTION_PERSONA_FOCUS_MAX_CODE_POINTS = 2_000;
+const LARVA_COMPACTION_TOTAL_FOCUS_MAX_CODE_POINTS = 6_000;
+
+type LarvaCompactionFocusInput = {
+  manualFocus?: string | null;
+  personaFocus?: string | null;
+  carryForwardRule?: string | null;
+};
 
 function defaultLarvaCompactionConfig(): LarvaCompactionConfig {
   return {
@@ -2040,6 +2049,74 @@ function defaultLarvaCompactionConfig(): LarvaCompactionConfig {
 
 function codePointLength(value: string): number {
   return Array.from(value).length;
+}
+
+function codePointSlice(value: string, start: number, end?: number): string {
+  return Array.from(value).slice(start, end).join("");
+}
+
+function larvaCompactionTruncationMarker(omittedCodePoints: number): string {
+  return `...[truncated ${Math.max(0, omittedCodePoints)} code points]`;
+}
+
+function truncateLarvaCompactionFocusText(value: string, maxCodePoints: number): string {
+  const codePoints = Array.from(value);
+  if (codePoints.length <= maxCodePoints) return value;
+  if (maxCodePoints <= 0) return "";
+
+  let omittedCodePoints = Math.max(1, codePoints.length - maxCodePoints);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const marker = larvaCompactionTruncationMarker(omittedCodePoints);
+    const markerCodePoints = codePointLength(marker);
+    if (markerCodePoints >= maxCodePoints) return codePointSlice(marker, 0, maxCodePoints);
+    const keptCodePoints = Math.max(0, maxCodePoints - markerCodePoints);
+    const nextOmittedCodePoints = codePoints.length - keptCodePoints;
+    if (nextOmittedCodePoints === omittedCodePoints) {
+      return `${codePoints.slice(0, keptCodePoints).join("")}${marker}`;
+    }
+    omittedCodePoints = nextOmittedCodePoints;
+  }
+
+  const marker = larvaCompactionTruncationMarker(omittedCodePoints);
+  const markerCodePoints = codePointLength(marker);
+  if (markerCodePoints >= maxCodePoints) return codePointSlice(marker, 0, maxCodePoints);
+  return `${codePoints.slice(0, maxCodePoints - markerCodePoints).join("")}${marker}`;
+}
+
+function normalizeLarvaCompactionFocusSection(value: string | null | undefined, maxCodePoints: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  return truncateLarvaCompactionFocusText(trimmed, maxCodePoints);
+}
+
+function normalizeLarvaCarryForwardRuleFocus(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (codePointLength(trimmed) > LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS) return null;
+  return trimmed;
+}
+
+function buildLarvaCompactionFocus(input: LarvaCompactionFocusInput): string | null;
+function buildLarvaCompactionFocus(manualFocus: string | null | undefined, personaFocus: string | null | undefined, carryForwardRule: string | null | undefined): string | null;
+function buildLarvaCompactionFocus(
+  inputOrManualFocus: LarvaCompactionFocusInput | string | null | undefined,
+  personaFocus?: string | null,
+  carryForwardRule?: string | null,
+): string | null {
+  const input = typeof inputOrManualFocus === "object" && inputOrManualFocus !== null
+    ? inputOrManualFocus
+    : { manualFocus: inputOrManualFocus, personaFocus, carryForwardRule };
+  const sections: string[] = [];
+  const manual = normalizeLarvaCompactionFocusSection(input.manualFocus, LARVA_COMPACTION_MANUAL_FOCUS_MAX_CODE_POINTS);
+  if (manual !== null) sections.push(`Manual compact focus:\n${manual}`);
+  const persona = normalizeLarvaCompactionFocusSection(input.personaFocus, LARVA_COMPACTION_PERSONA_FOCUS_MAX_CODE_POINTS);
+  if (persona !== null) sections.push(`Active Larva persona compaction focus:\n${persona}`);
+  const carryForward = normalizeLarvaCarryForwardRuleFocus(input.carryForwardRule);
+  if (carryForward !== null) sections.push(`Larva carry-forward rule:\n${carryForward}`);
+  if (sections.length === 0) return null;
+  return truncateLarvaCompactionFocusText(sections.join("\n\n"), LARVA_COMPACTION_TOTAL_FOCUS_MAX_CODE_POINTS);
 }
 
 function compactionConfigError(message: string): LarvaError {

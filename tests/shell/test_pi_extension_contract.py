@@ -3841,6 +3841,177 @@ def test_compaction_config_parser_contract_cases(tmp_path: Path) -> None:
     assert payload["receipts"]["no_config_file_mutation"]
 
 
+def test_compaction_focus_composition_contract_cases(tmp_path: Path) -> None:
+    """FOCUS1/FOCUS3: bounded focus helper composes sections in design order and falls back when empty."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export {
+          buildLarvaCompactionFocus,
+          LARVA_COMPACTION_TOTAL_FOCUS_MAX_CODE_POINTS,
+        };
+        """,
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const failures = [];
+        const record = (condition, label, detail = null) => {{
+          if (!condition) failures.push({{ label, detail }});
+        }};
+        const codePointLength = (value) => Array.from(value).length;
+        const focus = mod.buildLarvaCompactionFocus({{
+          manualFocus: "  manual next action  ",
+          personaFocus: "\\n\\tpersona summary preference\\n",
+          carryForwardRule: "  carry forward unfinished work  ",
+        }});
+        const expected = [
+          "Manual compact focus:\\nmanual next action",
+          "Active Larva persona compaction focus:\\npersona summary preference",
+          "Larva carry-forward rule:\\ncarry forward unfinished work",
+        ].join("\\n\\n");
+        record(focus === expected, "sections should compose with exact labels, trimming, and blank-line separators", focus);
+        const labels = [
+          "Manual compact focus:",
+          "Active Larva persona compaction focus:",
+          "Larva carry-forward rule:",
+        ];
+        const indexes = labels.map((label) => focus.indexOf(label));
+        record(indexes.every((index) => index >= 0), "all labels should appear when non-empty", indexes);
+        record(indexes[0] < indexes[1] && indexes[1] < indexes[2], "labels should appear in required order", indexes);
+
+        const positional = mod.buildLarvaCompactionFocus(" manual ", " persona ", " carry ");
+        record(positional === [
+          "Manual compact focus:\\nmanual",
+          "Active Larva persona compaction focus:\\npersona",
+          "Larva carry-forward rule:\\ncarry",
+        ].join("\\n\\n"), "positional call should share object-call semantics", positional);
+
+        const empty = mod.buildLarvaCompactionFocus({{ manualFocus: "  ", personaFocus: "\\n", carryForwardRule: "\\t" }});
+        record(empty === null, "all-empty inputs should return null for native Pi compaction fallback", empty);
+        const overLimitCarryOnly = mod.buildLarvaCompactionFocus({{ carryForwardRule: "🙂".repeat(4001) }});
+        record(overLimitCarryOnly === null, "carry-forward text is accepted only when parser-bounded to <=4000 code points", codePointLength("🙂".repeat(4001)));
+
+        const total = mod.buildLarvaCompactionFocus({{
+          manualFocus: "m".repeat(2000),
+          personaFocus: "p".repeat(2000),
+          carryForwardRule: "c".repeat(4000),
+        }});
+        record(total.startsWith("Manual compact focus:"), "total truncation should retain manual label prefix", total?.slice(0, 80));
+        record(codePointLength(total) <= mod.LARVA_COMPACTION_TOTAL_FOCUS_MAX_CODE_POINTS, "composed focus should stay within 6000 code points", codePointLength(total));
+        record(total.endsWith("code points]") && total.includes("...[truncated "), "total truncation should append exact marker", total?.slice(-80));
+
+        if (failures.length > 0) {{
+          console.error(JSON.stringify({{ failures }}, null, 2));
+          process.exit(1);
+        }}
+        console.log(JSON.stringify({{
+          section_order_receipt: indexes,
+          empty_focus_receipt: empty,
+          total_length: codePointLength(total),
+          total_prefix: total.slice(0, "Manual compact focus:".length),
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["section_order_receipt"] == sorted(payload["section_order_receipt"])
+    assert payload["empty_focus_receipt"] is None
+    assert payload["total_length"] <= 6000
+    assert payload["total_prefix"] == "Manual compact focus:"
+
+
+def test_compaction_focus_truncation_contract_cases(tmp_path: Path) -> None:
+    """FOCUS2: focus truncation counts Unicode code points and marker-inclusive omitted totals."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export {
+          buildLarvaCompactionFocus,
+          truncateLarvaCompactionFocusText,
+          LARVA_COMPACTION_MANUAL_FOCUS_MAX_CODE_POINTS,
+          LARVA_COMPACTION_PERSONA_FOCUS_MAX_CODE_POINTS,
+          LARVA_COMPACTION_TOTAL_FOCUS_MAX_CODE_POINTS,
+        };
+        """,
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const failures = [];
+        const record = (condition, label, detail = null) => {{
+          if (!condition) failures.push({{ label, detail }});
+        }};
+        const codePointLength = (value) => Array.from(value).length;
+        const marker = (omitted) => `...[truncated ${{omitted}} code points]`;
+
+        const asciiFixture = mod.truncateLarvaCompactionFocusText("a".repeat(2005), 2000);
+        const asciiExpected = `${{"a".repeat(1971)}}${{marker(34)}}`;
+        record(asciiFixture === asciiExpected, "documented ASCII fixture should match exact marker-inclusive output", asciiFixture.slice(-80));
+        record(codePointLength(asciiFixture) === 2000, "ASCII fixture length should be exactly the bound", codePointLength(asciiFixture));
+
+        const emojiFixture = mod.truncateLarvaCompactionFocusText("🙂".repeat(2005), 2000);
+        const emojiExpected = `${{"🙂".repeat(1971)}}${{marker(34)}}`;
+        record(emojiFixture === emojiExpected, "emoji fixture should use code points rather than UTF-16 units", emojiFixture.slice(-80));
+        record(codePointLength(emojiFixture) === 2000 && emojiFixture.length > 2000, "emoji fixture code-point length differs from UTF-16 length", {{ codePoints: codePointLength(emojiFixture), utf16: emojiFixture.length }});
+
+        const manualSource = "x".repeat(2005);
+        const personaSource = "🙂".repeat(2005);
+        const carrySource = "carry-forward";
+        const manualExpected = `${{"x".repeat(1971)}}${{marker(34)}}`;
+        const focus = mod.buildLarvaCompactionFocus({{ manualFocus: manualSource, personaFocus: personaSource, carryForwardRule: carrySource }});
+        record(focus.includes(marker(34)), "section truncation markers should use omitted source code points", focus);
+        record(focus.includes("Manual compact focus:\\n" + manualExpected), "manual section should be tail-truncated after its label", focus.slice(0, 2100));
+        record(focus.includes("Active Larva persona compaction focus:\\n" + emojiExpected), "persona section should be tail-truncated after its label", focus.slice(1900, 4100));
+
+        const totalInput = {{ manualFocus: "m".repeat(2000), personaFocus: "p".repeat(2000), carryForwardRule: "c".repeat(4000) }};
+        const totalFocus = mod.buildLarvaCompactionFocus(totalInput);
+        const unboundedComposed = [
+          `Manual compact focus:\\n${{totalInput.manualFocus}}`,
+          `Active Larva persona compaction focus:\\n${{totalInput.personaFocus}}`,
+          `Larva carry-forward rule:\\n${{totalInput.carryForwardRule}}`,
+        ].join("\\n\\n");
+        const totalMarkerMatch = totalFocus.match(/\\.\\.\\.\\[truncated (\\d+) code points\\]$/);
+        record(totalMarkerMatch !== null, "total truncation should end with exact marker", totalFocus.slice(-80));
+        if (totalMarkerMatch !== null) {{
+          const totalMarker = totalMarkerMatch[0];
+          const keptPrefix = totalFocus.slice(0, -totalMarker.length);
+          const omitted = Number(totalMarkerMatch[1]);
+          record(omitted === codePointLength(unboundedComposed) - codePointLength(keptPrefix), "total omitted count should equal original minus kept code points", {{ omitted, original: codePointLength(unboundedComposed), kept: codePointLength(keptPrefix) }});
+        }}
+        record(codePointLength(totalFocus) === mod.LARVA_COMPACTION_TOTAL_FOCUS_MAX_CODE_POINTS, "total focus should truncate exactly to 6000 code points", codePointLength(totalFocus));
+        record(totalFocus.startsWith("Manual compact focus:"), "total truncation should sacrifice later sections first", totalFocus.slice(0, 80));
+
+        if (failures.length > 0) {{
+          console.error(JSON.stringify({{ failures }}, null, 2));
+          process.exit(1);
+        }}
+        console.log(JSON.stringify({{
+          ascii_fixture_tail: asciiFixture.slice(-marker(34).length),
+          ascii_length: codePointLength(asciiFixture),
+          emoji_length: codePointLength(emojiFixture),
+          emoji_utf16_length: emojiFixture.length,
+          total_length: codePointLength(totalFocus),
+          total_marker: totalMarkerMatch?.[0] ?? null,
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["ascii_fixture_tail"] == "...[truncated 34 code points]"
+    assert payload["ascii_length"] == 2000
+    assert payload["emoji_length"] == 2000
+    assert payload["emoji_utf16_length"] > 2000
+    assert payload["total_length"] == 6000
+    assert payload["total_marker"].startswith("...[truncated ")
+
+
 def test_persona_envelope_preserves_compaction_prompt_activation_and_restore(tmp_path: Path) -> None:
     """ENV1/ENV2: active envelope carries only compaction_prompt into compaction focus."""
     source = _source()
