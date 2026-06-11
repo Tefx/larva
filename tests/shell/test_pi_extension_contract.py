@@ -3663,6 +3663,184 @@ def test_async_subagent_a8_a10_expected_red_unified_user_command_and_docs_parity
     ]
     assert not missing, "README/source missing unified async subagent command parity tokens: " + ", ".join(missing)
 
+def _write_pi_tui_runtime_mock(tmp_path: Path) -> None:
+    """Provide the narrow runtime imports needed to probe extension-local helpers."""
+    module_dir = tmp_path / "node_modules" / "@earendil-works" / "pi-tui"
+    module_dir.mkdir(parents=True)
+    (module_dir / "package.json").write_text(
+        json.dumps({"type": "module", "main": "index.js", "exports": "./index.js"}),
+        encoding="utf-8",
+    )
+    (module_dir / "index.js").write_text(
+        textwrap.dedent(
+            """
+            export class Input {}
+            export const Key = {};
+            export class Markdown {}
+            export class SelectList {}
+            export function matchesKey() { return false; }
+            export function truncateToWidth(value, width) { return String(value).slice(0, Math.max(0, width)); }
+            export function visibleWidth(value) { return String(value).length; }
+            export function wrapTextWithAnsi(value) { return [String(value)]; }
+            """
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_compaction_config_parser_contract_cases(tmp_path: Path) -> None:
+    """CFG1-CFG3: repo-local Pi compaction config parser honors strict schema/defaults."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export {
+          DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT,
+          LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS,
+          larvaCompactionConfigPath,
+          parseLarvaCompactionConfigValue,
+          loadLarvaCompactionConfig,
+        };
+        """,
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+        const tmp = {json.dumps(str(tmp_path))};
+        process.chdir(tmp);
+        const receipts = {{
+          config_path_receipt: [],
+          schema_receipt: [],
+          defaults_bounds_receipt: [],
+          no_config_file_mutation: [],
+        }};
+        const failures = [];
+        const record = (condition, label, detail = null) => {{
+          if (!condition) failures.push({{ label, detail }});
+        }};
+        const note = (bucket, label) => receipts[bucket].push(label);
+        const writeRaw = (file, raw) => {{
+          fs.mkdirSync(path.dirname(file), {{ recursive: true }});
+          fs.writeFileSync(file, raw, "utf8");
+        }};
+        const writeJson = (file, value) => writeRaw(file, JSON.stringify(value));
+        const loadFromValue = (name, value) => {{
+          const file = path.join(tmp, `${{name}}.json`);
+          writeJson(file, value);
+          return mod.loadLarvaCompactionConfig({{ LARVA_PI_COMPACTION_CONFIG_FILE: file }});
+        }};
+        const expectOk = (bucket, label, value, check = () => true) => {{
+          const result = loadFromValue(label.replace(/[^a-z0-9]+/gi, "_"), value);
+          record(result.ok === true, `${{label}} should be valid`, result);
+          if (result.ok) record(check(result.config, result), `${{label}} check failed`, result);
+          if (result.ok) note(bucket, label);
+          return result;
+        }};
+        const expectInvalid = (bucket, label, value) => {{
+          const result = loadFromValue(label.replace(/[^a-z0-9]+/gi, "_"), value);
+          record(result.ok === false && result.error.code === "LARVA_COMPACTION_CONFIG_INVALID", `${{label}} should be invalid`, result);
+          if (!result.ok) note(bucket, label);
+          return result;
+        }};
+
+        const missingHome = path.join(tmp, "home-without-config");
+        const missing = mod.loadLarvaCompactionConfig({{ HOME: missingHome }});
+        record(missing.ok === true, "missing config should load defaults", missing);
+        if (missing.ok) {{
+          record(missing.source === "missing", "missing config source", missing);
+          record(missing.path === path.join(missingHome, ".pi", "larva", "compaction.json"), "default path", missing);
+          record(missing.config.enabled === true, "default root enabled", missing.config);
+          record(missing.config.carry_forward_rule.enabled === true, "default carry-forward enabled", missing.config);
+          record(missing.config.carry_forward_rule.text === mod.DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT, "default carry-forward text", missing.config);
+          note("config_path_receipt", "missing config returned enabled defaults at ~/.pi/larva/compaction.json");
+          note("defaults_bounds_receipt", "built-in carry-forward rule applied when config is missing");
+        }}
+        record(!fs.existsSync(path.join(missingHome, ".pi")), "missing config load must not create ~/.pi", missingHome);
+        note("no_config_file_mutation", "missing config read did not create ~/.pi/larva/compaction.json");
+
+        const overridePath = path.join(tmp, "absolute-override", "compaction.json");
+        writeJson(overridePath, {{ carry_forward_rule: {{ text: "  keep next action  " }} }});
+        const override = mod.loadLarvaCompactionConfig({{ LARVA_PI_COMPACTION_CONFIG_FILE: overridePath }});
+        record(override.ok === true && override.path === overridePath && override.source === "file", "absolute override path should be used", override);
+        if (override.ok) record(override.config.carry_forward_rule.text === "keep next action", "override text trims", override.config);
+        note("config_path_receipt", "absolute LARVA_PI_COMPACTION_CONFIG_FILE override used exactly and trims active text");
+
+        const relativeBefore = fs.existsSync(path.join(tmp, "relative.json"));
+        const relative = mod.loadLarvaCompactionConfig({{ LARVA_PI_COMPACTION_CONFIG_FILE: "relative.json" }});
+        const empty = mod.loadLarvaCompactionConfig({{ LARVA_PI_COMPACTION_CONFIG_FILE: "" }});
+        record(relative.ok === false && relative.error.code === "LARVA_COMPACTION_CONFIG_INVALID", "relative override invalid", relative);
+        record(empty.ok === false && empty.error.code === "LARVA_COMPACTION_CONFIG_INVALID", "empty override invalid", empty);
+        record(relativeBefore === false && !fs.existsSync(path.join(tmp, "relative.json")), "invalid relative override must not touch filesystem", relative);
+        note("config_path_receipt", "empty and relative overrides are parser failures");
+        note("no_config_file_mutation", "invalid override paths returned before filesystem mutation");
+
+        expectInvalid("schema_receipt", "null root", null);
+        expectInvalid("schema_receipt", "array root", []);
+        expectInvalid("schema_receipt", "scalar root", true);
+        expectInvalid("schema_receipt", "unknown root key", {{ unexpected: true }});
+        expectInvalid("schema_receipt", "unknown nested key", {{ carry_forward_rule: {{ extra: true }} }});
+        expectInvalid("schema_receipt", "non-object carry_forward_rule", {{ carry_forward_rule: [] }});
+        expectInvalid("schema_receipt", "root enabled type", {{ enabled: "true" }});
+        expectInvalid("schema_receipt", "nested enabled type", {{ carry_forward_rule: {{ enabled: "false" }} }});
+        expectInvalid("schema_receipt", "text type when root disabled", {{ enabled: false, carry_forward_rule: {{ text: 1 }} }});
+        const invalidJsonPath = path.join(tmp, "invalid-json", "compaction.json");
+        writeRaw(invalidJsonPath, "{{not json");
+        const invalidJson = mod.loadLarvaCompactionConfig({{ LARVA_PI_COMPACTION_CONFIG_FILE: invalidJsonPath }});
+        record(invalidJson.ok === false && invalidJson.error.code === "LARVA_COMPACTION_CONFIG_INVALID", "invalid JSON is invalid config", invalidJson);
+        note("schema_receipt", "invalid JSON rejected without rewrite");
+
+        expectOk("defaults_bounds_receipt", "empty object defaults", {{}}, (config) =>
+          config.enabled === true &&
+          config.carry_forward_rule.enabled === true &&
+          config.carry_forward_rule.text === mod.DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT
+        );
+        expectOk("defaults_bounds_receipt", "missing nested text defaults", {{ carry_forward_rule: {{}} }}, (config) =>
+          config.carry_forward_rule.enabled === true &&
+          config.carry_forward_rule.text === mod.DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT
+        );
+        expectOk("defaults_bounds_receipt", "root disabled empty text accepted", {{ enabled: false, carry_forward_rule: {{ text: "" }} }}, (config) =>
+          config.enabled === false && config.carry_forward_rule.enabled === true
+        );
+        expectOk("defaults_bounds_receipt", "root disabled over-limit text accepted", {{ enabled: false, carry_forward_rule: {{ text: "🙂".repeat(4001) }} }}, (config) =>
+          config.enabled === false
+        );
+        expectOk("defaults_bounds_receipt", "nested disabled empty text accepted", {{ enabled: true, carry_forward_rule: {{ enabled: false, text: "" }} }}, (config) =>
+          config.enabled === true && config.carry_forward_rule.enabled === false
+        );
+        expectOk("defaults_bounds_receipt", "nested disabled over-limit text accepted", {{ enabled: true, carry_forward_rule: {{ enabled: false, text: "🙂".repeat(4001) }} }}, (config) =>
+          config.carry_forward_rule.enabled === false
+        );
+        expectOk("defaults_bounds_receipt", "enabled exact bound code points accepted", {{ carry_forward_rule: {{ text: "🙂".repeat(4000) }} }}, (config) =>
+          Array.from(config.carry_forward_rule.text).length === mod.LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS
+        );
+        expectInvalid("defaults_bounds_receipt", "enabled empty text invalid", {{ enabled: true, carry_forward_rule: {{ enabled: true, text: "   " }} }});
+        expectInvalid("defaults_bounds_receipt", "enabled over-limit text invalid", {{ enabled: true, carry_forward_rule: {{ enabled: true, text: "🙂".repeat(4001) }} }});
+
+        if (failures.length > 0) {{
+          console.error(JSON.stringify({{ failures, receipts }}, null, 2));
+          process.exit(1);
+        }}
+        console.log(JSON.stringify({{
+          case_count: Object.values(receipts).reduce((total, values) => total + values.length, 0),
+          default_text_code_points: Array.from(mod.DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT).length,
+          receipts,
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["case_count"] >= 25
+    assert payload["default_text_code_points"] <= 4000
+    assert payload["receipts"]["config_path_receipt"]
+    assert payload["receipts"]["schema_receipt"]
+    assert payload["receipts"]["defaults_bounds_receipt"]
+    assert payload["receipts"]["no_config_file_mutation"]
+
+
 def test_compaction_focus_expected_red_gap_exposed():
     """R1: Test must fail until compaction-focus integration is present.
     It expects exact appended focus using customInstructions."""

@@ -28,6 +28,7 @@ type LarvaErrorCode =
   | "LARVA_SUBAGENT_LOG_NOT_OBSERVED"
   | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE"
   | "LARVA_SUBAGENT_LOG_CONFIG_INVALID"
+  | "LARVA_COMPACTION_CONFIG_INVALID"
   | "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
   | "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
   | "LARVA_CONFIRMATION_UNAVAILABLE"
@@ -39,6 +40,18 @@ type LarvaErrorCode =
 
 type LarvaError = { code: LarvaErrorCode; message: string };
 type PiToolPolicy = { allow?: string[]; deny?: string[] };
+
+type LarvaCompactionConfig = {
+  enabled: boolean;
+  carry_forward_rule: {
+    enabled: boolean;
+    text: string;
+  };
+};
+
+type LarvaCompactionConfigLoadResult =
+  | { ok: true; source: "missing" | "file"; path: string; config: LarvaCompactionConfig }
+  | { ok: false; path: string | null; error: LarvaError };
 
 // Adapter-local model map contract only. Runtime implementation is owned by a
 // later implementation step; this declaration pins the Pi extension boundary
@@ -68,6 +81,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_CHILD_RPC_TRACE_FILE?: string;
   LARVA_PI_SUBAGENT_LOG_FILE?: string;
   LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE?: string;
+  LARVA_PI_COMPACTION_CONFIG_FILE?: string;
 };
 
 type CapabilityPosture = "none" | "read_only" | "read_write" | "destructive";
@@ -2008,6 +2022,105 @@ function piModelLookupFor(parsed: ParsedModel): ParsedModel {
 
 function homeDir(env: RuntimeEnv): string {
   return env.HOME && env.HOME.length > 0 ? env.HOME : homedir();
+}
+
+const DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT = "If the task is unfinished, keep it in Progress/In Progress and Next Steps.\nDo not mark work as complete unless completion evidence exists.\nPreserve next concrete action, files changed, commands run, failing tests, and blockers.";
+const LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS = 4_000;
+
+function defaultLarvaCompactionConfig(): LarvaCompactionConfig {
+  return {
+    enabled: true,
+    carry_forward_rule: {
+      enabled: true,
+      text: DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT,
+    },
+  };
+}
+
+function codePointLength(value: string): number {
+  return Array.from(value).length;
+}
+
+function compactionConfigError(message: string): LarvaError {
+  return error("LARVA_COMPACTION_CONFIG_INVALID", message);
+}
+
+function larvaCompactionConfigPath(env: RuntimeEnv): string | LarvaError {
+  const configured = env.LARVA_PI_COMPACTION_CONFIG_FILE;
+  if (configured !== undefined) {
+    if (configured.length === 0) return compactionConfigError("LARVA_PI_COMPACTION_CONFIG_FILE must be non-empty.");
+    if (!isAbsolute(configured)) return compactionConfigError("LARVA_PI_COMPACTION_CONFIG_FILE must be an absolute path.");
+    return configured;
+  }
+  return join(homeDir(env), ".pi", "larva", "compaction.json");
+}
+
+function parseLarvaCompactionConfigValue(raw: unknown): LarvaCompactionConfig | LarvaError {
+  if (!isRecord(raw)) return compactionConfigError("compaction.json root must be a JSON object.");
+  try {
+    assertOnlyKeys(raw, ["enabled", "carry_forward_rule"]);
+  } catch {
+    return compactionConfigError("compaction.json contains an unknown root key.");
+  }
+
+  const config = defaultLarvaCompactionConfig();
+  if (raw.enabled !== undefined) {
+    if (typeof raw.enabled !== "boolean") return compactionConfigError("enabled must be a boolean.");
+    config.enabled = raw.enabled;
+  }
+
+  if (raw.carry_forward_rule !== undefined) {
+    if (!isRecord(raw.carry_forward_rule)) return compactionConfigError("carry_forward_rule must be a JSON object.");
+    try {
+      assertOnlyKeys(raw.carry_forward_rule, ["enabled", "text"]);
+    } catch {
+      return compactionConfigError("carry_forward_rule contains an unknown key.");
+    }
+
+    if (raw.carry_forward_rule.enabled !== undefined) {
+      if (typeof raw.carry_forward_rule.enabled !== "boolean") return compactionConfigError("carry_forward_rule.enabled must be a boolean.");
+      config.carry_forward_rule.enabled = raw.carry_forward_rule.enabled;
+    }
+
+    if (raw.carry_forward_rule.text !== undefined) {
+      if (typeof raw.carry_forward_rule.text !== "string") return compactionConfigError("carry_forward_rule.text must be a string.");
+      config.carry_forward_rule.text = raw.carry_forward_rule.text.trim();
+    }
+  }
+
+  if (config.enabled && config.carry_forward_rule.enabled) {
+    if (config.carry_forward_rule.text.length === 0) return compactionConfigError("carry_forward_rule.text must be non-empty when enabled.");
+    if (codePointLength(config.carry_forward_rule.text) > LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS) {
+      return compactionConfigError("carry_forward_rule.text exceeds 4000 Unicode code points.");
+    }
+  }
+
+  return config;
+}
+
+function loadLarvaCompactionConfig(env: RuntimeEnv): LarvaCompactionConfigLoadResult {
+  const path = larvaCompactionConfigPath(env);
+  if (isLarvaError(path)) return { ok: false, path: null, error: path };
+
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch (caught) {
+    const code = isRecord(caught) ? caught.code : undefined;
+    if (code === "ENOENT") return { ok: true, source: "missing", path, config: defaultLarvaCompactionConfig() };
+    return { ok: false, path, error: compactionConfigError("Unable to read compaction.json.") };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    return { ok: false, path, error: compactionConfigError("compaction.json contains invalid JSON.") };
+  }
+
+  const config = parseLarvaCompactionConfigValue(parsed);
+  if (isLarvaError(config)) return { ok: false, path, error: config };
+  return { ok: true, source: "file", path, config };
 }
 
 function subagentPresentationCachePath(env: RuntimeEnv): string | LarvaError {
