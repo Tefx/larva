@@ -926,6 +926,57 @@ metadata, not model-facing helper state, and not authority for `larva_subagent_s
 Trace write failures are ignored so proof instrumentation cannot change child
 runtime behavior.
 
+### Long output artifacts
+
+Short child final outputs remain inline in the `larva-subagent-result` callback;
+short outputs remain inline. `details.child_output_truncated` is `false`, the visible `child_output` fence
+contains the final assistant text, and no `full_output_artifact` field is
+emitted. In other words, there is no artifact for short outputs. This preserves
+the existing lightweight callback shape for normal-sized results.
+
+When a successful child final output would exceed the bounded callback budget,
+the callback stays model-safe by sending only a bounded preview inline and writing
+the exact full output to a local artifact. In that case callback `details`
+contains:
+
+```json
+{
+  "child_output_truncated": true,
+  "child_output_preview": "bounded preview text",
+  "full_output_artifact": {
+    "path": "/absolute/local/path/to/full-output.txt",
+    "sha256": "hex sha256 of the exact full output bytes",
+    "bytes": 12345,
+    "lines": 42
+  }
+}
+```
+
+The same manifest is also summarized in the visible callback header as
+`child_output_truncated: true`, `child_output_preview: ...`, and dotted
+`full_output_artifact.*` lines before the `child_output` fence. The inline
+`child_output` fence and `details.result_text` are previews in this case, not the
+full output.
+
+Artifact storage is adapter-local and local-only. The extension tries these
+locations in order: absolute `LARVA_PI_SUBAGENT_ARTIFACT_DIR` when set,
+`~/.pi/larva/subagent-output-artifacts`, then the platform temp fallback
+`<tmp>/larva-pi/subagent-output-artifacts`. Directories are created with `0700`
+permissions and artifact files with `0600` permissions when the platform supports
+those modes. Filenames include a sanitized completion timestamp, child session
+basename, and a short sha prefix; callers must treat the manifest `path` as the
+authoritative location.
+
+Security and retention implications: artifacts are local-only and are not remote
+upload targets; they are not remote upload artifacts. Larva does not redact them;
+artifacts are not redacted, there is no automatic redaction, and artifacts may
+contain sensitive child output exactly as produced by the child.
+Operators should protect and remove local artifact files according to their
+normal workstation retention policy. Orchestrators should consume
+`full_output_artifact` from callback `details` and, when necessary, verify
+`sha256`/`bytes` against the local file. Orchestrators should not scrape child `.jsonl` logs when manifest exists; they must not scrape or replay child `.jsonl`
+session logs to reconstruct long output when the manifest exists.
+
 ### `/larva-subagent` console
 
 The canonical user command is:
@@ -1027,6 +1078,10 @@ Do not infer these guarantees from `larva pi` or this extension:
 - No public `run_id`, `last` alias, fuzzy selector, stop alias, natural-language
   cancel selector, sidecar provenance handle, sidecar metadata file, or filesystem
   scan to discover active children.
+- No child `.jsonl` scraping to reconstruct long final output when a
+  `full_output_artifact` manifest is present.
+- No remote upload, automatic redaction, or managed retention guarantee for local
+  full-output artifacts; artifacts may contain sensitive child output.
 - No batch subagent tool, batch cancel surface, or job scheduler.
 - No subagent catalogue dumped into the system prompt.
 - No model-visible overlay log stream; `/larva-subagent` is the only
