@@ -108,6 +108,7 @@ type PersonaEnvelope = {
   prompt: string;
   tool_policy: PiToolPolicy;
   can_spawn?: boolean | string[];
+  compaction_prompt?: string;
 };
 
 type PersonaLease = {
@@ -3381,6 +3382,13 @@ export function getActiveEnvelope(): PersonaEnvelope | null {
   return state.envelope;
 }
 
+function activePersonaCompactionFocus(envelope: PersonaEnvelope | null = state.envelope): string | null {
+  const compactionPrompt = envelope?.compaction_prompt;
+  if (typeof compactionPrompt !== "string") return null;
+  const trimmed = compactionPrompt.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 async function setStatus(ctx: PiContext): Promise<void> {
   const inactiveStatus = "larva: none";
   await setLarvaStatus(ctx, state.envelope ? `larva: ${state.envelope.persona_id}` : inactiveStatus);
@@ -3546,6 +3554,7 @@ async function commitPersonaInternal(
       prompt: spec.prompt,
       tool_policy,
       can_spawn: spec.can_spawn,
+      ...(spec.compaction_prompt !== undefined ? { compaction_prompt: spec.compaction_prompt } : {}),
     };
     state.envelope = envelope;
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools

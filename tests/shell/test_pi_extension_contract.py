@@ -3841,6 +3841,168 @@ def test_compaction_config_parser_contract_cases(tmp_path: Path) -> None:
     assert payload["receipts"]["no_config_file_mutation"]
 
 
+def test_persona_envelope_preserves_compaction_prompt_activation_and_restore(tmp_path: Path) -> None:
+    """ENV1/ENV2: active envelope carries only compaction_prompt into compaction focus."""
+    source = _source()
+    assert "compaction_prompt?: string;" in source
+    focus_body = _function_body(source, "function activePersonaCompactionFocus")
+    assert "compaction_prompt" in focus_body
+    assert ".prompt" not in focus_body
+    assert ".model" not in focus_body
+
+    _write_pi_tui_runtime_mock(tmp_path)
+    fake_cli = tmp_path / "fake-larva-compaction-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            const specs = {
+              compact: {
+                id: "compact",
+                description: "Compaction persona",
+                prompt: "FULL_PERSONA_PROMPT_MUST_NOT_BE_FOCUS",
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: "sha256:compact",
+                compaction_prompt: "  PERSONA_COMPACTION_FOCUS  ",
+              },
+              plain: {
+                id: "plain",
+                description: "Plain persona",
+                prompt: "PLAIN_PERSONA_PROMPT_MUST_NOT_BE_FOCUS",
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: "sha256:plain",
+              },
+            };
+            if (command === "resolve" && jsonFlag === "--json" && specs[personaId]) {
+              process.stdout.write(JSON.stringify({ data: specs[personaId] }));
+              process.exit(0);
+            }
+            process.exit(17);
+            """
+        ),
+        encoding="utf-8",
+    )
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export { activePersonaCompactionFocus };
+        """,
+    )
+
+    startup = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const commands = {{}};
+        const handlers = {{}};
+        const sessionEntries = [];
+        const statuses = [];
+        const activeToolCalls = [];
+        const modelCalls = [];
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INITIAL_PERSONA_ID: "compact",
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async (status) => statuses.push(status), notify: async () => undefined }},
+          modelRegistry: {{ find: async (provider, id) => ({{ provider, id }}) }},
+          session: {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "larva_subagent"],
+          setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+          setModel: async (model) => {{ modelCalls.push(model); ctx.model = model; return true; }},
+          registerCommand: (nameOrCommand, options) => {{ commands[typeof nameOrCommand === "string" ? nameOrCommand : nameOrCommand.name] = options ?? nameOrCommand; }},
+          registerTool: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.session_start?.({{ reason: "startup" }}, ctx);
+        const compactEnvelope = mod.getActiveEnvelope();
+        const compactFocus = mod.activePersonaCompactionFocus();
+        const switchResult = await commands["larva-persona"].handler("plain", ctx);
+        const plainEnvelope = mod.getActiveEnvelope();
+        const plainFocus = mod.activePersonaCompactionFocus();
+        console.log(JSON.stringify({{
+          compactEnvelope,
+          compactFocus,
+          switchResult,
+          plainEnvelope,
+          plainFocus,
+          sessionEntries,
+          statuses,
+          activeToolCalls,
+          modelCalls,
+          runtimeModel: ctx.model,
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert startup["compactEnvelope"]["compaction_prompt"] == "  PERSONA_COMPACTION_FOCUS  "
+    assert startup["compactFocus"] == "PERSONA_COMPACTION_FOCUS"
+    assert "FULL_PERSONA_PROMPT_MUST_NOT_BE_FOCUS" not in startup["compactFocus"]
+    assert "compaction_prompt" not in startup["plainEnvelope"]
+    assert startup["plainFocus"] is None
+    active_entries = [
+        entry for entry in startup["sessionEntries"] if entry.get("customType") == "larva-active-persona-commit"
+    ]
+    assert active_entries
+    assert all("prompt" not in entry["data"] for entry in active_entries)
+    assert all("model" not in entry["data"] for entry in active_entries)
+    assert all("tool_policy" not in entry["data"] for entry in active_entries)
+    assert startup["modelCalls"][-1] == {"provider": "provider", "id": "model"}
+
+    restore_entries = [entry for entry in active_entries if entry["data"]["persona_id"] == "compact"]
+    restored = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const handlers = {{}};
+        const sessionEntries = {json.dumps(restore_entries)};
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async (provider, id) => ({{ provider, id }}) }},
+          session: {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async (model) => {{ ctx.model = model; return true; }},
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.session_start?.({{ reason: "restore" }}, ctx);
+        console.log(JSON.stringify({{ envelope: mod.getActiveEnvelope(), focus: mod.activePersonaCompactionFocus(), sessionEntries }}));
+        """,
+        timeout=8,
+    )
+
+    assert restored["envelope"]["persona_id"] == "compact"
+    assert restored["envelope"]["compaction_prompt"] == "  PERSONA_COMPACTION_FOCUS  "
+    assert restored["focus"] == "PERSONA_COMPACTION_FOCUS"
+    assert "FULL_PERSONA_PROMPT_MUST_NOT_BE_FOCUS" not in restored["focus"]
+
+
 def test_compaction_focus_expected_red_gap_exposed():
     """R1: Test must fail until compaction-focus integration is present.
     It expects exact appended focus using customInstructions."""

@@ -681,6 +681,120 @@ def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_
     assert any(entry["data"].get("committed") is True for entry in payload["auditEntries"])
 
 
+def test_compaction_prompt_real_runtime_envelope_focus_uses_active_state(tmp_path: Path) -> None:
+    module_dir = tmp_path / "node_modules" / "@earendil-works" / "pi-tui"
+    module_dir.mkdir(parents=True)
+    (module_dir / "package.json").write_text(
+        json.dumps({"type": "module", "main": "index.js", "exports": "./index.js"}),
+        encoding="utf-8",
+    )
+    (module_dir / "index.js").write_text(
+        textwrap.dedent(
+            """
+            export class Input {}
+            export const Key = {};
+            export class Markdown {}
+            export class SelectList {}
+            export function matchesKey() { return false; }
+            export function truncateToWidth(value, width) { return String(value).slice(0, Math.max(0, width)); }
+            export function visibleWidth(value) { return String(value).length; }
+            export function wrapTextWithAnsi(value) { return [String(value)]; }
+            """
+        ),
+        encoding="utf-8",
+    )
+    extension = tmp_path / "larva-pi-compaction-runtime.ts"
+    extension.write_text(
+        EXTENSION.read_text(encoding="utf-8") + "\nexport { activePersonaCompactionFocus };\n",
+        encoding="utf-8",
+    )
+    fake_cli = tmp_path / "fake-larva-compaction-runtime-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command === "resolve" && jsonFlag === "--json" && personaId === "compact") {
+              process.stdout.write(JSON.stringify({
+                data: {
+                  id: "compact",
+                  description: "Compaction runtime persona",
+                  prompt: "REAL_RUNTIME_FULL_PROMPT_MUST_NOT_BE_FOCUS",
+                  model: "provider/model",
+                  capabilities: {},
+                  spec_version: "0.1.0",
+                  spec_digest: "sha256:compact-runtime",
+                  compaction_prompt: "REAL_RUNTIME_COMPACTION_FOCUS",
+                }
+              }));
+              process.exit(0);
+            }
+            process.exit(17);
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node_inline(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const handlers = new Map();
+        const sessionEntries = [];
+        const modelCalls = [];
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INITIAL_PERSONA_ID: "compact",
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async (provider, id) => ({{ provider, id }}) }},
+          session: {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read"],
+          setActiveTools: async () => true,
+          setModel: async (model) => {{ modelCalls.push(model); ctx.model = model; return true; }},
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: (event, handler) => handlers.set(event, handler),
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.get("session_start")?.({{ reason: "startup" }}, ctx);
+        const envelope = mod.getActiveEnvelope();
+        const focus = mod.activePersonaCompactionFocus();
+        console.log(JSON.stringify({{
+          envelope,
+          focus,
+          modelCalls,
+          runtimeModel: ctx.model,
+          commitEntry: sessionEntries.find((entry) => entry.customType === "larva-active-persona-commit") ?? null,
+          assertions: {{
+            envelopePreservesCompactionPrompt: envelope?.compaction_prompt === "REAL_RUNTIME_COMPACTION_FOCUS",
+            focusUsesCompactionPrompt: focus === "REAL_RUNTIME_COMPACTION_FOCUS",
+            fullPromptNotFocus: !String(focus).includes("REAL_RUNTIME_FULL_PROMPT_MUST_NOT_BE_FOCUS"),
+            modelSelectedByRuntime: modelCalls.length > 0 && ctx.model?.id === "model",
+          }},
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["assertions"] == {
+        "envelopePreservesCompactionPrompt": True,
+        "focusUsesCompactionPrompt": True,
+        "fullPromptNotFocus": True,
+        "modelSelectedByRuntime": True,
+    }
+    assert payload["commitEntry"] is not None
+    assert "prompt" not in payload["commitEntry"]["data"]
+    assert "model" not in payload["commitEntry"]["data"]
+
+
 def test_real_pi_availability_records_binary_and_extension_flag() -> None:
     payload = _run_runtime_scenario("availability")
     _skip_if_pi_absent(payload)
