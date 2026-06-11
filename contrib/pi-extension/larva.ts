@@ -4070,6 +4070,39 @@ function continuationMessage(fromPersona: string, toPersona: string, reason: str
 
 type ConfirmPersonaBorrowOutcome = "borrow_once" | "deny" | "auto_session" | "persistent";
 
+const CONFIRM_PERSONA_BORROW_CHOICE_LABELS = [
+  "Borrow once",
+  "Deny",
+  "Auto-borrow for this session",
+  "Switch persistently",
+] as const;
+
+function mapPersonaBorrowSelectionToOutcome(selected: string | SelectorOption | null | undefined): ConfirmPersonaBorrowOutcome {
+  const selectedValue = typeof selected === "string"
+    ? selected
+    : isRecord(selected) && typeof selected.id === "string"
+      ? selected.id
+      : isRecord(selected) && typeof selected.label === "string"
+        ? selected.label
+        : "";
+  switch (selectedValue) {
+    case "Borrow once":
+    case "borrow_once":
+      return "borrow_once";
+    case "Deny":
+    case "deny":
+      return "deny";
+    case "Auto-borrow for this session":
+    case "auto_session":
+      return "auto_session";
+    case "Switch persistently":
+    case "persistent":
+      return "persistent";
+    default:
+      return "deny";
+  }
+}
+
 async function requestPersonaBorrowConfirmation(ctx: PiContext, originPersona: string | null, targetPersona: string, reason: string): Promise<ConfirmPersonaBorrowOutcome | LarvaError> {
   const prompt = [
     "Borrow persona?",
@@ -4082,23 +4115,15 @@ async function requestPersonaBorrowConfirmation(ctx: PiContext, originPersona: s
     "",
     "[Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]",
   ].join("\n");
-  const choices = [
-    { id: "borrow_once", label: "Borrow once", description: "Default: create a turn-scoped lease and restore afterward." },
-    { id: "deny", label: "Deny", description: "do not change persona, model, or tool state; unchanged" },
-    { id: "auto_session", label: "Auto-borrow for this session", description: "session-local mode override: confirm -> auto" },
-    { id: "persistent", label: "Switch persistently", description: "manual persistent switch; clear any active lease" },
-  ];
   const select = ctx.ui?.select;
   if (typeof select === "function") {
-    const selected = await select(prompt, choices);
-    const selectedId = typeof selected === "string" ? selected : selected?.id;
-    if (selectedId === "borrow_once" || selectedId === "deny" || selectedId === "auto_session" || selectedId === "persistent") return selectedId;
-    return "deny";
+    const selected = await select(prompt, [...CONFIRM_PERSONA_BORROW_CHOICE_LABELS]);
+    return mapPersonaBorrowSelectionToOutcome(selected);
   }
   const confirm = ctx.ui?.confirm;
   if (typeof confirm === "function") {
     try {
-      return await confirm(prompt, { choices, default: "Borrow once", persona_id: targetPersona, reason }) === true ? "borrow_once" : "deny";
+      return await confirm(prompt, { choices: [...CONFIRM_PERSONA_BORROW_CHOICE_LABELS], default: "Borrow once", persona_id: targetPersona, reason }) === true ? "borrow_once" : "deny";
     } catch {
       return "deny";
     }

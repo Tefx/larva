@@ -77,6 +77,78 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str,
     return json.loads(completed.stdout)
 
 
+def _run_confirm_borrow_dialog_scenario(tmp_path: Path, selected_expression: str) -> dict[str, Any]:
+    return _run_node(
+        tmp_path,
+        f"""
+        import {{ mkdtemp, writeFile }} from "node:fs/promises";
+        import {{ tmpdir }} from "node:os";
+        import {{ join }} from "node:path";
+        import {{ pathToFileURL }} from "node:url";
+        const dir = await mkdtemp(join(tmpdir(), "larva-confirm-borrow-dialog-"));
+        const cli = join(dir, "fake-larva-cli.mjs");
+        await writeFile(cli, `
+        const [, , command, personaId, jsonFlag] = process.argv;
+        if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+        process.stdout.write(JSON.stringify({{ data: {{
+          id: personaId, description: "Persona " + personaId, prompt: "Prompt " + personaId,
+          model: "provider/model", capabilities: {{}}, spec_version: "0.1.0", spec_digest: "sha256:" + personaId,
+          can_spawn: true
+        }} }}));
+        `, "utf8");
+        const mod = await import(pathToFileURL({json.dumps(str(EXTENSION))}).href + "?case=confirm-borrow-dialog-" + Date.now() + Math.random());
+        const selectCalls = [];
+        const statuses = [];
+        const entries = [];
+        const setModelCalls = [];
+        const activeToolCalls = [];
+        const ctx = {{
+          env: {{ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]) }},
+          ui: {{
+            select: async (title, options) => {{
+              selectCalls.push({{ title, options }});
+              return {selected_expression};
+            }},
+            setStatus: async (...args) => statuses.push(args),
+            notify: async () => undefined,
+          }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+          setModel: async (...args) => {{ setModelCalls.push(args); return true; }},
+          appendEntry: (customType, data) => entries.push({{ customType, data }}),
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("origin", ctx, pi);
+        setModelCalls.length = 0;
+        activeToolCalls.length = 0;
+        entries.length = 0;
+        const beforePersona = mod.getActiveEnvelope()?.persona_id ?? null;
+        const result = await mod.larva_persona_switch({{ persona_id: "target", reason: "confirm borrow dialog selection mapping" }}, ctx, pi);
+        const afterPersona = mod.getActiveEnvelope()?.persona_id ?? null;
+        console.log(JSON.stringify({{
+          beforePersona,
+          afterPersona,
+          resultStatus: result.status,
+          errorCode: result.error?.code ?? null,
+          lease: result.details?.lease ?? null,
+          selectOptions: selectCalls[0]?.options ?? null,
+          selectOptionTypes: (selectCalls[0]?.options ?? []).map((option) => typeof option),
+          selectTitle: selectCalls[0]?.title ?? null,
+          setModelCallCount: setModelCalls.length,
+          activeToolCallCount: activeToolCalls.length,
+          auditEvents: entries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit").map((entry) => entry.data),
+          statusTexts: statuses.map((args) => args.filter((value) => typeof value === "string").join(" ")),
+        }}));
+        """,
+    )
+
+
 def test_policy_docs_are_synchronized_on_canonical_modes_and_legacy_rejection() -> None:
     """All operator-facing docs must name exactly manual/confirm/auto/free.
 
@@ -251,6 +323,63 @@ def test_confirm_mode_runtime_outcomes(choice: str) -> None:
     }
     for token in outcome_map[choice]:
         assert token in source, f"missing confirm outcome token {token!r} for {choice!r}"
+
+
+def test_confirm_mode_borrow_dialog_uses_string_select_labels_and_maps_borrow_once(tmp_path: Path) -> None:
+    """Pi select gets readable string rows, and the default label maps to borrow_once."""
+
+    result = _run_confirm_borrow_dialog_scenario(tmp_path, json.dumps("Borrow once"))
+
+    assert result["selectOptions"] == list(CONFIRM_CHOICES)
+    assert result["selectOptionTypes"] == ["string"] * len(CONFIRM_CHOICES)
+    assert "[object Object]" not in json.dumps(result["selectOptions"])
+    assert result["resultStatus"] == "success"
+    assert result["afterPersona"] == "target"
+    assert result["lease"]["borrowedPersonaId"] == "target"
+    assert result["lease"]["originPersonaId"] == "origin"
+
+
+def test_confirm_mode_borrow_dialog_deny_label_is_visible_and_maps_to_deny_without_state_change(tmp_path: Path) -> None:
+    """The visible Deny row is selectable and preserves persona/model/tool state."""
+
+    result = _run_confirm_borrow_dialog_scenario(tmp_path, json.dumps("Deny"))
+
+    assert result["selectOptions"] == list(CONFIRM_CHOICES)
+    assert "Deny" in result["selectOptions"]
+    assert result["resultStatus"] == "failed"
+    assert result["errorCode"] == "LARVA_BAD_INPUT"
+    assert result["beforePersona"] == "origin"
+    assert result["afterPersona"] == "origin"
+    assert result["setModelCallCount"] == 0
+    assert result["activeToolCallCount"] == 0
+
+
+@pytest.mark.parametrize("selected_expression", ["undefined", json.dumps("Unknown selection")])
+def test_confirm_mode_borrow_dialog_cancel_or_unknown_selection_fails_safe_as_deny(tmp_path: Path, selected_expression: str) -> None:
+    """Cancel/timeout and unexpected labels deny without mutating persona/model/tools."""
+
+    result = _run_confirm_borrow_dialog_scenario(tmp_path, selected_expression)
+
+    assert result["selectOptions"] == list(CONFIRM_CHOICES)
+    assert result["resultStatus"] == "failed"
+    assert result["errorCode"] == "LARVA_BAD_INPUT"
+    assert result["beforePersona"] == "origin"
+    assert result["afterPersona"] == "origin"
+    assert result["setModelCallCount"] == 0
+    assert result["activeToolCallCount"] == 0
+
+
+def test_confirm_mode_borrow_dialog_accepts_legacy_object_id_return_with_string_options(tmp_path: Path) -> None:
+    """A host returning an old object-shaped {id} selection still maps safely."""
+
+    result = _run_confirm_borrow_dialog_scenario(tmp_path, '({ id: "borrow_once", label: "Borrow once" })')
+
+    assert result["selectOptions"] == list(CONFIRM_CHOICES)
+    assert result["selectOptionTypes"] == ["string"] * len(CONFIRM_CHOICES)
+    assert result["resultStatus"] == "success"
+    assert result["afterPersona"] == "target"
+    assert result["lease"]["borrowedPersonaId"] == "target"
+    assert result["lease"]["originPersonaId"] == "origin"
 
 
 def test_auto_mode_is_temporary_borrow_with_turn_end_restore() -> None:
