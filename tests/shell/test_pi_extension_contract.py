@@ -4174,23 +4174,322 @@ def test_persona_envelope_preserves_compaction_prompt_activation_and_restore(tmp
     assert "FULL_PERSONA_PROMPT_MUST_NOT_BE_FOCUS" not in restored["focus"]
 
 
-def test_compaction_focus_expected_red_gap_exposed():
-    """R1: Test must fail until compaction-focus integration is present.
-    It expects exact appended focus using customInstructions."""
-    assert False, "compaction-focus integration missing"
+def test_compaction_focus_expected_red_gap_exposed(tmp_path: Path) -> None:
+    """HOOK1/HOOK2/HOOK5: focused hook calls Pi compact adapter with native runtime inputs."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(tmp_path, "")
 
-def test_compaction_focus_non_overreach_guards_defined():
-    """R2: Non-goals - guards failing if forbidden changes occur (installed pi edits, prompt replacement, configs)."""
-    assert False, "non-overreach guards missing"
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const signal = new AbortController().signal;
+        const headers = {{ Authorization: "Bearer SECRET_HEADER_SHOULD_PASS_THROUGH" }};
+        const model = {{ provider: "runtime", id: "ctx-model" }};
+        const preparation = {{
+          firstKeptEntryId: "keep-entry-1",
+          messagesToSummarize: [{{ role: "user", content: "summarize me" }}],
+          turnPrefixMessages: [],
+          isSplitTurn: false,
+          tokensBefore: 12345,
+          fileOps: {{ read: [], written: [], edited: [] }},
+          settings: {{ enabled: true, reserveTokens: 2048, keepRecentTokens: 512 }},
+        }};
+        const compactionResult = {{
+          summary: [
+            "## Goal",
+            "Keep native Pi summary shape.",
+            "",
+            "## Progress",
+            "### In Progress",
+            "- focused compaction is running",
+            "",
+            "## Next Steps",
+            "1. Continue from kept entry.",
+            "",
+            "## Critical Context",
+            "- Native sections retained.",
+          ].join("\\n"),
+          firstKeptEntryId: "keep-entry-1",
+          tokensBefore: 12345,
+          details: {{ readFiles: ["README.md"], modifiedFiles: [] }},
+        }};
+        const adapterCalls = [];
+        const streamFn = () => undefined;
+        const ctx = {{
+          env: {{ HOME: {json.dumps(str(tmp_path))} }},
+          model,
+          modelRegistry: {{ getApiKeyAndHeaders: async (receivedModel) => {{
+            adapterCalls.push({{ authModelIsCtxModel: receivedModel === model }});
+            return {{ ok: true, apiKey: "SECRET_API_KEY_SHOULD_PASS_THROUGH", headers }};
+          }} }},
+          ui: {{ notify: async () => undefined, setStatus: async () => undefined }},
+          streamFn,
+        }};
+        const pi = {{ getThinkingLevel: () => "medium" }};
+        const adapter = async (...args) => {{
+          adapterCalls.push({{
+            preparationIsOriginal: args[0] === preparation,
+            modelIsCtxModel: args[1] === model,
+            apiKey: args[2],
+            headersAreOriginal: args[3] === headers,
+            customInstructions: args[4],
+            signalIsOriginal: args[5] === signal,
+            thinkingLevel: args[6],
+            streamFnIsOriginal: args[7] === streamFn,
+          }});
+          return compactionResult;
+        }};
+        const result = await mod.handleLarvaSessionBeforeCompact(
+          {{ type: "session_before_compact", preparation, customInstructions: "  Manual next step  ", signal }},
+          ctx,
+          pi,
+          adapter,
+        );
+        console.log(JSON.stringify({{
+          result,
+          adapterCalls,
+          compactionObjectPreserved: result?.compaction === compactionResult,
+          standardSections: ["## Goal", "## Progress", "## Next Steps", "## Critical Context"].every((section) => result?.compaction?.summary.includes(section)),
+          focusStartsWithManual: adapterCalls[1]?.customInstructions.startsWith("Manual compact focus:\\nManual next step"),
+          focusIncludesCarryForward: adapterCalls[1]?.customInstructions.includes("Larva carry-forward rule:"),
+          noSecondSummarySchema: Object.keys(result?.compaction ?? {{}}).sort(),
+        }}));
+        """,
+        timeout=8,
+    )
 
-def test_compaction_focus_config_case_table():
-    """R3: Configuration Cases - tests must enforce parser defaults, switches, bounds."""
-    assert False, "config parsing tests missing"
+    assert payload["compactionObjectPreserved"] is True
+    assert payload["standardSections"] is True
+    assert payload["focusStartsWithManual"] is True
+    assert payload["focusIncludesCarryForward"] is True
+    assert payload["adapterCalls"][0] == {"authModelIsCtxModel": True}
+    assert payload["adapterCalls"][1] == {
+        "preparationIsOriginal": True,
+        "modelIsCtxModel": True,
+        "apiKey": "SECRET_API_KEY_SHOULD_PASS_THROUGH",
+        "headersAreOriginal": True,
+        "customInstructions": payload["adapterCalls"][1]["customInstructions"],
+        "signalIsOriginal": True,
+        "thinkingLevel": "medium",
+        "streamFnIsOriginal": True,
+    }
+    assert payload["noSecondSummarySchema"] == ["details", "firstKeptEntryId", "summary", "tokensBefore"]
 
-def test_compaction_focus_fixture_table():
-    """R4: Focus composition bounds - fixture tests checking marker-inclusive truncation."""
-    assert False, "focus composition tests missing"
 
-def test_compaction_focus_hook_case_table():
-    """R5: Fallback behavior - tests checking native fallback & diagnostic rules."""
-    assert False, "fallback and diagnostics tests missing"
+def test_compaction_focus_non_overreach_guards_defined() -> None:
+    """R2: hook code preserves non-goals: no prompt replacement, provider rewrite, continuation, or config writes."""
+    source = _source()
+    handler_body = _function_body(source, "export async function handleLarvaSessionBeforeCompact")
+    config_body = _function_body(source, "function loadLarvaCompactionConfig")
+
+    assert 'on?.("session_before_compact"' in source
+    assert "nativePiCompactAdapter" in source
+    assert "customInstructions" in handler_body
+    assert "return { compaction: result }" in handler_body
+    for forbidden in (
+        "SUMMARIZATION_PROMPT",
+        "UPDATE_SUMMARIZATION_PROMPT",
+        "before_provider_request",
+        "sendUserMessage",
+        "sendMessage",
+        "writeFileSync",
+        "provider-payload",
+    ):
+        assert forbidden not in handler_body
+    assert "writeFileSync" not in config_body
+    assert "mkdirSync" not in config_body
+
+
+def test_compaction_focus_config_case_table(tmp_path: Path) -> None:
+    """R3: hook fallback honors config switches without writing adapter config files."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(tmp_path, "")
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+        const tmp = {json.dumps(str(tmp_path))};
+        const preparation = {{
+          firstKeptEntryId: "keep",
+          messagesToSummarize: [],
+          turnPrefixMessages: [],
+          isSplitTurn: false,
+          tokensBefore: 1,
+          fileOps: {{}},
+          settings: {{}},
+        }};
+        const baseCtx = (env) => ({{
+          env,
+          model: {{ id: "model" }},
+          modelRegistry: {{ getApiKeyAndHeaders: async () => ({{ ok: true, apiKey: undefined, headers: undefined }}) }},
+          ui: {{ notify: async () => undefined, setStatus: async () => undefined }},
+        }});
+        const baseEvent = {{ preparation, signal: new AbortController().signal }};
+        const adapterCalls = [];
+        const adapter = async () => {{ adapterCalls.push("called"); return {{ summary: "ok", firstKeptEntryId: "keep", tokensBefore: 1 }}; }};
+        const disabledConfig = path.join(tmp, "disabled.json");
+        fs.writeFileSync(disabledConfig, JSON.stringify({{ enabled: false, carry_forward_rule: {{ text: "" }} }}));
+        const disabled = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, customInstructions: "manual" }}, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: disabledConfig }}), {{}}, adapter);
+        const emptyConfig = path.join(tmp, "empty-focus.json");
+        fs.writeFileSync(emptyConfig, JSON.stringify({{ enabled: true, carry_forward_rule: {{ enabled: false, text: "" }} }}));
+        const empty = await mod.handleLarvaSessionBeforeCompact(baseEvent, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: emptyConfig }}), {{}}, adapter);
+        const missingHome = path.join(tmp, "missing-home");
+        const enabled = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, customInstructions: "manual" }}, baseCtx({{ HOME: missingHome }}), {{}}, adapter);
+        console.log(JSON.stringify({{
+          disabledIsUndefined: disabled === undefined,
+          emptyIsUndefined: empty === undefined,
+          enabledReturnedCompaction: enabled?.compaction?.summary === "ok",
+          adapterCallCount: adapterCalls.length,
+          missingConfigNotCreated: !fs.existsSync(path.join(missingHome, ".pi", "larva", "compaction.json")),
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload == {
+        "disabledIsUndefined": True,
+        "emptyIsUndefined": True,
+        "enabledReturnedCompaction": True,
+        "adapterCallCount": 1,
+        "missingConfigNotCreated": True,
+    }
+
+
+def test_compaction_focus_fixture_table(tmp_path: Path) -> None:
+    """R4: focused hook preserves bounded focus fixture behavior at adapter boundary."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(tmp_path, "")
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const preparation = {{
+          firstKeptEntryId: "keep",
+          messagesToSummarize: [],
+          turnPrefixMessages: [],
+          isSplitTurn: false,
+          tokensBefore: 1,
+          fileOps: {{}},
+          settings: {{}},
+        }};
+        let focus = null;
+        await mod.handleLarvaSessionBeforeCompact(
+          {{ preparation, customInstructions: "a".repeat(2005), signal: new AbortController().signal }},
+          {{
+            env: {{ HOME: {json.dumps(str(tmp_path))} }},
+            model: {{ id: "model" }},
+            modelRegistry: {{ getApiKeyAndHeaders: async () => ({{ ok: true }}) }},
+            ui: {{ notify: async () => undefined, setStatus: async () => undefined }},
+          }},
+          {{}},
+          async (_preparation, _model, _apiKey, _headers, customInstructions) => {{
+            focus = customInstructions;
+            return {{ summary: "ok", firstKeptEntryId: "keep", tokensBefore: 1 }};
+          }},
+        );
+        const manualBody = focus.split("\\n\\n")[0].replace("Manual compact focus:\\n", "");
+        console.log(JSON.stringify({{
+          manualLength: Array.from(manualBody).length,
+          manualTail: manualBody.slice(-"...[truncated 34 code points]".length),
+          focusLength: Array.from(focus).length,
+          focusStartsWithManual: focus.startsWith("Manual compact focus:"),
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["manualLength"] == 2000
+    assert payload["manualTail"] == "...[truncated 34 code points]"
+    assert payload["focusLength"] <= 6000
+    assert payload["focusStartsWithManual"] is True
+
+
+def test_compaction_focus_hook_case_table(tmp_path: Path) -> None:
+    """R5: hook fallback, abort, and diagnostics cases preserve native Pi semantics."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(tmp_path, "")
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const tmp = {json.dumps(str(tmp_path))};
+        const preparation = {{
+          firstKeptEntryId: "keep",
+          messagesToSummarize: [],
+          turnPrefixMessages: [],
+          isSplitTurn: false,
+          tokensBefore: 1,
+          fileOps: {{}},
+          settings: {{}},
+        }};
+        const notifications = [];
+        const statuses = [];
+        const baseCtx = (extra = {{}}) => ({{
+          env: {{ HOME: tmp, ...(extra.env ?? {{}}) }},
+          model: Object.prototype.hasOwnProperty.call(extra, "model") ? extra.model : {{ id: "model" }},
+          modelRegistry: extra.modelRegistry ?? {{ getApiKeyAndHeaders: async () => ({{ ok: true, apiKey: "SECRET_API_KEY", headers: {{ Authorization: "SECRET_HEADER" }} }}) }},
+          ui: extra.ui ?? {{ notify: async (message, type) => notifications.push({{ message, type }}), setStatus: async (...args) => statuses.push(args) }},
+        }});
+        const event = (extra = {{}}) => ({{
+          type: "session_before_compact",
+          preparation,
+          customInstructions: "SECRET_MANUAL_FOCUS",
+          signal: new AbortController().signal,
+          ...extra,
+        }});
+        let callCount = 0;
+        const okAdapter = async () => {{ callCount += 1; return {{ summary: "ok", firstKeptEntryId: "keep", tokensBefore: 1 }}; }};
+        const cases = {{}};
+        cases.missingModel = await mod.handleLarvaSessionBeforeCompact(event(), baseCtx({{ model: undefined }}), {{}}, okAdapter);
+        cases.authFailure = await mod.handleLarvaSessionBeforeCompact(event(), baseCtx({{ modelRegistry: {{ getApiKeyAndHeaders: async () => ({{ ok: false, error: "SECRET_AUTH_ERROR" }}) }} }}), {{}}, okAdapter);
+        cases.missingSignal = await mod.handleLarvaSessionBeforeCompact(event({{ signal: undefined }}), baseCtx(), {{}}, okAdapter);
+        cases.malformedFileOps = await mod.handleLarvaSessionBeforeCompact(event({{ preparation: {{ ...preparation, fileOps: null }} }}), baseCtx(), {{}}, okAdapter);
+        cases.missingAdapter = await mod.handleLarvaSessionBeforeCompact(event(), baseCtx(), {{}}, undefined);
+        cases.nonAbortFailure = await mod.handleLarvaSessionBeforeCompact(event(), baseCtx(), {{}}, async () => {{ throw new Error("SECRET_ADAPTER_FAILURE"); }});
+        const alreadyAborted = new AbortController();
+        alreadyAborted.abort();
+        const beforeAbortCallCount = callCount;
+        cases.alreadyAborted = await mod.handleLarvaSessionBeforeCompact(event({{ signal: alreadyAborted.signal }}), baseCtx(), {{}}, okAdapter);
+        cases.alreadyAbortedDidNotInvoke = callCount === beforeAbortCallCount;
+        cases.thrownAbort = await mod.handleLarvaSessionBeforeCompact(event(), baseCtx(), {{}}, async () => {{ callCount += 1; const error = new Error("AbortError"); error.name = "AbortError"; throw error; }});
+        cases.thrownCancelled = await mod.handleLarvaSessionBeforeCompact(event(), baseCtx(), {{}}, async () => {{ callCount += 1; throw new Error("Compaction cancelled"); }});
+        const statusOnly = [];
+        await mod.handleLarvaSessionBeforeCompact(event(), baseCtx({{ ui: {{ setStatus: async (...args) => statusOnly.push(args) }} }}), {{}}, undefined);
+        const notifyPrecedenceStatuses = [];
+        await mod.handleLarvaSessionBeforeCompact(event(), baseCtx({{ ui: {{ notify: async (message, type) => notifications.push({{ message, type }}), setStatus: async (...args) => notifyPrecedenceStatuses.push(args) }} }}), {{}}, undefined);
+        const diagnosticText = notifications.map((item) => item.message).join("\\n");
+        console.log(JSON.stringify({{
+          undefinedFallbacks: ["missingModel", "authFailure", "missingSignal", "malformedFileOps", "missingAdapter", "nonAbortFailure"].every((key) => cases[key] === undefined),
+          alreadyAborted: cases.alreadyAborted,
+          alreadyAbortedDidNotInvoke: cases.alreadyAbortedDidNotInvoke,
+          thrownAbort: cases.thrownAbort,
+          thrownCancelled: cases.thrownCancelled,
+          codes: notifications.map((item) => item.message.split(":")[0]),
+          allWarnings: notifications.every((item) => item.type === "warning"),
+          bounded: notifications.every((item) => Array.from(item.message).length <= 500),
+          redacted: !/SECRET_|Manual compact focus|customInstructions/i.test(diagnosticText),
+          statusFallback: statusOnly.at(-1),
+          notifyBeforeStatus: notifyPrecedenceStatuses.length === 0,
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["undefinedFallbacks"] is True
+    assert payload["alreadyAborted"] == {"cancel": True}
+    assert payload["alreadyAbortedDidNotInvoke"] is True
+    assert payload["thrownAbort"] == {"cancel": True}
+    assert payload["thrownCancelled"] == {"cancel": True}
+    assert "LARVA_COMPACTION_FOCUS_UNAVAILABLE" in payload["codes"]
+    assert "LARVA_COMPACTION_FOCUS_FAILED" in payload["codes"]
+    assert payload["allWarnings"] is True
+    assert payload["bounded"] is True
+    assert payload["redacted"] is True
+    assert payload["statusFallback"] == ["larva", "compaction focus: LARVA_COMPACTION_FOCUS_UNAVAILABLE"]
+    assert payload["notifyBeforeStatus"] is True

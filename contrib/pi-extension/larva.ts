@@ -29,6 +29,8 @@ type LarvaErrorCode =
   | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE"
   | "LARVA_SUBAGENT_LOG_CONFIG_INVALID"
   | "LARVA_COMPACTION_CONFIG_INVALID"
+  | "LARVA_COMPACTION_FOCUS_UNAVAILABLE"
+  | "LARVA_COMPACTION_FOCUS_FAILED"
   | "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
   | "LARVA_AGENT_PERSONA_SWITCH_LIMIT"
   | "LARVA_CONFIRMATION_UNAVAILABLE"
@@ -310,7 +312,13 @@ type LarvaSubagentProgressUpdate = {
   isError: false;
 };
 
-type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
+type ModelAuthResult =
+  | { ok: true; apiKey?: string; headers?: Record<string, string> }
+  | { ok: false; error?: unknown };
+type ModelRegistry = {
+  find?: (provider: string, modelId: string) => unknown | Promise<unknown>;
+  getApiKeyAndHeaders?: (model: unknown) => ModelAuthResult | Promise<ModelAuthResult>;
+};
 type CommandOptions = {
   description: string;
   getArgumentCompletions?: (prefix: string) => Promise<PiAutocompleteCandidate[] | null>;
@@ -396,6 +404,10 @@ type PiApi = {
   sendMessage?: (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => unknown | Promise<unknown>;
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
+  getThinkingLevel?: () => unknown;
+  getStreamFn?: () => unknown;
+  streamFn?: unknown;
+  compactAdapter?: LarvaCompactAdapter;
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
@@ -424,6 +436,7 @@ type PiContext = PiApi & {
   model?: unknown;
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
+  streamFn?: unknown;
 };
 type SubagentCallbackSurface = {
   sendMessage?: (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => unknown | Promise<unknown>;
@@ -2199,6 +2212,208 @@ function loadLarvaCompactionConfig(env: RuntimeEnv): LarvaCompactionConfigLoadRe
   const config = parseLarvaCompactionConfigValue(parsed);
   if (isLarvaError(config)) return { ok: false, path, error: config };
   return { ok: true, source: "file", path, config };
+}
+
+type LarvaPiCompactionResult = {
+  summary: string;
+  firstKeptEntryId: string;
+  tokensBefore: number;
+  details?: unknown;
+};
+
+type LarvaCompactionPreparation = {
+  firstKeptEntryId: string;
+  messagesToSummarize: unknown[];
+  turnPrefixMessages: unknown[];
+  isSplitTurn: boolean;
+  tokensBefore: number;
+  previousSummary?: string;
+  fileOps: Record<string, unknown>;
+  settings: Record<string, unknown>;
+};
+
+type LarvaCompactionHookResult = undefined | { cancel: true } | { compaction: LarvaPiCompactionResult };
+
+type LarvaCompactAdapter = (
+  preparation: LarvaCompactionPreparation,
+  model: unknown,
+  apiKey: string | undefined,
+  headers: Record<string, string> | undefined,
+  customInstructions: string,
+  signal: AbortSignal,
+  thinkingLevel?: unknown,
+  streamFn?: unknown,
+) => Promise<LarvaPiCompactionResult>;
+
+class LarvaCompactAdapterUnavailableError extends Error {
+  constructor() {
+    super("Pi compact adapter unavailable");
+    this.name = "LarvaCompactAdapterUnavailableError";
+  }
+}
+
+function isAbortSignalLike(value: unknown): value is AbortSignal {
+  return isRecord(value) && typeof value.aborted === "boolean";
+}
+
+function validateLarvaCompactionPreparation(value: unknown): LarvaCompactionPreparation | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.firstKeptEntryId !== "string" || value.firstKeptEntryId.length === 0) return null;
+  if (!Array.isArray(value.messagesToSummarize)) return null;
+  if (!Array.isArray(value.turnPrefixMessages)) return null;
+  if (typeof value.isSplitTurn !== "boolean") return null;
+  if (typeof value.tokensBefore !== "number" || !Number.isFinite(value.tokensBefore)) return null;
+  if (value.previousSummary !== undefined && typeof value.previousSummary !== "string") return null;
+  if (!isRecord(value.fileOps)) return null;
+  if (!isRecord(value.settings)) return null;
+  return value as LarvaCompactionPreparation;
+}
+
+function sanitizeLarvaCompactionDiagnosticReason(reason: string): string {
+  return reason.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim() || "compaction focus unavailable";
+}
+
+function boundedLarvaCompactionDiagnosticMessage(code: Extract<LarvaErrorCode, "LARVA_COMPACTION_CONFIG_INVALID" | "LARVA_COMPACTION_FOCUS_UNAVAILABLE" | "LARVA_COMPACTION_FOCUS_FAILED">, reason: string): string {
+  return truncateLarvaCompactionFocusText(`${code}: ${sanitizeLarvaCompactionDiagnosticReason(reason)}; using native Pi compaction`, 500);
+}
+
+async function emitLarvaCompactionDiagnostic(
+  ctx: PiContext,
+  code: Extract<LarvaErrorCode, "LARVA_COMPACTION_CONFIG_INVALID" | "LARVA_COMPACTION_FOCUS_UNAVAILABLE" | "LARVA_COMPACTION_FOCUS_FAILED">,
+  reason: string,
+): Promise<void> {
+  const message = boundedLarvaCompactionDiagnosticMessage(code, reason);
+  if (typeof ctx.ui?.notify === "function") {
+    await ctx.ui.notify(message, "warning");
+    return;
+  }
+  await setLarvaStatus(ctx, `compaction focus: ${code}`);
+}
+
+function isCompactionAbort(caught: unknown, signal: AbortSignal): boolean {
+  if (signal.aborted) return true;
+  if (!(caught instanceof Error)) return false;
+  return caught.name === "AbortError" || caught.message === "Compaction cancelled";
+}
+
+function optionalCompactionThinkingLevel(pi: PiApi): unknown {
+  try {
+    return typeof pi.getThinkingLevel === "function" ? pi.getThinkingLevel() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function optionalCompactionStreamFn(ctx: PiContext, pi: PiApi): unknown {
+  try {
+    const fromGetter = typeof pi.getStreamFn === "function" ? pi.getStreamFn() : undefined;
+    if (typeof fromGetter === "function") return fromGetter;
+  } catch {
+    // Optional streaming support must not force fallback.
+  }
+  if (typeof pi.streamFn === "function") return pi.streamFn;
+  if (typeof ctx.streamFn === "function") return ctx.streamFn;
+  return undefined;
+}
+
+async function nativePiCompactAdapter(
+  preparation: LarvaCompactionPreparation,
+  model: unknown,
+  apiKey: string | undefined,
+  headers: Record<string, string> | undefined,
+  customInstructions: string,
+  signal: AbortSignal,
+  thinkingLevel?: unknown,
+  streamFn?: unknown,
+): Promise<LarvaPiCompactionResult> {
+  const packageName = "@earendil-works/pi-coding-agent";
+  const piModule = await import(packageName).catch(() => null) as { compact?: unknown } | null;
+  if (typeof piModule?.compact !== "function") throw new LarvaCompactAdapterUnavailableError();
+  return await piModule.compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, streamFn) as LarvaPiCompactionResult;
+}
+
+export async function handleLarvaSessionBeforeCompact(
+  event: unknown,
+  ctx: PiContext,
+  pi: PiApi,
+  compactAdapter?: LarvaCompactAdapter | null,
+): Promise<LarvaCompactionHookResult> {
+  const configLoad = loadLarvaCompactionConfig(currentEnv(ctx));
+  if (!configLoad.ok) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_CONFIG_INVALID", "invalid config");
+    return undefined;
+  }
+  if (!configLoad.config.enabled) return undefined;
+
+  if (!isRecord(event)) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "malformed event");
+    return undefined;
+  }
+  if (event.customInstructions !== undefined && typeof event.customInstructions !== "string") {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "malformed event");
+    return undefined;
+  }
+
+  const carryForwardRule = configLoad.config.carry_forward_rule.enabled ? configLoad.config.carry_forward_rule.text : null;
+  const focus = buildLarvaCompactionFocus({
+    manualFocus: event.customInstructions,
+    personaFocus: activePersonaCompactionFocus(),
+    carryForwardRule,
+  });
+  if (focus === null) return undefined;
+
+  const signal = event.signal;
+  if (!isAbortSignalLike(signal)) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "missing signal");
+    return undefined;
+  }
+  if (signal.aborted) return { cancel: true };
+
+  if (ctx.model === undefined || ctx.model === null) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "missing model");
+    return undefined;
+  }
+  if (typeof ctx.modelRegistry?.getApiKeyAndHeaders !== "function") {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "auth unavailable");
+    return undefined;
+  }
+  const preparation = validateLarvaCompactionPreparation(event.preparation);
+  if (preparation === null) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "malformed preparation");
+    return undefined;
+  }
+  if (typeof compactAdapter !== "function") {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "compact adapter unavailable");
+    return undefined;
+  }
+
+  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(ctx.model).catch(() => ({ ok: false as const }));
+  if (!auth.ok) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "auth unavailable");
+    return undefined;
+  }
+
+  try {
+    const result = await compactAdapter(
+      preparation,
+      ctx.model,
+      auth.apiKey,
+      auth.headers,
+      focus,
+      signal,
+      optionalCompactionThinkingLevel(pi),
+      optionalCompactionStreamFn(ctx, pi),
+    );
+    return { compaction: result };
+  } catch (caught) {
+    if (isCompactionAbort(caught, signal)) return { cancel: true };
+    if (caught instanceof LarvaCompactAdapterUnavailableError) {
+      await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "compact adapter unavailable");
+      return undefined;
+    }
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_FAILED", "focused compact failed");
+    return undefined;
+  }
 }
 
 function subagentPresentationCachePath(env: RuntimeEnv): string | LarvaError {
@@ -6595,6 +6810,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     registerLarvaPersonaAutocompleteProvider(runtimeCtx);
     await resetExtensionUI("session_start");
     await ensureSessionInitialized(runtimeCtx, pi);
+  });
+  pi.on?.("session_before_compact", async (payload: unknown, eventCtx?: PiContext) => {
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
   });
   for (const lifecycleEvent of ["shutdown", "session_end", "exit", "reload", "new_session", "session_new", "resume", "fork", "quit"]) {
     pi.on?.(lifecycleEvent, async () => resetExtensionUI(lifecycleEvent));
