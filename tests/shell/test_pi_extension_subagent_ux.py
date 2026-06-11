@@ -98,6 +98,7 @@ def _node_prelude(tmp_path: Path) -> str:
                 if (${{JSON.stringify(scenario)}} === "empty-final") send({{ id: msg.id, success: true, data: {{}} }});
                 else if (${{JSON.stringify(scenario)}} === "malformed-final") send({{ id: msg.id, success: true, data: {{ text: {{ bad: true }} }} }});
                 else if (${{JSON.stringify(scenario)}} === "multiline-final") send({{ id: msg.id, success: true, data: {{ text: "status: SUCCESS\\\\nevidence: |\\\\n  line one\\\\n\\\\n  line three" }} }});
+                else if (${{JSON.stringify(scenario)}} === "long-final") send({{ id: msg.id, success: true, data: {{ text: "LONG_OUTPUT_START\\\\n" + "Ω".repeat(7000) + "\\\\nLONG_OUTPUT_END" }} }});
                 else send({{ id: msg.id, success: true, data: {{ text: "final child output" }} }});
                 setTimeout(() => process.exit(0), 1);
               }}
@@ -285,6 +286,93 @@ def test_larva_subagent_multiline_child_output_is_fenced_in_callback_and_overlay
     assert payload["overlayCollapsed"] is False, payload
     assert payload["outputTabReadable"] is True, payload
     assert payload["outputTabCollapsed"] is False, payload
+
+
+def test_larva_subagent_long_output_artifact_callback_manifest_and_short_inline_compatibility(tmp_path: Path) -> None:
+    """Overlong callback output is artifacted exactly while short output remains inline."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { readFile, stat } = await import("node:fs/promises");
+        const { createHash } = await import("node:crypto");
+        const expectedLong = "LONG_OUTPUT_START\\n" + "Ω".repeat(7000) + "\\nLONG_OUTPUT_END";
+
+        const longChild = join(tmpRoot, "long-child.mjs");
+        await writeFakeChild(longChild, "long-final");
+        const longCallbacks = [];
+        const longEnv = baseEnv({ LARVA_PI_REAL_BIN: longChild, LARVA_PI_EXTENSION_ENTRY: longChild });
+        const { tools: longTools, ctx: longCtx } = await registeredTools(longEnv, { sendMessage: async (message, options) => { longCallbacks.push({ message, options }); } });
+        await mod.commitPersona("ok", longCtx, piBase);
+        const longReceipt = await longTools.find((tool) => tool.name === "larva_subagent").execute("long-output-call", { persona_id: "ok", task: "return very long evidence" }, undefined, undefined, longCtx);
+        await mod.larva_subagent_wait({ task_ids: [longReceipt.task_id], timeout_ms: 5000 }, longCtx);
+        const longCallback = await waitFor(() => longCallbacks.find((item) => item.message?.details?.task_id === longReceipt.task_id), 3000);
+        const artifact = longCallback?.message?.details?.full_output_artifact ?? null;
+        const artifactText = artifact ? await readFile(artifact.path, "utf8") : null;
+        const artifactStat = artifact ? await stat(artifact.path) : null;
+        const artifactMode = artifactStat ? (artifactStat.mode & 0o777) : null;
+        const artifactSha = artifactText === null ? null : createHash("sha256").update(Buffer.from(artifactText, "utf8")).digest("hex");
+
+        const shortChild = join(tmpRoot, "short-child.mjs");
+        await writeFakeChild(shortChild, "success");
+        const shortCallbacks = [];
+        const shortEnv = baseEnv({ LARVA_PI_REAL_BIN: shortChild, LARVA_PI_EXTENSION_ENTRY: shortChild });
+        const { tools: shortTools, ctx: shortCtx } = await registeredTools(shortEnv, { sendMessage: async (message, options) => { shortCallbacks.push({ message, options }); } });
+        await mod.commitPersona("ok", shortCtx, piBase);
+        const shortReceipt = await shortTools.find((tool) => tool.name === "larva_subagent").execute("short-output-call", { persona_id: "ok", task: "return short evidence" }, undefined, undefined, shortCtx);
+        await mod.larva_subagent_wait({ task_ids: [shortReceipt.task_id], timeout_ms: 5000 }, shortCtx);
+        const shortCallback = await waitFor(() => shortCallbacks.find((item) => item.message?.details?.task_id === shortReceipt.task_id), 3000);
+
+        console.log(JSON.stringify({
+          long: {
+            callbackDelivered: Boolean(longCallback),
+            truncated: longCallback?.message?.details?.child_output_truncated ?? null,
+            preview: longCallback?.message?.details?.child_output_preview ?? null,
+            resultText: longCallback?.message?.details?.result_text ?? null,
+            artifact,
+            artifactTextMatches: artifactText === expectedLong,
+            artifactPathOutsideRepo: artifact?.path?.startsWith(join(tmpRoot, ".pi", "larva", "subagent-output-artifacts")) ?? false,
+            artifactShaMatches: artifact?.sha256 === artifactSha,
+            artifactBytes: artifact?.bytes ?? null,
+            expectedBytes: Buffer.byteLength(expectedLong, "utf8"),
+            artifactLines: artifact?.lines ?? null,
+            artifactMode,
+            contentHasManifest: (longCallback?.message?.content ?? "").includes("child_output_truncated: true")
+              && (longCallback?.message?.content ?? "").includes("full_output_artifact.path:"),
+            contentHasFullTailInline: (longCallback?.message?.content ?? "").includes("LONG_OUTPUT_END"),
+          },
+          short: {
+            callbackDelivered: Boolean(shortCallback),
+            truncated: shortCallback?.message?.details?.child_output_truncated ?? null,
+            hasArtifact: Object.hasOwn(shortCallback?.message?.details ?? {}, "full_output_artifact"),
+            resultText: shortCallback?.message?.details?.result_text ?? null,
+            contentInline: (shortCallback?.message?.content ?? "").includes("child_output:\\n```text\\nfinal child output\\n```"),
+          },
+        }));
+        """,
+        timeout=8,
+    )
+
+    assert payload["long"]["callbackDelivered"] is True, payload
+    assert payload["long"]["truncated"] is True, payload
+    assert payload["long"]["preview"].startswith("LONG_OUTPUT_START"), payload
+    assert payload["long"]["resultText"] == payload["long"]["preview"], payload
+    assert payload["long"]["artifactTextMatches"] is True, payload
+    assert payload["long"]["artifactPathOutsideRepo"] is True, payload
+    assert payload["long"]["artifactShaMatches"] is True, payload
+    assert payload["long"]["artifactBytes"] == payload["long"]["expectedBytes"], payload
+    assert payload["long"]["artifactLines"] == 3, payload
+    assert payload["long"]["artifactMode"] == 0o600, payload
+    assert payload["long"]["contentHasManifest"] is True, payload
+    assert payload["long"]["contentHasFullTailInline"] is False, payload
+    assert payload["short"] == {
+        "callbackDelivered": True,
+        "truncated": False,
+        "hasArtifact": False,
+        "resultText": "final child output",
+        "contentInline": True,
+    }, payload
 
 
 def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_path: Path) -> None:
