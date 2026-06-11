@@ -1,10 +1,34 @@
 # Larva Pi Extension Compaction Focus
 
-Status: target design, not yet implemented.
+Status: implemented in the bundled Larva Pi extension. This document is the
+runtime contract and operator reference for the implemented behavior.
 
-This document defines the proposed Larva Pi extension behavior for adding
+This document defines the Larva Pi extension behavior for adding
 Larva/persona-specific focus to Pi context compaction without replacing Pi's
 base compaction prompts.
+
+## Implementation status and verification
+
+The bundled extension handles Pi's `session_before_compact` hook by calling Pi's
+exported `compact(...)` helper with bounded Larva focus supplied through
+`customInstructions`. It preserves Pi's native compaction prompts and result
+schema; Larva does not replace `SUMMARIZATION_PROMPT`,
+`UPDATE_SUMMARIZATION_PROMPT`, split-turn prompt handling, or the provider
+payload.
+
+Verification pointers:
+
+- `uv run pytest tests/shell/test_pi_extension_contract.py -k compaction_focus -q`
+- `test_compaction_focus_expected_red_gap_exposed`: focused hook calls Pi
+  `compact(...)` with the original `event.preparation`, runtime model/auth,
+  abort signal, optional thinking level/stream function, and composed
+  `customInstructions`.
+- `test_compaction_focus_config_case_table` and
+  `test_compaction_focus_hook_case_table`: config defaults/disable switches,
+  native fallback, cancellation, and bounded diagnostics.
+- `test_compaction_focus_non_overreach_guards_defined`: no base-prompt
+  replacement, provider-payload rewrite, automatic continuation message, or
+  config-file writes.
 
 ## Goal
 
@@ -119,7 +143,7 @@ Only `compaction_prompt` is used as persona-specific compaction focus. The
 extension must not inject the full persona prompt into compaction focus.
 
 ## Adapter-local configuration
-The proposed configuration file is:
+The configuration file is:
 
 ```text
 ~/.pi/larva/compaction.json
@@ -390,8 +414,8 @@ Implementation must provide tests for:
 
 ## Operator-facing summary
 
-Larva compaction focus is intended to make summaries less likely to imply task
-completion when work is still open. It is not an automatic continuation feature.
-After threshold or manual compaction, Pi may still wait for the next user turn;
-the improved summary simply gives the next agent turn better carry-forward
-state.
+Larva compaction focus is implemented to make summaries less likely to imply
+task completion when work is still open. It is not an automatic continuation
+feature. After threshold or manual compaction, Pi may still wait for the next
+user turn; the improved summary simply gives the next agent turn better
+carry-forward state.

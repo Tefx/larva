@@ -554,24 +554,113 @@ The raw short form `@<id>` is reserved for a possible future usability pass and
 is not part of the first target. Id-like raw short-form prefixes must not trigger
 Larva persona matching until short form is explicitly implemented.
 
-## Compaction focus design
+## Compaction focus
 
-Larva's proposed compaction focus behavior is documented in
+Larva's implemented compaction focus behavior is documented in
 [`docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md`](../../docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md).
-This behavior is a target design, not the current implemented runtime behavior.
+The extension handles Pi's `session_before_compact` hook by calling Pi's exported
+`compact(...)` helper with Larva focus supplied as `customInstructions`.
 
-The design keeps Pi's default compaction prompts intact and appends bounded focus
-through Pi's `customInstructions` path. Focus is assembled from manual
-`/compact ...` instructions, the active persona's `compaction_prompt`, and an
-adapter-local carry-forward rule configured by `~/.pi/larva/compaction.json`
-(or absolute `LARVA_PI_COMPACTION_CONFIG_FILE` override). The carry-forward rule
-exists to preserve unfinished work, next actions, files, commands, failing tests,
-and blockers in the generated summary.
+Pi still owns the base compaction prompts, previous-summary update logic,
+split-turn handling, file-operation tracking, and session-context rebuild. Larva
+preserves those defaults and appends bounded focus through Pi's own
+`customInstructions` path; it does not replace Pi's `SUMMARIZATION_PROMPT`,
+`UPDATE_SUMMARIZATION_PROMPT`, split-turn prompt, result schema, or provider
+payload.
 
-Malformed configuration or unavailable model/auth/runtime prerequisites must
-fall back to native Pi compaction rather than cancelling compaction or writing a
-partial summary. User-aborted focused compaction is the exception: cancellation
-must remain cancellation and must not restart native compaction.
+Focus is assembled in this order when the corresponding trimmed section is
+non-empty:
+
+1. manual `/compact ...` instructions from `event.customInstructions`;
+2. the active Larva persona's `compaction_prompt` from the committed runtime
+   envelope;
+3. the adapter-local carry-forward rule.
+
+The carry-forward rule exists to preserve unfinished work, next actions, files,
+commands, failing tests, and blockers in the generated summary. It improves
+state for the next agent turn only: threshold or manual compaction does not
+automatically continue execution, send a follow-up user message, or otherwise
+start more work after compaction.
+
+### Adapter-local compaction config
+
+The default adapter-local config path is:
+
+```text
+~/.pi/larva/compaction.json
+```
+
+Set `LARVA_PI_COMPACTION_CONFIG_FILE` to a non-empty absolute path to override
+that file for tests or local adapter experiments. Relative or empty override
+values are invalid. Missing config means defaults; the extension reads the
+default path but does not create `~/.pi`, `~/.pi/larva`, or
+`~/.pi/larva/compaction.json` automatically.
+
+Minimal shape:
+
+```json
+{
+  "enabled": true,
+  "carry_forward_rule": {
+    "enabled": true,
+    "text": "If the task is unfinished, keep it in Progress/In Progress and Next Steps.\nDo not mark work as complete unless completion evidence exists.\nPreserve next concrete action, files changed, commands run, failing tests, and blockers."
+  }
+}
+```
+
+Defaults and disable switches:
+
+- Missing file or `{}`: enabled with Larva's built-in carry-forward rule.
+- Root `"enabled": false`: disable all Larva focused compaction while still
+  validating any present keys/types; Pi performs native compaction.
+- `"carry_forward_rule": {"enabled": false}`: keep manual and persona focus
+  available, but disable the carry-forward rule.
+- Unknown root keys, unknown `carry_forward_rule` keys, non-object roots,
+  malformed JSON, empty enabled text, and over-limit enabled text are invalid.
+- Enabled carry-forward text is trimmed and bounded to 4000 Unicode code points;
+  manual and persona focus are each bounded to 2000 code points, and total focus
+  is bounded to 6000 code points.
+
+Invalid config is not repaired in place. The extension does not rewrite, migrate,
+merge, delete, or create config files automatically.
+
+### Native fallback and diagnostics
+
+Larva returns `undefined` so Pi performs native compaction when focused
+compaction is disabled, the composed focus is empty, config parsing/validation
+fails, mandatory model/auth/runtime prerequisites are unavailable, the event
+shape is unsupported, the compact adapter is unavailable, or focused compaction
+throws a non-abort error. User cancellation is distinct: an already-aborted
+signal or adapter `AbortError`/`Compaction cancelled` returns `{ cancel: true }`
+so Pi does not restart native compaction after a user abort.
+
+Diagnostics are adapter-local warnings only; they are not PersonaSpec fields and
+not compaction authority. Stable codes are:
+
+- `LARVA_COMPACTION_CONFIG_INVALID`: invalid path, JSON, schema, unknown key, or
+  bounds failure.
+- `LARVA_COMPACTION_FOCUS_UNAVAILABLE`: missing mandatory runtime prerequisite,
+  unavailable auth, or unavailable compact adapter.
+- `LARVA_COMPACTION_FOCUS_FAILED`: focused `compact(...)` was attempted and threw
+  a non-abort error.
+
+When possible, diagnostics use `ctx.ui.notify(message, "warning")`; otherwise
+they fall back to status text such as
+`compaction focus: LARVA_COMPACTION_FOCUS_UNAVAILABLE`. Diagnostic text is
+bounded and sanitized: it must not include raw conversation, summaries, API keys,
+headers, full prompts, or `customInstructions`.
+
+### Compaction focus non-goals
+
+Compaction focus does not:
+
+- modify installed Pi packages under `/opt/homebrew/...`;
+- replace Pi's default compaction prompts or summary schema;
+- rewrite provider payloads;
+- change PersonaSpec or opifex shared contracts;
+- inject the full persona prompt as compaction focus;
+- automatically continue work after threshold or manual compaction;
+- write, migrate, merge, delete, or create user config files automatically.
 
 ## Supplemental local/CI runtime gate
 
@@ -917,13 +1006,16 @@ Do not infer these guarantees from `larva pi` or this extension:
 - No PersonaSpec schema changes, Pi-specific PersonaSpec fields, Pi-specific
   policy fields in PersonaSpec, shared-schema changes, or opifex shared-contract
   changes for Pi model aliases, tool policy, or subagent state.
-- No automatic migration or writes to user config files under `~/.pi`.
+- No automatic migration or writes to user config files under `~/.pi`, including
+  compaction config files.
 - No wildcard, regex, fuzzy, nearest-model, automatic guessing, or
   vendor-guessing semantics for model-map resolution.
 - No `ask` permission action; tool policy is exact `allow`/`deny` only.
 - No Pi settings fallback for extension loading.
-- No Pi prompt-builder replacement, Pi default identity sentence matching, or
-  provider-payload rewrite for persona identity.
+- No Pi prompt-builder replacement, Pi default identity sentence matching, Pi
+  default compaction prompt replacement, or provider-payload rewrite for persona
+  identity or compaction focus.
+- No automatic continuation after threshold or manual compaction.
 - No worktree isolation, file locking, merge management, sandboxing, or credential
   isolation.
 - No project-level policy hierarchy.
