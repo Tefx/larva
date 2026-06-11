@@ -2347,13 +2347,6 @@ export async function handleLarvaSessionBeforeCompact(
   pi: PiApi,
   compactAdapter?: LarvaCompactAdapter | null,
 ): Promise<LarvaCompactionHookResult> {
-  const configLoad = loadLarvaCompactionConfig(currentEnv(ctx));
-  if (!configLoad.ok) {
-    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_CONFIG_INVALID", "invalid config");
-    return undefined;
-  }
-  if (!configLoad.config.enabled) return undefined;
-
   if (!isRecord(event)) {
     await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "malformed event");
     return undefined;
@@ -2363,6 +2356,20 @@ export async function handleLarvaSessionBeforeCompact(
     return undefined;
   }
 
+  const signal = event.signal;
+  if (!isAbortSignalLike(signal)) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "missing signal");
+    return undefined;
+  }
+  if (signal.aborted) return { cancel: true };
+
+  const configLoad = loadLarvaCompactionConfig(currentEnv(ctx));
+  if (!configLoad.ok) {
+    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_CONFIG_INVALID", "invalid config");
+    return undefined;
+  }
+  if (!configLoad.config.enabled) return undefined;
+
   const carryForwardRule = configLoad.config.carry_forward_rule.enabled ? configLoad.config.carry_forward_rule.text : null;
   const focus = buildLarvaCompactionFocus({
     manualFocus: event.customInstructions,
@@ -2370,13 +2377,6 @@ export async function handleLarvaSessionBeforeCompact(
     carryForwardRule,
   });
   if (focus === null) return undefined;
-
-  const signal = event.signal;
-  if (!isAbortSignalLike(signal)) {
-    await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "missing signal");
-    return undefined;
-  }
-  if (signal.aborted) return { cancel: true };
 
   if (ctx.model === undefined || ctx.model === null) {
     await emitLarvaCompactionDiagnostic(ctx, "LARVA_COMPACTION_FOCUS_UNAVAILABLE", "missing model");

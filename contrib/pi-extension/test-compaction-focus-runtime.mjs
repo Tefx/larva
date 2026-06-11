@@ -163,6 +163,54 @@ test("compaction_focus abort and fallback do not start duplicate native compacti
   assert.deepEqual(already, { cancel: true });
   assert.equal(calls, 0);
 
+  const disabledConfig = join(root, "disabled-compaction.json");
+  await writeFile(disabledConfig, JSON.stringify({ enabled: false, carry_forward_rule: { text: "" } }), "utf8");
+  const disabledAbort = new AbortController();
+  disabledAbort.abort();
+  const alreadyDisabled = await mod.handleLarvaSessionBeforeCompact(
+    { preparation: prep, customInstructions: "manual", signal: disabledAbort.signal },
+    { ...ctx, env: { HOME: root, LARVA_PI_COMPACTION_CONFIG_FILE: disabledConfig } },
+    {},
+    async () => {
+      calls += 1;
+      return { summary: "should not run", firstKeptEntryId: "kept-entry", tokensBefore: 777 };
+    },
+  );
+  assert.deepEqual(alreadyDisabled, { cancel: true });
+  assert.equal(calls, 0);
+
+  const emptyFocusConfig = join(root, "empty-focus-compaction.json");
+  await writeFile(emptyFocusConfig, JSON.stringify({ enabled: true, carry_forward_rule: { enabled: false, text: "" } }), "utf8");
+  const emptyFocusAbort = new AbortController();
+  emptyFocusAbort.abort();
+  const alreadyEmptyFocus = await mod.handleLarvaSessionBeforeCompact(
+    { preparation: prep, signal: emptyFocusAbort.signal },
+    { ...ctx, env: { HOME: root, LARVA_PI_COMPACTION_CONFIG_FILE: emptyFocusConfig } },
+    {},
+    async () => {
+      calls += 1;
+      return { summary: "should not run", firstKeptEntryId: "kept-entry", tokensBefore: 777 };
+    },
+  );
+  assert.deepEqual(alreadyEmptyFocus, { cancel: true });
+  assert.equal(calls, 0);
+
+  const invalidConfig = join(root, "invalid-compaction.json");
+  await writeFile(invalidConfig, "{not-json", "utf8");
+  const invalidConfigAbort = new AbortController();
+  invalidConfigAbort.abort();
+  const alreadyInvalidConfig = await mod.handleLarvaSessionBeforeCompact(
+    { preparation: prep, customInstructions: "manual", signal: invalidConfigAbort.signal },
+    { ...ctx, env: { HOME: root, LARVA_PI_COMPACTION_CONFIG_FILE: invalidConfig } },
+    {},
+    async () => {
+      calls += 1;
+      return { summary: "should not run", firstKeptEntryId: "kept-entry", tokensBefore: 777 };
+    },
+  );
+  assert.deepEqual(alreadyInvalidConfig, { cancel: true });
+  assert.equal(calls, 0);
+
   const thrown = await mod.handleLarvaSessionBeforeCompact({ preparation: prep, customInstructions: "manual", signal: new AbortController().signal }, ctx, {}, async () => {
     calls += 1;
     const error = new Error("Compaction cancelled");

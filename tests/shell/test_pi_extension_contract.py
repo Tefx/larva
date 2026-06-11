@@ -4333,19 +4333,32 @@ def test_compaction_focus_config_case_table(tmp_path: Path) -> None:
           ui: {{ notify: async () => undefined, setStatus: async () => undefined }},
         }});
         const baseEvent = {{ preparation, signal: new AbortController().signal }};
+        const abortedSignal = () => {{ const controller = new AbortController(); controller.abort(); return controller.signal; }};
         const adapterCalls = [];
         const adapter = async () => {{ adapterCalls.push("called"); return {{ summary: "ok", firstKeptEntryId: "keep", tokensBefore: 1 }}; }};
         const disabledConfig = path.join(tmp, "disabled.json");
         fs.writeFileSync(disabledConfig, JSON.stringify({{ enabled: false, carry_forward_rule: {{ text: "" }} }}));
         const disabled = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, customInstructions: "manual" }}, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: disabledConfig }}), {{}}, adapter);
+        const abortedDisabled = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, customInstructions: "manual", signal: abortedSignal() }}, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: disabledConfig }}), {{}}, adapter);
         const emptyConfig = path.join(tmp, "empty-focus.json");
         fs.writeFileSync(emptyConfig, JSON.stringify({{ enabled: true, carry_forward_rule: {{ enabled: false, text: "" }} }}));
         const empty = await mod.handleLarvaSessionBeforeCompact(baseEvent, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: emptyConfig }}), {{}}, adapter);
+        const abortedEmpty = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, signal: abortedSignal() }}, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: emptyConfig }}), {{}}, adapter);
+        const invalidConfig = path.join(tmp, "invalid-compaction.json");
+        fs.writeFileSync(invalidConfig, "{{not-json", "utf8");
+        const abortedInvalid = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, customInstructions: "manual", signal: abortedSignal() }}, baseCtx({{ LARVA_PI_COMPACTION_CONFIG_FILE: invalidConfig }}), {{}}, adapter);
+        const abortedMalformedPreparation = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, preparation: {{ ...preparation, fileOps: null }}, customInstructions: "manual", signal: abortedSignal() }}, baseCtx({{ HOME: tmp }}), {{}}, adapter);
         const missingHome = path.join(tmp, "missing-home");
         const enabled = await mod.handleLarvaSessionBeforeCompact({{ ...baseEvent, customInstructions: "manual" }}, baseCtx({{ HOME: missingHome }}), {{}}, adapter);
         console.log(JSON.stringify({{
           disabledIsUndefined: disabled === undefined,
           emptyIsUndefined: empty === undefined,
+          abortedPrecedence: {{
+            disabledConfig: abortedDisabled,
+            emptyFocus: abortedEmpty,
+            invalidConfig: abortedInvalid,
+            malformedPreparation: abortedMalformedPreparation,
+          }},
           enabledReturnedCompaction: enabled?.compaction?.summary === "ok",
           adapterCallCount: adapterCalls.length,
           missingConfigNotCreated: !fs.existsSync(path.join(missingHome, ".pi", "larva", "compaction.json")),
@@ -4357,6 +4370,12 @@ def test_compaction_focus_config_case_table(tmp_path: Path) -> None:
     assert payload == {
         "disabledIsUndefined": True,
         "emptyIsUndefined": True,
+        "abortedPrecedence": {
+            "disabledConfig": {"cancel": True},
+            "emptyFocus": {"cancel": True},
+            "invalidConfig": {"cancel": True},
+            "malformedPreparation": {"cancel": True},
+        },
         "enabledReturnedCompaction": True,
         "adapterCallCount": 1,
         "missingConfigNotCreated": True,
