@@ -1055,6 +1055,15 @@ prove:
     `larva_subagent_wait`, and `larva_subagent_select` observe the same exact
     child terminal result without shell sleep polling or repeated status polling.
 
+## Extension-Facing Persona Invocation
+
+trusted same-runtime Pi extensions can use the `larva:persona-invocation:*` event bus surface, including `larva:persona-invocation:request`, to request Larva to run a specified persona once in a fresh internal child Pi invocation and receive the final assistant text or structured error.
+
+This is a lower-level primitive separate from the model-facing `larva_subagent` task system. It does not generate artifacts for large outputs, does not queue, and does not provide status polling or console integration. It is designed for synchronous-style extension demands (e.g. bounded diagnostic or validation passes) rather than agent-orchestrated background work. There is no public task id, no model-facing tool, no resume/status/discovery/wait/select, and no /larva-subagent console integration for this surface.
+
+See the authoritative design document for the strict event payloads, state machine, and boundaries:
+[`../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`](../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md).
+
 ## Explicit non-goals and unsupported guarantees
 
 Do not infer these guarantees from `larva pi` or this extension:
