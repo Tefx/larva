@@ -267,6 +267,31 @@ creating a scheduler. Sleep polling is specifically forbidden because it is a
 model workaround for missing wait/yield guidance, not a reliable runtime
 contract.
 
+### Result retrieval and callback handoff
+
+`wait`, `select`, `events`, and `status` are readiness and inspection surfaces;
+they are not child-output retrieval surfaces. The child output is delivered by
+the `larva-subagent-result` callback and, when too large for inline callback
+content, by the callback's `full_output_artifact.path`. Agents must not call
+`larva_subagent_status` merely to retrieve child output after `wait` or `select`.
+`status` may confirm process-local state, but it does not expose more result data
+than the deterministic orchestration surfaces.
+
+Observed runtime ordering can briefly expose a terminal `wait`/`select` snapshot
+with `callback_delivery: "pending"` because terminal readiness and callback
+message injection are separate Pi runtime events. The hotfix contract is that a
+satisfied `wait`/`select` response with ready tasks whose callbacks are still
+pending must direct the parent agent to yield for the `larva-subagent-result`
+callback, not to call `status` for output. The visible text and
+`recommended_next_action` must make that handoff unambiguous.
+
+The fuller convergence target is a terminal-result barrier: ready tasks returned
+by `wait`/`select` should include bounded terminal result metadata and artifact
+references sufficient for deterministic orchestration, while large child output
+remains out of the ordinary status path. This convergence must preserve the
+no-polling rule, exact `task_id` handles, bounded callback text, and process-local
+orchestration authority.
+
 ### Background activity indicator
 Interactive Pi sessions should expose a minimal read-only status indicator for
 human awareness of background subagent work. This is not a control surface and
@@ -444,9 +469,13 @@ Common exact `task_id` validation:
 Shared numeric bounds:
 
 - `timeout_ms`: default `10000`; allowed integer range `0..86400000` (24h);
-  `0` means poll once and return immediately. Subagents may run for minutes or
-  hours; `wait`/`select` are allowed to block for long deadlines and must return
-  current snapshots on timeout rather than forcing repeated status polling.
+  `0` returns an immediate snapshot and is preferred for checkpoint/status
+  probes in large interactive parent Pi sessions. Subagents may run for minutes
+  or hours, and long waits remain supported, but long waits can increase parent
+  TUI/Node heap pressure in large transcripts; reserve them for fresh/small
+  sessions or unattended orchestration. `wait`/`select` must return current
+  snapshots on timeout rather than forcing repeated status polling. Do not use
+  shell sleep polling or ad-hoc status loops.
 - event retention: keep the latest `1000` orchestration events per parent
   process. When event `sequence` exceeds this window, older cursors expire
   deterministically.
@@ -699,9 +728,12 @@ Input contract:
 - `return_when: "all" | "any" | "first_error" | omitted`; default `"all"`.
   Do not pass `null`.
 - `timeout_ms: integer | omitted`; default `10000`; allowed range
-  `0..86400000` (24h). `0` means poll once. Invalid values return
-  `LARVA_BAD_INPUT`. Long waits are valid; do not replace them with repeated
-  status polling.
+  `0..86400000` (24h). `0` returns an immediate snapshot and is preferred for
+  checkpoint/status probes in large interactive parent Pi sessions. Invalid
+  values return `LARVA_BAD_INPUT`. Long waits remain supported, but can increase
+  parent TUI/Node heap pressure in large transcripts; reserve them for
+  fresh/small sessions or unattended orchestration. Do not use shell sleep
+  polling or replace them with repeated status polling.
 
 Success details schema:
 
@@ -755,6 +787,13 @@ keyed `snapshots` map. The visible tool text must include a bounded snapshot lin
 for each requested handle so agents do not need a follow-up `status` call merely
 to learn whether the task is still alive.
 
+When satisfied, `wait` reports readiness only. A satisfied response must not
+suggest `status` as an output lookup. If any ready task still has
+`callback_delivery: "pending"`, the hotfix contract is to guide the agent to
+yield for `larva-subagent-result`; the full convergence contract is to include
+bounded terminal result metadata and any `full_output_artifact` reference for
+ready tasks without making `status` an output channel.
+
 For success, timeout, and partial readiness, `next_sequence` is the current
 highest event sequence observed by the parent process at response time, or `0` if
 no event has ever been recorded. It is compatible with
@@ -772,13 +811,18 @@ Input contract:
   `LARVA_BAD_INPUT`. Well-formed but unobserved task ids return
   `LARVA_SUBAGENT_NOT_OBSERVED`.
 - `timeout_ms: integer | omitted`; default `10000`; allowed range
-  `0..86400000` (24h). `0` means poll once. Invalid values return
-  `LARVA_BAD_INPUT`. Long waits are valid; do not replace them with repeated
-  status polling.
+  `0..86400000` (24h). `0` returns an immediate snapshot and is preferred for
+  checkpoint/status probes in large interactive parent Pi sessions. Invalid
+  values return `LARVA_BAD_INPUT`. Long waits remain supported, but can increase
+  parent TUI/Node heap pressure in large transcripts; reserve them for
+  fresh/small sessions or unattended orchestration. Do not use shell sleep
+  polling or replace them with repeated status polling.
 
 Success details schema is the same shape as `wait`, with `return_when: "any"`.
 The output includes `runs`, keyed `snapshots`, `ready_task_ids`,
-`pending_task_ids`, `next_sequence`, and `recommended_next_action`.
+`pending_task_ids`, `next_sequence`, and `recommended_next_action`. The same
+callback-pending and result-handoff rules apply: `select` must not send agents to
+`status` to retrieve output.
 
 `select` is a thin input-only convenience wrapper over
 `wait(return_when: "any")`: fewer arguments, identical output model, and the same

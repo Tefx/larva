@@ -877,9 +877,23 @@ files or the presentation cache, and never consume results. `wait` covers
 `all`/`any`/`first_error` and supports long `timeout_ms` values up to 24h for
 minute-scale or hour-scale child work; timeout responses include bounded visible
 snapshot lines plus machine-readable `runs`/`snapshots`, so agents should not call
-`status` merely to discover whether a timed-out wait is still alive. `select` is
-the compact readiness helper equivalent to `wait(return_when: "any")`; `events`
-replays ordered retained events with `cursor_expired` and `next_sequence`.
+`status` merely to discover whether a timed-out wait is still alive. For
+checkpoint/status probes in large interactive parent Pi sessions, prefer
+`timeout_ms: 0` or short waits; `0` returns an immediate snapshot. Long waits
+remain supported, but can increase parent TUI/Node heap pressure in large
+transcripts; reserve them for fresh/small sessions or unattended orchestration.
+Do not use shell sleep polling or ad-hoc status loops. `select` is the compact
+readiness helper equivalent to `wait(return_when: "any")`; `events` replays
+ordered retained events with `cursor_expired` and `next_sequence`.
+
+`wait`, `select`, `events`, and `status` are readiness and inspection surfaces,
+not child-output retrieval surfaces. Child output is delivered by the
+`larva-subagent-result` callback and, for overlong output, by the callback's
+`full_output_artifact.path`. After `wait` or `select`, do not call
+`larva_subagent_status` merely to retrieve output; if a terminal snapshot still
+shows `callback_delivery: "pending"`, yield for the `larva-subagent-result`
+callback instead. A follow-up wait/result convergence plan tracks stronger
+machine-readable guidance and terminal result metadata for this handoff.
 
 The interactive status/background indicator is count-only and read-only. Its
 source of truth is the same process-local active-run registry and event-driven

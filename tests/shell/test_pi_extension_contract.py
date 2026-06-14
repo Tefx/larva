@@ -362,6 +362,15 @@ def test_subagent_wait_supports_long_deadlines_and_visible_snapshots() -> None:
     source = _source()
     assert "SUBAGENT_WAIT_MAX_TIMEOUT_MS = 86_400_000" in source
     assert "maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS" in source
+    assert "description: SUBAGENT_WAIT_TIMEOUT_DESCRIPTION" in source
+    assert source.count("description: SUBAGENT_WAIT_TIMEOUT_DESCRIPTION") == 2
+    for guidance_token in (
+        "0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions.",
+        "Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts",
+        "reserve them for fresh/small sessions or unattended orchestration",
+        "Do not use shell sleep polling",
+    ):
+        assert guidance_token in source
     assert "recommended_next_action" in source
     assert "snapshots: snapshotsByTaskId(runs)" in source
     assert "runs.map(subagentSnapshotLine)" in source
@@ -1006,6 +1015,16 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "indicator_cache_not_authority": "Persistent presentation cache" in authority and "excluded from the indicator" in authority,
         "cancel_grace_1500": "1500 ms" in authority,
         "lifecycle_rules": "On parent session shutdown, reload, new session, resume, or fork" in authority,
+        "large_session_wait_guidance": all(
+            token in authority
+            for token in (
+                "`0` returns an immediate snapshot and is preferred for checkpoint/status",
+                "long waits remain supported",
+                "parent TUI/Node heap pressure in large transcripts",
+                "fresh/small\n  sessions or unattended orchestration",
+                "Do not use\n  shell sleep polling",
+            )
+        ),
     }
     assert all(value is True for key, value in authority_requirements.items() if key != "authority_path"), json.dumps(
         authority_requirements, indent=2, sort_keys=True
@@ -1025,6 +1044,17 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "readme_lists_events_wait_select": all(token in readme for token in ("larva_subagent_events(since_sequence?, task_ids?, limit?)", "larva_subagent_wait(task_ids, return_when?, timeout_ms?)", "larva_subagent_select(task_ids, timeout_ms?)")),
         "readme_guides_automation_to_deterministic_tools": "For automation that depends on the child" in readme and "building a shell sleep/status-polling loop" in readme,
         "readme_marks_status_inspection_only": "inspection and\ndebugging tool only" in readme,
+        "readme_large_session_wait_guidance": all(
+            token in readme
+            for token in (
+                "checkpoint/status probes in large interactive parent Pi sessions",
+                "`timeout_ms: 0` or short waits; `0` returns an immediate snapshot",
+                "Long waits\nremain supported",
+                "parent TUI/Node heap pressure in large\ntranscripts",
+                "fresh/small sessions or unattended orchestration",
+                "Do not use shell sleep polling or ad-hoc status loops",
+            )
+        ),
         "readme_marks_persistent_cache_ui_only": "adapter-local UI continuity only" in readme and "never orchestration authority" in readme,
         "readme_indicator_count_only": "status/background indicator is count-only" in readme,
         "readme_indicator_active_registry_source": "process-local active-run registry and event-driven\nupdates" in readme,

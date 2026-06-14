@@ -473,6 +473,7 @@ type PersonaListInFlight = { key: string; promise: Promise<PersonaCandidate[] | 
 const CLI_TIMEOUT_MS = 10_000;
 const SUBAGENT_WAIT_DEFAULT_TIMEOUT_MS = 10_000;
 const SUBAGENT_WAIT_MAX_TIMEOUT_MS = 86_400_000; // 24h: subagents may run for minutes or hours.
+const SUBAGENT_WAIT_TIMEOUT_DESCRIPTION = "Maximum wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Do not use shell sleep polling.";
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
 const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 300;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
@@ -7362,7 +7363,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     properties: {
       task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected." },
       return_when: { enum: ["all", "any", "first_error"], description: "Completion condition. Omit for all; do not pass null." },
-      timeout_ms: { type: "integer", minimum: 0, maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS, description: "Maximum wait time, up to 24h. 0 polls once and returns immediately. Long waits return snapshots; do not replace wait with status polling." },
+      timeout_ms: { type: "integer", minimum: 0, maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS, description: SUBAGENT_WAIT_TIMEOUT_DESCRIPTION },
     },
     required: ["task_ids"],
     additionalProperties: false,
@@ -7380,7 +7381,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     type: "object",
     properties: {
       task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Exact observed public task_id handles to wait on; fuzzy handles are rejected." },
-      timeout_ms: { type: "integer", minimum: 0, maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS, description: "Maximum wait time, up to 24h. 0 polls once and returns immediately. Long waits return snapshots; do not replace wait with status polling." },
+      timeout_ms: { type: "integer", minimum: 0, maximum: SUBAGENT_WAIT_MAX_TIMEOUT_MS, description: SUBAGENT_WAIT_TIMEOUT_DESCRIPTION },
     },
     required: ["task_ids"],
     additionalProperties: false,
