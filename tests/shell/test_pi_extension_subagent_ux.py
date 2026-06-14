@@ -2859,3 +2859,17 @@ def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
     """Expected-red: README/source parity is checked against the reference async subagent authority."""
 
     _assert_async_contract_group_true("docs_parity_against_reference")
+
+
+
+def test_persona_invocation_contract_does_not_extend_subagent_console_or_wait_surfaces() -> None:
+    """Persona invocation is a separate event-bus primitive, not async subagent UX."""
+    persona_invocation = (ROOT / "docs" / "reference" / "PI_EXTENSION_PERSONA_INVOCATION.md").read_text(encoding="utf-8")
+    async_subagents = (ROOT / "docs" / "reference" / "PI_EXTENSION_ASYNC_SUBAGENTS.md").read_text(encoding="utf-8")
+    readme = (ROOT / "contrib" / "pi-extension" / "README.md").read_text(encoding="utf-8")
+
+    assert "NOT `larva_subagent` mode" in persona_invocation
+    assert "no status/events/wait/select" in persona_invocation
+    assert "No shell sleep polling" in async_subagents
+    assert "separate from the model-facing `larva_subagent` task system" in readme
+    assert "no /larva-subagent console integration for this surface" in readme

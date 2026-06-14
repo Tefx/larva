@@ -4516,3 +4516,85 @@ def test_compaction_focus_hook_case_table(tmp_path: Path) -> None:
     assert payload["redacted"] is True
     assert payload["statusFallback"] == ["larva", "compaction focus: LARVA_COMPACTION_FOCUS_UNAVAILABLE"]
     assert payload["notifyBeforeStatus"] is True
+
+
+PI_EXTENSION_PERSONA_INVOCATION_SPEC: Final = ROOT / "docs" / "reference" / "PI_EXTENSION_PERSONA_INVOCATION.md"
+PIINV_EVENT_BUS_TOKENS: Final = (
+    "larva:persona-invocation:request",
+    "larva:persona-invocation:cancel",
+    "larva:persona-invocation:result",
+)
+PIINV_REQUIRED_EXPECTED_RED_IDS: Final = (
+    "PIINV-001",
+    "PIINV-002",
+    "PIINV-003",
+    "PIINV-004",
+    "PIINV-005",
+)
+PIINV_MACHINE_ANCHORS: Final[tuple[tuple[str, tuple[str, ...], str], ...]] = (
+    ("prompt_max_65536_utf8_bytes", ("PERSONA_INVOCATION_PROMPT_MAX_UTF8_BYTES", "65536"), "PIINV_EXPECTED_RED::prompt_max_65536_utf8_bytes::prompt byte bound missing"),
+    ("metadata_json_stringify_max_2048_utf8_bytes", ("PERSONA_INVOCATION_METADATA_MAX_UTF8_BYTES", "JSON.stringify", "2048"), "PIINV_EXPECTED_RED::metadata_json_stringify_max_2048_utf8_bytes::metadata stringify byte bound missing"),
+    ("timeout_ms_invalid_below_1", ("timeout_ms", "LARVA_PERSONA_INVOCATION_BAD_INPUT", "minimum: 1"), "PIINV_EXPECTED_RED::timeout_ms_invalid_below_1::timeout lower validation missing"),
+    ("timeout_ms_invalid_above_120000", ("timeout_ms", "LARVA_PERSONA_INVOCATION_BAD_INPUT", "120000"), "PIINV_EXPECTED_RED::timeout_ms_invalid_above_120000::timeout upper validation missing"),
+    ("timeout_runtime_timeout_returns_TIMEOUT", ("LARVA_PERSONA_INVOCATION_TIMEOUT", "AbortController", "timeout_ms"), "PIINV_EXPECTED_RED::timeout_runtime_timeout_returns_TIMEOUT::runtime timeout terminal code missing"),
+    ("final_text_max_16384_utf8_bytes", ("PERSONA_INVOCATION_FINAL_TEXT_MAX_UTF8_BYTES", "16384"), "PIINV_EXPECTED_RED::final_text_max_16384_utf8_bytes::final_text byte bound missing"),
+    ("overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation", ("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", "final_text: \"\"", "no artifact"), "PIINV_EXPECTED_RED::overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation::overlimit protocol failure missing"),
+    ("result_error_object_exact_code_message_shape", ("error: { code", "message", "LARVA_PERSONA_INVOCATION_"), "PIINV_EXPECTED_RED::result_error_object_exact_code_message_shape::exact error object shape missing"),
+    ("failed_result_empty_final_text", ("status: \"failed\"", "final_text: \"\""), "PIINV_EXPECTED_RED::failed_result_empty_final_text::failed final_text empty invariant missing"),
+    ("cancelled_result_empty_final_text", ("status: \"cancelled\"", "final_text: \"\""), "PIINV_EXPECTED_RED::cancelled_result_empty_final_text::cancelled final_text empty invariant missing"),
+    ("terminal_error_code_BAD_INPUT", ("LARVA_PERSONA_INVOCATION_BAD_INPUT",), "PIINV_EXPECTED_RED::terminal_error_code_BAD_INPUT::terminal error code missing"),
+    ("terminal_error_code_PERSONA_NOT_FOUND", ("LARVA_PERSONA_INVOCATION_PERSONA_NOT_FOUND",), "PIINV_EXPECTED_RED::terminal_error_code_PERSONA_NOT_FOUND::terminal error code missing"),
+    ("terminal_error_code_MODEL_UNAVAILABLE", ("LARVA_PERSONA_INVOCATION_MODEL_UNAVAILABLE",), "PIINV_EXPECTED_RED::terminal_error_code_MODEL_UNAVAILABLE::terminal error code missing"),
+    ("terminal_error_code_POLICY_FAILED", ("LARVA_PERSONA_INVOCATION_POLICY_FAILED",), "PIINV_EXPECTED_RED::terminal_error_code_POLICY_FAILED::terminal error code missing"),
+    ("terminal_error_code_TIMEOUT", ("LARVA_PERSONA_INVOCATION_TIMEOUT",), "PIINV_EXPECTED_RED::terminal_error_code_TIMEOUT::terminal error code missing"),
+    ("terminal_error_code_CANCELLED", ("LARVA_PERSONA_INVOCATION_CANCELLED",), "PIINV_EXPECTED_RED::terminal_error_code_CANCELLED::terminal error code missing"),
+    ("terminal_error_code_PROTOCOL_FAILED", ("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED",), "PIINV_EXPECTED_RED::terminal_error_code_PROTOCOL_FAILED::terminal error code missing"),
+    ("terminal_error_code_INTERNAL_ERROR", ("LARVA_PERSONA_INVOCATION_INTERNAL_ERROR",), "PIINV_EXPECTED_RED::terminal_error_code_INTERNAL_ERROR::terminal error code missing"),
+    ("lifecycle_shutdown_stale_context_suppresses_result", ("LARVA_PERSONA_INVOCATION_STALE", "shutdown", "suppress"), "PIINV_EXPECTED_RED::lifecycle_shutdown_stale_context_suppresses_result::shutdown stale suppression missing"),
+    ("lifecycle_reload_stale_context_suppresses_result", ("LARVA_PERSONA_INVOCATION_STALE", "reload", "suppress"), "PIINV_EXPECTED_RED::lifecycle_reload_stale_context_suppresses_result::reload stale suppression missing"),
+    ("lifecycle_new_stale_context_suppresses_result", ("LARVA_PERSONA_INVOCATION_STALE", "new", "suppress"), "PIINV_EXPECTED_RED::lifecycle_new_stale_context_suppresses_result::new stale suppression missing"),
+    ("lifecycle_resume_stale_context_suppresses_result", ("LARVA_PERSONA_INVOCATION_STALE", "resume", "suppress"), "PIINV_EXPECTED_RED::lifecycle_resume_stale_context_suppresses_result::resume stale suppression missing"),
+    ("lifecycle_fork_stale_context_suppresses_result", ("LARVA_PERSONA_INVOCATION_STALE", "fork", "suppress"), "PIINV_EXPECTED_RED::lifecycle_fork_stale_context_suppresses_result::fork stale suppression missing"),
+    ("terminal_race_first_terminal_state_wins", ("terminal_race_first_terminal_state_wins", "first terminal state wins"), "PIINV_EXPECTED_RED::terminal_race_first_terminal_state_wins::first terminal state wins missing"),
+    ("terminal_race_at_most_one_result", ("terminal_race_at_most_one_result", "at most one result"), "PIINV_EXPECTED_RED::terminal_race_at_most_one_result::at most one result missing"),
+    ("terminal_race_late_timeout_cancel_stale_ignored", ("terminal_race_late_timeout_cancel_stale_ignored", "late timeout-cancel-stale ignored"), "PIINV_EXPECTED_RED::terminal_race_late_timeout_cancel_stale_ignored::late terminal races ignored missing"),
+)
+
+
+def test_piinv_docs_and_readme_pin_machine_anchor_inventory() -> None:
+    """Docs/README expose exact PIINV machine anchors without changing product behavior."""
+    authority = PI_EXTENSION_PERSONA_INVOCATION_SPEC.read_text(encoding="utf-8")
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+
+    for event_name in PIINV_EVENT_BUS_TOKENS:
+        assert event_name in authority
+        assert event_name in readme
+    for machine_anchor, _tokens, _fingerprint in PIINV_MACHINE_ANCHORS:
+        assert machine_anchor in authority, f"missing authority PIINV machine anchor {machine_anchor}"
+        assert machine_anchor in readme, f"missing README PIINV machine anchor {machine_anchor}"
+    assert "NOT `larva_subagent` mode" in authority
+    assert "separate from the model-facing `larva_subagent` task system" in readme
+    assert "Status/events/wait/select" in authority
+    assert "no resume/status/discovery/wait/select" in readme
+
+
+@pytest.mark.parametrize(
+    ("machine_anchor", "required_source_tokens", "expected_red_fingerprint"),
+    PIINV_MACHINE_ANCHORS,
+    ids=[row[0] for row in PIINV_MACHINE_ANCHORS],
+)
+def test_piinv_event_bus_machine_anchor_expected_red(
+    machine_anchor: str,
+    required_source_tokens: tuple[str, ...],
+    expected_red_fingerprint: str,
+) -> None:
+    """Expected-red until the Pi extension implements the persona invocation bus."""
+    source = _source()
+    missing_event_tokens = [token for token in PIINV_EVENT_BUS_TOKENS if token not in source]
+    missing_behavior_tokens = [token for token in required_source_tokens if token not in source]
+
+    assert not missing_event_tokens and not missing_behavior_tokens, (
+        f"{expected_red_fingerprint}; PIINV_MACHINE_ANCHOR={machine_anchor}; "
+        f"PIINV_REQUIRED_EXPECTED_RED_IDS={' '.join(PIINV_REQUIRED_EXPECTED_RED_IDS)}; "
+        f"missing_event_tokens={missing_event_tokens}; missing_behavior_tokens={missing_behavior_tokens}"
+    )

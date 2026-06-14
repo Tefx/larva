@@ -456,6 +456,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "capability-gates",
         "live-child-rpc-proof",
         "async-subagent-contract",
+        "persona-invocation-bus",
     ):
         assert scenario in completed.stdout
 
@@ -1213,3 +1214,31 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
             "overlongRejectedAsBadInput": True,
         },
     }, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+
+
+
+def test_runtime_smoke_persona_invocation_bus_expected_red_records_behavioral_fingerprints() -> None:
+    """Expected-red: extension-facing PIINV event bus is not product-implemented yet."""
+    payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
+        "persona-invocation-bus", timeout=8.0
+    )
+    contract = payload["runtime"]["personaInvocationBus"]
+    anchors = [row["machine_anchor"] for row in contract["checks"]]
+    raw_json_evidence = {
+        "command": ["node", str(RUNTIME_SMOKE), "--scenario", "persona-invocation-bus"],
+        "exit_code": returncode,
+        "raw_stdout": raw_stdout,
+        "raw_stderr": raw_stderr,
+        "status": contract["status"],
+        "fingerprints": contract["fingerprints"],
+        "anchors": anchors,
+    }
+
+    assert contract["forbiddenInfrastructureFingerprintsAbsent"] is True, json.dumps(
+        raw_json_evidence, indent=2, sort_keys=True
+    )
+    assert contract["terminalRaceAnchorsPresent"] is True, json.dumps(
+        raw_json_evidence, indent=2, sort_keys=True
+    )
+    assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert contract["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)

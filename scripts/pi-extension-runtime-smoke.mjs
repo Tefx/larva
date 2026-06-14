@@ -23,6 +23,50 @@ const SCENARIOS = [
   "live-child-rpc-proof",
   "subagent-log-selector-streaming",
   "async-subagent-contract",
+  "persona-invocation-bus",
+];
+
+const PIINV_REQUIRED_EXPECTED_RED_IDS = [
+  "PIINV-001",
+  "PIINV-002",
+  "PIINV-003",
+  "PIINV-004",
+  "PIINV-005",
+];
+
+const PIINV_MACHINE_ANCHORS = [
+  "prompt_max_65536_utf8_bytes",
+  "metadata_json_stringify_max_2048_utf8_bytes",
+  "timeout_ms_invalid_below_1",
+  "timeout_ms_invalid_above_120000",
+  "timeout_runtime_timeout_returns_TIMEOUT",
+  "final_text_max_16384_utf8_bytes",
+  "overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation",
+  "result_error_object_exact_code_message_shape",
+  "failed_result_empty_final_text",
+  "cancelled_result_empty_final_text",
+  "terminal_error_code_BAD_INPUT",
+  "terminal_error_code_PERSONA_NOT_FOUND",
+  "terminal_error_code_MODEL_UNAVAILABLE",
+  "terminal_error_code_POLICY_FAILED",
+  "terminal_error_code_TIMEOUT",
+  "terminal_error_code_CANCELLED",
+  "terminal_error_code_PROTOCOL_FAILED",
+  "terminal_error_code_INTERNAL_ERROR",
+  "lifecycle_shutdown_stale_context_suppresses_result",
+  "lifecycle_reload_stale_context_suppresses_result",
+  "lifecycle_new_stale_context_suppresses_result",
+  "lifecycle_resume_stale_context_suppresses_result",
+  "lifecycle_fork_stale_context_suppresses_result",
+  "terminal_race_first_terminal_state_wins",
+  "terminal_race_at_most_one_result",
+  "terminal_race_late_timeout_cancel_stale_ignored",
+];
+
+const PIINV_TERMINAL_RACE_ANCHORS = [
+  "terminal_race_first_terminal_state_wins",
+  "terminal_race_at_most_one_result",
+  "terminal_race_late_timeout_cancel_stale_ignored",
 ];
 
 function usage() {
@@ -2375,6 +2419,56 @@ async function asyncSubagentContractExpectedRed(evidence) {
   };
 }
 
+async function personaInvocationBusExpectedRed(evidence) {
+  const source = await readFile(extensionPath, "utf8");
+  const requiredEventTokens = [
+    "larva:persona-invocation:request",
+    "larva:persona-invocation:cancel",
+    "larva:persona-invocation:result",
+  ];
+  const forbiddenInfrastructureFingerprints = [
+    "ModuleNotFoundError",
+    "ImportError",
+    "Cannot find module",
+    "SyntaxError",
+    "ERR_MODULE_NOT_FOUND",
+    "test collection error",
+    "missing Node/Pi runtime",
+  ];
+  const checks = PIINV_MACHINE_ANCHORS.map((machine_anchor) => {
+    const eventTokensPresent = requiredEventTokens.every((token) => source.includes(token));
+    const machineAnchorPresent = source.includes(machine_anchor);
+    const passed = eventTokensPresent && machineAnchorPresent;
+    return {
+      machine_anchor,
+      status: passed ? "PASS" : "EXPECTED_RED",
+      fingerprint: `PIINV_EXPECTED_RED::${machine_anchor}`,
+      missing: {
+        event_bus_tokens: requiredEventTokens.filter((token) => !source.includes(token)),
+        machine_anchor_token: machineAnchorPresent ? [] : [machine_anchor],
+      },
+      behavioral_obligation: "trusted same-runtime extension event bus request/cancel/result behavior is not implemented in contrib/pi-extension/larva.ts yet",
+    };
+  });
+  const fingerprints = checks.map((check) => check.fingerprint);
+  evidence.runtime.personaInvocationBus = {
+    status: checks.every((check) => check.status === "PASS") ? "PASS" : "EXPECTED_RED",
+    expectedResult: "red until persona invocation event-bus behavior is implemented",
+    scenarioBasis: "source-level runtime smoke for extension-facing PIINV event bus; does not use Pi live runtime or model-facing larva_subagent tools",
+    eventBusTokens: requiredEventTokens,
+    checks,
+    fingerprints,
+    requiredFailureIds: PIINV_REQUIRED_EXPECTED_RED_IDS,
+    terminalRaceAnchorsPresent: PIINV_TERMINAL_RACE_ANCHORS.every((anchor) => fingerprints.some((fingerprint) => fingerprint.includes(anchor))),
+    forbiddenInfrastructureFingerprintsAbsent: forbiddenInfrastructureFingerprints.every((fingerprint) => !fingerprints.join("\n").includes(fingerprint)),
+    nonGoalsPreserved: {
+      noModelFacingTool: !source.includes('name: "larva_persona_invocation"'),
+      noWaitSelectEventsSurface: !source.includes("larva_persona_invocation_wait") && !source.includes("larva_persona_invocation_select") && !source.includes("larva_persona_invocation_events"),
+      noSubagentConsoleIntegration: !source.includes("persona-invocation") || !source.includes("larva-subagent"),
+    },
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -2385,7 +2479,14 @@ async function main() {
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
-  await collectPiTuiDependencyEvidence(evidence);
+  if (scenario === "persona-invocation-bus") {
+    evidence.package.piTuiDependency = {
+      hardGateStatus: "SKIPPED",
+      reason: "persona-invocation-bus smoke is a source-level expected-red contract probe and must not fail on Pi TUI dependency hydration",
+    };
+  } else {
+    await collectPiTuiDependencyEvidence(evidence);
+  }
   if (scenario === "availability") {
     await piAvailability(evidence);
   } else if (scenario === "get-commands") {
@@ -2626,6 +2727,8 @@ async function main() {
     await subagentLogSelectorStreamingExpectedRed(evidence);
   } else if (scenario === "async-subagent-contract") {
     await asyncSubagentContractExpectedRed(evidence);
+  } else if (scenario === "persona-invocation-bus") {
+    await personaInvocationBusExpectedRed(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
@@ -2639,6 +2742,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "async-subagent-contract" && evidence.runtime.asyncSubagentContract?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "persona-invocation-bus" && evidence.runtime.personaInvocationBus?.status !== "PASS") {
     process.exitCode = 1;
   }
 }

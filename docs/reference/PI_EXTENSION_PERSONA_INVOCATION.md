@@ -32,15 +32,17 @@ The interface is entirely over the event bus:
 
 The following literal anchors are intentional verification anchors for the vectl plan and summarize the normative contract without adding scope:
 
-- prompt max 65536 UTF-8 bytes
-- final_text max 16384 UTF-8 bytes
-- metadata JSON.stringify UTF-8 max 2048 bytes
-- timeout_ms 1..120000
-- result error object shape: {code,message}
+- prompt max 65536 UTF-8 bytes (`prompt_max_65536_utf8_bytes`)
+- final_text max 16384 UTF-8 bytes (`final_text_max_16384_utf8_bytes`)
+- metadata JSON.stringify UTF-8 max 2048 bytes (`metadata_json_stringify_max_2048_utf8_bytes`)
+- timeout_ms 1..120000 (`timeout_ms_invalid_below_1`, `timeout_ms_invalid_above_120000`, `timeout_runtime_timeout_returns_TIMEOUT`)
+- result error object shape: {code,message} (`result_error_object_exact_code_message_shape`)
+- failed and cancelled results always have empty final_text (`failed_result_empty_final_text`, `cancelled_result_empty_final_text`)
+- overlimit successful child output fails without artifact or truncation (`overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation`)
 - terminal-state matrix
-- first terminal state wins
-- at most one result
-- late timeout-cancel-stale ignored
+- first terminal state wins (`terminal_race_first_terminal_state_wins`)
+- at most one result (`terminal_race_at_most_one_result`)
+- late timeout-cancel-stale ignored (`terminal_race_late_timeout_cancel_stale_ignored`)
 - no capability discovery
 - no fallback/version negotiation
 - no variant
@@ -199,8 +201,27 @@ First terminal state wins. Only one result is emitted per request.
 - Timeout, cancel, or stale state suppresses late success or failure.
 - Lifecycle actions (shutdown, reload, new, resume, fork) cancel or render stale any active invocations and never send callbacks to the old context or parent LLM context. Lifecycle stale -> no result event; diagnostic code `LARVA_PERSONA_INVOCATION_STALE`.
 
+Machine-check anchor ids for lifecycle stale suppression:
+
+- `lifecycle_shutdown_stale_context_suppresses_result`
+- `lifecycle_reload_stale_context_suppresses_result`
+- `lifecycle_new_stale_context_suppresses_result`
+- `lifecycle_resume_stale_context_suppresses_result`
+- `lifecycle_fork_stale_context_suppresses_result`
+
 ## Error Codes
 (See Terminal State Matrix above for how these are delivered inside the `error` object.)
+
+Machine-check anchor ids for terminal error codes:
+
+- `terminal_error_code_BAD_INPUT` -> `LARVA_PERSONA_INVOCATION_BAD_INPUT`
+- `terminal_error_code_PERSONA_NOT_FOUND` -> `LARVA_PERSONA_INVOCATION_PERSONA_NOT_FOUND`
+- `terminal_error_code_MODEL_UNAVAILABLE` -> `LARVA_PERSONA_INVOCATION_MODEL_UNAVAILABLE`
+- `terminal_error_code_POLICY_FAILED` -> `LARVA_PERSONA_INVOCATION_POLICY_FAILED`
+- `terminal_error_code_TIMEOUT` -> `LARVA_PERSONA_INVOCATION_TIMEOUT`
+- `terminal_error_code_CANCELLED` -> `LARVA_PERSONA_INVOCATION_CANCELLED`
+- `terminal_error_code_PROTOCOL_FAILED` -> `LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED`
+- `terminal_error_code_INTERNAL_ERROR` -> `LARVA_PERSONA_INVOCATION_INTERNAL_ERROR`
 
 ## Explicit Non-Goals
 - Capability discovery
