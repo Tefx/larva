@@ -286,12 +286,16 @@ callback, not to call `status` for output. The visible text,
 `recommended_next_action`, and model-facing tool descriptions must make that
 handoff unambiguous.
 
-The fuller convergence target is a terminal-result barrier: ready tasks returned
-by `wait`/`select` should include bounded terminal result metadata and artifact
-references sufficient for deterministic orchestration, while large child output
-remains out of the ordinary status path. This convergence must preserve the
-no-polling rule, exact `task_id` handles, bounded callback text, and process-local
-orchestration authority.
+The authoritative convergence contract is a terminal-result barrier: ready tasks
+returned by `wait`/`select` must include bounded `terminal_result` metadata and
+any `full_output_artifact` reference produced by the callback path, while child
+output text remains out of the ordinary status path. `terminal_result` is
+metadata, not a transcript: it may expose truncation booleans and artifact
+manifests, but it must not carry unbounded child output. This convergence must
+preserve the no-polling rule, exact `task_id` handles, bounded callback text, and
+process-local orchestration authority. It also does not introduce a
+`larva_subagent_result` tool; separate result-retrieval tooling, if any, is a
+future decision.
 
 ### Background activity indicator
 Interactive Pi sessions should expose a minimal read-only status indicator for
@@ -754,10 +758,26 @@ Success details schema:
       "result_pending": false,
       "callback_delivery": "delivered",
       "started_at": "RFC3339 timestamp",
+      "completed_at": "RFC3339 timestamp",
       "updated_at": "RFC3339 timestamp",
       "elapsed_ms": 420000,
       "age_ms": 0,
       "sequence_latest": 13,
+      "terminal_result": {
+        "task_id": "/absolute/child-session.jsonl",
+        "persona_id": "doc-reviewer",
+        "status": "success",
+        "phase": "success",
+        "result_pending": false,
+        "callback_delivery": "delivered",
+        "completed_at": "RFC3339 timestamp",
+        "updated_at": "RFC3339 timestamp",
+        "child_output_truncated": false,
+        "child_output_preview_available": false,
+        "inline_child_output_available": true,
+        "full_output_artifact": null,
+        "error": null
+      },
       "error": null
     }
   ],
@@ -765,12 +785,87 @@ Success details schema:
   "pending_task_ids": [],
   "next_sequence": 13,
   "snapshots": {
-    "/absolute/child-session.jsonl": { "status": "success", "phase": "success" }
+    "/absolute/child-session.jsonl": {
+      "status": "success",
+      "phase": "success",
+      "terminal_result": {
+        "task_id": "/absolute/child-session.jsonl",
+        "persona_id": "doc-reviewer",
+        "status": "success",
+        "phase": "success",
+        "result_pending": false,
+        "callback_delivery": "delivered",
+        "completed_at": "RFC3339 timestamp",
+        "updated_at": "RFC3339 timestamp",
+        "child_output_truncated": false,
+        "child_output_preview_available": false,
+        "inline_child_output_available": true,
+        "full_output_artifact": null,
+        "error": null
+      }
+    }
   },
-  "recommended_next_action": "none",
+  "recommended_next_action": "use_terminal_result_metadata",
   "error": null
 }
 ```
+
+Terminal ready snapshot contract:
+
+- A ready task is any task whose child `status` is terminal: `"success"`,
+  `"failed"`, or `"cancelled"`.
+- Every ready task returned by `larva_subagent_wait` or
+  `larva_subagent_select` must include `terminal_result` in the corresponding
+  `runs[]` entry and in the keyed `snapshots[task_id]` entry.
+- `terminal_result` is a bounded metadata object. It must not include
+  `result_text`, `child_output`, transcript fragments, raw child `.jsonl`
+  content, or any other unbounded child output.
+- Exact `terminal_result` fields are: `task_id`, `persona_id`, `status`,
+  `phase`, `result_pending`, `callback_delivery`, `completed_at`, `updated_at`,
+  `child_output_truncated`, `child_output_preview_available`,
+  `inline_child_output_available`, `full_output_artifact`, and `error`.
+- `terminal_result.task_id` and `terminal_result.persona_id` must exactly match
+  the surrounding ready snapshot.
+- `terminal_result.status` is the terminal child status and must be one of
+  `"success"`, `"failed"`, or `"cancelled"`.
+- `terminal_result.phase` must be the terminal phase observed by the parent
+  process. For ordinary terminal completions it equals `status`.
+- `terminal_result.result_pending` must be `false`.
+- `terminal_result.callback_delivery` must be one of `"pending"`,
+  `"delivered"`, `"suppressed"`, `"stale"`, or `"failed"`.
+- `terminal_result.completed_at` is the terminal child completion time as an
+  RFC3339 timestamp. `terminal_result.updated_at` is the parent registry update
+  time for this terminal metadata as an RFC3339 timestamp.
+- `terminal_result.child_output_truncated` mirrors whether the callback path had
+  to truncate inline child output because the final output exceeded the bounded
+  callback budget.
+- `terminal_result.child_output_preview_available` reports whether a bounded
+  preview exists in the callback/artifact manifest path. It does not mean the
+  preview text is present in `wait`/`select`.
+- `terminal_result.inline_child_output_available` is `true` only when the
+  delivered callback carried the complete final child output inline. It is
+  `false` for pending, stale, failed, suppressed duplicate-delivery states, and
+  artifacted overlong outputs.
+- `terminal_result.full_output_artifact` is `null` unless the callback path wrote
+  a local full-output artifact. When present, it has exactly this shape:
+
+```json
+{
+  "path": "/absolute/local/path/to/full-output.txt",
+  "sha256": "hex sha256 of the exact full output bytes",
+  "bytes": 12345,
+  "lines": 42
+}
+```
+
+- `terminal_result.full_output_artifact.path` is a local filesystem path written
+  by the parent Pi extension. It is not a remote URL, not uploaded by Larva, not
+  redacted, and may contain sensitive child output. Callers that use it should
+  verify `sha256`/`bytes` as needed and must not scrape child `.jsonl` logs when
+  a manifest is present.
+- `terminal_result.error` is `null` for child terminal success. For failed or
+  cancelled child terminal states, it is the bounded child terminal error object
+  with exact `{ "code": string, "message": string }` shape.
 
 Condition semantics:
 
@@ -789,12 +884,46 @@ keyed `snapshots` map. The visible tool text must include a bounded snapshot lin
 for each requested handle so agents do not need a follow-up `status` call merely
 to learn whether the task is still alive.
 
-When satisfied, `wait` reports readiness only, not child output. A satisfied
-response must not suggest `status` as an output lookup. If any ready task still has
-`callback_delivery: "pending"`, the hotfix contract is to guide the agent to
-yield for `larva-subagent-result`; the full convergence contract is to include
-bounded terminal result metadata and any `full_output_artifact` reference for
-ready tasks without making `status` an output channel.
+`recommended_next_action` values are exact machine strings:
+
+- `"continue_waiting"`: `satisfied` is `false`; no ready task has met the
+  requested wait/select condition yet.
+- `"yield_for_callback"`: at least one ready task has
+  `terminal_result.callback_delivery: "pending"`; the parent agent should yield
+  for the `larva-subagent-result` push callback instead of calling
+  `larva_subagent_status` for output.
+- `"use_terminal_result_metadata"`: every ready task needed by the satisfied
+  condition has terminal metadata available and no ready task requires artifact
+  reading or callback remediation.
+- `"read_full_output_artifact"`: at least one ready task has non-null
+  `terminal_result.full_output_artifact`; deterministic automation may read that
+  local artifact reference after validating the manifest.
+- `"inspect_callback_failure"`: at least one ready task has
+  `terminal_result.callback_delivery: "failed"`; the child terminal state is
+  still represented by `terminal_result`, but callback delivery itself failed.
+- `"stop_parent_stale"`: at least one ready task has
+  `terminal_result.callback_delivery: "stale"`; the parent session/lifecycle no
+  longer matches the accepted run, so automation must stop rather than continue
+  as if the callback reached the original parent context.
+- `"acknowledge_suppressed_duplicate"`: every otherwise-actionable ready task
+  that lacks a delivered callback has `terminal_result.callback_delivery:
+  "suppressed"`; no duplicate callback will arrive because delivery was
+  intentionally suppressed by a model-facing terminal control result.
+
+When multiple ready tasks imply different actions, choose the first applicable
+value in this priority order: `"stop_parent_stale"`,
+`"inspect_callback_failure"`, `"yield_for_callback"`,
+`"read_full_output_artifact"`, `"acknowledge_suppressed_duplicate"`,
+`"use_terminal_result_metadata"`, then `"continue_waiting"` only when no
+condition is satisfied.
+
+When satisfied, `wait` reports readiness plus bounded `terminal_result` metadata,
+not child output. A satisfied response must not suggest `status` as an output
+lookup. If any ready task still has `callback_delivery: "pending"`, the contract
+is to guide the agent to yield for `larva-subagent-result`. If a ready task has a
+non-null `full_output_artifact`, the contract is to expose that artifact
+reference in `terminal_result` without making `larva_subagent_status` an output
+channel.
 
 For success, timeout, and partial readiness, `next_sequence` is the current
 highest event sequence observed by the parent process at response time, or `0` if

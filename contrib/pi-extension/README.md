@@ -895,7 +895,50 @@ not child-output retrieval surfaces. Child output is delivered by the
 shows `callback_delivery: "pending"`, yield for the `larva-subagent-result`
 callback instead. The model-facing descriptions for `wait` and `select` mirror
 this same handoff: readiness only, not child output; yield for the callback rather
-than using status as an output lookup.
+than using status as an output lookup. This contract does not introduce a
+`larva_subagent_result` tool; any separate result-retrieval tool is a future
+contract decision.
+
+Terminal ready snapshots returned by `larva_subagent_wait` and
+`larva_subagent_select` include a bounded `terminal_result` metadata object. It
+is metadata only and must not contain `result_text`, `child_output`, transcript
+fragments, raw child `.jsonl` content, or unbounded child output. Exact shape:
+
+```json
+{
+  "task_id": "/absolute/child-session.jsonl",
+  "persona_id": "doc-reviewer",
+  "status": "success",
+  "phase": "success",
+  "result_pending": false,
+  "callback_delivery": "delivered",
+  "completed_at": "RFC3339 timestamp",
+  "updated_at": "RFC3339 timestamp",
+  "child_output_truncated": false,
+  "child_output_preview_available": false,
+  "inline_child_output_available": true,
+  "full_output_artifact": null,
+  "error": null
+}
+```
+
+`terminal_result.status` is terminal only: `"success"`, `"failed"`, or
+`"cancelled"`. `terminal_result.callback_delivery` is one of `"pending"`,
+`"delivered"`, `"suppressed"`, `"stale"`, or `"failed"`.
+`terminal_result.full_output_artifact` is `null` unless the callback path wrote a
+local full-output artifact; when present it has exactly `path`, `sha256`,
+`bytes`, and `lines`. Orchestrators may read that local artifact after validating
+the manifest and must not scrape child `.jsonl` logs when the manifest exists.
+
+`recommended_next_action` is an exact machine string. Allowed values are
+`"continue_waiting"`, `"yield_for_callback"`,
+`"use_terminal_result_metadata"`, `"read_full_output_artifact"`,
+`"inspect_callback_failure"`, `"stop_parent_stale"`, and
+`"acknowledge_suppressed_duplicate"`. These values cover timeout/no-readiness,
+pending callback handoff, delivered callback metadata, delivered artifact
+metadata, failed callback delivery, stale parent-session delivery, and suppressed
+duplicate-delivery states. None of these actions instructs agents to use
+`larva_subagent_status` as a child-output retrieval tool.
 
 The interactive status/background indicator is count-only and read-only. Its
 source of truth is the same process-local active-run registry and event-driven
