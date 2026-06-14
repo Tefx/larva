@@ -60,6 +60,8 @@ def _node_prelude(tmp_path: Path) -> str:
           LARVA_PI_INITIAL_PERSONA_ID: "",
           LARVA_PI_CHILD_SESSION_DIR: childRoot,
           HOME: tmpRoot,
+          LARVA_PI_INTERACTIVE_TUI: "0",
+          LARVA_PI_AGENT_PERSONA_SWITCH: "",
           ...extra,
         }});
         const modelRegistry = {{ find: () => ({{ provider: "openai-codex", model: "gpt-5.5" }}) }};
@@ -2029,7 +2031,7 @@ def test_persona_selector_cold_cache_waits_and_plain_larva_errors_do_not_reject(
         mod.resetPersonaCompletionCache();
         const cachePath = join(tmpRoot, "persona-cache.json");
         const ctx = {{
-          env: baseEnv({{ FAKE_LARVA_LIST_DELAY_MS: "250", LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: cachePath }}),
+          env: baseEnv({{ FAKE_LARVA_LIST_DELAY_MS: "250", LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: cachePath, LARVA_PI_INTERACTIVE_TUI: "1", LARVA_PI_AGENT_PERSONA_SWITCH: "1" }}),
           ui: {{
             select: async (_title, options) => options[0]?.id ?? null,
             notify: () => undefined,
@@ -2042,7 +2044,7 @@ def test_persona_selector_cold_cache_waits_and_plain_larva_errors_do_not_reject(
         mod.resetPersonaCompletionCache();
         const failed = await mod.handlePersonaCommand("", {{
           ...ctx,
-          env: baseEnv({{ FAKE_LARVA_SCENARIO: "list-exit", LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: join(tmpRoot, "persona-cache-failed.json") }}),
+          env: baseEnv({{ FAKE_LARVA_SCENARIO: "list-exit", LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: join(tmpRoot, "persona-cache-failed.json"), LARVA_PI_INTERACTIVE_TUI: "1", LARVA_PI_AGENT_PERSONA_SWITCH: "1" }}),
         }}, piBase);
 
         console.log(JSON.stringify({{
