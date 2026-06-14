@@ -1071,13 +1071,69 @@ prove:
 
 ## Extension-Facing Persona Invocation
 
-trusted same-runtime Pi extensions can use the `larva:persona-invocation:*` event bus surface, including `larva:persona-invocation:request`, `larva:persona-invocation:cancel`, and `larva:persona-invocation:result`, to request Larva to run a specified persona once in a fresh internal child Pi invocation and receive the final assistant text or structured error.
+Trusted same-runtime Pi extensions can use the `larva:persona-invocation:*`
+event bus surface, including `larva:persona-invocation:request`,
+`larva:persona-invocation:cancel`, and `larva:persona-invocation:result`, to
+request Larva to run a specified persona once in a fresh internal child Pi
+invocation and receive the final assistant text or structured error. This README
+summarizes the reference contract; implementation handoffs still need fresh
+runtime/final gate evidence before claiming the replacement persona invocation
+feature is complete.
 
-This is a lower-level primitive separate from the model-facing `larva_subagent` task system. It does not generate artifacts for large outputs, does not queue, and does not provide status polling or console integration. It is designed for synchronous-style extension demands (e.g. bounded diagnostic or validation passes) rather than agent-orchestrated background work. There is no public task id, no model-facing tool, no resume/status/discovery/wait/select, and no /larva-subagent console integration for this surface.
+This is a lower-level primitive for extension code. It is separate from the model-facing `larva_subagent` task system.
+It is designed for synchronous-style extension demands, such as bounded
+diagnostic or validation passes, rather than agent-orchestrated background work. Correlation is by private `request_id` only: the `request_id`
+must already be a canonical lowercase UUID v4, is never trimmed or normalized,
+and is never synthesized by Larva. Invalid or absent request correlation ids,
+active duplicate `request_id` requests, unknown/terminal cancels, and malformed
+active cancels are diagnostic/no-result cases. A valid inactive `request_id` with
+bad non-correlation request fields emits one normal `failed` result with
+`LARVA_PERSONA_INVOCATION_BAD_INPUT`.
 
-Operator-facing parity checks intentionally pin these machine-anchor ids from the reference contract: `prompt_max_65536_utf8_bytes`, `metadata_json_stringify_max_2048_utf8_bytes`, `timeout_ms_invalid_below_1`, `timeout_ms_invalid_above_120000`, `timeout_runtime_timeout_returns_TIMEOUT`, `final_text_max_16384_utf8_bytes`, `overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation`, `result_error_object_exact_code_message_shape`, `failed_result_empty_final_text`, `cancelled_result_empty_final_text`, `terminal_error_code_BAD_INPUT`, `terminal_error_code_PERSONA_NOT_FOUND`, `terminal_error_code_MODEL_UNAVAILABLE`, `terminal_error_code_POLICY_FAILED`, `terminal_error_code_TIMEOUT`, `terminal_error_code_CANCELLED`, `terminal_error_code_PROTOCOL_FAILED`, `terminal_error_code_INTERNAL_ERROR`, `lifecycle_shutdown_stale_context_suppresses_result`, `lifecycle_reload_stale_context_suppresses_result`, `lifecycle_new_stale_context_suppresses_result`, `lifecycle_resume_stale_context_suppresses_result`, `lifecycle_fork_stale_context_suppresses_result`, `terminal_race_first_terminal_state_wins`, `terminal_race_at_most_one_result`, and `terminal_race_late_timeout_cancel_stale_ignored`.
+Request prompts are checked for non-empty/size bounds, but the original prompt
+string is sent to the child unchanged. `metadata` is diagnostics-only: it is a
+plain JSON object bounded by `JSON.stringify(metadata)` UTF-8 bytes, not prompt
+text, not behavior/authority, and not required to echo. Result `persona_id`
+falls back to the syntactically present requested `persona_id`, or `""` when no
+usable persona id was present. Cancel payloads require the same private
+`request_id` plus a renderer-safe cancel reason: Unicode NFC, ANSI-stripped,
+control/format characters replaced with spaces, repeated spaces collapsed,
+trimmed, non-empty, and at most 500 Unicode code points.
 
-See the authoritative design document for the strict event payloads, state machine, and boundaries:
+Lifecycle actions (`shutdown`, `reload`, `new`, `resume`, and `fork`) cancel or
+render active invocations stale and must never send callbacks into the old Pi
+context or parent LLM context. Lifecycle stale state is diagnostic only
+(`LARVA_PERSONA_INVOCATION_STALE`) and produces no result event.
+
+Hidden-surface non-goals for this event bus are explicit: no capability
+discovery, no fallback/version negotiation, no variant support, no
+caller-selected cwd, no tool override/tool_mode, no schema enforcement, no output artifact,
+no queue, no resume/status/discovery/wait/select (that is, no resume, no
+discovery, and no status/events/wait/select), no public task id, no console
+integration, no model-facing tool, and no Aileron-specific options or errors.
+
+Operator-facing parity checks intentionally pin these machine-anchor ids from
+the reference contract: `prompt_max_65536_utf8_bytes`,
+`metadata_json_stringify_max_2048_utf8_bytes`, `timeout_ms_invalid_below_1`,
+`timeout_ms_invalid_above_120000`, `timeout_runtime_timeout_returns_TIMEOUT`,
+`final_text_max_16384_utf8_bytes`,
+`overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation`,
+`result_error_object_exact_code_message_shape`, `failed_result_empty_final_text`,
+`cancelled_result_empty_final_text`, `terminal_error_code_BAD_INPUT`,
+`terminal_error_code_PERSONA_NOT_FOUND`, `terminal_error_code_MODEL_UNAVAILABLE`,
+`terminal_error_code_POLICY_FAILED`, `terminal_error_code_TIMEOUT`,
+`terminal_error_code_CANCELLED`, `terminal_error_code_PROTOCOL_FAILED`,
+`terminal_error_code_INTERNAL_ERROR`,
+`lifecycle_shutdown_stale_context_suppresses_result`,
+`lifecycle_reload_stale_context_suppresses_result`,
+`lifecycle_new_stale_context_suppresses_result`,
+`lifecycle_resume_stale_context_suppresses_result`,
+`lifecycle_fork_stale_context_suppresses_result`,
+`terminal_race_first_terminal_state_wins`, `terminal_race_at_most_one_result`,
+and `terminal_race_late_timeout_cancel_stale_ignored`.
+
+See the authoritative design document for the strict event payloads, state
+machine, and boundaries:
 [`../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`](../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md).
 
 ## Explicit non-goals and unsupported guarantees

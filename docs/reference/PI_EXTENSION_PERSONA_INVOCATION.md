@@ -3,7 +3,15 @@
 Target: `docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`
 
 ## Positioning
-This document defines an extension-facing persona invocation surface. Trusted same-runtime Pi extensions can request Larva to run a specified persona once in a fresh internal child Pi invocation and receive the final assistant text or a stable structured error.
+This document defines the extension-facing persona invocation contract. Trusted
+same-runtime Pi extensions can request Larva to run a specified persona once in a
+fresh internal child Pi invocation and receive the final assistant text or a
+stable structured error.
+
+This is a reference contract, not evidence that any replacement-runtime or final
+runtime gate has passed. Implementation handoffs must cite fresh runtime/final
+gate evidence separately before claiming the replacement persona invocation
+feature is complete.
 
 - **NOT `larva_subagent` mode:** This is an internal extension-level primitive, not the model-facing `larva_subagent` tool.
 - **NOT model-facing:** Agents do not call this directly.

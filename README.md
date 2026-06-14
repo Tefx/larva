@@ -328,7 +328,10 @@ The bundled extension's async subagent authority is
 [`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md).
 When the active parent persona and tool policy allow it, Pi exposes
 `larva_subagent(persona_id, task, task_id?)`,
-`larva_subagent_status(task_id?, limit?)`, and
+`larva_subagent_status(task_id?, limit?)`,
+`larva_subagent_events(since_sequence?, task_ids?, limit?)`,
+`larva_subagent_wait(task_ids, return_when?, timeout_ms?)`,
+`larva_subagent_select(task_ids, timeout_ms?)`, and
 `larva_subagent_cancel(task_id, reason)`. `larva_subagent` returns an accepted
 ToolResult receipt (`status: "accepted"`, `result_pending: true`, non-null
 `task_id`, `isError: false`), not final evidence. Final child output returns
@@ -361,6 +364,38 @@ PersonaSpec/opifex schema change. For runtime proof probes only,
 public resume handle, not a provenance record, not sidecar metadata, not
 model-facing helper state, and not authority for `larva_subagent_sessions`; trace
 write failures are ignored.
+
+The extension also has a lower-level, extension-facing persona invocation event
+bus documented in
+[`docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`](docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md).
+Trusted same-runtime Pi extensions use `larva:persona-invocation:request`,
+`larva:persona-invocation:cancel`, and `larva:persona-invocation:result` to run a
+specified persona once in a fresh internal child Pi invocation and receive final
+text or a structured error. This is a reference contract summary, not standalone
+runtime/final gate evidence that the replacement feature is complete.
+
+Persona invocation is not `larva_subagent` mode and is not model-facing.
+Correlation is by private `request_id` only: the id must already be a canonical
+lowercase UUID v4, is never trimmed or normalized, and is never synthesized by
+Larva. Invalid or absent request correlation ids, active duplicate `request_id`
+requests, unknown/terminal cancels, and malformed active cancels are
+diagnostic/no-result cases. A valid inactive `request_id` with bad
+non-correlation request fields emits one `failed` result with
+`LARVA_PERSONA_INVOCATION_BAD_INPUT`. Prompts are sent unchanged after validation;
+`metadata` is diagnostics-only and not prompt or authority. Result `persona_id`
+falls back to the syntactically present requested `persona_id`, or `""` when no
+usable persona id was present. Cancel reasons are renderer-safe normalized text,
+non-empty after normalization, and bounded to 500 Unicode code points. Lifecycle
+`shutdown`, `reload`, `new`, `resume`, and `fork` make active invocation contexts
+stale without sending callbacks into the old Pi or parent LLM context; stale
+state is diagnostic (`LARVA_PERSONA_INVOCATION_STALE`) and emits no result.
+
+Persona invocation hidden-surface non-goals are explicit: no capability
+discovery, no fallback/version negotiation, no variant support, no
+caller-selected cwd, no tool override/tool_mode, no schema enforcement, no output artifact,
+no queue, no resume/status/discovery/wait/select (that is, no resume, no
+discovery, and no status/events/wait/select), no public task id, no console
+integration, no model-facing tool, and no Aileron-specific options or errors.
 
 Runtime proof summaries live in `design/pi-coding-agent-integration.md` under
 "Runtime capability and provenance matrix". See `contrib/pi-extension/README.md`
