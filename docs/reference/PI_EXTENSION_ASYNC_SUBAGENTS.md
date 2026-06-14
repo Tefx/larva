@@ -542,6 +542,7 @@ Success details schema:
       "phase": "waiting_for_child",
       "result_pending": true,
       "callback_delivery": "pending",
+      "callback_delivery_diagnostic": null,
       "updated_at": "RFC3339 timestamp",
       "error": null
     }
@@ -567,6 +568,15 @@ Allowed callback delivery states:
 - `stale`: parent session/lifecycle changed before callback delivery.
 - `failed`: Pi callback delivery threw; final status remains available via the
   status tool.
+
+Run snapshots include `callback_delivery_diagnostic: null | { "code": string,
+"message": string }`. It is `null` for ordinary `pending` and `delivered`
+states. For non-delivered terminal diagnostics it carries a bounded renderer-safe
+reason such as `LARVA_CALLBACK_DELIVERY_FAILED`,
+`LARVA_CALLBACK_SURFACE_UNAVAILABLE`, `LARVA_CALLBACK_PARENT_STALE`, or
+`LARVA_CALLBACK_DUPLICATE_SUPPRESSED`. This diagnostic explains callback delivery
+state only; it is not child output and must not turn `status` into result
+retrieval.
 
 ### `larva_subagent_sessions(limit?)`
 
@@ -671,6 +681,7 @@ Success details schema:
       "status": "success",
       "phase": "success",
       "callback_delivery": "delivered",
+      "callback_delivery_diagnostic": null,
       "result_pending": false,
       "updated_at": "RFC3339 timestamp",
       "error": null
@@ -770,6 +781,7 @@ Success details schema:
         "phase": "success",
         "result_pending": false,
         "callback_delivery": "delivered",
+        "callback_delivery_diagnostic": null,
         "completed_at": "RFC3339 timestamp",
         "updated_at": "RFC3339 timestamp",
         "child_output_truncated": false,
@@ -795,6 +807,7 @@ Success details schema:
         "phase": "success",
         "result_pending": false,
         "callback_delivery": "delivered",
+        "callback_delivery_diagnostic": null,
         "completed_at": "RFC3339 timestamp",
         "updated_at": "RFC3339 timestamp",
         "child_output_truncated": false,
@@ -821,7 +834,8 @@ Terminal ready snapshot contract:
   `result_text`, `child_output`, transcript fragments, raw child `.jsonl`
   content, or any other unbounded child output.
 - Exact `terminal_result` fields are: `task_id`, `persona_id`, `status`,
-  `phase`, `result_pending`, `callback_delivery`, `completed_at`, `updated_at`,
+  `phase`, `result_pending`, `callback_delivery`,
+  `callback_delivery_diagnostic`, `completed_at`, `updated_at`,
   `child_output_truncated`, `child_output_preview_available`,
   `inline_child_output_available`, `full_output_artifact`, and `error`.
 - `terminal_result.task_id` and `terminal_result.persona_id` must exactly match
@@ -833,6 +847,11 @@ Terminal ready snapshot contract:
 - `terminal_result.result_pending` must be `false`.
 - `terminal_result.callback_delivery` must be one of `"pending"`,
   `"delivered"`, `"suppressed"`, `"stale"`, or `"failed"`.
+- `terminal_result.callback_delivery_diagnostic` is `null` when no callback
+  delivery diagnostic exists. When present, it has exact `{ "code": string,
+  "message": string }` shape and describes only delivery failure, stale-parent,
+  unavailable-surface, or duplicate-suppression state; it is not child output and
+  is not a replacement result channel.
 - `terminal_result.completed_at` is the terminal child completion time as an
   RFC3339 timestamp. `terminal_result.updated_at` is the parent registry update
   time for this terminal metadata as an RFC3339 timestamp.

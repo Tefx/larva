@@ -912,6 +912,7 @@ fragments, raw child `.jsonl` content, or unbounded child output. Exact shape:
   "phase": "success",
   "result_pending": false,
   "callback_delivery": "delivered",
+  "callback_delivery_diagnostic": null,
   "completed_at": "RFC3339 timestamp",
   "updated_at": "RFC3339 timestamp",
   "child_output_truncated": false,
@@ -923,12 +924,20 @@ fragments, raw child `.jsonl` content, or unbounded child output. Exact shape:
 ```
 
 `terminal_result.status` is terminal only: `"success"`, `"failed"`, or
-`"cancelled"`. `terminal_result.callback_delivery` is one of `"pending"`,
-`"delivered"`, `"suppressed"`, `"stale"`, or `"failed"`.
-`terminal_result.full_output_artifact` is `null` unless the callback path wrote a
-local full-output artifact; when present it has exactly `path`, `sha256`,
-`bytes`, and `lines`. Orchestrators may read that local artifact after validating
-the manifest and must not scrape child `.jsonl` logs when the manifest exists.
+`"cancelled"`. `terminal_result.callback_delivery` is one of `"pending"`
+(no terminal callback attempt has completed), `"delivered"` (callback handed to
+Pi), `"suppressed"` (duplicate terminal callback intentionally not delivered),
+`"stale"` (parent session/lifecycle changed), or `"failed"` (Pi delivery threw
+or no callback surface was available). `terminal_result.callback_delivery_diagnostic`
+is `null` unless callback delivery needs a bounded `{ "code": string,
+"message": string }` explanation such as `LARVA_CALLBACK_DELIVERY_FAILED`,
+`LARVA_CALLBACK_SURFACE_UNAVAILABLE`, `LARVA_CALLBACK_PARENT_STALE`, or
+`LARVA_CALLBACK_DUPLICATE_SUPPRESSED`. That diagnostic is delivery metadata only,
+not child output and not a result retrieval channel. `terminal_result.full_output_artifact`
+is `null` unless the callback path wrote a local full-output artifact; when
+present it has exactly `path`, `sha256`, `bytes`, and `lines`. Orchestrators may
+read that local artifact after validating the manifest and must not scrape child
+`.jsonl` logs when the manifest exists.
 
 `recommended_next_action` is an exact machine string. Allowed values are
 `"continue_waiting"`, `"yield_for_callback"`,

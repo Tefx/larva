@@ -1208,6 +1208,9 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "status_not_output_retrieval": "It is not child-output retrieval." in authority,
         "wait_select_pending_callback_handoff": "must direct the parent agent to yield for the `larva-subagent-result`" in authority,
         "wait_select_do_not_call_status_for_output": "not to call `status` for output" in authority,
+        "authority_terminal_result_callback_diagnostic": "callback_delivery_diagnostic" in authority and "not a replacement result channel" in authority,
+        "authority_artifact_reference_semantics": "full_output_artifact.path` is a local filesystem path" in authority and "must not scrape child `.jsonl` logs" in authority,
+        "authority_no_result_tool_boundary": "does not introduce a\n`larva_subagent_result` tool" in authority,
         "persistent_cache_not_authority": "Persistent presentation cache is adapter-local UI continuity only" in authority,
         "indicator_source_active_registry": "Source of truth is the same process-local active-run registry" in authority,
         "indicator_count_only_aggregate": "Show only aggregate non-terminal activity" in authority,
@@ -1245,12 +1248,17 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "source_wait_description_yields_for_callback": "Returns snapshots and readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup." in source,
         "source_select_description_yields_for_callback": "Returns readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup." in source,
         "source_runtime_pending_callback_handoff": "Yield for the larva-subagent-result push callback; do not use shell sleep polling." in source,
+        "source_terminal_result_callback_diagnostic": "callback_delivery_diagnostic: SubagentCallbackDeliveryDiagnostic | null" in source and "callback_delivery_diagnostic: cloneSubagentCallbackDeliveryDiagnostic" in source,
+        "source_no_result_tool_registered": '"larva_subagent_result"' not in source,
         "readme_lists_events_wait_select": all(token in readme for token in ("larva_subagent_events(since_sequence?, task_ids?, limit?)", "larva_subagent_wait(task_ids, return_when?, timeout_ms?)", "larva_subagent_select(task_ids, timeout_ms?)")),
         "readme_guides_automation_to_deterministic_tools": "For automation that depends on the child" in readme and "building a shell sleep/status-polling loop" in readme,
         "readme_marks_status_inspection_only": "inspection and\ndebugging tool only" in readme,
         "readme_status_not_output_retrieval": "it is not child-output retrieval" in readme,
         "readme_wait_select_pending_callback_handoff": "yield for the `larva-subagent-result`\ncallback instead" in readme,
         "readme_tool_descriptions_mirror_handoff": "model-facing descriptions for `wait` and `select` mirror\nthis same handoff" in readme,
+        "readme_terminal_result_callback_diagnostic": "callback_delivery_diagnostic" in readme and "not child output and not a result retrieval channel" in readme,
+        "readme_artifact_reference_semantics": "local artifact after validating the manifest" in readme and "must not scrape child\n`.jsonl` logs" in readme,
+        "readme_no_result_tool_boundary": "does not introduce a\n`larva_subagent_result` tool" in readme,
         "readme_large_session_wait_guidance": all(
             token in readme
             for token in (
