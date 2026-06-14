@@ -1233,6 +1233,7 @@ def test_runtime_smoke_wait_select_pending_callback_handoff_expected_red_records
         "expected_recommended_next_action": contract["expectedRecommendedNextAction"],
         "observed_recommended_next_actions": contract["observedRecommendedNextActions"],
         "assertions": contract["assertions"],
+        "contract": contract,
     }
 
     assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)

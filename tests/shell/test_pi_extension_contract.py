@@ -449,11 +449,14 @@ def test_async_subagent_wait_select_pending_callback_handoff_expected_red(tmp_pa
         const waitText = waitResult.content?.[0]?.text ?? "";
         const selectText = selectResult.content?.[0]?.text ?? "";
         const statusJson = JSON.stringify(statusResult.details ?? {{}});
+        const waitTerminalResult = waitResult.details?.terminal_result;
+        const selectTerminalResult = selectResult.details?.terminal_result;
+        const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
         const outputLookupPattern = /(?:status.*(?:output|child output|result retrieval)|(?:output|child output|result retrieval).*status)/i;
         const expectedRecommendedNextAction = "yield_for_callback";
         const proof = {{
           expectedRecommendedNextAction,
-          failureFingerprints: ["recommended_next_action", "yield_for_callback"],
+          failureFingerprints: ["recommended_next_action", "yield_for_callback", "terminal_result", "full_output_artifact"],
           wait: {{ details: waitResult.details, text: waitText }},
           select: {{ details: selectResult.details, text: selectText }},
           statusInspection: {{ details: statusResult.details }},
@@ -465,7 +468,16 @@ def test_async_subagent_wait_select_pending_callback_handoff_expected_red(tmp_pa
             waitVisibleTextNamesCallbackYield: waitText.includes("yield") && waitText.includes("larva-subagent-result"),
             selectVisibleTextNamesCallbackYield: selectText.includes("yield") && selectText.includes("larva-subagent-result"),
             waitSelectDoNotRecommendStatusForOutput: !outputLookupPattern.test(`${{waitText}}\n${{selectText}}`),
+            waitTerminalResultMetadataPresent: isObject(waitTerminalResult),
+            selectTerminalResultMetadataPresent: isObject(selectTerminalResult),
+            waitTerminalResultExactTask: waitTerminalResult?.task_id === taskId,
+            selectTerminalResultExactTask: selectTerminalResult?.task_id === taskId,
+            waitTerminalResultHasNoInlineChildOutput: isObject(waitTerminalResult) && !Object.hasOwn(waitTerminalResult, "result_text") && !Object.hasOwn(waitTerminalResult, "child_output"),
+            selectTerminalResultHasNoInlineChildOutput: isObject(selectTerminalResult) && !Object.hasOwn(selectTerminalResult, "result_text") && !Object.hasOwn(selectTerminalResult, "child_output"),
+            waitTerminalResultHasArtifactField: isObject(waitTerminalResult) && Object.hasOwn(waitTerminalResult, "full_output_artifact"),
+            selectTerminalResultHasArtifactField: isObject(selectTerminalResult) && Object.hasOwn(selectTerminalResult, "full_output_artifact"),
             statusRemainsInspectionNotOutputRetrieval: !statusJson.includes("result_text") && !statusJson.includes("child_output"),
+            statusRemainsNoTerminalResultRetrieval: !["terminal_result", "full_output_artifact", "result_text", "child_output"].some((token) => statusJson.includes(token)),
           }},
         }};
         console.log(JSON.stringify(proof));
@@ -480,7 +492,16 @@ def test_async_subagent_wait_select_pending_callback_handoff_expected_red(tmp_pa
         "waitVisibleTextNamesCallbackYield": True,
         "selectVisibleTextNamesCallbackYield": True,
         "waitSelectDoNotRecommendStatusForOutput": True,
+        "waitTerminalResultMetadataPresent": True,
+        "selectTerminalResultMetadataPresent": True,
+        "waitTerminalResultExactTask": True,
+        "selectTerminalResultExactTask": True,
+        "waitTerminalResultHasNoInlineChildOutput": True,
+        "selectTerminalResultHasNoInlineChildOutput": True,
+        "waitTerminalResultHasArtifactField": True,
+        "selectTerminalResultHasArtifactField": True,
         "statusRemainsInspectionNotOutputRetrieval": True,
+        "statusRemainsNoTerminalResultRetrieval": True,
     }, json.dumps(result, indent=2, sort_keys=True)
 
 

@@ -1397,6 +1397,8 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
   const waitText = waitResult?.content?.[0]?.text ?? "";
   const selectText = selectResult?.content?.[0]?.text ?? "";
   const statusJson = JSON.stringify(statusResult?.details ?? {});
+  const waitTerminalResult = waitResult?.details?.terminal_result;
+  const selectTerminalResult = selectResult?.details?.terminal_result;
   const outputLookupPattern = /(?:status.*(?:output|child output|result retrieval)|(?:output|child output|result retrieval).*status)/i;
   const expectedRecommendedNextAction = "yield_for_callback";
   const assertions = {
@@ -1409,12 +1411,21 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
     waitVisibleTextNamesCallbackYield: waitText.includes("yield") && waitText.includes("larva-subagent-result"),
     selectVisibleTextNamesCallbackYield: selectText.includes("yield") && selectText.includes("larva-subagent-result"),
     waitSelectDoNotRecommendStatusForOutput: !outputLookupPattern.test(`${waitText}\n${selectText}`),
+    waitTerminalResultMetadataPresent: isRecord(waitTerminalResult),
+    selectTerminalResultMetadataPresent: isRecord(selectTerminalResult),
+    waitTerminalResultExactTask: waitTerminalResult?.task_id === taskId,
+    selectTerminalResultExactTask: selectTerminalResult?.task_id === taskId,
+    waitTerminalResultHasNoInlineChildOutput: isRecord(waitTerminalResult) && !Object.hasOwn(waitTerminalResult, "result_text") && !Object.hasOwn(waitTerminalResult, "child_output"),
+    selectTerminalResultHasNoInlineChildOutput: isRecord(selectTerminalResult) && !Object.hasOwn(selectTerminalResult, "result_text") && !Object.hasOwn(selectTerminalResult, "child_output"),
+    waitTerminalResultHasArtifactField: isRecord(waitTerminalResult) && Object.hasOwn(waitTerminalResult, "full_output_artifact"),
+    selectTerminalResultHasArtifactField: isRecord(selectTerminalResult) && Object.hasOwn(selectTerminalResult, "full_output_artifact"),
     statusRemainsInspectionNotOutputRetrieval: !statusJson.includes("result_text") && !statusJson.includes("child_output"),
+    statusRemainsNoTerminalResultRetrieval: !["terminal_result", "full_output_artifact", "result_text", "child_output"].some((token) => statusJson.includes(token)),
   };
   evidence.runtime.waitSelectPendingCallbackHandoff = {
     status: Object.values(assertions).every(Boolean) ? "PASS" : "EXPECTED_RED",
     expectedRecommendedNextAction,
-    failureFingerprints: ["recommended_next_action", "yield_for_callback"],
+    failureFingerprints: ["recommended_next_action", "yield_for_callback", "terminal_result", "full_output_artifact"],
     observedRecommendedNextActions: {
       wait: waitResult?.details?.recommended_next_action ?? null,
       select: selectResult?.details?.recommended_next_action ?? null,
