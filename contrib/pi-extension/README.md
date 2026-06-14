@@ -857,8 +857,9 @@ Internal private operation keys may exist before `task_id` allocation but must
 not appear in user-facing or model-facing APIs.
 
 `larva_subagent_status` is a model-facing read-only process-local inspection and
-debugging tool only; it is not an orchestration wait primitive and must not be
-used through repeated polling as a substitute for deterministic readiness tools.
+debugging tool only; it is not child-output retrieval, is not an orchestration
+wait primitive, and must not be used through repeated polling as a substitute for
+deterministic readiness tools.
 With `task_id`, it reports exactly one observed run. Without `task_id`, it
 reports newest observed active/recent runs up to `limit`; `limit` defaults to 10
 and must be an integer from 1 to 25. It validates the `task_id` string lexically
@@ -892,8 +893,9 @@ not child-output retrieval surfaces. Child output is delivered by the
 `full_output_artifact.path`. After `wait` or `select`, do not call
 `larva_subagent_status` merely to retrieve output; if a terminal snapshot still
 shows `callback_delivery: "pending"`, yield for the `larva-subagent-result`
-callback instead. A follow-up wait/result convergence plan tracks stronger
-machine-readable guidance and terminal result metadata for this handoff.
+callback instead. The model-facing descriptions for `wait` and `select` mirror
+this same handoff: readiness only, not child output; yield for the callback rather
+than using status as an output lookup.
 
 The interactive status/background indicator is count-only and read-only. Its
 source of truth is the same process-local active-run registry and event-driven

@@ -282,8 +282,9 @@ with `callback_delivery: "pending"` because terminal readiness and callback
 message injection are separate Pi runtime events. The hotfix contract is that a
 satisfied `wait`/`select` response with ready tasks whose callbacks are still
 pending must direct the parent agent to yield for the `larva-subagent-result`
-callback, not to call `status` for output. The visible text and
-`recommended_next_action` must make that handoff unambiguous.
+callback, not to call `status` for output. The visible text,
+`recommended_next_action`, and model-facing tool descriptions must make that
+handoff unambiguous.
 
 The fuller convergence target is a terminal-result barrier: ready tasks returned
 by `wait`/`select` should include bounded terminal result metadata and artifact
@@ -512,8 +513,9 @@ The visible accepted text must include that final evidence is pending.
 ### `larva_subagent_status(task_id?, limit?)`
 
 Reports active and recent process-local subagent runs for inspection/debugging only.
-Use `larva_subagent_wait`, `larva_subagent_select`, or `larva_subagent_events`
-for deterministic orchestration instead of repeated status polling.
+It is not child-output retrieval. Use `larva_subagent_wait`,
+`larva_subagent_select`, or `larva_subagent_events` for deterministic
+orchestration instead of repeated status polling.
 
 Input contract:
 
@@ -787,8 +789,8 @@ keyed `snapshots` map. The visible tool text must include a bounded snapshot lin
 for each requested handle so agents do not need a follow-up `status` call merely
 to learn whether the task is still alive.
 
-When satisfied, `wait` reports readiness only. A satisfied response must not
-suggest `status` as an output lookup. If any ready task still has
+When satisfied, `wait` reports readiness only, not child output. A satisfied
+response must not suggest `status` as an output lookup. If any ready task still has
 `callback_delivery: "pending"`, the hotfix contract is to guide the agent to
 yield for `larva-subagent-result`; the full convergence contract is to include
 bounded terminal result metadata and any `full_output_artifact` reference for
@@ -821,8 +823,8 @@ Input contract:
 Success details schema is the same shape as `wait`, with `return_when: "any"`.
 The output includes `runs`, keyed `snapshots`, `ready_task_ids`,
 `pending_task_ids`, `next_sequence`, and `recommended_next_action`. The same
-callback-pending and result-handoff rules apply: `select` must not send agents to
-`status` to retrieve output.
+callback-pending and result-handoff rules apply: `select` reports readiness only,
+not child output, and must not send agents to `status` to retrieve output.
 
 `select` is a thin input-only convenience wrapper over
 `wait(return_when: "any")`: fewer arguments, identical output model, and the same

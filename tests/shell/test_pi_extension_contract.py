@@ -411,7 +411,7 @@ def test_async_subagent_guidance_separates_automation_from_conversation() -> Non
         "Do not use shell sleep polling",
         "For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles.",
         "For conversational Pi continuation, yield for the larva-subagent-result push callback.",
-        "Inspection/debugging only; use wait/select/events for orchestration, not repeated status polling.",
+        "Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.",
     )
 
     missing = [token for token in guidance_tokens if token not in source]
@@ -1074,6 +1074,9 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "deterministic_automation_guidance": "Automation should use `larva_subagent_wait`, `larva_subagent_select`, or" in authority,
         "conversational_push_guidance": "Conversational Pi flows should yield the turn and wait for the" in authority,
         "status_inspection_only": "inspection/debugging only" in authority,
+        "status_not_output_retrieval": "It is not child-output retrieval." in authority,
+        "wait_select_pending_callback_handoff": "must direct the parent agent to yield for the `larva-subagent-result`" in authority,
+        "wait_select_do_not_call_status_for_output": "not to call `status` for output" in authority,
         "persistent_cache_not_authority": "Persistent presentation cache is adapter-local UI continuity only" in authority,
         "indicator_source_active_registry": "Source of truth is the same process-local active-run registry" in authority,
         "indicator_count_only_aggregate": "Show only aggregate non-terminal activity" in authority,
@@ -1106,10 +1109,17 @@ def test_async_subagent_docs_parity_against_reference() -> None:
         "source_returns_accepted_result_pending": 'status: "accepted"' in source and "result_pending" in source,
         "source_guides_automation_to_deterministic_tools": "For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles." in source,
         "source_guides_conversation_to_push_callback": "For conversational Pi continuation, yield for the larva-subagent-result push callback." in source,
-        "source_marks_status_inspection_only": "Inspection/debugging only; use wait/select/events for orchestration, not repeated status polling." in source,
+        "source_marks_status_inspection_only": "Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling." in source,
+        "source_events_description_not_output_retrieval": "Events are readiness/inspection records, not child-output retrieval" in source,
+        "source_wait_description_yields_for_callback": "Returns snapshots and readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup." in source,
+        "source_select_description_yields_for_callback": "Returns readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup." in source,
+        "source_runtime_pending_callback_handoff": "Yield for the larva-subagent-result push callback; do not use shell sleep polling." in source,
         "readme_lists_events_wait_select": all(token in readme for token in ("larva_subagent_events(since_sequence?, task_ids?, limit?)", "larva_subagent_wait(task_ids, return_when?, timeout_ms?)", "larva_subagent_select(task_ids, timeout_ms?)")),
         "readme_guides_automation_to_deterministic_tools": "For automation that depends on the child" in readme and "building a shell sleep/status-polling loop" in readme,
         "readme_marks_status_inspection_only": "inspection and\ndebugging tool only" in readme,
+        "readme_status_not_output_retrieval": "it is not child-output retrieval" in readme,
+        "readme_wait_select_pending_callback_handoff": "yield for the `larva-subagent-result`\ncallback instead" in readme,
+        "readme_tool_descriptions_mirror_handoff": "model-facing descriptions for `wait` and `select` mirror\nthis same handoff" in readme,
         "readme_large_session_wait_guidance": all(
             token in readme
             for token in (
