@@ -2661,6 +2661,7 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
     expected_schema_fields = [
         "age_ms",
         "callback_delivery",
+        "callback_delivery_diagnostic",
         "elapsed_ms",
         "error",
         "persona_id",

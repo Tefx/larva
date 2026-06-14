@@ -1763,6 +1763,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
     && typeof run.phase === "string"
     && typeof run.result_pending === "boolean"
     && ["pending", "delivered", "suppressed", "stale", "failed"].includes(run.callback_delivery)
+    && "callback_delivery_diagnostic" in run
+    && (run.callback_delivery_diagnostic === null || (isRecord(run.callback_delivery_diagnostic) && typeof run.callback_delivery_diagnostic.code === "string" && typeof run.callback_delivery_diagnostic.message === "string"))
     && typeof run.updated_at === "string"
     && !Number.isNaN(Date.parse(run.updated_at))
     && "error" in run
