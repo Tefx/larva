@@ -1109,8 +1109,9 @@ Hidden-surface non-goals for this event bus are explicit: no capability
 discovery, no fallback/version negotiation, no variant support, no
 caller-selected cwd, no tool override/tool_mode, no schema enforcement, no output artifact,
 no queue, no resume/status/discovery/wait/select (that is, no resume, no
-discovery, and no status/events/wait/select), no public task id, no console
-integration, no model-facing tool, and no Aileron-specific options or errors.
+discovery, and no status/events/wait/select), no public task id,
+no /larva-subagent console integration for this surface, no model-facing tool,
+and no Aileron-specific options or errors.
 
 Operator-facing parity checks intentionally pin these machine-anchor ids from
 the reference contract: `prompt_max_65536_utf8_bytes`,
