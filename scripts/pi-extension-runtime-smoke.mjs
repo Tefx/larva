@@ -23,6 +23,7 @@ const SCENARIOS = [
   "live-child-rpc-proof",
   "subagent-log-selector-streaming",
   "async-subagent-contract",
+  "wait-select-pending-callback-handoff",
   "persona-invocation-bus",
 ];
 
@@ -1324,6 +1325,107 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
     tabPlainSamples: { detail: detailPlain.slice(0, 500), selector: selectorPlain.slice(0, 500), output: outputPlain.slice(0, 500), fourth: fourthTabPlain.slice(0, 500), fifth: fifthTabPlain.slice(0, 500) },
     cacheKeysForLiveEntry: Object.keys(liveCachedEntry),
     actualChildRpcPipeline,
+    assertions,
+  };
+}
+
+async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
+  const mod = await import(pathToFileURL(extensionPath).href);
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-wait-select-pending-callback-"));
+  const childSessionRoot = join(sessionRoot, "child-sessions");
+  const { mkdir } = await import("node:fs/promises");
+  await mkdir(childSessionRoot, { recursive: true });
+  const childScript = join(sessionRoot, "pending-callback-child.mjs");
+  const childSessionFile = join(childSessionRoot, "pending-callback.jsonl");
+  await writeDelayedAsyncSubagentChild(childScript, {
+    sessionFile: childSessionFile,
+    finalText: "PENDING_CALLBACK_FINAL_OUTPUT_SHOULD_ARRIVE_BY_CALLBACK",
+    terminalDelayMs: 25,
+    terminalMarkerFile: join(sessionRoot, "terminal-marker.txt"),
+  });
+
+  const callbackAttempts = [];
+  const callbackSurface = {
+    sendMessage: async (message, options) => {
+      callbackAttempts.push({ message, options });
+      await new Promise(() => undefined);
+    },
+  };
+  const ctx = {
+    env: runtimeEnv({
+      HOME: sessionRoot,
+      LARVA_PI_CHILD_SESSION_DIR: childSessionRoot,
+      LARVA_PI_SUBAGENT_LOG_FILE: join(sessionRoot, "subagent-presentation-log.json"),
+      LARVA_PI_REAL_BIN: process.execPath,
+      LARVA_PI_EXTENSION_FLAG: childScript,
+      LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
+      LARVA_PI_INTERACTIVE_TUI: "1",
+    }),
+    modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
+    ui: { setStatus: async () => undefined, notify: async () => undefined },
+    callbackSurface,
+  };
+  const pi = {
+    getAllTools: async () => ["read", "larva_subagent", "larva_subagent_status", "larva_subagent_wait", "larva_subagent_select"],
+    setActiveTools: async () => true,
+    setModel: async () => true,
+    registerCommand: () => undefined,
+    registerTool: () => undefined,
+    registerShortcut: () => undefined,
+    on: () => undefined,
+  };
+  await mod.initializeExtension(ctx, pi);
+  await mod.commitPersona("ok", ctx, pi);
+  mod.resetSubagentPresentationStateForTests();
+
+  const accepted = await mod.larva_subagent({ persona_id: "child", task: "finish while callback delivery is intentionally held pending" }, ctx);
+  const taskId = accepted?.task_id ?? childSessionFile;
+  let terminalPendingRun = null;
+  try {
+    terminalPendingRun = await waitForSmokeCondition(async () => {
+      const status = await mod.larva_subagent_status({ task_id: taskId }, { env: ctx.env });
+      const run = status?.details?.runs?.[0] ?? null;
+      return run?.status === "success" && run?.callback_delivery === "pending" ? run : null;
+    }, { label: "terminal run with pending callback delivery", timeoutMs: 2_000, intervalMs: 10 });
+  } catch {
+    terminalPendingRun = null;
+  }
+
+  const waitResult = await mod.larva_subagent_wait({ task_ids: [taskId], return_when: "all", timeout_ms: 0 }, { env: ctx.env });
+  const selectResult = await mod.larva_subagent_select({ task_ids: [taskId], timeout_ms: 0 }, { env: ctx.env });
+  const statusResult = await mod.larva_subagent_status({ task_id: taskId }, { env: ctx.env });
+  const waitText = waitResult?.content?.[0]?.text ?? "";
+  const selectText = selectResult?.content?.[0]?.text ?? "";
+  const statusJson = JSON.stringify(statusResult?.details ?? {});
+  const outputLookupPattern = /(?:status.*(?:output|child output|result retrieval)|(?:output|child output|result retrieval).*status)/i;
+  const expectedRecommendedNextAction = "yield_for_callback";
+  const assertions = {
+    acceptedReceiptReturned: accepted?.status === "accepted" && accepted?.result_pending === true,
+    terminalReadyCallbackStillPending: terminalPendingRun?.status === "success" && terminalPendingRun?.callback_delivery === "pending",
+    waitSatisfiedTerminalPendingCallback: waitResult?.details?.satisfied === true && waitResult?.details?.runs?.[0]?.callback_delivery === "pending",
+    selectSatisfiedTerminalPendingCallback: selectResult?.details?.satisfied === true && selectResult?.details?.runs?.[0]?.callback_delivery === "pending",
+    waitRecommendedActionYieldsForCallback: waitResult?.details?.recommended_next_action === expectedRecommendedNextAction,
+    selectRecommendedActionYieldsForCallback: selectResult?.details?.recommended_next_action === expectedRecommendedNextAction,
+    waitVisibleTextNamesCallbackYield: waitText.includes("yield") && waitText.includes("larva-subagent-result"),
+    selectVisibleTextNamesCallbackYield: selectText.includes("yield") && selectText.includes("larva-subagent-result"),
+    waitSelectDoNotRecommendStatusForOutput: !outputLookupPattern.test(`${waitText}\n${selectText}`),
+    statusRemainsInspectionNotOutputRetrieval: !statusJson.includes("result_text") && !statusJson.includes("child_output"),
+  };
+  evidence.runtime.waitSelectPendingCallbackHandoff = {
+    status: Object.values(assertions).every(Boolean) ? "PASS" : "EXPECTED_RED",
+    expectedRecommendedNextAction,
+    failureFingerprints: ["recommended_next_action", "yield_for_callback"],
+    observedRecommendedNextActions: {
+      wait: waitResult?.details?.recommended_next_action ?? null,
+      select: selectResult?.details?.recommended_next_action ?? null,
+    },
+    task_id: taskId,
+    accepted,
+    terminalPendingRun,
+    callbackAttemptsObserved: callbackAttempts.length,
+    wait: { details: waitResult?.details ?? null, text: waitText },
+    select: { details: selectResult?.details ?? null, text: selectText },
+    statusInspection: { details: statusResult?.details ?? null },
     assertions,
   };
 }
@@ -2727,6 +2829,8 @@ async function main() {
     await subagentLogSelectorStreamingExpectedRed(evidence);
   } else if (scenario === "async-subagent-contract") {
     await asyncSubagentContractExpectedRed(evidence);
+  } else if (scenario === "wait-select-pending-callback-handoff") {
+    await waitSelectPendingCallbackHandoffExpectedRed(evidence);
   } else if (scenario === "persona-invocation-bus") {
     await personaInvocationBusExpectedRed(evidence);
   }
@@ -2742,6 +2846,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "async-subagent-contract" && evidence.runtime.asyncSubagentContract?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "wait-select-pending-callback-handoff" && evidence.runtime.waitSelectPendingCallbackHandoff?.status !== "PASS") {
     process.exitCode = 1;
   }
   if (scenario === "persona-invocation-bus" && evidence.runtime.personaInvocationBus?.status !== "PASS") {

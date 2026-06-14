@@ -1217,6 +1217,28 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
 
 
 
+def test_runtime_smoke_wait_select_pending_callback_handoff_expected_red_records_gap() -> None:
+    """Expected-red: terminal wait/select readiness must hand off to pending result callback."""
+    payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
+        "wait-select-pending-callback-handoff", timeout=8.0
+    )
+    contract = payload["runtime"]["waitSelectPendingCallbackHandoff"]
+    raw_json_evidence = {
+        "command": ["node", str(RUNTIME_SMOKE), "--scenario", "wait-select-pending-callback-handoff"],
+        "exit_code": returncode,
+        "raw_stdout": raw_stdout,
+        "raw_stderr": raw_stderr,
+        "status": contract["status"],
+        "failure_fingerprints": contract["failureFingerprints"],
+        "expected_recommended_next_action": contract["expectedRecommendedNextAction"],
+        "observed_recommended_next_actions": contract["observedRecommendedNextActions"],
+        "assertions": contract["assertions"],
+    }
+
+    assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert contract["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+
+
 def test_runtime_smoke_persona_invocation_bus_expected_red_records_behavioral_fingerprints() -> None:
     """Expected-red: extension-facing PIINV event bus is not product-implemented yet."""
     payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(

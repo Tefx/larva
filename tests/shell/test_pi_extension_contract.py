@@ -418,6 +418,72 @@ def test_async_subagent_guidance_separates_automation_from_conversation() -> Non
     assert not missing, f"accepted async receipt guidance gap; missing tokens: {missing}"
 
 
+def test_async_subagent_wait_select_pending_callback_handoff_expected_red(tmp_path: Path) -> None:
+    """Expected-red: terminal wait/select snapshots with pending callbacks must yield for the callback."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export { createSubagentRun, touchSubagentRun };
+        """,
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        import {{ mkdir, mkdtemp }} from "node:fs/promises";
+        import {{ tmpdir }} from "node:os";
+        import {{ join }} from "node:path";
+        const mod = await import({json.dumps(extension.as_uri())});
+        const root = await mkdtemp(join(tmpdir(), "larva-pending-callback-contract-"));
+        const childRoot = join(root, "child-sessions");
+        await mkdir(childRoot, {{ recursive: true }});
+        const taskId = join(childRoot, "pending-callback.jsonl");
+        const env = {{ HOME: root, LARVA_PI_CHILD_SESSION_DIR: childRoot, LARVA_PI_INITIAL_PERSONA_ID: "" }};
+        mod.resetSubagentPresentationStateForTests();
+        const record = mod.createSubagentRun({{ persona_id: "child", task: "terminal pending callback" }}, env, "child", taskId, {{}});
+        mod.touchSubagentRun(record, "success", "success");
+        const waitResult = await mod.larva_subagent_wait({{ task_ids: [taskId], return_when: "all", timeout_ms: 0 }}, {{ env }});
+        const selectResult = await mod.larva_subagent_select({{ task_ids: [taskId], timeout_ms: 0 }}, {{ env }});
+        const statusResult = await mod.larva_subagent_status({{ task_id: taskId }}, {{ env }});
+        const waitText = waitResult.content?.[0]?.text ?? "";
+        const selectText = selectResult.content?.[0]?.text ?? "";
+        const statusJson = JSON.stringify(statusResult.details ?? {{}});
+        const outputLookupPattern = /(?:status.*(?:output|child output|result retrieval)|(?:output|child output|result retrieval).*status)/i;
+        const expectedRecommendedNextAction = "yield_for_callback";
+        const proof = {{
+          expectedRecommendedNextAction,
+          failureFingerprints: ["recommended_next_action", "yield_for_callback"],
+          wait: {{ details: waitResult.details, text: waitText }},
+          select: {{ details: selectResult.details, text: selectText }},
+          statusInspection: {{ details: statusResult.details }},
+          assertions: {{
+            waitSatisfiedTerminalPendingCallback: waitResult.details?.satisfied === true && waitResult.details?.runs?.[0]?.callback_delivery === "pending",
+            selectSatisfiedTerminalPendingCallback: selectResult.details?.satisfied === true && selectResult.details?.runs?.[0]?.callback_delivery === "pending",
+            waitRecommendedActionYieldsForCallback: waitResult.details?.recommended_next_action === expectedRecommendedNextAction,
+            selectRecommendedActionYieldsForCallback: selectResult.details?.recommended_next_action === expectedRecommendedNextAction,
+            waitVisibleTextNamesCallbackYield: waitText.includes("yield") && waitText.includes("larva-subagent-result"),
+            selectVisibleTextNamesCallbackYield: selectText.includes("yield") && selectText.includes("larva-subagent-result"),
+            waitSelectDoNotRecommendStatusForOutput: !outputLookupPattern.test(`${{waitText}}\n${{selectText}}`),
+            statusRemainsInspectionNotOutputRetrieval: !statusJson.includes("result_text") && !statusJson.includes("child_output"),
+          }},
+        }};
+        console.log(JSON.stringify(proof));
+        """,
+    )
+
+    assert result["assertions"] == {
+        "waitSatisfiedTerminalPendingCallback": True,
+        "selectSatisfiedTerminalPendingCallback": True,
+        "waitRecommendedActionYieldsForCallback": True,
+        "selectRecommendedActionYieldsForCallback": True,
+        "waitVisibleTextNamesCallbackYield": True,
+        "selectVisibleTextNamesCallbackYield": True,
+        "waitSelectDoNotRecommendStatusForOutput": True,
+        "statusRemainsInspectionNotOutputRetrieval": True,
+    }, json.dumps(result, indent=2, sort_keys=True)
+
+
 def test_async_subagent_resume_task_id_lexical_validation_precedes_filesystem_checks() -> None:
     """Resume task_id validation must reject non-normalized strings before filesystem checks."""
     source = _source()
