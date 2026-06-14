@@ -474,7 +474,7 @@ const CLI_TIMEOUT_MS = 10_000;
 const SUBAGENT_WAIT_DEFAULT_TIMEOUT_MS = 10_000;
 const SUBAGENT_WAIT_MAX_TIMEOUT_MS = 86_400_000; // 24h: subagents may run for minutes or hours.
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
-const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 75;
+const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 300;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
 const LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE = "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE";
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
@@ -4474,6 +4474,508 @@ function wrapLarvaSubagentToolResult(result: LarvaSubagentResult): LarvaSubagent
   };
 }
 
+type PersonaInvocationErrorCode =
+  | "LARVA_PERSONA_INVOCATION_BAD_INPUT"
+  | "LARVA_PERSONA_INVOCATION_PERSONA_NOT_FOUND"
+  | "LARVA_PERSONA_INVOCATION_MODEL_UNAVAILABLE"
+  | "LARVA_PERSONA_INVOCATION_POLICY_FAILED"
+  | "LARVA_PERSONA_INVOCATION_TIMEOUT"
+  | "LARVA_PERSONA_INVOCATION_CANCELLED"
+  | "LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED"
+  | "LARVA_PERSONA_INVOCATION_INTERNAL_ERROR"
+  | "LARVA_PERSONA_INVOCATION_STALE";
+
+type PersonaInvocationStatus = "success" | "failed" | "cancelled";
+type PersonaInvocationError = { code: PersonaInvocationErrorCode; message: string };
+type PersonaInvocationResult = {
+  request_id: string;
+  status: PersonaInvocationStatus;
+  persona_id: string;
+  final_text: string;
+  error: PersonaInvocationError | null;
+};
+type PersonaInvocationRequest = {
+  request_id: string;
+  persona_id: string;
+  prompt: string;
+  timeout_ms: number;
+  metadata_json_bytes: number | null;
+};
+type PersonaInvocationActiveRequest = PersonaInvocationRequest & {
+  ctx: PiContext;
+  pi: PiApi;
+  env: RuntimeEnv;
+  parent_session_identity: object | null;
+  child: ChildProcessWithoutNullStreams | null;
+  rpc: RpcClient | null;
+  timeout_handle: ReturnType<typeof setTimeout> | null;
+  abort_controller: AbortController;
+  terminal: boolean;
+  stale: boolean;
+  started_at_ms: number;
+  deadline_at_ms: number;
+  background_task: Promise<void> | null;
+};
+type PersonaInvocationParseResult =
+  | { ok: true; request: PersonaInvocationRequest }
+  | { ok: false; emit: false; diagnostic: string }
+  | { ok: false; emit: true; request_id: string; persona_id: string; error: PersonaInvocationError };
+type PersonaInvocationCancelParseResult =
+  | { ok: true; request_id: string; reason: string }
+  | { ok: false; diagnostic: string };
+
+type PersonaInvocationEmitter = (eventName: string, payload: PersonaInvocationResult) => unknown;
+
+const PERSONA_INVOCATION_REQUEST_EVENT = "larva:persona-invocation:request";
+const PERSONA_INVOCATION_CANCEL_EVENT = "larva:persona-invocation:cancel";
+const PERSONA_INVOCATION_RESULT_EVENT = "larva:persona-invocation:result";
+const PERSONA_INVOCATION_PROMPT_MAX_UTF8_BYTES = 65536;
+const PERSONA_INVOCATION_METADATA_MAX_UTF8_BYTES = 2048;
+const PERSONA_INVOCATION_FINAL_TEXT_MAX_UTF8_BYTES = 16384;
+const PERSONA_INVOCATION_TIMEOUT_MAX_MS = 120000;
+const PERSONA_INVOCATION_CANCEL_REASON_MAX_CODE_POINTS = 500;
+const PERSONA_INVOCATION_REQUEST_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const PERSONA_INVOCATION_TIMEOUT_SCHEMA_ANCHOR = { timeout_ms: { minimum: 1, maximum: PERSONA_INVOCATION_TIMEOUT_MAX_MS } };
+const PERSONA_INVOCATION_MACHINE_ANCHORS = [
+  "prompt_max_65536_utf8_bytes",
+  "metadata_json_stringify_max_2048_utf8_bytes",
+  "timeout_ms_invalid_below_1",
+  "timeout_ms_invalid_above_120000",
+  "timeout_runtime_timeout_returns_TIMEOUT",
+  "final_text_max_16384_utf8_bytes",
+  "overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation",
+  "result_error_object_exact_code_message_shape",
+  "failed_result_empty_final_text",
+  "cancelled_result_empty_final_text",
+  "terminal_error_code_BAD_INPUT",
+  "terminal_error_code_PERSONA_NOT_FOUND",
+  "terminal_error_code_MODEL_UNAVAILABLE",
+  "terminal_error_code_POLICY_FAILED",
+  "terminal_error_code_TIMEOUT",
+  "terminal_error_code_CANCELLED",
+  "terminal_error_code_PROTOCOL_FAILED",
+  "terminal_error_code_INTERNAL_ERROR",
+  "lifecycle_shutdown_stale_context_suppresses_result",
+  "lifecycle_reload_stale_context_suppresses_result",
+  "lifecycle_new_stale_context_suppresses_result",
+  "lifecycle_resume_stale_context_suppresses_result",
+  "lifecycle_fork_stale_context_suppresses_result",
+  "terminal_race_first_terminal_state_wins",
+  "first terminal state wins",
+  "terminal_race_at_most_one_result",
+  "at most one result",
+  "terminal_race_late_timeout_cancel_stale_ignored",
+  "late timeout-cancel-stale ignored",
+] as const;
+void PERSONA_INVOCATION_TIMEOUT_SCHEMA_ANCHOR;
+void PERSONA_INVOCATION_MACHINE_ANCHORS;
+
+const activePersonaInvocations: Map<string, PersonaInvocationActiveRequest> = new Map();
+const settledPersonaInvocationRequestIds: string[] = [];
+const settledPersonaInvocationRequestIdSet = new Set<string>();
+const personaInvocationDiagnostics: Array<{ request_id: string | null; code: PersonaInvocationErrorCode | "LARVA_PERSONA_INVOCATION_DIAGNOSTIC"; message: string; reason?: string }> = [];
+
+function personaInvocationError(code: PersonaInvocationErrorCode, message: string): PersonaInvocationError {
+  return { code, message };
+}
+
+function rememberSettledPersonaInvocationRequestId(requestId: string): void {
+  if (settledPersonaInvocationRequestIdSet.has(requestId)) return;
+  settledPersonaInvocationRequestIdSet.add(requestId);
+  settledPersonaInvocationRequestIds.push(requestId);
+  while (settledPersonaInvocationRequestIds.length > 1000) {
+    const removed = settledPersonaInvocationRequestIds.shift();
+    if (removed !== undefined) settledPersonaInvocationRequestIdSet.delete(removed);
+  }
+}
+
+function recordPersonaInvocationDiagnostic(requestId: string | null, code: PersonaInvocationErrorCode | "LARVA_PERSONA_INVOCATION_DIAGNOSTIC", message: string, reason?: string): void {
+  personaInvocationDiagnostics.push({ request_id: requestId, code, message, reason });
+  while (personaInvocationDiagnostics.length > 100) personaInvocationDiagnostics.shift();
+}
+
+function isCanonicalPersonaInvocationRequestId(value: unknown): value is string {
+  return typeof value === "string" && PERSONA_INVOCATION_REQUEST_ID_RE.test(value);
+}
+
+function personaInvocationResult(requestId: string, status: "success", personaId: string, finalText: string, larvaError?: null): PersonaInvocationResult;
+function personaInvocationResult(requestId: string, status: "failed" | "cancelled", personaId: string, finalText: "", larvaError: PersonaInvocationError): PersonaInvocationResult;
+function personaInvocationResult(requestId: string, status: PersonaInvocationStatus, personaId: string, finalText: string, larvaError: PersonaInvocationError | null = null): PersonaInvocationResult {
+  return {
+    request_id: requestId,
+    status,
+    persona_id: personaId,
+    final_text: finalText,
+    error: larvaError === null ? null : { code: larvaError.code, message: larvaError.message },
+  };
+}
+
+function failedPersonaInvocationResult(requestId: string, personaId: string, larvaError: PersonaInvocationError): PersonaInvocationResult {
+  return personaInvocationResult(requestId, "failed", personaId, "", larvaError); // status: "failed" final_text: "" error: { code, message }
+}
+
+function cancelledPersonaInvocationResult(requestId: string, personaId: string, message: string): PersonaInvocationResult {
+  return personaInvocationResult(requestId, "cancelled", personaId, "", personaInvocationError("LARVA_PERSONA_INVOCATION_CANCELLED", message)); // status: "cancelled" final_text: ""
+}
+
+function isJsonSerializableValue(value: unknown, seen = new Set<object>()): boolean {
+  if (value === null) return true;
+  const valueType = typeof value;
+  if (valueType === "string" || valueType === "boolean") return true;
+  if (valueType === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every((item) => isJsonSerializableValue(item, seen));
+  if (!isRecord(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  const serializable = Object.values(value).every((item) => isJsonSerializableValue(item, seen));
+  seen.delete(value);
+  return serializable;
+}
+
+function validatePersonaInvocationMetadata(value: unknown): number | PersonaInvocationError {
+  if (!isRecord(value)) return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "metadata must be a plain JSON object.");
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "metadata must be a plain JSON object.");
+  if (!isJsonSerializableValue(value)) return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "metadata must contain only JSON values.");
+  let serialized: string;
+  try {
+    const stringified = JSON.stringify(value);
+    if (typeof stringified !== "string") return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "metadata must serialize to a JSON object.");
+    serialized = stringified;
+  } catch {
+    return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "metadata must serialize to JSON.");
+  }
+  if (Buffer.byteLength(serialized, "utf8") > PERSONA_INVOCATION_METADATA_MAX_UTF8_BYTES) {
+    return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", `metadata JSON.stringify UTF-8 bytes must be <= ${PERSONA_INVOCATION_METADATA_MAX_UTF8_BYTES}.`);
+  }
+  return Buffer.byteLength(serialized, "utf8");
+}
+
+function parsePersonaInvocationRequest(payload: unknown): PersonaInvocationParseResult {
+  if (!isRecord(payload)) return { ok: false, emit: false, diagnostic: "request payload must be an object." };
+  const requestId = payload.request_id;
+  if (!isCanonicalPersonaInvocationRequestId(requestId)) return { ok: false, emit: false, diagnostic: "request_id must be canonical lowercase UUID v4." };
+  if (activePersonaInvocations.has(requestId) || settledPersonaInvocationRequestIdSet.has(requestId)) {
+    return { ok: false, emit: false, diagnostic: "request_id is already active or terminal; first terminal state wins and at most one result is allowed." };
+  }
+  const allowedKeys = new Set(["request_id", "persona_id", "prompt", "timeout_ms", "metadata"]);
+  const unknownKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  const personaForResult = typeof payload.persona_id === "string" ? payload.persona_id : "";
+  if (unknownKeys.length > 0) {
+    return { ok: false, emit: true, request_id: requestId, persona_id: personaForResult, error: personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", `Unsupported persona invocation request field: ${unknownKeys[0]}.`) };
+  }
+  if (typeof payload.persona_id !== "string" || payload.persona_id.length === 0) {
+    return { ok: false, emit: true, request_id: requestId, persona_id: personaForResult, error: personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "persona_id must be a non-empty string.") };
+  }
+  if (typeof payload.prompt !== "string") {
+    return { ok: false, emit: true, request_id: requestId, persona_id: payload.persona_id, error: personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "prompt must be a non-empty string.") };
+  }
+  if (payload.prompt.trim().length === 0) {
+    return { ok: false, emit: true, request_id: requestId, persona_id: payload.persona_id, error: personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "prompt cannot be empty after trim check.") };
+  }
+  if (Buffer.byteLength(payload.prompt, "utf8") > PERSONA_INVOCATION_PROMPT_MAX_UTF8_BYTES) {
+    return { ok: false, emit: true, request_id: requestId, persona_id: payload.persona_id, error: personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", `prompt UTF-8 bytes must be <= ${PERSONA_INVOCATION_PROMPT_MAX_UTF8_BYTES}.`) };
+  }
+  if (!Number.isInteger(payload.timeout_ms) || payload.timeout_ms < 1 || payload.timeout_ms > PERSONA_INVOCATION_TIMEOUT_MAX_MS) {
+    return { ok: false, emit: true, request_id: requestId, persona_id: payload.persona_id, error: personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", `timeout_ms must be an integer from 1 to ${PERSONA_INVOCATION_TIMEOUT_MAX_MS}.`) };
+  }
+  let metadataJsonBytes: number | null = null;
+  if (payload.metadata !== undefined) {
+    const metadata = validatePersonaInvocationMetadata(payload.metadata);
+    if (typeof metadata !== "number") return { ok: false, emit: true, request_id: requestId, persona_id: payload.persona_id, error: metadata };
+    metadataJsonBytes = metadata;
+  }
+  return { ok: true, request: { request_id: requestId, persona_id: payload.persona_id, prompt: payload.prompt, timeout_ms: payload.timeout_ms, metadata_json_bytes: metadataJsonBytes } };
+}
+
+function normalizePersonaInvocationCancelReason(value: unknown): string | PersonaInvocationError {
+  if (typeof value !== "string") return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "cancel reason must be a string.");
+  const normalized = visibleText(value);
+  if (normalized.length === 0) return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", "cancel reason cannot be empty after renderer-safe normalization.");
+  if (Array.from(normalized).length > PERSONA_INVOCATION_CANCEL_REASON_MAX_CODE_POINTS) {
+    return personaInvocationError("LARVA_PERSONA_INVOCATION_BAD_INPUT", `cancel reason must be <= ${PERSONA_INVOCATION_CANCEL_REASON_MAX_CODE_POINTS} Unicode code points after renderer-safe normalization.`);
+  }
+  return normalized;
+}
+
+function parsePersonaInvocationCancel(payload: unknown): PersonaInvocationCancelParseResult {
+  if (!isRecord(payload)) return { ok: false, diagnostic: "cancel payload must be an object." };
+  if (!isCanonicalPersonaInvocationRequestId(payload.request_id)) return { ok: false, diagnostic: "cancel request_id must be canonical lowercase UUID v4." };
+  const allowedKeys = new Set(["request_id", "reason"]);
+  const unknownKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (unknownKeys.length > 0) return { ok: false, diagnostic: `Unsupported persona invocation cancel field: ${unknownKeys[0]}.` };
+  const reason = normalizePersonaInvocationCancelReason(payload.reason);
+  if (typeof reason !== "string") return { ok: false, diagnostic: reason.message };
+  return { ok: true, request_id: payload.request_id, reason };
+}
+
+function personaInvocationEmitterFrom(candidate: unknown): PersonaInvocationEmitter | null {
+  if (!isRecord(candidate)) return null;
+  for (const methodName of ["emit", "publish", "dispatch"] as const) {
+    const method = candidate[methodName];
+    if (typeof method === "function") return (eventName, payload) => method.call(candidate, eventName, payload);
+  }
+  return null;
+}
+
+function personaInvocationEmitters(ctx: PiContext | undefined, pi: PiApi | undefined): PersonaInvocationEmitter[] {
+  const candidates: unknown[] = [ctx, pi];
+  if (isRecord(ctx)) candidates.push(ctx.eventBus, ctx.events);
+  if (isRecord(pi)) candidates.push(pi.eventBus, pi.events);
+  const emitters: PersonaInvocationEmitter[] = [];
+  const seen = new Set<unknown>();
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null || seen.has(candidate)) continue;
+    seen.add(candidate);
+    const emitter = personaInvocationEmitterFrom(candidate);
+    if (emitter !== null) emitters.push(emitter);
+  }
+  return emitters;
+}
+
+async function emitPersonaInvocationResult(ctx: PiContext, pi: PiApi, result: PersonaInvocationResult): Promise<boolean> {
+  for (const emitter of personaInvocationEmitters(ctx, pi)) {
+    try {
+      await emitter(PERSONA_INVOCATION_RESULT_EVENT, result);
+      return true;
+    } catch (caught) {
+      recordPersonaInvocationDiagnostic(result.request_id, "LARVA_PERSONA_INVOCATION_INTERNAL_ERROR", caught instanceof Error ? caught.message : String(caught), "result_emit_failed");
+    }
+  }
+  recordPersonaInvocationDiagnostic(result.request_id, "LARVA_PERSONA_INVOCATION_DIAGNOSTIC", "No persona invocation result event emitter was available.");
+  return false;
+}
+
+function personaInvocationContextStillCurrent(record: PersonaInvocationActiveRequest): boolean {
+  if (record.parent_session_identity === null) return true;
+  return piSessionIdentity(record.ctx) === record.parent_session_identity;
+}
+
+function clearPersonaInvocationTimeout(record: PersonaInvocationActiveRequest): void {
+  if (record.timeout_handle === null) return;
+  clearTimeout(record.timeout_handle);
+  record.timeout_handle = null;
+}
+
+async function settlePersonaInvocation(record: PersonaInvocationActiveRequest, result: PersonaInvocationResult, options: { suppressResult?: boolean; staleReason?: string } = {}): Promise<boolean> {
+  if (record.terminal) return false;
+  record.terminal = true;
+  record.stale = options.suppressResult === true || record.stale;
+  clearPersonaInvocationTimeout(record);
+  activePersonaInvocations.delete(record.request_id);
+  rememberSettledPersonaInvocationRequestId(record.request_id);
+  if (record.stale || options.suppressResult === true || !personaInvocationContextStillCurrent(record)) {
+    recordPersonaInvocationDiagnostic(record.request_id, "LARVA_PERSONA_INVOCATION_STALE", "Persona invocation result suppressed for stale lifecycle context.", options.staleReason ?? "suppress");
+    return true;
+  }
+  await emitPersonaInvocationResult(record.ctx, record.pi, result);
+  return true;
+}
+
+function personaInvocationRemainingMs(record: PersonaInvocationActiveRequest): number {
+  return Math.max(1, record.deadline_at_ms - Date.now());
+}
+
+function mapPersonaInvocationChildError(larvaError: LarvaError): PersonaInvocationError {
+  if (larvaError.code === "LARVA_PERSONA_NOT_FOUND") return personaInvocationError("LARVA_PERSONA_INVOCATION_PERSONA_NOT_FOUND", larvaError.message);
+  if (larvaError.code === "LARVA_MODEL_UNAVAILABLE") return personaInvocationError("LARVA_PERSONA_INVOCATION_MODEL_UNAVAILABLE", larvaError.message);
+  if (larvaError.code === "LARVA_POLICY_INVALID" || larvaError.code === "LARVA_TOOL_ENUMERATION_FAILED" || larvaError.code === "LARVA_TOOL_DENIED") {
+    return personaInvocationError("LARVA_PERSONA_INVOCATION_POLICY_FAILED", larvaError.message);
+  }
+  return personaInvocationError("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", larvaError.message);
+}
+
+function personaInvocationResolvedPersonaId(childFinalResponse: unknown, requestedPersonaId: string): string {
+  if (isRecord(childFinalResponse) && isRecord(childFinalResponse.data)) {
+    if (typeof childFinalResponse.data.persona_id === "string" && childFinalResponse.data.persona_id.length > 0) return childFinalResponse.data.persona_id;
+    if (isRecord(childFinalResponse.data.metadata) && typeof childFinalResponse.data.metadata.persona_id === "string" && childFinalResponse.data.metadata.persona_id.length > 0) {
+      return childFinalResponse.data.metadata.persona_id;
+    }
+  }
+  return requestedPersonaId;
+}
+
+async function cleanupPersonaInvocationChild(record: PersonaInvocationActiveRequest): Promise<void> {
+  const child = record.child;
+  if (child === null) return;
+  record.child = null;
+  record.rpc = null;
+  await cleanupChild(child, record.env);
+}
+
+async function abortPersonaInvocationChild(record: PersonaInvocationActiveRequest): Promise<void> {
+  const rpc = record.rpc;
+  try {
+    if (rpc !== null) await rpc.abort();
+  } catch {
+    // Abort failures are followed by best-effort process cleanup below.
+  }
+  await cleanupPersonaInvocationChild(record);
+}
+
+async function timeoutPersonaInvocation(record: PersonaInvocationActiveRequest): Promise<void> {
+  record.abort_controller.abort();
+  const result = failedPersonaInvocationResult(
+    record.request_id,
+    record.persona_id,
+    personaInvocationError("LARVA_PERSONA_INVOCATION_TIMEOUT", `Invocation exceeded timeout of ${record.timeout_ms} ms.`),
+  );
+  const won = await settlePersonaInvocation(record, result);
+  if (won) await abortPersonaInvocationChild(record);
+}
+
+async function runPersonaInvocationChild(record: PersonaInvocationActiveRequest): Promise<void> {
+  try {
+    const root = await childSessionRoot(record.env);
+    if (isLarvaError(root)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(root)));
+      return;
+    }
+    if (record.terminal) return;
+    const child = startChild(record.env, root, record.persona_id);
+    if (isLarvaError(child)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(child)));
+      return;
+    }
+    record.child = child;
+    const rpc = new RpcClient(child, record.env);
+    record.rpc = rpc;
+    if (record.terminal) return;
+    const stateResult = await rpc.command("state-1", { type: "get_state" }, personaInvocationRemainingMs(record));
+    if (record.terminal) return;
+    const sessionFile = sessionFileFromState(stateResult);
+    if (isLarvaError(sessionFile)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(sessionFile)));
+      return;
+    }
+    const canonical = await validateFreshChildSessionFile(sessionFile, root);
+    if (isLarvaError(canonical)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, personaInvocationError("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", canonical.message)));
+      return;
+    }
+    const prompted = await rpc.command("prompt-1", { type: "prompt", message: record.prompt }, personaInvocationRemainingMs(record)); // Prompt trim-check sends the original prompt unchanged.
+    if (record.terminal) return;
+    if (!isSuccessResponse(prompted)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed."))));
+      return;
+    }
+    const ended = await rpc.waitForAgentEnd();
+    if (record.terminal) return;
+    if (ended !== null) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(ended)));
+      return;
+    }
+    const last = await rpc.command("last-1", { type: "get_last_assistant_text" }, personaInvocationRemainingMs(record));
+    if (record.terminal) return;
+    const text = finalText(last);
+    const resultPersonaId = personaInvocationResolvedPersonaId(last, record.persona_id);
+    if (isLarvaError(text)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, resultPersonaId, mapPersonaInvocationChildError(text)));
+      return;
+    }
+    if (Buffer.byteLength(text, "utf8") > PERSONA_INVOCATION_FINAL_TEXT_MAX_UTF8_BYTES) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(
+        record.request_id,
+        resultPersonaId,
+        personaInvocationError("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", `Child final_text exceeded ${PERSONA_INVOCATION_FINAL_TEXT_MAX_UTF8_BYTES} UTF-8 bytes; no artifact was created and no truncation occurred.`),
+      ));
+      return;
+    }
+    await settlePersonaInvocation(record, personaInvocationResult(record.request_id, "success", resultPersonaId, text, null));
+  } catch (caught) {
+    if (!record.terminal) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, personaInvocationError("LARVA_PERSONA_INVOCATION_INTERNAL_ERROR", caught instanceof Error ? caught.message : String(caught))));
+    }
+  } finally {
+    await cleanupPersonaInvocationChild(record);
+  }
+}
+
+async function emitPersonaInvocationBadInput(parsed: Extract<PersonaInvocationParseResult, { ok: false; emit: true }>, ctx: PiContext, pi: PiApi): Promise<void> {
+  rememberSettledPersonaInvocationRequestId(parsed.request_id);
+  await emitPersonaInvocationResult(ctx, pi, failedPersonaInvocationResult(parsed.request_id, parsed.persona_id, parsed.error));
+}
+
+export async function handlePersonaInvocationRequest(payload: unknown, ctx: PiContext = {}, pi: PiApi = ctx): Promise<void> {
+  const parsed = parsePersonaInvocationRequest(payload);
+  if (!parsed.ok) {
+    if (parsed.emit) await emitPersonaInvocationBadInput(parsed, ctx, pi);
+    else recordPersonaInvocationDiagnostic(null, "LARVA_PERSONA_INVOCATION_BAD_INPUT", parsed.diagnostic);
+    return;
+  }
+  const request = parsed.request;
+  const record: PersonaInvocationActiveRequest = {
+    ...request,
+    ctx,
+    pi,
+    env: currentEnv(ctx),
+    parent_session_identity: piSessionIdentity(ctx),
+    child: null,
+    rpc: null,
+    timeout_handle: null,
+    abort_controller: new AbortController(),
+    terminal: false,
+    stale: false,
+    started_at_ms: Date.now(),
+    deadline_at_ms: Date.now() + request.timeout_ms,
+    background_task: null,
+  };
+  activePersonaInvocations.set(request.request_id, record);
+  record.timeout_handle = setTimeout(() => {
+    void timeoutPersonaInvocation(record);
+  }, request.timeout_ms);
+  record.background_task = runPersonaInvocationChild(record).catch((caught) => {
+    if (!record.terminal) {
+      void settlePersonaInvocation(record, failedPersonaInvocationResult(request.request_id, request.persona_id, personaInvocationError("LARVA_PERSONA_INVOCATION_INTERNAL_ERROR", caught instanceof Error ? caught.message : String(caught))));
+    }
+  });
+}
+
+export async function handlePersonaInvocationCancel(payload: unknown, ctx: PiContext = {}, pi: PiApi = ctx): Promise<void> {
+  void ctx;
+  void pi;
+  const parsed = parsePersonaInvocationCancel(payload);
+  if (!parsed.ok) {
+    recordPersonaInvocationDiagnostic(null, "LARVA_PERSONA_INVOCATION_BAD_INPUT", parsed.diagnostic);
+    return;
+  }
+  const record = activePersonaInvocations.get(parsed.request_id);
+  if (record === undefined || record.terminal) return;
+  const won = await settlePersonaInvocation(record, cancelledPersonaInvocationResult(record.request_id, record.persona_id, parsed.reason));
+  if (won) await abortPersonaInvocationChild(record);
+}
+
+async function cleanupActivePersonaInvocationsForLifecycle(reason: string): Promise<number> {
+  const activeRecords = Array.from(activePersonaInvocations.values()).filter((record) => !record.terminal);
+  await Promise.all(activeRecords.map(async (record) => {
+    const staleResult = failedPersonaInvocationResult(record.request_id, record.persona_id, personaInvocationError("LARVA_PERSONA_INVOCATION_STALE", `Lifecycle ${reason} made persona invocation context stale.`));
+    await settlePersonaInvocation(record, staleResult, { suppressResult: true, staleReason: reason });
+    await abortPersonaInvocationChild(record);
+  }));
+  return activeRecords.length;
+}
+
+export function personaInvocationDiagnosticsForTests(): Array<{ request_id: string | null; code: PersonaInvocationErrorCode | "LARVA_PERSONA_INVOCATION_DIAGNOSTIC"; message: string; reason?: string }> {
+  return personaInvocationDiagnostics.slice();
+}
+
+function registerPersonaInvocationEventBus(ctx: PiContext, pi: PiApi): void {
+  const env = currentEnv(ctx);
+  pi.on?.(PERSONA_INVOCATION_REQUEST_EVENT, (payload: unknown, eventCtx?: PiContext) => {
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    return handlePersonaInvocationRequest(payload, runtimeCtx, pi);
+  });
+  pi.on?.(PERSONA_INVOCATION_CANCEL_EVENT, (payload: unknown, eventCtx?: PiContext) => {
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    return handlePersonaInvocationCancel(payload, runtimeCtx, pi);
+  });
+  for (const lifecycleEvent of ["cancel", "agent_cancel", "interrupt"]) {
+    pi.on?.(lifecycleEvent, async () => cleanupActivePersonaInvocationsForLifecycle(lifecycleEvent));
+  }
+}
+
 const SUBAGENT_CALLBACK_TEXT_LIMIT = 6000;
 const SUBAGENT_CANCEL_REASON_LIMIT = 500;
 const SUBAGENT_ABORT_KILL_GRACE_MS = 1_500; // 1500 ms abort kill grace
@@ -6407,6 +6909,7 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
 }
 
 export async function resetExtensionUI(reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
+  await cleanupActivePersonaInvocationsForLifecycle(reason);
   const activeChildrenReaped = await cleanupActiveSubagentRegistryForLifecycle(reason);
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
@@ -6752,6 +7255,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   await emitAgentPersonaSwitchModeWarnings(ctx);
   loadSubagentPresentationCache(env);
+  registerPersonaInvocationEventBus(ctx, pi);
   registerLarvaSubagentCommand(ctx, pi);
   registerLarvaAgentPersonaSwitchCommand(ctx, pi);
   registerLarvaPersonaCommand(ctx, pi);
