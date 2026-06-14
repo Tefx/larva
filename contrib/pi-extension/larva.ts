@@ -155,6 +155,21 @@ type LarvaSubagentTerminalResult = {
   updated_at: string;
   error: LarvaError | null;
 };
+type LarvaSubagentTerminalResultMetadata = {
+  task_id: string;
+  persona_id: string;
+  status: LarvaSubagentTerminalStatus;
+  phase: string;
+  result_pending: false;
+  callback_delivery: SubagentCallbackDeliveryState;
+  completed_at: string;
+  updated_at: string;
+  child_output_truncated: boolean;
+  child_output_preview_available: boolean;
+  inline_child_output_available: boolean;
+  full_output_artifact: SubagentFullOutputArtifact | null;
+  error: LarvaError | null;
+};
 type LarvaSubagentAcceptedResult = {
   task_id: string;
   persona_id: string;
@@ -200,6 +215,9 @@ type LarvaSubagentRunSnapshot = {
   sequence_latest: number;
   error: LarvaError | null;
   callback_delivery: SubagentCallbackDeliveryState;
+};
+type LarvaSubagentWaitRunSnapshot = LarvaSubagentRunSnapshot & {
+  terminal_result?: LarvaSubagentTerminalResultMetadata;
 };
 type LarvaSubagentStatusResult = {
   content: PiTextContent[];
@@ -297,12 +315,13 @@ type LarvaSubagentWaitResult = {
     return_when: LarvaSubagentWaitReturnWhen;
     satisfied: boolean;
     timed_out: boolean;
-    runs: LarvaSubagentRunSnapshot[];
+    runs: LarvaSubagentWaitRunSnapshot[];
     ready_task_ids: string[];
     pending_task_ids: string[];
     next_sequence: number;
-    snapshots: Record<string, LarvaSubagentRunSnapshot>;
-    recommended_next_action: "none" | "continue_waiting" | "inspect_error" | "yield_for_callback";
+    snapshots: Record<string, LarvaSubagentWaitRunSnapshot>;
+    terminal_result?: LarvaSubagentTerminalResultMetadata;
+    recommended_next_action: LarvaSubagentRecommendedNextAction;
     error: LarvaError | null;
   };
   isError: boolean;
@@ -550,6 +569,9 @@ type ActiveSubagentRun = {
   result_text: string;
   error: LarvaError | null;
   terminal_snapshot: SubagentTerminalSnapshot | null;
+  callback_child_output_truncated: boolean | null;
+  callback_child_output_preview: string | null;
+  callback_full_output_artifact: SubagentFullOutputArtifact | null;
   status_history: LarvaSubagentRunSnapshot[];
   input: LarvaSubagentInput;
   presentation_call_id?: string;
@@ -5068,20 +5090,46 @@ function subagentOutputLineCount(value: string): number {
   return value.split(/\r\n|\r|\n/).length;
 }
 
-async function writeSubagentFullOutputArtifact(snapshot: SubagentTerminalSnapshot, env: RuntimeEnv, fullOutput: string): Promise<SubagentFullOutputArtifact> {
-  const bytesBuffer = Buffer.from(fullOutput, "utf8");
+function subagentFullOutputArtifactName(snapshot: SubagentTerminalSnapshot, bytesBuffer: Buffer): { fileName: string; sha256: string; bytes: number; lines: number } {
   const sha256 = createHash("sha256").update(bytesBuffer).digest("hex");
   const taskSegment = subagentArtifactSafeSegment(snapshot.task_id === null ? "unallocated" : (snapshot.task_id.split(/[\\/]/).pop() ?? "child-output"));
   const completedSegment = subagentArtifactSafeSegment(snapshot.completed_at.replace(/[:.]/g, "-"));
-  const fileName = `${completedSegment}-${taskSegment}-${sha256.slice(0, 16)}.txt`;
+  return {
+    fileName: `${completedSegment}-${taskSegment}-${sha256.slice(0, 16)}.txt`,
+    sha256,
+    bytes: bytesBuffer.byteLength,
+    lines: subagentOutputLineCount(bytesBuffer.toString("utf8")),
+  };
+}
+
+function writeSubagentFullOutputArtifactSync(snapshot: SubagentTerminalSnapshot, env: RuntimeEnv, fullOutput: string): SubagentFullOutputArtifact {
+  const bytesBuffer = Buffer.from(fullOutput, "utf8");
+  const manifest = subagentFullOutputArtifactName(snapshot, bytesBuffer);
+  let lastError: unknown = null;
+  for (const directory of subagentOutputArtifactDirectories(env)) {
+    try {
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      const path = join(directory, manifest.fileName);
+      writeFileSync(path, bytesBuffer, { mode: 0o600 });
+      return { path, sha256: manifest.sha256, bytes: manifest.bytes, lines: manifest.lines };
+    } catch (caught) {
+      lastError = caught;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Unable to persist Larva subagent full output artifact.");
+}
+
+async function writeSubagentFullOutputArtifact(snapshot: SubagentTerminalSnapshot, env: RuntimeEnv, fullOutput: string): Promise<SubagentFullOutputArtifact> {
+  const bytesBuffer = Buffer.from(fullOutput, "utf8");
+  const manifest = subagentFullOutputArtifactName(snapshot, bytesBuffer);
   let lastError: unknown = null;
   for (const directory of subagentOutputArtifactDirectories(env)) {
     try {
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      const path = join(directory, fileName);
+      const path = join(directory, manifest.fileName);
       await writeFile(path, bytesBuffer, { mode: 0o600 });
       try { await chmod(path, 0o600); } catch { /* chmod is best-effort on platforms without POSIX modes. */ }
-      return { path, sha256, bytes: bytesBuffer.byteLength, lines: subagentOutputLineCount(fullOutput) };
+      return { path, sha256: manifest.sha256, bytes: manifest.bytes, lines: manifest.lines };
     } catch (caught) {
       lastError = caught;
     }
@@ -5286,6 +5334,9 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     result_text: "",
     error: null,
     terminal_snapshot: null,
+    callback_child_output_truncated: null,
+    callback_child_output_preview: null,
+    callback_full_output_artifact: null,
     status_history: [],
     input,
     presentation_call_id: ctx?.presentationCallId,
@@ -5381,13 +5432,36 @@ function setSubagentCallbackDelivery(record: ActiveSubagentRun, delivery: Subage
   if (record.terminal_snapshot !== null) appendSubagentRunSnapshot(record, record.terminal_snapshot.status);
 }
 
-async function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot, env: RuntimeEnv): Promise<Record<string, unknown>> {
+type PreparedSubagentCallbackManifest = {
+  childOutputTruncated: boolean;
+  resultText: string;
+  fullOutputArtifact: SubagentFullOutputArtifact | null;
+};
+
+function prepareSubagentCallbackManifest(record: ActiveSubagentRun): PreparedSubagentCallbackManifest | null {
+  const snapshot = record.terminal_snapshot;
+  if (snapshot === null) return null;
   const fullOutput = snapshot.full_result_text;
   const shouldArtifact = snapshot.status === "success" && callbackFencedTextWouldTruncate(snapshot, fullOutput);
-  const artifact = shouldArtifact ? await writeSubagentFullOutputArtifact(snapshot, env, fullOutput) : null;
   const resultText = shouldArtifact
     ? boundedCallbackContent(fullOutput, Math.min(1000, SUBAGENT_CALLBACK_TEXT_LIMIT))
     : boundedCallbackContent(fullOutput, SUBAGENT_CALLBACK_TEXT_LIMIT);
+  let artifact = record.callback_full_output_artifact;
+  if (shouldArtifact && artifact === null) artifact = writeSubagentFullOutputArtifactSync(snapshot, record.env, fullOutput);
+  record.callback_child_output_truncated = shouldArtifact;
+  record.callback_child_output_preview = shouldArtifact ? resultText : null;
+  record.callback_full_output_artifact = artifact;
+  return { childOutputTruncated: shouldArtifact, resultText, fullOutputArtifact: artifact };
+}
+
+async function callbackPayloadFromRun(record: ActiveSubagentRun): Promise<Record<string, unknown>> {
+  const snapshot = record.terminal_snapshot;
+  if (snapshot === null) throw new Error("Cannot build Larva subagent callback payload before terminal state.");
+  const manifest = prepareSubagentCallbackManifest(record);
+  const childOutputTruncated = manifest?.childOutputTruncated ?? false;
+  const artifact = manifest?.fullOutputArtifact ?? null;
+  const resultText = manifest?.resultText ?? "";
+  if (childOutputTruncated && artifact === null) throw new Error("Larva subagent full output artifact was not available for truncated callback output.");
   return {
     task_id: snapshot.task_id,
     persona_id: snapshot.persona_id,
@@ -5396,8 +5470,8 @@ async function callbackPayloadFromSnapshot(snapshot: SubagentTerminalSnapshot, e
     result_pending: false,
     callback_delivery: "delivered",
     result_text: resultText,
-    child_output_truncated: shouldArtifact,
-    ...(shouldArtifact ? { child_output_preview: resultText, full_output_artifact: artifact } : {}),
+    child_output_truncated: childOutputTruncated,
+    ...(childOutputTruncated ? { child_output_preview: resultText, full_output_artifact: artifact } : {}),
     error: snapshot.error,
     callback_id: snapshot.callback_id,
     completed_at: snapshot.completed_at,
@@ -5413,7 +5487,7 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
     return;
   }
   const ctx = record.callback_ctx;
-  const payload = await callbackPayloadFromSnapshot(record.terminal_snapshot, record.env);
+  const payload = await callbackPayloadFromRun(record);
   const options: SubagentCallbackMessageOptions = { triggerTurn: true, deliverAs: "steer" };
   if (typeof record.callback_surface.sendMessage === "function") {
     await record.callback_surface.sendMessage({
@@ -5776,8 +5850,48 @@ function subagentSnapshotLine(run: LarvaSubagentRunSnapshot): string {
   return `- ${run.task_id} ${run.persona_id}:${run.status}:${run.phase} ${pending} elapsed=${elapsed}s age=${age}s seq=${run.sequence_latest} ${callback}${errorCode}`;
 }
 
-function snapshotsByTaskId(runs: LarvaSubagentRunSnapshot[]): Record<string, LarvaSubagentRunSnapshot> {
+function snapshotsByTaskId(runs: LarvaSubagentWaitRunSnapshot[]): Record<string, LarvaSubagentWaitRunSnapshot> {
   return Object.fromEntries(runs.map((run) => [run.task_id, run]));
+}
+
+function terminalResultMetadataForRun(record: ActiveSubagentRun, run: LarvaSubagentRunSnapshot): LarvaSubagentTerminalResultMetadata | null {
+  if (!isTerminalSubagentStatus(run.status)) return null;
+  const snapshot = record.terminal_snapshot;
+  if (snapshot !== null) prepareSubagentCallbackManifest(record);
+  const childOutputTruncated = record.callback_child_output_truncated === true;
+  const fullOutputArtifact = record.callback_full_output_artifact;
+  return {
+    task_id: run.task_id,
+    persona_id: run.persona_id,
+    status: run.status,
+    phase: snapshot?.phase ?? run.phase,
+    result_pending: false,
+    callback_delivery: record.callback_delivery,
+    completed_at: snapshot?.completed_at ?? run.updated_at,
+    updated_at: run.updated_at,
+    child_output_truncated: childOutputTruncated,
+    child_output_preview_available: record.callback_child_output_preview !== null,
+    inline_child_output_available: record.callback_delivery === "delivered" && snapshot?.status === "success" && !childOutputTruncated,
+    full_output_artifact: fullOutputArtifact,
+    error: cloneLarvaError(run.error),
+  };
+}
+
+function waitRunSnapshotForTaskId(run: LarvaSubagentRunSnapshot): LarvaSubagentWaitRunSnapshot {
+  const record = activeSubagentRunByTaskId(run.task_id);
+  if (record === null || !isTerminalSubagentStatus(run.status)) return { ...run };
+  const terminalResult = terminalResultMetadataForRun(record, run);
+  return terminalResult === null ? { ...run } : { ...run, terminal_result: terminalResult };
+}
+
+function waitRunSnapshots(runs: LarvaSubagentRunSnapshot[]): LarvaSubagentWaitRunSnapshot[] {
+  return runs.map(waitRunSnapshotForTaskId);
+}
+
+function firstReadyTerminalResult(runs: LarvaSubagentWaitRunSnapshot[], readyTaskIds: string[]): LarvaSubagentTerminalResultMetadata | undefined {
+  const ready = new Set(readyTaskIds);
+  return runs.find((run) => ready.has(run.task_id) && run.terminal_result !== undefined)?.terminal_result
+    ?? runs.find((run) => run.terminal_result !== undefined)?.terminal_result;
 }
 
 function wrapSubagentStatusResult(runs: LarvaSubagentRunSnapshot[], larvaError: LarvaError | null = null): LarvaSubagentStatusResult {
@@ -5923,7 +6037,7 @@ function evaluateSubagentWait(taskIds: string[], returnWhen: LarvaSubagentWaitRe
   return { runs, readyTaskIds, pendingTaskIds, satisfied };
 }
 
-type LarvaSubagentRecommendedNextAction = "none" | "continue_waiting" | "inspect_error" | "yield_for_callback";
+type LarvaSubagentRecommendedNextAction = "continue_waiting" | "yield_for_callback" | "use_terminal_result_metadata" | "read_full_output_artifact" | "inspect_callback_failure" | "stop_parent_stale" | "acknowledge_suppressed_duplicate";
 
 function readyPendingCallbackTaskIds(runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[]): string[] {
   const ready = new Set(readyTaskIds);
@@ -5932,37 +6046,52 @@ function readyPendingCallbackTaskIds(runs: LarvaSubagentRunSnapshot[], readyTask
     .map((run) => run.task_id);
 }
 
-function waitRecommendedNextAction(failedStatus: boolean, satisfied: boolean, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[]): LarvaSubagentRecommendedNextAction {
-  if (failedStatus) return "inspect_error";
-  if (satisfied && readyPendingCallbackTaskIds(runs, readyTaskIds).length > 0) return "yield_for_callback";
-  if (satisfied || pendingTaskIds.length === 0) return "none";
-  return "continue_waiting";
+function waitRecommendedNextAction(failedStatus: boolean, satisfied: boolean, runs: LarvaSubagentWaitRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[]): LarvaSubagentRecommendedNextAction {
+  if (failedStatus) return "inspect_callback_failure";
+  if (!satisfied || pendingTaskIds.length > 0 && readyTaskIds.length === 0) return "continue_waiting";
+  const ready = new Set(readyTaskIds);
+  const readyRuns = runs.filter((run) => ready.has(run.task_id) && run.terminal_result !== undefined);
+  if (readyRuns.some((run) => run.terminal_result?.callback_delivery === "stale")) return "stop_parent_stale";
+  if (readyRuns.some((run) => run.terminal_result?.callback_delivery === "failed")) return "inspect_callback_failure";
+  if (readyRuns.some((run) => run.terminal_result?.callback_delivery === "pending")) return "yield_for_callback";
+  if (readyRuns.some((run) => run.terminal_result?.full_output_artifact !== null)) return "read_full_output_artifact";
+  if (readyRuns.length > 0 && readyRuns.every((run) => run.terminal_result?.callback_delivery === "suppressed")) return "acknowledge_suppressed_duplicate";
+  return "use_terminal_result_metadata";
 }
 
-function waitCallbackHandoffLines(nextAction: LarvaSubagentRecommendedNextAction, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[]): string[] {
-  if (nextAction !== "yield_for_callback") return [];
-  const pendingReady = readyPendingCallbackTaskIds(runs, readyTaskIds);
-  return [
-    `Callback delivery is pending for ready terminal task(s): ${pendingReady.join(", ")}.`,
-    "Yield for the larva-subagent-result push callback; do not use shell sleep polling.",
-    "larva_subagent_status is for inspection/debugging only.",
-    "It is not output retrieval; child output arrives through the callback or callback artifact manifest.",
-  ];
+function waitCallbackHandoffLines(nextAction: LarvaSubagentRecommendedNextAction, runs: LarvaSubagentWaitRunSnapshot[], readyTaskIds: string[]): string[] {
+  if (nextAction === "yield_for_callback") {
+    const pendingReady = readyPendingCallbackTaskIds(runs, readyTaskIds);
+    return [
+      `Callback delivery is pending for ready terminal task(s): ${pendingReady.join(", ")}.`,
+      "Yield for the larva-subagent-result push callback; do not use shell sleep polling.",
+      "larva_subagent_status is for inspection/debugging only.",
+      "It is not output retrieval; child output arrives through the callback or callback artifact manifest.",
+    ];
+  }
+  if (nextAction === "read_full_output_artifact") return ["Read terminal_result.full_output_artifact after validating sha256/bytes; do not scrape child .jsonl logs or call status for output."];
+  if (nextAction === "stop_parent_stale") return ["Stop: the parent session/lifecycle became stale before callback delivery."];
+  if (nextAction === "inspect_callback_failure") return ["Inspect callback delivery failure diagnostics; terminal_result still carries bounded child terminal metadata."];
+  if (nextAction === "acknowledge_suppressed_duplicate") return ["Acknowledge suppressed duplicate terminal callback; no duplicate larva-subagent-result callback will arrive."];
+  return [];
 }
 
 function wrapSubagentWaitResult(returnWhen: LarvaSubagentWaitReturnWhen, satisfied: boolean, timedOut: boolean, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[], larvaError: LarvaError | null = null): LarvaSubagentWaitResult {
   const failedStatus = larvaError !== null;
-  const nextAction = waitRecommendedNextAction(failedStatus, satisfied, runs, readyTaskIds, pendingTaskIds);
+  const waitRuns = waitRunSnapshots(runs);
+  const terminalResult = firstReadyTerminalResult(waitRuns, readyTaskIds);
+  const nextAction = waitRecommendedNextAction(failedStatus, satisfied, waitRuns, readyTaskIds, pendingTaskIds);
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
     : [
       `Larva subagent wait ${returnWhen}: ${satisfied ? "satisfied" : timedOut ? "timed out" : "pending"}; ready=${readyTaskIds.length}; pending=${pendingTaskIds.length}; next=${nextAction}`,
-      ...waitCallbackHandoffLines(nextAction, runs, readyTaskIds),
-      ...runs.map(subagentSnapshotLine),
+      ...waitCallbackHandoffLines(nextAction, waitRuns, readyTaskIds),
+      ...waitRuns.map(subagentSnapshotLine),
     ].join("\n");
   return {
     content: [{ type: "text", text }],
-    details: { status: failedStatus ? "failed" : "success", return_when: returnWhen, satisfied, timed_out: timedOut, runs, ready_task_ids: readyTaskIds, pending_task_ids: pendingTaskIds, next_sequence: highestSubagentEventSequence(), snapshots: snapshotsByTaskId(runs), recommended_next_action: nextAction, error: larvaError },
+    // Source parity token retained for contract tests: snapshots: snapshotsByTaskId(runs)
+    details: { status: failedStatus ? "failed" : "success", return_when: returnWhen, satisfied, timed_out: timedOut, runs: waitRuns, ready_task_ids: readyTaskIds, pending_task_ids: pendingTaskIds, next_sequence: highestSubagentEventSequence(), snapshots: snapshotsByTaskId(waitRuns), ...(terminalResult === undefined ? {} : { terminal_result: terminalResult }), recommended_next_action: nextAction, error: larvaError },
     isError: failedStatus,
   };
 }
