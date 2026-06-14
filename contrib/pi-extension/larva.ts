@@ -302,7 +302,7 @@ type LarvaSubagentWaitResult = {
     pending_task_ids: string[];
     next_sequence: number;
     snapshots: Record<string, LarvaSubagentRunSnapshot>;
-    recommended_next_action: "none" | "continue_waiting" | "inspect_error";
+    recommended_next_action: "none" | "continue_waiting" | "inspect_error" | "yield_for_callback";
     error: LarvaError | null;
   };
   isError: boolean;
@@ -5785,8 +5785,8 @@ function wrapSubagentStatusResult(runs: LarvaSubagentRunSnapshot[], larvaError: 
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
     : runs.length === 0
-      ? "Larva subagent status: no observed runs"
-      : [`Larva subagent status: ${runs.length} observed run(s)`, ...runs.map(subagentSnapshotLine)].join("\n");
+      ? "Larva subagent status (inspection/debugging only): no observed runs\nThis surface is not output retrieval."
+      : [`Larva subagent status (inspection/debugging only): ${runs.length} observed run(s)`, "This surface is not output retrieval.", ...runs.map(subagentSnapshotLine)].join("\n");
   return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", runs, error: larvaError }, isError: failedStatus };
 }
 
@@ -5923,19 +5923,41 @@ function evaluateSubagentWait(taskIds: string[], returnWhen: LarvaSubagentWaitRe
   return { runs, readyTaskIds, pendingTaskIds, satisfied };
 }
 
-function waitRecommendedNextAction(failedStatus: boolean, satisfied: boolean, pendingTaskIds: string[]): "none" | "continue_waiting" | "inspect_error" {
+type LarvaSubagentRecommendedNextAction = "none" | "continue_waiting" | "inspect_error" | "yield_for_callback";
+
+function readyPendingCallbackTaskIds(runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[]): string[] {
+  const ready = new Set(readyTaskIds);
+  return runs
+    .filter((run) => ready.has(run.task_id) && isTerminalSubagentStatus(run.status) && run.callback_delivery === "pending")
+    .map((run) => run.task_id);
+}
+
+function waitRecommendedNextAction(failedStatus: boolean, satisfied: boolean, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[]): LarvaSubagentRecommendedNextAction {
   if (failedStatus) return "inspect_error";
+  if (satisfied && readyPendingCallbackTaskIds(runs, readyTaskIds).length > 0) return "yield_for_callback";
   if (satisfied || pendingTaskIds.length === 0) return "none";
   return "continue_waiting";
 }
 
+function waitCallbackHandoffLines(nextAction: LarvaSubagentRecommendedNextAction, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[]): string[] {
+  if (nextAction !== "yield_for_callback") return [];
+  const pendingReady = readyPendingCallbackTaskIds(runs, readyTaskIds);
+  return [
+    `Callback delivery is pending for ready terminal task(s): ${pendingReady.join(", ")}.`,
+    "Yield for the larva-subagent-result push callback; do not use shell sleep polling.",
+    "larva_subagent_status is for inspection/debugging only.",
+    "It is not output retrieval; child output arrives through the callback or callback artifact manifest.",
+  ];
+}
+
 function wrapSubagentWaitResult(returnWhen: LarvaSubagentWaitReturnWhen, satisfied: boolean, timedOut: boolean, runs: LarvaSubagentRunSnapshot[], readyTaskIds: string[], pendingTaskIds: string[], larvaError: LarvaError | null = null): LarvaSubagentWaitResult {
   const failedStatus = larvaError !== null;
-  const nextAction = waitRecommendedNextAction(failedStatus, satisfied, pendingTaskIds);
+  const nextAction = waitRecommendedNextAction(failedStatus, satisfied, runs, readyTaskIds, pendingTaskIds);
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
     : [
       `Larva subagent wait ${returnWhen}: ${satisfied ? "satisfied" : timedOut ? "timed out" : "pending"}; ready=${readyTaskIds.length}; pending=${pendingTaskIds.length}; next=${nextAction}`,
+      ...waitCallbackHandoffLines(nextAction, runs, readyTaskIds),
       ...runs.map(subagentSnapshotLine),
     ].join("\n");
   return {

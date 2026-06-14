@@ -2577,7 +2577,7 @@ async function main() {
     process.stdout.write(usage());
     return;
   }
-  const scenario = args.get("scenario") || args.get("case");
+  const scenario = args.get("scenario") || args.get("case") || "wait-select-pending-callback-handoff";
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
