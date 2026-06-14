@@ -2082,6 +2082,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             env: {{
               LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
               LARVA_PI_INTERACTIVE_TUI: "1",
+              LARVA_PI_AGENT_PERSONA_SWITCH: undefined,
               ...envOverrides,
             }},
             ui: options.omitUi ? undefined : ui,
@@ -4628,3 +4629,102 @@ def test_piinv_event_bus_machine_anchor_expected_red(
         f"PIINV_REQUIRED_EXPECTED_RED_IDS={' '.join(PIINV_REQUIRED_EXPECTED_RED_IDS)}; "
         f"missing_event_tokens={missing_event_tokens}; missing_behavior_tokens={missing_behavior_tokens}"
     )
+
+
+def test_PIINV_004_persona_invocation_request_id_reuse_after_1000_settled_ids_suppressed(tmp_path: Path) -> None:
+    """PIINV-004: runtime-lifetime request_id terminality survives more than 1000 settled ids."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(tmp_path, "")
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const handlers = {{}};
+        const results = [];
+        const failures = [];
+        const record = (condition, label, detail = null) => {{
+          if (!condition) failures.push({{ label, detail }});
+        }};
+        const ctx = {{
+          env: {{
+            LARVA_PI_INITIAL_PERSONA_ID: "",
+            LARVA_PI_AGENT_PERSONA_SWITCH: undefined,
+            LARVA_PI_LAUNCHED: "0",
+          }},
+          ui: {{ notify: async () => undefined, setStatus: async () => undefined }},
+        }};
+        const pi = {{
+          on: (event, handler) => {{ handlers[event] = handler; }},
+          emit: (event, payload) => {{
+            if (event === "larva:persona-invocation:result") results.push(payload);
+            return true;
+          }},
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        const requestHandler = handlers["larva:persona-invocation:request"];
+        const cancelHandler = handlers["larva:persona-invocation:cancel"];
+        record(typeof requestHandler === "function", "request event-bus handler registered", Object.keys(handlers));
+        record(typeof cancelHandler === "function", "cancel event-bus handler registered", Object.keys(handlers));
+        const makeId = (n) => `00000000-0000-4000-8000-${{n.toString(16).padStart(12, "0")}}`;
+        const badRequest = (request_id) => ({{ request_id, persona_id: "", prompt: "x", timeout_ms: 1 }});
+        for (let index = 0; index < 1001; index += 1) {{
+          await requestHandler(badRequest(makeId(index)), ctx);
+        }}
+        const firstId = makeId(0);
+        const after1001Settled = results.length;
+        await cancelHandler({{ request_id: firstId, reason: "already terminal" }}, ctx);
+        const afterTerminalCancel = results.length;
+        await requestHandler(badRequest(firstId), ctx);
+        const afterReplay = results.length;
+        await requestHandler(badRequest(makeId(1001)), ctx);
+        const afterFresh = results.length;
+        const firstIdResults = results.filter((result) => result.request_id === firstId);
+        record(after1001Settled === 1001, "1001 valid correlated bad-input requests emitted 1001 terminal results", {{ after1001Settled }});
+        record(afterTerminalCancel === after1001Settled, "terminal cancel did not emit duplicate result", {{ afterTerminalCancel, after1001Settled }});
+        record(afterReplay === after1001Settled, "reused first request_id after >1000 settled ids emitted no second terminal result", {{ afterReplay, after1001Settled }});
+        record(afterFresh === after1001Settled + 1, "fresh request_id still emits after replay suppression", {{ afterFresh, after1001Settled }});
+        record(firstIdResults.length === 1, "first request_id has exactly one terminal result forever", firstIdResults);
+        if (failures.length > 0) {{
+          console.error(JSON.stringify({{ failures, resultsLength: results.length, firstIdResults }}, null, 2));
+          process.exit(1);
+        }}
+        console.log(JSON.stringify({{
+          settled_before_replay: after1001Settled,
+          after_terminal_cancel: afterTerminalCancel,
+          after_replay: afterReplay,
+          after_fresh: afterFresh,
+          first_id_result_count: firstIdResults.length,
+          first_id_statuses: firstIdResults.map((result) => result.status),
+          registered_persona_invocation_events: Object.keys(handlers).filter((event) => event.startsWith("larva:persona-invocation:")),
+        }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload == {
+        "settled_before_replay": 1001,
+        "after_terminal_cancel": 1001,
+        "after_replay": 1001,
+        "after_fresh": 1002,
+        "first_id_result_count": 1,
+        "first_id_statuses": ["failed"],
+        "registered_persona_invocation_events": [
+            "larva:persona-invocation:request",
+            "larva:persona-invocation:cancel",
+        ],
+    }
+
+
+def test_persona_invocation_hidden_direct_handlers_are_not_public_exports() -> None:
+    """Persona invocation remains event-bus-only externally; direct handlers stay non-public."""
+    source = _source()
+
+    assert "export async function handlePersonaInvocationRequest" not in source
+    assert "export async function handlePersonaInvocationCancel" not in source
+    assert "function handlePersonaInvocationRequest" in source
+    assert "function handlePersonaInvocationCancel" in source
+    assert "larva:persona-invocation:request" in source
+    assert "larva:persona-invocation:cancel" in source

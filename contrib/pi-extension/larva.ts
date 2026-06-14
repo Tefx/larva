@@ -4572,7 +4572,6 @@ void PERSONA_INVOCATION_TIMEOUT_SCHEMA_ANCHOR;
 void PERSONA_INVOCATION_MACHINE_ANCHORS;
 
 const activePersonaInvocations: Map<string, PersonaInvocationActiveRequest> = new Map();
-const settledPersonaInvocationRequestIds: string[] = [];
 const settledPersonaInvocationRequestIdSet = new Set<string>();
 const personaInvocationDiagnostics: Array<{ request_id: string | null; code: PersonaInvocationErrorCode | "LARVA_PERSONA_INVOCATION_DIAGNOSTIC"; message: string; reason?: string }> = [];
 
@@ -4581,13 +4580,9 @@ function personaInvocationError(code: PersonaInvocationErrorCode, message: strin
 }
 
 function rememberSettledPersonaInvocationRequestId(requestId: string): void {
-  if (settledPersonaInvocationRequestIdSet.has(requestId)) return;
+  // PIINV-004: request_id terminality is a runtime-lifetime invariant.
+  // Do not evict settled ids; a reused request_id must never regain emission rights.
   settledPersonaInvocationRequestIdSet.add(requestId);
-  settledPersonaInvocationRequestIds.push(requestId);
-  while (settledPersonaInvocationRequestIds.length > 1000) {
-    const removed = settledPersonaInvocationRequestIds.shift();
-    if (removed !== undefined) settledPersonaInvocationRequestIdSet.delete(removed);
-  }
 }
 
 function recordPersonaInvocationDiagnostic(requestId: string | null, code: PersonaInvocationErrorCode | "LARVA_PERSONA_INVOCATION_DIAGNOSTIC", message: string, reason?: string): void {
@@ -4899,7 +4894,7 @@ async function emitPersonaInvocationBadInput(parsed: Extract<PersonaInvocationPa
   await emitPersonaInvocationResult(ctx, pi, failedPersonaInvocationResult(parsed.request_id, parsed.persona_id, parsed.error));
 }
 
-export async function handlePersonaInvocationRequest(payload: unknown, ctx: PiContext = {}, pi: PiApi = ctx): Promise<void> {
+async function handlePersonaInvocationRequest(payload: unknown, ctx: PiContext = {}, pi: PiApi = ctx): Promise<void> {
   const parsed = parsePersonaInvocationRequest(payload);
   if (!parsed.ok) {
     if (parsed.emit) await emitPersonaInvocationBadInput(parsed, ctx, pi);
@@ -4934,7 +4929,7 @@ export async function handlePersonaInvocationRequest(payload: unknown, ctx: PiCo
   });
 }
 
-export async function handlePersonaInvocationCancel(payload: unknown, ctx: PiContext = {}, pi: PiApi = ctx): Promise<void> {
+async function handlePersonaInvocationCancel(payload: unknown, ctx: PiContext = {}, pi: PiApi = ctx): Promise<void> {
   void ctx;
   void pi;
   const parsed = parsePersonaInvocationCancel(payload);
