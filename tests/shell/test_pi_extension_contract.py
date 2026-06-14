@@ -505,6 +505,116 @@ def test_async_subagent_wait_select_pending_callback_handoff_expected_red(tmp_pa
     }, json.dumps(result, indent=2, sort_keys=True)
 
 
+def test_async_subagent_callback_delivery_terminal_states_and_actions(tmp_path: Path) -> None:
+    """Terminal wait/select convergence exposes every callback delivery state with an unambiguous action."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export { createSubagentRun, finalizeSubagentRun, success };
+        """,
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        import {{ mkdir, mkdtemp }} from "node:fs/promises";
+        import {{ tmpdir }} from "node:os";
+        import {{ join }} from "node:path";
+        const mod = await import({json.dumps(extension.as_uri())});
+        const root = await mkdtemp(join(tmpdir(), "larva-callback-delivery-states-"));
+        const childRoot = join(root, "child-sessions");
+        await mkdir(childRoot, {{ recursive: true }});
+        const env = {{ HOME: root, LARVA_PI_CHILD_SESSION_DIR: childRoot, LARVA_PI_INITIAL_PERSONA_ID: "" }};
+        mod.resetSubagentPresentationStateForTests();
+        const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+        const waitFor = async (taskId, delivery) => {{
+          for (let index = 0; index < 20; index += 1) {{
+            await flush();
+            const status = await mod.larva_subagent_status({{ task_id: taskId }}, {{ env }});
+            const run = status.details?.runs?.[0] ?? null;
+            if (run?.callback_delivery === delivery) return run;
+          }}
+          const status = await mod.larva_subagent_status({{ task_id: taskId }}, {{ env }});
+          return status.details?.runs?.[0] ?? null;
+        }};
+        const finalize = (label, ctx) => {{
+          const taskId = join(childRoot, `${{label}}.jsonl`);
+          const record = mod.createSubagentRun({{ persona_id: "child", task: label }}, env, "child", taskId, ctx);
+          mod.finalizeSubagentRun(record, mod.success(taskId, "child", `${{label}} output`));
+          return {{ taskId, record }};
+        }};
+        const rowFor = async (label, expectedDelivery) => {{
+          const taskId = `${{rootTaskIds[label]}}`;
+          const statusRun = await waitFor(taskId, expectedDelivery);
+          const wait = await mod.larva_subagent_wait({{ task_ids: [taskId], return_when: "all", timeout_ms: 0 }}, {{ env }});
+          const select = await mod.larva_subagent_select({{ task_ids: [taskId], timeout_ms: 0 }}, {{ env }});
+          return {{
+            statusRun,
+            waitAction: wait.details?.recommended_next_action,
+            selectAction: select.details?.recommended_next_action,
+            terminal: wait.details?.terminal_result,
+            waitText: wait.content?.[0]?.text ?? "",
+          }};
+        }};
+
+        const rootTaskIds = {{}};
+        const pendingAttempts = [];
+        rootTaskIds.pending = finalize("pending", {{ env, callbackSurface: {{ sendMessage: async (message, options) => {{ pendingAttempts.push({{ message, options }}); await new Promise(() => undefined); }} }} }}).taskId;
+        const deliveredAttempts = [];
+        rootTaskIds.delivered = finalize("delivered", {{ env, callbackSurface: {{ sendMessage: async (message, options) => deliveredAttempts.push({{ message, options }}) }} }}).taskId;
+        const failedAttempts = [];
+        rootTaskIds.failed = finalize("failed", {{ env, callbackSurface: {{ sendMessage: async (message, options) => {{ failedAttempts.push({{ message, options }}); throw new Error("callback boom"); }} }} }}).taskId;
+        const staleAttempts = [];
+        const staleCtx = {{ env, session: {{ id: "old" }}, callbackSurface: {{ sendMessage: async (message, options) => staleAttempts.push({{ message, options }}) }} }};
+        const staleRecord = mod.createSubagentRun({{ persona_id: "child", task: "stale" }}, env, "child", join(childRoot, "stale.jsonl"), staleCtx);
+        rootTaskIds.stale = staleRecord.task_id;
+        staleCtx.session = {{ id: "new" }};
+        mod.finalizeSubagentRun(staleRecord, mod.success(staleRecord.task_id, "child", "stale output"));
+        const suppressedAttempts = [];
+        const suppressed = finalize("suppressed", {{ env, callbackSurface: {{ sendMessage: async (message, options) => {{ suppressedAttempts.push({{ message, options }}); await new Promise(() => undefined); }} }} }});
+        rootTaskIds.suppressed = suppressed.taskId;
+        await mod.larva_subagent_cancel({{ task_id: suppressed.taskId, reason: "model terminal result path already observed" }}, {{ env }});
+
+        const rows = {{
+          pending: await rowFor("pending", "pending"),
+          delivered: await rowFor("delivered", "delivered"),
+          failed: await rowFor("failed", "failed"),
+          stale: await rowFor("stale", "stale"),
+          suppressed: await rowFor("suppressed", "suppressed"),
+        }};
+        console.log(JSON.stringify({{
+          taskIds: rootTaskIds,
+          attempts: {{ pending: pendingAttempts.length, delivered: deliveredAttempts.length, failed: failedAttempts.length, stale: staleAttempts.length, suppressed: suppressedAttempts.length }},
+          rows,
+          assertions: {{
+            pendingAction: rows.pending.waitAction === "yield_for_callback" && rows.pending.selectAction === "yield_for_callback",
+            deliveredAction: rows.delivered.waitAction === "use_terminal_result_metadata" && rows.delivered.selectAction === "use_terminal_result_metadata",
+            failedAction: rows.failed.waitAction === "inspect_callback_failure" && rows.failed.selectAction === "inspect_callback_failure",
+            staleAction: rows.stale.waitAction === "stop_parent_stale" && rows.stale.selectAction === "stop_parent_stale",
+            suppressedAction: rows.suppressed.waitAction === "acknowledge_suppressed_duplicate" && rows.suppressed.selectAction === "acknowledge_suppressed_duplicate",
+            failedDiagnostic: rows.failed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DELIVERY_FAILED" && rows.failed.terminal?.callback_delivery_diagnostic?.message.includes("callback boom"),
+            stalePreventedInjection: staleAttempts.length === 0 && rows.stale.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_PARENT_STALE",
+            deliveredExactlyOnce: deliveredAttempts.length === 1 && rows.delivered.terminal?.callback_delivery === "delivered",
+            suppressedDuplicatePreserved: suppressedAttempts.length === 1 && rows.suppressed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DUPLICATE_SUPPRESSED",
+          }},
+        }}));
+        """,
+    )
+
+    assert result["assertions"] == {
+        "pendingAction": True,
+        "deliveredAction": True,
+        "failedAction": True,
+        "staleAction": True,
+        "suppressedAction": True,
+        "failedDiagnostic": True,
+        "stalePreventedInjection": True,
+        "deliveredExactlyOnce": True,
+        "suppressedDuplicatePreserved": True,
+    }, json.dumps(result, indent=2, sort_keys=True)
+
+
 def test_async_subagent_resume_task_id_lexical_validation_precedes_filesystem_checks() -> None:
     """Resume task_id validation must reject non-normalized strings before filesystem checks."""
     source = _source()

@@ -1422,8 +1422,92 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
     statusRemainsInspectionNotOutputRetrieval: !statusJson.includes("result_text") && !statusJson.includes("child_output"),
     statusRemainsNoTerminalResultRetrieval: !["terminal_result", "full_output_artifact", "result_text", "child_output"].some((token) => statusJson.includes(token)),
   };
+
+  async function runCallbackDeliveryStateProbe(label, expectedDelivery, expectedAction) {
+    const probeChild = join(sessionRoot, `${label}-callback-state-child.mjs`);
+    const probeSession = join(childSessionRoot, `${label}-callback-state.jsonl`);
+    await writeDelayedAsyncSubagentChild(probeChild, {
+      sessionFile: probeSession,
+      finalText: `${label.toUpperCase()}_CALLBACK_STATE_FINAL`,
+      terminalDelayMs: 25,
+      terminalMarkerFile: join(sessionRoot, `${label}-callback-state-terminal.txt`),
+    });
+    const attempts = [];
+    const probeCtx = {
+      ...ctx,
+      env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: probeChild, LARVA_PI_REAL_BIN: process.execPath },
+      session: { label, entries: [] },
+      callbackSurface: {
+        sendMessage: async (message, options) => {
+          attempts.push({ message, options });
+          if (label === "pending" || label === "suppressed") await new Promise(() => undefined);
+          if (label === "failed") throw new Error("runtime smoke callback boom");
+        },
+      },
+    };
+    const acceptedProbe = await mod.larva_subagent({ persona_id: "child", task: `${label} callback delivery state probe` }, probeCtx);
+    const probeTaskId = acceptedProbe?.task_id ?? probeSession;
+    if (label === "stale") probeCtx.session = { label, stale: true, entries: [] };
+    if (label === "pending" || label === "suppressed") {
+      try {
+        await waitForSmokeCondition(async () => {
+          const status = await mod.larva_subagent_status({ task_id: probeTaskId }, { env: probeCtx.env });
+          const run = status?.details?.runs?.[0] ?? null;
+          return run?.status === "success" && run?.callback_delivery === "pending" ? run : null;
+        }, { label: `${label} terminal pending${label === "suppressed" ? " before duplicate suppression" : ""}`, timeoutMs: 1_000, intervalMs: 10 });
+      } catch {}
+    }
+    if (label === "suppressed") {
+      await mod.larva_subagent_cancel({ task_id: probeTaskId, reason: "runtime smoke duplicate terminal path" }, { env: probeCtx.env });
+    }
+    let statusRun = null;
+    try {
+      statusRun = await waitForSmokeCondition(async () => {
+        const status = await mod.larva_subagent_status({ task_id: probeTaskId }, { env: probeCtx.env });
+        const run = status?.details?.runs?.[0] ?? null;
+        return run?.callback_delivery === expectedDelivery ? run : null;
+      }, { label: `${label} callback_delivery ${expectedDelivery}`, timeoutMs: 1_500, intervalMs: 10 });
+    } catch {
+      const status = await mod.larva_subagent_status({ task_id: probeTaskId }, { env: probeCtx.env });
+      statusRun = status?.details?.runs?.[0] ?? null;
+    }
+    const waitProbe = await mod.larva_subagent_wait({ task_ids: [probeTaskId], return_when: "all", timeout_ms: 0 }, { env: probeCtx.env });
+    const selectProbe = await mod.larva_subagent_select({ task_ids: [probeTaskId], timeout_ms: 0 }, { env: probeCtx.env });
+    const terminal = waitProbe?.details?.terminal_result ?? null;
+    return {
+      label,
+      expectedDelivery,
+      expectedAction,
+      task_id: probeTaskId,
+      accepted: acceptedProbe,
+      attempts: attempts.length,
+      statusRun,
+      waitAction: waitProbe?.details?.recommended_next_action ?? null,
+      selectAction: selectProbe?.details?.recommended_next_action ?? null,
+      terminal,
+      passed: statusRun?.callback_delivery === expectedDelivery
+        && waitProbe?.details?.recommended_next_action === expectedAction
+        && selectProbe?.details?.recommended_next_action === expectedAction
+        && terminal?.callback_delivery === expectedDelivery,
+    };
+  }
+
+  const callbackDeliveryStateProbe = {
+    pending: await runCallbackDeliveryStateProbe("pending", "pending", "yield_for_callback"),
+    delivered: await runCallbackDeliveryStateProbe("delivered", "delivered", "use_terminal_result_metadata"),
+    failed: await runCallbackDeliveryStateProbe("failed", "failed", "inspect_callback_failure"),
+    stale: await runCallbackDeliveryStateProbe("stale", "stale", "stop_parent_stale"),
+    suppressed: await runCallbackDeliveryStateProbe("suppressed", "suppressed", "acknowledge_suppressed_duplicate"),
+  };
+  const stateAssertions = {
+    callbackPendingDeliveredFailedStaleSuppressedModeled: Object.values(callbackDeliveryStateProbe).every((row) => row.passed === true),
+    callbackStateActionsAreUnambiguous: Object.values(callbackDeliveryStateProbe).every((row) => typeof row.waitAction === "string" && row.waitAction === row.expectedAction && row.selectAction === row.expectedAction),
+    duplicateDeliveryIdempotencyPreserved: callbackDeliveryStateProbe.delivered.attempts === 1 && callbackDeliveryStateProbe.suppressed.attempts === 1 && callbackDeliveryStateProbe.suppressed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DUPLICATE_SUPPRESSED",
+    staleParentInjectionPrevented: callbackDeliveryStateProbe.stale.attempts === 0 && callbackDeliveryStateProbe.stale.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_PARENT_STALE",
+    failedDeliveryCarriesReasonCode: callbackDeliveryStateProbe.failed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DELIVERY_FAILED" && String(callbackDeliveryStateProbe.failed.terminal?.callback_delivery_diagnostic?.message ?? "").includes("runtime smoke callback boom"),
+  };
   evidence.runtime.waitSelectPendingCallbackHandoff = {
-    status: Object.values(assertions).every(Boolean) ? "PASS" : "EXPECTED_RED",
+    status: Object.values(assertions).every(Boolean) && Object.values(stateAssertions).every(Boolean) ? "PASS" : "EXPECTED_RED",
     expectedRecommendedNextAction,
     failureFingerprints: ["recommended_next_action", "yield_for_callback", "terminal_result", "full_output_artifact"],
     observedRecommendedNextActions: {
@@ -1434,6 +1518,8 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
     accepted,
     terminalPendingRun,
     callbackAttemptsObserved: callbackAttempts.length,
+    callbackDeliveryStateProbe,
+    stateAssertions,
     wait: { details: waitResult?.details ?? null, text: waitText },
     select: { details: selectResult?.details ?? null, text: selectText },
     statusInspection: { details: statusResult?.details ?? null },

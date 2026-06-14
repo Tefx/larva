@@ -162,6 +162,7 @@ type LarvaSubagentTerminalResultMetadata = {
   phase: string;
   result_pending: false;
   callback_delivery: SubagentCallbackDeliveryState;
+  callback_delivery_diagnostic: SubagentCallbackDeliveryDiagnostic | null;
   completed_at: string;
   updated_at: string;
   child_output_truncated: boolean;
@@ -215,6 +216,7 @@ type LarvaSubagentRunSnapshot = {
   sequence_latest: number;
   error: LarvaError | null;
   callback_delivery: SubagentCallbackDeliveryState;
+  callback_delivery_diagnostic: SubagentCallbackDeliveryDiagnostic | null;
 };
 type LarvaSubagentWaitRunSnapshot = LarvaSubagentRunSnapshot & {
   terminal_result?: LarvaSubagentTerminalResultMetadata;
@@ -298,6 +300,7 @@ type LarvaSubagentEvent = {
   status: LarvaSubagentPublicStatus;
   phase: string;
   callback_delivery: SubagentCallbackDeliveryState;
+  callback_delivery_diagnostic: SubagentCallbackDeliveryDiagnostic | null;
   result_pending: boolean;
   updated_at: string;
   error: LarvaError | null;
@@ -526,6 +529,7 @@ const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
 
 type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale" | "failed";
+type SubagentCallbackDeliveryDiagnostic = Readonly<{ code: string; message: string }>;
 type SubagentCancellationSource = "model" | "user" | "console" | "lifecycle";
 type SubagentFullOutputArtifact = Readonly<{
   path: string;
@@ -565,6 +569,7 @@ type ActiveSubagentRun = {
   cancellation_reason: string | null;
   cancellation_source: SubagentCancellationSource | null;
   callback_delivery: SubagentCallbackDeliveryState;
+  callback_delivery_diagnostic: SubagentCallbackDeliveryDiagnostic | null;
   result_pending: boolean;
   result_text: string;
   error: LarvaError | null;
@@ -5190,6 +5195,7 @@ function subagentEventFromSnapshot(snapshot: LarvaSubagentRunSnapshot, kind: Lar
     result_pending: snapshot.result_pending,
     updated_at: snapshot.updated_at,
     error: cloneLarvaError(snapshot.error),
+    callback_delivery_diagnostic: cloneSubagentCallbackDeliveryDiagnostic(snapshot.callback_delivery_diagnostic),
   };
 }
 
@@ -5272,6 +5278,7 @@ function statusSnapshotForRun(record: ActiveSubagentRun, status: LarvaSubagentPu
     sequence_latest: latestSubagentEventSequenceForTask(record.task_id),
     error: record.error,
     callback_delivery: record.callback_delivery,
+    callback_delivery_diagnostic: cloneSubagentCallbackDeliveryDiagnostic(record.callback_delivery_diagnostic),
   };
 }
 
@@ -5280,11 +5287,13 @@ function appendSubagentRunSnapshot(record: ActiveSubagentRun, status: LarvaSubag
   if (snapshot === null) return;
   const previous = record.status_history.at(-1);
   const sameError = JSON.stringify(previous?.error ?? null) === JSON.stringify(snapshot.error ?? null);
+  const sameCallbackDiagnostic = JSON.stringify(previous?.callback_delivery_diagnostic ?? null) === JSON.stringify(snapshot.callback_delivery_diagnostic ?? null);
   const sameSnapshot = previous?.status === snapshot.status
     && previous.phase === snapshot.phase
     && previous.callback_delivery === snapshot.callback_delivery
     && previous.result_pending === snapshot.result_pending
-    && sameError;
+    && sameError
+    && sameCallbackDiagnostic;
   if (sameSnapshot) {
     record.status_history[record.status_history.length - 1] = snapshot;
     return;
@@ -5330,6 +5339,7 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     cancellation_reason: null,
     cancellation_source: null,
     callback_delivery: "pending",
+    callback_delivery_diagnostic: null,
     result_pending: true,
     result_text: "",
     error: null,
@@ -5427,8 +5437,29 @@ function parentSessionStillCurrent(record: ActiveSubagentRun): boolean {
   return piSessionIdentity(record.callback_ctx) === record.parent_session_identity;
 }
 
-function setSubagentCallbackDelivery(record: ActiveSubagentRun, delivery: SubagentCallbackDeliveryState): void {
+function cloneSubagentCallbackDeliveryDiagnostic(value: SubagentCallbackDeliveryDiagnostic | null): SubagentCallbackDeliveryDiagnostic | null {
+  return value === null ? null : { code: value.code, message: value.message };
+}
+
+function subagentCallbackDeliveryDiagnostic(code: string, message: string): SubagentCallbackDeliveryDiagnostic {
+  return Object.freeze({ code, message });
+}
+
+function callbackDeliveryDiagnosticFromCaught(caught: unknown): SubagentCallbackDeliveryDiagnostic {
+  const message = caught instanceof Error ? caught.message : String(caught);
+  return subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DELIVERY_FAILED", message.length > 0 ? boundedVisible(message, 500) : "Pi callback delivery failed.");
+}
+
+function defaultCallbackDeliveryDiagnostic(delivery: SubagentCallbackDeliveryState): SubagentCallbackDeliveryDiagnostic | null {
+  if (delivery === "failed") return subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DELIVERY_FAILED", "Pi callback delivery failed.");
+  if (delivery === "stale") return subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_PARENT_STALE", "Parent session/runtime identity changed before callback delivery; callback was not injected.");
+  if (delivery === "suppressed") return subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback was intentionally suppressed after an equivalent terminal result path.");
+  return null;
+}
+
+function setSubagentCallbackDelivery(record: ActiveSubagentRun, delivery: SubagentCallbackDeliveryState, diagnostic: SubagentCallbackDeliveryDiagnostic | null = defaultCallbackDeliveryDiagnostic(delivery)): void {
   record.callback_delivery = delivery;
+  record.callback_delivery_diagnostic = cloneSubagentCallbackDeliveryDiagnostic(diagnostic);
   if (record.terminal_snapshot !== null) appendSubagentRunSnapshot(record, record.terminal_snapshot.status);
 }
 
@@ -5513,7 +5544,7 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
   } else if (typeof ctx?.sendUserMessage === "function") {
     await ctx.sendUserMessage(payload.message as string, { customType: "larva-subagent-result", details: payload, ...options });
   } else {
-    setSubagentCallbackDelivery(record, "suppressed");
+    setSubagentCallbackDelivery(record, "failed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_SURFACE_UNAVAILABLE", "No Pi callback delivery surface was available; no larva-subagent-result callback was injected."));
     return;
   }
   setSubagentCallbackDelivery(record, "delivered");
@@ -5546,8 +5577,8 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   });
   appendSubagentRunSnapshot(record, terminal.status);
   if (record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
-  if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed");
-  else void deliverSubagentResultCallback(record).catch(() => setSubagentCallbackDelivery(record, "failed"));
+  if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because the model-facing terminal control path already returned the terminal result."));
+  else void deliverSubagentResultCallback(record).catch((caught) => setSubagentCallbackDelivery(record, "failed", callbackDeliveryDiagnosticFromCaught(caught)));
   pruneTerminalSubagentRuns();
   return record.terminal_snapshot;
 }
@@ -5867,6 +5898,7 @@ function terminalResultMetadataForRun(record: ActiveSubagentRun, run: LarvaSubag
     phase: snapshot?.phase ?? run.phase,
     result_pending: false,
     callback_delivery: record.callback_delivery,
+    callback_delivery_diagnostic: cloneSubagentCallbackDeliveryDiagnostic(record.callback_delivery_diagnostic),
     completed_at: snapshot?.completed_at ?? run.updated_at,
     updated_at: run.updated_at,
     child_output_truncated: childOutputTruncated,
@@ -6073,6 +6105,7 @@ function waitCallbackHandoffLines(nextAction: LarvaSubagentRecommendedNextAction
   if (nextAction === "stop_parent_stale") return ["Stop: the parent session/lifecycle became stale before callback delivery."];
   if (nextAction === "inspect_callback_failure") return ["Inspect callback delivery failure diagnostics; terminal_result still carries bounded child terminal metadata."];
   if (nextAction === "acknowledge_suppressed_duplicate") return ["Acknowledge suppressed duplicate terminal callback; no duplicate larva-subagent-result callback will arrive."];
+  if (nextAction === "use_terminal_result_metadata") return ["Use terminal_result metadata for deterministic correlation; no status polling or shell sleep is needed."];
   return [];
 }
 
@@ -6168,7 +6201,7 @@ async function cancelSubagentByTaskId(taskId: string, reason: string, source: Su
     return wrapSubagentCancelResult(validated, "", "failed", error("LARVA_SUBAGENT_NOT_OBSERVED", `Larva subagent task_id not observed in this parent process: ${validated}`), true);
   }
   if (record.terminal_snapshot !== null) {
-    if (source === "model" && record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "suppressed");
+    if (source === "model" && record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because model-facing cancellation observed the terminal result."));
     const terminal = record.terminal_snapshot;
     return wrapSubagentCancelResult(terminal.task_id, terminal.persona_id, terminal.status, terminal.error, terminal.status === "failed");
   }
@@ -6481,6 +6514,7 @@ export function subagentActiveRunDiagnosticsForTests(): Array<Record<string, unk
     phase: record.phase,
     result_pending: record.result_pending,
     callback_delivery: record.callback_delivery,
+    callback_delivery_diagnostic: cloneSubagentCallbackDeliveryDiagnostic(record.callback_delivery_diagnostic),
     cancellation_source: record.cancellation_source,
     cancellation_reason: record.cancellation_reason,
     terminal_status: record.terminal_snapshot?.status ?? null,
