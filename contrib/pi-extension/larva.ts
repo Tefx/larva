@@ -1573,6 +1573,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private lastRenderedViewportLines = 1;
   private cancelInFlight = false;
   private cancelStatusLine: string | null = null;
+  private cancelConfirmTaskId: string | null = null;
+  private cancelConfirmPersonaId: string | null = null;
 
   constructor(options: SubagentPresentationLogOverlayOptions) {
     this.entry = { ...options.entry, result_text: options.entry.result_text };
@@ -1704,19 +1706,50 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     if (this.cancelInFlight) return;
     const candidate = this.cancellableEntry();
     if (candidate === null) {
+      this.cancelConfirmTaskId = null;
+      this.cancelConfirmPersonaId = null;
       this.cancelStatusLine = "No exact running subagent is selected for cancellation.";
       this.invalidate();
       this.requestRender();
       return;
     }
-    const cancelSelected = this.onCancelSelected;
-    if (cancelSelected === undefined) {
+    if (this.onCancelSelected === undefined) {
+      this.cancelConfirmTaskId = null;
+      this.cancelConfirmPersonaId = null;
       this.cancelStatusLine = "Cancellation is unavailable in this Pi surface.";
       this.invalidate();
       this.requestRender();
       return;
     }
-    const taskId = candidate.task_id;
+    this.cancelConfirmTaskId = candidate.task_id;
+    this.cancelConfirmPersonaId = candidate.persona_id;
+    this.cancelStatusLine = `Confirm cancellation for ${boundedPresentationPreview(candidate.task_id, 72)}. Press Enter/y to confirm, n/Esc to keep running.`;
+    if (!this.selectorMode) {
+      this.activeTabIndex = 0;
+      this.scrollOffsets.summary = 0;
+    }
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private clearCancelConfirmation(message: string): void {
+    this.cancelConfirmTaskId = null;
+    this.cancelConfirmPersonaId = null;
+    this.cancelStatusLine = message;
+    this.invalidate();
+    this.requestRender();
+  }
+
+  private confirmCancelSelectedExactTask(): void {
+    if (this.cancelInFlight || this.cancelConfirmTaskId === null) return;
+    const cancelSelected = this.onCancelSelected;
+    if (cancelSelected === undefined) {
+      this.clearCancelConfirmation("Cancellation is unavailable in this Pi surface.");
+      return;
+    }
+    const taskId = this.cancelConfirmTaskId;
+    this.cancelConfirmTaskId = null;
+    this.cancelConfirmPersonaId = null;
     this.cancelInFlight = true;
     this.cancelStatusLine = `Cancellation requested for ${boundedPresentationPreview(taskId, 72)}.`;
     this.invalidate();
@@ -1909,10 +1942,26 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.switchTab((this.activeTabIndex + delta + SUBAGENT_OVERLAY_TABS.length) % SUBAGENT_OVERLAY_TABS.length);
   }
 
+  private cancelConfirmationPanelLines(contentWidth: number): string[] {
+    if (this.cancelConfirmTaskId === null) return [];
+    const title = selectorThemeFg(this.theme, "warning", selectorThemeBold(this.theme, "⚠ CANCEL SUBAGENT?"));
+    const cancelAction = selectorThemeFg(this.theme, "error", "[ Enter / y ] Cancel now");
+    const keepAction = selectorThemeFg(this.theme, "success", "[ Esc / n ] Keep running");
+    return [
+      overlayTruncateLine(title, contentWidth),
+      overlayTruncateLine("This will abort the selected child Pi session.", contentWidth),
+      overlayTruncateLine(`persona: ${boundedPresentationPreview(this.cancelConfirmPersonaId ?? this.entry.persona_id, Math.max(1, contentWidth - 9))}`, contentWidth),
+      overlayTruncateLine(`task_id: ${boundedPresentationPreview(this.cancelConfirmTaskId, Math.max(1, contentWidth - 9))}`, contentWidth),
+      overlayTruncateLine(`${cancelAction}     ${keepAction}`, contentWidth),
+      overlayTruncateLine("━".repeat(Math.max(0, contentWidth)), contentWidth),
+    ];
+  }
+
   private selectorPaneLines(contentWidth: number): string[] {
     const entries = this.selectorEntries();
     return [
       this.sectionLine("Select subagent — local start time", contentWidth),
+      ...(this.cancelStatusLine === null || this.cancelConfirmTaskId !== null ? [] : [overlayTruncateLine(this.cancelStatusLine, contentWidth), ""]),
       ...(entries.length === 0
         ? [overlayTruncateLine("No observed subagent entries.", contentWidth)]
         : entries.map((entry, index) => boundedPresentationPreview(`${index === this.selectorCursorIndex ? "›" : " "} ${presentationRow(entry)}`, contentWidth))),
@@ -1925,7 +1974,8 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const boxWidth = Math.min(withShadow ? renderWidth - 1 : renderWidth, this.maxWidth);
     if (boxWidth < 4) return [truncateToWidth("Larva subagent log", boxWidth, "")];
     const contentWidth = boxWidth - 4;
-    const viewportLines = this.viewportLines(withShadow);
+    const confirmPanelLines = this.cancelConfirmationPanelLines(contentWidth);
+    const viewportLines = Math.max(1, this.viewportLines(withShadow) - confirmPanelLines.length);
     this.lastRenderedViewportLines = viewportLines;
     const title = overlayTruncateLine("─ Larva subagent log ", boxWidth - 2);
     const topMiddle = `${title}${"─".repeat(Math.max(0, boxWidth - 2 - overlayDisplayWidth(title)))}`;
@@ -1949,12 +1999,15 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const scrollRange = innerLines.length > viewportLines ? ` • ${start}-${end}/${innerLines.length}` : "";
     const debugHint = !this.selectorMode && tab === "timeline" ? " • d ids" : "";
     const cancelHint = this.onCancelSelected !== undefined ? " • c cancel" : "";
-    const scrollInfo = this.selectorMode
-      ? `Esc/q close • Enter select • s detail${cancelHint} • Wheel/↑↓ PgUp/PgDn Home/End${scrollRange}`
-      : `Esc/q close${cancelHint} • s selector • 1-5${debugHint} • Wheel/↑↓ PgUp/PgDn Home/End${scrollRange}`;
+    const scrollInfo = this.cancelConfirmTaskId !== null
+      ? "Confirm cancel selected: Enter/y confirm • n/Esc keep running"
+      : this.selectorMode
+        ? `Esc/q close • Enter select • s detail${cancelHint} • Wheel/↑↓ PgUp/PgDn Home/End${scrollRange}`
+        : `Esc/q close${cancelHint} • s selector • 1-5${debugHint} • Wheel/↑↓ PgUp/PgDn Home/End${scrollRange}`;
     const rows = [
       selectorFullBorderRow("╭", topMiddle, "╮", withShadow),
       selectorBoxRow(this.selectorMode ? overlayPadLine("Select subagent", contentWidth) : this.tabLine(contentWidth), contentWidth, withShadow),
+      ...confirmPanelLines.map((line) => selectorBoxRow(line, contentWidth, withShadow)),
       ...visibleLines.map((line) => selectorBoxRow(line, contentWidth, withShadow)),
       selectorBoxRow(scrollInfo, contentWidth, withShadow),
       selectorFullBorderRow("╰", "─".repeat(Math.max(0, boxWidth - 2)), "╯", withShadow),
@@ -1963,6 +2016,17 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   }
 
   handleInput(data: string): void {
+    if (this.cancelConfirmTaskId !== null) {
+      if (matchesInputKey(this.keybindings, data, ["tui.confirm", "tui.select.confirm"], [Key.enter], ["\r", "\n"], ["enter"]) || data === "y" || data === "Y") {
+        this.confirmCancelSelectedExactTask();
+        return;
+      }
+      if (isSubagentOverlayCloseKey(data, this.keybindings) || data === "n" || data === "N") {
+        this.clearCancelConfirmation("Cancellation confirmation dismissed; selected subagent is still running.");
+        return;
+      }
+      return;
+    }
     if (isSubagentOverlayCloseKey(data, this.keybindings)) {
       this.dispose();
       this.done?.(null);
@@ -2036,10 +2100,6 @@ async function openSubagentPresentationOverlay(ctx: PiContext, overlay: LarvaSub
         done(result);
       },
       onCancelSelected: async (taskId: string) => {
-        const confirmed = typeof ctx.ui?.confirm === "function"
-          ? await ctx.ui.confirm(`Cancel Larva subagent ${taskId}?`, { task_id: taskId }) === true
-          : false;
-        if (!confirmed) return wrapSubagentCancelResult(taskId, "", "running", null, false);
         const result = await cancelSubagentByTaskId(taskId, "user requested Subagent Console cancellation", "console", ctx, true);
         const resultText = result.content[0]?.text ?? "Larva subagent cancellation completed.";
         await notify(ctx, resultText, result.isError ? "error" : "info");
@@ -6129,20 +6189,33 @@ function wrapSubagentWaitResult(returnWhen: LarvaSubagentWaitReturnWhen, satisfi
   };
 }
 
-export async function larva_subagent_wait(input: unknown, ctx?: { env?: RuntimeEnv }): Promise<LarvaSubagentWaitResult> {
+type SubagentWaitContext = { env?: RuntimeEnv; abortSignal?: AbortSignal; signal?: AbortSignal };
+
+function abortedSubagentWaitResult(parsed: ParsedSubagentWaitInput): LarvaSubagentWaitResult {
+  const waitAborted = error("LARVA_CHILD_CANCELLED", "Larva subagent wait aborted by parent abort signal.");
+  const evaluated = evaluateSubagentWait(parsed.taskIds, parsed.returnWhen);
+  if (isLarvaError(evaluated)) return wrapSubagentWaitResult(parsed.returnWhen, false, false, [], [], parsed.taskIds, waitAborted);
+  return wrapSubagentWaitResult(parsed.returnWhen, false, false, evaluated.runs, evaluated.readyTaskIds, evaluated.pendingTaskIds, waitAborted);
+}
+
+export async function larva_subagent_wait(input: unknown, ctx?: SubagentWaitContext): Promise<LarvaSubagentWaitResult> {
   const parsed = parseSubagentWaitInput(input, currentEnv(ctx));
   if (isLarvaError(parsed)) return wrapSubagentWaitResult("all", false, false, [], [], [], parsed);
   const initial = evaluateSubagentWait(parsed.taskIds, parsed.returnWhen);
   if (isLarvaError(initial)) return wrapSubagentWaitResult(parsed.returnWhen, false, false, [], [], parsed.taskIds, initial);
   if (initial.satisfied || parsed.timeoutMs === 0) return wrapSubagentWaitResult(parsed.returnWhen, initial.satisfied, !initial.satisfied, initial.runs, initial.readyTaskIds, initial.pendingTaskIds);
+  const abortSignal = ctx?.abortSignal ?? ctx?.signal;
+  if (abortSignal?.aborted) return abortedSubagentWaitResult(parsed);
   const deadline = Date.now() + parsed.timeoutMs;
   return await new Promise<LarvaSubagentWaitResult>((resolveWait) => {
     let finished = false;
     let timer: NodeJS.Timeout | null = null;
+    let onAbort: (() => void) | null = null;
     const finish = (value: LarvaSubagentWaitResult): void => {
       if (finished) return;
       finished = true;
       if (timer !== null) clearTimeout(timer);
+      if (onAbort !== null) abortSignal?.removeEventListener("abort", onAbort);
       subagentEventWaiters.delete(check);
       resolveWait(value);
     };
@@ -6158,12 +6231,18 @@ export async function larva_subagent_wait(input: unknown, ctx?: { env?: RuntimeE
       }
       if (Date.now() >= deadline) finish(wrapSubagentWaitResult(parsed.returnWhen, false, true, evaluated.runs, evaluated.readyTaskIds, evaluated.pendingTaskIds));
     };
+    onAbort = () => finish(abortedSubagentWaitResult(parsed));
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+    if (abortSignal?.aborted) {
+      onAbort();
+      return;
+    }
     subagentEventWaiters.add(check);
     timer = setTimeout(check, Math.max(0, deadline - Date.now()));
   });
 }
 
-export async function larva_subagent_select(input: unknown, ctx?: { env?: RuntimeEnv }): Promise<LarvaSubagentWaitResult> {
+export async function larva_subagent_select(input: unknown, ctx?: SubagentWaitContext): Promise<LarvaSubagentWaitResult> {
   const parsed = parseSubagentWaitInput(input, currentEnv(ctx), "any");
   if (isLarvaError(parsed)) return wrapSubagentWaitResult("any", false, false, [], [], [], parsed);
   return await larva_subagent_wait({ task_ids: parsed.taskIds, return_when: "any", timeout_ms: parsed.timeoutMs }, ctx);
@@ -7555,7 +7634,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     inputSchema: waitSchema,
     parameters: waitSchema,
     handler: async (input: unknown) => larva_subagent_wait(input, { env }),
-    execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_wait(input, withRuntimeEnv(toolCtx ?? ctx, env)),
+    execute: async (_toolCallId, input, signal, _onUpdate, toolCtx) => {
+      const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
+      return larva_subagent_wait(input, { ...runtimeCtx, abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal });
+    },
   });
   const selectSchema = {
     type: "object",
@@ -7573,7 +7655,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     inputSchema: selectSchema,
     parameters: selectSchema,
     handler: async (input: unknown) => larva_subagent_select(input, { env }),
-    execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_select(input, withRuntimeEnv(toolCtx ?? ctx, env)),
+    execute: async (_toolCallId, input, signal, _onUpdate, toolCtx) => {
+      const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
+      return larva_subagent_select(input, { ...runtimeCtx, abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal });
+    },
   });
   const cancelSchema = {
     type: "object",

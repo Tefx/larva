@@ -372,6 +372,13 @@ Callback rule by cancellation source:
 - User command or TUI Console cancellation: the command/overlay result is for the
   human control surface; the eventual terminal event must deliver exactly one
   callback to the parent agent unless the parent session becomes stale.
+- TUI Console `c` cancellation confirmation is rendered inside the existing
+  overlay, not through a separate `ctx.ui.confirm` widget. The confirmation is a
+  warning panel fixed at the top of the overlay with `⚠ CANCEL SUBAGENT?`, the
+  consequence text, selected persona, selected exact `task_id`, and explicit
+  `[ Enter / y ] Cancel now` plus `[ Esc / n ] Keep running` affordances. While
+  this confirmation is active, the overlay is modal: pane switching, selector
+  switching, and scrolling keys are ignored until the user confirms or dismisses.
 - Parent lifecycle cleanup: do not deliver callbacks; stale suppression is
   adapter-local diagnostic state only.
 
@@ -1007,7 +1014,12 @@ Minimum controls:
 - `Enter`: select highlighted run.
 - arrows/PageUp/PageDown/Home/End: scroll or move selector.
 - `1`-`5` or left/right: switch panes.
-- `c`: cancel selected running task after confirmation.
+- `c`: open an in-overlay warning confirmation panel for the selected running
+  task. The panel stays fixed above the panes, shows selected persona and exact
+  `task_id`, and does not invoke a separate Pi confirm widget.
+- Confirmation panel keys: `Enter`/`y` cancels now; `Esc`/`n` keeps the child
+  running. Other navigation keys are ignored while this modal confirmation is
+  active.
 - `d`: toggle bounded debug ids in Metadata/Timeline.
 - mouse click: unsupported/no-op for this target.
 

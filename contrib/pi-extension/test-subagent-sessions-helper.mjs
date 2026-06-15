@@ -137,7 +137,7 @@ const expandedText = expandedOverlay.content[0].text;
 for (const token of ["view-only", "source: in-memory presentation log", "RUN alpha", "OK beta", "FAIL gamma", "CANC delta"]) {
   assert.ok(compactText.includes(token), `compact overlay missing ${token}`);
 }
-for (const token of ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: final child output", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child"]) {
+for (const token of ["task_id: /tmp/final.jsonl", "persona_id: gamma", "status: failed", "result: available — see [Output]", "error: LARVA_CHILD_PROTOCOL_FAILED: boom", "progress: waiting_for_child"]) {
   assert.ok(expandedText.includes(token), `expanded overlay missing ${token}`);
 }
 assert.equal(compactOverlay.view_only, true);

@@ -889,6 +889,79 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
     assert payload["cases"]["newSessionProtocolFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
 
 
+def test_larva_subagent_wait_and_select_respect_abort_signal(tmp_path: Path) -> None:
+    """Waiting tools must return promptly when Pi aborts the parent tool call."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const childBin = join(tmpRoot, "wait-abort-child.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, "wait-abort.jsonl");
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
+            else if (message.type === "switch_session") { send({ id: message.id, success: true, data: { cancelled: false } }); }
+            else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
+            else if (message.type === "abort") { send({ id: message.id, success: true, data: {} }); setTimeout(() => process.exit(0), 1); }
+          });
+        `, { mode: 0o755 });
+
+        const env = baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: childBin, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" });
+        const { tools, ctx } = await registeredTools(env);
+        await mod.commitPersona("ok", ctx, piBase);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const waitTool = tools.find((tool) => tool.name === "larva_subagent_wait");
+        const selectTool = tools.find((tool) => tool.name === "larva_subagent_select");
+        const receipt = await subagent.execute("wait-abort-child", { persona_id: "ok", task: "hang until parent aborts wait" }, undefined, undefined, ctx);
+        const running = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === receipt.task_id && entry.status === "running"), 1000);
+
+        const waitController = new AbortController();
+        const waitPromise = waitTool.execute("wait-abort", { task_ids: [receipt.task_id], timeout_ms: 1000 }, waitController.signal, undefined, ctx);
+        setTimeout(() => waitController.abort(), 20);
+        const waitResult = await waitPromise;
+
+        const selectController = new AbortController();
+        const selectPromise = selectTool.execute("select-abort", { task_ids: [receipt.task_id], timeout_ms: 1000 }, selectController.signal, undefined, ctx);
+        setTimeout(() => selectController.abort(), 20);
+        const selectResult = await selectPromise;
+
+        await mod.resetExtensionUI("wait-abort-test-cleanup");
+        console.log(JSON.stringify({
+          receipt: { status: receipt.status, task_id: receipt.task_id },
+          runningObserved: Boolean(running),
+          wait: { status: waitResult.details?.status ?? null, errorCode: waitResult.details?.error?.code ?? null, timedOut: waitResult.details?.timed_out ?? null, pending: waitResult.details?.pending_task_ids ?? null },
+          select: { status: selectResult.details?.status ?? null, errorCode: selectResult.details?.error?.code ?? null, timedOut: selectResult.details?.timed_out ?? null, pending: selectResult.details?.pending_task_ids ?? null },
+        }, null, 2));
+        """,
+        timeout=8.0,
+    )
+
+    assert payload["receipt"]["status"] == "accepted"
+    assert isinstance(payload["receipt"]["task_id"], str)
+    assert payload["runningObserved"] is True
+    assert payload["wait"] == {
+        "status": "failed",
+        "errorCode": "LARVA_CHILD_CANCELLED",
+        "timedOut": False,
+        "pending": [payload["receipt"]["task_id"]],
+    }
+    assert payload["select"] == {
+        "status": "failed",
+        "errorCode": "LARVA_CHILD_CANCELLED",
+        "timedOut": False,
+        "pending": [payload["receipt"]["task_id"]],
+    }
+
+
 def test_larva_subagent_exact_cancel_owns_aborted_agent_end_without_final_text_probe(tmp_path: Path) -> None:
     """Exact task_id cancellation wins when Pi emits agent_end with empty aborted content."""
 
@@ -1384,6 +1457,10 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
         const confirmCalls = [];
         const notifications = [];
         let opened = false;
+        let inlineConfirmFrame = "";
+        let afterTabAttemptFrame = "";
+        let afterSelectorAttemptFrame = "";
+        let dismissedConfirmFrame = "";
         const commandResult = await command.handler(selectedReceipt.task_id, {
           ...ctx,
           env: { ...env, LARVA_PI_INTERACTIVE_TUI: "1" },
@@ -1401,7 +1478,15 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
                 () => undefined,
               );
               component.handleInput?.("c");
-              await waitFor(() => confirmCalls.length === 1, 500);
+              inlineConfirmFrame = component.render(100).join("\\n");
+              component.handleInput?.("2");
+              afterTabAttemptFrame = component.render(100).join("\\n");
+              component.handleInput?.("s");
+              afterSelectorAttemptFrame = component.render(100).join("\\n");
+              component.handleInput?.("n");
+              dismissedConfirmFrame = component.render(100).join("\\n");
+              component.handleInput?.("c");
+              component.handleInput?.("\\r");
               await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === selectedReceipt.task_id && entry.status === "cancelled"), 1000);
               component.dispose?.();
               return null;
@@ -1420,6 +1505,19 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
           selectedBefore: selectedBefore ? { status: selectedBefore.status, task_id: selectedBefore.task_id } : null,
           siblingBefore: siblingBefore ? { status: siblingBefore.status, task_id: siblingBefore.task_id } : null,
           confirmCalls,
+          inlineConfirmVisible: inlineConfirmFrame.includes("⚠ CANCEL SUBAGENT?")
+            && inlineConfirmFrame.includes("This will abort the selected child Pi session.")
+            && inlineConfirmFrame.includes("persona: child")
+            && inlineConfirmFrame.includes("task_id:")
+            && inlineConfirmFrame.includes("[ Enter / y ] Cancel now")
+            && inlineConfirmFrame.includes("[ Esc / n ] Keep running"),
+          modalIgnoresTabs: afterTabAttemptFrame.includes("⚠ CANCEL SUBAGENT?")
+            && afterTabAttemptFrame.includes("● 1 Summary")
+            && !afterTabAttemptFrame.includes("● 2 Prompt"),
+          modalIgnoresSelector: afterSelectorAttemptFrame.includes("⚠ CANCEL SUBAGENT?")
+            && !afterSelectorAttemptFrame.includes("Select subagent — local start time"),
+          dismissKeepsRunning: !dismissedConfirmFrame.includes("⚠ CANCEL SUBAGENT?")
+            && dismissedConfirmFrame.includes("Cancellation confirmation dismissed; selected subagent is still running."),
           selectedAfter: selectedAfter ? { status: selectedAfter.status, errorCode: selectedAfter.error?.code ?? null, task_id: selectedAfter.task_id } : null,
           siblingAfter: siblingAfter ? { status: siblingAfter.status, errorCode: siblingAfter.error?.code ?? null, task_id: siblingAfter.task_id } : null,
           parentPreserved: parentBefore === parentAfter,
@@ -1437,8 +1535,11 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
     assert isinstance(payload["selectedBefore"]["task_id"], str)
     assert payload["siblingBefore"]["status"] in {"accepted", "running"}
     assert isinstance(payload["siblingBefore"]["task_id"], str)
-    assert len(payload["confirmCalls"]) == 1
-    assert payload["confirmCalls"][0]["options"] == {"task_id": payload["selectedBefore"]["task_id"]}
+    assert payload["confirmCalls"] == []
+    assert payload["inlineConfirmVisible"] is True
+    assert payload["modalIgnoresTabs"] is True
+    assert payload["modalIgnoresSelector"] is True
+    assert payload["dismissKeepsRunning"] is True
     assert payload["selectedAfter"] == {
         "status": "cancelled",
         "errorCode": "LARVA_CHILD_CANCELLED",
