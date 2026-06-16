@@ -4343,15 +4343,17 @@ export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ 
   return { content: switchToolText(text), details: { status: "success", personas, error: null }, isError: false };
 }
 
+const PERSONA_SWITCH_GROUNDING_GUIDANCE = "Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first.";
+
 function agentPersonaSwitchPromptGuidance(): string | null {
   if (agentPersonaSwitchMode === "auto") {
-    return "If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason and handoff. Do not call other tools in the same assistant message when borrowing persona. Do not switch for minor style mismatch. The default request-chain budget is 20 successful switches. Only set max_switches_per_chain, including 0 for unlimited, when the user explicitly requests a different switch budget. The borrow is temporary and the runtime restores at assistant turn end.";
+    return `${PERSONA_SWITCH_GROUNDING_GUIDANCE} If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason and handoff. Do not call other tools in the same assistant message when borrowing persona. Do not switch for minor style mismatch. The default request-chain budget is 20 successful switches. Only set max_switches_per_chain, including 0 for unlimited, when the user explicitly requests a different switch budget. The borrow is temporary and the runtime restores at assistant turn end.`;
   }
   if (agentPersonaSwitchMode === "confirm") {
-    return "You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.";
+    return `${PERSONA_SWITCH_GROUNDING_GUIDANCE} You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.`;
   }
   if (agentPersonaSwitchMode === "free") {
-    return "You may switch persona persistently with larva_persona_switch only when another registered Larva persona is clearly better suited. Free is the only mode for unconfirmed persistent switching.";
+    return `${PERSONA_SWITCH_GROUNDING_GUIDANCE} You may switch persona persistently with larva_persona_switch only when another registered Larva persona is clearly better suited. Free is the only mode for unconfirmed persistent switching.`;
   }
   return null;
 }
@@ -7466,8 +7468,8 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
   const switchSchema = {
     type: "object",
     properties: {
-      persona_id: { type: "string", description: "Target Larva persona id." },
-      reason: { type: "string", description: "Required concise reason for borrowing or switching persona." },
+      persona_id: { type: "string", description: "Target Larva persona id. Exact id resolution identifies the persona but is not semantic suitability evidence; inspect description/definition before switching." },
+      reason: { type: "string", description: "Required concise reason for borrowing or switching persona. Must be grounded in inspected persona description or resolved definition; exact persona id/name only proves target identity, not semantic suitability. Cite the inspected evidence in your own words and explain why it fits the current task better than the active persona." },
       handoff: { type: "string", description: "Optional bounded handoff for the next persona." },
       continue_task: { type: "boolean", description: "Queue a Larva-generated continuation after a successful switch." },
       max_switches_per_chain: { anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }], description: "Optional request-chain switch budget. Omit for default 20; 0 means unlimited." },
@@ -7478,7 +7480,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
   pi.registerTool?.({
     name: "larva_persona_switch",
     label: "Larva Persona Switch",
-    description: "Request an autonomous Larva persona borrow/switch. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -> auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
+    description: "Request an autonomous Larva persona borrow/switch. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -> auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
     inputSchema: switchSchema,
     parameters: switchSchema,
     handler: (input: PersonaSwitchToolInput) => larva_persona_switch(input, ctx, pi),
@@ -7495,7 +7497,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
   pi.registerTool?.({
     name: "larva_personas",
     label: "Larva Personas",
-    description: "Read-only bounded Larva persona discovery for choosing a better-suited persona. It does not include persona prompts.",
+    description: "Read-only bounded Larva persona discovery for choosing a better-suited persona by inspecting ids and descriptions before any borrow/switch. It does not include persona prompts.",
     inputSchema: personasSchema,
     parameters: personasSchema,
     handler: (input: unknown) => larva_personas(input, ctx),

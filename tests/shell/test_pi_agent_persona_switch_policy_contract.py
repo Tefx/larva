@@ -407,6 +407,27 @@ def test_free_mode_is_persistent_switch_without_automatic_restore() -> None:
     assert "free" in source and "only mode" in source.lower()
 
 
+def test_persona_switch_guidance_requires_inspected_description_not_name_guessing() -> None:
+    """Prompt/tool guidance must ground persona switching in inspected definitions."""
+
+    source = _source()
+    guidance_start = source.find("const PERSONA_SWITCH_GROUNDING_GUIDANCE")
+    guidance_end = source.find("export function replaceLarvaWatermark", guidance_start)
+    guidance_window = source[guidance_start:guidance_end]
+    tool_start = source.find("const switchSchema")
+    tool_end = source.find('name: "larva_personas"', tool_start)
+    tool_window = source[tool_start:tool_end]
+
+    assert "inspect candidate persona descriptions or resolved definitions" in guidance_window
+    assert "persona id/name alone is not suitability evidence" in guidance_window
+    assert "reason must cite the inspected description/definition" in guidance_window
+    assert "do not switch automatically" in guidance_window
+    assert "Do not call this tool until you have inspected" in tool_window
+    assert "do not infer suitability from persona id/name alone" in tool_window
+    assert "exact persona id/name only proves target identity, not semantic suitability" in tool_window
+    assert "use persona discovery/resolve first" in tool_window
+
+
 def test_manual_user_switch_during_active_lease_clears_lease_and_prevents_old_origin_restore() -> None:
     """Explicit user `/larva-persona` wins over lease origin and future restore."""
 
