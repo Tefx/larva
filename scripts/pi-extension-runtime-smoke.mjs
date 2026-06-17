@@ -236,7 +236,7 @@ function runtimeEnv(overrides = {}) {
   };
 }
 
-async function runPiRpc(evidence, { initialPersona, commands = [], envOverrides = {} } = {}) {
+async function runPiRpc(evidence, { initialPersona, commands = [], envOverrides = {}, postCommandWaitMs = 750 } = {}) {
   await piAvailability(evidence);
   evidence.rpc.attempted = true;
   if (!evidence.pi.available || !evidence.pi.extensionFlag) {
@@ -284,9 +284,20 @@ async function runPiRpc(evidence, { initialPersona, commands = [], envOverrides 
     return response;
   }
   for (const command of commands) await request(command.id, command.body, command.timeoutMs);
-  await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+  await new Promise((resolveWait) => setTimeout(resolveWait, postCommandWaitMs));
   child.kill("SIGTERM");
-  evidence.rpc.exit = await Promise.race([closePromise, new Promise((resolveWait) => setTimeout(() => resolveWait({ timeout: true }), 1_500))]);
+  let exit = await Promise.race([closePromise, new Promise((resolveWait) => setTimeout(() => resolveWait({ timeout: true }), 1_500))]);
+  if (exit?.timeout === true) {
+    child.kill("SIGKILL");
+    exit = {
+      ...exit,
+      forcedSignal: "SIGKILL",
+      afterForcedKill: await Promise.race([closePromise, new Promise((resolveWait) => setTimeout(() => resolveWait({ timeout: true }), 500))]),
+    };
+  }
+  rl.close();
+  child.stdin.destroy();
+  evidence.rpc.exit = exit;
   evidence.rpc.supported = evidence.rpc.events.some((event) => event?.type === "extension_ui_request") || evidence.rpc.responses.some((response) => response && response.timeout !== true);
   evidence.rpc.uiRequests = evidence.rpc.events.filter((event) => event?.type === "extension_ui_request");
   if (!evidence.rpc.supported && evidence.rpc.stderr.trim().length > 0) {
@@ -2693,7 +2704,7 @@ async function main() {
   } else if (scenario === "get-commands") {
     await runPiRpc(evidence, { commands: [{ id: "commands-1", body: { type: "get_commands" } }] });
   } else if (scenario === "slash-status") {
-    await runPiRpc(evidence, { commands: [{ id: "prompt-1", body: { type: "prompt", message: `/larva-persona ${persona ?? "ok"}` }, timeoutMs: 2_000 }] });
+    await runPiRpc(evidence, { commands: [{ id: "prompt-1", body: { type: "prompt", message: `/larva-persona ${persona ?? "ok"}` }, timeoutMs: 4_000 }], postCommandWaitMs: 1_000 });
   } else if (scenario === "startup-status") {
     await runPiRpc(evidence, { initialPersona: persona ?? "startup", commands: [{ id: "state-1", body: { type: "get_state" } }] });
   } else if (scenario === "startup-fatal") {

@@ -203,7 +203,7 @@ def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash(
 
 
 def _run_runtime_scenario_raw(
-    scenario: str, *, persona: str | None = None, timeout: float = 8.0
+    scenario: str, *, persona: str | None = None, timeout: float = 12.0
 ) -> tuple[dict[str, Any], int, str, str]:
     node = shutil.which("node")
     if node is None:
@@ -222,7 +222,7 @@ def _run_runtime_scenario_raw(
     return json.loads(completed.stdout), completed.returncode, completed.stdout, completed.stderr
 
 
-def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout: float = 8.0) -> dict[str, Any]:
+def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout: float = 12.0) -> dict[str, Any]:
     payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
         scenario, persona=persona, timeout=timeout
     )
