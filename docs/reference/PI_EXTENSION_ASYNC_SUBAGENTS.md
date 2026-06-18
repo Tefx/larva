@@ -34,6 +34,11 @@ The design relies on Pi source and docs observed in the installed Pi package:
   host Pi TUI custom overlays.
 - `@earendil-works/pi-agent-core/dist/agent-loop.js`: tool execution awaits
   `prepared.tool.execute(...)`; Pi does not support late ToolResult delivery.
+- `@earendil-works/pi-agent-core/dist/agent-loop.js` and
+  `dist/modes/rpc/rpc-mode.js`: Pi RPC emits `message_update` frames on
+  streaming deltas and each frame carries the current full partial assistant
+  `message`; retaining raw update frames can amplify memory quadratically as the
+  partial grows.
 - `dist/core/extensions/loader.js` and `dist/core/agent-session.js`: extension
   runtime contexts become stale after session replacement or reload; background
   callbacks must respect session lifecycle.
@@ -297,6 +302,44 @@ process-local orchestration authority. It also does not introduce a
 `larva_subagent_result` tool; separate result-retrieval tooling, if any, is a
 future decision.
 
+### Child RPC stream retention and memory safety
+
+The child Pi RPC stdout stream is an untrusted and potentially unbounded transport
+stream, not a cacheable transcript. The parent extension may parse RPC frames to
+advance lifecycle state and feed bounded presentation, but it must not retain raw
+frames whose payload can grow with the child transcript.
+
+Required retention contract:
+
+- `message_update` frames must be handled as streaming transport frames. Extract
+  only bounded presentation deltas and then drop the raw frame immediately.
+- The Pi RPC delta source is `frame.assistantMessageEvent.delta`; the full
+  assistant partial lives under `frame.message` and must not be retained for
+  lifecycle, orchestration, trace, or presentation-cache authority.
+- Terminal detection must use bounded state such as `agentEnded` and
+  `protocolFailed`, not a scan over an ever-growing raw `events[]` array.
+- The model-facing `larva_subagent_events` log is the bounded orchestration event
+  log only. It must not mirror child RPC frames and must not expose
+  `message_update.message`, `assistantMessageEvent.partial`, full tool args,
+  full tool output, or other large child payloads.
+- Debug metadata, if kept, is a bounded recent ring of metadata only, such as
+  frame `type`, `id`, byte count, timestamp, coarse content kinds, and
+  `omittedHeavyFields: true`.
+- `LARVA_PI_CHILD_RPC_TRACE_FILE` output is metadata-only. It must not write full
+  raw RPC frames. Malformed-frame diagnostics may include a bounded preview and
+  byte count, not the full line.
+- Child stderr retention is tail-bounded. Startup error parsing may use the
+  bounded tail, but stderr must not grow without limit for a long-lived child.
+- Before `JSON.parse`, a child RPC JSONL line-size guard must reject oversized
+  frames with `LARVA_CHILD_PROTOCOL_FAILED` instead of allowing parent Pi heap
+  exhaustion.
+
+This contract does not change public tool schemas, callback schemas, child
+session `.jsonl` persistence, PersonaSpec, or opifex shared contracts. It only
+changes the parent adapter's resource-retention policy. Long `wait`/`select`
+operations remain supported, but parent heap growth must be bounded with respect
+to the full child streaming transcript.
+
 ### Background activity indicator
 Interactive Pi sessions should expose a minimal read-only status indicator for
 human awareness of background subagent work. This is not a control surface and
@@ -483,9 +526,9 @@ Shared numeric bounds:
 - `timeout_ms`: default `10000`; allowed integer range `0..86400000` (24h);
   `0` returns an immediate snapshot and is preferred for checkpoint/status
   probes in large interactive parent Pi sessions. Subagents may run for minutes
-  or hours, and long waits remain supported, but long waits can increase parent
-  TUI/Node heap pressure in large transcripts; reserve them for fresh/small
-  sessions or unattended orchestration. `wait`/`select` must return current
+  or hours, and long waits remain supported. Long waits must rely on the bounded
+  child RPC retention contract above; they must not retain full child streaming
+  transcript frames in parent memory. `wait`/`select` must return current
   snapshots on timeout rather than forcing repeated status polling. Do not use
   shell sleep polling or ad-hoc status loops.
 - event retention: keep the latest `1000` orchestration events per parent
@@ -754,9 +797,9 @@ Input contract:
 - `timeout_ms: integer | omitted`; default `10000`; allowed range
   `0..86400000` (24h). `0` returns an immediate snapshot and is preferred for
   checkpoint/status probes in large interactive parent Pi sessions. Invalid
-  values return `LARVA_BAD_INPUT`. Long waits remain supported, but can increase
-  parent TUI/Node heap pressure in large transcripts; reserve them for
-  fresh/small sessions or unattended orchestration. Do not use shell sleep
+  values return `LARVA_BAD_INPUT`. Long waits remain supported and must remain
+  memory-bounded by the child RPC stream retention contract; they must not retain
+  full child streaming transcript frames in parent memory. Do not use shell sleep
   polling or replace them with repeated status polling.
 
 Success details schema:
@@ -970,9 +1013,9 @@ Input contract:
 - `timeout_ms: integer | omitted`; default `10000`; allowed range
   `0..86400000` (24h). `0` returns an immediate snapshot and is preferred for
   checkpoint/status probes in large interactive parent Pi sessions. Invalid
-  values return `LARVA_BAD_INPUT`. Long waits remain supported, but can increase
-  parent TUI/Node heap pressure in large transcripts; reserve them for
-  fresh/small sessions or unattended orchestration. Do not use shell sleep
+  values return `LARVA_BAD_INPUT`. Long waits remain supported and must remain
+  memory-bounded by the child RPC stream retention contract; they must not retain
+  full child streaming transcript frames in parent memory. Do not use shell sleep
   polling or replace them with repeated status polling.
 
 Success details schema is the same shape as `wait`, with `return_when: "any"`.

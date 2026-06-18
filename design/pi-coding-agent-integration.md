@@ -1107,14 +1107,18 @@ Live streaming target:
   to reconstruct streaming state.
 - Child RPC events are normalized into adapter-local presentation events before
   they reach the overlay. Raw RPC frames must not be rendered, persisted, exposed
-  as shared schema, or injected into model-visible context.
+  as shared schema, injected into model-visible context, or retained as lifecycle
+  authority.
 - `message_update` text deltas may update a process-local live assistant output
   preview and append or merge into a bounded assistant excerpt in the process-local
-  `Timeline`. If real Pi RPC omits assistant `message_update` frames, the adapter
-  may read only the exact active child session file to extract bounded assistant
-  text excerpts for the same process-local Timeline. `thinking_*` deltas must not
-  display thinking content; the overlay may show only a bounded neutral state such
-  as `thinking hidden` if useful.
+  `Timeline`. The Pi RPC delta source is `assistantMessageEvent.delta`; the
+  sibling `message` payload is the full growing assistant partial and must be
+  dropped after bounded normalization. If real Pi RPC omits assistant
+  `message_update` frames, the adapter may read only the exact active child
+  session file to extract bounded assistant text excerpts for the same
+  process-local Timeline. `thinking_*` deltas must not display thinking content;
+  the overlay may show only a bounded neutral state such as `thinking hidden` if
+  useful.
 - The final `Output` content remains the final `get_last_assistant_text` result
   after child completion. Live assistant text is a realtime preview only and is
   replaced or reconciled by the final result; preserving terminal
@@ -1329,14 +1333,27 @@ Startup sequence:
 
 Completion is defined by the first `agent_end` event after the accepted `prompt`
 command. Waiting for `agent_end` is intentionally unbounded by the adapter and
-continues until Pi completes or the parent aborts. A "missing `agent_end`" failure
-means the child process exits or closes stdout before emitting `agent_end`. A
-still-running child without `agent_end` is not classified as missing. JSON parse
-failure, unsupported response shape, command-response timeout, EOF before
-`agent_end`, failed `get_last_assistant_text` response, or missing/null/non-string
-`data.text` maps to `LARVA_CHILD_PROTOCOL_FAILED`. A failed process start or
-extension load maps to `LARVA_CHILD_START_FAILED` unless a whitelisted child fatal
-startup code is parsed as described above.
+continues until Pi completes or the parent aborts, but raw child RPC retention is
+not unbounded: `agent_end` detection uses bounded state flags, not a scan over
+stored raw frames. A "missing `agent_end`" failure means the child process exits
+or closes stdout before emitting `agent_end`. A still-running child without
+`agent_end` is not classified as missing. JSON parse failure, oversized JSONL
+frame, unsupported response shape, command-response timeout, EOF before
+`agent_end`, failed `get_last_assistant_text` response, or
+missing/null/non-string `data.text` maps to `LARVA_CHILD_PROTOCOL_FAILED`. A
+failed process start or extension load maps to `LARVA_CHILD_START_FAILED` unless
+a whitelisted child fatal startup code is parsed as described above.
+
+Runtime memory-safety contract: the child Pi RPC stdout stream is a transport
+stream, not a transcript cache. `message_update` frames carry a full growing
+partial assistant `message`; the parent adapter must extract only bounded
+presentation deltas from `assistantMessageEvent.delta` and then drop the raw
+frame. Any retained child-RPC debug data must be bounded metadata only, such as
+frame type, id, byte count, timestamp, coarse content kinds, and
+`omittedHeavyFields: true`. `LARVA_PI_CHILD_RPC_TRACE_FILE` must write the same
+metadata-only summary, not full frames. Child stderr is tail-bounded, and a
+JSONL line-size guard runs before `JSON.parse` so an oversized child frame fails
+protocol cleanly instead of exhausting parent heap.
 
 No Larva sidecar file is written. The resume contract is deliberately only:
 
