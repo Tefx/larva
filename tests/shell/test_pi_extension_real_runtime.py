@@ -1240,8 +1240,154 @@ def test_runtime_smoke_wait_select_pending_callback_handoff_expected_red_records
     assert contract["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
 
 
-def test_runtime_smoke_persona_invocation_bus_expected_red_records_behavioral_fingerprints() -> None:
-    """Expected-red: extension-facing PIINV event bus is not product-implemented yet."""
+def test_real_pi_persona_invocation_bus_bad_input_result_via_shared_events(tmp_path: Path) -> None:
+    """Regression: trusted Pi extensions request PIINV over documented pi.events bus."""
+
+    if shutil.which("pi") is None:
+        pytest.skip("pi is required for real persona invocation event-bus regression")
+
+    probe_path = tmp_path / "persona-invocation-probe.ts"
+    probe_path.write_text(
+        textwrap.dedent(
+            '''
+            export default function(pi: any) {
+              let currentCtx: any;
+              const results: any[] = [];
+
+              pi.events?.on?.("larva:persona-invocation:result", (result: any) => {
+                results.push(result);
+                currentCtx?.ui?.notify?.(`PIINV_RESULT ${JSON.stringify(result)}`, "info");
+              });
+
+              pi.on?.("session_start", async (_event: unknown, ctx: any) => {
+                currentCtx = ctx;
+                const surface = {
+                  piOn: typeof pi.on,
+                  piEmit: typeof pi.emit,
+                  piEventsOn: typeof pi.events?.on,
+                  piEventsEmit: typeof pi.events?.emit,
+                };
+                ctx.ui?.notify?.(`PIINV_SURFACE ${JSON.stringify(surface)}`, "info");
+                pi.events?.emit?.("larva:persona-invocation:request", {
+                  request_id: "11111111-1111-4111-8111-111111111111",
+                  persona_id: "",
+                  prompt: "probe",
+                  timeout_ms: 10,
+                });
+                setTimeout(() => {
+                  ctx.ui?.notify?.(`PIINV_RESULTS_COUNT ${results.length}`, "info");
+                }, 300);
+              });
+            }
+            '''
+        ),
+        encoding="utf-8",
+    )
+
+    runner = f"""
+        import {{ spawn }} from 'node:child_process';
+        import {{ StringDecoder }} from 'node:string_decoder';
+
+        const args = [
+          '--mode', 'rpc',
+          '--no-session',
+          '--no-extensions',
+          '--no-context-files',
+          '--no-skills',
+          '--no-prompt-templates',
+          '--no-themes',
+          '--offline',
+          '--approve',
+          '-e', {json.dumps(str(EXTENSION))},
+          '-e', {json.dumps(str(probe_path))},
+        ];
+        const child = spawn('pi', args, {{
+          cwd: {json.dumps(str(ROOT))},
+          env: {{ ...process.env, PI_OFFLINE: '1', LARVA_PI_AGENT_PERSONA_SWITCH: 'manual' }},
+          stdio: ['pipe', 'pipe', 'pipe'],
+        }});
+        const interesting = [];
+        const stderr = [];
+        let settled = false;
+        let timeoutHandle;
+
+        function finish(timedOut = false) {{
+          if (settled) return;
+          settled = true;
+          if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+          child.kill('SIGTERM');
+          const surface = interesting.find((event) => event.message?.startsWith('PIINV_SURFACE '));
+          const result = interesting.find((event) => event.message?.startsWith('PIINV_RESULT '));
+          const count = interesting.find((event) => event.message?.startsWith('PIINV_RESULTS_COUNT '));
+          console.log(JSON.stringify({{
+            command: ['pi', ...args],
+            timedOut,
+            surface: surface?.message ?? null,
+            result: result?.message ?? null,
+            count: count?.message ?? null,
+            interesting,
+            stderr: stderr.join(''),
+          }}));
+          process.exit(0);
+        }}
+
+        const decoder = new StringDecoder('utf8');
+        let buffer = '';
+        child.stdout.on('data', (chunk) => {{
+          buffer += typeof chunk === 'string' ? chunk : decoder.write(chunk);
+          while (true) {{
+            const index = buffer.indexOf('\\n');
+            if (index < 0) break;
+            let line = buffer.slice(0, index);
+            buffer = buffer.slice(index + 1);
+            if (line.endsWith('\\r')) line = line.slice(0, -1);
+            try {{
+              const event = JSON.parse(line);
+              if (event.type === 'extension_ui_request' && event.method === 'notify') {{
+                interesting.push(event);
+                if (event.message?.startsWith('PIINV_RESULTS_COUNT ')) finish(false);
+              }}
+            }} catch (error) {{
+              interesting.push({{ parseError: String(error), line }});
+            }}
+          }}
+        }});
+        child.stderr.on('data', (chunk) => stderr.push(String(chunk)));
+        child.on('exit', () => finish(false));
+        timeoutHandle = setTimeout(() => finish(true), 5000);
+    """
+    payload = _run_node_inline(tmp_path, textwrap.dedent(runner), timeout=8.0)
+    evidence = json.dumps(payload, indent=2, sort_keys=True)
+
+    assert payload["timedOut"] is False, evidence
+    assert payload["stderr"] == "", evidence
+    assert payload["surface"] is not None, evidence
+    assert payload["result"] is not None, evidence
+    assert payload["count"] == "PIINV_RESULTS_COUNT 1", evidence
+
+    surface = json.loads(payload["surface"].removeprefix("PIINV_SURFACE "))
+    assert surface == {
+        "piOn": "function",
+        "piEmit": "undefined",
+        "piEventsOn": "function",
+        "piEventsEmit": "function",
+    }, evidence
+
+    result = json.loads(payload["result"].removeprefix("PIINV_RESULT "))
+    assert result == {
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "status": "failed",
+        "persona_id": "",
+        "final_text": "",
+        "error": {
+            "code": "LARVA_PERSONA_INVOCATION_BAD_INPUT",
+            "message": "persona_id must be a non-empty string.",
+        },
+    }, evidence
+
+
+def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprints() -> None:
+    """Source-level contract anchors for extension-facing PIINV event bus stay present."""
     payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
         "persona-invocation-bus", timeout=8.0
     )

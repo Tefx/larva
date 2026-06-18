@@ -4615,6 +4615,8 @@ type PersonaInvocationCancelParseResult =
   | { ok: false; diagnostic: string };
 
 type PersonaInvocationEmitter = (eventName: string, payload: PersonaInvocationResult) => unknown;
+type PersonaInvocationListener = (payload: unknown, eventCtx?: PiContext) => unknown;
+type PersonaInvocationRegistrar = (eventName: string, handler: PersonaInvocationListener) => unknown;
 
 const PERSONA_INVOCATION_REQUEST_EVENT = "larva:persona-invocation:request";
 const PERSONA_INVOCATION_CANCEL_EVENT = "larva:persona-invocation:cancel";
@@ -4805,19 +4807,43 @@ function personaInvocationEmitterFrom(candidate: unknown): PersonaInvocationEmit
   return null;
 }
 
+function personaInvocationRegistrarFrom(candidate: unknown): PersonaInvocationRegistrar | null {
+  if (!isRecord(candidate)) return null;
+  const method = candidate.on;
+  if (typeof method !== "function") return null;
+  return (eventName, handler) => method.call(candidate, eventName, handler);
+}
+
+function personaInvocationEventBusCandidates(ctx: PiContext | undefined, pi: PiApi | undefined): unknown[] {
+  const candidates: unknown[] = [];
+  if (isRecord(pi)) candidates.push(pi.events, pi.eventBus);
+  if (isRecord(ctx)) candidates.push(ctx.events, ctx.eventBus);
+  candidates.push(pi, ctx);
+  return candidates;
+}
+
 function personaInvocationEmitters(ctx: PiContext | undefined, pi: PiApi | undefined): PersonaInvocationEmitter[] {
-  const candidates: unknown[] = [ctx, pi];
-  if (isRecord(ctx)) candidates.push(ctx.eventBus, ctx.events);
-  if (isRecord(pi)) candidates.push(pi.eventBus, pi.events);
   const emitters: PersonaInvocationEmitter[] = [];
   const seen = new Set<unknown>();
-  for (const candidate of candidates) {
+  for (const candidate of personaInvocationEventBusCandidates(ctx, pi)) {
     if (candidate === undefined || candidate === null || seen.has(candidate)) continue;
     seen.add(candidate);
     const emitter = personaInvocationEmitterFrom(candidate);
     if (emitter !== null) emitters.push(emitter);
   }
   return emitters;
+}
+
+function personaInvocationRegistrars(ctx: PiContext | undefined, pi: PiApi | undefined): PersonaInvocationRegistrar[] {
+  const registrars: PersonaInvocationRegistrar[] = [];
+  const seen = new Set<unknown>();
+  for (const candidate of personaInvocationEventBusCandidates(ctx, pi)) {
+    if (candidate === undefined || candidate === null || seen.has(candidate)) continue;
+    seen.add(candidate);
+    const registrar = personaInvocationRegistrarFrom(candidate);
+    if (registrar !== null) registrars.push(registrar);
+  }
+  return registrars;
 }
 
 async function emitPersonaInvocationResult(ctx: PiContext, pi: PiApi, result: PersonaInvocationResult): Promise<boolean> {
@@ -5048,14 +5074,18 @@ export function personaInvocationDiagnosticsForTests(): Array<{ request_id: stri
 
 function registerPersonaInvocationEventBus(ctx: PiContext, pi: PiApi): void {
   const env = currentEnv(ctx);
-  pi.on?.(PERSONA_INVOCATION_REQUEST_EVENT, (payload: unknown, eventCtx?: PiContext) => {
+  const requestHandler = (payload: unknown, eventCtx?: PiContext): Promise<void> => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     return handlePersonaInvocationRequest(payload, runtimeCtx, pi);
-  });
-  pi.on?.(PERSONA_INVOCATION_CANCEL_EVENT, (payload: unknown, eventCtx?: PiContext) => {
+  };
+  const cancelHandler = (payload: unknown, eventCtx?: PiContext): Promise<void> => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     return handlePersonaInvocationCancel(payload, runtimeCtx, pi);
-  });
+  };
+  for (const register of personaInvocationRegistrars(ctx, pi)) {
+    register(PERSONA_INVOCATION_REQUEST_EVENT, requestHandler);
+    register(PERSONA_INVOCATION_CANCEL_EVENT, cancelHandler);
+  }
   for (const lifecycleEvent of ["cancel", "agent_cancel", "interrupt"]) {
     pi.on?.(lifecycleEvent, async () => cleanupActivePersonaInvocationsForLifecycle(lifecycleEvent));
   }

@@ -2631,7 +2631,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
   };
 }
 
-async function personaInvocationBusExpectedRed(evidence) {
+async function personaInvocationBusContractAnchors(evidence) {
   const source = await readFile(extensionPath, "utf8");
   const requiredEventTokens = [
     "larva:persona-invocation:request",
@@ -2653,20 +2653,20 @@ async function personaInvocationBusExpectedRed(evidence) {
     const passed = eventTokensPresent && machineAnchorPresent;
     return {
       machine_anchor,
-      status: passed ? "PASS" : "EXPECTED_RED",
-      fingerprint: `PIINV_EXPECTED_RED::${machine_anchor}`,
+      status: passed ? "PASS" : "FAIL",
+      fingerprint: `PIINV_CONTRACT_ANCHOR::${machine_anchor}`,
       missing: {
         event_bus_tokens: requiredEventTokens.filter((token) => !source.includes(token)),
         machine_anchor_token: machineAnchorPresent ? [] : [machine_anchor],
       },
-      behavioral_obligation: "trusted same-runtime extension event bus request/cancel/result behavior is not implemented in contrib/pi-extension/larva.ts yet",
+      behavioral_obligation: "trusted same-runtime extension event bus request/cancel/result behavior is implemented over the documented Pi shared event bus",
     };
   });
   const fingerprints = checks.map((check) => check.fingerprint);
   evidence.runtime.personaInvocationBus = {
-    status: checks.every((check) => check.status === "PASS") ? "PASS" : "EXPECTED_RED",
-    expectedResult: "red until persona invocation event-bus behavior is implemented",
-    scenarioBasis: "source-level runtime smoke for extension-facing PIINV event bus; does not use Pi live runtime or model-facing larva_subagent tools",
+    status: checks.every((check) => check.status === "PASS") ? "PASS" : "FAIL",
+    expectedResult: "persona invocation event-bus contract anchors remain present",
+    scenarioBasis: "source-level contract-anchor smoke for extension-facing PIINV event bus; live RPC behavior is covered by pytest real Pi probe",
     eventBusTokens: requiredEventTokens,
     checks,
     fingerprints,
@@ -2694,7 +2694,7 @@ async function main() {
   if (scenario === "persona-invocation-bus") {
     evidence.package.piTuiDependency = {
       hardGateStatus: "SKIPPED",
-      reason: "persona-invocation-bus smoke is a source-level expected-red contract probe and must not fail on Pi TUI dependency hydration",
+      reason: "persona-invocation-bus smoke is a source-level contract-anchor probe and must not fail on Pi TUI dependency hydration",
     };
   } else {
     await collectPiTuiDependencyEvidence(evidence);
@@ -2942,7 +2942,7 @@ async function main() {
   } else if (scenario === "wait-select-pending-callback-handoff") {
     await waitSelectPendingCallbackHandoffExpectedRed(evidence);
   } else if (scenario === "persona-invocation-bus") {
-    await personaInvocationBusExpectedRed(evidence);
+    await personaInvocationBusContractAnchors(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
