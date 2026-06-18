@@ -1020,6 +1020,8 @@ def test_live_child_rpc_terminal_cancel_and_orphan_cleanup_proof_passes() -> Non
         "raw_stdout": raw_stdout,
         "raw_stderr": raw_stderr,
         "status": proof["status"],
+        "traceMetadataOnly": proof.get("traceMetadataOnly"),
+        "rawFrameEvents": proof.get("rawFrameEvents"),
         "B1_startup": proof["B1_startup"],
         "B2_resume": proof["B2_resume"],
         "B3_abort": proof["B3_abort"],
@@ -1029,21 +1031,26 @@ def test_live_child_rpc_terminal_cancel_and_orphan_cleanup_proof_passes() -> Non
 
     assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
     assert proof["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert proof["traceMetadataOnly"] is True
+    assert proof["rawFrameEvents"] == 0
     assert proof["B1_startup"]["status"] == "PASS"
     assert proof["B1_startup"]["acceptedStatus"] == "accepted"
     assert proof["B1_startup"]["terminalStatus"] == "success"
     assert proof["B1_startup"]["agentEndObserved"] is True
     assert proof["B1_startup"]["getLastAssistantTextObserved"] is True
+    assert proof["B1_startup"]["metadataOnlyTraceObserved"] is True
     assert proof["B2_resume"]["status"] == "PASS"
     assert proof["B2_resume"]["acceptedStatus"] == "accepted"
     assert proof["B2_resume"]["terminalStatus"] == "success"
     assert proof["B2_resume"]["switchSessionObserved"] is True
+    assert proof["B2_resume"]["metadataOnlyTraceObserved"] is True
     assert proof["B3_abort"]["status"] == "PASS"
     assert proof["B3_abort"]["acceptedStatus"] == "accepted"
     assert proof["B3_abort"]["cancelStatus"] in {"cancelling", "cancelled"}
     assert proof["B3_abort"]["terminalStatus"] == "cancelled"
     assert proof["B3_abort"]["abortEvents"]
     assert proof["B3_abort"]["cleanupObserved"] is True
+    assert proof["B3_abort"]["metadataOnlyTraceObserved"] is True
     assert proof["B4_orphans"]["status"] == "PASS"
     assert proof["B4_orphans"]["allObservedPids"]
     assert all(alive is False for alive in proof["B4_orphans"]["postCleanupPidAlive"].values())

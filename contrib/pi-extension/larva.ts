@@ -630,6 +630,9 @@ const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
 const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
+const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
+const CHILD_RPC_TRACE_PREVIEW_CODE_POINTS = 200;
+const CHILD_STDERR_TAIL_CODE_POINTS = 16_384;
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
@@ -1341,12 +1344,22 @@ function boundedPresentationPreview(value: string, limit: number): string {
   return `${codePoints.slice(0, Math.max(0, limit - markerWidth)).join("")}${marker}`;
 }
 
+function boundedRendererSafeText(value: string, limit: number): string {
+  const safe = rendererSafeMarkdownSource(value);
+  const codePoints = Array.from(safe);
+  if (codePoints.length <= limit) return safe;
+  const marker = SUBAGENT_TRUNCATION_MARKER;
+  const markerWidth = Array.from(marker).length;
+  if (limit <= markerWidth) return marker.slice(0, limit);
+  return `${codePoints.slice(0, Math.max(0, limit - markerWidth)).join("")}${marker}`;
+}
+
 function boundedAssistantPreview(value: string): string {
-  return boundedPresentationPreview(value, SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT);
+  return boundedRendererSafeText(value, SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT);
 }
 
 function boundedTimelineAssistantEvent(value: string): string {
-  return boundedPresentationPreview(value, SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT);
+  return boundedRendererSafeText(value, SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT);
 }
 
 function boundedToolArgsPreview(value: string): string {
@@ -1515,9 +1528,12 @@ function subagentToolArgsPreviewFromFrame(frame: Record<string, unknown>): strin
 function normalizeSubagentChildStreamEventForPresentation(frame: unknown): NormalizedSubagentStreamEvent | null {
   if (!isRecord(frame) || typeof frame.type !== "string") return null;
   if (frame.type === "message_update") {
+    const assistantMessageEvent = isRecord(frame.assistantMessageEvent) ? frame.assistantMessageEvent : null;
     const channel = typeof frame.channel === "string" ? frame.channel : typeof frame.kind === "string" ? frame.kind : "assistant";
-    if (channel.startsWith("thinking")) return { kind: "thinking_hidden" };
-    const text = typeof frame.text === "string" ? frame.text : typeof frame.delta === "string" ? frame.delta : "";
+    const assistantEventKind = typeof assistantMessageEvent?.type === "string" ? assistantMessageEvent.type : typeof assistantMessageEvent?.kind === "string" ? assistantMessageEvent.kind : "";
+    const assistantEventChannel = typeof assistantMessageEvent?.channel === "string" ? assistantMessageEvent.channel : "";
+    if (channel.startsWith("thinking") || assistantEventKind.startsWith("thinking") || assistantEventChannel.startsWith("thinking")) return { kind: "thinking_hidden" };
+    const text = typeof assistantMessageEvent?.delta === "string" ? assistantMessageEvent.delta : typeof frame.text === "string" ? frame.text : "";
     return text.length > 0 ? { kind: "assistant_delta", text: boundedAssistantPreview(text) } : null;
   }
   if (frame.type === "tool_execution_start" || frame.type === "tool_execution_update" || frame.type === "tool_execution_end") {
@@ -6925,14 +6941,63 @@ function parseStartupError(stderr: string): LarvaError {
   return error("LARVA_CHILD_START_FAILED", "Child Pi process exited before RPC readiness.");
 }
 
+function boundedTracePreview(value: string): string {
+  const slice = value.slice(0, CHILD_RPC_TRACE_PREVIEW_CODE_POINTS * 4);
+  const safe = slice.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(CONTROL_RE, " ").replace(/\s+/g, " ").trim();
+  const codePoints = Array.from(safe);
+  const truncated = value.length > slice.length || codePoints.length > CHILD_RPC_TRACE_PREVIEW_CODE_POINTS;
+  const body = codePoints.slice(0, CHILD_RPC_TRACE_PREVIEW_CODE_POINTS).join("");
+  if (!truncated) return body;
+  const marker = SUBAGENT_TRUNCATION_MARKER;
+  const markerWidth = Array.from(marker).length;
+  return `${Array.from(body).slice(0, Math.max(0, CHILD_RPC_TRACE_PREVIEW_CODE_POINTS - markerWidth)).join("")}${marker}`;
+}
+
+function appendBoundedTail(current: string, chunk: string): string {
+  const joined = `${current}${chunk}`;
+  const codePoints = Array.from(joined);
+  if (codePoints.length <= CHILD_STDERR_TAIL_CODE_POINTS) return joined;
+  return codePoints.slice(-CHILD_STDERR_TAIL_CODE_POINTS).join("");
+}
+
+function childRpcFrameTraceFields(frame: unknown, bytes: number): ChildRpcTraceFields {
+  if (!isRecord(frame)) return { bytes, frame_shape: Array.isArray(frame) ? "array" : typeof frame, omittedHeavyFields: true };
+  const assistantMessageEvent = isRecord(frame.assistantMessageEvent) ? frame.assistantMessageEvent : null;
+  const heavyFields = ["message", "text", "delta", "partial", "content", "contents", "args", "arguments", "input", "output", "error", "data", "sessionPath"];
+  const omittedHeavyFields = heavyFields.filter((field) => field in frame);
+  const assistantHeavyFields = assistantMessageEvent === null ? [] : heavyFields.filter((field) => field in assistantMessageEvent).map((field) => `assistantMessageEvent.${field}`);
+  const fields: ChildRpcTraceFields = {
+    bytes,
+    frame_type: typeof frame.type === "string" ? frame.type : null,
+    frame_id: typeof frame.id === "string" || typeof frame.id === "number" ? String(frame.id) : null,
+    channel: typeof frame.channel === "string" ? frame.channel : null,
+    omittedHeavyFields: omittedHeavyFields.length > 0 || assistantHeavyFields.length > 0,
+    omitted_fields: [...omittedHeavyFields, ...assistantHeavyFields],
+  };
+  if (assistantMessageEvent !== null) {
+    fields.assistant_event_type = typeof assistantMessageEvent.type === "string" ? assistantMessageEvent.type : null;
+    fields.assistant_event_kind = typeof assistantMessageEvent.kind === "string" ? assistantMessageEvent.kind : null;
+    fields.assistant_delta_bytes = typeof assistantMessageEvent.delta === "string" ? Buffer.byteLength(assistantMessageEvent.delta, "utf8") : null;
+    fields.assistant_partial_bytes = typeof assistantMessageEvent.partial === "string" ? Buffer.byteLength(assistantMessageEvent.partial, "utf8") : null;
+  }
+  if (typeof frame.message === "string") fields.message_bytes = Buffer.byteLength(frame.message, "utf8");
+  return fields;
+}
+
+function protocolFailure(message: string): LarvaError {
+  return error("LARVA_CHILD_PROTOCOL_FAILED", message);
+}
+
 class RpcClient {
   private readonly pending = new Map<string, (value: unknown | LarvaError) => void>();
-  private readonly events: unknown[] = [];
   private readonly child: ChildProcessWithoutNullStreams;
   private stderr = "";
   private rpcReady = false;
   private closed = false;
   private stdoutClosed = false;
+  private agentEnded = false;
+  private protocolFailed: LarvaError | null = null;
+  private startupErrorSeen: LarvaError | null = null;
   private childError: unknown = null;
   private readonly traceEnv: RuntimeEnv;
   private readonly onPresentationEvent?: (eventValue: NormalizedSubagentStreamEvent) => void;
@@ -6943,18 +7008,20 @@ class RpcClient {
     this.onPresentationEvent = onPresentationEvent;
     child.stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString("utf8");
-      this.stderr += text;
-      void traceChildRpc(this.traceEnv, "child_stderr", { pid: this.child.pid ?? null, text });
+      this.stderr = appendBoundedTail(this.stderr, text);
+      const startupError = parseStartupError(this.stderr);
+      if (startupError.code !== "LARVA_CHILD_START_FAILED") this.startupErrorSeen = startupError;
+      void traceChildRpc(this.traceEnv, "child_stderr", { pid: this.child.pid ?? null, bytes: chunk.byteLength, text_preview: boundedTracePreview(text), stderr_tail_bytes: Buffer.byteLength(this.stderr, "utf8") });
     });
     child.once("error", (caught: unknown) => {
       this.childError = caught;
-      void traceChildRpc(this.traceEnv, "child_error", { pid: this.child.pid ?? null, message: caught instanceof Error ? caught.message : String(caught) });
+      void traceChildRpc(this.traceEnv, "child_error", { pid: this.child.pid ?? null, message_preview: boundedTracePreview(caught instanceof Error ? caught.message : String(caught)) });
       this.failPending(this.closedError());
     });
     child.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
       this.closed = true;
       void traceChildRpc(this.traceEnv, "child_exit", { pid: this.child.pid ?? null, code, signal });
-      this.failPending(this.closedError());
+      setImmediate(() => this.failPending(this.closedError()));
     });
     child.stdout.once("close", () => {
       this.stdoutClosed = true;
@@ -6965,16 +7032,26 @@ class RpcClient {
     rl.on("line", (line) => this.consume(line));
   }
 
+  private failProtocol(larvaError: LarvaError): void {
+    this.protocolFailed = larvaError;
+    this.failPending(larvaError);
+  }
+
   private consume(line: string): void {
-    let message: unknown;
-    try { message = JSON.parse(line); } catch {
-      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, line });
-      const protocolError = error("LARVA_CHILD_PROTOCOL_FAILED", "Child emitted malformed JSONL.");
-      this.events.push({ type: "protocol_error" });
-      this.failPending(protocolError);
+    const bytes = Buffer.byteLength(line, "utf8");
+    if (bytes > CHILD_RPC_JSONL_MAX_BYTES) {
+      const protocolError = protocolFailure(`Child emitted oversized JSONL frame over ${CHILD_RPC_JSONL_MAX_BYTES} bytes.`);
+      void traceChildRpc(this.traceEnv, "rpc_rx_oversized", { pid: this.child.pid ?? null, bytes, max_bytes: CHILD_RPC_JSONL_MAX_BYTES, line_preview: boundedTracePreview(line) });
+      this.failProtocol(protocolError);
       return;
     }
-    void traceChildRpc(this.traceEnv, "rpc_rx", { pid: this.child.pid ?? null, frame: message });
+    let message: unknown;
+    try { message = JSON.parse(line); } catch {
+      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, bytes, line_preview: boundedTracePreview(line) });
+      this.failProtocol(protocolFailure("Child emitted malformed JSONL."));
+      return;
+    }
+    void traceChildRpc(this.traceEnv, "rpc_rx", { pid: this.child.pid ?? null, ...childRpcFrameTraceFields(message, bytes) });
     const normalizedPresentationEvent = normalizeSubagentChildStreamEventForPresentation(message);
     if (normalizedPresentationEvent !== null) this.onPresentationEvent?.(normalizedPresentationEvent);
     const id = typeof message === "object" && message !== null && "id" in message ? String((message as { id: unknown }).id) : "";
@@ -6984,7 +7061,7 @@ class RpcClient {
       waiter(message);
       return;
     }
-    this.events.push(message);
+    if (isRecord(message) && message.type === "agent_end") this.agentEnded = true;
   }
 
   private failPending(larvaError: LarvaError): void {
@@ -6994,13 +7071,15 @@ class RpcClient {
   }
 
   private closedError(): LarvaError {
+    if (this.protocolFailed !== null) return this.protocolFailed;
     if (this.childError !== null && !this.rpcReady) return error("LARVA_CHILD_START_FAILED", "Child Pi process could not be started.");
     return this.rpcReady
       ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before RPC response; post-readiness stderr is diagnostic only.")
-      : parseStartupError(this.stderr);
+      : this.startupErrorSeen ?? parseStartupError(this.stderr);
   }
 
   private stdoutClosedError(): LarvaError {
+    if (this.protocolFailed !== null) return this.protocolFailed;
     return this.rpcReady
       ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child stdout closed before RPC response.")
       : error("LARVA_CHILD_START_FAILED", "Child stdout closed before RPC readiness.");
@@ -7009,7 +7088,7 @@ class RpcClient {
   async command(id: string, body: Record<string, unknown>, timeoutMs = 10_000): Promise<unknown | LarvaError> {
     const frame = { id, ...body };
     const message = JSON.stringify(frame);
-    void traceChildRpc(this.traceEnv, "rpc_tx", { pid: this.child.pid ?? null, frame });
+    void traceChildRpc(this.traceEnv, "rpc_tx", { pid: this.child.pid ?? null, ...childRpcFrameTraceFields(frame, Buffer.byteLength(message, "utf8")) });
     return await new Promise((resolveCommand) => {
       let settled = false;
       const settle = (value: unknown | LarvaError): void => {
@@ -7023,7 +7102,7 @@ class RpcClient {
         resolveCommand(value);
       };
       const onClose = (): void => {
-        settle(this.closedError());
+        setImmediate(() => settle(this.closedError()));
       };
       const onError = (): void => {
         settle(this.closedError());
@@ -7061,11 +7140,8 @@ class RpcClient {
 
   async waitForAgentEnd(): Promise<LarvaError | null> {
     while (true) {
-      const found = this.events.find((eventValue) => typeof eventValue === "object" && eventValue !== null && (eventValue as { type?: unknown }).type === "agent_end");
-      if (found) return null;
-      if (this.events.some((eventValue) => typeof eventValue === "object" && eventValue !== null && (eventValue as { type?: unknown }).type === "protocol_error")) {
-        return error("LARVA_CHILD_PROTOCOL_FAILED", "Child emitted malformed JSONL.");
-      }
+      if (this.agentEnded) return null;
+      if (this.protocolFailed !== null) return this.protocolFailed;
       if (this.stdoutClosed && !this.closed) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child stdout closed before agent_end.");
       if (this.child.exitCode !== null || this.child.signalCode !== null) {
         return this.rpcReady
@@ -7076,10 +7152,10 @@ class RpcClient {
     }
   }
 
-  startupError(): LarvaError { return parseStartupError(this.stderr); }
+  startupError(): LarvaError { return this.protocolFailed ?? this.startupErrorSeen ?? parseStartupError(this.stderr); }
 
   hasAgentEnd(): boolean {
-    return this.events.some((eventValue) => typeof eventValue === "object" && eventValue !== null && (eventValue as { type?: unknown }).type === "agent_end");
+    return this.agentEnded;
   }
 
   async abort(): Promise<"success" | "cancelled" | "unknowable"> {
@@ -7089,7 +7165,16 @@ class RpcClient {
     const remainingMs = (): number => Math.max(0, deadlineAtMs - Date.now());
     void traceChildRpc(this.traceEnv, "abort_start", { pid: this.child.pid ?? null, grace_ms: SUBAGENT_ABORT_KILL_GRACE_MS, started_at_ms: startedAtMs, deadline_at_ms: deadlineAtMs });
     const aborted = await this.command("abort-1", { type: "abort" }, remainingMs());
-    void traceChildRpc(this.traceEnv, "abort_rpc_result", { pid: this.child.pid ?? null, result: aborted, elapsed_ms: elapsedMs(), remaining_ms: remainingMs(), deadline_at_ms: deadlineAtMs });
+    void traceChildRpc(this.traceEnv, "abort_rpc_result", {
+      pid: this.child.pid ?? null,
+      result_kind: isLarvaError(aborted) ? "larva_error" : isRecord(aborted) ? "rpc_response" : typeof aborted,
+      result_success: isSuccessResponse(aborted),
+      result_error_code: isLarvaError(aborted) ? aborted.code : null,
+      result_frame_id: isRecord(aborted) && (typeof aborted.id === "string" || typeof aborted.id === "number") ? String(aborted.id) : null,
+      elapsed_ms: elapsedMs(),
+      remaining_ms: remainingMs(),
+      deadline_at_ms: deadlineAtMs,
+    });
     await waitForChildClose(this.child, remainingMs());
     if (!childStillRunning(this.child)) return "cancelled";
     try {

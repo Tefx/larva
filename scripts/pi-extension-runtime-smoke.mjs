@@ -689,21 +689,28 @@ async function psScanForPids(pids) {
 }
 
 function summarizeFrames(events) {
-  const tx = events.filter((event) => event?.event === "rpc_tx").map((event) => event.frame ?? null);
-  const rx = events.filter((event) => event?.event === "rpc_rx").map((event) => event.frame ?? null);
+  const rpcEvents = events.filter((event) => event?.event === "rpc_tx" || event?.event === "rpc_rx");
+  const txEvents = events.filter((event) => event?.event === "rpc_tx");
+  const rxEvents = events.filter((event) => event?.event === "rpc_rx");
+  const frameType = (event) => event?.frame?.type ?? event?.frame_type ?? null;
+  const frameId = (event) => event?.frame?.id ?? event?.frame_id ?? null;
+  const metadataOnlyTrace = rpcEvents.every((event) => event !== null && typeof event === "object" && !("frame" in event));
   return {
     eventNames: events.map((event) => event.event),
-    txTypes: tx.map((frame) => frame?.type ?? null),
-    txPrompts: tx.filter((frame) => frame?.type === "prompt").map((frame) => frame.message),
-    switchSessionPaths: tx.filter((frame) => frame?.type === "switch_session").map((frame) => frame.sessionPath),
-    rxTypes: rx.map((frame) => frame?.type ?? frame?.command ?? null),
-    agentEndCount: rx.filter((frame) => frame?.type === "agent_end").length,
-    sessionFiles: rx
-      .filter((frame) => frame?.id === "state-1" && typeof frame?.data?.sessionFile === "string")
-      .map((frame) => frame.data.sessionFile),
-    assistantTexts: rx
-      .filter((frame) => frame?.id === "last-1" && typeof frame?.data?.text === "string")
-      .map((frame) => frame.data.text),
+    traceMetadataOnly: metadataOnlyTrace,
+    rawFrameEvents: rpcEvents.filter((event) => event !== null && typeof event === "object" && "frame" in event).length,
+    txTypes: txEvents.map(frameType),
+    txPrompts: txEvents.filter((event) => frameType(event) === "prompt").map((event) => event.frame?.message ?? "<metadata-only>"),
+    switchSessionPaths: txEvents.filter((event) => frameType(event) === "switch_session").map((event) => event.frame?.sessionPath ?? "<metadata-only>"),
+    rxTypes: rxEvents.map(frameType),
+    rxFrameIds: rxEvents.map(frameId).filter(Boolean),
+    agentEndCount: rxEvents.filter((event) => frameType(event) === "agent_end").length,
+    sessionFiles: rxEvents
+      .filter((event) => frameId(event) === "state-1" && typeof event?.frame?.data?.sessionFile === "string")
+      .map((event) => event.frame.data.sessionFile),
+    assistantTexts: rxEvents
+      .filter((event) => frameId(event) === "last-1" && typeof event?.frame?.data?.text === "string")
+      .map((event) => event.frame.data.text),
     childExitCount: events.filter((event) => event?.event === "child_exit").length,
     cleanupEndCount: events.filter((event) => event?.event === "cleanup_end").length,
     abortEvents: events.filter((event) => typeof event?.event === "string" && event.event.startsWith("abort_")).map((event) => event.event),
@@ -926,12 +933,12 @@ async function controlledLiveChildRpcProof(evidence, args) {
   const postCleanupPidAlive = Object.fromEntries(allPids.map((pid) => [String(pid), processAlive(pid)]));
   const postCleanupPs = await psScanForPids(allPids);
   const b1TaskId = resultTaskId(first.acceptedResult);
-  const b1StartupSessionFileObserved = first.trace.sessionFiles.includes(b1TaskId);
-  const b1PromptObserved = first.trace.txPrompts.includes(first.input.task);
+  const b1StartupSessionFileObserved = typeof b1TaskId === "string" && first.trace.rxFrameIds.includes("state-1");
+  const b1PromptObserved = first.trace.txTypes.includes("prompt");
   const b1AgentEndObserved = first.trace.agentEndCount >= 1;
-  const b1GetLastAssistantTextObserved = first.trace.txTypes.includes("get_last_assistant_text") && first.trace.assistantTexts.length >= 1;
+  const b1GetLastAssistantTextObserved = first.trace.txTypes.includes("get_last_assistant_text") && first.trace.rxFrameIds.includes("last-1");
   const b1 = {
-    status: first.acceptedStatus === "accepted" && first.result?.status === "success" && b1StartupSessionFileObserved && b1PromptObserved && b1AgentEndObserved && b1GetLastAssistantTextObserved && first.orphanFree ? "PASS" : "FAIL",
+    status: first.acceptedStatus === "accepted" && first.result?.status === "success" && b1StartupSessionFileObserved && b1PromptObserved && b1AgentEndObserved && b1GetLastAssistantTextObserved && first.trace.traceMetadataOnly && first.orphanFree ? "PASS" : "FAIL",
     acceptedStatus: first.acceptedStatus,
     terminalStatus: first.result?.status ?? null,
     task_id: b1TaskId,
@@ -939,27 +946,33 @@ async function controlledLiveChildRpcProof(evidence, args) {
     promptObserved: b1PromptObserved,
     agentEndObserved: b1AgentEndObserved,
     getLastAssistantTextObserved: b1GetLastAssistantTextObserved,
+    metadataOnlyTraceObserved: first.trace.traceMetadataOnly,
     orphanFree: first.orphanFree,
   };
   const firstTaskId = resultTaskId(first.acceptedResult);
+  const b2SwitchSessionObserved = resume?.trace.txTypes.includes("switch_session") ?? false;
+  const b2PromptObserved = resume?.trace.txTypes.includes("prompt") ?? false;
+  const b2ResumedOutputObserved = resume?.trace.txTypes.includes("get_last_assistant_text") && resume?.trace.rxFrameIds.includes("last-1");
   const b2 = resume === null ? { status: "BLOCKED", blocker: "Fresh run did not produce reusable terminal task_id." } : {
-    status: resume.acceptedStatus === "accepted" && resume.result?.status === "success" && resume.result?.task_id === firstTaskId && resume.trace.switchSessionPaths.includes(firstTaskId) && resume.trace.txPrompts.includes(resume.input.task) && resume.orphanFree ? "PASS" : "FAIL",
+    status: resume.acceptedStatus === "accepted" && resume.result?.status === "success" && resume.result?.task_id === firstTaskId && b2SwitchSessionObserved && b2PromptObserved && b2ResumedOutputObserved && resume.trace.traceMetadataOnly && resume.orphanFree ? "PASS" : "FAIL",
     acceptedStatus: resume.acceptedStatus,
     terminalStatus: resume.result?.status ?? null,
     reusedTaskId: resume.result?.task_id ?? null,
-    switchSessionObserved: resume.trace.switchSessionPaths.includes(firstTaskId),
-    promptObserved: resume.trace.txPrompts.includes(resume.input.task),
-    resumedOutputObserved: resume.trace.txTypes.includes("get_last_assistant_text") && resume.trace.assistantTexts.length >= 1,
+    switchSessionObserved: b2SwitchSessionObserved,
+    promptObserved: b2PromptObserved,
+    resumedOutputObserved: b2ResumedOutputObserved,
+    metadataOnlyTraceObserved: resume.trace.traceMetadataOnly,
     orphanFree: resume.orphanFree,
   };
   const b3 = {
-    status: abort.acceptedStatus === "accepted" && ["cancelling", "cancelled"].includes(abort.cancelStatus) && abort.result?.status === "cancelled" && abortTrace.abortEvents.length > 0 && abort.orphanFree ? "PASS" : "FAIL",
+    status: abort.acceptedStatus === "accepted" && ["cancelling", "cancelled"].includes(abort.cancelStatus) && abort.result?.status === "cancelled" && abortTrace.abortEvents.length > 0 && abortTrace.traceMetadataOnly && abort.orphanFree ? "PASS" : "FAIL",
     acceptedStatus: abort.acceptedStatus,
     cancelStatus: abort.cancelStatus,
     terminalStatus: abort.result?.status ?? null,
     task_id: abortTaskId,
     abortEvents: abortTrace.abortEvents,
     cleanupObserved: abortTrace.cleanupEndCount >= 1,
+    metadataOnlyTraceObserved: abortTrace.traceMetadataOnly,
     orphanFree: abort.orphanFree,
     hardBlock: abortTrace.abortEvents.length === 0 ? "Pi abort propagation was not observed in child trace; inspect trace/runtime for missing abort signal surface." : null,
   };
@@ -972,12 +985,15 @@ async function controlledLiveChildRpcProof(evidence, args) {
     cleanupResult,
     lifecycleEvents: summarizeFrames(allEvents).eventNames.filter((name) => ["child_spawn", "child_exit", "cleanup_start", "cleanup_sigterm", "cleanup_sigkill", "cleanup_end", "abort_start", "abort_rpc_result", "abort_kill", "abort_kill_after_grace"].includes(name)),
   };
+  const traceSummary = summarizeFrames(allEvents);
   evidence.runtime.controlledLive = {
-    status: [b1.status, b2.status, b3.status, b4.status].every((status) => status === "PASS") ? "PASS" : "FAIL",
+    status: [b1.status, b2.status, b3.status, b4.status].every((status) => status === "PASS") && traceSummary.traceMetadataOnly ? "PASS" : "FAIL",
     sessionRoot,
     traceFile,
+    traceMetadataOnly: traceSummary.traceMetadataOnly,
+    rawFrameEvents: traceSummary.rawFrameEvents,
     calls,
-    traceSummary: summarizeFrames(allEvents),
+    traceSummary,
     orphanProof: { allObservedPids: allPids, postCleanupPidAlive, postCleanupPs, cleanupResult },
     B1_startup: b1,
     B2_resume: b2,

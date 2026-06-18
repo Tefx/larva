@@ -1222,10 +1222,9 @@ def test_async_subagent_docs_parity_against_reference() -> None:
             token in authority
             for token in (
                 "`0` returns an immediate snapshot and is preferred for checkpoint/status",
-                "long waits remain supported",
-                "parent TUI/Node heap pressure in large transcripts",
-                "fresh/small\n  sessions or unattended orchestration",
-                "Do not use\n  shell sleep polling",
+                "Long waits must rely on the bounded",
+                "transcript frames in parent memory",
+                "shell sleep polling or ad-hoc status loops",
             )
         ),
     }
