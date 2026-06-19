@@ -23,11 +23,11 @@ Pi session when possible.
 `LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`. Arguments after
 `larva pi` are forwarded to the real Pi executable.
 
-The launcher loads the bundled extension with Pi's documented extension flag,
-preferring `-e` when supported and otherwise using `--extension`. It must not
-fall back to writing `.pi/settings.json` or any other Pi settings file. The
-design document is the normative authority for launcher/environment contracts;
-this README is an operator-facing summary.
+The launcher loads the bundled extension with Pi's modern `-e` extension flag.
+It does not probe `pi --help` for legacy flag compatibility and must not fall
+back to writing `.pi/settings.json` or any other Pi settings file. The design
+document is the normative authority for launcher/environment contracts; this
+README is an operator-facing summary.
 
 At launch, the environment records the resolved real Pi executable, selected
 extension flag, absolute bundled extension entry, Larva CLI argv prefix, optional

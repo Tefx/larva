@@ -801,7 +801,7 @@ def test_real_pi_availability_records_binary_and_extension_flag() -> None:
     _skip_if_pi_absent(payload)
 
     assert payload["pi"]["binary"]
-    assert payload["pi"]["extensionFlag"] in {"-e", "--extension"}
+    assert payload["pi"]["extensionFlag"] == "-e"
 
 
 @pytest.mark.parametrize("scenario", ["get-commands", "slash-status", "startup-status", "failure-path"])

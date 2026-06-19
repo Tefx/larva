@@ -1,15 +1,15 @@
 import json
 import os
-import subprocess
 import shutil
+import subprocess
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from larva.shell.cli import run_cli
 from larva.app.facade import DefaultLarvaFacade
+from larva.shell.cli import run_cli
+
 
 # Mock facade
 def _make_facade():
@@ -34,8 +34,7 @@ def mock_shutil_which(monkeypatch, fake_pi_executable):
 @pytest.fixture
 def mock_subprocess_run(monkeypatch):
     mock_run = MagicMock()
-    # Support extension check
-    mock_run.return_value.stdout = b"Options:\n  -e, --extension  Extension path"
+    mock_run.return_value.stdout = b""
     mock_run.return_value.returncode = 0
     monkeypatch.setattr(subprocess, "run", mock_run)
     return mock_run
@@ -61,6 +60,7 @@ def test_launcher_invokes_real_pi_with_expected_args_and_env(
     assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
     
     mock_subprocess_run.assert_called()
+    assert all(call.args[0][1:] != ["--help"] for call in mock_subprocess_run.call_args_list)
     # Check that it called the fake pi with the extension flag and the rest of the arguments
     call_args, call_kwargs = mock_subprocess_run.call_args
     cmd = call_args[0]
@@ -95,8 +95,7 @@ def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
         "import sys\n"
         "from pathlib import Path\n"
         "if '--help' in sys.argv[1:]:\n"
-        "    print('Options:\\n  -e, --extension  Extension path')\n"
-        "    raise SystemExit(0)\n"
+        "    raise SystemExit('unexpected pi --help probe')\n"
         "keys = [\n"
         "    'LARVA_PI_INITIAL_PERSONA_ID',\n"
         "    'LARVA_PI_REAL_BIN',\n"
@@ -233,9 +232,7 @@ def test_launcher_rejects_relative_config_override_before_starting_pi(
 
     assert code != 0
     assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
-    # One call is allowed for extension flag preflight, but Pi must not be launched.
-    launch_calls = [call for call in mock_subprocess_run.call_args_list if call.args[0][1:] != ["--help"]]
-    assert launch_calls == []
+    assert mock_subprocess_run.call_count == 0
 
 def test_launcher_missing_persona(
     mock_shutil_which, mock_subprocess_run, tmp_path
@@ -319,66 +316,29 @@ def test_launcher_test_override_bin(mock_subprocess_run, fake_pi_executable, mon
     call_args = mock_subprocess_run.call_args[0]
     assert call_args[0][0] == str(fake_pi_executable)
 
-def test_launcher_extension_unsupported_path(mock_shutil_which, mock_subprocess_run, tmp_path, monkeypatch):
-    """
-    Verification target 5 (B2):
-    Extension loading preflight prefers `-e` when supported, otherwise uses
-    `--extension` when supported. If neither flag is supported, it exits before
-    Pi starts with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED` and does not write Pi settings.
-    """
-    # mock pi to support neither -e nor --extension
-    mock_subprocess_run.return_value.stdout = b"Options:\n  --version  Show version"
-    
-    settings_dir = tmp_path / ".pi" / "settings"
-    settings_dir.mkdir(parents=True)
-    monkeypatch.setenv("PI_SETTINGS_DIR", str(settings_dir))
-    
-    original_write_text = Path.write_text
-    writes = []
-    def spy_write_text(self, *args, **kwargs):
-        writes.append(self)
-        return original_write_text(self, *args, **kwargs)
-    monkeypatch.setattr(Path, "write_text", spy_write_text)
-    
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code != 0
-    assert "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED" in stderr.getvalue()
-    
-    pi_writes = [p for p in writes if ".pi" in str(p)]
-    assert not pi_writes, f"Expected no Pi settings writes, got {pi_writes}"
-    # we verify no settings are written via mock asserts in more comprehensive tests
-
-def test_launcher_extension_fallback_to_long_flag(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
-    """
-    Verification target 5 (B2):
-    Extension loading preflight prefers `-e` when supported, otherwise uses
-    `--extension` when supported.
-    """
-    # mock pi to support --extension but not -e
+def test_launcher_uses_fixed_short_extension_flag_without_help_probe(
+    mock_shutil_which, mock_subprocess_run, fake_pi_executable
+):
+    """Launcher requires modern Pi and always loads the extension with fixed `-e`."""
     mock_subprocess_run.return_value.stdout = b"Options:\n  --extension  Extension path"
-    
+
     import io
     stdout = io.StringIO()
     stderr = io.StringIO()
-    
+
     code = run_cli(["pi", "--persona", "known", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
     assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-    
-    mock_subprocess_run.assert_called()
-    call_args, call_kwargs = mock_subprocess_run.call_args
-    cmd = call_args[0]
-    
-    assert cmd[0] == str(fake_pi_executable)
-    assert cmd[1] == "--extension"
-    assert "extension" in cmd[2]
-    assert cmd[3] == "--version"
-    
-    env = call_kwargs.get("env", os.environ)
-    assert env.get("LARVA_PI_EXTENSION_FLAG") == "--extension"
+
+    calls = [call.args[0] for call in mock_subprocess_run.call_args_list]
+    assert len(calls) == 1
+    assert calls[0][0] == str(fake_pi_executable)
+    assert calls[0][1] == "-e"
+    assert "extension" in calls[0][2]
+    assert calls[0][3] == "--version"
+    assert [str(fake_pi_executable), "--help"] not in calls
+
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env.get("LARVA_PI_EXTENSION_FLAG") == "-e"
 
 @pytest.mark.parametrize("args, expected_tui", [
     (["pi", "--persona", "known"], "1"),

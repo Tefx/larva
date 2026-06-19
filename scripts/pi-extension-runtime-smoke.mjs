@@ -206,7 +206,6 @@ async function piAvailability(evidence) {
   const helpText = `${help.stdout}${help.stderr}`;
   evidence.pi.helpSnippet = helpText.slice(0, 500);
   if (evidence.pi.available) {
-    if (helpText.includes("--extension")) evidence.pi.extensionFlag = "--extension";
     if (helpText.includes("-e")) evidence.pi.extensionFlag = "-e";
     const version = await runProcess(binary, ["--version"], { timeoutMs: 5_000 });
     evidence.package.versionCommand = `${binary} --version`;

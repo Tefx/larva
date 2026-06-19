@@ -233,10 +233,11 @@ larva pi --persona python-senior --agent-persona-switch confirm -- <pi args...>
 ```
 
 `larva pi` launches the real Pi CLI with the bundled Larva Pi extension loaded
-through Pi's extension flag (`-e` or `--extension`) and forwards user Pi
-arguments after Larva-owned flags. It does not write `.pi/settings.json` or any
-other Pi settings file as a fallback. The launcher-owned environment includes the
-resolved real Pi binary, selected extension flag, bundled extension entry, Larva
+through Pi's modern `-e` extension flag and forwards user Pi arguments after
+Larva-owned flags. It does not probe `pi --help` on startup and does not write
+`.pi/settings.json` or any other Pi settings file as a fallback. The
+launcher-owned environment includes the resolved real Pi binary, selected
+extension flag, bundled extension entry, Larva
 CLI argv prefix, optional initial persona id, explicit adapter-config overrides,
 interactive-mode classification, the agent self-switch default from
 `--agent-persona-switch manual|confirm|auto|free` /

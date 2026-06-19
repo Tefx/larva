@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -27,6 +26,7 @@ LARVA_PI_BIN_ENV = "LARVA_PI_BIN"
 LARVA_PI_MODEL_MAP_FILE_ENV = "LARVA_PI_MODEL_MAP_FILE"
 LARVA_PI_TOOL_POLICY_FILE_ENV = "LARVA_PI_TOOL_POLICY_FILE"
 LARVA_PI_LAUNCHED_ENV = "LARVA_PI_LAUNCHED"
+PI_EXTENSION_FLAG = "-e"
 
 
 def _launcher_failure(
@@ -142,27 +142,6 @@ def _resolve_extension_entry() -> Result[Path, CliFailure]:
             "LARVA_PI_EXTENSION_NOT_FOUND",
             "bundled Larva Pi extension not found",
             details={"relative_path": str(PI_EXTENSION_RELATIVE_PATH)},
-        ).unwrap()
-    )
-
-
-def _select_extension_flag(pi_bin: str) -> Result[str, CliFailure]:
-    completed = subprocess.run(
-        [pi_bin, "--help"],
-        capture_output=True,
-        check=False,
-    )
-    help_text = _decode_process_text(completed.stdout).unwrap() + _decode_process_text(
-        completed.stderr
-    ).unwrap()
-    if re.search(r"(^|[\s,])-e([\s,]|$)", help_text):
-        return Success("-e")
-    if re.search(r"(^|\s)--extension([\s,]|$)", help_text):
-        return Success("--extension")
-    return Failure(
-        _launcher_failure(
-            "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED",
-            "pi does not advertise -e or --extension support",
         ).unwrap()
     )
 
@@ -294,9 +273,6 @@ def pi_command(
     extension_result = _resolve_extension_entry()
     if isinstance(extension_result, Failure):
         return Failure(extension_result.failure())
-    flag_result = _select_extension_flag(pi_result.unwrap())
-    if isinstance(flag_result, Failure):
-        return Failure(flag_result.failure())
     persona_result = _preflight_persona(persona_id, facade)
     if isinstance(persona_result, Failure):
         return Failure(persona_result.failure())
@@ -305,7 +281,7 @@ def pi_command(
         return Failure(overrides_result.failure())
 
     pi_bin = pi_result.unwrap()
-    extension_flag = flag_result.unwrap()
+    extension_flag = PI_EXTENSION_FLAG
     extension_entry = extension_result.unwrap()
     child_env = _build_child_env(
         active_environ,

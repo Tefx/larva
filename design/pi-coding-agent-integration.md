@@ -119,14 +119,13 @@ Bundled extension loading:
 - User Pi arguments are preserved after Larva-owned flags. The launcher may
   prepend its own `<extension-flag> <bundled extension>` pair before forwarded
   user arguments.
-- The launcher detects extension loading support by running the real `pi --help`
-  during preflight. If `-e` is present, use `-e`; otherwise if `--extension` is
-  present, use `--extension`. If neither flag is present, exit before Pi starts
-  with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`.
-- If the target Pi version does not support an extension flag, the launcher must
-  not fall back to writing user or project Pi settings.
+- The launcher requires modern Pi `-e` extension support and uses `-e`
+  directly. It must not run `pi --help` during startup to probe legacy flag
+  compatibility.
+- If the target Pi version does not support `-e`, the launcher must not fall back
+  to `--extension` or write user/project Pi settings.
 - Parent and child/RPC sessions must use the same resolved real Pi executable,
-  selected extension flag, and bundled extension entry from launcher-provided
+  fixed extension flag, and bundled extension entry from launcher-provided
   environment.
 
 Launch failure rules:
@@ -1295,7 +1294,7 @@ Environment:
 - `LARVA_PI_TOOL_POLICY_FILE=<absolute policy override path>` only when an override is set
 - `LARVA_PI_PARENT_PERSONA_ID=<parent persona id>`
 - `LARVA_PI_REAL_BIN=<resolved real Pi executable>`
-- `LARVA_PI_EXTENSION_FLAG=<-e or --extension>`
+- `LARVA_PI_EXTENSION_FLAG=-e`
 - `LARVA_PI_EXTENSION_ENTRY=<absolute bundled extension entry>`
 - `LARVA_CLI_ARGV_JSON=<same Larva CLI argv prefix>`
 - `LARVA_PI_INTERACTIVE_TUI=0`
@@ -1492,7 +1491,6 @@ Initial stable error codes:
 - `LARVA_PI_BAD_ARGS`
 - `LARVA_PI_NOT_FOUND`
 - `LARVA_PI_EXTENSION_NOT_FOUND`
-- `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`
 - `LARVA_NO_ACTIVE_PERSONA`
 - `LARVA_SPAWN_NOT_ALLOWED`
 - `LARVA_PERSONA_NOT_FOUND`
@@ -1785,7 +1783,7 @@ Internal launcher-to-extension environment:
 - `LARVA_PI_CHILD_SESSION_DIR`: optional absolute child session root override for
   tests.
 - `LARVA_PI_REAL_BIN`: absolute path to the resolved real Pi executable.
-- `LARVA_PI_EXTENSION_FLAG`: selected extension flag, either `-e` or `--extension`.
+- `LARVA_PI_EXTENSION_FLAG`: fixed extension flag `-e`.
 - `LARVA_PI_EXTENSION_ENTRY`: absolute path to the bundled Larva Pi extension
   entry file used in the parent Pi invocation and reused by child/RPC launches.
 - `LARVA_CLI_ARGV_JSON`: JSON array argv prefix for invoking the same Larva CLI
@@ -1811,11 +1809,9 @@ Real Pi executable discovery:
 
 Extension flag selection:
 
-- Run `<real-pi-bin> --help` during preflight.
-- Prefer `-e` when listed.
-- Otherwise use `--extension` when listed.
-- If neither is listed, exit before Pi starts with
-  `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`.
+- Use fixed `-e`.
+- Do not run `<real-pi-bin> --help` during startup.
+- Do not fall back to legacy `--extension` or Pi settings writes.
 
 Real Pi invocation shape:
 
@@ -1863,7 +1859,6 @@ type LarvaErrorCode =
   | "LARVA_PI_BAD_ARGS"
   | "LARVA_PI_NOT_FOUND"
   | "LARVA_PI_EXTENSION_NOT_FOUND"
-  | "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED"
   | "LARVA_NO_ACTIVE_PERSONA"
   | "LARVA_PERSONA_NOT_FOUND"
   | "LARVA_MODEL_MAP_INVALID"
@@ -2550,9 +2545,8 @@ Implementation gates must prove these observable behaviors:
    `larva pi: LARVA_PI_NOT_FOUND:` to stderr.
 4. `LARVA_PI_BIN` test override is honored when it points to an executable; PATH
    discovery skips Larva's own shim path and uses the first valid real `pi`.
-5. Extension loading preflight prefers `-e` when supported, otherwise uses
-   `--extension` when supported. If neither flag is supported, it exits before Pi
-   starts with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED` and does not write Pi settings.
+5. Extension loading uses fixed `-e` and does not run `pi --help` during startup;
+   legacy `--extension` fallback and Pi settings writes are not allowed.
 6. Initial `--persona` commit runs during extension initialization before first
    user prompt, selector, or `larva: none` status. Malformed/unavailable model or
    invalid policy shape writes `larva pi: <ERROR_CODE>:` to stderr and makes Pi
