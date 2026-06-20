@@ -399,9 +399,11 @@ Autocomplete target behavior:
   trailing space or suffix after insertion is Pi UI behavior outside the Larva
   candidate value.
 - Candidate descriptions may show persona description or model.
-- Unrelated `@...` editor input delegates to Pi's base provider, preserving
-  Pi-owned `@` file references. When raw `@` suggestions are shown, persona
-  candidates must not replace Pi-owned file-reference suggestions wholesale.
+- Raw `@<query>` editor input first asks Pi's base provider for file-reference
+  suggestions, preserves those suggestions in their original order, then appends
+  matching Larva `@persona:<id>` candidates and dedupes by insertion `value`
+  keeping the first candidate. Persona candidates must not replace Pi-owned
+  file-reference suggestions wholesale.
 
 Deterministic mention-token classification:
 
@@ -409,13 +411,14 @@ Deterministic mention-token classification:
 | --- | --- |
 | `@` | Show persona candidates after Pi file-reference candidates. |
 | Prefix of literal `@persona:` such as `@p`, `@pe`, `@per`, `@persona` | Show namespace/persona candidates. |
-| `@persona:<query>` | Match persona ids using `<query>`. |
-| Id-like or file-like raw short forms such as `@py`, `@python`, `@doc`, `@python-senior`, `@foo/bar` | Delegate only to Pi file-reference completion. |
+| `@persona:<query>` | Match persona ids using `<query>` and show only persona candidates. |
+| Raw `@<query>` such as `@vectl`, `@python`, `@doc`, `@python-senior`, `@foo/bar` | Ask Pi's base provider for file-reference suggestions first, preserve them in their original order, then append matching canonical `@persona:<id>` candidates and dedupe by insertion `value` keeping the first candidate. |
 
-The raw short form `@<id>` is reserved for a later usability pass. It is not part
-of the first target because it can conflict with Pi's built-in file-reference
-syntax. Id-like raw short-form prefixes must not trigger Larva persona matching
-until short form is explicitly implemented.
+Raw `@<query>` is an autocomplete convenience only: selecting a Larva candidate
+still inserts canonical `@persona:<id>`, and submitted raw `@<id>` text is not a
+persona semantic form. Persona mentions remain id-only user-facing references
+with no automatic persona switch, subagent call, prompt injection, model change,
+tool-policy change, or session-state side effect.
 
 ### UI status
 
@@ -2453,14 +2456,13 @@ Persona mention UX delta:
 - Runtime authority remains unchanged: only explicit `/larva-persona` switches the
   parent persona, and only explicit model tool use invokes `larva_subagent`.
 - The autocomplete provider may surface persona candidates for raw `@`, partial
-  canonical namespace tokens, and `@persona:<query>` input, but it must delegate
-  unrelated `@...` input to Pi's base provider and preserve Pi-owned file
-  reference suggestions.
-- The raw short form `@<id>` is reserved for future evaluation and is not part of
-  this implementation target. Id-like raw short-form prefixes such as `@doc`,
-  `@python`, and `@python-senior` must not trigger Larva persona matching and
-  must delegate to Pi file-reference completion until short form is explicitly
-  implemented.
+  canonical namespace tokens, `@persona:<query>`, and raw `@<query>` input. For
+  raw `@<query>`, it must call Pi's base provider first, preserve Pi-owned file
+  reference suggestions in their original order, append canonical `@persona:<id>`
+  candidates, and dedupe by insertion `value` keeping the first candidate.
+- Raw `@<query>` is autocomplete sugar only: selecting a persona still inserts
+  canonical `@persona:<id>`, and submitted raw `@<id>` text has no persona
+  semantic meaning or runtime side effect.
 
 
 Prompt identity overlay delta:
@@ -2522,7 +2524,7 @@ link here rather than redefining the contracts.
 | --- | --- | --- | --- |
 | Fatal initial persona startup | `larva pi --persona <id>` failures in model selection or policy parsing write `larva pi: <ERROR_CODE>:` and exit non-zero before any prompt/model turn. Manual extension loads without `LARVA_PI_LAUNCHED=1` may degrade instead of exiting. | PASS requires non-zero process exit plus Larva startup stderr before the first prompt. | `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k startup_fatal -v` |
 | Launcher sentinel | `LARVA_PI_LAUNCHED=1` is required before the extension trusts `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY` for child/RPC spawning. Missing or false sentinel fails closed with `LARVA_CHILD_START_FAILED`. | Source/harness proof is sufficient for the recursion guard because it proves no child process is spawned without the sentinel. | `uv run pytest tests/shell/test_pi_extension_contract.py -k launched_sentinel -v` |
-| Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw short forms such as `@python-senior` remain delegated. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
+| Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw `@<query>` autocomplete preserves Pi file-reference suggestions first, then appends matching canonical `@persona:<id>` candidates; submitted raw `@<id>` text is not a persona semantic form. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
 | `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
 | `/larva-subagent` overlay | The canonical authorized slash command is view-only, user-visible, adapter-local, and backed by the parent extension's presentation log plus adapter-local persistent cache; `/larva-log` is a deprecated view-mode alias only. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, persistent cache load/clear, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario async-subagent-contract`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k async_subagent -v` |
 | Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.78.0`; custom components satisfy visible-width rendering; canonical `/larva-subagent` has the concise `Larva subagent log` chrome title, Summary/Prompt/Output/Metadata tabs, event-driven in-memory refresh, and Markdown output; `/larva-log` is a deprecated view-mode alias; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
@@ -2755,13 +2757,13 @@ Implementation gates must prove these observable behaviors:
     It returns canonical `@persona:<id>` candidates from the same adapter-local
     persona candidate cache as `/larva-persona`, preserves the documented matching
     order, keeps Pi file-reference candidates in their original order before
-    appended persona candidates, removes exact duplicate insertion `value`s across
-    the merged list by keeping the first candidate, delegates unrelated `@...`
-    input to Pi's base provider, and preserves Pi-owned file-reference suggestions
-    when raw `@` suggestions are shown. It does not offer raw short-form `@<id>`
-    persona candidates. A submitted `@persona:<id>` mention has no automatic side
-    effect: it does not switch personas, force `larva_subagent`, or inject the
-    mentioned persona prompt/spec.
+    appended persona candidates, and removes exact duplicate insertion `value`s
+    across the merged list by keeping the first candidate. Raw `@<query>` uses
+    that same file-first merge while inserted Larva values remain canonical
+    `@persona:<id>`; submitted raw `@<id>` text is not a persona semantic form. A
+    submitted `@persona:<id>` mention has no automatic side effect: it does not
+    switch personas, force `larva_subagent`, or inject the mentioned persona
+    prompt/spec.
 
 49. `/larva-persona --refresh-cache` forces a persona candidate cache refresh
     through public `larva list --json`, updates memory and disk cache on success,

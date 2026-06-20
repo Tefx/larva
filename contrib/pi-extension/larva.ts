@@ -3365,6 +3365,7 @@ function mentionQuery(token: string): { mode: "merge" | "persona-only" | "delega
   if (token === "@") return { mode: "merge", query: "" };
   if ("@persona:".startsWith(token) && token.length > 1) return { mode: "merge", query: "" };
   if (token.startsWith("@persona:")) return { mode: "persona-only", query: token.slice("@persona:".length) };
+  if (token.startsWith("@")) return { mode: "merge", query: token.slice(1) };
   return { mode: "delegate", query: "" };
 }
 
@@ -3395,16 +3396,25 @@ export function createLarvaPersonaMentionAutocompleteProvider(
     if (token === null) return getDelegateSuggestions(delegate, args);
     const classification = mentionQuery(token);
     if (classification.mode === "delegate") return getDelegateSuggestions(delegate, args);
+    if (classification.mode === "merge") {
+      const baseItems = await getDelegateSuggestions(delegate, args);
+      try {
+        const personaMatches = await completePersonaMentionIds(classification.query, ctx);
+        if (personaMatches === null) return baseItems && baseItems.length > 0 ? baseItems : null;
+        const mentionItems = personaMatches.map(personaMentionCandidate);
+        const merged = dedupeByValue([...(baseItems ?? []), ...mentionItems]);
+        return merged.length > 0 ? merged : null;
+      } catch {
+        return baseItems && baseItems.length > 0 ? baseItems : null;
+      }
+    }
     try {
       const personaMatches = await completePersonaMentionIds(classification.query, ctx);
-      if (personaMatches === null) return classification.mode === "merge" ? getDelegateSuggestions(delegate, args) : null;
+      if (personaMatches === null) return null;
       const mentionItems = personaMatches.map(personaMentionCandidate);
-      if (classification.mode === "persona-only") return mentionItems.length > 0 ? mentionItems : null;
-      const baseItems = await getDelegateSuggestions(delegate, args);
-      const merged = dedupeByValue([...(baseItems ?? []), ...mentionItems]);
-      return merged.length > 0 ? merged : null;
+      return mentionItems.length > 0 ? mentionItems : null;
     } catch {
-      return classification.mode === "merge" ? getDelegateSuggestions(delegate, args) : null;
+      return null;
     }
   };
   const provider = (async (...args: unknown[]) => getSuggestions(...args)) as PiAutocompleteProvider;

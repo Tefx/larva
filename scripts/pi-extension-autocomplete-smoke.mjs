@@ -130,6 +130,50 @@ async function runMentionNamespace() {
   };
 }
 
+async function runMentionRawQuery() {
+  const editorLine = prefix || "@vectl";
+  const baseItems = [
+    { value: "./docs/vectl.md", label: "./docs/vectl.md", description: "Pi file reference" },
+    { value: "@persona:vectl-planner", label: "Pi duplicate wins", description: "Pi-provided duplicate" },
+  ];
+  const baseCalls = [];
+  const rawProvider = installedFactory({
+    getSuggestions: async (lines, cursorLine, cursorCol) => {
+      const line = Array.isArray(lines) ? (lines[cursorLine] ?? "").slice(0, cursorCol) : String(lines ?? "");
+      baseCalls.push(line);
+      return baseItems;
+    },
+    applyCompletion: (lines, cursorLine, cursorCol) => ({ lines, cursorLine, cursorCol, delegated: true }),
+    shouldTriggerFileCompletion: () => true,
+  });
+  const raw = await getSuggestions(rawProvider, editorLine);
+  const personaOnly = await getSuggestions(rawProvider, "@persona:vectl");
+  const rawItems = raw?.items ?? [];
+  const personaOnlyItems = personaOnly?.items ?? [];
+  const applied = rawProvider.applyCompletion([editorLine], 0, editorLine.length, rawItems[1], raw?.prefix);
+  return {
+    command: registeredCommand.name,
+    editorLine,
+    rawPrefix: raw?.prefix ?? null,
+    personaOnlyPrefix: personaOnly?.prefix ?? null,
+    rawValues: rawItems.map((item) => item.value),
+    rawLabels: rawItems.map((item) => item.label),
+    personaOnlyValues: personaOnlyItems.map((item) => item.value),
+    baseCalls,
+    rawMergesFileFirst: JSON.stringify(rawItems.map((item) => item.value)) === JSON.stringify([
+      "./docs/vectl.md",
+      "@persona:vectl-planner",
+      "@persona:vectl-reviewer",
+    ]),
+    rawKeepsBaseDuplicateFirst: rawItems[1]?.label === "Pi duplicate wins",
+    personaOnlyStaysPersonaOnly: JSON.stringify(personaOnlyItems.map((item) => item.value)) === JSON.stringify([
+      "@persona:vectl-planner",
+      "@persona:vectl-reviewer",
+    ]),
+    appliedCanonicalMention: applied.lines?.[0] === "@persona:vectl-planner",
+  };
+}
+
 let output;
 if (scenario === "tab-force") {
   output = await runTab(true);
@@ -152,6 +196,8 @@ if (scenario === "tab-force") {
   output = { failed, malformed, noCrash: failed === null && malformed === null };
 } else if (scenario === "mention-namespace") {
   output = await runMentionNamespace();
+} else if (scenario === "mention-raw-query") {
+  output = await runMentionRawQuery();
 } else {
   throw new Error(`unknown --case ${scenario}`);
 }

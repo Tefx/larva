@@ -135,10 +135,15 @@ def test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter
     assert payload["namespacePartialReturnsAllEligible"] is True
     assert payload["bareNamespaceReturnsAllEligible"] is True
     assert payload["queryValues"] == ["@persona:DevOps", "@persona:devrel", "@persona:qa-dev", "@persona:backend-dev"]
+    assert payload["rawQueryPrefix"] == "@vectl"
+    assert payload["rawQueryValues"] == ["./docs/vectl.md", "@persona:vectl-planner", "@persona:vectl-reviewer"]
+    assert payload["rawQueryLabels"] == ["./docs/vectl.md", "Pi duplicate wins", "@persona:vectl-reviewer"]
     assert payload["queryUsesSuffixOnly"] is True
-    assert payload["delegatedRawShort"] is None
-    assert payload["rawShortDelegatesOnly"] is True
+    assert payload["rawQueryMergesFileFirst"] is True
+    assert payload["rawQueryKeepsBaseDuplicateFirst"] is True
+    assert payload["personaNamespaceQueryIsPersonaOnly"] is True
     assert payload["applyCompletionInsertedMention"] is True
+    assert payload["rawApplyCompletionInsertedCanonicalMention"] is True
 
 
 def test_autocomplete_registration_defers_to_session_context_and_dedupes_runtime() -> None:
@@ -189,6 +194,22 @@ def test_autocomplete_smoke_mentions_namespace_returns_all_eligible_personas() -
     assert payload["allValuesArePersonaMentions"] is True
     assert payload["allEligiblePersonaMentionsReturned"] is True
     assert payload["applyCompletionInsertedMention"] is True
+
+
+def test_autocomplete_smoke_mentions_raw_query_merges_files_before_personas() -> None:
+    payload = _run_autocomplete_case("mention-raw-query", prefix="@vectl")
+
+    assert payload["command"] == "larva-persona"
+    assert payload["editorLine"] == "@vectl"
+    assert payload["rawPrefix"] == "@vectl"
+    assert payload["personaOnlyPrefix"] == "@persona:vectl"
+    assert payload["rawValues"] == ["./docs/vectl.md", "@persona:vectl-planner", "@persona:vectl-reviewer"]
+    assert payload["rawLabels"] == ["./docs/vectl.md", "Pi duplicate wins", "@persona:vectl-reviewer"]
+    assert payload["personaOnlyValues"] == ["@persona:vectl-planner", "@persona:vectl-reviewer"]
+    assert payload["rawMergesFileFirst"] is True
+    assert payload["rawKeepsBaseDuplicateFirst"] is True
+    assert payload["personaOnlyStaysPersonaOnly"] is True
+    assert payload["appliedCanonicalMention"] is True
 
 
 def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash() -> None:

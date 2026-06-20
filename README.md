@@ -339,8 +339,10 @@ support.
 
 Persona mentions insert id-only values exactly shaped as `@persona:<id>`. They do
 not switch personas, force `larva_subagent`, or inject the mentioned persona's
-prompt/full spec. Raw short forms such as `@python-senior` remain delegated to
-Pi-owned file-reference completion.
+prompt/full spec. Raw `@<query>` editor autocomplete preserves Pi file-reference
+suggestions first, then appends matching canonical `@persona:<id>` candidates;
+selecting a persona still inserts canonical `@persona:<id>`, and submitted raw
+`@<id>` text is not a persona semantic form.
 
 The bundled extension's async subagent authority is
 [`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md).

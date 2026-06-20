@@ -44,7 +44,7 @@ function baseEnv(overrides = {}) {
   };
 }
 
-async function makeRuntime(env = baseEnv()) {
+async function makeRuntime(env = baseEnv(), baseProviderOverride = null) {
   mod.resetPersonaCompletionCache();
   let installedFactory = null;
   let registeredCommand = null;
@@ -68,7 +68,7 @@ async function makeRuntime(env = baseEnv()) {
   if (typeof handlers.session_start !== "function") throw new Error("session_start handler missing");
   await handlers.session_start({ reason: "runtime" }, ctx);
   if (typeof installedFactory !== "function") throw new Error("autocomplete provider factory missing");
-  const baseProvider = {
+  const baseProvider = baseProviderOverride ?? {
     getSuggestions: async () => null,
     applyCompletion: (lines, cursorLine, cursorCol) => ({ lines, cursorLine, cursorCol, delegated: true }),
     shouldTriggerFileCompletion: () => false,
@@ -159,15 +159,31 @@ async function listFixtureEvidence() {
 }
 
 async function mentionNamespaceEvidence() {
-  const { installedProvider } = await makeRuntime();
+  const baseCalls = [];
+  const rawBaseItems = [
+    { value: "./docs/vectl.md", label: "./docs/vectl.md", description: "Pi file reference" },
+    { value: "@persona:vectl-planner", label: "Pi duplicate wins", description: "Pi-provided duplicate" },
+  ];
+  const baseProvider = {
+    getSuggestions: async (lines, cursorLine, cursorCol) => {
+      const line = Array.isArray(lines) ? (lines[cursorLine] ?? "").slice(0, cursorCol) : String(lines ?? "");
+      baseCalls.push(line);
+      return line === "@vectl" || line === "please ask @persona:DEV" ? rawBaseItems : null;
+    },
+    applyCompletion: (lines, cursorLine, cursorCol) => ({ lines, cursorLine, cursorCol, delegated: true }),
+    shouldTriggerFileCompletion: () => true,
+  };
+  const { installedProvider } = await makeRuntime(baseEnv(), baseProvider);
   const namespacePartial = await getSuggestions(installedProvider, "@p");
   const bareNamespace = await getSuggestions(installedProvider, "@persona:");
   const query = await getSuggestions(installedProvider, "please ask @persona:DEV");
-  const delegatedRawShort = await getSuggestions(installedProvider, "@vectl");
+  const rawQuery = await getSuggestions(installedProvider, "@vectl");
   const namespacePartialItems = namespacePartial?.items ?? [];
   const bareNamespaceItems = bareNamespace?.items ?? [];
   const queryItems = query?.items ?? [];
+  const rawQueryItems = rawQuery?.items ?? [];
   const applied = installedProvider.applyCompletion(["please ask @persona:"], 0, "please ask @persona:".length, bareNamespaceItems[0], bareNamespace.prefix);
+  const rawApplied = installedProvider.applyCompletion(["@vectl"], 0, "@vectl".length, rawQueryItems[1], rawQuery.prefix);
   const expected = [
     "@persona:ok",
     "@persona:startup",
@@ -192,8 +208,12 @@ async function mentionNamespaceEvidence() {
     namespacePartialValues: namespacePartialItems.map((item) => item.value),
     bareNamespaceValues: bareNamespaceItems.map((item) => item.value),
     queryValues: queryItems.map((item) => item.value),
-    delegatedRawShort,
+    rawQueryPrefix: rawQuery?.prefix ?? null,
+    rawQueryValues: rawQueryItems.map((item) => item.value),
+    rawQueryLabels: rawQueryItems.map((item) => item.label),
+    baseCalls,
     applied,
+    rawApplied,
     expected,
     namespacePartialReturnsAllEligible: JSON.stringify(namespacePartialItems.map((item) => item.value)) === JSON.stringify(expected),
     bareNamespaceReturnsAllEligible: JSON.stringify(bareNamespaceItems.map((item) => item.value)) === JSON.stringify(expected),
@@ -203,8 +223,15 @@ async function mentionNamespaceEvidence() {
       "@persona:qa-dev",
       "@persona:backend-dev",
     ]),
-    rawShortDelegatesOnly: delegatedRawShort === null,
+    rawQueryMergesFileFirst: JSON.stringify(rawQueryItems.map((item) => item.value)) === JSON.stringify([
+      "./docs/vectl.md",
+      "@persona:vectl-planner",
+      "@persona:vectl-reviewer",
+    ]),
+    rawQueryKeepsBaseDuplicateFirst: rawQueryItems[1]?.label === "Pi duplicate wins",
+    personaNamespaceQueryIsPersonaOnly: !queryItems.some((item) => item.value === "./docs/vectl.md" || item.label === "Pi duplicate wins"),
     applyCompletionInsertedMention: applied.lines?.[0] === "please ask @persona:ok" && applied.cursorCol === "please ask @persona:ok".length,
+    rawApplyCompletionInsertedCanonicalMention: rawApplied.lines?.[0] === "@persona:vectl-planner" && rawApplied.cursorCol === "@persona:vectl-planner".length,
   };
 }
 
@@ -290,10 +317,12 @@ function assertScenarioChecks(result) {
     assertEqual(result.case, "namespacePartialValues", result.namespacePartialValues, expected);
     assertEqual(result.case, "bareNamespaceValues", result.bareNamespaceValues, expected);
     assertEqual(result.case, "queryValues", result.queryValues, ["@persona:DevOps", "@persona:devrel", "@persona:qa-dev", "@persona:backend-dev"]);
+    assertEqual(result.case, "rawQueryValues", result.rawQueryValues, ["./docs/vectl.md", "@persona:vectl-planner", "@persona:vectl-reviewer"]);
+    assertEqual(result.case, "rawQueryLabels", result.rawQueryLabels, ["./docs/vectl.md", "Pi duplicate wins", "@persona:vectl-reviewer"]);
     assertEqual(result.case, "namespacePartialPrefix", result.namespacePartialPrefix, "@p");
     assertEqual(result.case, "bareNamespacePrefix", result.bareNamespacePrefix, "@persona:");
     assertEqual(result.case, "queryPrefix", result.queryPrefix, "@persona:DEV");
-    assertNull(result.case, "delegatedRawShort", result.delegatedRawShort);
+    assertEqual(result.case, "rawQueryPrefix", result.rawQueryPrefix, "@vectl");
     assertTrue(result.case, "namespacePartialResultIsObject", result.namespacePartialResultIsObject);
     assertTrue(result.case, "bareNamespaceResultIsObject", result.bareNamespaceResultIsObject);
     assertTrue(result.case, "queryResultIsObject", result.queryResultIsObject);
@@ -303,8 +332,11 @@ function assertScenarioChecks(result) {
     assertTrue(result.case, "namespacePartialReturnsAllEligible", result.namespacePartialReturnsAllEligible);
     assertTrue(result.case, "bareNamespaceReturnsAllEligible", result.bareNamespaceReturnsAllEligible);
     assertTrue(result.case, "queryUsesSuffixOnly", result.queryUsesSuffixOnly);
-    assertTrue(result.case, "rawShortDelegatesOnly", result.rawShortDelegatesOnly);
+    assertTrue(result.case, "rawQueryMergesFileFirst", result.rawQueryMergesFileFirst);
+    assertTrue(result.case, "rawQueryKeepsBaseDuplicateFirst", result.rawQueryKeepsBaseDuplicateFirst);
+    assertTrue(result.case, "personaNamespaceQueryIsPersonaOnly", result.personaNamespaceQueryIsPersonaOnly);
     assertTrue(result.case, "applyCompletionInsertedMention", result.applyCompletionInsertedMention);
+    assertTrue(result.case, "rawApplyCompletionInsertedCanonicalMention", result.rawApplyCompletionInsertedCanonicalMention);
   } else if (result.case === "registration-lifecycle") {
     assertEqual(result.case, "registeredName", result.registeredName, "larva-persona");
     assertEqual(result.case, "afterFactory", result.afterFactory, 0);

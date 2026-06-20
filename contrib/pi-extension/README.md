@@ -562,12 +562,14 @@ Larva handles only these mention tokens:
 | --- | --- |
 | `@` | Show persona candidates after Pi file-reference candidates. |
 | Prefix of literal `@persona:` such as `@p`, `@pe`, `@per`, `@persona` | Show namespace/persona candidates. |
-| `@persona:<query>` | Match persona ids using `<query>`. |
-| Id-like or file-like raw short forms such as `@py`, `@python`, `@doc`, `@python-senior`, `@foo/bar` | Delegate only to Pi file-reference completion. |
+| `@persona:<query>` | Match persona ids using `<query>` and show only persona candidates. |
+| Raw `@<query>` such as `@vectl`, `@python`, `@doc`, `@python-senior`, `@foo/bar` | Ask Pi's base provider for file-reference suggestions first, preserve them in their original order, then append matching canonical `@persona:<id>` candidates and dedupe by insertion `value` keeping the first candidate. |
 
-The raw short form `@<id>` is reserved for a possible future usability pass and
-is not part of the first target. Id-like raw short-form prefixes must not trigger
-Larva persona matching until short form is explicitly implemented.
+Raw `@<query>` is an autocomplete convenience only: selecting a Larva candidate
+still inserts canonical `@persona:<id>`, and submitting raw `@<id>` does not
+become a persona semantic form. Mentions remain id-only user-facing references
+with no automatic persona switch, subagent call, prompt injection, model change,
+tool-policy change, or session-state side effect.
 
 ## Compaction focus
 

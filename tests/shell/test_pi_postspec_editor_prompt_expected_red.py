@@ -264,6 +264,7 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
             literalPartial: literalPartial?.prefix ?? null,
             bareNamespace: bareNamespace?.prefix ?? null,
             query: query?.prefix ?? null,
+            rawShort: rawShort?.prefix ?? null,
           },
           rawAt: rawAt?.items ?? null,
           namespacePartial: namespacePartial?.items ?? null,
@@ -297,6 +298,7 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
         "literalPartial": "@persona",
         "bareNamespace": "@persona:",
         "query": "@persona:review",
+        "rawShort": "@vectl",
     }
     assert [item["value"] for item in payload["rawAt"]] == [
         "./src/app.ts",
@@ -326,12 +328,18 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     assert [item["value"] for item in payload["literalPartial"]] == expected_merged_empty_namespace
     assert [item["value"] for item in payload["bareNamespace"]] == expected_merged_empty_namespace
     assert [item["value"] for item in payload["query"]] == ["@persona:vectl-reviewer"]
-    assert payload["rawShort"] == [
+    assert [item["value"] for item in payload["rawShort"]] == [
+        "./src/app.ts",
+        "@persona:vectl-planner",
+        "@persona:vectl-reviewer",
+    ]
+    assert payload["rawShort"][1]["label"] == "Pi duplicate wins"
+    expected_base_only = [
         {"value": "./src/app.ts", "label": "./src/app.ts", "description": "Pi file reference"},
         {"value": "@persona:vectl-planner", "label": "Pi duplicate wins"},
     ]
-    assert payload["fileLike"] == payload["rawShort"]
-    assert payload["spacedText"] == payload["rawShort"]
+    assert payload["fileLike"] == expected_base_only
+    assert payload["spacedText"] == expected_base_only
     assert payload["applied"] == {
         "lines": ["please ask @persona:vectl-planner"],
         "cursorLine": 0,
