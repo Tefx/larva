@@ -57,9 +57,13 @@ Variants are registry metadata, not PersonaSpec fields.
 from the directory name, and variant names come from scanning `variants/*.json`.
 `contract.json` stores the shared persona contract fields. Each variant file
 stores implementation fields only: `prompt`, `model`, optional `model_params`,
-and optional `compaction_prompt`. A variant file is not a canonical PersonaSpec;
-public resolve/export paths materialize `contract.json` plus the selected variant
-into a flat canonical PersonaSpec and recompute `spec_digest`.
+and optional `compaction_prompt`. `model` is a runtime routing label: Larva
+requires it to be a non-empty string, but Larva core does not own provider/model
+availability or maintain a static model allowlist. Runtime adapters own
+mapping and availability checks at their shell boundary. A variant file is not a
+canonical PersonaSpec; public resolve/export paths materialize `contract.json`
+plus the selected variant into a flat canonical PersonaSpec and recompute
+`spec_digest`.
 
 ## Variant Vocabulary
 

@@ -111,13 +111,55 @@ Field constraints:
 - `spec_version`: canonical input must use `"0.1.0"`.
 - `spec_digest`: computed by larva from canonical JSON, excluding itself.
 - `capabilities`: required canonical capability map.
+- `model`: required non-empty string. Larva treats it as a runtime routing label,
+  not as a provider/model enum; `larva validate` does not guarantee runtime
+  availability.
 - `variant`: not a PersonaSpec field; registry-local only.
 
 ---
 
-## 3. Core Operations
+## 3. Runtime Model Configuration for Pi
 
-### 3.1 validate
+Keep these surfaces separate:
+
+- PersonaSpec stores the default model string, for example
+  `"model": "openrouter/google/gemini-3.5-flash"`.
+- Larva registry storage defaults to `~/.larva/registry/<persona-id>/` with
+  `manifest.json`, `contract.json`, and `variants/<variant>.json`; variant files
+  own `prompt`, `model`, `model_params`, and `compaction_prompt`.
+- Larva-Pi model-map defaults to `~/.pi/larva/model-map.json`; override with
+  `LARVA_PI_MODEL_MAP_FILE=/absolute/path/to/model-map.json`.
+- Larva-Pi tool policy defaults to `~/.pi/larva/tool-policy.json`; override with
+  `LARVA_PI_TOOL_POLICY_FILE=/absolute/path/to/tool-policy.json`.
+
+Model-map example:
+
+```json
+{
+  "models": {},
+  "prefix_rules": [
+    {
+      "from_prefix": "openrouter/",
+      "to_provider": "openrouter",
+      "to_model_id_prefix": ""
+    }
+  ]
+}
+```
+
+This maps `openrouter/google/gemini-3.5-flash` to provider `openrouter` and
+model id `google/gemini-3.5-flash`. Pi runtime resolution uses exact `models`
+entries first, then longest literal `prefix_rules`, then first-slash fallback.
+Runtime availability is checked against Pi's model registry.
+
+No Pi startup path auto-registers missing personas. Register local PersonaSpecs
+explicitly with `larva register`.
+
+---
+
+## 4. Core Operations
+
+### 4.1 validate
 
 Validate a PersonaSpec candidate.
 
@@ -136,7 +178,7 @@ Validate a PersonaSpec candidate.
 
 Returns `ValidationReport` with `valid`, `errors`, and `warnings`.
 
-### 3.2 register
+### 4.2 register
 
 Store a PersonaSpec in the registry.
 
@@ -159,7 +201,7 @@ Store a PersonaSpec in the registry.
 - Existing persona: register writes/replaces the named variant but does not auto-activate it.
 - `spec.id` must equal the base persona id.
 
-### 3.3 resolve
+### 4.3 resolve
 
 Fetch a registered persona by id.
 
@@ -175,7 +217,7 @@ Fetch a registered persona by id.
   registry metadata, legacy fields, and unknown fields are rejected.
 - Return value is a bare canonical PersonaSpec, never a registry envelope.
 
-### 3.4 list
+### 4.4 list
 
 List base personas only.
 
@@ -187,7 +229,7 @@ List base personas only.
 
 `larva_list` intentionally does not return variant metadata.
 
-### 3.5 update
+### 4.5 update
 
 Patch either contract-owned fields or implementation-owned fields. Mixed-scope
 patches are rejected.
@@ -215,7 +257,7 @@ PersonaSpecs, contract-only patches update the shared contract for matched base
 personas, implementation-only patches update matched active variants, and mixed
 patches are rejected for the whole batch.
 
-### 3.6 variant operations
+### 4.6 variant operations
 
 ```json
 { "id": "code-reviewer" }
@@ -230,7 +272,7 @@ patches are rejected for the whole batch.
 `larva_variant_activate(id, variant)` changes only registry manifest state.
 `larva_variant_delete(id, variant)` deletes only an inactive, non-last variant.
 
-### 3.7 delete and clear
+### 4.7 delete and clear
 
 `larva_delete(id)` deletes the base persona and all variants.
 `larva_clear(confirm="CLEAR REGISTRY")` removes the whole registry and requires
@@ -238,7 +280,7 @@ the exact confirmation token.
 
 ---
 
-## 4. Registry-local Variants
+## 5. Registry-local Variants
 
 Variants live under the registry and are selected by operation parameter. They
 are not PersonaSpec fields.
@@ -267,7 +309,7 @@ Rules:
 
 ---
 
-## 5. Placeholder policy
+## 6. Placeholder policy
 
 Prompt text must already be fully composed before admission. Placeholder-map
 inputs at validate/register/update boundaries are rejected as extra/forbidden
@@ -276,7 +318,7 @@ not interpreted as variable injection.
 
 ---
 
-## 6. Error Handling
+## 7. Error Handling
 
 Every error is a structured envelope with `code`, `numeric_code`, `message`, and
 `details`.
@@ -326,7 +368,7 @@ returns `400` with `PERSONA_ID_MISMATCH` because the route base id and
 
 ---
 
-## 7. File System Layout
+## 8. File System Layout
 
 ```text
 ~/.larva/
@@ -349,7 +391,7 @@ manifests, contracts, or selected variant files fail closed with
 
 ---
 
-## 8. Common Workflows
+## 9. Common Workflows
 
 ### Workflow A: Generate and register a new persona
 
@@ -401,7 +443,7 @@ changes the OpenCode agent list and requires restarting `larva opencode`.
 
 ---
 
-## 9. Critical Constraints
+## 10. Critical Constraints
 
 - **No LLM calls.** larva is pure persona management.
 - **No inheritance.** There is no `base:` field.

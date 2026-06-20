@@ -158,11 +158,11 @@ class TestValidateSpecBehavior:
 class TestCanonicalWarningSemantics:
     """Canonical warning channel is non-blocking but populated when expected."""
 
-    def test_unknown_model_emits_warning_but_keeps_valid_true(self):
+    def test_arbitrary_model_string_does_not_emit_knownness_warning(self):
         report = validate_module.validate_spec(
             {
-                "id": "warning-unknown-model",
-                "description": "A canonical persona that intentionally uses an unknown model id.",
+                "id": "runtime-owned-model",
+                "description": "A canonical persona that intentionally uses a runtime-owned model id.",
                 "prompt": "You are a warning test persona.",
                 "model": "custom-model-x",
                 "capabilities": {"shell": "read_only"},
@@ -171,7 +171,22 @@ class TestCanonicalWarningSemantics:
         )
         assert report["valid"] is True
         assert report["errors"] == []
-        assert any("unknown model identifier 'custom-model-x'" in w for w in report["warnings"])
+        assert not any("model identifier" in w or "known-model" in w for w in report["warnings"])
+
+    def test_openrouter_gemini_flash_model_does_not_emit_knownness_warning(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "openrouter-runtime-model",
+                "description": "A canonical persona using an OpenRouter model routed by Pi configuration.",
+                "prompt": "Return JSON only matching the requested contract.",
+                "model": "openrouter/google/gemini-3.5-flash",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert report["warnings"] == []
 
     def test_empty_capabilities_emits_warning_but_is_valid(self):
         report = validate_module.validate_spec(
@@ -374,7 +389,7 @@ class TestValidationReportShapes:
         report: validate_module.ValidationReport = {
             "valid": False,
             "errors": [issue],
-            "warnings": ["unknown model identifier: custom-model"],
+            "warnings": ["capabilities is empty; this is valid but likely under-specified"],
         }
         assert report["valid"] is False
         assert len(report["errors"]) == 1

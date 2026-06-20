@@ -34,6 +34,12 @@ Canonical optional fields include:
 - `compaction_prompt`
 - `spec_digest`
 
+`model` is a required non-empty string and a runtime routing label. Larva
+canonical validation checks field shape only; it does not maintain a static
+provider/model allowlist and does not guarantee runtime availability. Runtime
+adapters such as the Larva Pi extension own provider mapping and availability
+checks through their own configuration and model registry lookups.
+
 ## MCP Surface
 
 Primary MCP tools:

@@ -73,6 +73,9 @@ Key rules:
 - `id` is required and must be flat kebab-case
 - `prompt` is opaque executable text; larva stores and validates it as text and
   does not parse placeholders or infer runtime behavior from it
+- `model` is a required non-empty string and a runtime routing label; larva
+  canonical validation does not maintain a provider/model allowlist or guarantee
+  runtime availability
 - `spec_version` is schema identity, not persona revisioning
 - v1 pins `spec_version` to `"0.1.0"`
 - `spec_digest` is recomputed by larva from canonical content
@@ -245,6 +248,15 @@ interactive-mode classification, the agent self-switch default from
 `LARVA_PI_LAUNCHED=1`. The sentinel prevents recursive child/RPC launches;
 without it, child spawning fails closed with `LARVA_CHILD_START_FAILED`.
 
+PersonaSpec `model` remains the active variant's runtime routing label. Larva
+validates only that it is a non-empty string; it does not keep a static list of
+known provider models. Pi runtime availability is determined by Pi's model
+registry after Larva-Pi model-map resolution. The default model-map path is
+`~/.pi/larva/model-map.json`; set `LARVA_PI_MODEL_MAP_FILE` to an absolute path
+to override it. The model map checks exact `models` entries first, then the
+longest matching literal `prefix_rules`, then the first-slash provider/model
+fallback when no map hit exists.
+
 Persona-specific Pi tool rules live in adapter-local
 `~/.pi/larva/tool-policy.json`, or the absolute path explicitly named by
 `LARVA_PI_TOOL_POLICY_FILE`. Legacy `~/.pi/tool-policy.json` is not read as an
@@ -252,6 +264,11 @@ implicit fallback. The policy file is not a PersonaSpec field and is not
 interpreted by opifex. The Pi extension validates the active persona entry and
 supports only exact tool-name `allow` and `deny` arrays; there is no `ask` action,
 wildcard matching, project-level policy hierarchy, or PersonaSpec schema change.
+
+The Pi extension never auto-registers missing personas at startup. Registry
+content is owned by Larva and explicit operator setup; missing personas are
+reported or suppressed according to the fail-open runtime path instead of being
+silently created from bundled specs.
 
 Inside Pi, `/larva-persona <id>` switches the active Larva persona atomically for
 the next model invocation. The switch applies the persona's resolved Pi model as

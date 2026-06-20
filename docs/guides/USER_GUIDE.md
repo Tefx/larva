@@ -85,9 +85,74 @@ Important field rules:
 - `spec_version` is schema identity and is pinned to `"0.1.0"`.
 - `spec_digest` is recomputed by larva.
 - `capabilities` is the canonical capability declaration surface.
+- `model` is a required non-empty string. Larva treats it as a runtime routing
+  label and does not validate it against a static provider/model allowlist.
 - `variant`, `_registry`, `active`, and manifest state are not PersonaSpec fields.
 
-## 5. Your first persona
+## 5. Runtime model configuration for Pi
+
+Larva and the Larva Pi extension keep three separate pieces of state:
+
+1. **PersonaSpec default model** — stored in the materialized PersonaSpec as
+   `model`, and in registry storage under the active variant file. It is a
+   runtime routing label, for example:
+
+   ```json
+   {"model": "openrouter/google/gemini-3.5-flash"}
+   ```
+
+2. **Larva registry** — by default under `~/.larva/registry/`:
+
+   ```text
+   ~/.larva/registry/<persona-id>/
+     manifest.json
+     contract.json
+     variants/<variant>.json
+   ```
+
+   `contract.json` owns persona identity and contract fields. Variant files own
+   implementation fields, including `prompt`, `model`, `model_params`, and
+   `compaction_prompt`.
+
+3. **Pi adapter configuration** — runtime model lookup is adapter-local:
+
+   ```text
+   ~/.pi/larva/model-map.json
+   LARVA_PI_MODEL_MAP_FILE=/absolute/path/to/model-map.json
+   ```
+
+   Example prefix rule:
+
+   ```json
+   {
+     "models": {},
+     "prefix_rules": [
+       {
+         "from_prefix": "openrouter/",
+         "to_provider": "openrouter",
+         "to_model_id_prefix": ""
+       }
+     ]
+   }
+   ```
+
+   This maps `openrouter/google/gemini-3.5-flash` to provider `openrouter` and
+   model id `google/gemini-3.5-flash`. Pi resolution checks exact `models`
+   entries first, then the longest matching literal `prefix_rules`, then falls
+   back to first-slash provider/model parsing when no map entry matches. Runtime
+   availability is determined by Pi's model registry, not by `larva validate`.
+
+Tool policy is separate adapter-local configuration:
+
+```text
+~/.pi/larva/tool-policy.json
+LARVA_PI_TOOL_POLICY_FILE=/absolute/path/to/tool-policy.json
+```
+
+Larva/Pi startup does not auto-register missing personas. Register bundled or
+local PersonaSpecs explicitly with `larva register` before relying on them.
+
+## 6. Your first persona
 
 Validate and register a complete PersonaSpec:
 
@@ -99,7 +164,7 @@ larva resolve code-reviewer --json
 
 The first registration creates the `default` variant and makes it active.
 
-## 6. Typical lifecycle
+## 7. Typical lifecycle
 
 ```bash
 larva validate code-reviewer.json
@@ -114,7 +179,7 @@ larva export --id code-reviewer --json
 When registering a named variant, the input filename may include the variant
 name, but the PersonaSpec inside must still use the base persona id.
 
-## 7. Validation
+## 8. Validation
 
 ```bash
 larva validate code-reviewer.json
@@ -124,7 +189,7 @@ larva validate code-reviewer.json --json
 Validation rejects unknown canonical fields, including `variant`. Pass variant
 names as CLI/MCP/API parameters instead.
 
-## 8. Register and resolve
+## 9. Register and resolve
 
 Register default variant:
 
@@ -160,7 +225,7 @@ Apply temporary overrides during resolve:
 larva resolve code-reviewer --override model=openai/gpt-5.5-pro
 ```
 
-## 9. Clone, update, and variants
+## 10. Clone, update, and variants
 
 Use clone when you want a separate base persona id:
 
@@ -200,7 +265,7 @@ Update rules:
 Mixed contract/variant patches are rejected. Contract fields with an explicit
 `--variant` are rejected.
 
-## 10. Listing, deleting, clearing, and exporting
+## 11. Listing, deleting, clearing, and exporting
 
 List base personas:
 
@@ -242,7 +307,7 @@ larva export --id code-reviewer --json
 
 Export does not include registry metadata.
 
-## 11. Working with registry-local variants
+## 12. Working with registry-local variants
 
 Variants replace name-based persona proliferation when the business role stays
 the same but the preferred prompt/model implementation changes.
@@ -271,7 +336,7 @@ larva variant activate code-reviewer tacit
 larva delete code-reviewer-tacit
 ```
 
-## 12. Python API
+## 13. Python API
 
 ```python
 from larva.shell.python_api import (
@@ -313,7 +378,7 @@ variants = variant_list("code-reviewer")
 updated = update("code-reviewer", {"model": "openai/gpt-5.5-pro"})
 ```
 
-## 13. MCP surface
+## 14. MCP surface
 
 ```text
 larva_validate(spec)
@@ -339,7 +404,7 @@ larva_component_list
 larva_component_show
 ```
 
-## 14. Web UI and plugin
+## 15. Web UI and plugin
 
 Start the packaged Web UI:
 
@@ -410,7 +475,7 @@ Plugin path resolution order:
 2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
 3. source-tree fallback at `contrib/opencode-plugin/larva.ts`
 
-## 15. Pi Coding Agent wrapper
+## 16. Pi Coding Agent wrapper
 
 Launch Pi through Larva when you want the bundled Pi extension to project the
 active Larva persona into Pi:
@@ -451,7 +516,7 @@ compatibility aliases. The full target policy is documented in
 This is Pi adapter-local behavior only: it does not change PersonaSpec or opifex
 contracts, and the model never receives a direct `commitPersona` tool.
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
 ### `INVALID_PERSONA_ID`
 
@@ -517,7 +582,7 @@ You tried to delete the only remaining variant. Delete the base persona instead.
 `variant` is registry-local metadata. Pass it as a CLI/MCP/API parameter, not as
 a key inside PersonaSpec JSON.
 
-## 16. Design notes worth remembering
+## 18. Design notes worth remembering
 
 - larva is the local registry/admission/projection authority for registered
   persona instances, not the canonical PersonaSpec contract authority or runtime
@@ -529,7 +594,7 @@ a key inside PersonaSpec JSON.
 - `variant` and `_registry` are not PersonaSpec fields
 - no hidden mutable state is applied to personas between calls except explicit registry operations
 
-## 17. Recommended reading order
+## 19. Recommended reading order
 
 1. `../../README.md`
 2. `USER_GUIDE.md`

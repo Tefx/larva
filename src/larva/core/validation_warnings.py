@@ -38,21 +38,6 @@ _PROMPT_LIKE_DESCRIPTION_MARKERS: tuple[str, ...] = (
     "must ",
 )
 
-_KNOWN_MODEL_SNAPSHOT: frozenset[str] = frozenset(
-    {
-        "gpt-4",
-        "gpt-4o",
-        "gpt-4o-mini",
-        "gpt-5",
-        "gpt-5.4",
-        "openai/gpt-5.4",
-        "openai/gpt-5.4-pro",
-        "claude-opus-4",
-        "claude-opus-4-20250514",
-        "claude-sonnet-4",
-        "claude-sonnet-4-5-20250514",
-    }
-)
 
 _KNOWN_CAPABILITY_FAMILY_SNAPSHOT: frozenset[str] = frozenset(
     {
@@ -91,20 +76,6 @@ def _description_looks_like_prompt(description: str) -> bool:
         marker in normalized for marker in _PROMPT_LIKE_DESCRIPTION_MARKERS
     )
 
-
-@pre(lambda model: model is None or not isinstance(model, (tuple, set)))
-@post(lambda result: result is None or isinstance(result, str))
-def _model_snapshot_warning(model: object) -> str | None:
-    """Warn when the model id is outside the known snapshot.
-
-    >>> _model_snapshot_warning("custom-model")
-    "unknown model identifier 'custom-model' is outside the known-model snapshot"
-    >>> _model_snapshot_warning("gpt-4o-mini") is None
-    True
-    """
-    if isinstance(model, str) and model.strip() and model not in _KNOWN_MODEL_SNAPSHOT:
-        return f"unknown model identifier '{model}' is outside the known-model snapshot"
-    return None
 
 
 @pre(lambda capabilities: capabilities is None or not isinstance(capabilities, (tuple, set)))
@@ -279,8 +250,8 @@ def collect_non_blocking_warnings(
 ) -> list[str]:
     """Collect canonical non-blocking warning signals.
 
-    >>> collect_non_blocking_warnings({"model": "custom-model"})[0]
-    "unknown model identifier 'custom-model' is outside the known-model snapshot"
+    >>> collect_non_blocking_warnings({"model": "custom-model", "capabilities": {"shell": "read_only"}})
+    []
     >>> collect_non_blocking_warnings({"capabilities": {"shell": "none"}})[0]
     "all declared capabilities are 'none'; this is valid but operationally inert"
     >>> collect_non_blocking_warnings(
@@ -290,10 +261,6 @@ def collect_non_blocking_warnings(
     'can_spawn references ids outside the current registry snapshot: child-b'
     """
     warnings: list[str] = []
-
-    model_warning = _model_snapshot_warning(spec.get("model"))
-    if model_warning is not None:
-        warnings.append(model_warning)
 
     warnings.extend(_capability_snapshot_warnings(spec.get("capabilities")))
     warnings.extend(_description_warnings(spec.get("description")))

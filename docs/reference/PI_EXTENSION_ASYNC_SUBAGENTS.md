@@ -1044,7 +1044,12 @@ Minimum panes:
    output is shown with newline-preserving formatting: intentionally formatted
    Markdown may render as Markdown, while plain/YAML/log-like multiline evidence
    is fenced/raw so line breaks and indentation remain readable.
-4. Timeline: bounded chronological events; no hidden thinking content.
+4. Timeline: bounded chronological events; no hidden thinking content. Timeline
+   is optimized for human readability: natural-language assistant excerpts remain
+   visible, tool execution rows show bounded argument summaries and status, and
+   assistant deltas that only mirror tool-call argument JSON are suppressed by
+   default when the matching tool row is present. Raw/bounded tool details remain
+   in debug/metadata surfaces rather than duplicated as assistant prose.
 5. Metadata: adapter-local diagnostics and source evidence.
 
 The panes may use renderer-safe Markdown where useful, but all visible content

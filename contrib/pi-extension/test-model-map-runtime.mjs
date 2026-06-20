@@ -132,6 +132,16 @@ const cases = {
     assert.deepEqual(observed.registryCalls.at(-1), ["openrouter", "google/gemini-3.1-pro-preview"]);
     console.log("prefix-hit PASS openrouter/google/gemini-3.1-pro-preview", JSON.stringify(observed.registryCalls));
   },
+  "prefix-hit-gemini-flash": async () => {
+    const observed = await runCommit({
+      name: "prefix-hit-gemini-flash",
+      modelMap: exampleMap,
+      personaModels: { "prefix-hit-gemini-flash": "openrouter/google/gemini-3.5-flash" },
+    });
+    assert.equal(observed.result.ok, true);
+    assert.deepEqual(observed.registryCalls.at(-1), ["openrouter", "google/gemini-3.5-flash"]);
+    console.log("prefix-hit-gemini-flash PASS openrouter/google/gemini-3.5-flash", JSON.stringify(observed.registryCalls));
+  },
   "conflict-invalid": async () => {
     const observed = await runCommit({
       name: "conflict-invalid",

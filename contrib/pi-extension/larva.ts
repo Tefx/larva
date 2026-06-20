@@ -1395,6 +1395,72 @@ function boundedSubagentTimelineEvents(events: SubagentTimelineEvent[] | undefin
   });
 }
 
+const SUBAGENT_TIMELINE_TOOL_PAYLOAD_KEYS = new Set([
+  "action",
+  "add",
+  "agent",
+  "check_refs",
+  "command",
+  "depends_on",
+  "field",
+  "file",
+  "force",
+  "glob",
+  "include_done",
+  "index",
+  "item_id",
+  "keyword",
+  "limit",
+  "name",
+  "path",
+  "pattern",
+  "phase_id",
+  "query",
+  "regex",
+  "requests",
+  "step_id",
+  "target",
+  "timeout",
+  "timeout_ms",
+  "url",
+]);
+
+function isSubagentToolPayloadObject(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  if (keys.length === 0) return false;
+  if ("schema_version" in value || "decision" in value || "final_text" in value || "result_text" in value) return false;
+  return keys.some((key) => SUBAGENT_TIMELINE_TOOL_PAYLOAD_KEYS.has(key));
+}
+
+function assistantTextLooksLikeToolPayload(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return false;
+  try {
+    return isSubagentToolPayloadObject(JSON.parse(trimmed));
+  } catch {
+    // Pi streaming can concatenate several adjacent tool-call JSON fragments into
+    // one assistant timeline event before the corresponding tool rows arrive.
+    if (/"(?:schema_version|decision|final_text|result_text)"\s*:/.test(trimmed)) return false;
+    return /"(?:action|agent|check_refs|command|field|file|force|glob|include_done|item_id|keyword|path|pattern|phase_id|query|regex|requests|step_id|target|timeout|timeout_ms|url)"\s*:/.test(trimmed);
+  }
+}
+
+function hasFollowingToolRowForAssistantPayload(events: SubagentTimelineEvent[], index: number): boolean {
+  for (let nextIndex = index + 1; nextIndex < events.length; nextIndex += 1) {
+    const nextEvent = events[nextIndex];
+    if (nextEvent.kind === "tool") return true;
+    if (nextEvent.kind === "terminal") return false;
+    if (nextEvent.kind === "assistant" && !assistantTextLooksLikeToolPayload(nextEvent.text)) return false;
+  }
+  return false;
+}
+
+function timelineEventsForDisplay(entry: SubagentPresentationLogEntry): SubagentTimelineEvent[] {
+  const events = timelineEventsForEntry(entry);
+  return events.filter((eventValue, index) => eventValue.kind !== "assistant" || !assistantTextLooksLikeToolPayload(eventValue.text) || !hasFollowingToolRowForAssistantPayload(events, index));
+}
+
 function subagentToolDisplayName(snapshot: SubagentToolSnapshot): string {
   const name = typeof snapshot.name === "string" && snapshot.name.trim().length > 0 ? snapshot.name.trim() : "tool";
   return boundedPresentationPreview(name, 32);
@@ -1853,7 +1919,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
 
   private timelinePaneLines(contentWidth: number): string[] {
     const lines = [this.sectionLine("Timeline", contentWidth)];
-    const timelineEvents = timelineEventsForEntry(this.entry);
+    const timelineEvents = timelineEventsForDisplay(this.entry);
     if (timelineEvents.length === 0) {
       lines.push(...this.fieldLines("Timeline", "No normalized child stream events observed.", contentWidth));
       return lines;

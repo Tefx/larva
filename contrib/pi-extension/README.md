@@ -54,9 +54,12 @@ fatal.
 
 ## Adapter-local model map
 
-PersonaSpec `model` remains canonical Larva data. Pi-provider aliases are
-adapter-local Larva-Pi configuration and must not be added to PersonaSpec or
-opifex shared contracts.
+PersonaSpec `model` remains canonical Larva data and is stored as the active
+variant's runtime routing label. Larva canonical validation requires it to be a
+non-empty string, but it does not maintain a static provider/model allowlist and
+it does not guarantee runtime availability. Pi-provider aliases and availability
+checks are adapter-local Larva-Pi configuration and must not be added to
+PersonaSpec or opifex shared contracts.
 
 The canonical model-map path is:
 
@@ -103,6 +106,9 @@ Resolution rules:
 - If there is no exact hit and no prefix hit, preserve the current split fallback.
 - Startup persona application and `/larva-persona` switching must use the same
   resolver path.
+- Validation warnings from `larva validate` are not runtime model-availability
+  verdicts. Use the model-map helper and Pi runtime diagnostics for provider
+  inventory checks.
 
 Runtime-map draft helper policy:
 
@@ -133,6 +139,10 @@ Contract verification cases for the implementation step:
   `LARVA_MODEL_MAP_INVALID` at runtime and are rejected by the draft helper.
 - Startup persona application and `/larva-persona` switching use the same model
   resolver and the same unavailable-model error projection.
+- `openrouter/google/gemini-3.5-flash` resolves through an `openrouter/` prefix
+  rule with empty `to_model_id_prefix` to provider `openrouter` and model id
+  `google/gemini-3.5-flash`; it must not require a Larva validation snapshot
+  entry.
 
 ## Adapter-local tool policy
 
@@ -1074,9 +1084,13 @@ bounded panes for Summary, Prompt, Output, Timeline, and Metadata; the Prompt pa
 contains the full initial prompt. Output presentation preserves literal line
 breaks for evidence: Markdown-looking output may render as Markdown, while
 plain/YAML/log-like multiline output is fenced/raw so newlines, blank lines, and
-indentation are not collapsed. It is not timer polling.
-It can cancel the selected exact running child after confirmation, and
-mouse click input remains unsupported/no-op.
+indentation are not collapsed. Timeline is the human-readable execution trace:
+it keeps natural-language assistant excerpts and tool execution rows, but default
+rendering suppresses assistant deltas that are only tool-call argument JSON when
+the corresponding tool row already summarizes the call. Raw/bounded tool
+arguments remain available through tool snapshots and debug/metadata surfaces.
+It is not timer polling. It can cancel the selected exact running child after
+confirmation, and mouse click input remains unsupported/no-op.
 
 User-facing mode matrix:
 

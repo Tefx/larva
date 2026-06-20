@@ -112,6 +112,15 @@ assert.equal(prefix.result.ok, true);
 assert.deepEqual(prefix.registryCalls.at(-1), ["openrouter", "google/gemini-3.1-pro-preview"]);
 console.log("prefix hit: PASS", JSON.stringify(prefix.registryCalls.at(-1)));
 
+const prefixGeminiFlash = await runCommit({
+  name: "prefix-hit-gemini-flash",
+  modelMap: exampleMap,
+  personaModels: { "prefix-hit-gemini-flash": "openrouter/google/gemini-3.5-flash" },
+});
+assert.equal(prefixGeminiFlash.result.ok, true);
+assert.deepEqual(prefixGeminiFlash.registryCalls.at(-1), ["openrouter", "google/gemini-3.5-flash"]);
+console.log("prefix hit gemini flash: PASS", JSON.stringify(prefixGeminiFlash.registryCalls.at(-1)));
+
 const conflict = await runCommit({
   name: "same-length-prefix-conflict-invalid",
   modelMap: { models: {}, prefix_rules: [

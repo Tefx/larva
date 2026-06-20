@@ -645,6 +645,65 @@ def test_larva_subagent_timeline_rows_show_bounded_args_and_hierarchy(tmp_path: 
     }
 
 
+def test_larva_subagent_timeline_suppresses_tool_call_json_duplicates(tmp_path: Path) -> None:
+    """Timeline hides assistant tool-call JSON when the tool row already summarizes it."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\\\[[0-9;]*m`, "g");
+        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const component = new mod.SubagentPresentationLogOverlay({
+          entry: {
+            task_id: "/tmp/readable.jsonl",
+            persona_id: "ux",
+            status: "success",
+            sequence: 1,
+            result_text: "final",
+            error: null,
+            task_prompt: "Inspect duplicate tool-call payload rendering.",
+            timeline_events: [
+              { kind: "assistant", text: JSON.stringify({ command: "git status --short", timeout: 10 }) },
+              { kind: "tool", toolCallId: "call_bash", snapshot: { toolCallId: "call_bash", name: "bash", status: "success", args_preview: JSON.stringify({ command: "git status --short", timeout: 10 }), output_preview: "clean" } },
+              { kind: "assistant", text: `${JSON.stringify({ agent: "vectl-planner" })}${JSON.stringify({ target: "hardening-ui" })}` },
+              { kind: "tool", toolCallId: "call_vectl", snapshot: { toolCallId: "call_vectl", name: "vectl_vectl_status", status: "success", args_preview: JSON.stringify({ agent: "vectl-planner" }) } },
+              { kind: "assistant", text: JSON.stringify({ action: "PASS", summary: "final JSON after tools remains visible" }) },
+              { kind: "assistant", text: JSON.stringify({ schema_version: "vernier.action_proposal", decision: "no_action" }) },
+              { kind: "assistant", text: "Natural explanation remains visible." },
+              { kind: "terminal", status: "success" },
+            ],
+          },
+          generation: 1,
+          theme: {
+            fg: (token, text) => token === "dim" ? `\\x1b[2m${text}\\x1b[22m` : token === "success" ? `\\x1b[32m${text}\\x1b[39m` : text,
+            bold: (text) => `\\x1b[1m${text}\\x1b[22m`,
+          },
+          tui: { terminal: { rows: 40 } },
+        });
+        component.handleInput?.("4");
+        const plain = component.render(96).map(stripAnsi).join("\\n");
+        console.log(JSON.stringify({
+          hidesCommandPayloadAssistant: !plain.includes('• assistant {"command"') && !plain.includes('"timeout":10'),
+          hidesConcatenatedVectlPayloadAssistant: !plain.includes('• assistant {"agent"') && !plain.includes('{"target":"hardening-ui"}'),
+          keepsToolRows: plain.includes('↳ bash(command="git status --short"') && plain.includes('↳ vectl_vectl_status(agent="vectl-planner")'),
+          keepsFinalActionJsonAfterTools: plain.includes('final JSON after tools remains visible'),
+          keepsNonToolAssistantJson: plain.includes('schema_version') && plain.includes('decision'),
+          keepsNaturalAssistantText: plain.includes('Natural explanation remains visible.'),
+        }, null, 2));
+        """,
+    )
+
+    assert payload == {
+        "hidesCommandPayloadAssistant": True,
+        "hidesConcatenatedVectlPayloadAssistant": True,
+        "keepsToolRows": True,
+        "keepsFinalActionJsonAfterTools": True,
+        "keepsNonToolAssistantJson": True,
+        "keepsNaturalAssistantText": True,
+    }
+
+
 def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: Path) -> None:
     """Pin public resume task_id validation codes before child launch."""
 
