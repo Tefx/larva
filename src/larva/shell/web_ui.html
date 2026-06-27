@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LARVA - PersonaSpec Manager</title>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
@@ -243,6 +242,8 @@
     border-radius: 4px;
     font-family: 'Maple Mono NF CN', monospace; font-size: 13px;
     line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
      border-left: 2px solid transparent; min-height: 200px;
    }
   .prompt-editor {
@@ -350,32 +351,6 @@
     font-family: inherit; font-size: 12px; outline: none; width: 120px;
   }
   .tag-input::placeholder { color: var(--text-muted); }
-
-  /* Markdown in prompt — tight developer-density spacing */
-  .prompt-md { line-height: 1.45; }
-  .prompt-md > *:first-child { margin-top: 0; }
-  .prompt-md > *:last-child { margin-bottom: 0; }
-  .prompt-md h1, .prompt-md h2, .prompt-md h3, .prompt-md h4 { color: var(--accent); font-weight: 500; }
-  .prompt-md h1 { font-size: 16px; margin: 20px 0 6px; }
-  .prompt-md h2 { font-size: 14px; margin: 16px 0 4px; }
-  .prompt-md h3 { font-size: 13px; margin: 12px 0 2px; }
-  .prompt-md h4 { font-size: 13px; margin: 8px 0 2px; color: var(--text-secondary); }
-  .prompt-md p { margin: 4px 0; }
-  .prompt-md p + p { margin-top: 6px; }
-  .prompt-md ul, .prompt-md ol { margin: 4px 0; padding-left: 18px; }
-  .prompt-md li { margin: 1px 0; }
-  .prompt-md li > p { margin: 0; }
-  .prompt-md li > ul, .prompt-md li > ol { margin: 0; }
-  .prompt-md code { background: var(--bg-elevated); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
-  .prompt-md pre { background: var(--bg-primary); padding: 10px 12px; border-radius: 4px; margin: 6px 0; overflow-x: auto; line-height: 1.35; }
-  .prompt-md pre code { background: none; padding: 0; font-size: 12px; }
-  .prompt-md strong { color: var(--text-primary); font-weight: 500; }
-  .prompt-md em { color: var(--text-secondary); font-style: italic; }
-  .prompt-md table { border-collapse: collapse; margin: 6px 0; width: 100%; }
-  .prompt-md th, .prompt-md td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; font-size: 12px; }
-  .prompt-md th { background: var(--bg-elevated); color: var(--text-secondary); font-weight: 500; }
-  .prompt-md blockquote { border-left: 2px solid var(--accent); padding-left: 10px; margin: 6px 0; color: var(--text-secondary); }
-  .prompt-md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
   /* Toast */
   .toast {
@@ -682,7 +657,7 @@
           <template x-if="!showRawJson">
             <div>
               <template x-if="!editingPrompt">
-                <div class="prompt-display prompt-md" :class="{ 'staged-border': staged.prompt !== undefined }" x-html="renderMarkdown(getVal('prompt'))"></div>
+                <div class="prompt-display" :class="{ 'staged-border': staged.prompt !== undefined }" x-text="getVal('prompt') || ''"></div>
               </template>
               <template x-if="editingPrompt">
                 <textarea class="prompt-editor" :class="{ 'staged-border': promptValue !== selectedPersona.prompt }"
@@ -1125,16 +1100,6 @@ function larvaApp() {
         }
       }
       this.stageChange('model_params', obj);
-    },
-
-    // Markdown rendering
-    renderMarkdown(text) {
-      if (!text) return '';
-      if (typeof marked !== 'undefined') {
-        marked.setOptions({ breaks: false, gfm: true });
-        return marked.parse(text);
-      }
-      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
     },
 
     // can_spawn helpers

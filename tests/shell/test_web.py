@@ -18,7 +18,8 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from returns.result import Failure, Result, Success
@@ -34,12 +35,14 @@ from larva.app.facade import DefaultLarvaFacade, LarvaError
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
-from larva.core.spec import PersonaSpec
-from larva.core.validate import ValidationReport
 from larva.shell import python_api
 from larva.shell import web as web_module
 from larva.shell.python_api import LarvaApiError
 from larva.shell.web import app
+
+if TYPE_CHECKING:
+    from larva.core.spec import PersonaSpec
+    from larva.core.validate import ValidationReport
 
 # -----------------------------------------------------------------------------
 # Spec-Fixture Conformance: authoritative minimal PersonaSpec
@@ -54,6 +57,10 @@ _MINIMAL_SPEC: PersonaSpec = {
     "capabilities": {},
     "spec_version": "0.1.0",
 }
+_PACKAGED_HTML_PATH = (
+    Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+)
+_MALICIOUS_PROMPT = '<img src=x onerror="window.__larva_xss_probe=1">\n# prompt text'
 
 
 def _valid_report() -> ValidationReport:
@@ -194,6 +201,30 @@ def mock_facade(mock_registry: CallRecordingRegistry) -> MockFacade:
 
 
 # -----------------------------------------------------------------------------
+# Tests: HTML prompt rendering safety
+# -----------------------------------------------------------------------------
+
+
+class TestPackagedHtmlPromptSafety:
+    """Regression coverage for registry-controlled prompt rendering.
+
+    Source: archived report docs/security/2026-06-27-personaspec-prompt-stored-xss.md
+    Source: docs/reference/INTERFACES.md :: Web UI prompt rendering safety
+    """
+
+    def test_packaged_prompt_display_uses_inert_text_rendering(self) -> None:
+        """Prompt content must not flow through Markdown HTML rendering."""
+        content = _PACKAGED_HTML_PATH.read_text()
+
+        assert "x-html" not in content
+        assert "renderMarkdown" not in content
+        assert "marked.parse" not in content
+        assert "marked/marked" not in content
+        assert 'x-text="getVal(\'prompt\') || \'\'"' in content
+        assert "white-space: pre-wrap;" in content
+
+
+# -----------------------------------------------------------------------------
 # Tests: Normative endpoint inventory (INTERFACES.md lines 111-123)
 # -----------------------------------------------------------------------------
 
@@ -314,6 +345,33 @@ class TestWebSurfaceEndpoints:
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == "test-persona"
         assert len(mock_registry.save_inputs) == 1
+
+    def test_prompt_html_characters_remain_stored_data_not_admission_errors(
+        self,
+        mock_facade: MockFacade,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Prompt HTML-like text remains valid data; UI rendering is the safety boundary.
+
+        Source: PersonaSpec prompt is a string field; UI displays prompt with x-text.
+        """
+        malicious_spec = dict(_MINIMAL_SPEC, id="xss-probe", prompt=_MALICIOUS_PROMPT)
+        monkeypatch.setattr(web_module, "validate", lambda s: _valid_report())
+        monkeypatch.setattr(web_module, "register", lambda s: mock_facade.register(s))
+        monkeypatch.setattr(
+            web_module,
+            "resolve",
+            lambda pid, overrides=None: mock_facade.resolve(pid),
+        )
+
+        client = TestClient(app)
+
+        register_resp = client.post("/api/personas", json={"spec": malicious_spec})
+        resolve_resp = client.get("/api/personas/xss-probe")
+
+        assert register_resp.status_code == 200
+        assert resolve_resp.status_code == 200
+        assert resolve_resp.json()["data"]["prompt"] == _MALICIOUS_PROMPT
 
     def test_post_api_personas_rejects_unknown_spec_wrapper_keys(self) -> None:
         """POST /api/personas rejects registry metadata beside wrapped spec."""

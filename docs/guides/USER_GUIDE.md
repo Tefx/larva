@@ -417,6 +417,11 @@ The Web UI may show active variant state for human management. Registry variant
 endpoints return `{_registry, spec}` envelopes where `_registry` is local
 metadata and `spec` is canonical PersonaSpec.
 
+Prompt detail panes display PersonaSpec `prompt` values as inert text. A prompt
+can contain Markdown-looking or HTML-looking characters because `prompt` is a
+canonical string field, but the local Web UI does not render prompt text as HTML
+or execute it as markup.
+
 OpenCode wrapper:
 
 ```bash

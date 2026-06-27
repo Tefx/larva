@@ -192,6 +192,15 @@ Removed Python API exports:
 `python contrib/web/server.py` is a supported contributor convenience runtime,
 not the canonical packaged entrypoint.
 
+### Web UI prompt rendering safety
+
+PersonaSpec `prompt` is canonical string data and may contain Markdown-looking
+or HTML-looking characters. Web UIs must display registry-controlled prompt
+content as inert text, not as HTML. The packaged UI and contrib UI therefore
+render prompt detail panes with text binding semantics and preserve formatting
+with CSS whitespace handling. They must not pass prompt content through
+Markdown-to-HTML renderers or insert prompt-derived strings with HTML sinks.
+
 ### Normative endpoint inventory
 
 | Method | Path | Contract |

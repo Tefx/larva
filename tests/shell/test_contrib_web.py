@@ -17,7 +17,7 @@ from __future__ import annotations
 import importlib.util
 import inspect
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -27,10 +27,12 @@ pytest.importorskip("httpx")
 
 from starlette.testclient import TestClient
 
-from larva.core.spec import PersonaSpec
-from larva.core.validate import ValidationReport
+if TYPE_CHECKING:
+    from larva.core.spec import PersonaSpec
+    from larva.core.validate import ValidationReport
 
 CONTRIB_WEB_PATH = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
+CONTRIB_HTML_PATH = Path(__file__).parent.parent.parent / "contrib" / "web" / "index.html"
 
 
 def _load_contrib_module() -> Any:
@@ -93,8 +95,21 @@ class TestContribHtmlArtifact:
 
         Source: INTERFACES.md line 104
         """
-        html_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "index.html"
-        assert html_path.exists(), "contrib/web/index.html should exist"
+        assert CONTRIB_HTML_PATH.exists(), "contrib/web/index.html should exist"
+
+    def test_contrib_prompt_display_uses_inert_text_rendering(self) -> None:
+        """Contrib prompt content must not flow through Markdown HTML rendering.
+
+        Source: archived report docs/security/2026-06-27-personaspec-prompt-stored-xss.md
+        """
+        content = CONTRIB_HTML_PATH.read_text()
+
+        assert "x-html" not in content
+        assert "renderMarkdown" not in content
+        assert "marked.parse" not in content
+        assert "marked/marked" not in content
+        assert 'x-text="getVal(\'prompt\') || \'\'"' in content
+        assert "white-space: pre-wrap;" in content
 
     def test_contrib_html_contains_batch_update_workflow(self) -> None:
         """Contrib HTML contains batch-update UI hooks.
@@ -102,8 +117,7 @@ class TestContribHtmlArtifact:
         Source: INTERFACES.md lines 145-147
         Source: contrib/web/index.html should contain batch-update affordance
         """
-        html_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "index.html"
-        content = html_path.read_text()
+        content = CONTRIB_HTML_PATH.read_text()
 
         # Verify batch-update workflow exists in contrib HTML
         assert "batch" in content.lower(), "Contrib HTML should contain batch reference"
@@ -116,8 +130,7 @@ class TestContribHtmlArtifact:
 
         Source: INTERFACES.md lines 136-137
         """
-        html_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "index.html"
-        content = html_path.read_text()
+        content = CONTRIB_HTML_PATH.read_text()
 
         # Verify copy prompt affordance exists
         assert "copyPrompt" in content, "Contrib HTML should contain copyPrompt function"
@@ -387,5 +400,6 @@ class TestContribWebComponentEndpointsRemoved:
         client = TestClient(module.app)
         resp = client.get("/api/components/prompts/test")
         assert resp.status_code in (404, 405), (
-            f"GET /api/components/prompts/test should be removed from contrib. Got {resp.status_code}."
+            "GET /api/components/prompts/test should be removed from contrib. "
+            f"Got {resp.status_code}."
         )
