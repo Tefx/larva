@@ -1640,6 +1640,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private mouseReportingEnabled = false;
   private entry: SubagentPresentationLogEntry;
   private selection: SubagentOverlaySelection;
+  private selectorCursorSelection: SubagentOverlaySelection | null = null;
   private selectorCursorIndex = 0;
   private selectorScrollOffset = 0;
   private lastSelectorMaxOffset = 0;
@@ -1688,7 +1689,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     }
     this.entry = refreshed;
     this.selection = subagentOverlaySelection(refreshed);
-    this.alignSelectorCursorToSelection(false);
+    this.alignSelectorCursorToSelection(false, this.selectorMode ? this.selectorCursorSelection ?? this.selection : this.selection);
     currentSubagentOverlay = { entry: refreshed, text: renderSubagentPresentationOverlay([refreshed], true, this.generation), generation: this.generation };
     this.invalidate();
     this.requestRender();
@@ -1724,10 +1725,15 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     return entry.sequence === selection.sequence;
   }
 
-  private alignSelectorCursorToSelection(resetScroll: boolean): void {
+  private syncSelectorCursorSelection(entries = this.selectorEntries()): void {
+    this.selectorCursorSelection = entries[this.selectorCursorIndex] ? subagentOverlaySelection(entries[this.selectorCursorIndex]) : null;
+  }
+
+  private alignSelectorCursorToSelection(resetScroll: boolean, selection = this.selection): void {
     const entries = this.selectorEntries();
-    const selectedIndex = entries.findIndex((entry) => this.selectorEntryMatchesSelection(entry));
+    const selectedIndex = entries.findIndex((entry) => this.selectorEntryMatchesSelection(entry, selection));
     this.selectorCursorIndex = selectedIndex >= 0 ? selectedIndex : selectorClamp(this.selectorCursorIndex, 0, Math.max(0, entries.length - 1));
+    this.syncSelectorCursorSelection(entries);
     if (resetScroll) this.selectorScrollOffset = 0;
   }
 
@@ -1744,6 +1750,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const next = selectorClamp(this.selectorCursorIndex + delta, 0, entries.length - 1);
     if (next === this.selectorCursorIndex) return;
     this.selectorCursorIndex = next;
+    this.syncSelectorCursorSelection(entries);
     this.ensureSelectorCursorVisible(this.lastRenderedViewportLines);
     this.invalidate();
     this.requestRender();
@@ -1755,6 +1762,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     const next = selectorClamp(index, 0, entries.length - 1);
     if (next === this.selectorCursorIndex) return;
     this.selectorCursorIndex = next;
+    this.syncSelectorCursorSelection(entries);
     this.ensureSelectorCursorVisible(this.lastRenderedViewportLines);
     this.invalidate();
     this.requestRender();
@@ -1770,6 +1778,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     if (!selected) return;
     this.entry = selected;
     this.selection = subagentOverlaySelection(selected);
+    this.selectorCursorSelection = this.selection;
     this.selectorMode = false;
     currentSubagentOverlay = { entry: selected, text: renderSubagentPresentationOverlay([selected], true, this.generation), generation: this.generation };
     this.invalidate();
@@ -2066,6 +2075,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     if (this.selectorMode) {
       this.lastSelectorMaxOffset = Math.max(0, innerLines.length - viewportLines);
       this.selectorCursorIndex = selectorClamp(this.selectorCursorIndex, 0, Math.max(0, this.selectorEntries().length - 1));
+      this.syncSelectorCursorSelection();
       this.ensureSelectorCursorVisible(viewportLines);
       scrollOffset = this.selectorScrollOffset;
     } else {

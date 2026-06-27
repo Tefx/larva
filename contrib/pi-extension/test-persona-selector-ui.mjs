@@ -455,7 +455,19 @@ function subagentLogOverlayExpectedRedEvidence() {
   selectorSelectComponent.handleInput("\r");
   const detailDoneAfterEnter = selectorDoneValues.length;
   selectorSelectComponent.dispose?.();
-  const selectorNavComponent = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 3, tui: { terminal: { rows: 100 } } });
+  const selectorRefreshComponent = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 3, tui: { terminal: { rows: 100 } } });
+  selectorRefreshComponent.handleInput("s");
+  selectorRefreshComponent.handleInput("down");
+  const selectorRefreshBefore = selectorRefreshComponent.render(96);
+  mod.recordSubagentPresentationEntryForTests("/tmp/ui-running.jsonl", "runner", "running", {
+    phase: "streaming_update",
+    task_preview: "refresh should not steal selector cursor",
+    updated_at: "2026-06-05T00:00:00.000Z",
+  });
+  selectorRefreshComponent.refreshFromPresentationLog();
+  const selectorRefreshAfter = selectorRefreshComponent.render(96);
+  selectorRefreshComponent.dispose?.();
+  const selectorNavComponent = new mod.SubagentPresentationLogOverlay({ entry: list.details.entries[0], generation: 4, tui: { terminal: { rows: 100 } } });
   selectorNavComponent.handleInput("s");
   const selectorNavStart = selectorNavComponent.render(96);
   selectorNavComponent.handleInput("\x1b[6~");
@@ -489,12 +501,16 @@ function subagentLogOverlayExpectedRedEvidence() {
   const selectorSelectAfterDownPlain = plain(selectorSelectAfterDown);
   const selectorDetailAfterEnterPlain = plain(selectorDetailAfterEnter);
   const directSelectorPlain = plain(directSelector);
+  const selectedSelectorRow = (lines) => plain(lines).split("\n").find((line) => line.includes("›")) ?? "";
+  const selectorRefreshBeforeRow = selectedSelectorRow(selectorRefreshBefore);
+  const selectorRefreshAfterRow = selectedSelectorRow(selectorRefreshAfter);
   return {
     renderedLineCounts: { small: small.length, tall: tall.length, detail: detail.length, selector: selector.length, fourthTab: fourthTab.length, fifthTab: fifthTab.length, directSelector: directSelector.length },
     assertions: {
       selectorModeViaS: /selector|select subagent/i.test(selectorPlain) && !selectorPlain.includes("● 1 Summary"),
       selectFlagOpensSelectorDirectly: selectFlag.details.overlay_mode === "selector" && /selector|select subagent/i.test(directSelectorPlain) && !directSelectorPlain.includes("● 1 Summary"),
       selectorEnterSelectsWithoutClosing: selectorSelectStartPlain.includes("runner") && selectorSelectAfterDownPlain.includes("› 2:final finisher") && selectorDetailAfterEnterPlain.includes("Persona          finisher") && selectorDetailAfterEnterPlain.includes("● 1 Summary") && selectorDoneValues.length === 0 && detailDoneAfterEnter === 0,
+      selectorRefreshPreservesTransientCursor: selectorRefreshBeforeRow.includes("finisher") && selectorRefreshAfterRow.includes("finisher") && !selectorRefreshAfterRow.includes("runner"),
       selectorNavigationKeysWork: JSON.stringify(selectorNavStart) !== JSON.stringify(selectorNavPageDown) && JSON.stringify(selectorNavPageUp) === JSON.stringify(selectorNavStart) && JSON.stringify(selectorNavEnd) === JSON.stringify(selectorNavPageDown) && JSON.stringify(selectorNavHome) === JSON.stringify(selectorNavStart) && JSON.stringify(selectorNavWheelDown) === JSON.stringify(selectorNavPageDown),
       runningFirstOrdering: list.details.entries[0]?.status === "running",
       tabOrderIncludesEvents: /1 Summary.*2 Prompt.*3 Output.*4 Events.*5 Metadata/s.test(detailPlain),
