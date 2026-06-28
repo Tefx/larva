@@ -436,7 +436,7 @@ type PiApi = {
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
   registerShortcut?: (shortcut: string, options: { description?: string; handler: (ctx: PiShortcutContext) => void | Promise<void> }) => void;
   registerTool?: <Input, Output>(tool: ToolDefinition<Input, Output>) => void;
-  on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown) => void;
+  on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown | Promise<unknown>) => void;
 };
 type PiContext = PiApi & {
   env?: RuntimeEnv;
@@ -4571,6 +4571,17 @@ export function decideToolCall(tool: string): ToolPolicyDecision {
   return { action: "deny", error: error("LARVA_TOOL_DENIED", `Larva policy denied ${tool}`) };
 }
 
+export async function decideToolCallWithRefresh(tool: string, pi: PiApi): Promise<ToolPolicyDecision> {
+  const initial = decideToolCall(tool);
+  if (initial.action === "allow") return initial;
+  if (initial.error.code === "LARVA_AGENT_PERSONA_SWITCH_MANUAL") return initial;
+  if (!state.envelope) return initial;
+
+  const refreshError = await refreshActiveToolExposureForAgentPersonaMode(pi);
+  if (refreshError !== null) return initial;
+  return decideToolCall(tool);
+}
+
 function timestampNow(): string {
   return new Date().toISOString();
 }
@@ -7907,13 +7918,13 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     await attemptPersonaLeaseRestore(runtimeCtx, pi, terminalRestorePath(payload) ?? "success");
   });
-  pi.on?.("tool_call", (payload: unknown) => {
+  pi.on?.("tool_call", async (payload: unknown) => {
     const name = isRecord(payload) && typeof payload.toolName === "string"
       ? payload.toolName
       : isRecord(payload) && typeof payload.name === "string"
         ? payload.name
         : "";
-    const decision = decideToolCall(name);
+    const decision = await decideToolCallWithRefresh(name, pi);
     if (decision.action === "deny") return { block: true, reason: `${decision.error.code}: ${decision.error.message}` };
     return undefined;
   });

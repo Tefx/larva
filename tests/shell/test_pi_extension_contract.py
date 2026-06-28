@@ -286,9 +286,9 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     agent_end_registration = re.search(r"on\?\.\(\"agent_end\", async \(payload: unknown, eventCtx\?: PiContext\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert agent_end_registration is not None
     assert "attemptPersonaLeaseRestore(runtimeCtx, pi, terminalRestorePath(payload) ?? \"success\")" in agent_end_registration.group("body")
-    tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
+    tool_call_registration = re.search(r"on\?\.\(\"tool_call\", async \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None
-    assert "decideToolCall(name)" in tool_call_registration.group("body")
+    assert "await decideToolCallWithRefresh(name, pi)" in tool_call_registration.group("body")
 
 
 def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:
@@ -1362,6 +1362,195 @@ def test_set_active_tools_and_tool_call_denial_contract() -> None:
         r"larva_subagent[\s\S]+LARVA_TOOL_DENIED[\s\S]+handler|handler[\s\S]+larva_subagent[\s\S]+LARVA_TOOL_DENIED",
         "denied larva_subagent must be stopped by generic tool policy before handler result",
     )
+
+
+def test_late_registered_tool_call_miss_refreshes_current_policy_baseline(tmp_path: Path) -> None:
+    """A stale activeTools miss refreshes generically and re-checks policy exactly."""
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    def run_case(policy_data: dict[str, Any], script_tail: str) -> dict[str, Any]:
+        policy = tmp_path / f"tool-policy-{abs(hash(json.dumps(policy_data, sort_keys=True)))}.json"
+        policy.write_text(json.dumps(policy_data), encoding="utf-8")
+        return _run_node(
+            tmp_path,
+            f"""
+            const mod = await import({json.dumps(EXTENSION.as_uri())});
+            let currentTools = ["read"];
+            const activeToolCalls = [];
+            let getAllToolsCalls = 0;
+            const ctx = {{
+              env: {{
+                LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+                LARVA_PI_TOOL_POLICY_FILE: {json.dumps(str(policy))},
+              }},
+              modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+            }};
+            const pi = {{
+              getAllTools: async () => {{ getAllToolsCalls += 1; return currentTools; }},
+              setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+              setModel: async () => true,
+            }};
+            const committed = await mod.commitPersona("ok", ctx, pi);
+            {script_tail}
+            """,
+        )
+
+    allowed = run_case(
+        {"personas": {"ok": {}}},
+        """
+        const callsAfterCommit = getAllToolsCalls;
+        currentTools = ["read", "late_tool"];
+        const decision = await mod.decideToolCallWithRefresh("late_tool", pi);
+        console.log(JSON.stringify({ committed, decision, callsAfterCommit, getAllToolsCalls, activeToolCalls }));
+        """,
+    )
+    assert allowed["committed"]["ok"] is True
+    assert allowed["decision"] == {"action": "allow"}
+    assert allowed["callsAfterCommit"] == 1
+    assert allowed["getAllToolsCalls"] == 2
+    assert allowed["activeToolCalls"][-1] == ["read", "late_tool"]
+
+    denied = run_case(
+        {"personas": {"ok": {"deny": ["danger_tool"]}}},
+        """
+        currentTools = ["read", "danger_tool"];
+        const decision = await mod.decideToolCallWithRefresh("danger_tool", pi);
+        console.log(JSON.stringify({ committed, decision, activeToolCalls }));
+        """,
+    )
+    assert denied["committed"]["ok"] is True
+    assert denied["decision"]["action"] == "deny"
+    assert denied["decision"]["error"]["code"] == "LARVA_TOOL_DENIED"
+    assert denied["activeToolCalls"][-1] == ["read"]
+
+    allowlist = run_case(
+        {"personas": {"ok": {"allow": ["read"]}}},
+        """
+        currentTools = ["read", "late_tool"];
+        const decision = await mod.decideToolCallWithRefresh("late_tool", pi);
+        console.log(JSON.stringify({ committed, decision, activeToolCalls }));
+        """,
+    )
+    assert allowlist["committed"]["ok"] is True
+    assert allowlist["decision"]["action"] == "deny"
+    assert allowlist["decision"]["error"]["code"] == "LARVA_TOOL_DENIED"
+    assert allowlist["activeToolCalls"][-1] == ["read"]
+
+
+def test_late_registered_tool_call_refresh_preserves_fast_path_failure_and_manual_guards(tmp_path: Path) -> None:
+    """Refresh-aware tool decisions stay cheap on hit and fail closed on guarded misses."""
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    policy = tmp_path / "tool-policy.json"
+    policy.write_text(json.dumps({"personas": {"ok": {}}}), encoding="utf-8")
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        let phase = "commit";
+        let getAllToolsCalls = 0;
+        const activeToolCalls = [];
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_TOOL_POLICY_FILE: {json.dumps(str(policy))},
+            LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+          }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => {{
+            getAllToolsCalls += 1;
+            if (phase === "fail") throw new Error("tool registry unavailable during refresh");
+            return ["read", "larva_persona_switch", "larva_personas"];
+          }},
+          setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        const committed = await mod.commitPersona("ok", ctx, pi);
+        const callsAfterCommit = getAllToolsCalls;
+        const activeBefore = activeToolCalls.length;
+        const fast = await mod.decideToolCallWithRefresh("read", pi);
+        const callsAfterFast = getAllToolsCalls;
+        phase = "fail";
+        const failClosed = await mod.decideToolCallWithRefresh("late_tool", pi);
+        const callsAfterFailure = getAllToolsCalls;
+        const manual = await mod.decideToolCallWithRefresh("larva_persona_switch", pi);
+        console.log(JSON.stringify({{
+          committed,
+          fast,
+          failClosed,
+          manual,
+          callsAfterCommit,
+          callsAfterFast,
+          callsAfterFailure,
+          getAllToolsCalls,
+          activeBefore,
+          activeToolCalls,
+        }}));
+        """,
+    )
+
+    assert result["committed"]["ok"] is True
+    assert result["fast"] == {"action": "allow"}
+    assert result["callsAfterCommit"] == 1
+    assert result["callsAfterFast"] == 1
+    assert result["failClosed"]["action"] == "deny"
+    assert result["failClosed"]["error"]["code"] == "LARVA_TOOL_DENIED"
+    assert result["callsAfterFailure"] == 2
+    assert result["manual"]["action"] == "deny"
+    assert result["manual"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
+    assert result["getAllToolsCalls"] == 2
+    assert result["activeToolCalls"] == [["read"]]
+    assert result["activeBefore"] == 1
 
 
 def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_switch(tmp_path: Path) -> None:

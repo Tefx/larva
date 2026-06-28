@@ -223,6 +223,16 @@ Policy rules:
   is allowed minus denied tools.
 - There is no `ask` action.
 
+At persona commit time, Larva snapshots the current Pi tool registry after exact
+policy filtering and calls `setActiveTools`. If a later `tool_call` would be
+denied only because the requested tool is missing from that snapshot, the Pi
+extension performs one generic refresh: it re-enumerates the current Pi tools,
+re-applies the active persona policy and agent-persona exposure filter, updates
+`setActiveTools`/`state.activeTools`, and re-checks the same exact tool name.
+Refresh is not run for manual agent persona self-switch denials. Refresh errors
+fail closed by preserving the original denial, and no package-specific aliases,
+wildcards, or tool-name special cases are introduced.
+
 Startup and switch behavior differ only for Pi builds that do not expose the tool
 enumeration surface. During initial startup, an absent or unsupported enumerator
 uses a startup-tolerant empty baseline so Pi can launch. If startup reaches
