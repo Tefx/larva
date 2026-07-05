@@ -2468,6 +2468,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
           const activeToolCalls = [];
           const modelCalls = [];
           const sentUserMessages = [];
+          const sentRuntimeMessages = [];
           const confirmations = [];
           const selectCalls = [];
           const pi = {{
@@ -2480,6 +2481,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             }},
             registerTool: (tool) => {{ tools[tool.name] = tool; }},
             on: (event, handler) => {{ handlers[event] = handler; }},
+            sendMessage: async (message, options) => {{ sentRuntimeMessages.push({{ message, options }}); return true; }},
             sendUserMessage: async (message, options) => {{ sentUserMessages.push({{ message, options }}); return true; }},
           }};
           const ui = {{
@@ -2517,7 +2519,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             await mod.initializeExtension(ctx, pi);
           }}
           if (!options.skipSessionStart && typeof handlers.session_start === "function") await handlers.session_start({{ entries: sessionEntries }}, ctx);
-          return {{ mod, ctx, pi, commands, tools, handlers, sessionEntries, statuses, notifications, activeToolCalls, modelCalls, sentUserMessages, confirmations, selectCalls }};
+          return {{ mod, ctx, pi, commands, tools, handlers, sessionEntries, statuses, notifications, activeToolCalls, modelCalls, sentUserMessages, sentRuntimeMessages, confirmations, selectCalls }};
         }}
 
         {textwrap.dedent(scenario_body)}
@@ -2528,6 +2530,18 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
 
 def _registered_names(payload: dict[str, Any], key: str) -> set[str]:
     return set(payload.get(key, []))
+
+
+def test_agent_persona_switch_continue_task_uses_hidden_custom_runtime_message_and_minimal_trigger_contract() -> None:
+    source = _source()
+    assert "LARVA_PERSONA_SWITCH_CONTINUATION_HARD_BOUNDARY_PREFIX" in source
+    assert "runtime event/data, not a user request" in source
+    assert "personaSwitchContinuationRuntimeMessage" in source
+    assert "display: false" in source
+    assert 'deliverAs: "nextTurn"' in source
+    assert 'LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE = "Continue."' in source
+    assert "appendPersonaSwitchContinuationPrompt" in source
+    assert "system_prompt_continuation_injected" in source
 
 
 def test_agent_persona_switch_session_mode_resolution_custom_entry_env_default_confirm_behavior(tmp_path: Path) -> None:

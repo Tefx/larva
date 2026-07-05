@@ -52,6 +52,8 @@ async function makeRuntime(name, env = {}) {
   const notifications = [];
   const auditEntries = [];
   const chatMessages = [];
+  const runtimeMessages = [];
+  const handlers = {};
   const activeToolSets = [];
   const ctx = {
     env: {
@@ -65,6 +67,7 @@ async function makeRuntime(name, env = {}) {
     modelRegistry: { find: async () => ({ id: "model" }) },
     session: { appendEntry: (entry) => auditEntries.push(entry) },
     appendEntry: (customType, data) => auditEntries.push({ customType, data }),
+    sendMessage: async (message, options) => runtimeMessages.push({ message, options }),
     sendUserMessage: async (message, options) => chatMessages.push({ message, options }),
   };
   const pi = {
@@ -73,10 +76,10 @@ async function makeRuntime(name, env = {}) {
     setModel: async () => true,
     registerCommand: (name, options) => { commands[name] = options; },
     registerTool: (tool) => { registeredTools.push(tool); },
-    on: () => undefined,
+    on: (event, handler) => { handlers[event] = handler; },
   };
   await mod.initializeExtension(ctx, pi);
-  return { mod, ctx, pi, registeredTools, commands, statuses, notifications, auditEntries, chatMessages, activeToolSets };
+  return { mod, ctx, pi, registeredTools, commands, statuses, notifications, auditEntries, chatMessages, runtimeMessages, handlers, activeToolSets };
 }
 
 async function run(name, fn) {
@@ -180,6 +183,28 @@ await run("auto mode borrows temporarily and restores at assistant turn end", as
   assert.equal(switched.details.lease.originPersonaId, "origin");
   assert.equal(runtime.mod.getActiveEnvelope().persona_id, "target");
   await runtime.mod.before_agent_start({ systemPrompt: "base", terminal: "success" });
+  assert.equal(runtime.mod.getActiveEnvelope().persona_id, "origin");
+});
+
+await run("continue_task uses hidden custom runtime message plus minimal trigger and one-turn prompt addon", async () => {
+  const runtime = await makeRuntime("continue-task", { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+  await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
+  const switched = await runtime.mod.larva_persona_switch({ persona_id: "target", reason: "specialized response", handoff: "finish the task", continue_task: true }, runtime.ctx, runtime.pi);
+  assert.equal(switched.status, "success");
+  assert.equal(switched.terminate, true);
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(runtime.chatMessages.length, 1);
+  assert.equal(runtime.chatMessages[0].message, "Continue.");
+  assert.equal(runtime.runtimeMessages.length, 1);
+  assert.equal(runtime.runtimeMessages[0].message.customType, "larva-agent-persona-switch-continuation");
+  assert.equal(runtime.runtimeMessages[0].message.display, false);
+  assert.deepEqual(runtime.runtimeMessages[0].options, { deliverAs: "nextTurn" });
+  const prompt = await runtime.handlers.before_agent_start({ prompt: "Continue.", systemPrompt: "base" }, runtime.ctx);
+  assert.ok(prompt.systemPrompt.includes("[Larva-generated continuation after persona switch]"));
+  assert.ok(prompt.systemPrompt.includes("Prompt for target"));
+  assert.ok(!prompt.systemPrompt.includes("Prompt for origin"));
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
   assert.equal(runtime.mod.getActiveEnvelope().persona_id, "origin");
 });
 

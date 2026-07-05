@@ -702,7 +702,7 @@ def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_
 
 
 def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_continuation(tmp_path: Path) -> None:
-    """continue_task=true terminates old turn, defers follow-up, and restores after continuation."""
+    """continue_task=true uses a hidden custom runtime marker, minimal trigger, and restores after continuation."""
 
     fake_cli = tmp_path / "fake-larva-continuation-cli.mjs"
     fake_cli.write_text(
@@ -737,6 +737,7 @@ def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_c
         const sessionEntries = [];
         const timeline = [];
         const sentMessages = [];
+        const sentRuntimeMessages = [];
         const scheduledDelays = [];
         let continuationPrompt = "";
         let continuationEnvelopeAtStart = null;
@@ -759,6 +760,10 @@ def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_c
             entries: sessionEntries,
             getEntries: () => sessionEntries,
             appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
+          sendMessage: async (message, options) => {{
+            timeline.push(`sendMessage:${{mod.getActiveEnvelope()?.persona_id ?? "none"}}`);
+            sentRuntimeMessages.push({{ message, options }});
           }},
           sendUserMessage: async (message, options) => {{
             timeline.push(`sendUserMessage:${{mod.getActiveEnvelope()?.persona_id ?? "none"}}`);
@@ -800,6 +805,7 @@ def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_c
           afterFirstAgentEndEnvelope,
           sentImmediatelyAfterFirstAgentEnd,
           sentMessages,
+          sentRuntimeMessages,
           scheduledDelays,
           timeline,
           continuationPrompt,
@@ -809,9 +815,9 @@ def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_c
           assertions: {{
             switchTerminatesOldTurn: switchResult.terminate === true,
             firstAgentEndDidNotRestore: afterFirstAgentEndEnvelope?.persona_id === "python",
-            deferredSendUsedSetTimeoutZero: sentImmediatelyAfterFirstAgentEnd === 0 && scheduledDelays.includes(0) && sentMessages.length === 1,
-            continuationMessageIsDeterministic: sentMessages[0]?.message?.startsWith("[Larva-generated continuation after persona switch]") === true && sentMessages[0]?.message?.includes("Switched from architect to python.") === true,
-            freshPromptUsesBorrowedPersona: continuationEnvelopeAtStart?.persona_id === "python" && continuationPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER") && !continuationPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER"),
+            deferredSendUsedSetTimeoutZero: sentImmediatelyAfterFirstAgentEnd === 0 && scheduledDelays.includes(0) && sentMessages.length === 1 && sentRuntimeMessages.length === 1,
+            continuationMessageIsDeterministic: sentMessages[0]?.message === "Continue." && sentRuntimeMessages[0]?.message?.customType === "larva-agent-persona-switch-continuation" && sentRuntimeMessages[0]?.message?.display === false && sentRuntimeMessages[0]?.options?.deliverAs === "nextTurn",
+            freshPromptUsesBorrowedPersona: continuationEnvelopeAtStart?.persona_id === "python" && continuationPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER") && continuationPrompt.includes("[Larva-generated continuation after persona switch]") && !continuationPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER"),
             continuationAgentEndRestoredOrigin: restoredEnvelopeAfterContinuation?.persona_id === "architect",
           }},
         }}));
@@ -824,7 +830,10 @@ def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_c
     assert payload["borrowedEnvelope"]["persona_id"] == "python"
     assert payload["afterFirstAgentEndEnvelope"]["persona_id"] == "python"
     assert payload["sentImmediatelyAfterFirstAgentEnd"] == 0
-    assert payload["sentMessages"] and payload["sentMessages"][0]["message"].startswith("[Larva-generated continuation after persona switch]")
+    assert payload["sentMessages"] and payload["sentMessages"][0]["message"] == "Continue."
+    assert payload["sentRuntimeMessages"] and payload["sentRuntimeMessages"][0]["message"]["customType"] == "larva-agent-persona-switch-continuation"
+    assert payload["sentRuntimeMessages"][0]["message"]["display"] is False
+    assert payload["sentRuntimeMessages"][0]["options"] == {"deliverAs": "nextTurn"}
     assert payload["continuationEnvelopeAtStart"]["persona_id"] == "python"
     assert payload["restoredEnvelopeAfterContinuation"]["persona_id"] == "architect"
     assert payload["assertions"] == {

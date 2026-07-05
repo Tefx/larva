@@ -171,17 +171,22 @@ The extension should also defend against mixed tool batches where possible.
 This section describes the first-target persistent-switch flow. It is historical
 unless restated by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md). Current behavior is: `continue_task=true`
 returns `terminate=true`; Pi stops the old turn only when every finalized tool
-result in the batch terminates; the first `agent_end` schedules `setTimeout(0)`
-and delivers the deterministic continuation through `sendUserMessage`; the
-fresh continuation run starts under the borrowed persona/model; temporary borrows
-restore the origin on the continuation run's `agent_end`; delivery failure
-restores immediately and is audited; `free` remains persistent.
+result in the batch terminates; the first `agent_end` schedules `setTimeout(0)`;
+the runtime queues a hidden custom message with `display: false` and
+`deliverAs: "nextTurn"` when available, then uses a minimal
+`sendUserMessage("Continue.")` trigger so Pi runs `before_agent_start`; the
+deterministic continuation text is injected as a one-turn system prompt addon
+under the borrowed persona/model; temporary borrows restore the origin on the
+continuation run's `agent_end`; delivery failure restores immediately and is
+audited; `free` remains persistent.
 
 Committing a persona changes runtime state but does not by itself start another
 model turn.
 
 When `continue_task=true`, the extension should queue a transparent continuation
-message after a successful commit:
+after a successful commit. Current implementation keeps the visible trigger to a
+minimal `Continue.` prompt and places the detailed continuation in a one-turn
+system prompt addon:
 
 ```text
 [Larva-generated continuation after persona switch]
@@ -197,9 +202,15 @@ Do not switch again unless newly justified.
 ```
 
 The continuation must be explicit and auditable. It must not pretend to be a new
-human-authored request. It is also a generic hard-boundary reminder: the new
-persona's instructions take priority, and any previous execution plan that
-conflicts with the new persona's startup or decision protocol must be discarded.
+human-authored request. The hidden custom runtime message uses
+`customType: larva-agent-persona-switch-continuation`, `display: false`, and
+`deliverAs: "nextTurn"` when the Pi surface is available. A pure
+`sendMessage(..., { triggerTurn: true })` would be less visible, but it bypasses
+Pi's `before_agent_start` hook and therefore cannot deterministically install the
+borrowed persona prompt. The continuation is also a generic hard-boundary
+reminder: the new persona's instructions take priority, and any previous
+execution plan that conflicts with the new persona's startup or decision protocol
+must be discarded.
 
 ## Historical switch budget
 
@@ -224,13 +235,16 @@ The parameter is intentionally not an environment variable and does not alter
 PersonaSpec/opifex shared contracts. Agents should omit it unless the user has
 explicitly requested a different budget or unlimited switching.
 
-Recommended first implementation path:
+Current implementation path:
 
 ```text
-pi.sendUserMessage(<Larva-generated continuation>, { deliverAs: "followUp" })
+pi.sendMessage(<hidden Larva continuation custom message>, { deliverAs: "nextTurn" })
+pi.sendUserMessage("Continue.", { deliverAs: "followUp" })
 ```
 
-This should be runtime-tested against Pi's queue and termination behavior.
+The custom message is hidden runtime evidence; the minimal user-message trigger is
+only used to route through Pi's prompt path so `before_agent_start` can inject the
+borrowed persona prompt and continuation addon.
 
 ## Historical session state
 
@@ -403,7 +417,7 @@ architecture_basis:
     agent switch mode: "Pi session-level state; latest session override, else launcher env, else off"
     user manual switch: "/larva-persona <id>"
     agent self-switch: "larva_persona_switch tool gated by session switch mode"
-    continuation request: "Larva-generated queued message, explicit, auditable, and a generic hard boundary between old and new persona instructions"
+    continuation request: "Larva-generated hidden custom runtime message plus minimal Continue trigger; explicit, auditable, and a generic hard boundary between old and new persona instructions"
 
   service_catalog:
     larva_pi_launcher:
@@ -457,7 +471,7 @@ architecture_basis:
       - "Pi registerTool for model-facing switch and discovery tools."
       - "Pi registerCommand for slash mode changes."
       - "Pi setActiveTools plus tool_call gate for enforcement."
-      - "Pi sendUserMessage follow-up for auto-continuation, pending runtime proof."
+      - "Pi hidden custom message plus minimal sendUserMessage trigger for auto-continuation; before_agent_start owns borrowed-persona prompt injection."
     wiring_strategy: "Explicit env default plus session-local state; no global files for this policy in first target."
     governance_owner: "contrib/pi-extension owns runtime behavior; larva.shell owns CLI flag forwarding."
 
@@ -500,7 +514,7 @@ architecture_basis:
       minimum_liveness_proof: "off rejects switch; auto commits without UI; ask rejects without UI."
 
   resolved_implementation_decisions:
-    continuation_transport: "Use explicit Larva-generated pi.sendUserMessage(..., { deliverAs: 'followUp' }) for first target auto-continuation. The message must be visibly marked as Larva-generated, auditable, and generic hard-boundary text; do not block implementation on custom-message triggerTurn exploration."
+    continuation_transport: "Use a hidden Larva custom runtime message plus minimal pi.sendUserMessage('Continue.', { deliverAs: 'followUp' }) trigger. Pure custom-message triggerTurn is intentionally not used because it bypasses Pi before_agent_start and would skip borrowed-persona prompt injection."
     mixed_tool_batch_enforcement: "Require larva_persona_switch to be called alone in tool description and prompt guidance. Runtime enforcement should defensively reject or neutralize sibling tool calls when Pi event ordering exposes enough context; if full sibling visibility is unavailable, the documented single-tool contract plus terminating result is the supported behavior."
     request_chain_identity: "Use simple in-memory per-request-chain switch budget accounting: default 20 successful committed switches, explicit max_switches_per_chain=0 means unlimited, and Larva-generated continuations inherit remaining budget. Persist audit entries for inspection only; do not introduce durable global counters."
     child_policy: "Child Pi processes start with agent self-switch mode off. Do not add inherit/ask/auto child policy in the first target. Revisit only after parent self-switch has runtime proof."

@@ -410,12 +410,16 @@ the old persona turn can stop. Pi honors termination only if every finalized too
 result in the same batch has `terminate=true`; mixed batches with non-terminating
 results can keep the old turn alive, so the model guidance requires calling the
 switch tool alone. The first `agent_end` after the switch does not restore the
-origin. It schedules `setTimeout(0)`, then calls `sendUserMessage` with the
-Larva-generated continuation so the next run enters a fresh `before_agent_start`
-under the borrowed persona/model. The continuation run's `agent_end` restores the
-origin persona/model for temporary borrows. If `sendUserMessage` is unavailable
-or fails, the extension restores immediately and audits continuation delivery
-failure. `free` remains persistent and does not create an automatic restore lease.
+origin. It schedules `setTimeout(0)`, queues a hidden custom runtime message with
+`customType: larva-agent-persona-switch-continuation`, `display: false`, and
+`deliverAs: "nextTurn"` when that surface is available, then uses a minimal
+`sendUserMessage("Continue.")` trigger so Pi enters a fresh `before_agent_start`.
+The detailed Larva-generated continuation is injected as a one-turn system prompt
+addon under the borrowed persona/model rather than as the visible user message.
+The continuation run's `agent_end` restores the origin persona/model for
+temporary borrows. If the minimal trigger surface is unavailable or fails, the
+extension restores immediately and audits continuation delivery failure. `free`
+remains persistent and does not create an automatic restore lease.
 
 User manual persona switching has highest priority: it clears any active lease and
 must not later be undone by automatic restore. Unknown mode values fail safe to `confirm`

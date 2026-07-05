@@ -198,16 +198,23 @@ For `confirm`/`auto` temporary borrows with `continue_task=true`:
 
 1. commit the borrowed persona/model and return `terminate=true`;
 2. do not restore on the first `agent_end` for the old persona turn;
-3. schedule `setTimeout(0)` from that first `agent_end` and call Pi
-   `sendUserMessage` with the deterministic Larva-generated continuation after
-   Pi finishes the current run;
-4. let the continuation enter a fresh `before_agent_start` under the borrowed
-   persona/model;
-5. restore the original persona and captured original Pi model on the
+3. schedule `setTimeout(0)` from that first `agent_end` after Pi finishes the
+   current run;
+4. if the custom runtime-message surface is available, queue a hidden
+   `customType: larva-agent-persona-switch-continuation` message with
+   `display: false` and `deliverAs: "nextTurn"`;
+5. call Pi `sendUserMessage("Continue.")` only as a minimal trigger so the next
+   run enters a fresh `before_agent_start`;
+6. inject the deterministic Larva-generated continuation as a one-turn system
+   prompt addon under the borrowed persona/model, not as the visible user message;
+7. restore the original persona and captured original Pi model on the
    continuation run's `agent_end`.
 
-If `sendUserMessage` is unavailable or fails, the runtime restores the origin
-persona/model immediately and records an audit failure for continuation delivery.
+If the minimal `sendUserMessage` trigger surface is unavailable or fails, the
+runtime restores the origin persona/model immediately and records an audit failure
+for continuation delivery. A pure Pi `sendMessage(..., { triggerTurn: true })`
+would be more invisible but bypasses Pi's `before_agent_start` hook, so it cannot
+reliably install the borrowed persona prompt for this continuation boundary.
 
 For `free`, the switch remains persistent: no temporary lease is created and no
 automatic restore is performed. If `continue_task=true` is used in `free`, the

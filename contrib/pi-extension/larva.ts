@@ -129,6 +129,7 @@ type PersonaSwitchContinuation = {
   reason: string;
   handoff: string | undefined;
   message: string;
+  triggerMessage: string;
   lease: PersonaLease | null;
   phase: "awaiting_agent_end" | "continuation_running";
 };
@@ -4248,10 +4249,21 @@ function appendPersonaSwitchAudit(ctx: PiContext, pi: PiApi, details: Record<str
 }
 
 const LARVA_PERSONA_SWITCH_CONTINUATION_MARKER = "[Larva-generated continuation after persona switch]";
+const LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE = "larva-agent-persona-switch-continuation";
+const LARVA_PERSONA_SWITCH_CONTINUATION_HARD_BOUNDARY_PREFIX = "Larva runtime continuation — runtime event/data, not a user request.";
+const LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE = "Continue.";
+const LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN = "<larva_persona_switch_continuation>";
+const LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END = "</larva_persona_switch_continuation>";
+
+type PersonaSwitchContinuationDeliverySurface = {
+  sendMessage?: (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => unknown | Promise<unknown>;
+  sendUserMessage: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
+};
 
 function isLarvaGeneratedPersonaSwitchContinuation(event: unknown): boolean {
   if (!isRecord(event) || typeof event.prompt !== "string") return false;
-  return event.prompt.startsWith(LARVA_PERSONA_SWITCH_CONTINUATION_MARKER);
+  if (event.prompt.startsWith(LARVA_PERSONA_SWITCH_CONTINUATION_MARKER)) return true;
+  return pendingPersonaSwitchContinuation?.phase === "continuation_running" && event.prompt === pendingPersonaSwitchContinuation.triggerMessage;
 }
 
 function noteAgentPersonaSwitchRequestChainBoundary(event: unknown): void {
@@ -4278,10 +4290,48 @@ function continuationMessage(fromPersona: string, toPersona: string, reason: str
   ].join("\n");
 }
 
-function personaSwitchContinuationSender(ctx: PiContext, pi: PiApi): ((message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>) | null {
-  if (typeof pi.sendUserMessage === "function") return (message, options) => pi.sendUserMessage?.(message, options);
-  if (typeof ctx.sendUserMessage === "function") return (message, options) => ctx.sendUserMessage?.(message, options);
-  return null;
+function personaSwitchContinuationSurface(ctx: PiContext, pi: PiApi): PersonaSwitchContinuationDeliverySurface | null {
+  const sendMessage = typeof pi.sendMessage === "function"
+    ? (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => pi.sendMessage?.(message, options)
+    : typeof ctx.sendMessage === "function"
+      ? (message: SubagentCallbackMessage, options?: SubagentCallbackMessageOptions) => ctx.sendMessage?.(message, options)
+      : undefined;
+  const sendUserMessage = typeof pi.sendUserMessage === "function"
+    ? (message: string, options?: Record<string, unknown>) => pi.sendUserMessage?.(message, options)
+    : typeof ctx.sendUserMessage === "function"
+      ? (message: string, options?: Record<string, unknown>) => ctx.sendUserMessage?.(message, options)
+      : undefined;
+  if (sendUserMessage === undefined) return null;
+  return { ...(sendMessage === undefined ? {} : { sendMessage }), sendUserMessage };
+}
+
+function personaSwitchContinuationDetails(continuation: PersonaSwitchContinuation): Record<string, unknown> {
+  return {
+    from_persona_id: continuation.fromPersonaId,
+    to_persona_id: continuation.toPersonaId,
+    reason: continuation.reason,
+    handoff: continuation.handoff ?? "",
+    restore_after_continuation: continuation.lease !== null,
+  };
+}
+
+function personaSwitchContinuationRuntimeMessage(continuation: PersonaSwitchContinuation): SubagentCallbackMessage {
+  return {
+    customType: LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE,
+    content: `${LARVA_PERSONA_SWITCH_CONTINUATION_HARD_BOUNDARY_PREFIX} The next prompt turn is a Larva persona-switch continuation trigger; detailed continuation instructions are injected into the active system prompt for this turn.`,
+    display: false,
+    details: personaSwitchContinuationDetails(continuation),
+  };
+}
+
+function appendPersonaSwitchContinuationPrompt(systemPrompt: string, continuation: PersonaSwitchContinuation): string {
+  return [
+    systemPrompt,
+    "",
+    LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN,
+    continuation.message,
+    LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END,
+  ].join("\n");
 }
 
 function createPersonaSwitchContinuation(fromPersonaId: string | null, toPersonaId: string, reason: string, handoff: string | undefined, lease: PersonaLease | null): PersonaSwitchContinuation {
@@ -4291,6 +4341,7 @@ function createPersonaSwitchContinuation(fromPersonaId: string | null, toPersona
     reason,
     handoff,
     message: continuationMessage(fromPersonaId ?? "none", toPersonaId, reason, handoff),
+    triggerMessage: LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE,
     lease,
     phase: "awaiting_agent_end",
   };
@@ -4303,32 +4354,38 @@ async function failPendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, t
   await attemptPersonaLeaseRestore(ctx, pi, terminal);
 }
 
+async function deliverPendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation, surface: PersonaSwitchContinuationDeliverySurface): Promise<void> {
+  if (pendingPersonaSwitchContinuation !== continuation) return;
+  continuation.phase = "continuation_running";
+  agentPersonaSwitchPendingFollowUpContinuations += 1;
+  let runtimeMessageDelivered = false;
+  let runtimeMessageError: string | null = null;
+  if (surface.sendMessage !== undefined) {
+    try {
+      await surface.sendMessage(personaSwitchContinuationRuntimeMessage(continuation), { deliverAs: "nextTurn" });
+      runtimeMessageDelivered = true;
+    } catch (caught) {
+      runtimeMessageError = caught instanceof Error ? caught.message : String(caught);
+    }
+  }
+  try {
+    await surface.sendUserMessage(continuation.triggerMessage, { customType: LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE, details: personaSwitchContinuationDetails(continuation), deliverAs: "followUp" });
+    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: true, delivery_channel: "minimal_user_trigger_with_hidden_custom_runtime_message", runtime_custom_message_delivered: runtimeMessageDelivered, ...(runtimeMessageError === null ? {} : { runtime_custom_message_error: runtimeMessageError }), system_prompt_continuation_injected: true, lease: continuation.lease });
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : "Pi sendUserMessage failed while delivering Larva persona switch continuation trigger.";
+    await failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", message));
+  }
+}
+
 async function schedulePendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation): Promise<void> {
-  const sender = personaSwitchContinuationSender(ctx, pi);
-  if (sender === null) {
-    await failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", "Cannot deliver Larva persona switch continuation because Pi sendUserMessage is unavailable."));
+  const surface = personaSwitchContinuationSurface(ctx, pi);
+  if (surface === null) {
+    await failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", "Cannot deliver Larva persona switch continuation because Pi sendUserMessage trigger surface is unavailable."));
     return;
   }
-  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, scheduled: true, deferred: "setTimeout(0)", lease: continuation.lease });
+  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, scheduled: true, deferred: "setTimeout(0)", delivery_channel: "minimal_user_trigger_with_hidden_custom_runtime_message", customType: LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE, triggerTurn: "via sendUserMessage prompt path", lease: continuation.lease });
   setTimeout(() => {
-    if (pendingPersonaSwitchContinuation !== continuation) return;
-    continuation.phase = "continuation_running";
-    agentPersonaSwitchPendingFollowUpContinuations += 1;
-    let delivered: unknown;
-    try {
-      delivered = sender(continuation.message, { customType: "larva-agent-persona-switch-continuation", details: { from_persona_id: continuation.fromPersonaId, to_persona_id: continuation.toPersonaId, reason: continuation.reason, handoff: continuation.handoff ?? "" } });
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Pi sendUserMessage failed while delivering Larva persona switch continuation.";
-      void failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", message));
-      return;
-    }
-    void Promise.resolve(delivered)
-      .then(() => {
-        appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: true, lease: continuation.lease });
-      }, (caught: unknown) => {
-        const message = caught instanceof Error ? caught.message : "Pi sendUserMessage failed while delivering Larva persona switch continuation.";
-        void failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", message));
-      });
+    void deliverPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, surface);
   }, 0);
 }
 
@@ -4496,7 +4553,9 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
         ...result.details,
         continuation: {
           terminate: true,
-          delivery: "deferred_until_agent_end_setTimeout_0",
+          delivery: "deferred_until_agent_end_setTimeout_0_minimal_trigger_hidden_custom_message",
+          customType: LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE,
+          trigger_message: LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE,
           restore_after_continuation: lease !== null,
         },
       };
@@ -4637,7 +4696,12 @@ export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = 
   const terminal = terminalRestorePath(event);
   const composePrompt = (): { systemPrompt: string } | null => {
     if (!state.envelope || !isRecord(event) || typeof event.systemPrompt !== "string") return null;
-    return { systemPrompt: replaceLarvaWatermark(event.systemPrompt, state.envelope) };
+    const basePrompt = replaceLarvaWatermark(event.systemPrompt, state.envelope);
+    const continuation = pendingPersonaSwitchContinuation;
+    if (continuation !== null && continuation.phase === "continuation_running") {
+      return { systemPrompt: appendPersonaSwitchContinuationPrompt(basePrompt, continuation) };
+    }
+    return { systemPrompt: basePrompt };
   };
   if (terminal !== null) return attemptPersonaLeaseRestore(runtimeCtx, lastPersonaLeasePi ?? pi, terminal).then(composePrompt);
   return composePrompt();

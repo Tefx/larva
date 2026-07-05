@@ -399,7 +399,11 @@ def test_auto_mode_is_temporary_borrow_with_turn_end_restore() -> None:
     assert "continueTask" in switch_window
     assert "result.terminate = true" in switch_window
     assert "pendingPersonaSwitchContinuation" in switch_window
-    assert "setTimeout" in source and "sendUserMessage" in source
+    assert "setTimeout" in source and "sendMessage" in source and "sendUserMessage" in source
+    assert "LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE" in source
+    assert "display: false" in source
+    assert 'deliverAs: "nextTurn"' in source
+    assert 'LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE = "Continue."' in source
 
 
 def test_free_mode_is_persistent_switch_without_automatic_restore() -> None:
