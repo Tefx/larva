@@ -77,6 +77,17 @@ resume, status, cancel, and UI selection.
 
 `larva_subagent` becomes an accepted-plus-callback tool.
 
+Use `larva_subagent` when the work benefits from clean context: fresh review,
+independent review, second opinion, adversarial critique, parallelizable work,
+long-running async work, or a self-contained task expressible with absolute paths
+and clear inputs. If current conversation or runtime continuity is required for
+the next model call, prefer `larva_persona_switch`/borrow and put the route
+rationale in `larva_persona_switch.reason`. For subagents, put the route
+rationale at the top of `larva_subagent.task` before the actual task. Use neither
+persona routing tool for deterministic tool-only work or minor style mismatch.
+Do not ask the user for separate chat route approval; runtime confirm mode owns
+persona-borrow confirmation.
+
 The tool returns after all of these are true:
 
 1. target persona input is validated,
@@ -84,6 +95,12 @@ The tool returns after all of these are true:
 3. child session is known and a public `task_id` is allocated,
 4. the child prompt has been accepted by Pi,
 5. the active-run registry has recorded the running task.
+
+Child RPC launch uses the launcher-provided real Pi binary and explicit Larva
+extension entry, plus Pi `--no-extensions`. Pi still loads the explicit `-e`
+Larva extension, but it does not discover user-installed ambient extensions for
+the controlled child process. This prevents unrelated extensions from running
+inside child sessions or holding stale contexts after child `switch_session`.
 
 The tool does not wait for final child assistant output.
 

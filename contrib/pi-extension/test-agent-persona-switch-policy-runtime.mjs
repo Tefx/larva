@@ -130,6 +130,46 @@ await run("confirm mode has four outcomes and all non-approval paths fail safely
   assert.deepEqual(runtime.mod.getActiveEnvelope(), before, "missing UI/deny/cancel/timeout must preserve state");
 });
 
+await run("runtime prompt and tool descriptions include deterministic borrow-vs-subagent routing", async () => {
+  const runtime = await makeRuntime("routing-guidance", { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+  await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
+  const prompt = await runtime.mod.before_agent_start({ systemPrompt: "base prompt" }, runtime.ctx, runtime.pi);
+  const systemPrompt = prompt?.systemPrompt ?? "";
+  for (const token of [
+    "current conversation or runtime continuity",
+    "clean context",
+    "route rationale",
+    "larva_persona_switch.reason",
+    "larva_subagent.task",
+    "Do not ask the user for separate chat confirmation",
+  ]) {
+    assert.ok(systemPrompt.includes(token), `missing injected routing guidance token ${token}`);
+  }
+
+  const switchTool = runtime.registeredTools.find((item) => item.name === "larva_persona_switch");
+  const subagentTool = runtime.registeredTools.find((item) => item.name === "larva_subagent");
+  assert.ok(switchTool, "switch tool registered");
+  assert.ok(subagentTool, "subagent tool registered");
+  const switchText = JSON.stringify(switchTool);
+  for (const token of [
+    "inspected the target persona description or resolved definition",
+    "reason must cite",
+    "Call larva_persona_switch alone",
+  ]) {
+    assert.ok(switchText.includes(token), `missing switch tool token ${token}`);
+  }
+  const subagentText = JSON.stringify(subagentTool);
+  for (const token of [
+    "clean-context work",
+    "independent review",
+    "parallelizable work",
+    "top of larva_subagent.task",
+    "Do not use shell sleep polling",
+  ]) {
+    assert.ok(subagentText.includes(token), `missing subagent tool token ${token}`);
+  }
+});
+
 await run("auto mode borrows temporarily and restores at assistant turn end", async () => {
   const runtime = await makeRuntime("auto", { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
   const origin = await runtime.commands["larva-persona"].handler("origin", runtime.ctx);

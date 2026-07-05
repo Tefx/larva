@@ -383,7 +383,7 @@ def test_confirm_mode_borrow_dialog_accepts_legacy_object_id_return_with_string_
 
 
 def test_auto_mode_is_temporary_borrow_with_turn_end_restore() -> None:
-    """auto means runtime-enforced temporary borrow and assistant-turn-end restore."""
+    """auto means runtime-enforced temporary borrow; continue_task defers restore until continuation end."""
 
     source = _source()
     assert 'agentPersonaSwitchMode === "auto"' in source
@@ -393,7 +393,13 @@ def test_auto_mode_is_temporary_borrow_with_turn_end_restore() -> None:
     assert "scope" in source and "turn" in source
     assert "assistant turn" in source.lower()
     assert "restore" in source.lower()
-    assert "terminate" not in source[source.find("larva_persona_switch") : source.find("larva_personas", source.find("larva_persona_switch"))]
+    switch_start = source.find("export async function larva_persona_switch")
+    switch_end = source.find("export async function larva_personas", switch_start)
+    switch_window = source[switch_start:switch_end]
+    assert "continueTask" in switch_window
+    assert "result.terminate = true" in switch_window
+    assert "pendingPersonaSwitchContinuation" in switch_window
+    assert "setTimeout" in source and "sendUserMessage" in source
 
 
 def test_free_mode_is_persistent_switch_without_automatic_restore() -> None:
@@ -411,7 +417,7 @@ def test_persona_switch_guidance_requires_inspected_description_not_name_guessin
     """Prompt/tool guidance must ground persona switching in inspected definitions."""
 
     source = _source()
-    guidance_start = source.find("const PERSONA_SWITCH_GROUNDING_GUIDANCE")
+    guidance_start = source.find("const PERSONA_ROUTE_DECISION_GUIDANCE")
     guidance_end = source.find("export function replaceLarvaWatermark", guidance_start)
     guidance_window = source[guidance_start:guidance_end]
     tool_start = source.find("const switchSchema")
@@ -422,10 +428,23 @@ def test_persona_switch_guidance_requires_inspected_description_not_name_guessin
     assert "persona id/name alone is not suitability evidence" in guidance_window
     assert "reason must cite the inspected description/definition" in guidance_window
     assert "do not switch automatically" in guidance_window
+    for token in (
+        "current conversation or runtime continuity",
+        "clean context",
+        "route rationale",
+        "larva_persona_switch.reason",
+        "larva_subagent.task",
+        "deterministic tool-only work",
+        "Do not ask the user for separate chat confirmation",
+    ):
+        assert token in guidance_window
     assert "Do not call this tool until you have inspected" in tool_window
     assert "do not infer suitability from persona id/name alone" in tool_window
     assert "exact persona id/name only proves target identity, not semantic suitability" in tool_window
     assert "use persona discovery/resolve first" in tool_window
+    assert "current conversation or runtime continuity" in tool_window
+    assert "reason must cite" in tool_window
+    assert "Call larva_persona_switch alone" in tool_window
 
 
 def test_manual_user_switch_during_active_lease_clears_lease_and_prevents_old_origin_restore() -> None:

@@ -43,7 +43,9 @@ The launcher passes `LARVA_PI_TOOL_POLICY_FILE` only when an explicit override i
 set; otherwise the parent and child extensions each resolve the canonical
 default policy path themselves. Child Pi RPC sessions reuse launcher-provided
 executable, extension, CLI, persona, and interactive-mode values rather than
-rediscovering Pi or deriving extension paths.
+rediscovering Pi or deriving extension paths. They pass Pi `--no-extensions`
+while still loading the explicit bundled Larva extension, so user-installed
+ambient extensions cannot crash or mutate the controlled child RPC run.
 
 For `larva pi --persona <id>`, initial persona resolution/model/policy commit is
 startup-critical. Extension-detected model or policy failures write
@@ -386,11 +388,35 @@ Mode behavior:
 - `free` exposes the same tools and allows a persistent self-switch without
   automatic restore.
 
+Runtime guidance routes persona work by context need. Use `larva_persona_switch`
+when the next model call needs current conversation or runtime continuity, and
+put the route rationale plus inspected persona evidence in
+`larva_persona_switch.reason`. Use `larva_subagent` when the work benefits from
+clean context, such as independent review, second opinion, adversarial critique,
+parallelizable work, long-running async work, or a self-contained task with
+absolute paths and clear inputs; put the route rationale at the top of
+`larva_subagent.task`. Use neither tool for deterministic tool-only work or minor
+style mismatch. Do not ask the user for separate chat route approval; `confirm`
+mode owns runtime confirmation for persona borrows.
+
 `larva_personas` is bounded discovery metadata; it is not a prompt/spec catalogue
 injection surface. `larva_persona_switch` requires a non-empty `reason`; `handoff`
 is optional and bounded. A temporary borrow is represented by a runtime persona
 lease whose restore target is the persona and actual Pi model active immediately
 before the borrow.
+
+When `continue_task=true`, a successful switch result sets `terminate=true` so
+the old persona turn can stop. Pi honors termination only if every finalized tool
+result in the same batch has `terminate=true`; mixed batches with non-terminating
+results can keep the old turn alive, so the model guidance requires calling the
+switch tool alone. The first `agent_end` after the switch does not restore the
+origin. It schedules `setTimeout(0)`, then calls `sendUserMessage` with the
+Larva-generated continuation so the next run enters a fresh `before_agent_start`
+under the borrowed persona/model. The continuation run's `agent_end` restores the
+origin persona/model for temporary borrows. If `sendUserMessage` is unavailable
+or fails, the extension restores immediately and audits continuation delivery
+failure. `free` remains persistent and does not create an automatic restore lease.
+
 User manual persona switching has highest priority: it clears any active lease and
 must not later be undone by automatic restore. Unknown mode values fail safe to `confirm`
 with a status/event warning rather than being treated as compatibility aliases.

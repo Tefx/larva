@@ -123,6 +123,16 @@ type PersonaLease = {
   originPiModelLabel: string | null;
 };
 
+type PersonaSwitchContinuation = {
+  fromPersonaId: string | null;
+  toPersonaId: string;
+  reason: string;
+  handoff: string | undefined;
+  message: string;
+  lease: PersonaLease | null;
+  phase: "awaiting_agent_end" | "continuation_running";
+};
+
 type PersonaRestoreFailureState = {
   failedRestoreTarget: string | null;
   borrowedPersonaId: string | null;
@@ -640,6 +650,7 @@ const DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN = 20;
 let agentPersonaSwitchMode: AgentPersonaSwitchMode = "confirm";
 let activePersonaLease: PersonaLease | null = null;
 let activePersonaLeaseOriginPiModel: unknown | null = null;
+let pendingPersonaSwitchContinuation: PersonaSwitchContinuation | null = null;
 let restoreFailureState: PersonaRestoreFailureState | null = null;
 let lastPersonaLeaseRuntimeCtx: PiContext | null = null;
 let lastPersonaLeasePi: PiApi | null = null;
@@ -3657,6 +3668,7 @@ function clearActivePersonaLease(reason: string, ctx?: PiContext, pi?: PiApi): v
   }
   activePersonaLease = null;
   activePersonaLeaseOriginPiModel = null;
+  pendingPersonaSwitchContinuation = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;
   lastPersonaLeasePi = null;
@@ -4266,6 +4278,60 @@ function continuationMessage(fromPersona: string, toPersona: string, reason: str
   ].join("\n");
 }
 
+function personaSwitchContinuationSender(ctx: PiContext, pi: PiApi): ((message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>) | null {
+  if (typeof pi.sendUserMessage === "function") return (message, options) => pi.sendUserMessage?.(message, options);
+  if (typeof ctx.sendUserMessage === "function") return (message, options) => ctx.sendUserMessage?.(message, options);
+  return null;
+}
+
+function createPersonaSwitchContinuation(fromPersonaId: string | null, toPersonaId: string, reason: string, handoff: string | undefined, lease: PersonaLease | null): PersonaSwitchContinuation {
+  return {
+    fromPersonaId,
+    toPersonaId,
+    reason,
+    handoff,
+    message: continuationMessage(fromPersonaId ?? "none", toPersonaId, reason, handoff),
+    lease,
+    phase: "awaiting_agent_end",
+  };
+}
+
+async function failPendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation, larvaError: LarvaError): Promise<void> {
+  if (pendingPersonaSwitchContinuation === continuation) pendingPersonaSwitchContinuation = null;
+  if (agentPersonaSwitchPendingFollowUpContinuations > 0) agentPersonaSwitchPendingFollowUpContinuations -= 1;
+  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: false, error_code: larvaError.code, error_message: larvaError.message, lease: continuation.lease });
+  await attemptPersonaLeaseRestore(ctx, pi, terminal);
+}
+
+async function schedulePendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation): Promise<void> {
+  const sender = personaSwitchContinuationSender(ctx, pi);
+  if (sender === null) {
+    await failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", "Cannot deliver Larva persona switch continuation because Pi sendUserMessage is unavailable."));
+    return;
+  }
+  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, scheduled: true, deferred: "setTimeout(0)", lease: continuation.lease });
+  setTimeout(() => {
+    if (pendingPersonaSwitchContinuation !== continuation) return;
+    continuation.phase = "continuation_running";
+    agentPersonaSwitchPendingFollowUpContinuations += 1;
+    let delivered: unknown;
+    try {
+      delivered = sender(continuation.message, { customType: "larva-agent-persona-switch-continuation", details: { from_persona_id: continuation.fromPersonaId, to_persona_id: continuation.toPersonaId, reason: continuation.reason, handoff: continuation.handoff ?? "" } });
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Pi sendUserMessage failed while delivering Larva persona switch continuation.";
+      void failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", message));
+      return;
+    }
+    void Promise.resolve(delivered)
+      .then(() => {
+        appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: true, lease: continuation.lease });
+      }, (caught: unknown) => {
+        const message = caught instanceof Error ? caught.message : "Pi sendUserMessage failed while delivering Larva persona switch continuation.";
+        void failPendingPersonaSwitchContinuation(ctx, pi, terminal, continuation, error("LARVA_CONFIRMATION_UNAVAILABLE", message));
+      });
+  }, 0);
+}
+
 type ConfirmPersonaBorrowOutcome = "borrow_once" | "deny" | "auto_session" | "persistent";
 
 const CONFIRM_PERSONA_BORROW_CHOICE_LABELS = [
@@ -4423,6 +4489,18 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   if (result.status === "success") {
     agentPersonaSwitchMaxPerChain = effectiveSwitchBudget;
     agentPersonaSwitchCountInChain += 1;
+    if (continueTask) {
+      pendingPersonaSwitchContinuation = createPersonaSwitchContinuation(fromPersona, personaId, reason, handoff, lease);
+      result.terminate = true;
+      result.details = {
+        ...result.details,
+        continuation: {
+          terminate: true,
+          delivery: "deferred_until_agent_end_setTimeout_0",
+          restore_after_continuation: lease !== null,
+        },
+      };
+    }
   }
   return result;
 }
@@ -4444,7 +4522,9 @@ export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ 
   return { content: switchToolText(text), details: { status: "success", personas, error: null }, isError: false };
 }
 
-const PERSONA_SWITCH_GROUNDING_GUIDANCE = "Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first.";
+const PERSONA_ROUTE_DECISION_GUIDANCE = "When the active Larva persona is materially unsuitable, choose the execution route before acting. Borrow/switch persona only when the next model call needs current conversation or runtime continuity: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Spawn a Larva subagent when the work benefits from clean context: fresh review, second opinion, adversarial critique, parallel exploration, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. If both apply, prefer larva_subagent for independent evidence, review, critique, or parallelizable work and prefer larva_persona_switch for single-owner execution that must preserve current context. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative.";
+
+const PERSONA_SWITCH_GROUNDING_GUIDANCE = `${PERSONA_ROUTE_DECISION_GUIDANCE} Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first.`;
 
 function agentPersonaSwitchPromptGuidance(): string | null {
   if (agentPersonaSwitchMode === "auto") {
@@ -6994,7 +7074,7 @@ function launcherArgs(env: RuntimeEnv): string[] | LarvaError {
   const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG);
   const entry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
   if (!launched || !realBin || !flag || !entry) return error("LARVA_CHILD_START_FAILED", "Launcher Pi child environment is incomplete.");
-  return [realBin, flag, entry, "--mode", "rpc", "--session-dir"];
+  return [realBin, flag, entry, "--no-extensions", "--mode", "rpc", "--session-dir"];
 }
 
 function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProcessWithoutNullStreams | LarvaError {
@@ -7691,7 +7771,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
   pi.registerTool?.({
     name: "larva_persona_switch",
     label: "Larva Persona Switch",
-    description: "Request an autonomous Larva persona borrow/switch. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -> auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
+    description: "Request an autonomous Larva persona borrow/switch. Use this route when current conversation or runtime continuity is required: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -> auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
     inputSchema: switchSchema,
     parameters: switchSchema,
     handler: (input: PersonaSwitchToolInput) => larva_persona_switch(input, ctx, pi),
@@ -7722,6 +7802,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   agentPersonaSwitchToolsRegistered = false;
   activePersonaLease = null;
   activePersonaLeaseOriginPiModel = null;
+  pendingPersonaSwitchContinuation = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;
   lastPersonaLeasePi = null;
@@ -7736,7 +7817,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     type: "object",
     properties: {
       persona_id: { type: "string", description: "Target Larva persona id." },
-      task: { type: "string", description: "Instruction to send to the child session." },
+      task: { type: "string", description: "Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task." },
       task_id: { type: "string", description: "Optional child session .jsonl path to resume. Omit this field to start a new child session." },
     },
     required: ["persona_id", "task"],
@@ -7745,7 +7826,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",
-    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Automation must use larva_subagent_wait, larva_subagent_select, or larva_subagent_events for completion; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
+    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Automation must use larva_subagent_wait, larva_subagent_select, or larva_subagent_events for completion; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
     inputSchema: subagentSchema,
     parameters: subagentSchema,
     handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal, callbackSurface: callbackSurfaceFrom(ctx, pi) }).then((result) => wrapLarvaSubagentToolResult(result)),
@@ -7916,7 +7997,16 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   });
   pi.on?.("agent_end", async (payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
-    await attemptPersonaLeaseRestore(runtimeCtx, pi, terminalRestorePath(payload) ?? "success");
+    const terminal = terminalRestorePath(payload) ?? "success";
+    const continuation = pendingPersonaSwitchContinuation;
+    if (continuation !== null && continuation.phase === "awaiting_agent_end") {
+      await schedulePendingPersonaSwitchContinuation(runtimeCtx, pi, terminal, continuation);
+      return;
+    }
+    if (continuation !== null && continuation.phase === "continuation_running") {
+      pendingPersonaSwitchContinuation = null;
+    }
+    await attemptPersonaLeaseRestore(runtimeCtx, pi, terminal);
   });
   pi.on?.("tool_call", async (payload: unknown) => {
     const name = isRecord(payload) && typeof payload.toolName === "string"

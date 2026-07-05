@@ -543,12 +543,11 @@ def test_agent_persona_switch_policy_smoke_outputs_complete_offline_register() -
 
 
 def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_path: Path) -> None:
-    """Accepted host-runtime proof for current auto-borrow semantics.
+    """Accepted host-runtime proof for continue_task=false auto-borrow semantics.
 
-    The current policy does not terminate the active tool result or enqueue a
-    Larva-generated follow-up. Instead, auto mode creates a turn-scoped lease,
-    updates the active persona envelope, and relies on the Pi ``agent_end`` hook
-    to restore the origin persona on success, failure, cancellation, or timeout.
+    Auto mode without explicit continuation creates a turn-scoped lease, updates
+    the active persona envelope, and relies on the Pi ``agent_end`` hook to
+    restore the origin persona on success, failure, cancellation, or timeout.
     """
 
     fake_cli = tmp_path / "fake-larva-followup-cli.mjs"
@@ -643,7 +642,6 @@ def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_
           persona_id: "python",
           reason: "Python runtime proof required",
           handoff: "Continue with the Python marker",
-          continue_task: true,
         }}, undefined, undefined, ctx);
 
         const queuedFollowUpMessages = hostSession.getFollowUpMessages();
@@ -701,6 +699,232 @@ def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_
         "restoredPromptUsesOriginPersona": True,
     }
     assert any(entry["data"].get("committed") is True for entry in payload["auditEntries"])
+
+
+def test_agent_persona_switch_continue_task_defers_followup_and_restores_after_continuation(tmp_path: Path) -> None:
+    """continue_task=true terminates old turn, defers follow-up, and restores after continuation."""
+
+    fake_cli = tmp_path / "fake-larva-continuation-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, arg, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            const promptMarker = arg === "python" ? "PYTHON_RUNTIME_PROMPT_MARKER" : "ARCHITECT_RUNTIME_PROMPT_MARKER";
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: arg,
+                description: `Persona ${arg}`,
+                prompt: `Prompt for ${arg}\n${promptMarker}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${arg}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node_inline(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const handlers = {{}};
+        const tools = {{}};
+        const sessionEntries = [];
+        const timeline = [];
+        const sentMessages = [];
+        const scheduledDelays = [];
+        let continuationPrompt = "";
+        let continuationEnvelopeAtStart = null;
+        let restoredEnvelopeAfterContinuation = null;
+        const originalSetTimeout = globalThis.setTimeout;
+        globalThis.setTimeout = (fn, delay, ...args) => {{
+          scheduledDelays.push(delay);
+          return originalSetTimeout(fn, delay, ...args);
+        }};
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_AGENT_PERSONA_SWITCH: "auto",
+            LARVA_PI_INITIAL_PERSONA_ID: "architect",
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+          session: {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
+          sendUserMessage: async (message, options) => {{
+            timeline.push(`sendUserMessage:${{mod.getActiveEnvelope()?.persona_id ?? "none"}}`);
+            sentMessages.push({{ message, options }});
+            const freshPrompt = await handlers.before_agent_start?.({{ prompt: message, systemPrompt: "base continuation prompt" }}, ctx);
+            continuationPrompt = freshPrompt?.systemPrompt ?? "";
+            continuationEnvelopeAtStart = mod.getActiveEnvelope();
+            await handlers.agent_end?.({{ messages: [{{ role: "assistant", stopReason: "stop" }}] }}, ctx);
+            restoredEnvelopeAfterContinuation = mod.getActiveEnvelope();
+          }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: (tool) => {{ tools[tool.name] = tool; }},
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.session_start?.({{ reason: "startup" }}, ctx);
+        const switchResult = await tools["larva_persona_switch"].execute("call-switch", {{
+          persona_id: "python",
+          reason: "Python runtime proof required",
+          handoff: "Continue with the Python marker",
+          continue_task: true,
+        }}, undefined, undefined, ctx);
+        const borrowedEnvelope = mod.getActiveEnvelope();
+        timeline.push(`beforeFirstAgentEnd:${{borrowedEnvelope?.persona_id ?? "none"}}`);
+        await handlers.agent_end?.({{ messages: [{{ role: "assistant", stopReason: "aborted" }}] }}, ctx);
+        const afterFirstAgentEndEnvelope = mod.getActiveEnvelope();
+        const sentImmediatelyAfterFirstAgentEnd = sentMessages.length;
+        await new Promise((resolve) => originalSetTimeout(resolve, 100));
+        globalThis.setTimeout = originalSetTimeout;
+        console.log(JSON.stringify({{
+          proofClass: "continue_task_deferred_persona_switch_continuation",
+          switchResult,
+          borrowedEnvelope,
+          afterFirstAgentEndEnvelope,
+          sentImmediatelyAfterFirstAgentEnd,
+          sentMessages,
+          scheduledDelays,
+          timeline,
+          continuationPrompt,
+          continuationEnvelopeAtStart,
+          restoredEnvelopeAfterContinuation,
+          auditEntries: sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          assertions: {{
+            switchTerminatesOldTurn: switchResult.terminate === true,
+            firstAgentEndDidNotRestore: afterFirstAgentEndEnvelope?.persona_id === "python",
+            deferredSendUsedSetTimeoutZero: sentImmediatelyAfterFirstAgentEnd === 0 && scheduledDelays.includes(0) && sentMessages.length === 1,
+            continuationMessageIsDeterministic: sentMessages[0]?.message?.startsWith("[Larva-generated continuation after persona switch]") === true && sentMessages[0]?.message?.includes("Switched from architect to python.") === true,
+            freshPromptUsesBorrowedPersona: continuationEnvelopeAtStart?.persona_id === "python" && continuationPrompt.includes("PYTHON_RUNTIME_PROMPT_MARKER") && !continuationPrompt.includes("ARCHITECT_RUNTIME_PROMPT_MARKER"),
+            continuationAgentEndRestoredOrigin: restoredEnvelopeAfterContinuation?.persona_id === "architect",
+          }},
+        }}));
+        """,
+    )
+
+    assert payload["proofClass"] == "continue_task_deferred_persona_switch_continuation"
+    assert payload["switchResult"]["status"] == "success"
+    assert payload["switchResult"].get("terminate") is True
+    assert payload["borrowedEnvelope"]["persona_id"] == "python"
+    assert payload["afterFirstAgentEndEnvelope"]["persona_id"] == "python"
+    assert payload["sentImmediatelyAfterFirstAgentEnd"] == 0
+    assert payload["sentMessages"] and payload["sentMessages"][0]["message"].startswith("[Larva-generated continuation after persona switch]")
+    assert payload["continuationEnvelopeAtStart"]["persona_id"] == "python"
+    assert payload["restoredEnvelopeAfterContinuation"]["persona_id"] == "architect"
+    assert payload["assertions"] == {
+        "switchTerminatesOldTurn": True,
+        "firstAgentEndDidNotRestore": True,
+        "deferredSendUsedSetTimeoutZero": True,
+        "continuationMessageIsDeterministic": True,
+        "freshPromptUsesBorrowedPersona": True,
+        "continuationAgentEndRestoredOrigin": True,
+    }
+    assert any(entry["data"].get("event") == "continuation" and entry["data"].get("delivered") is True for entry in payload["auditEntries"])
+
+
+def test_agent_persona_switch_continue_task_missing_send_user_message_restores_immediately(tmp_path: Path) -> None:
+    """Missing sendUserMessage surface restores the origin and audits continuation failure."""
+
+    fake_cli = tmp_path / "fake-larva-continuation-missing-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, arg, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: arg,
+                description: `Persona ${arg}`,
+                prompt: `Prompt for ${arg}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${arg}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node_inline(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const handlers = {{}};
+        const tools = {{}};
+        const sessionEntries = [];
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_AGENT_PERSONA_SWITCH: "auto",
+            LARVA_PI_INITIAL_PERSONA_ID: "architect",
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+          session: {{
+            entries: sessionEntries,
+            getEntries: () => sessionEntries,
+            appendEntry: (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
+          }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "larva_persona_switch", "larva_personas"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: () => undefined,
+          registerTool: (tool) => {{ tools[tool.name] = tool; }},
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await handlers.session_start?.({{ reason: "startup" }}, ctx);
+        const switchResult = await tools["larva_persona_switch"].execute("call-switch", {{
+          persona_id: "python",
+          reason: "Python runtime proof required",
+          continue_task: true,
+        }}, undefined, undefined, ctx);
+        const borrowedEnvelope = mod.getActiveEnvelope();
+        await handlers.agent_end?.({{ messages: [{{ role: "assistant", stopReason: "stop" }}] }}, ctx);
+        const afterFirstAgentEndEnvelope = mod.getActiveEnvelope();
+        console.log(JSON.stringify({{
+          switchResult,
+          borrowedEnvelope,
+          afterFirstAgentEndEnvelope,
+          auditEntries: sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+        }}));
+        """,
+    )
+
+    assert payload["switchResult"]["status"] == "success"
+    assert payload["switchResult"].get("terminate") is True
+    assert payload["borrowedEnvelope"]["persona_id"] == "python"
+    assert payload["afterFirstAgentEndEnvelope"]["persona_id"] == "architect"
+    assert any(
+        entry["data"].get("event") == "continuation" and entry["data"].get("delivered") is False
+        for entry in payload["auditEntries"]
+    )
+    assert any(
+        entry["data"].get("event") == "restore" and entry["data"].get("restored") is True
+        for entry in payload["auditEntries"]
+    )
 
 
 def test_compaction_prompt_real_runtime_envelope_focus_uses_active_state(tmp_path: Path) -> None:

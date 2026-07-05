@@ -31,6 +31,27 @@ always have highest priority.
 The mode is Pi adapter-local session policy. It is not a PersonaSpec field, not
 a registry field, and not controlled by persona prompt text.
 
+## Routing decision guidance
+
+When the active Larva persona is materially unsuitable, the runtime prompt guides
+the model to choose a route before acting:
+
+- Use `larva_persona_switch`/borrow when the next model call needs current
+  conversation or runtime continuity: current user intent and constraints, prior
+  tool results, in-progress plan state, open edits, or session-local context that
+  would be costly or lossy to restate. The route rationale belongs in
+  `larva_persona_switch.reason` along with inspected persona evidence.
+- Use `larva_subagent` when the work benefits from clean context: fresh review,
+  independent review, second opinion, adversarial critique, parallelizable work,
+  long-running async work, or a self-contained task expressible with absolute
+  paths and clear inputs. The route rationale belongs at the top of
+  `larva_subagent.task` before the actual task.
+- Use neither tool for deterministic tool-only work or a minor style mismatch.
+
+Do not ask the user for separate chat confirmation or route approval. `confirm`
+mode already provides the runtime-owned confirmation UI for actual persona
+borrows, and `manual` still rejects model-facing persona switch requests.
+
 ## Mode semantics
 
 ### `manual`
@@ -165,6 +186,33 @@ session or background agent session that calls a model and may produce assistant
 output, the lease may be scoped to that `agent_session` instead. Ordinary
 background tasks do not carry persona and must not create persona leases.
 
+## `continue_task=true` continuation boundary
+
+`larva_persona_switch(..., continue_task=true)` is a terminating switch result.
+Pi only stops the old persona turn when every finalized tool result in that tool
+batch has `terminate=true`; the extension cannot make a mixed non-terminating
+batch stop deterministically. Prompt guidance therefore requires calling
+`larva_persona_switch` alone when borrowing persona.
+
+For `confirm`/`auto` temporary borrows with `continue_task=true`:
+
+1. commit the borrowed persona/model and return `terminate=true`;
+2. do not restore on the first `agent_end` for the old persona turn;
+3. schedule `setTimeout(0)` from that first `agent_end` and call Pi
+   `sendUserMessage` with the deterministic Larva-generated continuation after
+   Pi finishes the current run;
+4. let the continuation enter a fresh `before_agent_start` under the borrowed
+   persona/model;
+5. restore the original persona and captured original Pi model on the
+   continuation run's `agent_end`.
+
+If `sendUserMessage` is unavailable or fails, the runtime restores the origin
+persona/model immediately and records an audit failure for continuation delivery.
+
+For `free`, the switch remains persistent: no temporary lease is created and no
+automatic restore is performed. If `continue_task=true` is used in `free`, the
+continuation runs under the persistently switched persona.
+
 ## Tasks and persona
 
 Generic tasks do not need persona.
@@ -297,7 +345,8 @@ This policy intentionally defines no automatic safe-default persona fallback.
 - `free` is automatic persistent switch.
 - `manual` forbids agent/runtime-initiated switches.
 - Turn-scoped leases restore the origin persona and captured origin Pi model at
-  current assistant turn end.
+  current assistant turn end, except `continue_task=true` defers restore to the
+  Larva-generated continuation run's `agent_end`.
 - Agent-session-scoped leases are allowed only for model-calling agent execution
   contexts.
 - Generic tasks do not own persona.
@@ -324,7 +373,8 @@ This policy intentionally defines no automatic safe-default persona fallback.
 - `confirm` + `Switch persistently` is treated as a user manual switch and does
   not create a lease.
 - `auto` creates a turn-scoped lease and restores the origin persona plus the
-  actual pre-borrow Pi model at turn end.
+  actual pre-borrow Pi model at turn end; `continue_task=true` defers restore
+  until the generated continuation run ends.
 - `free` switches without creating a lease and does not restore.
 - User manual switching during a lease clears the lease and prevents later
   restore to the old origin.

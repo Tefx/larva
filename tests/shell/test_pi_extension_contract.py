@@ -285,7 +285,11 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     assert "return before_agent_start(payload, runtimeCtx, pi)" in before_agent_body
     agent_end_registration = re.search(r"on\?\.\(\"agent_end\", async \(payload: unknown, eventCtx\?: PiContext\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert agent_end_registration is not None
-    assert "attemptPersonaLeaseRestore(runtimeCtx, pi, terminalRestorePath(payload) ?? \"success\")" in agent_end_registration.group("body")
+    agent_end_body = agent_end_registration.group("body")
+    assert "const terminal = terminalRestorePath(payload) ?? \"success\"" in agent_end_body
+    assert "pendingPersonaSwitchContinuation" in agent_end_body
+    assert "schedulePendingPersonaSwitchContinuation(runtimeCtx, pi, terminal, continuation)" in agent_end_body
+    assert "attemptPersonaLeaseRestore(runtimeCtx, pi, terminal)" in agent_end_body
     tool_call_registration = re.search(r"on\?\.\(\"tool_call\", async \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None
     assert "await decideToolCallWithRefresh(name, pi)" in tool_call_registration.group("body")
@@ -305,6 +309,15 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "additionalProperties: false" in source
     assert 'task_id: { type: "string", description: "Optional child session .jsonl path to resume. Omit this field to start a new child session." }' in source
     assert "Null is treated like omission and starts a new child session." not in source
+    for token in (
+        "clean-context work",
+        "independent review",
+        "parallelizable work",
+        "top of larva_subagent.task",
+        "deterministic tool-only work",
+        "Do not use shell sleep polling",
+    ):
+        assert token in tool_body
     assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
     assert "execute:" in tool_body
     assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
@@ -1950,6 +1963,7 @@ def test_child_process_uses_launcher_env_and_rpc_sequence() -> None:
         "LARVA_PI_REAL_BIN",
         "LARVA_PI_EXTENSION_FLAG",
         "LARVA_PI_EXTENSION_ENTRY",
+        "--no-extensions",
         "--mode",
         "rpc",
         "get_state",
@@ -1957,6 +1971,8 @@ def test_child_process_uses_launcher_env_and_rpc_sequence() -> None:
         "agent_end",
         "get_last_assistant_text",
     )
+    launcher_body = _function_body(source, "function launcherArgs")
+    assert launcher_body.index('"--no-extensions"') < launcher_body.index('"--mode"')
     assert "bare pi" not in source.lower()
 
 
@@ -3648,7 +3664,6 @@ def test_agent_persona_switch_restore_notices_status_event_audit_not_chat_body_b
           persona_id: "python",
           reason: "Python implementation is now required",
           handoff: "Implement the agreed test boundary",
-          continue_task: true,
         }, undefined, undefined, harness.ctx);
         await harness.mod.before_agent_start({ systemPrompt: "base", terminal: "success" });
         console.log(JSON.stringify({

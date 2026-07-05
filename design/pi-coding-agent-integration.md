@@ -356,8 +356,16 @@ Mode contract authority is pointer-only here: implementers must use
 [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
 for the default mode, mode semantics, required `confirm` UI outcomes,
 temporary-borrow lease rules, restore boundary, restore-failure behavior,
-unknown-mode handling, and verification cases. Unknown mode values fail safe to `confirm`
-with a warning.
+route selection between `larva_persona_switch` and `larva_subagent`, unknown-mode
+handling, and verification cases. Unknown mode values fail safe to `confirm` with
+a warning.
+
+Runtime guidance uses `larva_persona_switch` when current conversation or runtime
+continuity is required, with the route rationale in `larva_persona_switch.reason`.
+It uses `larva_subagent` for clean context, independent review, critique,
+parallelizable work, async work, or self-contained tasks, with the route rationale
+at the top of `larva_subagent.task`. Deterministic tool-only work should use
+neither route, and the model should not ask for separate chat route approval.
 
 The model-facing surface remains the facade tool only; there is no direct
 model-facing `commitPersona` tool.
@@ -1282,13 +1290,16 @@ Child session root:
 Child process invocation:
 
 ```text
-<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --mode rpc --session-dir <larva-child-session-dir>
+<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --no-extensions --mode rpc --session-dir <larva-child-session-dir>
 ```
 
 The child must use the `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
 `LARVA_PI_EXTENSION_ENTRY` values provided by the launcher. It must not invoke bare
 `pi`, rediscover Pi through `PATH`, or derive the extension entry from module
-metadata or argv inspection.
+metadata or argv inspection. It must pass Pi `--no-extensions` while still loading
+the explicit bundled Larva extension so ambient user-installed extensions cannot
+run inside the controlled child RPC process or hold stale contexts after child
+session replacement.
 
 Environment:
 
@@ -1626,7 +1637,7 @@ hot fixes to affect resumed child work.
 Resume child process invocation is the same as new child startup:
 
 ```text
-<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --mode rpc --session-dir <larva-child-session-dir>
+<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --no-extensions --mode rpc --session-dir <larva-child-session-dir>
 ```
 
 Resume sequence:
@@ -1637,7 +1648,8 @@ Resume sequence:
    active-run registry; if an active registry record already owns the task id,
    return `failed` with `LARVA_SESSION_BUSY` before starting any child process;
 3. start the child RPC process using `LARVA_PI_REAL_BIN`,
-   `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY`;
+   `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY`, with Pi
+   `--no-extensions` so only the explicit Larva extension loads in the child;
 4. let the child extension perform child persona/model/policy/tool initialization;
 5. send `{"id":"switch-1","type":"switch_session","sessionPath":<task_id>}`;
 6. require `success: true` and `data.cancelled !== true` within ten seconds;
@@ -2226,7 +2238,7 @@ architecture_basis:
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
     subagent_presentation_overlay: "/larva-subagent [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; /larva-log is only a deprecated view-mode alias; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"
     persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show candidates from the adapter-local persona cache while preserving Pi file-reference suggestions"
-    child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
+    child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --no-extensions --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
     resume: "task_id is a readable .jsonl child session path under child root; task is appended through RPC prompt; child persona id is re-resolved from current registry"
 
   state_strata:
@@ -2355,7 +2367,7 @@ architecture_basis:
       launch_or_entrypoint: "larva pi --persona <id>"
       minimum_liveness_proof: "A Pi session starts via the selected extension flag with the Larva extension loaded and status shows active persona."
     - surface: "Pi RPC child process"
-      launch_or_entrypoint: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>"
+      launch_or_entrypoint: "<real-pi-bin> <extension-flag> <extension-entry> --no-extensions --mode rpc --session-dir <child root>"
       minimum_liveness_proof: "larva_subagent returns success/failed/cancelled with public task_id when allocated."
 
   open_questions: []
@@ -2528,7 +2540,7 @@ link here rather than redefining the contracts.
 | `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
 | `/larva-subagent` overlay | The canonical authorized slash command is view-only, user-visible, adapter-local, and backed by the parent extension's presentation log plus adapter-local persistent cache; `/larva-log` is a deprecated view-mode alias only. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, persistent cache load/clear, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario async-subagent-contract`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k async_subagent -v` |
 | Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.78.0`; custom components satisfy visible-width rendering; canonical `/larva-subagent` has the concise `Larva subagent log` chrome title, Summary/Prompt/Output/Metadata tabs, event-driven in-memory refresh, and Markdown output; `/larva-log` is a deprecated view-mode alias; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
-| Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
+| Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry with Pi `--no-extensions`, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
 | Subagent row/progress rendering | `larva_subagent` exposes `renderCall`, `execute` progress updates, and `renderResult` with bounded visible text; this is row-local and does not replace the parent `larva:` footer. | Harness proof is sufficient for renderer contract shape and deterministic bounds; live Pi rendering remains a UI runtime concern. | `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'render_hooks or vt46' -v` |
 | Runtime hard gates | Extension loading, Pi RPC command inventory, autocomplete hook provenance, subagent row progress, and subagent log overlay command are reported together. | The matrix is data/provenance, not a fallback authority for behavior. Unsupported or mock-only items must be shown as unsupported/unknown rather than claimed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
 

@@ -7,7 +7,11 @@ Canonical contract authority: opifex-owned PersonaSpec schema remains unchanged
 > Supersession note: this document records the first implemented self-switch target.
 > The current target policy uses four canonical modes — `manual`, `confirm`,
 `auto`, and `free` — with default `confirm`; `confirm` and `auto` are temporary
-> persona-borrow modes that restore at assistant-turn end. Use
+> persona-borrow modes that restore at assistant-turn end, or at the generated
+> continuation run's `agent_end` when `continue_task=true`. Current runtime
+> guidance routes `larva_persona_switch` for current conversation or runtime
+> continuity and `larva_subagent` for clean context; the route rationale belongs
+> in `larva_persona_switch.reason` or at the top of `larva_subagent.task`. Use
 > [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) as the current policy source
 > for new implementation and documentation work.
 
@@ -165,7 +169,13 @@ The extension should also defend against mixed tool batches where possible.
 ## Historical auto-continuation
 
 This section describes the first-target persistent-switch flow. It is historical
-unless restated by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
+unless restated by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md). Current behavior is: `continue_task=true`
+returns `terminate=true`; Pi stops the old turn only when every finalized tool
+result in the batch terminates; the first `agent_end` schedules `setTimeout(0)`
+and delivers the deterministic continuation through `sendUserMessage`; the
+fresh continuation run starts under the borrowed persona/model; temporary borrows
+restore the origin on the continuation run's `agent_end`; delivery failure
+restores immediately and is audited; `free` remains persistent.
 
 Committing a persona changes runtime state but does not by itself start another
 model turn.
