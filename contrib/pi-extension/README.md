@@ -44,8 +44,26 @@ set; otherwise the parent and child extensions each resolve the canonical
 default policy path themselves. Child Pi RPC sessions reuse launcher-provided
 executable, extension, CLI, persona, and interactive-mode values rather than
 rediscovering Pi or deriving extension paths. They pass Pi `--no-extensions`
-while still loading the explicit bundled Larva extension, so user-installed
-ambient extensions cannot crash or mutate the controlled child RPC run.
+while still loading the explicit bundled Larva extension and any sources listed
+in adapter-local `~/.pi/larva/subagent-runtime.json`. This keeps ambient
+extension discovery disabled while allowing reviewed MCP/tooling extensions in
+the controlled child RPC run. Configured sources load before Larva. When an
+earlier source such as `context-mode` registers tools lazily in its first
+`before_agent_start` hook, Larva's later hook re-enumerates the tool baseline and
+reapplies persona policy only when the visible set changed.
+
+`subagent-runtime.json` is a closed JSON object with `schema_version: 1` and an
+`extension_sources` array. Sources use Pi `-e` semantics: npm/git/URL sources are
+passed through, `pi-agent:` paths resolve inside `PI_CODING_AGENT_DIR` (default
+`~/.pi/agent`), `~` local paths expand against the runtime home, and relative
+local paths resolve against the real directory containing the config file.
+Relative paths support repo-managed configs deployed through symlinks. Local
+sources must resolve to readable files or package directories. Configured
+sources load before the bundled Larva extension so child persona tool-policy
+enumeration sees their registered tools; `--no-extensions` remains present. A
+missing default file means an empty allowlist. Invalid config, an invalid absolute
+`LARVA_PI_SUBAGENT_CONFIG_FILE` override, or an unreadable local source fails the
+subagent before child spawn with `LARVA_SUBAGENT_CONFIG_INVALID`.
 
 For `larva pi --persona <id>`, initial persona resolution/model/policy commit is
 startup-critical. Extension-detected model or policy failures write

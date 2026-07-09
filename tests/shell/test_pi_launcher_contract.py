@@ -218,7 +218,14 @@ def test_launcher_explicit_policy_env_honors_legacy_tool_policy_path(
     assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(legacy)
 
 
-@pytest.mark.parametrize("env_name", ["LARVA_PI_TOOL_POLICY_FILE", "LARVA_PI_MODEL_MAP_FILE"])
+@pytest.mark.parametrize(
+    "env_name",
+    [
+        "LARVA_PI_TOOL_POLICY_FILE",
+        "LARVA_PI_MODEL_MAP_FILE",
+        "LARVA_PI_SUBAGENT_CONFIG_FILE",
+    ],
+)
 def test_launcher_rejects_relative_config_override_before_starting_pi(
     mock_shutil_which, mock_subprocess_run, env_name, monkeypatch
 ):

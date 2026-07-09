@@ -97,10 +97,42 @@ The tool returns after all of these are true:
 5. the active-run registry has recorded the running task.
 
 Child RPC launch uses the launcher-provided real Pi binary and explicit Larva
-extension entry, plus Pi `--no-extensions`. Pi still loads the explicit `-e`
-Larva extension, but it does not discover user-installed ambient extensions for
-the controlled child process. This prevents unrelated extensions from running
-inside child sessions or holding stale contexts after child `switch_session`.
+extension entry, plus Pi `--no-extensions`. The optional adapter-local
+`~/.pi/larva/subagent-runtime.json` file explicitly allowlists additional Pi
+extension sources for subagents without re-enabling ambient discovery. Pi loads
+each configured source through `-e`, then loads the bundled Larva extension so
+persona tool-policy enumeration includes tools such as MCP bridge tools. This
+prevents unrelated extensions from running inside child sessions or holding
+stale contexts after child `switch_session`.
+
+Pi runs extension hooks in load order. A configured source such as
+`context-mode` may register `ctx_*` tools lazily during its first
+`before_agent_start`; Larva's later hook re-enumerates the baseline and reapplies
+persona policy when that visible tool set changes. Lazy tools therefore become
+available on the same child turn without enabling ambient discovery.
+
+The config schema is:
+
+```json
+{
+  "schema_version": 1,
+  "extension_sources": [
+    "pi-agent:npm/node_modules/pi-mcp-adapter",
+    "../extensions/required-skill-router"
+  ]
+}
+```
+
+Local sources may name a readable extension file or package directory.
+`pi-agent:` resolves inside `PI_CODING_AGENT_DIR` (default `~/.pi/agent`), `~`
+expands from the child launch environment, and relative paths resolve from the
+real config-file directory so a `~/.pi/larva/subagent-runtime.json` symlink may
+point to a repo-managed config with adjacent extension sources. Pi npm/git/URL
+source forms are passed through unchanged. The absolute override
+`LARVA_PI_SUBAGENT_CONFIG_FILE` selects one alternate file. Missing default
+config means an empty allowlist. Malformed/unknown config fields, duplicate
+sources, invalid overrides, and unreadable local sources fail before spawn with
+`LARVA_SUBAGENT_CONFIG_INVALID`.
 
 The tool does not wait for final child assistant output.
 

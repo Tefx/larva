@@ -1976,6 +1976,283 @@ def test_child_process_uses_launcher_env_and_rpc_sequence() -> None:
     assert "bare pi" not in source.lower()
 
 
+def test_subagent_runtime_config_resolves_allowlisted_extension_sources_and_rejects_invalid_config(
+    tmp_path: Path,
+) -> None:
+    """Subagent extension discovery stays disabled while explicit sources are resolved safely."""
+
+    config_source_root = tmp_path / "managed" / "pi"
+    config_dir = config_source_root / "larva"
+    relative_extension = config_source_root / "extensions" / "required-skill-router"
+    installed_package = tmp_path / "home" / ".pi" / "agent" / "npm" / "node_modules" / "pi-mcp-adapter"
+    config_dir.mkdir(parents=True)
+    relative_extension.mkdir(parents=True)
+    installed_package.mkdir(parents=True)
+    (relative_extension / "index.ts").write_text("export default function () {}\n", encoding="utf-8")
+    (installed_package / "index.ts").write_text("export default function () {}\n", encoding="utf-8")
+    config_file = config_dir / "subagent-runtime.json"
+    config_file.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                    "extension_sources": [
+                        "../extensions/required-skill-router",
+                        "pi-agent:npm/node_modules/pi-mcp-adapter",
+                        "npm:probe-package@1.2.3",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    deployed_dir = tmp_path / "home" / ".pi" / "larva"
+    deployed_dir.mkdir(parents=True)
+    deployed_config = deployed_dir / "subagent-runtime.json"
+    deployed_config.symlink_to(config_file)
+
+    invalid_config = config_dir / "invalid-subagent-runtime.json"
+    invalid_config.write_text(
+        json.dumps({"schema_version": 1, "extension_sources": [], "unknown": True}),
+        encoding="utf-8",
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const valid = mod.loadSubagentRuntimeConfig({{
+          HOME: {json.dumps(str(tmp_path / 'home'))},
+          PI_CODING_AGENT_DIR: {json.dumps(str(tmp_path / 'home' / '.pi' / 'agent'))},
+        }});
+        const invalid = mod.loadSubagentRuntimeConfig({{
+          HOME: {json.dumps(str(tmp_path / 'home'))},
+          LARVA_PI_SUBAGENT_CONFIG_FILE: {json.dumps(str(invalid_config))},
+        }});
+        const relativeOverride = mod.loadSubagentRuntimeConfig({{
+          HOME: {json.dumps(str(tmp_path / 'home'))},
+          LARVA_PI_SUBAGENT_CONFIG_FILE: "relative-config.json",
+        }});
+        console.log(JSON.stringify({{ valid, invalid, relativeOverride }}));
+        """,
+    )
+
+    assert payload["valid"] == {
+        "extension_sources": [
+            str(relative_extension.resolve()),
+            str(installed_package.resolve()),
+            "npm:probe-package@1.2.3",
+        ]
+    }
+    assert payload["invalid"] == {
+        "code": "LARVA_SUBAGENT_CONFIG_INVALID",
+        "message": "subagent-runtime.json contains an unknown root key.",
+    }
+    assert payload["relativeOverride"] == {
+        "code": "LARVA_SUBAGENT_CONFIG_INVALID",
+        "message": "LARVA_PI_SUBAGENT_CONFIG_FILE must be an absolute path.",
+    }
+
+
+def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_keeps_discovery_disabled(
+    tmp_path: Path,
+) -> None:
+    """Configured extension sources are explicit ``-e`` inputs loaded before Larva."""
+
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    source_one = tmp_path / "mcp-package"
+    source_two = tmp_path / "required-skill-router"
+    source_one.mkdir()
+    source_two.mkdir()
+    config_file = tmp_path / "subagent-runtime.json"
+    config_file.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "extension_sources": [str(source_one), str(source_two)],
+            }
+        ),
+        encoding="utf-8",
+    )
+    argv_artifact = tmp_path / "child-argv.json"
+    fake_pi = tmp_path / "fake-pi-argv.mjs"
+    fake_pi.write_text(
+        textwrap.dedent(
+            f"""
+            import {{ writeFileSync }} from "node:fs";
+            writeFileSync({json.dumps(str(argv_artifact))}, JSON.stringify(process.argv.slice(2)), "utf8");
+            process.exit(0);
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{
+          LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          LARVA_PI_REAL_BIN: process.execPath,
+          LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
+          LARVA_PI_EXTENSION_ENTRY: "larva-extension.ts",
+          LARVA_PI_SUBAGENT_CONFIG_FILE: {json.dumps(str(config_file))},
+          LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(tmp_path))},
+          LARVA_PI_LAUNCHED: "1",
+          HOME: {json.dumps(str(tmp_path))},
+        }};
+        const ctx = {{
+          env,
+          ui: {{ setStatus: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerTool: () => undefined,
+          registerCommand: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("parent", ctx, pi);
+        const result = await mod.larva_subagent({{ persona_id: "child", task: "capture argv" }}, {{ env }});
+        const fs = await import("node:fs");
+        const argv = fs.existsSync({json.dumps(str(argv_artifact))})
+          ? JSON.parse(fs.readFileSync({json.dumps(str(argv_artifact))}, "utf8"))
+          : null;
+        console.log(JSON.stringify({{ result, argv }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload["argv"] == [
+        str(source_one.resolve()),
+        str(fake_pi),
+        str(source_two.resolve()),
+        str(fake_pi),
+        "larva-extension.ts",
+        "--no-extensions",
+        "--mode",
+        "rpc",
+        "--session-dir",
+        str(tmp_path),
+    ]
+    assert payload["result"]["status"] == "failed"
+
+
+def test_subagent_runtime_config_docs_preserve_allowlist_and_tool_policy_boundaries() -> None:
+    documents = (
+        PI_EXTENSION_README.read_text(encoding="utf-8"),
+        PI_EXTENSION_ASYNC_SPEC.read_text(encoding="utf-8"),
+        (ROOT / "README.md").read_text(encoding="utf-8"),
+        (ROOT / "design" / "pi-coding-agent-integration.md").read_text(encoding="utf-8"),
+    )
+    for document in documents:
+        _assert_tokens(
+            document,
+            "subagent-runtime.json",
+            "extension_sources",
+            "--no-extensions",
+            "LARVA_PI_SUBAGENT_CONFIG_FILE",
+        )
+    _assert_tokens(
+        documents[1],
+        "load",
+        "Larva extension",
+        "tool-policy",
+        "LARVA_SUBAGENT_CONFIG_INVALID",
+    )
+
+
+def test_before_agent_start_refreshes_tools_registered_lazily_by_allowlisted_extensions(
+    tmp_path: Path,
+) -> None:
+    """Later Larva hook refreshes policy after earlier extensions add first-turn tools."""
+
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const registeredTools = ["read", "larva_subagent"];
+        const activeToolCalls = [];
+        const env = {{
+          LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          LARVA_PI_INITIAL_PERSONA_ID: "parent",
+          LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+          HOME: {json.dumps(str(tmp_path))},
+        }};
+        const ctx = {{
+          env,
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => [...registeredTools],
+          setActiveTools: async (tools) => {{ activeToolCalls.push([...tools]); return true; }},
+          setModel: async () => true,
+          registerTool: () => undefined,
+          registerCommand: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        const beforeLazyRegistration = activeToolCalls.at(-1) ?? [];
+        registeredTools.push("ctx_search", "ctx_execute", "mcp");
+        const prompt = await mod.before_agent_start({{ systemPrompt: "base" }}, ctx, pi);
+        console.log(JSON.stringify({{
+          beforeLazyRegistration,
+          afterLazyRegistration: activeToolCalls.at(-1) ?? [],
+          prompt,
+        }}));
+        """,
+    )
+
+    assert "ctx_search" not in payload["beforeLazyRegistration"]
+    assert {"ctx_search", "ctx_execute", "mcp"} <= set(payload["afterLazyRegistration"])
+    assert "Active Larva persona" in payload["prompt"]["systemPrompt"]
+
+
 def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_path: Path) -> None:
     """The extension consumes ``LARVA_PI_LAUNCHED`` as a child-spawn recursion guard."""
     source = _source()
@@ -2126,7 +2403,7 @@ def test_resume_parent_preflight_defers_child_persona_initialization() -> None:
     )
     assert "resolvePersona" not in subagent_body
     assert "resolvePersona" not in child_sequence_body
-    assert child_sequence_body.index("startChild(env, root, personaId)") < child_sequence_body.index('rpc.command("switch-1"')
+    assert child_sequence_body.index("startChild(env, root, personaId, extensionSources)") < child_sequence_body.index('rpc.command("switch-1"')
 
 
 def test_concurrent_same_task_resume_uses_in_memory_active_run_registry() -> None:
@@ -2199,7 +2476,7 @@ def test_resume_re_resolves_persona_in_new_child_process() -> None:
     assert "resolvePersona" not in child_sequence_body
     _assert_regex(
         source,
-        r"startChild\(env, root, personaId\)[\s\S]+switch_session",
+        r"startChild\(env, root, personaId, extensionSources\)[\s\S]+switch_session",
         "resume must start a child process with the supplied persona before switching session",
     )
 

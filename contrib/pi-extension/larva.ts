@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, chmod, lstat, mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
-import { constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
@@ -28,6 +28,7 @@ type LarvaErrorCode =
   | "LARVA_SUBAGENT_LOG_NOT_OBSERVED"
   | "LARVA_SUBAGENT_LOG_UI_UNAVAILABLE"
   | "LARVA_SUBAGENT_LOG_CONFIG_INVALID"
+  | "LARVA_SUBAGENT_CONFIG_INVALID"
   | "LARVA_COMPACTION_CONFIG_INVALID"
   | "LARVA_COMPACTION_FOCUS_UNAVAILABLE"
   | "LARVA_COMPACTION_FOCUS_FAILED"
@@ -68,6 +69,7 @@ type PiModelMapConfig = {
 };
 
 type RuntimeEnv = Record<string, string | undefined> & {
+  PI_CODING_AGENT_DIR?: string;
   LARVA_PI_AGENT_PERSONA_SWITCH?: string;
   LARVA_PI_INITIAL_PERSONA_ID?: string;
   LARVA_PI_MODEL_MAP_FILE?: string;
@@ -82,6 +84,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_LAUNCHED?: string;
   LARVA_PI_CHILD_RPC_TRACE_FILE?: string;
   LARVA_PI_SUBAGENT_LOG_FILE?: string;
+  LARVA_PI_SUBAGENT_CONFIG_FILE?: string;
   LARVA_PI_SUBAGENT_ARTIFACT_DIR?: string;
   LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE?: string;
   LARVA_PI_COMPACTION_CONFIG_FILE?: string;
@@ -624,6 +627,10 @@ type SubagentPresentationCacheFile = {
   entries: SubagentPresentationLogEntry[];
 };
 
+type SubagentRuntimeConfig = {
+  extension_sources: string[];
+};
+
 const DEFAULT_SUBAGENT_PRESENTATION_CACHE_CONFIG: SubagentPresentationCacheConfig = {
   enabled: true,
   max_entries: 100,
@@ -631,6 +638,9 @@ const DEFAULT_SUBAGENT_PRESENTATION_CACHE_CONFIG: SubagentPresentationCacheConfi
   include_prompt: true,
   include_output: true,
 };
+const DEFAULT_SUBAGENT_RUNTIME_CONFIG: SubagentRuntimeConfig = { extension_sources: [] };
+const SUBAGENT_EXTENSION_SOURCE_LIMIT = 32;
+const SUBAGENT_EXTENSION_SOURCE_CODE_POINT_LIMIT = 4_096;
 const SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT = 4_000;
 const SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT = 1_200;
 const SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT = 800;
@@ -2804,6 +2814,109 @@ function assertOnlyKeys(value: Record<string, unknown>, keys: string[]): void {
   if (Object.keys(value).some((key) => !allowed.has(key))) throw new Error("unexpected key");
 }
 
+function subagentRuntimeConfigError(message: string): LarvaError {
+  return error("LARVA_SUBAGENT_CONFIG_INVALID", message);
+}
+
+function subagentRuntimeConfigPath(env: RuntimeEnv): string | LarvaError {
+  const configured = env.LARVA_PI_SUBAGENT_CONFIG_FILE;
+  if (configured !== undefined) {
+    if (!isAbsolute(configured)) {
+      return subagentRuntimeConfigError("LARVA_PI_SUBAGENT_CONFIG_FILE must be an absolute path.");
+    }
+    return configured;
+  }
+  return join(homeDir(env), ".pi", "larva", "subagent-runtime.json");
+}
+
+function isRemoteSubagentExtensionSource(source: string): boolean {
+  return /^(?:npm:|git:|https?:\/\/|ssh:\/\/|git:\/\/)/u.test(source);
+}
+
+function resolveSubagentExtensionSource(source: unknown, configRealPath: string, env: RuntimeEnv): string | LarvaError {
+  if (typeof source !== "string" || source.length === 0 || source !== source.trim()) {
+    return subagentRuntimeConfigError("extension_sources entries must be non-empty strings without surrounding whitespace.");
+  }
+  if (codePointLength(source) > SUBAGENT_EXTENSION_SOURCE_CODE_POINT_LIMIT) {
+    return subagentRuntimeConfigError("extension_sources entries must not exceed 4096 Unicode code points.");
+  }
+  if (isRemoteSubagentExtensionSource(source)) return source;
+  let candidate: string;
+  if (source.startsWith("pi-agent:")) {
+    const relative = source.slice("pi-agent:".length);
+    const piAgentDir = env.PI_CODING_AGENT_DIR && env.PI_CODING_AGENT_DIR.length > 0
+      ? env.PI_CODING_AGENT_DIR
+      : join(homeDir(env), ".pi", "agent");
+    if (!isAbsolute(piAgentDir)) return subagentRuntimeConfigError("PI_CODING_AGENT_DIR must be absolute when resolving pi-agent: extension sources.");
+    if (relative.length === 0 || isAbsolute(relative)) return subagentRuntimeConfigError("pi-agent: extension sources must contain a relative path.");
+    const base = resolve(piAgentDir);
+    candidate = resolve(base, relative);
+    if (candidate !== base && !candidate.startsWith(`${base}${sep}`)) {
+      return subagentRuntimeConfigError("pi-agent: extension sources must remain inside PI_CODING_AGENT_DIR.");
+    }
+  } else {
+    if (source.startsWith("~") && source !== "~" && !source.startsWith("~/")) {
+      return subagentRuntimeConfigError("extension_sources supports only ~ or ~/ for home-relative local paths.");
+    }
+    const expanded = source === "~"
+      ? homeDir(env)
+      : source.startsWith("~/")
+        ? join(homeDir(env), source.slice(2))
+        : source;
+    candidate = isAbsolute(expanded) ? expanded : resolve(dirname(configRealPath), expanded);
+  }
+  try {
+    const canonical = realpathSync(candidate);
+    const inspected = statSync(canonical);
+    if (!inspected.isFile() && !inspected.isDirectory()) {
+      return subagentRuntimeConfigError("extension_sources local entries must resolve to readable files or directories.");
+    }
+    accessSync(canonical, constants.R_OK);
+    return canonical;
+  } catch {
+    return subagentRuntimeConfigError("extension_sources local entries must resolve to readable files or directories.");
+  }
+}
+
+export function loadSubagentRuntimeConfig(env: RuntimeEnv): SubagentRuntimeConfig | LarvaError {
+  const selectedPath = subagentRuntimeConfigPath(env);
+  if (isLarvaError(selectedPath)) return selectedPath;
+  if (!existsSync(selectedPath)) {
+    return env.LARVA_PI_SUBAGENT_CONFIG_FILE === undefined
+      ? { ...DEFAULT_SUBAGENT_RUNTIME_CONFIG, extension_sources: [] }
+      : subagentRuntimeConfigError("Configured subagent-runtime.json does not exist.");
+  }
+  let configRealPath: string;
+  let parsed: unknown;
+  try {
+    configRealPath = realpathSync(selectedPath);
+    parsed = JSON.parse(readFileSync(configRealPath, "utf8")) as unknown;
+  } catch {
+    return subagentRuntimeConfigError("Unable to read or parse subagent-runtime.json.");
+  }
+  if (!isRecord(parsed)) return subagentRuntimeConfigError("subagent-runtime.json root must be a JSON object.");
+  try {
+    assertOnlyKeys(parsed, ["schema_version", "extension_sources"]);
+  } catch {
+    return subagentRuntimeConfigError("subagent-runtime.json contains an unknown root key.");
+  }
+  if (parsed.schema_version !== 1) return subagentRuntimeConfigError("schema_version must be 1.");
+  if (!Array.isArray(parsed.extension_sources)) return subagentRuntimeConfigError("extension_sources must be an array.");
+  if (parsed.extension_sources.length > SUBAGENT_EXTENSION_SOURCE_LIMIT) {
+    return subagentRuntimeConfigError("extension_sources must contain at most 32 entries.");
+  }
+  const resolvedSources: string[] = [];
+  const seen = new Set<string>();
+  for (const source of parsed.extension_sources) {
+    const resolvedSource = resolveSubagentExtensionSource(source, configRealPath, env);
+    if (isLarvaError(resolvedSource)) return resolvedSource;
+    if (seen.has(resolvedSource)) return subagentRuntimeConfigError("extension_sources must not contain duplicate entries.");
+    seen.add(resolvedSource);
+    resolvedSources.push(resolvedSource);
+  }
+  return { extension_sources: resolvedSources };
+}
+
 function parseModelMapConfig(raw: string): PiModelMapConfig {
   const parsed = JSON.parse(raw) as unknown;
   if (!isRecord(parsed)) throw new Error("invalid model-map top-level");
@@ -3717,11 +3830,14 @@ function applyAgentPersonaToolExposure(tools: string[]): string[] {
   return tools.filter((tool) => !agentTools.has(tool));
 }
 
-async function refreshActiveToolExposureForAgentPersonaMode(pi: PiApi): Promise<LarvaError | null> {
+async function refreshActiveToolExposureForAgentPersonaMode(pi: PiApi, onlyWhenChanged = false): Promise<LarvaError | null> {
   try {
     const baseline = await enumerateTools(pi);
     const policyFiltered = state.envelope ? filterPolicyTools(baseline, state.envelope.tool_policy) : baseline;
     const activeTools = applyAgentPersonaToolExposure(policyFiltered);
+    if (onlyWhenChanged && activeTools.length === state.activeTools.size && activeTools.every((tool) => state.activeTools.has(tool))) {
+      return null;
+    }
     let applied: boolean | void | undefined;
     try {
       applied = await pi.setActiveTools?.(activeTools);
@@ -4703,7 +4819,24 @@ export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = 
     }
     return { systemPrompt: basePrompt };
   };
-  if (terminal !== null) return attemptPersonaLeaseRestore(runtimeCtx, lastPersonaLeasePi ?? pi, terminal).then(composePrompt);
+  const refreshLazyExtensionToolsAndCompose = async (): Promise<{ systemPrompt: string } | null> => {
+    // Pi invokes hooks in extension load order. Sources explicitly loaded before
+    // Larva may register tools in their own first-turn hook, so refresh once the
+    // earlier hooks have run and only mutate Pi when the visible set changed.
+    if (state.envelope !== null && typeof pi.getAllTools === "function" && typeof pi.setActiveTools === "function") {
+      const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, true);
+      if (exposureError !== null) {
+        await notify(runtimeCtx, `Larva could not refresh tools registered before agent start: ${exposureError.code}: ${exposureError.message}`, "warning");
+      }
+    }
+    return composePrompt();
+  };
+  if (terminal !== null) {
+    return attemptPersonaLeaseRestore(runtimeCtx, lastPersonaLeasePi ?? pi, terminal).then(refreshLazyExtensionToolsAndCompose);
+  }
+  if (state.envelope !== null && typeof pi.getAllTools === "function" && typeof pi.setActiveTools === "function") {
+    return refreshLazyExtensionToolsAndCompose();
+  }
   return composePrompt();
 }
 
@@ -7132,20 +7265,21 @@ function isLarvaPiLaunched(env: RuntimeEnv): boolean {
   return env.LARVA_PI_LAUNCHED === "1";
 }
 
-function launcherArgs(env: RuntimeEnv): string[] | LarvaError {
+function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[] | LarvaError {
   const launched = isLarvaPiLaunched(env);
   const realBin = normalizeString(env.LARVA_PI_REAL_BIN);
   const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG);
   const entry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
   if (!launched || !realBin || !flag || !entry) return error("LARVA_CHILD_START_FAILED", "Launcher Pi child environment is incomplete.");
-  return [realBin, flag, entry, "--no-extensions", "--mode", "rpc", "--session-dir"];
+  const explicitExtensions = extensionSources.flatMap((source) => [flag, source]);
+  return [realBin, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc", "--session-dir"];
 }
 
-function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProcessWithoutNullStreams | LarvaError {
-  const prefix = launcherArgs(env);
+function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = []): ChildProcessWithoutNullStreams | LarvaError {
+  const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;
-  const [realBin, flag, entry, ...tail] = prefix;
-  const args = [flag, entry, ...tail, root];
+  const [realBin, ...tail] = prefix;
+  const args = [...tail, root];
   try {
     const child = spawn(realBin, args, {
       env: {
@@ -7615,13 +7749,14 @@ async function runChildSequence(
   personaId: string,
   task: string,
   taskId: string | null,
+  extensionSources: string[] = [],
   abortSignal?: AbortSignal,
   callbacks?: SubagentLifecycleCallbacks,
   record?: ActiveSubagentRun,
 ): Promise<LarvaSubagentResult> {
   const lifecycle = callbacks ?? {};
   const activeRecord = record ?? createSubagentRun({ persona_id: personaId, task, task_id: taskId }, env, personaId, taskId);
-  const child = startChild(env, root, personaId);
+  const child = startChild(env, root, personaId, extensionSources);
   if (isLarvaError(child)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, child));
   const activeChildEntry = { child, env };
   activeRecord.child = child;
@@ -7728,10 +7863,16 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
+  const runtimeConfig = loadSubagentRuntimeConfig(env);
+  if (isLarvaError(runtimeConfig)) {
+    const result = failed(canonicalTaskId, personaId, runtimeConfig);
+    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    return result;
+  }
   const record = createSubagentRun(input, env, personaId, canonicalTaskId, ctx);
   if (canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
-  const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, ctx?.abortSignal, {
+  const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, runtimeConfig.extension_sources, ctx?.abortSignal, {
     onPhase: ctx?.onPhase,
     onTaskAllocated: (allocatedTaskId) => {
       if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);

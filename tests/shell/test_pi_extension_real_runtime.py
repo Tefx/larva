@@ -324,8 +324,10 @@ rl.on("line", async (line) => {
               LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(FAKE_LARVA_CLI))}]),
               LARVA_PI_CHILD_SESSION_DIR: childRoot,
               LARVA_PI_REAL_BIN: childPath,
+              LARVA_PI_EXTENSION_FLAG: "-e",
               LARVA_PI_EXTENSION_ENTRY: childPath,
               LARVA_PI_INITIAL_PERSONA_ID: "",
+              LARVA_PI_LAUNCHED: "1",
             }};
             const tools = [];
             const ctx = {{ env, modelRegistry, ui: {{ setStatus: () => undefined }} }};

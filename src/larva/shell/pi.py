@@ -25,6 +25,7 @@ PACKAGED_EXTENSION_RELATIVE_PATH = Path("pi_extension/larva.ts")
 LARVA_PI_BIN_ENV = "LARVA_PI_BIN"
 LARVA_PI_MODEL_MAP_FILE_ENV = "LARVA_PI_MODEL_MAP_FILE"
 LARVA_PI_TOOL_POLICY_FILE_ENV = "LARVA_PI_TOOL_POLICY_FILE"
+LARVA_PI_SUBAGENT_CONFIG_FILE_ENV = "LARVA_PI_SUBAGENT_CONFIG_FILE"
 LARVA_PI_LAUNCHED_ENV = "LARVA_PI_LAUNCHED"
 PI_EXTENSION_FLAG = "-e"
 
@@ -201,7 +202,11 @@ def _validate_absolute_override(
 
 
 def _validate_config_overrides(environ: Mapping[str, str]) -> Result[None, CliFailure]:
-    for name in (LARVA_PI_MODEL_MAP_FILE_ENV, LARVA_PI_TOOL_POLICY_FILE_ENV):
+    for name in (
+        LARVA_PI_MODEL_MAP_FILE_ENV,
+        LARVA_PI_TOOL_POLICY_FILE_ENV,
+        LARVA_PI_SUBAGENT_CONFIG_FILE_ENV,
+    ):
         validated = _validate_absolute_override(environ, name)
         if isinstance(validated, Failure):
             return Failure(validated.failure())

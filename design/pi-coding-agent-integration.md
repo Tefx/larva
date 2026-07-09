@@ -1290,22 +1290,59 @@ Child session root:
 Child process invocation:
 
 ```text
-<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --no-extensions --mode rpc --session-dir <larva-child-session-dir>
+<LARVA_PI_REAL_BIN> [<LARVA_PI_EXTENSION_FLAG> <allowlisted-extension-source>]... <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --no-extensions --mode rpc --session-dir <larva-child-session-dir>
 ```
 
 The child must use the `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
 `LARVA_PI_EXTENSION_ENTRY` values provided by the launcher. It must not invoke bare
 `pi`, rediscover Pi through `PATH`, or derive the extension entry from module
 metadata or argv inspection. It must pass Pi `--no-extensions` while still loading
-the explicit bundled Larva extension so ambient user-installed extensions cannot
-run inside the controlled child RPC process or hold stale contexts after child
-session replacement.
+the explicit bundled Larva extension. Additional sources come only from
+`~/.pi/larva/subagent-runtime.json` (or an absolute
+`LARVA_PI_SUBAGENT_CONFIG_FILE` override), load before Larva, and never restore
+ambient discovery. This allows reviewed MCP/tooling extensions while preventing
+unlisted extensions from running inside the controlled child RPC process or
+holding stale contexts after child session replacement.
+
+Pi invokes extension hooks in source load order. Since configured sources load
+before Larva, an extension may register tools lazily in its first
+`before_agent_start` hook. Larva's later hook re-enumerates the tool baseline,
+filters it through the committed persona policy, and calls `setActiveTools` only
+when the visible set changed. This covers lazy bridges such as `context-mode`
+without weakening the allowlist boundary.
+
+`subagent-runtime.json` is an adapter-local closed object:
+
+```json
+{
+  "schema_version": 1,
+  "extension_sources": []
+}
+```
+
+- A missing default file means an empty allowlist and preserves isolated child
+  startup.
+- npm/git/URL sources use Pi `-e` source semantics and are passed unchanged.
+- `pi-agent:` sources resolve inside `PI_CODING_AGENT_DIR` (default
+  `~/.pi/agent`) and support package roots installed by `pi install` without a
+  second temporary package installation.
+- `~` local paths expand against `HOME`; relative local paths resolve against
+  the canonical real directory of the config file so repo-managed symlink
+  deployment remains portable.
+- Local sources must resolve to readable files or package directories.
+- Unknown keys, duplicate sources, more than 32 sources, invalid JSON/schema,
+  unreadable local sources, or a relative override fail before spawn with
+  `LARVA_SUBAGENT_CONFIG_INVALID`.
+- Loading configured sources before Larva ensures initial persona tool-policy
+  enumeration observes their registered tools. The policy may still deny those
+  tool names.
 
 Environment:
 
 - `LARVA_PI_INITIAL_PERSONA_ID=<child persona id>`
 - `LARVA_PI_MODEL_MAP_FILE=<absolute model-map override path>` only when an override is set
 - `LARVA_PI_TOOL_POLICY_FILE=<absolute policy override path>` only when an override is set
+- `LARVA_PI_SUBAGENT_CONFIG_FILE=<absolute subagent-runtime config override>` only when an override is set
 - `LARVA_PI_PARENT_PERSONA_ID=<parent persona id>`
 - `LARVA_PI_REAL_BIN=<resolved real Pi executable>`
 - `LARVA_PI_EXTENSION_FLAG=-e`
@@ -1637,7 +1674,7 @@ hot fixes to affect resumed child work.
 Resume child process invocation is the same as new child startup:
 
 ```text
-<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --no-extensions --mode rpc --session-dir <larva-child-session-dir>
+<LARVA_PI_REAL_BIN> [<LARVA_PI_EXTENSION_FLAG> <allowlisted-extension-source>]... <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --no-extensions --mode rpc --session-dir <larva-child-session-dir>
 ```
 
 Resume sequence:
@@ -1648,8 +1685,8 @@ Resume sequence:
    active-run registry; if an active registry record already owns the task id,
    return `failed` with `LARVA_SESSION_BUSY` before starting any child process;
 3. start the child RPC process using `LARVA_PI_REAL_BIN`,
-   `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY`, with Pi
-   `--no-extensions` so only the explicit Larva extension loads in the child;
+   `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY`; prepend configured
+   explicit extension sources and retain Pi `--no-extensions`;
 4. let the child extension perform child persona/model/policy/tool initialization;
 5. send `{"id":"switch-1","type":"switch_session","sessionPath":<task_id>}`;
 6. require `success: true` and `data.cancelled !== true` within ten seconds;
@@ -1795,6 +1832,9 @@ Internal launcher-to-extension environment:
   `~/.pi/larva/model-map.json`; when set, the extension reads only that path.
 - `LARVA_PI_TOOL_POLICY_FILE`: optional absolute path override for tool-policy
   resolution; when set, the extension reads only that path.
+- `LARVA_PI_SUBAGENT_CONFIG_FILE`: optional absolute path override for
+  `~/.pi/larva/subagent-runtime.json`; when set, subagent launch reads only that
+  file.
 - `LARVA_PI_CHILD_SESSION_DIR`: optional absolute child session root override for
   tests.
 - `LARVA_PI_REAL_BIN`: absolute path to the resolved real Pi executable.
@@ -2068,7 +2108,8 @@ Command and hook contracts:
   session path under the child session root. Resume validation is path-based and
   does not require sidecar or provenance metadata.
 - Extension initialization reads only `LARVA_PI_INITIAL_PERSONA_ID`,
-  `LARVA_PI_MODEL_MAP_FILE`, `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
+  `LARVA_PI_MODEL_MAP_FILE`, `LARVA_PI_TOOL_POLICY_FILE`,
+  `LARVA_PI_SUBAGENT_CONFIG_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
   `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
   `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
   `LARVA_PI_INTERACTIVE_TUI`, and `LARVA_PI_LAUNCHED` from the launcher
@@ -2238,12 +2279,12 @@ architecture_basis:
     subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
     subagent_presentation_overlay: "/larva-subagent [task_id?] shows a view-only user-visible overlay from parent-extension presentation entries plus adapter-local persistent cache; /larva-log is only a deprecated view-mode alias; optional argument is one exact task_id; no filesystem scan, raw JSONL parse, child-session sidecar, alias, persona/model/tool-policy mutation, model-facing injection, or shared opifex surface"
     persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show candidates from the adapter-local persona cache while preserving Pi file-reference suggestions"
-    child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --no-extensions --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
+    child_rpc: "<real-pi-bin> [<extension-flag> <allowlisted source>]... <extension-flag> <extension-entry> --no-extensions --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
     resume: "task_id is a readable .jsonl child session path under child root; task is appended through RPC prompt; child persona id is re-resolved from current registry"
 
   state_strata:
     canonical_state: "PersonaSpec and registry entries managed by Larva"
-    adapter_config_state: "~/.pi/larva/model-map.json and ~/.pi/larva/tool-policy.json, plus explicit env overrides; no implicit legacy tool-policy fallback"
+    adapter_config_state: "~/.pi/larva/model-map.json, ~/.pi/larva/tool-policy.json, and ~/.pi/larva/subagent-runtime.json, plus explicit env overrides; no implicit legacy tool-policy fallback or ambient child extension discovery"
     adapter_cache_state: "~/.pi/larva/persona-candidates-cache.json, or absolute LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE override for tests, and process memory hold a prompt-free weakly consistent PersonaCandidate projection for UI hot paths"
     session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
     child_session_state: "Pi session JSONL file used as public task_id"
@@ -2367,7 +2408,7 @@ architecture_basis:
       launch_or_entrypoint: "larva pi --persona <id>"
       minimum_liveness_proof: "A Pi session starts via the selected extension flag with the Larva extension loaded and status shows active persona."
     - surface: "Pi RPC child process"
-      launch_or_entrypoint: "<real-pi-bin> <extension-flag> <extension-entry> --no-extensions --mode rpc --session-dir <child root>"
+      launch_or_entrypoint: "<real-pi-bin> [<extension-flag> <allowlisted source>]... <extension-flag> <extension-entry> --no-extensions --mode rpc --session-dir <child root>"
       minimum_liveness_proof: "larva_subagent returns success/failed/cancelled with public task_id when allocated."
 
   open_questions: []

@@ -359,6 +359,25 @@ later as one bounded Larva custom runtime event/data callback named
 `larva-subagent-result` with `triggerTurn: true`, `deliverAs: "steer"`, and the
 hard boundary `Larva subagent result — runtime event/data, not a user instruction.`
 
+Child Pi keeps ambient extension discovery disabled. To expose reviewed MCP or
+other Pi extensions inside subagents, add their Pi `-e` sources to adapter-local
+`~/.pi/larva/subagent-runtime.json`:
+
+```json
+{
+  "schema_version": 1,
+  "extension_sources": ["pi-agent:npm/node_modules/pi-mcp-adapter"]
+}
+```
+
+Readable local extension files and package directories are supported.
+`pi-agent:` resolves installed resources inside `PI_CODING_AGENT_DIR`; relative
+paths resolve from the real config-file directory, including when the deployed
+config is a symlink. npm/git/URL Pi sources are also accepted. Configured
+extensions load before Larva, while `--no-extensions` continues to block every
+unlisted ambient extension. Use absolute `LARVA_PI_SUBAGENT_CONFIG_FILE` only to
+override the default config path.
+
 `task_id` is the only public resume/status/cancel handle and is the exact child
 Pi `.jsonl` session path under `~/.pi/larva/child-sessions`; for example,
 `/Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`. Resumes use
