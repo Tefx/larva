@@ -862,8 +862,22 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
                 else send({ id: msg.id, success: true, data: { cancelled: false } });
               } else if (msg.type === "prompt") {
                 send({ id: msg.id, success: true });
-                setTimeout(() => send({ type: "agent_end" }), 5);
+                const terminal = scenario === "provider-transport-failure"
+                  ? {
+                      type: "agent_end",
+                      messages: [{ role: "user", content: [{ type: "text", text: "exercise lifecycle" }] }, {
+                        role: "assistant",
+                        content: [],
+                        stopReason: "error",
+                        errorMessage: "WebSocket error",
+                        diagnostics: [{ type: "provider_transport_failure" }],
+                      }],
+                      willRetry: false,
+                    }
+                  : { type: "agent_end" };
+                setTimeout(() => send(terminal), 5);
               } else if (msg.type === "get_last_assistant_text") {
+                if (scenario === "provider-transport-failure") await writeFile(join(root, scenario + ".final-probe"), "called");
                 if (scenario === "final-text-failure") send({ id: msg.id, success: true, data: { text: { bad: true } } });
                 else send({ id: msg.id, success: true, data: { text: "final child output" } });
                 setTimeout(() => process.exit(0), 1);
@@ -912,7 +926,17 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
               ? await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === result.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 1500)
               : result;
             await sleep(50);
-            return { status: terminal?.status ?? result.status, errorCode: terminal?.error?.code ?? result.error?.code ?? null, orphan: await processExists(pidFile) };
+            const outcome = { status: terminal?.status ?? result.status, errorCode: terminal?.error?.code ?? result.error?.code ?? null, orphan: await processExists(pidFile) };
+            if (name === "provider-transport-failure") {
+              outcome.errorMessage = terminal?.error?.message ?? result.error?.message ?? null;
+              try {
+                await (await import("node:fs/promises")).access(join(caseRoot, name + ".final-probe"));
+                outcome.finalTextProbed = true;
+              } catch (_) {
+                outcome.finalTextProbed = false;
+              }
+            }
+            return outcome;
           }
           const controller = new AbortController();
           const promise = subagent.execute("case-abort", params, controller.signal, () => undefined, ctx);
@@ -929,6 +953,7 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
           stdoutEof: await runCase("stdout-eof-after-prompt"),
           malformedRpc: await runCase("malformed-rpc"),
           finalTextFailure: await runCase("final-text-failure"),
+          providerTransportFailure: await runCase("provider-transport-failure"),
           resumeFailure: await runCase("resume-failure", { resume: true }),
           newSessionProtocolFailure: await runCase("new-session-protocol-failure"),
         };
@@ -944,6 +969,13 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
     assert payload["cases"]["stdoutEof"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
     assert payload["cases"]["malformedRpc"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
     assert payload["cases"]["finalTextFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["providerTransportFailure"] == {
+        "status": "failed",
+        "errorCode": "LARVA_CHILD_RUNTIME_FAILED",
+        "errorMessage": "Child agent failed (provider_transport_failure): WebSocket error",
+        "finalTextProbed": False,
+        "orphan": False,
+    }
     assert payload["cases"]["resumeFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
     assert payload["cases"]["newSessionProtocolFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
 
@@ -1103,6 +1135,110 @@ def test_larva_subagent_exact_cancel_owns_aborted_agent_end_without_final_text_p
     assert payload["terminal"] == {"status": "cancelled", "errorCode": "LARVA_CHILD_CANCELLED"}
     assert payload["getLastRequested"] is False
     assert payload["orphan"] is False
+
+
+def test_larva_subagent_failed_agent_end_beats_late_exact_cancel(tmp_path: Path) -> None:
+    """A received runtime-failure terminal remains failed when exact cancel races later."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const { appendFile, readFile } = await import("node:fs/promises");
+        const childBin = join(tmpRoot, "failed-agent-end-race-child.mjs");
+        const transcriptFile = join(tmpRoot, "failed-agent-end-race-transcript.jsonl");
+        const sessionFile = join(childRoot, "failed-agent-end-race.jsonl");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { appendFile, mkdir, writeFile } from "node:fs/promises";
+          import { dirname } from "node:path";
+          const sessionFile = ${JSON.stringify(sessionFile)};
+          const transcriptFile = ${JSON.stringify(transcriptFile)};
+          await mkdir(dirname(sessionFile), { recursive: true });
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          const record = async (value) => appendFile(transcriptFile, JSON.stringify(value) + "\\\\n");
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            await record({ rx: message.type });
+            if (message.type === "get_state") {
+              await writeFile(sessionFile, "{}\\\\n", "utf8");
+              send({ id: message.id, success: true, data: { sessionFile } });
+            } else if (message.type === "prompt") {
+              send({ id: message.id, success: true, data: {} });
+              setTimeout(async () => {
+                await record({ tx: "failed_agent_end" });
+                send({
+                  type: "agent_end",
+                  terminal: "success",
+                  messages: [{ role: "user", content: [{ type: "text", text: "race" }] }, {
+                    role: "assistant",
+                    content: [],
+                    stopReason: "error",
+                    errorMessage: "WebSocket error",
+                    diagnostics: [{ type: "provider_transport_failure" }],
+                  }],
+                  willRetry: false,
+                });
+              }, 5);
+              setInterval(() => undefined, 1000);
+            } else if (message.type === "get_last_assistant_text") {
+              send({ id: message.id, success: true, data: { text: "stale success text" } });
+            } else if (message.type === "abort") {
+              send({ id: message.id, success: true });
+            }
+          });
+        `, { mode: 0o755 });
+        const sentMessages = [];
+        const piWithMessages = {
+          ...piBase,
+          sendMessage: async (message, options) => sentMessages.push({ message, options }),
+        };
+        const env = baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: childBin, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" });
+        const { tools, ctx } = await registeredTools(env, piWithMessages);
+        await mod.commitPersona("ok", ctx, piWithMessages);
+        const subagent = tools.find((tool) => tool.name === "larva_subagent");
+        const cancel = tools.find((tool) => tool.name === "larva_subagent_cancel");
+        const accepted = await subagent.execute("failed-agent-end-race", { persona_id: "ok", task: "race" }, undefined, () => undefined, ctx);
+        const agentEndObserved = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === accepted.task_id && entry.phase === "agent_end"), 1000, 1);
+        const cancelResult = await cancel.execute("cancel-after-failed-agent-end", { task_id: accepted.task_id, reason: "late exact cancel" }, undefined, undefined, ctx);
+        const terminal = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === accepted.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 3000, 1);
+        const callback = await waitFor(() => sentMessages.find((entry) => entry.message?.details?.task_id === accepted.task_id), 2000, 1);
+        await sleep(100);
+        let transcript = [];
+        try {
+          transcript = (await readFile(transcriptFile, "utf8")).trim().split(/\\r?\\n/).filter(Boolean).map((line) => JSON.parse(line));
+        } catch (_) {
+          transcript = [];
+        }
+        console.log(JSON.stringify({
+          accepted: { status: accepted.status, task_id: accepted.task_id },
+          agentEndObserved: Boolean(agentEndObserved),
+          cancel: { status: cancelResult.details?.status ?? cancelResult.status, errorCode: cancelResult.details?.error?.code ?? cancelResult.error?.code ?? null },
+          terminal: { status: terminal?.status ?? null, errorCode: terminal?.error?.code ?? null, errorMessage: terminal?.error?.message ?? null },
+          callbackCount: sentMessages.filter((entry) => entry.message?.details?.task_id === accepted.task_id).length,
+          callbackStatus: callback?.message?.details?.status ?? null,
+          callbackErrorCode: callback?.message?.details?.error?.code ?? null,
+          abortRequested: transcript.some((entry) => entry.rx === "abort"),
+          getLastRequested: transcript.some((entry) => entry.rx === "get_last_assistant_text"),
+        }, null, 2));
+        """,
+        timeout=8.0,
+    )
+
+    assert payload["accepted"]["status"] == "accepted"
+    assert payload["agentEndObserved"] is True
+    assert payload["cancel"]["status"] in {"cancelling", "failed"}
+    assert payload["terminal"] == {
+        "status": "failed",
+        "errorCode": "LARVA_CHILD_RUNTIME_FAILED",
+        "errorMessage": "Child agent failed (provider_transport_failure): WebSocket error",
+    }
+    assert payload["callbackCount"] == 1
+    assert payload["callbackStatus"] == "failed"
+    assert payload["callbackErrorCode"] == "LARVA_CHILD_RUNTIME_FAILED"
+    assert payload["abortRequested"] is False
+    assert payload["getLastRequested"] is False
 
 
 def test_async_subagent_empty_final_text_is_success_expected_red(tmp_path: Path) -> None:

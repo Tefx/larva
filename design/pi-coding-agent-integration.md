@@ -1420,6 +1420,23 @@ child process startup. A later resume starts a new child process and re-resolves
 the requested child persona id from the current registry before appending the new
 task.
 
+#### Terminal assistant failure classification
+After an accepted prompt, the first `agent_end` remains the bounded terminal
+signal. Before requesting final assistant text, the parent inspects the latest
+assistant message carried by that event. `stopReason: "error"` or a present
+assistant `errorMessage` terminalizes the run as `failed` with
+`LARVA_CHILD_RUNTIME_FAILED`. Latest-assistant failure fields override
+contradictory top-level `terminal`, `status`, or `reason` values. The error message
+includes a bounded diagnostic type when present (for example,
+`provider_transport_failure`) and bounded assistant `errorMessage`. This path
+does not call `get_last_assistant_text`, so empty or stale text cannot convert a
+provider/runtime failure into success.
+
+Once the failed `agent_end` is observed, an exact cancellation arriving before
+the collector wakes reuses the stored runtime failure instead of fabricating an
+empty success. This ordering performs no abort RPC, emits one failed callback,
+and preserves the general rule that cancellation already in progress owns a
+later aborted terminal event.
 ### Result contract
 
 `LarvaSubagentResult` is the semantic/domain payload for child-session outcomes:
@@ -1557,6 +1574,8 @@ Initial stable error codes:
 - `LARVA_CHILD_PROTOCOL_FAILED`
 - `LARVA_CHILD_CANCELLED`
 
+- `LARVA_CHILD_RUNTIME_FAILED`
+
 #### Visible resume footer
 
 Whenever `LarvaSubagentResult.task_id` is non-null, the Pi-facing ToolResult
@@ -1635,6 +1654,9 @@ Subagent handler mappings:
   `LARVA_CHILD_PROTOCOL_FAILED`.
 - Parent abort cancels or kills the child: `LARVA_CHILD_CANCELLED`.
 
+- Child `agent_end` whose latest assistant message reports terminal failure:
+  `LARVA_CHILD_RUNTIME_FAILED`; include bounded diagnostic type and assistant
+  error text, then skip the final-text probe.
 ### Resume
 
 When `task_id` is provided, the parent validates only input, path, parent spawn
@@ -2222,6 +2244,9 @@ RPC command response rules:
 - Child stdout is protocol-only. Child stderr is diagnostics-only after RPC
   readiness.
 
+- An `agent_end` with a failed latest assistant message is a child runtime
+  failure, not successful RPC completion. It maps to
+  `LARVA_CHILD_RUNTIME_FAILED` before `get_last_assistant_text`.
 ## Architecture basis
 
 ```yaml

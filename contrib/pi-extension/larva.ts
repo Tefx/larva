@@ -39,6 +39,7 @@ type LarvaErrorCode =
   | "LARVA_PERSONA_CANDIDATE_CACHE_REFRESH_FAILED"
   | "LARVA_CHILD_START_FAILED"
   | "LARVA_CHILD_PROTOCOL_FAILED"
+  | "LARVA_CHILD_RUNTIME_FAILED"
   | "LARVA_CHILD_CANCELLED";
 
 type LarvaError = { code: LarvaErrorCode; message: string };
@@ -4736,23 +4737,41 @@ export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnv
   return `${identityPolicy}\n\n${cleanPrompt}\n\n${activePersona}`;
 }
 
-function terminalRestorePath(event: unknown): "success" | "failure" | "cancellation" | "timeout" | null {
-  if (!isRecord(event)) return null;
-  const terminal = event.terminal ?? event.status ?? event.reason;
-  if (terminal === "success" || terminal === "failure" || terminal === "cancellation" || terminal === "timeout") return terminal;
-  if (Array.isArray(event.messages)) {
-    for (let index = event.messages.length - 1; index >= 0; index -= 1) {
-      const message = event.messages[index];
-      if (!isRecord(message) || message.role !== "assistant") continue;
-      const stopReason = typeof message.stopReason === "string" ? message.stopReason : typeof message.reason === "string" ? message.reason : "";
-      if (stopReason === "aborted" || stopReason === "abort" || stopReason === "cancelled" || stopReason === "canceled") return "cancellation";
-      if (stopReason === "timeout") return "timeout";
-      if (stopReason === "error" || typeof message.errorMessage === "string") return "failure";
-      return "success";
-    }
-    return "success";
+function latestAssistantTerminalMessage(event: unknown): Record<string, unknown> | null {
+  if (!isRecord(event) || !Array.isArray(event.messages)) return null;
+  for (let index = event.messages.length - 1; index >= 0; index -= 1) {
+    const message = event.messages[index];
+    if (isRecord(message) && message.role === "assistant") return message;
   }
   return null;
+}
+
+function terminalRestorePath(event: unknown): "success" | "failure" | "cancellation" | "timeout" | null {
+  if (!isRecord(event)) return null;
+  const message = latestAssistantTerminalMessage(event);
+  if (message !== null) {
+    const stopReason = typeof message.stopReason === "string" ? message.stopReason : typeof message.reason === "string" ? message.reason : "";
+    if (stopReason === "aborted" || stopReason === "abort" || stopReason === "cancelled" || stopReason === "canceled") return "cancellation";
+    if (stopReason === "timeout") return "timeout";
+    if (stopReason === "error" || typeof message.errorMessage === "string") return "failure";
+    return "success";
+  }
+  const terminal = event.terminal ?? event.status ?? event.reason;
+  if (terminal === "success" || terminal === "failure" || terminal === "cancellation" || terminal === "timeout") return terminal;
+  return Array.isArray(event.messages) ? "success" : null;
+}
+
+function childAgentTerminalError(event: unknown): LarvaError | null {
+  if (terminalRestorePath(event) !== "failure") return null;
+  const message = latestAssistantTerminalMessage(event);
+  const diagnosticType = message !== null && Array.isArray(message.diagnostics)
+    ? message.diagnostics.find((diagnostic) => isRecord(diagnostic) && typeof diagnostic.type === "string")?.type
+    : undefined;
+  const detail = message !== null && typeof message.errorMessage === "string" && message.errorMessage.trim().length > 0
+    ? boundedVisible(message.errorMessage, 500)
+    : "Child agent reported a terminal error.";
+  const kind = typeof diagnosticType === "string" && diagnosticType.length > 0 ? ` (${boundedVisible(diagnosticType, 100)})` : "";
+  return error("LARVA_CHILD_RUNTIME_FAILED", `Child agent failed${kind}: ${detail}`);
 }
 
 async function restoreLeaseOriginPiModel(lease: PersonaLease, pi: PiApi): Promise<LarvaError | null> {
@@ -7370,6 +7389,7 @@ class RpcClient {
   private closed = false;
   private stdoutClosed = false;
   private agentEnded = false;
+  private agentEndFailure: LarvaError | null = null;
   private protocolFailed: LarvaError | null = null;
   private startupErrorSeen: LarvaError | null = null;
   private childError: unknown = null;
@@ -7435,7 +7455,10 @@ class RpcClient {
       waiter(message);
       return;
     }
-    if (isRecord(message) && message.type === "agent_end") this.agentEnded = true;
+    if (isRecord(message) && message.type === "agent_end") {
+      this.agentEndFailure = childAgentTerminalError(message);
+      this.agentEnded = true;
+    }
   }
 
   private failPending(larvaError: LarvaError): void {
@@ -7514,7 +7537,7 @@ class RpcClient {
 
   async waitForAgentEnd(): Promise<LarvaError | null> {
     while (true) {
-      if (this.agentEnded) return null;
+      if (this.agentEnded) return this.agentEndFailure;
       if (this.protocolFailed !== null) return this.protocolFailed;
       if (this.stdoutClosed && !this.closed) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child stdout closed before agent_end.");
       if (this.child.exitCode !== null || this.child.signalCode !== null) {
@@ -7530,6 +7553,10 @@ class RpcClient {
 
   hasAgentEnd(): boolean {
     return this.agentEnded;
+  }
+
+  agentEndFailureResult(): LarvaError | null {
+    return this.agentEndFailure;
   }
 
   async abort(): Promise<"success" | "cancelled" | "unknowable"> {
@@ -7678,17 +7705,21 @@ async function abortSubagentRun(record: ActiveSubagentRun, source: SubagentCance
   if (record.cancel_task === null) {
     record.cancel_task = (async () => {
       const rpc = record.rpc;
+      const agentEndObserved = rpc?.hasAgentEnd() === true;
+      const agentEndFailure = rpc !== null && agentEndObserved ? rpc.agentEndFailureResult() : null;
       const abortOutcome = rpc === null
         ? "cancelled"
-        : rpc.hasAgentEnd()
+        : agentEndObserved
           ? "success"
           : await rpc.abort();
       if (record.terminal_snapshot !== null) return record.terminal_snapshot;
-      const result = abortOutcome === "success"
-        ? success(record.task_id ?? "", record.persona_id, "")
-        : abortOutcome === "cancelled"
-          ? cancelled(record.task_id, record.persona_id)
-          : failed(record.task_id, record.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Child abort state became unknowable."));
+      const result = agentEndFailure !== null
+        ? failed(record.task_id, record.persona_id, agentEndFailure)
+        : abortOutcome === "success"
+          ? success(record.task_id ?? "", record.persona_id, "")
+          : abortOutcome === "cancelled"
+            ? cancelled(record.task_id, record.persona_id)
+            : failed(record.task_id, record.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Child abort state became unknowable."));
       const snapshot = finalizeSubagentRun(record, result, { suppressCallback: options.suppressCallbackOnTerminalReturn === true && options.awaitTerminal === true });
       await cleanupSubagentRunChild(record);
       return snapshot;

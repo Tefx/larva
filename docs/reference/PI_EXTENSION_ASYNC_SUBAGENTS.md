@@ -1249,6 +1249,17 @@ child runtime behavior.
 - `LARVA_NO_ACTIVE_PERSONA`: parent persona required but absent.
 - `LARVA_CHILD_PROTOCOL_FAILED`: child RPC contract failed before accepted state
   or while collecting terminal state.
+- `LARVA_CHILD_RUNTIME_FAILED`: the terminal `agent_end` event reports that the
+  child assistant failed. The bounded error message includes the first diagnostic
+  type when present, such as `provider_transport_failure`, plus the assistant
+  `errorMessage`; the run must not be finalized as success or probe stale final
+  text after this terminal failure.
+- The latest assistant message in `agent_end` is authoritative over contradictory
+  top-level `terminal`, `status`, or `reason` fields for failure classification.
+- A failed `agent_end` observed before a later exact cancellation remains failed.
+  The stored runtime failure is terminalized once and emits at most one callback;
+  cancellation that begins before child completion keeps the existing cancellation
+  precedence.
 - `LARVA_SESSION_BUSY`: same `task_id` already active in this parent process.
 - `LARVA_SUBAGENT_NOT_OBSERVED`: exact `task_id` is well-formed but not observed
   by this parent process for console focus, cancellation, `wait`, or `select`.
@@ -1317,7 +1328,15 @@ Implementation is not complete until these gates pass:
 16. Docs test/review: README and this design agree that `larva:none` is default,
     `/larva-subagent` is canonical, the status indicator is count-only, and no
     public `larva_subagent_join` tool exists.
-
+17. Lifecycle test: an `agent_end` whose latest assistant message has
+    `stopReason: "error"` and a `provider_transport_failure` diagnostic becomes
+    `failed` with `LARVA_CHILD_RUNTIME_FAILED`, preserves the bounded diagnostic
+    type/message, reaps the child, and never becomes success because final text is
+    empty or stale.
+18. Race test: after the failed `agent_end` is observed, a later exact cancel
+    cannot replace it with success or cancellation. The failure wins over a
+    contradictory top-level `terminal: "success"`, skips abort/final-text RPC,
+    and emits exactly one failed callback.
 ## Non-goals
 
 - No implicit `general` persona.
