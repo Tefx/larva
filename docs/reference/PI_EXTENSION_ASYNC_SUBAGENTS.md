@@ -42,6 +42,14 @@ The design relies on Pi source and docs observed in the installed Pi package:
 - `dist/core/extensions/loader.js` and `dist/core/agent-session.js`: extension
   runtime contexts become stale after session replacement or reload; background
   callbacks must respect session lifecycle.
+- Pi 0.80.7 `dist/core/agent-session.js` delegates extension `pi.setModel()` to
+  `AgentSession.setModel()`, which calls
+  `settingsManager.setDefaultModelAndProvider(...)`; child startup through that
+  API therefore writes the shared global settings file.
+- Pi 0.80.7 `dist/main.js` and `dist/core/sdk.js` apply an explicit CLI
+  `--model provider/model` as the initial session model without persisting a new
+  shared default. An isolated live probe confirmed byte-identical settings across
+  CLI-selected startup.
 
 ## Decisions
 
@@ -57,6 +65,23 @@ state or session restore.
 Failure condition: this decision is wrong only if Larva product policy changes so
 that merely installing the extension must imply a specific assistant identity.
 That is not the current contract.
+
+### Child model isolation
+
+Resolve the requested child persona's adapter-local Pi model before every new or
+resume spawn. Pass the exact value through Pi
+`--model <provider>/<model-id>` and through the internal
+`LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI` marker. Child extension startup must
+re-resolve the persona/model mapping, verify that Pi's current `ctx.model`
+matches both values, and commit prompt/tool policy with `applyModel: false`.
+
+This rule keeps child selection request-scoped and forbids `pi.setModel()` during
+child startup. Parent manual persona switches may still use `pi.setModel()` as
+their documented explicit state change. Do not snapshot and restore the shared
+settings file: overlapping children can restore stale snapshots over one another.
+Cancellation, provider/startup failure, normal completion, and concurrent children
+using different models must leave shared settings and the parent persona/model
+unchanged.
 
 ### Public subagent handle
 
@@ -97,7 +122,8 @@ The tool returns after all of these are true:
 5. the active-run registry has recorded the running task.
 
 Child RPC launch uses the launcher-provided real Pi binary and explicit Larva
-extension entry, plus Pi `--no-extensions`. The optional adapter-local
+extension entry, plus Pi `--no-extensions` and the resolved request-scoped
+`--model <provider>/<model-id>`. The optional adapter-local
 `~/.pi/larva/subagent-runtime.json` file explicitly allowlists additional Pi
 extension sources for subagents without re-enabling ambient discovery. Pi loads
 each configured source through `-e`, then loads the bundled Larva extension so
@@ -1337,6 +1363,12 @@ Implementation is not complete until these gates pass:
     cannot replace it with success or cancellation. The failure wins over a
     contradictory top-level `terminal: "success"`, skips abort/final-text RPC,
     and emits exactly one failed callback.
+19. Real Pi isolation test: one child on model A and concurrent children on
+    models A/B each use the assigned model while the shared settings SHA stays
+    unchanged throughout.
+20. Real Pi isolation test: exact cancellation, invalid provider/startup failure,
+    normal child cleanup, and all child termination leave shared settings and the
+    parent persona/model unchanged.
 ## Non-goals
 
 - No implicit `general` persona.

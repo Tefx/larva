@@ -378,6 +378,17 @@ extensions load before Larva, while `--no-extensions` continues to block every
 unlisted ambient extension. Use absolute `LARVA_PI_SUBAGENT_CONFIG_FILE` only to
 override the default config path.
 
+Each new or resumed child gets its persona model through an explicit Pi
+`--model <provider>/<model-id>` argument and the matching internal
+`LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI` value. The child extension verifies
+that Pi's active `ctx.model` matches the resolved persona mapping, then commits prompt and
+tool policy without calling `pi.setModel()`. This keeps child model selection
+process-local because Pi 0.80.7 persists `pi.setModel()` into the shared
+`PI_CODING_AGENT_DIR/settings.json`. Larva never snapshots/restores that shared
+file. `node scripts/pi-subagent-model-isolation-smoke.mjs` exercises concurrent
+models, cancellation, startup failure, parent isolation, and settings hashes
+against a real installed Pi.
+
 `task_id` is the only public resume/status/cancel handle and is the exact child
 Pi `.jsonl` session path under `~/.pi/larva/child-sessions`; for example,
 `/Users/alice/.pi/larva/child-sessions/child-20260608T120000Z.jsonl`. Resumes use

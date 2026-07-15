@@ -73,6 +73,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   PI_CODING_AGENT_DIR?: string;
   LARVA_PI_AGENT_PERSONA_SWITCH?: string;
   LARVA_PI_INITIAL_PERSONA_ID?: string;
+  LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?: string;
   LARVA_PI_MODEL_MAP_FILE?: string;
   LARVA_PI_TOOL_POLICY_FILE?: string;
   LARVA_PI_CHILD_SESSION_DIR?: string;
@@ -4075,6 +4076,25 @@ async function setPiModel(pi: PiApi, model: unknown, specModel: string): Promise
   if (accepted === false) throw error("LARVA_MODEL_UNAVAILABLE", `Pi rejected model ${specModel}`);
 }
 
+function formatPiModel(model: ParsedModel): string {
+  return `${model.provider}/${model.modelId}`;
+}
+
+async function validatePreselectedPiModel(spec: PersonaSpec, ctx: PiContext, expected: ParsedModel): Promise<unknown> {
+  const resolved = await resolvePiModel(spec, currentEnv(ctx));
+  const active = ctx.model;
+  if (
+    resolved.provider !== expected.provider
+    || resolved.modelId !== expected.modelId
+    || !isRecord(active)
+    || active.provider !== expected.provider
+    || active.id !== expected.modelId
+  ) {
+    throw error("LARVA_MODEL_UNAVAILABLE", `Pi did not start with the resolved persona model ${formatPiModel(expected)}`);
+  }
+  return active;
+}
+
 function toolEnumerationFailed(message = "Pi tool enumeration failed."): LarvaError {
   return error("LARVA_TOOL_ENUMERATION_FAILED", message);
 }
@@ -4118,7 +4138,12 @@ async function startupToolBaseline(pi: PiApi): Promise<string[]> {
 }
 
 type ActivePersonaCommitSource = "startup" | "slash-command" | "selector" | "self-switch" | "api";
-type CommitPersonaOptions = { toolBaseline?: (pi: PiApi) => Promise<string[]>; sessionCommitSource?: ActivePersonaCommitSource | null; applyModel?: boolean };
+type CommitPersonaOptions = {
+  toolBaseline?: (pi: PiApi) => Promise<string[]>;
+  sessionCommitSource?: ActivePersonaCommitSource | null;
+  applyModel?: boolean;
+  preselectedModel?: ParsedModel;
+};
 
 async function commitPersonaWithOptions(
   personaId: string,
@@ -4129,7 +4154,7 @@ async function commitPersonaWithOptions(
   const toolBaseline = options.toolBaseline ?? enumerateTools;
   const sessionCommitSource = Object.prototype.hasOwnProperty.call(options, "sessionCommitSource") ? options.sessionCommitSource ?? null : "api";
   const applyModel = options.applyModel ?? true;
-  return commitPersonaInternal(personaId, ctx, pi, toolBaseline, sessionCommitSource, applyModel);
+  return commitPersonaInternal(personaId, ctx, pi, toolBaseline, sessionCommitSource, applyModel, options.preselectedModel ?? null);
 }
 
 async function commitPersonaInternal(
@@ -4139,6 +4164,7 @@ async function commitPersonaInternal(
   toolBaseline: (pi: PiApi) => Promise<string[]>,
   sessionCommitSource: ActivePersonaCommitSource | null,
   applyModel: boolean,
+  preselectedModel: ParsedModel | null,
 ): Promise<PersonaSwitchResult> {
   const previousEnvelope = state.envelope;
   const previousActiveTools = new Set(state.activeTools);
@@ -4148,7 +4174,11 @@ async function commitPersonaInternal(
   let activeToolsUpdated = false;
   try {
     const spec = await resolvePersona(personaId, ctx);
-    const model = applyModel ? await validateModel(spec, ctx) : null;
+    const model = applyModel
+      ? await validateModel(spec, ctx)
+      : preselectedModel === null
+        ? null
+        : await validatePreselectedPiModel(spec, ctx, preselectedModel);
     const baseline = await toolBaseline(pi);
     rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
@@ -4178,7 +4208,7 @@ async function commitPersonaInternal(
     };
     state.envelope = envelope;
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
-    if (applyModel) state.piModel = model;
+    if (model !== null) state.piModel = model;
     if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
     rememberSessionInitialized(ctx);
     await setStatus(ctx);
@@ -5353,7 +5383,7 @@ async function runPersonaInvocationChild(record: PersonaInvocationActiveRequest)
       return;
     }
     if (record.terminal) return;
-    const child = startChild(record.env, root, record.persona_id);
+    const child = await startChild(record.env, root, record.persona_id);
     if (isLarvaError(child)) {
       await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(child)));
       return;
@@ -7291,20 +7321,32 @@ function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[
   const entry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
   if (!launched || !realBin || !flag || !entry) return error("LARVA_CHILD_START_FAILED", "Launcher Pi child environment is incomplete.");
   const explicitExtensions = extensionSources.flatMap((source) => [flag, source]);
-  return [realBin, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc", "--session-dir"];
+  return [realBin, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc"];
 }
 
-function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = []): ChildProcessWithoutNullStreams | LarvaError {
+async function childModelArgument(env: RuntimeEnv, personaId: string): Promise<string | LarvaError> {
+  try {
+    const spec = await resolvePersona(personaId, { env });
+    return formatPiModel(await resolvePiModel(spec, env));
+  } catch (caught) {
+    return isLarvaError(caught) ? caught : error("LARVA_MODEL_UNAVAILABLE", `Unable to resolve child model for ${personaId}`);
+  }
+}
+
+async function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = []): Promise<ChildProcessWithoutNullStreams | LarvaError> {
   const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;
+  const modelArgument = await childModelArgument(env, personaId);
+  if (isLarvaError(modelArgument)) return modelArgument;
   const [realBin, ...tail] = prefix;
-  const args = [...tail, root];
+  const args = [...tail, "--model", modelArgument, "--session-dir", root];
   try {
     const child = spawn(realBin, args, {
       env: {
         ...process.env,
         ...env,
         LARVA_PI_INITIAL_PERSONA_ID: personaId,
+        LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: modelArgument,
         LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
         LARVA_PI_INTERACTIVE_TUI: "0",
         LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
@@ -7787,7 +7829,7 @@ async function runChildSequence(
 ): Promise<LarvaSubagentResult> {
   const lifecycle = callbacks ?? {};
   const activeRecord = record ?? createSubagentRun({ persona_id: personaId, task, task_id: taskId }, env, personaId, taskId);
-  const child = startChild(env, root, personaId, extensionSources);
+  const child = await startChild(env, root, personaId, extensionSources);
   if (isLarvaError(child)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, child));
   const activeChildEntry = { child, env };
   activeRecord.child = child;
@@ -7963,10 +8005,16 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   await emitAgentPersonaSwitchModeWarnings(ctx);
   registerAgentPersonaSwitchTools(ctx, pi);
+  const cliSelectedModel = parseModel(env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?.trim() ?? "");
   const stored = latestStoredActivePersonaCommit(ctx);
   if (stored !== null) {
     const modelChangedAfterPersona = sessionHasModelChangeAfter(ctx, stored.entryIndex);
-    const restored = await commitPersonaWithOptions(stored.personaId, ctx, pi, { toolBaseline: startupToolBaseline, sessionCommitSource: null, applyModel: !modelChangedAfterPersona });
+    const restored = await commitPersonaWithOptions(stored.personaId, ctx, pi, {
+      toolBaseline: startupToolBaseline,
+      sessionCommitSource: null,
+      applyModel: cliSelectedModel === null && !modelChangedAfterPersona,
+      ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
+    });
     if (!restored.ok) {
       await setStartupUnavailableStatus(ctx, stored.personaId, restored.error);
       await notify(ctx, `Larva session persona restore unavailable: ${restored.error.code}: ${restored.error.message}`, "warning");
@@ -7977,7 +8025,12 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   }
   const explicitPersonaId = env.LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
   if (explicitPersonaId.length > 0) {
-    const committed = await commitPersonaWithOptions(explicitPersonaId, ctx, pi, { toolBaseline: startupToolBaseline, sessionCommitSource: "startup" });
+    const committed = await commitPersonaWithOptions(explicitPersonaId, ctx, pi, {
+      toolBaseline: startupToolBaseline,
+      sessionCommitSource: "startup",
+      applyModel: cliSelectedModel === null,
+      ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
+    });
     if (!committed.ok) {
       fatalInitialPersonaStartup(env, explicitPersonaId, committed.error);
       await setStartupUnavailableStatus(ctx, explicitPersonaId, committed.error);

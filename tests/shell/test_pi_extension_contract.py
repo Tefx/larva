@@ -2154,6 +2154,8 @@ def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_ke
         "--no-extensions",
         "--mode",
         "rpc",
+        "--model",
+        "provider/model",
         "--session-dir",
         str(tmp_path),
     ]
@@ -2391,18 +2393,20 @@ def test_resume_busy_same_task_returns_session_busy() -> None:
     )
 
 
-def test_resume_parent_preflight_defers_child_persona_initialization() -> None:
+def test_resume_parent_preflight_defers_model_resolution_to_child_start() -> None:
     source = _source()
     subagent_body = _function_body(source, "export async function larva_subagent")
     child_sequence_body = _function_body(source, "async function runChildSequence")
-    _assert_tokens(source, "switch_session", "LARVA_PI_INITIAL_PERSONA_ID")
+    start_child_body = _function_body(source, "async function startChild")
+    _assert_tokens(source, "switch_session", "LARVA_PI_INITIAL_PERSONA_ID", "childModelArgument")
     _assert_regex(
         source,
         r"validateTaskId[\s\S]+canSpawn[\s\S]+subagentTaskIdBusyInRegistry",
-        "parent resume preflight should validate path, spawn authority, and active-run registry busy state only",
+        "resume preflight validates path, spawn authority, and busy state before child-start model resolution",
     )
     assert "resolvePersona" not in subagent_body
     assert "resolvePersona" not in child_sequence_body
+    assert "childModelArgument" in start_child_body
     assert child_sequence_body.index("startChild(env, root, personaId, extensionSources)") < child_sequence_body.index('rpc.command("switch-1"')
 
 
@@ -2467,17 +2471,21 @@ def test_busy_state_is_process_local_without_lock_files() -> None:
     assert ".lock" not in source
 
 
-def test_resume_re_resolves_persona_in_new_child_process() -> None:
+def test_resume_re_resolves_persona_and_cli_model_at_child_start() -> None:
     source = _source()
-    start_child_body = _function_body(source, "function startChild")
+    start_child_body = _function_body(source, "async function startChild")
+    child_model_body = _function_body(source, "async function childModelArgument")
     child_sequence_body = _function_body(source, "async function runChildSequence")
-    _assert_tokens(source, "LARVA_PI_INITIAL_PERSONA_ID", "switch_session")
+    _assert_tokens(source, "LARVA_PI_INITIAL_PERSONA_ID", "switch_session", "--model")
     assert "LARVA_PI_INITIAL_PERSONA_ID: personaId" in start_child_body
+    assert "LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: modelArgument" in start_child_body
+    assert "resolvePersona" in child_model_body
+    assert "resolvePiModel" in child_model_body
     assert "resolvePersona" not in child_sequence_body
     _assert_regex(
         source,
         r"startChild\(env, root, personaId, extensionSources\)[\s\S]+switch_session",
-        "resume must start a child process with the supplied persona before switching session",
+        "resume must resolve the supplied persona model and start the child before switching session",
     )
 
 
@@ -3991,6 +3999,7 @@ def test_agent_persona_switch_child_subagent_defaults_self_switch_manual_behavio
               JSON.stringify({{
                 LARVA_PI_AGENT_PERSONA_SWITCH: process.env.LARVA_PI_AGENT_PERSONA_SWITCH ?? null,
                 LARVA_PI_INITIAL_PERSONA_ID: process.env.LARVA_PI_INITIAL_PERSONA_ID ?? null,
+                LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI ?? null,
                 LARVA_PI_PARENT_PERSONA_ID: process.env.LARVA_PI_PARENT_PERSONA_ID ?? null,
                 LARVA_PI_INTERACTIVE_TUI: process.env.LARVA_PI_INTERACTIVE_TUI ?? null,
               }}, null, 2),
@@ -4044,6 +4053,7 @@ def test_agent_persona_switch_child_subagent_defaults_self_switch_manual_behavio
 
     assert payload["childEnv"] is not None
     assert payload["childEnv"]["LARVA_PI_INITIAL_PERSONA_ID"] == "python"
+    assert payload["childEnv"]["LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI"] == "provider/model"
     assert payload["childEnv"]["LARVA_PI_PARENT_PERSONA_ID"] == "architect"
     assert payload["childEnv"]["LARVA_PI_INTERACTIVE_TUI"] == "0"
     assert payload["childEnv"]["LARVA_PI_AGENT_PERSONA_SWITCH"] == "manual"

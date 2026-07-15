@@ -65,6 +65,16 @@ missing default file means an empty allowlist. Invalid config, an invalid absolu
 `LARVA_PI_SUBAGENT_CONFIG_FILE` override, or an unreadable local source fails the
 subagent before child spawn with `LARVA_SUBAGENT_CONFIG_INVALID`.
 
+For each new or resumed subagent, the parent resolves the persona's mapped Pi
+model before spawn and passes it as request-scoped
+`--model <provider>/<model-id>`. It also passes
+`LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI` with that exact value. Child startup
+re-resolves the mapping, verifies Pi's active `ctx.model`, and commits prompt/tool
+policy with `applyModel: false`; it must not call `pi.setModel()`. Pi 0.80.7
+persists `pi.setModel()` to shared settings, while initial CLI `--model` selection
+is session-local. Snapshot/restore of shared settings is forbidden because
+concurrent children can overwrite one another.
+
 For `larva pi --persona <id>`, initial persona resolution/model/policy commit is
 startup-critical. Extension-detected model or policy failures write
 `larva pi: <ERROR_CODE>: <message>` to stderr and exit non-zero before the first
@@ -920,8 +930,10 @@ Example exact task id:
 ```
 
 Resuming uses that exact path as `task_id`, appends the new `task`, and
-re-resolves the requested child persona from the current registry. The extension
-must not expose public `run_id`, `last` aliases, fuzzy selectors, sidecar
+re-resolves the requested child persona and mapped model from the current
+registry. Concurrent children may use different models without changing the
+parent/sibling shared Pi default. The extension must not expose public `run_id`,
+`last` aliases, fuzzy selectors, sidecar
 provenance handles, sidecar metadata, batch cancel, or scheduler handles.
 Internal private operation keys may exist before `task_id` allocation but must
 not appear in user-facing or model-facing APIs.
