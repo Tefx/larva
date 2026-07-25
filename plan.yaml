@@ -138939,3 +138939,382 @@ phases:
     primary-working-tree changes.
   depends_on:
   - pi_subagent_rpc_memory_bound_20260619
+  steps:
+  - id: pi-model-map-profile-switch.implement
+    name: Implement runtime model-map profile switching with tests and docs
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\nThe Orchestrator\
+      \ must supply exactly one admitted vectl.worker.dispatch.v2 envelope bound to\
+      \ the active claim, immutable clean-worktree base, allowed paths, checks, and\
+      \ plan SHA. Completion requires the worker's unchanged vectl.worker.execution.v2\
+      \ receipt; this plan text supplies no claim, worktree, integration, or Git authority.\n\
+      \nDeliver:\n- Add `/larva-model-map <profile>` and read-only `/larva-model-map\
+      \ status` inside the existing Pi extension. A profile name must match exactly\
+      \ `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; letters, digits, underscore, and hyphen\
+      \ are accepted, while dots, separators, absolute paths, empty/dot names, and\
+      \ oversize names are rejected. This binding overrides change-request §11.1.\n\
+      - Discover only bounded regular `model-map.<profile>.json` files under the existing\
+      \ canonical Larva Pi config directory, reject symlink escapes and oversized\
+      \ files, parse with the existing strict `parseModelMapConfig`, and preserve\
+      \ one resolver with precedence: process-local profile, explicit env file, canonical\
+      \ file, existing first-slash fallback. Do not mutate `process.env`, caller-owned\
+      \ maps, PersonaSpec, registry state, `models.yaml`, or provider credentials.\
+      \ Session/resource-reload persistence is deferred under change-request §5.3;\
+      \ document process-local lifetime and reset behavior.\n- Serialize switches\
+      \ with one process-local mutex. Preflight the profile, parent persona route,\
+      \ every active child persona route, parent registry entry, and normal parent\
+      \ model path without mutation. Commit selection plus parent model atomically\
+      \ from the user's perspective; restore the old selection/model on parent failure\
+      \ and report any rollback uncertainty as failed. With no active persona, commit\
+      \ for future children and report `parent: not_applicable`.\n- After parent commit,\
+      \ resolve and send unique-id bounded-timeout `set_model` RPCs to every unique\
+      \ ready active child; accept only correlated `success: true`. Classify terminal\
+      \ and concurrently ended children without false failures. Starting children\
+      \ carry a route generation and must apply the latest child-persona route before\
+      \ their first prompt. New and resumed children resolve immediately against the\
+      \ active profile. Preserve in-flight provider calls and guarantee the next call\
+      \ uses the new route after successful `set_model`.\n- Return the structured\
+      \ success/partial/failed result and concise human summary required by the change\
+      \ request, including exact failed task/persona identities, idempotent same-profile\
+      \ retry, typed error codes, bounded completion, and secret-safe status fields.\
+      \ Never silently retain a known live child on the old route or fall back to\
+      \ another profile/provider.\n- Extend existing model-map unit/runtime and real\
+      \ Pi-extension smoke harnesses with baseline, parent, child, race, malformed-RPC,\
+      \ timeout/closed-stream, partial, idempotency, no-fallback, and credential-redaction\
+      \ cases. Keep all existing model-map/persona/subagent regressions green. Synchronize\
+      \ `contrib/pi-extension/README.md` with command syntax, flat filename convention,\
+      \ corrected accepted characters, precedence, process lifetime, parent/new/active/starting\
+      \ child semantics, in-flight boundary, partial retry, and path/security rules\
+      \ using neutral placeholders only.\n\nBoundary:\n- Owner: `frontend-engineer`,\
+      \ resolved live and worker-v2 compatible. Repository changes are limited by\
+      \ the Intent-Closure scope below. No external provider request, credential change,\
+      \ paid service, user-config write, registry mutation, or persistent runtime\
+      \ operation is authorized.\n- Execute only in an Orchestrator-created isolated\
+      \ clean worktree based on the immutable integrated main commit in the dispatch\
+      \ (witnessed baseline `e25fea76e66fa05826346567616c1be90b82d1e2`). Never use\
+      \ mutable primary-tree content as implementation input. The primary tree's unrelated\
+      \ edits in `contrib/pi-extension/larva.ts`, `design/pi-coding-agent-integration.md`,\
+      \ `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, and `tests/shell/test_pi_extension_subagent_ux.py`\
+      \ remain outside worker ownership. Integration must preserve them; if the implementation\
+      \ commit cannot integrate without overwriting or staging those edits, stop for\
+      \ reconciliation rather than touching them.\n- Runtime tests must use temporary\
+      \ config/session roots, neutral fake provider/model identifiers, bounded child\
+      \ processes and RPC timeouts, and deterministic cleanup. No network/auth fallback\
+      \ is permitted.\n\nAdmit:\n- Exact requirement atoms are `MMPS-01` through `MMPS-08`\
+      \ in the policy and contract. The targeted Node checks are primary behavioral\
+      \ proof; the focused Python suite, full pytest, Invar guard, and diff check\
+      \ are regression evidence. Record exact commands, exits, decisive output, runtime\
+      \ identity, temp-root cleanup, and changed paths in the worker receipt.\n- The\
+      \ real-smoke scenario must exercise command registration/handling, profile filesystem\
+      \ resolution, parent `setModel`, child startup/resume and ready-child RPC wiring,\
+      \ generation fencing before prompt, concurrency, partial failure, and in-flight-next-request\
+      \ behavior through the extension seam rather than source-token assertions.\n\
+      \nRecovery:\n- Repository rollback is the single integrated implementation commit,\
+      \ but runtime rollback is NONTRIVIAL: pre-parent failures restore prior selection/model;\
+      \ post-parent child failures remain explicit partial state and must not trigger\
+      \ an automatic rollback broadcast. Re-running the same profile retries unswitched\
+      \ live children. Unknown parent rollback or child process state stops with failed/partial\
+      \ evidence.\n- Test cleanup must terminate spawned children and remove only\
+      \ its temporary roots. Any cleanup failure, leaked process, primary-tree preservation\
+      \ conflict, or unexpected user-config mutation blocks completion.\n\n<vectl_step_policy>\n\
+      {\n  \"schema_version\": \"vectl.step.policy.v2\",\n  \"step_id\": \"pi-model-map-profile-switch.implement\"\
+      ,\n  \"risk_tier\": \"R3\",\n  \"risk_reasons\": [\n    \"One command changes\
+      \ parent and active-child routing across a deliberately non-atomic cross-process\
+      \ boundary.\",\n    \"Profile discovery accepts filesystem input and must prevent\
+      \ traversal, symlink escape, oversized input, and credential disclosure.\",\n\
+      \    \"Starting-child generation fencing, concurrent switches, RPC correlation,\
+      \ and in-flight requests create ordering-sensitive failure modes.\"\n  ],\n\
+      \  \"primary_outcome\": \"MMPS-01-runtime-switch\",\n  \"rollback_class\": \"\
+      NONTRIVIAL\",\n  \"observation_ledger\": [\n    {\"requirement_id\":\"MMPS-01-runtime-switch\"\
+      ,\"atom\":\"A running Pi session activates one named profile and aligns the\
+      \ parent plus future child route.\",\"modality\":\"runtime_state_transition\"\
+      ,\"seam\":\"real\",\"check_id\":\"profile_switch_runtime\",\"independent_step\"\
+      :\"pi-model-map-profile-switch.verify-runtime\"},\n    {\"requirement_id\":\"\
+      MMPS-02-profile-security\",\"atom\":\"Safe basename, bounded regular-file, symlink-containment,\
+      \ strict-schema, and corrected no-dot rules fail closed.\",\"modality\":\"filesystem_adversarial\"\
+      ,\"seam\":\"real\",\"check_id\":\"profile_switch_unit\",\"independent_step\"\
+      :\"pi-model-map-profile-switch.verify-runtime\"},\n    {\"requirement_id\":\"\
+      MMPS-03-parent-atomicity\",\"atom\":\"Preflight and parent commit preserve the\
+      \ prior route on failure and support no-active-persona selection.\",\"modality\"\
+      :\"runtime_failure_path\",\"seam\":\"real\",\"check_id\":\"profile_switch_runtime\"\
+      ,\"independent_step\":\"pi-model-map-profile-switch.verify-runtime\"},\n   \
+      \ {\"requirement_id\":\"MMPS-04-child-synchronization\",\"atom\":\"Ready, starting,\
+      \ new, resumed, terminal, and concurrently ended children follow the required\
+      \ route semantics.\",\"modality\":\"child_rpc_and_spawn\",\"seam\":\"real\"\
+      ,\"check_id\":\"profile_switch_child_runtime\",\"independent_step\":\"pi-model-map-profile-switch.verify-runtime\"\
+      },\n    {\"requirement_id\":\"MMPS-05-partial-idempotent-results\",\"atom\"\
+      :\"Partial outcomes identify failed live children and same-profile reruns retry\
+      \ without fallback.\",\"modality\":\"runtime_failure_path\",\"seam\":\"real\"\
+      ,\"check_id\":\"profile_switch_child_runtime\",\"independent_step\":\"pi-model-map-profile-switch.verify-runtime\"\
+      },\n    {\"requirement_id\":\"MMPS-06-concurrency-inflight\",\"atom\":\"Switch\
+      \ mutex, route generation, correlated RPCs, bounded timeouts, and next-request\
+      \ semantics prevent stale prompts and hangs.\",\"modality\":\"concurrency_adversarial\"\
+      ,\"seam\":\"real\",\"check_id\":\"profile_switch_child_runtime\",\"independent_step\"\
+      :\"pi-model-map-profile-switch.verify-runtime\"},\n    {\"requirement_id\":\"\
+      MMPS-07-status-errors-secrecy\",\"atom\":\"Status and typed failures expose\
+      \ required routing/state facts without credentials or personal configuration.\"\
+      ,\"modality\":\"runtime_output\",\"seam\":\"real\",\"check_id\":\"profile_switch_runtime\"\
+      ,\"independent_step\":\"pi-model-map-profile-switch.verify-runtime\"},\n   \
+      \ {\"requirement_id\":\"MMPS-08-regression-docs\",\"atom\":\"One resolver remains\
+      \ authoritative; regressions pass and Pi-extension documentation matches the\
+      \ observable contract with neutral examples.\",\"modality\":\"artifact_and_regression_review\"\
+      ,\"seam\":\"static\",\"check_id\":\"pi_contract_regressions\",\"independent_step\"\
+      :\"pi-model-map-profile-switch.review-conformance\"}\n  ],\n  \"test_authority\"\
+      : {\n    \"developer_test_globs\": [\n      \"contrib/pi-extension/test-model-map-unit.mjs\"\
+      ,\n      \"contrib/pi-extension/test-model-map-runtime.mjs\",\n      \"scripts/pi-extension-runtime-smoke.mjs\"\
+      ,\n      \"tests/shell/test_pi_extension_contract.py\",\n      \"tests/shell/test_pi_extension_subagent_model_isolation.py\"\
+      ,\n      \"tests/shell/test_pi_extension_real_runtime.py\"\n    ],\n    \"acceptance_test_paths\"\
+      : [],\n    \"acceptance_check_ids\": [],\n    \"acceptance_mutation\": \"FORBIDDEN\"\
+      ,\n    \"acceptance_authorizations\": []\n  }\n}\n</vectl_step_policy>\n\n<intent_closure_contract>\n\
+      {\n  \"schema_version\": \"intent_closure.contract.v2\",\n  \"matcher_semantics\"\
+      : \"intent_closure.matchers.v2\",\n  \"profile\": \"generic\",\n  \"scope\"\
+      : {\n    \"allowed_paths\": [\n      \"contrib/pi-extension/larva.ts\",\n  \
+      \    \"contrib/pi-extension/test-model-map-unit.mjs\",\n      \"contrib/pi-extension/test-model-map-runtime.mjs\"\
+      ,\n      \"scripts/pi-extension-runtime-smoke.mjs\",\n      \"contrib/pi-extension/README.md\"\
+      ,\n      \"tests/shell/test_pi_extension_contract.py\"\n    ],\n    \"blocked_paths\"\
+      : [\n      \"plan.yaml\",\n      \"design/**\",\n      \"docs/**\",\n      \"\
+      tests/shell/test_pi_extension_subagent_ux.py\",\n      \"src/**\",\n      \"\
+      contracts/**\",\n      \"../opifex/**\"\n    ]\n  },\n  \"claims\": [\n    \"\
+      MMPS-01-runtime-switch\",\n    \"MMPS-02-profile-security\",\n    \"MMPS-03-parent-atomicity\"\
+      ,\n    \"MMPS-04-child-synchronization\",\n    \"MMPS-05-partial-idempotent-results\"\
+      ,\n    \"MMPS-06-concurrency-inflight\",\n    \"MMPS-07-status-errors-secrecy\"\
+      ,\n    \"MMPS-08-regression-docs\"\n  ],\n  \"checks\": [\n    {\n      \"id\"\
+      : \"profile_switch_unit\",\n      \"run\": {\"command\":[\"node\",\"contrib/pi-extension/test-model-map-unit.mjs\"\
+      ],\"timeout_seconds\":180},\n      \"evidence\": {\n        \"mode\":\"command_outcome\"\
+      ,\n        \"path_bindings\":[{\"path\":\"contrib/pi-extension/test-model-map-unit.mjs\"\
+      ,\"access\":\"execute\",\"availability\":\"current\"}],\n        \"test_bindings\"\
+      :[{\"path\":\"contrib/pi-extension/test-model-map-unit.mjs\",\"classification\"\
+      :\"developer\",\"availability\":\"current\"}]\n      },\n      \"expect\": {\"\
+      outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\":{\"contains_all\"\
+      :[{\"literal\":\"model-map unit: PASS\"}]}},\n      \"proves\":[\"MMPS-02-profile-security\"\
+      ,\"MMPS-07-status-errors-secrecy\",\"MMPS-08-regression-docs\"]\n    },\n  \
+      \  {\n      \"id\": \"profile_switch_runtime\",\n      \"run\": {\"command\"\
+      :[\"node\",\"contrib/pi-extension/test-model-map-runtime.mjs\"],\"timeout_seconds\"\
+      :240},\n      \"evidence\": {\n        \"mode\":\"command_outcome\",\n     \
+      \   \"path_bindings\":[{\"path\":\"contrib/pi-extension/test-model-map-runtime.mjs\"\
+      ,\"access\":\"execute\",\"availability\":\"current\"}],\n        \"test_bindings\"\
+      :[{\"path\":\"contrib/pi-extension/test-model-map-runtime.mjs\",\"classification\"\
+      :\"developer\",\"availability\":\"current\"}]\n      },\n      \"expect\": {\"\
+      outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\":{\"contains_all\"\
+      :[{\"literal\":\"model-map runtime: PASS\"}]}},\n      \"proves\":[\"MMPS-01-runtime-switch\"\
+      ,\"MMPS-03-parent-atomicity\",\"MMPS-05-partial-idempotent-results\",\"MMPS-07-status-errors-secrecy\"\
+      ,\"MMPS-08-regression-docs\"]\n    },\n    {\n      \"id\": \"profile_switch_child_runtime\"\
+      ,\n      \"run\": {\"command\":[\"node\",\"scripts/pi-extension-runtime-smoke.mjs\"\
+      ,\"--scenario\",\"model-map-profile-switch\"],\"timeout_seconds\":300},\n  \
+      \    \"evidence\": {\n        \"mode\":\"command_outcome\",\n        \"path_bindings\"\
+      :[{\"path\":\"scripts/pi-extension-runtime-smoke.mjs\",\"access\":\"execute\"\
+      ,\"availability\":\"current\"}],\n        \"test_bindings\":[{\"path\":\"scripts/pi-extension-runtime-smoke.mjs\"\
+      ,\"classification\":\"developer\",\"availability\":\"current\"}]\n      },\n\
+      \      \"expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\"\
+      :{\"contains_all\":[{\"literal\":\"\\\"scenario\\\": \\\"model-map-profile-switch\\\
+      \"\"},{\"literal\":\"modelMapProfileSwitch\"},{\"literal\":\"\\\"status\\\"\
+      : \\\"PASS\\\"\"}]}},\n      \"proves\":[\"MMPS-01-runtime-switch\",\"MMPS-04-child-synchronization\"\
+      ,\"MMPS-05-partial-idempotent-results\",\"MMPS-06-concurrency-inflight\"]\n\
+      \    },\n    {\n      \"id\": \"pi_contract_regressions\",\n      \"run\": {\"\
+      command\":[\"uv\",\"run\",\"pytest\",\"-q\",\"tests/shell/test_pi_extension_contract.py\"\
+      ,\"tests/shell/test_pi_extension_subagent_model_isolation.py\",\"tests/shell/test_pi_extension_real_runtime.py\"\
+      ],\"timeout_seconds\":420},\n      \"evidence\": {\n        \"mode\":\"command_outcome\"\
+      ,\n        \"path_bindings\":[{\"path\":\"pyproject.toml\",\"access\":\"read\"\
+      ,\"availability\":\"current\"}],\n        \"test_bindings\":[\n          {\"\
+      path\":\"tests/shell/test_pi_extension_contract.py\",\"classification\":\"developer\"\
+      ,\"availability\":\"current\"},\n          {\"path\":\"tests/shell/test_pi_extension_subagent_model_isolation.py\"\
+      ,\"classification\":\"developer\",\"availability\":\"current\"},\n         \
+      \ {\"path\":\"tests/shell/test_pi_extension_real_runtime.py\",\"classification\"\
+      :\"developer\",\"availability\":\"current\"}\n        ]\n      },\n      \"\
+      expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\":{}},\n\
+      \      \"proves\":[\"MMPS-04-child-synchronization\",\"MMPS-08-regression-docs\"\
+      ]\n    },\n    {\n      \"id\": \"repo_pytest\",\n      \"run\": {\"command\"\
+      :[\"uv\",\"run\",\"pytest\",\"-q\"],\"timeout_seconds\":900},\n      \"evidence\"\
+      : {\"mode\":\"command_outcome\",\"path_bindings\":[{\"path\":\"pyproject.toml\"\
+      ,\"access\":\"read\",\"availability\":\"current\"}],\"test_bindings\":[]},\n\
+      \      \"expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\"\
+      :{}},\n      \"proves\":[\"MMPS-08-regression-docs\"]\n    },\n    {\n     \
+      \ \"id\": \"invar_guard\",\n      \"run\": {\"command\":[\"uv\",\"run\",\"invar\"\
+      ,\"guard\"],\"timeout_seconds\":600},\n      \"evidence\": {\"mode\":\"command_outcome\"\
+      ,\"path_bindings\":[{\"path\":\"pyproject.toml\",\"access\":\"read\",\"availability\"\
+      :\"current\"}],\"test_bindings\":[]},\n      \"expect\": {\"outcome\":\"green\"\
+      ,\"exit_codes\":[0],\"stdout_or_stderr\":{}},\n      \"proves\":[\"MMPS-08-regression-docs\"\
+      ]\n    },\n    {\n      \"id\": \"diff_whitespace\",\n      \"run\": {\"command\"\
+      :[\"git\",\"diff\",\"--check\"],\"timeout_seconds\":120},\n      \"evidence\"\
+      : {\"mode\":\"command_outcome\",\"path_bindings\":[],\"test_bindings\":[]},\n\
+      \      \"expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\"\
+      :{}},\n      \"proves\":[\"MMPS-08-regression-docs\"]\n    }\n  ],\n  \"bindings\"\
+      : {\"expected_red\":{\"items\":[]},\"closes_expected_red\":[]}\n}\n</intent_closure_contract>"
+    verification: The Orchestrator must admit the worker dispatch, then run the Intent-Closure
+      sidecar for this step in its isolated worktree. Every contract check must be
+      green with exact raw evidence; changed paths must be a subset of allowed_paths;
+      MMPS-01 through MMPS-08 must be claimed; unresolved must be empty; primary-tree
+      preservation and temp-runtime cleanup must be explicit.
+    refs:
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - AGENTS.md
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    agent: frontend-engineer
+  - id: pi-model-map-profile-switch.verify-runtime
+    name: Independently verify model-map profile switching through Pi runtime seams
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independently execute the integrated implementation through the real repository-supported
+      Pi extension/runtime seam. Do not modify product, tests, documentation, plan
+      state, user configuration, or credentials. Use a temporary Larva config/session
+      root with neutral provider/model fixtures and bounded child processes; identify
+      the Pi executable/runtime version and exact integrated commit in evidence.
+
+      - Run the three targeted Node checks, focused Python Pi-extension regressions,
+      full pytest, Invar guard, and diff check named by `pi-model-map-profile-switch.implement`.
+      For the `model-map-profile-switch` smoke scenario, verify public command registration
+      and invocation, read-only status, corrected no-dot basename rules, fixed-root/symlink/size
+      failures, process-local precedence, parent success/no-persona/rollback, new
+      and resumed startup routes, distinct ready-child `set_model` targets and correlated
+      IDs, terminal/ended classifications, starting-child generation fence before
+      first prompt, serialized concurrent switches, bounded malformed/timeout/closed-stream
+      behavior, partial identities, same-profile retry, no fallback, no credential
+      leakage, and in-flight-old/next-request-new semantics.
+
+      - Distinguish real extension/child-process seams from fixture boundaries. A
+      fake registry/provider may prevent network or paid requests, but source inspection
+      or direct helper calls alone cannot prove the command, active-run registry,
+      spawn/resume ordering, or RPC wiring. Any required Pi/runtime launch unavailable,
+      mock substitution at the claimed seam, leaked child, or missing high-risk failure
+      path yields BLOCKED/INCONCLUSIVE rather than PASS.
+
+
+      Boundary:
+
+      - Owner: `integration-verifier`, resolved live and semantic-receipt compatible.
+      Read-only verification may write only bounded raw artifacts under `/tmp/larva-agent-artifacts`;
+      no repository or external persistent effects are authorized.
+
+      - Retry a transient launch/probe at most three times with the same inputs. After
+      every attempt, observe process exit/liveness, child cleanup, temporary-root
+      cleanup, and unchanged primary working-tree status. Stop on unknown child state,
+      user-config mutation, credential/auth request, or any attempt to overwrite the
+      pre-existing primary-tree changes.
+
+
+      Admit:
+
+      - Programmatic output must be exactly one `vectl.verifier.semantic.v1` receipt
+      with `verifier_id: integration-verifier`, `step_id: pi-model-map-profile-switch.verify-runtime`,
+      ordered scope `[/larva-model-map command and status, parent and future-child
+      routing, active and starting child RPC synchronization, failure/concurrency/security
+      semantics]`, and requirement coverage for `MMPS-01-runtime-switch` through `MMPS-07-status-errors-secrecy`.
+
+      - Use Integration Verifier `Smoke Test` only when L3 command/runtime liveness
+      is observed; otherwise select the truthful supported mode and do not open completion.
+      Every command row needs cwd, process state, exit/termination, decisive excerpts,
+      and secret-safe artifact hashes.
+
+
+      Recovery:
+
+      - Verification never repairs failures. Terminate only verifier-started children,
+      remove only verifier temporary roots, preserve raw evidence, and return FAIL
+      for observed product divergence or BLOCKED for a missing exact runtime prerequisite.
+      The implementation/reconciliation owner remains the prior step/Orchestrator.'
+    verification: Run the exact implementation checks plus an independent real Pi-extension
+      smoke of `/larva-model-map`; require a completion-grade vectl.verifier.semantic.v1
+      receipt with MMPS-01..07 PROVEN, no blockers, required L2/L3 seam evidence,
+      no repository changes, and deterministic cleanup.
+    refs:
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    depends_on:
+    - pi-model-map-profile-switch.implement
+    agent: integration-verifier
+  - id: pi-model-map-profile-switch.review-conformance
+    name: Review profile-switch conformance, safety, and proof closure
+    status: pending
+    description: 'step_type: review
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Perform an independent adversarial conformance review against `/Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md`
+      with the user''s binding clarification taking precedence over its contradictory
+      §11.1 sentence: dots are rejected and the exact accepted regex is `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`.
+
+      - Enumerate and judge all eight atoms: MMPS-01 runtime command/profile precedence;
+      MMPS-02 safe fixed-root profile discovery and strict parser reuse; MMPS-03 parent
+      preflight/commit rollback and no-active-persona behavior; MMPS-04 new/resumed/ready/starting/terminal
+      child synchronization; MMPS-05 explicit partial identities and idempotent retry
+      without fallback; MMPS-06 mutex/generation/RPC/in-flight ordering; MMPS-07 status/error/secrecy;
+      MMPS-08 one-resolver regression and synchronized neutral documentation.
+
+      - Inspect the integrated diff and call paths, the admitted worker receipt, and
+      the independent runtime receipt. Reject a second schema/parser/resolver, hard-coded
+      provider/model/profile/personal path, process-env primary state, caller-map/user-config
+      writes, registry/PersonaSpec/models.yaml mutation, silent fallback, unbounded
+      filesystem/RPC behavior, first-prompt stale-route race, success with a known
+      failed live child, automatic child rollback broadcast after parent commit, credential/log
+      leakage, missing real-seam evidence, or documentation that claims reload persistence
+      deferred by this scope.
+
+      - Confirm the implementation commit can coexist with the preserved unrelated
+      primary-tree edits; do not read their mutable contents as implementation authority
+      and do not modify, stage, commit, discard, or resolve them.
+
+
+      Boundary:
+
+      - Owner: `spec-verifier`, resolved live and semantic-receipt compatible. Review
+      is read-only and has no remediation, lifecycle, Git, runtime-switch, registry,
+      credential, or external-effect authority.
+
+
+      Admit:
+
+      - Programmatic output must be exactly one `vectl.verifier.semantic.v1` receipt
+      with `verifier_id: spec-verifier`, `step_id: pi-model-map-profile-switch.review-conformance`,
+      ordered scope `[accepted change request plus no-dot clarification, integrated
+      implementation and synchronized tests/docs, independent runtime receipt and
+      downstream contract impact]`, and requirement coverage for all MMPS-01 through
+      MMPS-08 IDs. Each static conformance claim needs path/line evidence; behavioral/state
+      claims must consume matching runtime evidence rather than source alone. `downstream_contract.status`
+      must truthfully cover existing model-map, persona switching, subagent startup/resume,
+      RPC lifecycle, and Pi-extension documentation consumers.
+
+      - PASS requires every atom CONFORMS or an explicitly authorized evolution, intent
+      met, downstream contract unchanged, no blockers, and no proof gap. Findings
+      return FAIL/BLOCKED; this step cannot self-fix.
+
+
+      Recovery:
+
+      - Preserve review evidence and stop on authoritative conflict, absent integrated
+      commit, missing/invalid semantic receipt, mutable-primary-only evidence, or
+      any unproven R3 safety/rollback atom. Return the smallest exact remediation
+      obligation to the Orchestrator without mutating the plan or repository.'
+    verification: Require a completion-grade spec-verifier vectl.verifier.semantic.v1
+      receipt covering MMPS-01..08, exact source/implementation/runtime evidence,
+      truthful downstream-contract status, no blockers or proof gaps, and no repository
+      changes. This terminal review supplies the independent R3 safety/rollback judgment,
+      so no redundant gate step is added.
+    refs:
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - AGENTS.md
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    depends_on:
+    - pi-model-map-profile-switch.verify-runtime
+    agent: spec-verifier
