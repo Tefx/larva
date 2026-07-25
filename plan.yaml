@@ -139783,7 +139783,7 @@ phases:
       under /tmp/larva-agent-artifacts; current dirty fingerprint 7a412c22f976d78bbda5a4e6461fea80380c17e96e48a309b3535cb94ac3433d.'
   - id: pi-model-map-profile-switch.verify-remediation
     name: Independently verify terminal profile-switch remediation
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -139883,5 +139883,3 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.remediate-terminal-findings
     agent: integration-verifier
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-25T16:34:20.289751Z'
