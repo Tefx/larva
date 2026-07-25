@@ -139577,3 +139577,275 @@ phases:
       unrelated primary-tree edits were stash-preserved and restored; resulting dirty
       fingerprint 6c93c9234d8d20b413f9eba7c187187adfb5781036a7791470e6156186e5f315.
       Backup patch retained under /tmp/larva-agent-artifacts.'
+  - id: pi-model-map-profile-switch.remediate-terminal-findings
+    name: Remediate terminal profile-switch conformance findings
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply exactly one admitted `vectl.worker.dispatch.v2`
+      envelope bound to the active claim, immutable clean-worktree base, allowed paths,
+      checks, and current plan SHA. Completion requires the unchanged `vectl.worker.execution.v2`
+      receipt. This contract grants no claim, worktree, integration, Git, Pi-installation,
+      or external-effect authority.
+
+
+      Deliver:
+
+      - Remediate the definitive terminal spec-verifier FAIL receipt at `/Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T14-36-14-499Z-2026-07-25T14-27-57-894Z_019f99ac-f945-7df8-abc8-b4d19ab51617.js-b49315cb1917d70d.txt`
+      (SHA-256 `b49315cb1917d70db5e19547dbcd7f4be4e96f96fe4300db3c16852c50fa164e`)
+      without rewriting completed evidence. Replace ready-child `Promise.all` broadcast
+      with an explicit finite concurrency bound while preserving serialized profile
+      switches, unique correlated request IDs, per-child timeout, exact partial task/persona
+      classification, no fallback, and the already-proven in-flight-old/next-request-new
+      boundary.
+
+      - Close the terminal-during-starting race: after the initial live snapshot,
+      re-observe terminal/exit state immediately before returning `will_use_new_route`;
+      a child that ended in that interval is `ended_during_switch`. Preserve latest-generation
+      fencing before a starting child''s first prompt and immediate active-profile
+      resolution for new and resumed children.
+
+      - Extend developer proof through the installed public Pi extension command seam
+      to: invoke `/larva-model-map status` and assert source, profile, bounded path,
+      parent route, child counts, and credential secrecy; induce parent `setModel`
+      rejection and observe restoration of the previous profile and parent model;
+      induce one ready-child failure and prove exact task/persona identity, same-profile
+      retry, and no fallback; prove starting generation fencing plus new/resumed/terminal/ended
+      classifications; and inject malformed child RPC response, timeout, and closed
+      stream with bounded explicit failure, cleanup, no leak, and no fallback.
+
+      - Preserve exact profile regex `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` with dots
+      rejected, one strict parser/resolver, already-proven normal profile behavior,
+      the in-flight-old/next-request-new transition, and current installed Pi identity.
+      Synchronize `contrib/pi-extension/README.md` with the bounded fan-out, terminal-during-starting
+      classification, installed-seam proof, retry, failure, isolation, and cleanup
+      contract using neutral examples. Keep developer tests and docs in the same commit.
+
+
+      Boundary:
+
+      - Owner: registered `frontend-engineer`, resolved live with worker-v2 support.
+      One cohesive repository rollback unit owns product logic, developer tests, installed-Pi
+      harness proof, and README parity. No acceptance-test mutation, external provider
+      request, network access, auth flow, credential change, paid service, user-config
+      write, registry/PersonaSpec/models.yaml mutation, Pi install/downgrade/update,
+      or persistent external/runtime effect is authorized.
+
+      - Work only in an Orchestrator-created isolated clean worktree at the immutable
+      integrated base supplied by dispatch (witnessed current integrated HEAD `9c4fbdbe56950f8adf7edfba4a2fb148dadc5aa7`).
+      The primary tree''s four unrelated edits in `contrib/pi-extension/larva.ts`,
+      `design/pi-coding-agent-integration.md`, `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`,
+      and `tests/shell/test_pi_extension_subagent_ux.py` remain outside evidentiary
+      authority and must be byte-preserved through integration; stop rather than overwrite,
+      stage, or derive implementation from them.
+
+      - Installed-Pi tests may select and execute only `/opt/homebrew/bin/pi` at CLI
+      version `0.82.1` with package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1`. Use isolated HOME, `PI_CODING_AGENT_DIR`, session,
+      config, Larva, and model-map roots; controlled neutral provider/child endpoints
+      only below the real Pi/extension/command/RPC seams; offline controls; bounded
+      processes/RPCs; and secret-safe logs.
+
+      - Retry only an unchanged transient harness launch/probe failure, at most three
+      attempts. After each attempt observe Pi/child exit or liveness, RPC closure,
+      temporary-root removal, no network/auth/provider attempt, unchanged Pi/package
+      identity, and primary-tree preservation. Stop on product assertion failure,
+      unknown process/root state, cleanup failure, credential/auth access, network/provider
+      attempt, user-config mutation, Pi identity drift, or overwrite risk.
+
+
+      Admit:
+
+      - The authoritative FAIL receipt is the pre-fix red proof. No repository expected-red
+      artifact or acceptance mutation is introduced. Checks below are producer-owned
+      developer proof and must execute from the admitted clean worktree using the
+      project-native adapters and sanitized environment.
+
+      - Record exact commands, cwd, integrated base, changed paths, selected and executed
+      Pi/package identity, process exits/signals, decisive secret-safe output, max
+      observed child-RPC concurrency, correlated task/persona outcomes, post-fault
+      state, restoration/retry observations, temp-root/process cleanup, and preservation
+      of the four unrelated primary edits.
+
+      - `installed_pi_profile_switch_runtime` must expose named PASS observations
+      for public status, parent rollback, bounded ready-child fan-out, terminal-during-starting
+      classification, partial identity/retry, starting-generation fence, lifecycle
+      classifications, malformed/timeout/closed-stream isolation, and preserved in-flight-old/next-request-new
+      behavior. Green producer assertions alone do not grant terminal acceptance;
+      `pi-model-map-profile-switch.verify-remediation` consumes them independently.
+
+
+      Recovery:
+
+      - Repository rollback is the single integrated remediation commit. Runtime rollback
+      remains NONTRIVIAL: parent rejection restores previous profile/model; post-parent
+      child failures remain explicit partial state and same-profile retry targets
+      only unswitched live work. Never issue an automatic fallback or rollback broadcast.
+      Unknown restoration, child state, cleanup, or primary-tree reconciliation stops
+      completion and preserves secret-safe diagnostics.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-model-map-profile-switch.remediate-terminal-findings","risk_tier":"R3","risk_reasons":["Cross-process
+      profile switching must bound concurrency while retaining correlation, timeout,
+      serialization, and partial-state semantics.","Starting-child terminal races
+      and generation fencing are ordering-sensitive and can otherwise report stale
+      routing success.","Installed-Pi fault injection must prove restoration, retry,
+      isolation, and secrecy without user, provider, network, or Pi-installation effects."],"primary_outcome":"MMPS-REM-01-bounded-ready-child-fanout","rollback_class":"NONTRIVIAL","observation_ledger":[{"requirement_id":"MMPS-REM-01-bounded-ready-child-fanout","atom":"Ready-child
+      synchronization uses an explicit finite concurrency bound while preserving unique
+      correlation, timeout, serialized switches, exact partial outcomes, and no fallback.","modality":"concurrency_adversarial","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-02-terminal-starting-race","atom":"A
+      starting child ending after the initial live snapshot is rechecked immediately
+      before classification and reported ended_during_switch.","modality":"runtime_state_transition","seam":"real","check_id":"profile_switch_child_runtime","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-03-public-status-secrecy","atom":"The
+      public installed-Pi status command returns source, profile, bounded path, parent
+      route, and child counts without credentials or personal configuration.","modality":"installed_cli_runtime","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-04-parent-restoration","atom":"An
+      installed-seam parent setModel rejection restores the previous profile and model
+      with no child broadcast.","modality":"runtime_failure_path","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-05-partial-retry-identity","atom":"A
+      ready-child failure reports exact task/persona identity and a same-profile retry
+      switches the remaining live child without fallback.","modality":"runtime_failure_path","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-06-generation-lifecycle","atom":"Starting
+      work is fenced before first prompt and new, resumed, terminal, and concurrently
+      ended children receive the required classifications.","modality":"child_rpc_and_spawn","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-07-rpc-fault-isolation","atom":"Malformed
+      response, timeout, and closed stream fail within bounds with explicit identity,
+      no leak/fallback, and deterministic cleanup.","modality":"runtime_failure_path","seam":"real","check_id":"installed_pi_profile_switch_regression","independent_step":"pi-model-map-profile-switch.verify-remediation"},{"requirement_id":"MMPS-REM-08-regression-doc-preservation","atom":"No-dot
+      security, one resolver, in-flight-old/next-new behavior, installed Pi 0.82.1
+      identity, regression coverage, isolation, and README parity remain intact.","modality":"artifact_and_regression_review","seam":"static","check_id":"sanitized_repo_suite","independent_step":"pi-model-map-profile-switch.review-conformance"}],"test_authority":{"developer_test_globs":["contrib/pi-extension/test-model-map-unit.mjs","contrib/pi-extension/test-model-map-runtime.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/test-model-map-unit.mjs","contrib/pi-extension/test-model-map-runtime.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","contrib/pi-extension/README.md"],"blocked_paths":["plan.yaml","design/**","docs/**","tests/shell/test_pi_extension_subagent_ux.py","src/**","contracts/**","pyproject.toml","uv.lock"]},"claims":["MMPS-REM-01-bounded-ready-child-fanout","MMPS-REM-02-terminal-starting-race","MMPS-REM-03-public-status-secrecy","MMPS-REM-04-parent-restoration","MMPS-REM-05-partial-retry-identity","MMPS-REM-06-generation-lifecycle","MMPS-REM-07-rpc-fault-isolation","MMPS-REM-08-regression-doc-preservation"],"checks":[{"id":"profile_switch_unit","run":{"command":["node","contrib/pi-extension/test-model-map-unit.mjs"],"timeout_seconds":180},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/test-model-map-unit.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-model-map-unit.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map
+      unit: PASS"}]}},"proves":["MMPS-REM-03-public-status-secrecy","MMPS-REM-08-regression-doc-preservation"]},{"id":"profile_switch_runtime","run":{"command":["node","contrib/pi-extension/test-model-map-runtime.mjs"],"timeout_seconds":240},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/test-model-map-runtime.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-model-map-runtime.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map
+      runtime: PASS"}]}},"proves":["MMPS-REM-01-bounded-ready-child-fanout","MMPS-REM-02-terminal-starting-race","MMPS-REM-04-parent-restoration","MMPS-REM-05-partial-retry-identity","MMPS-REM-08-regression-doc-preservation"]},{"id":"profile_switch_child_runtime","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","model-map-profile-switch"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map-profile-switch"},{"literal":"boundedReadyChildFanout"},{"literal":"terminalDuringStarting"},{"literal":"inFlightOldNextNew"},{"literal":"PASS"}]}},"proves":["MMPS-REM-01-bounded-ready-child-fanout","MMPS-REM-02-terminal-starting-race","MMPS-REM-05-partial-retry-identity","MMPS-REM-06-generation-lifecycle","MMPS-REM-08-regression-doc-preservation"]},{"id":"installed_pi_profile_switch_runtime","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","model-map-profile-switch-installed-pi"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"/opt/homebrew/bin/pi"},{"literal":"0.82.1"},{"literal":"publicStatus"},{"literal":"parentRollback"},{"literal":"boundedReadyChildFanout"},{"literal":"terminalDuringStarting"},{"literal":"partialRetryIdentity"},{"literal":"startingGenerationFence"},{"literal":"lifecycleClassifications"},{"literal":"faultIsolation"},{"literal":"inFlightOldNextNew"},{"literal":"PASS"}]}},"proves":["MMPS-REM-01-bounded-ready-child-fanout","MMPS-REM-02-terminal-starting-race","MMPS-REM-03-public-status-secrecy","MMPS-REM-04-parent-restoration","MMPS-REM-05-partial-retry-identity","MMPS-REM-06-generation-lifecycle","MMPS-REM-07-rpc-fault-isolation","MMPS-REM-08-regression-doc-preservation"]},{"id":"installed_pi_profile_switch_regression","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_real_runtime.py"],"timeout_seconds":480},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REM-03-public-status-secrecy","MMPS-REM-04-parent-restoration","MMPS-REM-05-partial-retry-identity","MMPS-REM-06-generation-lifecycle","MMPS-REM-07-rpc-fault-isolation","MMPS-REM-08-regression-doc-preservation"]},{"id":"focused_pi_regressions","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REM-08-regression-doc-preservation"]},{"id":"sanitized_repo_suite","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REM-08-regression-doc-preservation"]},{"id":"invar_guard","run":{"command":["uv","run","invar","guard"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REM-08-regression-doc-preservation"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REM-08-regression-doc-preservation"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Admit one frontend-engineer worker-v2 dispatch, run the installed
+      Intent-Closure sidecar from the isolated clean worktree, and require every declared
+      check green, exactly allowed changed paths, all eight MMPS-REM claims resolved,
+      exact installed Pi/package 0.82.1 identity, bounded fan-out and race observations,
+      no external/network/auth/provider/user-config/Pi-installation effect, deterministic
+      cleanup, and byte-preservation of the four unrelated primary edits.
+    refs:
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T14-36-14-499Z-2026-07-25T14-27-57-894Z_019f99ac-f945-7df8-abc8-b4d19ab51617.js-b49315cb1917d70d.txt
+    - AGENTS.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    depends_on:
+    - pi-model-map-profile-switch.verify-runtime
+    agent: frontend-engineer
+  - id: pi-model-map-profile-switch.verify-remediation
+    name: Independently verify terminal profile-switch remediation
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independently execute the integrated remediation through the producer-owned
+      targeted checks and installed public Pi extension command/RPC seam. Require
+      selected and executed `/opt/homebrew/bin/pi` at CLI version `0.82.1` and package
+      root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` at package
+      version `0.82.1`; direct initialization/helper calls, source-token assertions,
+      or fake Pi at the claimed Pi/extension/command seam cannot prove behavior.
+
+      - Prove MMPS-REM-01 through MMPS-REM-08 and re-evaluate affected MMPS-03 through
+      MMPS-07 plus MMPS-REAL-01 through MMPS-REAL-03: finite observed ready-child
+      RPC concurrency; unique correlation, timeout, serialization, and partial classification;
+      terminal recheck immediately before `will_use_new_route`; public `/larva-model-map
+      status` source/profile/path/parent/counts secrecy; parent rejection restoration;
+      exact partial task/persona identity and same-profile retry without fallback;
+      starting generation fence before first prompt; new/resumed/terminal/ended classifications;
+      malformed response, timeout, and closed-stream bounded isolation; and preserved
+      in-flight-old/next-request-new behavior.
+
+      - Run every check declared by `pi-model-map-profile-switch.remediate-terminal-findings`
+      from the integrated commit. Independently inspect the machine payload and raw
+      events rather than accepting producer PASS labels. Confirm no-dot rules, one
+      resolver, docs parity, exact commit identity, isolated roots, offline controls,
+      no Pi install/downgrade/update, no network/auth/provider/user-config/external-state
+      effect, deterministic process/root cleanup, and byte-preservation of the four
+      unrelated primary-tree edits.
+
+
+      Boundary:
+
+      - Owner: registered `integration-verifier`, resolved live and semantic-receipt
+      compatible. Verification is read-only; it may write only bounded secret-safe
+      raw artifacts under `/tmp/larva-agent-artifacts`. It has no repository, lifecycle,
+      Git, Pi-installation, credential, user-config, provider/network, paid-service,
+      or persistent external/runtime mutation authority.
+
+      - Use the exact isolated runtime bindings declared by the producer. Retry only
+      an unchanged transient launch/probe failure, at most three attempts. After each
+      attempt observe Pi/child exit or liveness, RPC closure, temporary-root cleanup,
+      identity stability, network/auth absence, and primary-tree preservation. Product
+      divergence returns FAIL. Missing exact runtime prerequisite or claimed-seam
+      substitution returns BLOCKED/INCONCLUSIVE. Unknown process/root state forbids
+      replay and requires Orchestrator reconciliation.
+
+
+      Admit:
+
+      - Current producer inputs are `contrib/pi-extension/larva.ts`, `contrib/pi-extension/README.md`,
+      `contrib/pi-extension/test-model-map-unit.mjs`, `contrib/pi-extension/test-model-map-runtime.mjs`,
+      `scripts/pi-extension-runtime-smoke.mjs`, `tests/shell/test_pi_extension_contract.py`,
+      and `tests/shell/test_pi_extension_real_runtime.py`, produced by `pi-model-map-profile-switch.remediate-terminal-findings`;
+      dependency closure and that producer''s path/test authority bind them to this
+      verifier.
+
+      - Programmatic output must be exactly one `vectl.verifier.semantic.v1` receipt
+      with `verifier_id: integration-verifier`, `step_id: pi-model-map-profile-switch.verify-remediation`,
+      ordered scope `[bounded profile-switch remediation through real Pi command seam,
+      installed-Pi status restoration lifecycle retry and fault isolation, preserved
+      regression isolation cleanup and in-flight behavior]`, and requirement coverage
+      for MMPS-REM-01 through MMPS-REM-08, affected MMPS-03 through MMPS-07, and MMPS-REAL-01
+      through MMPS-REAL-03.
+
+      - `Smoke Test` PASS requires L2/L3 PASS, every scoped atom PROVEN, exact commands/cwd/sanitized
+      environment/process state/termination/evidence refs, max observed concurrency
+      and correlation evidence, exact Pi/package identity, no blockers or proof gaps,
+      unchanged repository state apart from the four witnessed pre-existing edits,
+      and cleanup PASS.
+
+
+      Recovery:
+
+      - Do not repair failures. Terminate only verifier-started Pi/child processes,
+      remove only verifier-created roots, and retain secret-safe raw evidence. Report
+      the exact divergent transition or unreconciled process/root; no automatic retry
+      may follow unknown effects.'
+    verification: Require a completion-grade integration-verifier semantic receipt
+      with the exact step/scope and all scoped requirement IDs PROVEN after executing
+      every producer check through the selected/executed installed Pi 0.82.1 public
+      seams. Require L2/L3 PASS, finite observed fan-out, terminal-race closure, status/restoration/retry/lifecycle/fault
+      observations, preserved in-flight behavior, no effects outside isolated roots,
+      deterministic cleanup, and no repository changes.
+    refs:
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T14-36-14-499Z-2026-07-25T14-27-57-894Z_019f99ac-f945-7df8-abc8-b4d19ab51617.js-b49315cb1917d70d.txt
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    depends_on:
+    - pi-model-map-profile-switch.remediate-terminal-findings
+    agent: integration-verifier
