@@ -139175,7 +139175,7 @@ phases:
       No user config/provider/credential/external effects occurred.'
   - id: pi-model-map-profile-switch.verify-runtime
     name: Independently verify model-map profile switching through Pi runtime seams
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -139255,8 +139255,6 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.implement
     agent: integration-verifier
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-25T13:05:30.897069Z'
   - id: pi-model-map-profile-switch.review-conformance
     name: Review profile-switch conformance, safety, and proof closure
     status: pending
