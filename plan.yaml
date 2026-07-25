@@ -139318,87 +139318,101 @@ phases:
 
       Deliver:
 
-      - Perform an independent adversarial conformance review against `/Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md`
-      with the user''s binding clarification taking precedence over its contradictory
-      §11.1 sentence: dots are rejected and the exact accepted regex is `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`.
+      - Perform a fresh independent adversarial conformance review against `/Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md`,
+      the user''s binding clarification, and the prior definitive FAIL receipt at
+      `/Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T14-36-14-499Z-2026-07-25T14-27-57-894Z_019f99ac-f945-7df8-abc8-b4d19ab51617.js-b49315cb1917d70d.txt`
+      (SHA-256 `b49315cb1917d70db5e19547dbcd7f4be4e96f96fe4300db3c16852c50fa164e`).
+      The clarification overrides contradictory change-request §11.1: dots are rejected
+      and the exact accepted regex is `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`.
 
-      - Enumerate and judge MMPS-01 through MMPS-08 plus the installed-Pi proof closure
-      atoms MMPS-REAL-01 through MMPS-REAL-04. Inspect the integrated implementation
-      and harness diffs, worker receipts, and independent runtime receipt. Require
-      the witnessed current executable `/opt/homebrew/bin/pi` at CLI version `0.82.1`
-      and package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
-      at package version `0.82.1`, with same-binary selection/execution, public extension
-      loading, command invocation/status, and child-RPC evidence; direct initialization/helper
-      calls or source-only assertions cannot close behavioral claims.
+      - Judge MMPS-01 through MMPS-08, MMPS-REAL-01 through MMPS-REAL-04, and remediation
+      atoms MMPS-REM-01 through MMPS-REM-08 against the newly integrated remediation,
+      synchronized developer tests/docs, worker receipt, and fresh `pi-model-map-profile-switch.verify-remediation`
+      receipt. Require selected and executed `/opt/homebrew/bin/pi` at CLI version
+      `0.82.1` and package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1` through public extension loading, `/larva-model-map`
+      command/status, and child RPC seams.
 
-      - Reject a second schema/parser/resolver, hard-coded provider/model/profile/personal
-      path, process-env primary state, caller-map/user-config writes, registry/PersonaSpec/models.yaml
-      mutation, silent fallback, unbounded filesystem/RPC behavior, first-prompt stale-route
-      race, success with a known failed live child, automatic child rollback broadcast
-      after parent commit, credential/log leakage, fake Pi or claimed-seam substitution,
-      selected/executed Pi or package identity drift, Pi install/downgrade/update,
-      network/auth/provider request, external-state mutation, missing deterministic
-      cleanup, or documentation that claims reload persistence deferred by scope.
+      - Specifically close or reject the prior divergences: explicit bounded ready-child
+      fan-out; terminal recheck immediately before starting-child `will_use_new_route`;
+      public status source/profile/path/parent/counts secrecy; parent `setModel` rejection
+      restoration; exact partial task/persona identity with same-profile retry and
+      no fallback; starting-generation fence and new/resumed/terminal/ended classifications;
+      malformed/timeout/closed-stream bounded fault isolation; cleanup; and preservation
+      of in-flight-old/next-request-new behavior.
 
-      - Confirm controlled fake provider/child endpoints are below the real Pi/extension/command/RPC
-      seams, the harness documentation matches its observable isolation contract,
-      and integration preserved the four unrelated primary-tree edits without using
-      their mutable contents as authority.
+      - Reject a second parser/resolver, dots accepted in profile names, hard-coded
+      provider/model/profile/personal path, process-env primary state, caller-map/user-config
+      writes, registry/PersonaSpec/models.yaml mutation, silent fallback, unbounded
+      filesystem/RPC behavior, stale first prompt, success for a known failed live
+      child, automatic child rollback broadcast after parent commit, credential/log
+      leakage, fake Pi or claimed-seam substitution, selected/executed identity drift,
+      Pi install/downgrade/update, network/auth/provider request, persistent external-state
+      mutation, missing cleanup, or documentation exceeding process-local scope.
+
+      - Review downstream consumers: existing model-map exact/prefix/fallback behavior,
+      persona switching, subagent startup/resume, child RPC lifecycle, installed runtime
+      harness, and Pi-extension documentation. Confirm integration byte-preserved
+      the four unrelated primary-tree edits without using their mutable content as
+      authority.
 
 
       Boundary:
 
-      - Owner: `spec-verifier`, resolved live and semantic-receipt compatible. Review
-      is read-only and has no remediation, lifecycle, Git, Pi mutation, runtime-switch,
-      registry, credential, provider/network, or external-effect authority.
+      - Owner: registered `spec-verifier`, resolved live and semantic-receipt compatible.
+      Review is read-only with no remediation, lifecycle, Git, Pi-installation, runtime-switch,
+      registry, credential, provider/network, user-config, or external-effect authority.
 
 
       Admit:
 
       - Programmatic output must be exactly one `vectl.verifier.semantic.v1` receipt
       with `verifier_id: spec-verifier`, `step_id: pi-model-map-profile-switch.review-conformance`,
-      ordered scope `[accepted change request plus no-dot clarification, integrated
-      implementation and synchronized tests/docs, independent runtime receipt and
-      downstream contract impact]`, and requirement coverage for MMPS-01 through MMPS-08
-      and MMPS-REAL-01 through MMPS-REAL-04. Static claims need path/line evidence;
-      behavioral/state claims must consume the matching independent witnessed-current
-      installed-Pi runtime evidence.
+      ordered scope `[accepted change request no-dot clarification and definitive
+      FAIL obligations, integrated remediation synchronized developer proof and fresh
+      runtime receipt, downstream contract safety isolation cleanup and preserved
+      behavior]`, and requirement coverage for MMPS-01 through MMPS-08, MMPS-REAL-01
+      through MMPS-REAL-04, and MMPS-REM-01 through MMPS-REM-08.
 
-      - `downstream_contract.status` must truthfully cover existing model-map, persona
-      switching, subagent startup/resume, child RPC lifecycle, runtime harness, and
-      Pi-extension documentation consumers. PASS requires every atom CONFORMS or an
-      explicitly authorized evolution, intent met, downstream contract unchanged,
-      no blockers, and no proof gap. Findings return FAIL/BLOCKED; this step cannot
-      self-fix.
+      - Static claims need path/line evidence. Behavioral, state, ordering, rollback,
+      boundedness, and isolation claims must consume matching fresh installed-Pi independent
+      evidence; direct helper calls, source tokens, producer self-attestation, or
+      stale completed receipts cannot close them.
+
+      - PASS requires every atom CONFORMS or explicit authorized evolution, intent
+      met, downstream contract `UNCHANGED`, exact Pi/package identity, no blockers/proof
+      gaps, no external effects, deterministic cleanup, and no repository changes.
+      Findings return FAIL/BLOCKED; this terminal R3 review cannot self-fix and no
+      redundant gate is added.
 
 
       Recovery:
 
       - Preserve review evidence and stop on authoritative conflict, absent integrated
-      commits, missing/invalid worker or semantic receipt, mutable-primary-only evidence,
-      identity drift, or any unproven R3 safety/rollback/runtime-isolation atom. Return
-      the smallest exact remediation obligation to the Orchestrator without mutating
-      the plan or repository.'
-    verification: Require a completion-grade spec-verifier vectl.verifier.semantic.v1
-      receipt covering MMPS-01..08 and MMPS-REAL-01..04, exact source/implementation/harness/runtime
-      evidence, selected and executed executable `/opt/homebrew/bin/pi` at CLI version
-      `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
-      at package version `0.82.1`, claimed-seam integrity, truthful downstream-contract
-      status, no Pi install/downgrade/update, no network/auth/provider/user-config/external-state
-      effect, no blockers or proof gaps, and no repository changes. This remains the
-      terminal independent R3 safety/rollback judgment; no redundant gate is added.
+      remediation, missing/invalid worker or semantic receipt, mutable-primary-only
+      evidence, identity drift, or any unproven R3 safety/rollback/runtime-isolation
+      atom. Return the smallest exact remediation obligation without mutating the
+      plan or repository.'
+    verification: Require a completion-grade spec-verifier semantic receipt with the
+      exact step/scope and coverage for MMPS-01..08, MMPS-REAL-01..04, and MMPS-REM-01..08.
+      PASS requires conformance of the bounded fan-out/race fixes, fresh installed-Pi
+      status/restoration/retry/lifecycle/fault evidence, preserved no-dot and in-flight
+      behavior, truthful unchanged downstream contract, exact Pi/package 0.82.1 identity,
+      no external effects, deterministic cleanup, no blockers or proof gaps, and no
+      repository changes.
     refs:
     - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
-    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T13-12-39-884Z-2026-07-25T13-06-04-043Z_019f9961-fe8b-719c-9e82-967760b79396.js-2d5f2fcc72d5f3f0.txt
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T14-36-14-499Z-2026-07-25T14-27-57-894Z_019f99ac-f945-7df8-abc8-b4d19ab51617.js-b49315cb1917d70d.txt
     - AGENTS.md
     - contrib/pi-extension/README.md
+    - contrib/pi-extension/larva.ts
     - contrib/pi-extension/test-model-map-unit.mjs
     - contrib/pi-extension/test-model-map-runtime.mjs
     - scripts/pi-extension-runtime-smoke.mjs
     - tests/shell/test_pi_extension_contract.py
     - tests/shell/test_pi_extension_real_runtime.py
     depends_on:
-    - pi-model-map-profile-switch.verify-runtime
+    - pi-model-map-profile-switch.verify-remediation
     agent: spec-verifier
   - id: pi-model-map-profile-switch.add-installed-pi-harness
     name: Add installed-Pi model-map runtime seam harness
