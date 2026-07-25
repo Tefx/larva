@@ -140164,7 +140164,7 @@ phases:
       de8668da..., `tests/shell/test_pi_extension_subagent_ux.py` 0c50bc88....'
   - id: pi-model-map-profile-switch.isolate-real-runtime-harness
     name: Isolate Pi real-runtime harness from ambient configuration
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140358,3 +140358,27 @@ phases:
     agent: general
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T23:08:09.966357Z'
+    done_at: '2026-07-25T23:51:09.990485+00:00'
+    evidence: 'Integrated `2ac7da935ad330abf0965e4c6aae7d1ae0a5b7e9` from isolated
+      worker commit `7af5055083f333981852a8ffce2e3f7b9556ba1f`; exactly README, runtime-smoke
+      harness, and real-runtime pytest changed. Dispatch `/tmp/larva-agent-artifacts/pi-model-map-isolate-runtime-dispatch.json`,
+      SHA `sha256:6e101a8ebc36541ac64aaeab0e2931b4ff9997451cb35158b5cec81be965aede`,
+      base `534aa81b615f4c95596e38e18987b4e7ccb85394`, claim `claim:d9ff8878e1f5c67153758065d8b4e11d5708ae2df78b3bcafde744e9697be421`.
+      Exact child-written receipt `/tmp/larva-agent-artifacts/pi-model-map-isolate-runtime-receipt.json`,
+      file SHA-256 `72b91abc3ed24e71cb3eff5f2d5b195049637f4b87f4f9d2765d545cbbcfb81a`,
+      2526 bytes; child lint and parent Gate canonical receipt SHA `sha256:4d280b8df868e4705b6ad3b4d05cfcbe7e767c5b2bfd166bec67bf9be32fd8a1`,
+      CONFORMANT/no reasons. Callback transport rejected a later oversized session
+      frame, but the durable unchanged child candidate existed before finalization
+      and parent Gate independently reran all checks.
+
+      Checks: isolated runtime file `41 passed in 86.74s`; adversarial inherited persona/model-map/tool-policy/session
+      runtime file `41 passed in 83.69s`; actual installed-child scenario exit 0;
+      sanitized full suite `928 passed in 153.07s`; Invar passed; diff check passed.
+      Raw artifact `/tmp/larva-agent-artifacts/pi-model-map-isolate-runtime-raw.json`,
+      SHA-256 `22383f16ae77f0f4d2c7def093dfd4ea511bb7561f3ee159b2a262f09f6ebcac`,
+      295404 bytes: 8 installed child Pi records; all five actual-child cases PASS;
+      rpc_timeout_ms=5000; environment_status/loopback/cleanup PASS. Harness generates
+      a neutral 127.0.0.1 provider/model identity and exact isolated model map, quarantines
+      unowned selectors/credential-like env, asserts owned paths remain under temporary
+      root, and removes the root; no product extension or real provider/model hard-coding
+      changed. Four primary-tree edits remained unstaged and byte-identical.'
