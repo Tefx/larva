@@ -139179,7 +139179,7 @@ phases:
       No user config/provider/credential/external effects occurred.'
   - id: pi-model-map-profile-switch.verify-runtime
     name: Independently verify model-map profile switching through Pi runtime seams
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -139294,6 +139294,20 @@ phases:
     agent: integration-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T14:10:11.726318Z'
+    done_at: '2026-07-25T14:26:28.072671+00:00'
+    evidence: 'Independent integration-verifier receipt at /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T14-24-09-944Z-2026-07-25T14-11-06-316Z_019f999d-89cc-7f34-94f1-f9aac872f1d2.js-99fc99c4f736a1d5.txt
+      (sha256 99fc99c4f736a1d5a8cdffe46e80eb9808846c21a1dde07e7534d1df7af1d6e0) returned
+      PASS, L2 PASS, L3 PASS, no blockers/warnings/proof gaps. Production semantic
+      Gate admitted it as CONFORMANT with semantic receipt sha256:caed453ac5e46afa60734c621dea958fda88d90c1f45ccea256f96cfe59f54b0,
+      exact verifier/step/scope, and MMPS-01..07 plus MMPS-REAL-01..03 all PROVEN.
+      Evidence selected/executed /opt/homebrew/bin/pi 0.82.1 and package root/version
+      0.82.1; installed harness showed pi.available=true, rpc.attempted=true, public
+      command/status, real child Pi RPC ordering, in-flight old/next-new routing,
+      controlled loopback provider only, offline isolation, cleanup PASS, and no surviving
+      verifier process. Checks: real runtime 39 passed/1 xfailed; focused contracts
+      203 passed/1 xfailed; sanitized full suite 926 passed/2 xfailed in verifier
+      run; model-map unit/runtime/smoke green; Invar green; diff check green. Repository
+      remained unchanged apart from four witnessed pre-existing edits.'
   - id: pi-model-map-profile-switch.review-conformance
     name: Review profile-switch conformance, safety, and proof closure
     status: pending
