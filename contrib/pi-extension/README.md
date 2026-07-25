@@ -786,6 +786,53 @@ Compaction focus does not:
 - write, migrate, merge, delete, or create user config files automatically.
 
 ## Supplemental local/CI runtime gate
+### Runtime harness isolation
+
+Every real-Pi smoke process owns a temporary runtime root. Before Pi starts, the
+harness removes inherited persona, model-map, tool-policy, Pi/Larva config, HOME,
+and session selectors. It then assigns only scenario-owned HOME, XDG,
+`PI_CODING_AGENT_DIR`, Pi session, Larva config/session, model-map, child-session,
+and artifact paths below that root. A scenario that does not select an initial
+persona leaves `LARVA_PI_INITIAL_PERSONA_ID` and
+`LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI` absent. Cleanup closes the loopback
+server and child streams before removing the root; evidence fails if an unowned
+selector remains, an owned config/session path escapes the root, non-loopback
+traffic occurs, or root removal fails.
+
+Fixture personas whose canonical model label is `openai/gpt-5.5` do not use that
+provider at runtime. Each harness run generates a neutral provider and model
+identity, writes an exact adapter-local model-map entry inside the temporary
+root, and loads a generated provider extension that registers the identity with
+Pi at runtime. The extension resolves the fixture label through the production
+`LARVA_PI_MODEL_MAP_FILE` resolver and Pi `modelRegistry.find`. The provider
+binds to a generated `127.0.0.1` endpoint, uses no account credentials, and is
+also listed in the isolated child `extension_sources` configuration. Tests must
+not copy a user model map, select a real provider/model/profile, or accept the
+first-slash fallback as equivalent proof.
+
+Run both the empty/default process case and an adversarial inheritance case:
+
+```bash
+uv run pytest -q tests/shell/test_pi_extension_real_runtime.py
+
+env \
+  LARVA_PI_INITIAL_PERSONA_ID=integration-verifier \
+  LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI=ambient/forbidden \
+  LARVA_PI_MODEL_MAP_FILE=/nonexistent/larva-ambient-model-map.json \
+  LARVA_PI_TOOL_POLICY_FILE=/nonexistent/larva-ambient-tool-policy.json \
+  LARVA_PI_CHILD_SESSION_DIR=/nonexistent/larva-ambient-child-session \
+  PI_CODING_AGENT_SESSION_DIR=/nonexistent/larva-ambient-pi-session \
+  uv run pytest -q tests/shell/test_pi_extension_real_runtime.py
+```
+
+The regression covers installed-Pi startup status, slash-command status, live
+child lifecycle/cancellation, trusted persona-invocation events with no initial
+persona, and the installed parent/actual-child profile-switch scenarios. The
+actual-child gate still uses `/opt/homebrew/bin/pi`, preserves the five-second
+injected child RPC timeout and at-most-four ready-child RPC concurrency, remains
+offline and loopback-only, starts no more than eight child Pi processes, and
+requires PID, process-group, stream, socket, and temporary-root cleanup.
+
 Pi extension work is not complete with source-token contract checks or Invar
 alone. Run the supplemental runtime gate before handing off Pi extension changes:
 

@@ -202,41 +202,316 @@ function runProcess(command, args, options = {}) {
   });
 }
 
-async function piAvailability(evidence) {
-  const binary = evidence.pi.binary;
-  const help = await runProcess(binary, ["--help"], { timeoutMs: 5_000 });
-  evidence.pi.helpExitCode = help.exitCode;
-  evidence.pi.available = help.exitCode === 0;
-  const helpText = `${help.stdout}${help.stderr}`;
-  evidence.pi.helpSnippet = helpText.slice(0, 500);
-  if (evidence.pi.available) {
-    if (helpText.includes("-e")) evidence.pi.extensionFlag = "-e";
-    const version = await runProcess(binary, ["--version"], { timeoutMs: 5_000 });
-    evidence.package.versionCommand = `${binary} --version`;
-    evidence.package.versionExitCode = version.exitCode;
-    evidence.package.versionText = `${version.stdout}${version.stderr}`.trim().slice(0, 500);
+const HARNESS_SELECTOR_ENV_KEYS = [
+  "HOME",
+  "TMPDIR",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "PI_CODING_AGENT_DIR",
+  "PI_CODING_AGENT_SESSION_DIR",
+  "PI_MODEL",
+  "PI_PROVIDER",
+  "PI_REASONING_LEVEL",
+  "PI_SESSION_FILE",
+  "PI_SESSION_ID",
+  "LARVA_CONFIG_DIR",
+  "LARVA_HOME",
+  "LARVA_SESSION_DIR",
+  "LARVA_CLI_ARGV_JSON",
+  "LARVA_PI_AGENT_PERSONA_SWITCH",
+  "LARVA_PI_CHILD_RPC_TRACE_FILE",
+  "LARVA_PI_CHILD_SESSION_DIR",
+  "LARVA_PI_COMPACTION_CONFIG_FILE",
+  "LARVA_PI_EXTENSION_ENTRY",
+  "LARVA_PI_EXTENSION_FLAG",
+  "LARVA_PI_INITIAL_PERSONA_ID",
+  "LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI",
+  "LARVA_PI_INTERACTIVE_TUI",
+  "LARVA_PI_LAUNCHED",
+  "LARVA_PI_MODEL_MAP_FILE",
+  "LARVA_PI_PARENT_PERSONA_ID",
+  "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE",
+  "LARVA_PI_REAL_BIN",
+  "LARVA_PI_SUBAGENT_ARTIFACT_DIR",
+  "LARVA_PI_SUBAGENT_CONFIG_FILE",
+  "LARVA_PI_SUBAGENT_LOG_FILE",
+  "LARVA_PI_TOOL_POLICY_FILE",
+];
+
+const HARNESS_ROOT_ENV_KEYS = new Set([
+  "HOME",
+  "TMPDIR",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "PI_CODING_AGENT_DIR",
+  "PI_CODING_AGENT_SESSION_DIR",
+  "PI_SESSION_FILE",
+  "LARVA_CONFIG_DIR",
+  "LARVA_HOME",
+  "LARVA_SESSION_DIR",
+  "LARVA_PI_CHILD_RPC_TRACE_FILE",
+  "LARVA_PI_CHILD_SESSION_DIR",
+  "LARVA_PI_COMPACTION_CONFIG_FILE",
+  "LARVA_PI_MODEL_MAP_FILE",
+  "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE",
+  "LARVA_PI_SUBAGENT_ARTIFACT_DIR",
+  "LARVA_PI_SUBAGENT_CONFIG_FILE",
+  "LARVA_PI_SUBAGENT_LOG_FILE",
+  "LARVA_PI_TOOL_POLICY_FILE",
+]);
+
+const SECRET_ENV_KEY = /(?:API[_-]?KEY|AUTH|CREDENTIAL|PASSWORD|SECRET|TOKEN|AWS_|AZURE_|GOOGLE_APPLICATION_CREDENTIALS)/i;
+let runtimeIsolation = null;
+
+function sanitizedHarnessBaseEnv(base = process.env) {
+  const env = { ...base };
+  for (const key of HARNESS_SELECTOR_ENV_KEYS) delete env[key];
+  for (const key of Object.keys(env)) if (SECRET_ENV_KEY.test(key)) delete env[key];
+  return env;
+}
+
+function mergedHarnessEnv(base, overrides = {}) {
+  const env = { ...sanitizedHarnessBaseEnv(base), ...overrides };
+  for (const [key, value] of Object.entries(env)) if (value === undefined || value === null) delete env[key];
+  return env;
+}
+
+function pathInside(rootPath, candidate) {
+  if (typeof candidate !== "string" || candidate.length === 0) return false;
+  const resolvedRoot = resolve(rootPath);
+  const resolvedCandidate = resolve(candidate);
+  return resolvedCandidate === resolvedRoot || resolvedCandidate.startsWith(`${resolvedRoot}${sep}`);
+}
+
+function observeRuntimeEnvironment(env, ownedKeys, tempRoot) {
+  const owned = new Set(ownedKeys);
+  return {
+    owned_selector_keys: HARNESS_SELECTOR_ENV_KEYS.filter((key) => owned.has(key) && env[key] !== undefined).sort(),
+    unowned_selector_keys_present: HARNESS_SELECTOR_ENV_KEYS.filter((key) => !owned.has(key) && env[key] !== undefined).sort(),
+    owned_paths_outside_root: Array.from(HARNESS_ROOT_ENV_KEYS)
+      .filter((key) => owned.has(key) && env[key] !== undefined && !pathInside(tempRoot, env[key]))
+      .sort(),
+  };
+}
+
+async function createNeutralRuntimeIsolation() {
+  const tempRoot = await mkdtemp(join(tmpdir(), "larva-pi-neutral-runtime-"));
+  const suffix = tempRoot.replace(/[^A-Za-z0-9]/g, "").slice(-12).toLowerCase();
+  const providerId = `larva-neutral-${suffix}`;
+  const modelId = `neutral-${suffix}`;
+  const home = join(tempRoot, "home");
+  const piCodingAgentDir = join(tempRoot, "pi-agent");
+  const parentSessionDir = join(tempRoot, "parent-session");
+  const childSessionDir = join(tempRoot, "child-sessions");
+  const scratchDir = join(tempRoot, "tmp");
+  const xdgConfigDir = join(tempRoot, "xdg-config");
+  const xdgDataDir = join(tempRoot, "xdg-data");
+  const xdgCacheDir = join(tempRoot, "xdg-cache");
+  const configDir = join(tempRoot, "larva-config");
+  const modelMapPath = join(configDir, "model-map.json");
+  const providerExtension = join(tempRoot, "neutral-loopback-provider.ts");
+  const subagentConfig = join(tempRoot, "subagent-runtime.json");
+  const traceFile = join(tempRoot, "child-rpc.jsonl");
+  const artifactDir = join(tempRoot, "artifacts");
+  const requests = [];
+  const sockets = new Set();
+  let server = null;
+  try {
+  await Promise.all([
+    home,
+    piCodingAgentDir,
+    parentSessionDir,
+    childSessionDir,
+    scratchDir,
+    xdgConfigDir,
+    xdgDataDir,
+    xdgCacheDir,
+    configDir,
+    artifactDir,
+  ].map((path) => mkdir(path, { recursive: true })));
+
+  server = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk.toString("utf8");
+    const remoteAddress = request.socket.remoteAddress ?? "";
+    const loopback = /^(?:127\.|::1$|::ffff:127\.)/.test(remoteAddress);
+    let payload = {};
+    try { payload = body.length > 0 ? JSON.parse(body) : {}; } catch {}
+    const renderedMessages = JSON.stringify(payload.messages ?? []);
+    const heldForAbort = renderedMessages.includes("B3_ABORT_SHOULD_NOT_FINISH");
+    requests.push({ loopback, method: request.method ?? null, model: payload.model ?? null, held_for_abort: heldForAbort });
+    if (!loopback) {
+      response.writeHead(403, { connection: "close" });
+      response.end();
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/event-stream", connection: "close" });
+    if (heldForAbort) return;
+    const text = renderedMessages.includes("B2_RESUME_RPC_OK") ? "B2_RESUME_RPC_OK" : renderedMessages.includes("B1_CHILD_RPC_OK") ? "B1_CHILD_RPC_OK" : "NEUTRAL_LOOPBACK_OK";
+    response.write(`data: ${JSON.stringify({ id: `neutral-${Date.now()}`, object: "chat.completion.chunk", created: Math.floor(Date.now() / 1000), model: modelId, choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: "stop" }] })}\n\n`);
+    response.end("data: [DONE]\n\n");
+  });
+  server.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
+  await new Promise((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("neutral loopback provider failed to bind");
+  const providerUrl = `http://127.0.0.1:${address.port}/v1`;
+  await writeFile(providerExtension, `
+export default function (pi) {
+  const model = { id: ${JSON.stringify(modelId)}, name: ${JSON.stringify(modelId)}, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 };
+  pi.registerProvider(${JSON.stringify(providerId)}, { name: "Larva neutral loopback provider", baseUrl: ${JSON.stringify(providerUrl)}, apiKey: "loopback-only", api: "openai-completions", models: [model] });
+}
+`, "utf8");
+  await writeFile(modelMapPath, JSON.stringify({ models: { "openai/gpt-5.5": { provider: providerId, model_id: modelId } }, prefix_rules: [] }), "utf8");
+  await writeFile(subagentConfig, JSON.stringify({ schema_version: 1, extension_sources: [providerExtension] }), "utf8");
+
+  const envDefaults = {
+    HOME: home,
+    TMPDIR: scratchDir,
+    XDG_CACHE_HOME: xdgCacheDir,
+    XDG_CONFIG_HOME: xdgConfigDir,
+    XDG_DATA_HOME: xdgDataDir,
+    PI_CODING_AGENT_DIR: piCodingAgentDir,
+    PI_CODING_AGENT_SESSION_DIR: parentSessionDir,
+    PI_OFFLINE: "1",
+    LARVA_CONFIG_DIR: configDir,
+    LARVA_HOME: tempRoot,
+    LARVA_SESSION_DIR: join(tempRoot, "larva-sessions"),
+    LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+    LARVA_PI_REAL_BIN: process.env.PI_BIN || "pi",
+    LARVA_PI_EXTENSION_FLAG: "-e",
+    LARVA_PI_EXTENSION_ENTRY: extensionPath,
+    LARVA_PI_LAUNCHED: "1",
+    LARVA_PI_MODEL_MAP_FILE: modelMapPath,
+    LARVA_PI_CHILD_SESSION_DIR: childSessionDir,
+    LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+    LARVA_PI_SUBAGENT_CONFIG_FILE: subagentConfig,
+    LARVA_PI_SUBAGENT_ARTIFACT_DIR: artifactDir,
+  };
+  await mkdir(envDefaults.LARVA_SESSION_DIR, { recursive: true });
+  return {
+    tempRoot,
+    envDefaults,
+    providerId,
+    modelId,
+    providerUrl,
+    providerExtension,
+    modelMapPath,
+    subagentConfig,
+    parentSessionDir,
+    requests,
+    sockets,
+    server,
+    environmentObservations: [],
+    quarantinedInheritedKeys: HARNESS_SELECTOR_ENV_KEYS.filter((key) => process.env[key] !== undefined).sort(),
+  };
+  } catch (error) {
+    for (const socket of sockets) socket.destroy();
+    if (server?.listening) await new Promise((resolveClose) => server.close(resolveClose));
+    await rm(tempRoot, { recursive: true, force: true });
+    throw error;
   }
-  const packageRoot = process.env.PI_PACKAGE_ROOT || "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  evidence.package.packageRoot = packageRoot;
-  const commit = await runProcess("git", ["-C", packageRoot, "rev-parse", "HEAD"], { timeoutMs: 5_000 });
-  evidence.package.commitExitCode = commit.exitCode;
-  evidence.package.commit = commit.exitCode === 0 ? commit.stdout.trim() : null;
-  if (commit.exitCode !== 0) evidence.package.commitError = commit.stderr.trim().slice(0, 500);
-  return evidence.pi;
+}
+
+async function allocateRuntimeDirectory(prefix) {
+  return runtimeIsolation === null
+    ? await mkdtemp(join(tmpdir(), prefix))
+    : await mkdtemp(join(runtimeIsolation.tempRoot, prefix));
 }
 
 function runtimeEnv(overrides = {}) {
-  return {
-    ...process.env,
+  const defaults = runtimeIsolation?.envDefaults ?? {
     PI_OFFLINE: "1",
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
     LARVA_PI_REAL_BIN: process.env.PI_BIN || "pi",
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,
     LARVA_PI_LAUNCHED: "1",
-    LARVA_PI_INITIAL_PERSONA_ID: "",
-    ...overrides,
   };
+  const env = mergedHarnessEnv(process.env, { ...defaults, ...overrides });
+  if (runtimeIsolation !== null) {
+    runtimeIsolation.environmentObservations.push(observeRuntimeEnvironment(
+      env,
+      [...Object.keys(defaults), ...Object.keys(overrides)],
+      runtimeIsolation.tempRoot,
+    ));
+  }
+  return env;
+}
+
+async function cleanupNeutralRuntimeIsolation(evidence) {
+  if (runtimeIsolation === null) return;
+  const isolation = runtimeIsolation;
+  let runtimeResetError = null;
+  let rootRemovalError = null;
+  try {
+    const mod = await import(pathToFileURL(extensionPath).href);
+    if (typeof mod.resetExtensionUI === "function") await mod.resetExtensionUI("neutral-runtime-isolation-cleanup");
+  } catch (error) {
+    runtimeResetError = error?.message ?? String(error);
+  }
+  for (const socket of isolation.sockets) socket.destroy();
+  if (isolation.server.listening) await new Promise((resolveClose) => isolation.server.close(resolveClose));
+  try { await rm(isolation.tempRoot, { recursive: true, force: true }); }
+  catch (error) { rootRemovalError = error?.message ?? String(error); }
+  let temporaryRootRemoved = false;
+  try { await access(isolation.tempRoot); } catch { temporaryRootRemoved = true; }
+  const unowned = Array.from(new Set(isolation.environmentObservations.flatMap((entry) => entry.unowned_selector_keys_present))).sort();
+  const outside = Array.from(new Set(isolation.environmentObservations.flatMap((entry) => entry.owned_paths_outside_root))).sort();
+  evidence.runtime.isolation = {
+    status: unowned.length === 0 && outside.length === 0 && isolation.requests.every((request) => request.loopback) && temporaryRootRemoved && !isolation.server.listening && runtimeResetError === null && rootRemovalError === null ? "PASS" : "FAIL",
+    temp_root: isolation.tempRoot,
+    quarantined_inherited_keys: isolation.quarantinedInheritedKeys,
+    environment_observations: isolation.environmentObservations,
+    unowned_selector_keys_present: unowned,
+    owned_paths_outside_root: outside,
+    route: {
+      source_model: "openai/gpt-5.5",
+      provider_id: isolation.providerId,
+      model_id: isolation.modelId,
+      provider_url: isolation.providerUrl,
+      provider_extension: isolation.providerExtension,
+      model_map_path: isolation.modelMapPath,
+      subagent_config_path: isolation.subagentConfig,
+      resolver: "LARVA_PI_MODEL_MAP_FILE exact mapping followed by Pi modelRegistry.find",
+    },
+    network: {
+      request_count: isolation.requests.length,
+      loopback_only: isolation.requests.every((request) => request.loopback),
+      external_provider_requests: isolation.requests.filter((request) => !request.loopback).length,
+    },
+    cleanup: { loopback_closed: !isolation.server.listening, temporary_root_removed: temporaryRootRemoved, runtime_reset_error: runtimeResetError, root_removal_error: rootRemovalError },
+  };
+  runtimeIsolation = null;
+}
+
+async function piAvailability(evidence) {
+  const binary = evidence.pi.binary;
+  const env = runtimeEnv();
+  const help = await runProcess(binary, ["--help"], { env, timeoutMs: 5_000 });
+  evidence.pi.helpExitCode = help.exitCode;
+  evidence.pi.available = help.exitCode === 0;
+  const helpText = `${help.stdout}${help.stderr}`;
+  evidence.pi.helpSnippet = helpText.slice(0, 500);
+  if (evidence.pi.available) {
+    if (helpText.includes("-e")) evidence.pi.extensionFlag = "-e";
+    const version = await runProcess(binary, ["--version"], { env, timeoutMs: 5_000 });
+    evidence.package.versionCommand = `${binary} --version`;
+    evidence.package.versionExitCode = version.exitCode;
+    evidence.package.versionText = `${version.stdout}${version.stderr}`.trim().slice(0, 500);
+  }
+  const packageRoot = process.env.PI_PACKAGE_ROOT || "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  evidence.package.packageRoot = packageRoot;
+  const commit = await runProcess("git", ["-C", packageRoot, "rev-parse", "HEAD"], { env, timeoutMs: 5_000 });
+  evidence.package.commitExitCode = commit.exitCode;
+  evidence.package.commit = commit.exitCode === 0 ? commit.stdout.trim() : null;
+  if (commit.exitCode !== 0) evidence.package.commitError = commit.stderr.trim().slice(0, 500);
+  return evidence.pi;
 }
 
 async function runPiRpc(evidence, { initialPersona, commands = [], envOverrides = {}, postCommandWaitMs = 750 } = {}) {
@@ -247,14 +522,21 @@ async function runPiRpc(evidence, { initialPersona, commands = [], envOverrides 
     evidence.rpc.limitation = "Pi binary or extension flag is unavailable.";
     return evidence.rpc;
   }
-  const sessionDir = await mkdtemp(join(tmpdir(), "larva-pi-runtime-session-"));
+  const sessionDir = await allocateRuntimeDirectory("rpc-session-");
   const args = [
-    evidence.pi.extensionFlag,
-    extensionPath,
     "--mode",
     "rpc",
     "--no-session",
+    "--no-extensions",
+    "--no-context-files",
+    "--no-skills",
+    "--no-prompt-templates",
+    "--no-themes",
     "--offline",
+    "--approve",
+    ...(runtimeIsolation === null ? [] : [evidence.pi.extensionFlag, runtimeIsolation.providerExtension]),
+    evidence.pi.extensionFlag,
+    extensionPath,
     "--session-dir",
     sessionDir,
   ];
@@ -323,7 +605,7 @@ async function runPiFatalStartup(evidence, args) {
     evidence.rpc.fatalStartup.status = "blocked";
     return evidence.rpc;
   }
-  const sessionDir = await mkdtemp(join(tmpdir(), "larva-pi-fatal-startup-session-"));
+  const sessionDir = await allocateRuntimeDirectory("fatal-startup-session-");
   const mode = args.get("fatal-mode") || "bad-model";
   const envOverrides = mode === "bad-policy"
     ? { LARVA_PI_TOOL_POLICY_FILE: join(sessionDir, "bad-policy.json") }
@@ -331,12 +613,19 @@ async function runPiFatalStartup(evidence, args) {
   if (mode === "bad-policy") await writeFile(envOverrides.LARVA_PI_TOOL_POLICY_FILE, "{not json", "utf8");
   const env = runtimeEnv({ LARVA_PI_INITIAL_PERSONA_ID: args.get("persona") || "ok", ...envOverrides });
   const child = spawn(evidence.pi.binary, [
-    evidence.pi.extensionFlag,
-    extensionPath,
     "--mode",
     "rpc",
     "--no-session",
+    "--no-extensions",
+    "--no-context-files",
+    "--no-skills",
+    "--no-prompt-templates",
+    "--no-themes",
     "--offline",
+    "--approve",
+    ...(runtimeIsolation === null ? [] : [evidence.pi.extensionFlag, runtimeIsolation.providerExtension]),
+    evidence.pi.extensionFlag,
+    extensionPath,
     "--session-dir",
     sessionDir,
   ], { env, cwd: root, stdio: ["pipe", "pipe", "pipe"] });
@@ -371,8 +660,11 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
   const statuses = [];
   const notifications = [];
   const autocompleteProviders = [];
+  const personaEnv = typeof initialPersona === "string" && initialPersona.length > 0
+    ? { LARVA_PI_INITIAL_PERSONA_ID: initialPersona }
+    : {};
   const ctx = {
-    env: runtimeEnv({ LARVA_PI_INITIAL_PERSONA_ID: initialPersona, ...envOverrides }),
+    env: runtimeEnv({ ...personaEnv, ...envOverrides }),
     ui: {
       setStatus: async (...args) => { statuses.push(args); },
       notify: async (...args) => { notifications.push(args); },
@@ -761,7 +1053,7 @@ async function controlledLiveChildRpcProof(evidence, args) {
   }
 
   const mod = await import(pathToFileURL(extensionPath).href);
-  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-pi-live-child-sessions-"));
+  const sessionRoot = await allocateRuntimeDirectory("live-child-sessions-");
   const traceFile = join(sessionRoot, "child-rpc-trace.jsonl");
   const timeoutMs = Number.parseInt(args.get("live-timeout-ms") || "90000", 10);
   const pollTimeoutMs = Math.max(5_000, timeoutMs);
@@ -2719,6 +3011,112 @@ async function personaInvocationBusContractAnchors(evidence) {
   };
 }
 
+async function realPiPersonaInvocationBusProof(evidence) {
+  await piAvailability(evidence);
+  evidence.runtime.personaInvocationBusRealPi = { status: "BLOCKED", attempted: false };
+  if (!evidence.pi.available || !evidence.pi.extensionFlag || runtimeIsolation === null) return;
+
+  const probePath = join(runtimeIsolation.tempRoot, "persona-invocation-probe.ts");
+  await writeFile(probePath, `
+export default function (pi) {
+  let currentCtx;
+  const results = [];
+  pi.events?.on?.("larva:persona-invocation:result", (result) => {
+    results.push(result);
+    currentCtx?.ui?.notify?.(\`PIINV_RESULT \${JSON.stringify(result)}\`, "info");
+  });
+  pi.on?.("session_start", async (_event, ctx) => {
+    currentCtx = ctx;
+    ctx.ui?.notify?.(\`PIINV_SURFACE \${JSON.stringify({ piOn: typeof pi.on, piEmit: typeof pi.emit, piEventsOn: typeof pi.events?.on, piEventsEmit: typeof pi.events?.emit })}\`, "info");
+    pi.events?.emit?.("larva:persona-invocation:request", {
+      request_id: "11111111-1111-4111-8111-111111111111",
+      persona_id: "",
+      prompt: "probe",
+      timeout_ms: 10,
+    });
+    setTimeout(() => ctx.ui?.notify?.(\`PIINV_RESULTS_COUNT \${results.length}\`, "info"), 300);
+  });
+}
+`, "utf8");
+  const args = [
+    "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
+    evidence.pi.extensionFlag, runtimeIsolation.providerExtension,
+    evidence.pi.extensionFlag, extensionPath,
+    evidence.pi.extensionFlag, probePath,
+    "--session-dir", runtimeIsolation.parentSessionDir,
+  ];
+  const env = runtimeEnv({ LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
+  const child = spawn(evidence.pi.binary, args, { cwd: runtimeIsolation.tempRoot, env, stdio: ["pipe", "pipe", "pipe"] });
+  evidence.runtime.personaInvocationBusRealPi.attempted = Number.isInteger(child.pid);
+  const interesting = [];
+  const stderr = [];
+  const lines = createInterface({ input: child.stdout });
+  let countObserved = false;
+  const observed = new Promise((resolveObserved) => {
+    lines.on("line", (line) => {
+      let event;
+      try { event = JSON.parse(line); } catch { return; }
+      if (event?.type === "extension_ui_request" && event.method === "notify") {
+        interesting.push(event);
+        if (event.message?.startsWith("PIINV_RESULTS_COUNT ")) {
+          countObserved = true;
+          resolveObserved({ timedOut: false, exitedEarly: false });
+        }
+      }
+    });
+    child.once("close", () => {
+      if (!countObserved) resolveObserved({ timedOut: false, exitedEarly: true });
+    });
+  });
+  child.stderr.on("data", (chunk) => stderr.push(chunk.toString("utf8")));
+  const outcome = await Promise.race([
+    observed,
+    new Promise((resolveTimeout) => setTimeout(() => resolveTimeout({ timedOut: true, exitedEarly: false }), 5_000)),
+  ]);
+  if (child.exitCode === null && child.signalCode === null) child.kill("SIGTERM");
+  await Promise.race([
+    new Promise((resolveClose) => child.once("close", resolveClose)),
+    new Promise((resolveWait) => setTimeout(resolveWait, 1_000)),
+  ]);
+  if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+  lines.close();
+  const surfaceMessage = interesting.find((event) => event.message?.startsWith("PIINV_SURFACE "))?.message ?? null;
+  const resultMessage = interesting.find((event) => event.message?.startsWith("PIINV_RESULT "))?.message ?? null;
+  const countMessage = interesting.find((event) => event.message?.startsWith("PIINV_RESULTS_COUNT "))?.message ?? null;
+  let surface = null;
+  let result = null;
+  try { if (surfaceMessage) surface = JSON.parse(surfaceMessage.slice("PIINV_SURFACE ".length)); } catch {}
+  try { if (resultMessage) result = JSON.parse(resultMessage.slice("PIINV_RESULT ".length)); } catch {}
+  const expectedSurface = { piOn: "function", piEmit: "undefined", piEventsOn: "function", piEventsEmit: "function" };
+  const expectedResult = {
+    request_id: "11111111-1111-4111-8111-111111111111",
+    status: "failed",
+    persona_id: "",
+    final_text: "",
+    error: { code: "LARVA_PERSONA_INVOCATION_BAD_INPUT", message: "persona_id must be a non-empty string." },
+  };
+  const status = outcome.timedOut === false
+    && outcome.exitedEarly === false
+    && stderr.join("") === ""
+    && JSON.stringify(surface) === JSON.stringify(expectedSurface)
+    && JSON.stringify(result) === JSON.stringify(expectedResult)
+    && countMessage === "PIINV_RESULTS_COUNT 1"
+    ? "PASS"
+    : "FAIL";
+  evidence.runtime.personaInvocationBusRealPi = {
+    status,
+    attempted: evidence.runtime.personaInvocationBusRealPi.attempted,
+    command: [evidence.pi.binary, ...args],
+    timedOut: outcome.timedOut,
+    exitedEarly: outcome.exitedEarly,
+    surface,
+    result,
+    count: countMessage,
+    stderr: stderr.join(""),
+    initialPersonaOwned: false,
+  };
+}
+
 async function modelMapProfileSwitchProof(evidence) {
   const sessionRoot = await mkdtemp(join(tmpdir(), "larva-model-map-profile-switch-"));
   const configDir = join(sessionRoot, ".pi", "larva");
@@ -2816,9 +3214,13 @@ async function installedPiModelMapProfileSwitchProof(evidence) {
   const expectedVersion = "0.82.1";
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
+  const piCodingAgentDir = join(tempRoot, "pi-agent");
+  const parentSessionDir = join(tempRoot, "parent-session");
+  const scratchDir = join(tempRoot, "tmp");
   const configDir = join(home, ".pi", "larva");
   const childSessionDir = join(configDir, "child-sessions");
   const traceFile = join(tempRoot, "child-rpc.jsonl");
+  const quarantinedInheritedKeys = HARNESS_SELECTOR_ENV_KEYS.filter((key) => process.env[key] !== undefined).sort();
   const providerRequests = [];
   let releaseChildAlpha;
   const childAlphaRelease = new Promise((resolveRelease) => { releaseChildAlpha = resolveRelease; });
@@ -2851,7 +3253,7 @@ async function installedPiModelMapProfileSwitchProof(evidence) {
   });
 
   try {
-    await mkdir(childSessionDir, { recursive: true });
+    await Promise.all([childSessionDir, piCodingAgentDir, parentSessionDir, scratchDir].map((path) => mkdir(path, { recursive: true })));
     const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
     const packageJson = await readJsonFile(join(installedPackageRoot, "package.json"));
     if (version.exitCode !== 0 || version.stdout.trim() !== expectedVersion || packageJson.version !== expectedVersion) {
@@ -2924,28 +3326,35 @@ export default function (pi) {
     await writeFile(join(tempRoot, "subagent-runtime.json"), JSON.stringify({ schema_version: 1, extension_sources: [probe] }), "utf8");
     const args = [
       "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
-      "-e", probe, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", join(tempRoot, "parent-session"),
+      "-e", probe, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", parentSessionDir,
     ];
+    const parentEnv = actualChildSecretFreeEnv(process.env, {
+      HOME: home,
+      TMPDIR: scratchDir,
+      PI_CODING_AGENT_DIR: piCodingAgentDir,
+      PI_CODING_AGENT_SESSION_DIR: parentSessionDir,
+      PI_OFFLINE: "1",
+      LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
+      LARVA_PI_REAL_BIN: installedPi,
+      LARVA_PI_EXTENSION_FLAG: "-e",
+      LARVA_PI_EXTENSION_ENTRY: extensionPath,
+      LARVA_PI_INITIAL_PERSONA_ID: "parent",
+      LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: "controlled/parent-a",
+      LARVA_PI_CHILD_SESSION_DIR: childSessionDir,
+      LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+      LARVA_PI_SUBAGENT_CONFIG_FILE: join(tempRoot, "subagent-runtime.json"),
+      LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+      LARVA_PI_INTERACTIVE_TUI: "0",
+      LARVA_PI_LAUNCHED: "1",
+    });
+    const parentEnvObservation = observeRuntimeEnvironment(
+      parentEnv,
+      Object.keys(parentEnv).filter((key) => HARNESS_SELECTOR_ENV_KEYS.includes(key)),
+      tempRoot,
+    );
     parent = spawn(installedPi, args, {
-      cwd: root,
-      env: {
-        ...process.env,
-        HOME: home,
-        LARVA_MODEL_MAP_MISSING_TEST_KEY: undefined,
-        PI_OFFLINE: "1",
-        LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
-        LARVA_PI_REAL_BIN: installedPi,
-        LARVA_PI_EXTENSION_FLAG: "-e",
-        LARVA_PI_EXTENSION_ENTRY: extensionPath,
-        LARVA_PI_INITIAL_PERSONA_ID: "parent",
-        LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: "controlled/parent-a",
-        LARVA_PI_CHILD_SESSION_DIR: childSessionDir,
-        LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
-        LARVA_PI_SUBAGENT_CONFIG_FILE: join(tempRoot, "subagent-runtime.json"),
-        LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
-        LARVA_PI_INTERACTIVE_TUI: "0",
-        LARVA_PI_LAUNCHED: "1",
-      },
+      cwd: tempRoot,
+      env: parentEnv,
       stdio: ["pipe", "pipe", "pipe"],
     });
     evidence.rpc.attempted = Number.isInteger(parent.pid) && parent.pid > 0;
@@ -3002,6 +3411,7 @@ export default function (pi) {
       childRpcSetModelOrdered: trace.some((event) => event.event === "rpc_tx" && event.frame_type === "set_model") && providerRequests.findIndex((entry) => entry.model === "child-a") < providerRequests.findIndex((entry) => entry.model === "child-b"),
       inFlightOldThenNextNew: providerRequests.some((entry) => entry.model === "child-a") && providerRequests.some((entry) => entry.model === "child-b"),
       noExternalProvider: providerRequests.every((entry) => ["parent-a", "parent-b", "child-a", "child-b"].includes(entry.model)),
+      harnessIsolation: parentEnvObservation.unowned_selector_keys_present.length === 0 && parentEnvObservation.owned_paths_outside_root.length === 0,
       parentRollback: rejectResponse.type === "response" && rejectResponse.success === true && rejectNotification.message.includes("parent=failed") && stateAfterReject.data?.model?.provider === "controlled" && stateAfterReject.data?.model?.id === "parent-a" && restoredStatusNotification.message.includes("source=profile") && restoredStatusNotification.message.includes("profile=alpha"),
       boundedReadyChildFanout: remediationProof?.assertions?.boundedReadyChildFanout === true && remediationProof?.maxObservedChildRpcConcurrency === 4,
       terminalDuringStarting: remediationProof?.assertions?.terminalDuringStarting === true,
@@ -3026,9 +3436,20 @@ export default function (pi) {
       providerRequests,
       childRpcEventNames: trace.map((event) => event.event),
       childPids,
-      observations: { publicStatus: assertions.publicStatus, parentRollback: assertions.parentRollback, boundedReadyChildFanout: assertions.boundedReadyChildFanout, terminalDuringStarting: assertions.terminalDuringStarting, partialRetryIdentity: assertions.partialRetryIdentity, startingGenerationFence: assertions.startingGenerationFence, lifecycleClassifications: assertions.lifecycleClassifications, faultIsolation: assertions.faultIsolation, inFlightOldNextNew: assertions.inFlightOldThenNextNew },
+      observations: { publicStatus: assertions.publicStatus, parentRollback: assertions.parentRollback, harnessIsolation: assertions.harnessIsolation, boundedReadyChildFanout: assertions.boundedReadyChildFanout, terminalDuringStarting: assertions.terminalDuringStarting, partialRetryIdentity: assertions.partialRetryIdentity, startingGenerationFence: assertions.startingGenerationFence, lifecycleClassifications: assertions.lifecycleClassifications, faultIsolation: assertions.faultIsolation, inFlightOldNextNew: assertions.inFlightOldThenNextNew },
       stderr: stderr.join(""),
-      isolation: { home, configDir, childSessionDir, providerUrl, offline: true },
+      isolation: {
+        status: parentEnvObservation.unowned_selector_keys_present.length === 0 && parentEnvObservation.owned_paths_outside_root.length === 0 ? "PASS" : "FAIL",
+        home,
+        piCodingAgentDir,
+        parentSessionDir,
+        configDir,
+        childSessionDir,
+        providerUrl,
+        offline: true,
+        quarantinedInheritedKeys,
+        environmentObservation: parentEnvObservation,
+      },
     };
   } finally {
     releaseChildAlpha?.();
@@ -3049,11 +3470,7 @@ function actualChildProfileNameFromFrameId(frameId) {
 }
 
 function actualChildSecretFreeEnv(base, overrides = {}) {
-  const env = { ...base, ...overrides };
-  for (const key of Object.keys(env)) {
-    if (/(?:API[_-]?KEY|AUTH|CREDENTIAL|PASSWORD|SECRET|TOKEN|AWS_|AZURE_|GOOGLE_APPLICATION_CREDENTIALS)/i.test(key)) delete env[key];
-  }
-  return env;
+  return mergedHarnessEnv(base, overrides);
 }
 
 async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
@@ -3078,6 +3495,8 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-actual-child-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
+  const scratchDir = join(tempRoot, "tmp");
+  const quarantinedInheritedKeys = HARNESS_SELECTOR_ENV_KEYS.filter((key) => process.env[key] !== undefined).sort();
   const configDir = join(home, ".pi", "larva");
   const childSessionDir = join(tempRoot, "child-sessions");
   const parentSessionDir = join(tempRoot, "parent-session");
@@ -3138,6 +3557,9 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
       provider_endpoint: null,
       network_samples: [],
       transport_control: "harness-owned Node interpreter stdio control beneath the unchanged /opt/homebrew/bin/pi child launch seam",
+      quarantined_inherited_keys: quarantinedInheritedKeys,
+      environment_observation: null,
+      environment_status: "PENDING",
     },
     events: [],
     cleanup: { outcome: "FAIL", parent_alive: null, process_group_alive: null, child_controllers_alive: {}, child_pi_processes_alive: {}, loopback_closed: false, temporary_root_removed: false, unknown_state: false },
@@ -3281,6 +3703,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
     await mkdir(childSessionDir, { recursive: true });
     await mkdir(parentSessionDir, { recursive: true });
     await mkdir(piCodingAgentDir, { recursive: true });
+    await mkdir(scratchDir, { recursive: true });
     await writeControl("normal");
 
     const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
@@ -3412,6 +3835,7 @@ export default function (pi) {
 
     const baseEnv = actualChildSecretFreeEnv(process.env, {
       HOME: home,
+      TMPDIR: scratchDir,
       PI_CODING_AGENT_DIR: piCodingAgentDir,
       PI_CODING_AGENT_SESSION_DIR: parentSessionDir,
       PI_OFFLINE: "1",
@@ -3433,8 +3857,17 @@ export default function (pi) {
       LARVA_ACTUAL_CHILD_TRANSPORT_LOG: transportFile,
       LARVA_ACTUAL_CHILD_CONTROL_FILE: controlFile,
     });
-    raw.isolation.credential_env_keys_present = Object.keys(baseEnv).filter((key) => /(?:API[_-]?KEY|AUTH|CREDENTIAL|PASSWORD|SECRET|TOKEN)/i.test(key));
+    raw.isolation.credential_env_keys_present = Object.keys(baseEnv).filter((key) => SECRET_ENV_KEY.test(key));
     delete baseEnv.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI;
+    raw.isolation.environment_observation = observeRuntimeEnvironment(
+      baseEnv,
+      Object.keys(baseEnv).filter((key) => HARNESS_SELECTOR_ENV_KEYS.includes(key)),
+      tempRoot,
+    );
+    raw.isolation.environment_status = raw.isolation.environment_observation.unowned_selector_keys_present.length === 0
+      && raw.isolation.environment_observation.owned_paths_outside_root.length === 0
+      ? "PASS"
+      : "FAIL";
     const parentArgs = [
       "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
       "-e", providerExtension, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", parentSessionDir,
@@ -3726,7 +4159,7 @@ export default function (pi) {
       .sort((left, right) => left.monotonic_ns.localeCompare(right.monotonic_ns))
       .map((row, index) => ({ sequence: index + 1, ...row }));
     const casesPass = ["bounded_fanout_correlation", "terminal_recheck", "partial_selective_retry", "generation_lifecycle", "rpc_fault_cleanup"].every((key) => raw.cases[key]?.outcome === "PASS");
-    raw.status = casesPass && raw.observation.terminal_recheck === "PASS" && raw.isolation.loopback_only && raw.isolation.external_provider_requests === 0 && raw.isolation.credential_env_keys_present.length === 0 && raw.executed.children.length >= 5 && raw.executed.children.length <= childLimit && raw.cleanup.outcome === "PASS" && parentStderr.join("").length === 0 ? "PASS" : "FAIL";
+    raw.status = casesPass && raw.observation.terminal_recheck === "PASS" && raw.isolation.environment_status === "PASS" && raw.isolation.loopback_only && raw.isolation.external_provider_requests === 0 && raw.isolation.credential_env_keys_present.length === 0 && raw.executed.children.length >= 5 && raw.executed.children.length <= childLimit && raw.cleanup.outcome === "PASS" && parentStderr.join("").length === 0 ? "PASS" : "FAIL";
     if (raw.status === "FAIL" && raw.error === null) raw.error = { code: "ACTUAL_CHILD_ASSERTION_FAILED", message: "One or more actual-child runtime assertions failed." };
     evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
     evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: expectedVersion, installedVersion: expectedVersion };
@@ -3747,6 +4180,23 @@ async function main() {
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
+  const ownsCompleteRuntimeIsolation = ![
+    "model-map-profile-switch",
+    "model-map-profile-switch-installed-pi",
+    "model-map-profile-switch-installed-child-pi",
+  ].includes(scenario);
+  if (ownsCompleteRuntimeIsolation) {
+    runtimeIsolation = await createNeutralRuntimeIsolation();
+    for (const key of HARNESS_SELECTOR_ENV_KEYS) delete process.env[key];
+    for (const key of Object.keys(process.env)) if (SECRET_ENV_KEY.test(key)) delete process.env[key];
+    Object.assign(process.env, runtimeIsolation.envDefaults);
+    runtimeIsolation.environmentObservations.push(observeRuntimeEnvironment(
+      process.env,
+      Object.keys(runtimeIsolation.envDefaults),
+      runtimeIsolation.tempRoot,
+    ));
+  }
+  try {
   if (scenario === "persona-invocation-bus" || scenario === "model-map-profile-switch" || scenario === "model-map-profile-switch-installed-pi" || scenario === "model-map-profile-switch-installed-child-pi") {
     evidence.package.piTuiDependency = {
       hardGateStatus: "SKIPPED",
@@ -3760,7 +4210,13 @@ async function main() {
   } else if (scenario === "get-commands") {
     await runPiRpc(evidence, { commands: [{ id: "commands-1", body: { type: "get_commands" } }] });
   } else if (scenario === "slash-status") {
-    await runPiRpc(evidence, { commands: [{ id: "prompt-1", body: { type: "prompt", message: `/larva-persona ${persona ?? "ok"}` }, timeoutMs: 4_000 }], postCommandWaitMs: 1_000 });
+    await runPiRpc(evidence, {
+      commands: [
+        { id: "prompt-1", body: { type: "prompt", message: `/larva-persona ${persona ?? "ok"}` }, timeoutMs: 4_000 },
+        { id: "state-after-persona", body: { type: "get_state" }, timeoutMs: 2_000 },
+      ],
+      postCommandWaitMs: 1_000,
+    });
   } else if (scenario === "startup-status") {
     await runPiRpc(evidence, { initialPersona: persona ?? "startup", commands: [{ id: "state-1", body: { type: "get_state" } }] });
   } else if (scenario === "startup-fatal") {
@@ -3999,12 +4455,16 @@ async function main() {
     await waitSelectPendingCallbackHandoffExpectedRed(evidence);
   } else if (scenario === "persona-invocation-bus") {
     await personaInvocationBusContractAnchors(evidence);
+    await realPiPersonaInvocationBusProof(evidence);
   } else if (scenario === "model-map-profile-switch") {
     await modelMapProfileSwitchProof(evidence);
   } else if (scenario === "model-map-profile-switch-installed-pi") {
     await installedPiModelMapProfileSwitchProof(evidence);
   } else if (scenario === "model-map-profile-switch-installed-child-pi") {
     await installedActualChildPiModelMapProfileSwitchProof(evidence);
+  }
+  } finally {
+    if (ownsCompleteRuntimeIsolation) await cleanupNeutralRuntimeIsolation(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
@@ -4023,7 +4483,10 @@ async function main() {
   if (scenario === "wait-select-pending-callback-handoff" && evidence.runtime.waitSelectPendingCallbackHandoff?.status !== "PASS") {
     process.exitCode = 1;
   }
-  if (scenario === "persona-invocation-bus" && evidence.runtime.personaInvocationBus?.status !== "PASS") {
+  if (scenario === "persona-invocation-bus" && (evidence.runtime.personaInvocationBus?.status !== "PASS" || evidence.runtime.personaInvocationBusRealPi?.status !== "PASS")) {
+    process.exitCode = 1;
+  }
+  if (ownsCompleteRuntimeIsolation && evidence.runtime.isolation?.status !== "PASS") {
     process.exitCode = 1;
   }
   if (scenario === "model-map-profile-switch" && evidence.runtime.modelMapProfileSwitch?.status !== "PASS") {

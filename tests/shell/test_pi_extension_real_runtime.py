@@ -223,6 +223,52 @@ def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash(
     }
 
 
+def _assert_neutral_runtime_isolation(payload: dict[str, Any]) -> None:
+    isolation = payload["runtime"]["isolation"]
+    temp_root = Path(isolation["temp_root"])
+    route = isolation["route"]
+
+    assert isolation["status"] == "PASS", json.dumps(isolation, indent=2, sort_keys=True)
+    assert isolation["unowned_selector_keys_present"] == []
+    assert isolation["owned_paths_outside_root"] == []
+    assert isolation["environment_observations"]
+    assert all(
+        observation["unowned_selector_keys_present"] == []
+        and observation["owned_paths_outside_root"] == []
+        for observation in isolation["environment_observations"]
+    )
+    assert route["source_model"] == "openai/gpt-5.5"
+    assert route["provider_id"].startswith("larva-neutral-")
+    assert route["model_id"].startswith("neutral-")
+    assert route["provider_url"].startswith("http://127.0.0.1:")
+    assert route["resolver"] == (
+        "LARVA_PI_MODEL_MAP_FILE exact mapping followed by Pi modelRegistry.find"
+    )
+    for key in ("provider_extension", "model_map_path", "subagent_config_path"):
+        assert Path(route[key]).is_relative_to(temp_root)
+    assert isolation["network"]["loopback_only"] is True
+    assert isolation["network"]["external_provider_requests"] == 0
+    assert isolation["cleanup"] == {
+        "loopback_closed": True,
+        "temporary_root_removed": True,
+        "runtime_reset_error": None,
+        "root_removal_error": None,
+    }
+    assert temp_root.exists() is False
+
+
+def _assert_state_uses_neutral_route(payload: dict[str, Any], response_id: str) -> None:
+    route = payload["runtime"]["isolation"]["route"]
+    state = next(
+        response
+        for response in payload["rpc"]["responses"]
+        if response.get("id") == response_id
+    )
+    assert state["success"] is True
+    assert state["data"]["model"]["provider"] == route["provider_id"]
+    assert state["data"]["model"]["id"] == route["model_id"]
+
+
 def _run_runtime_scenario_raw(
     scenario: str, *, persona: str | None = None, timeout: float = 12.0
 ) -> tuple[dict[str, Any], int, str, str]:
@@ -240,7 +286,10 @@ def _run_runtime_scenario_raw(
         timeout=timeout,
     )
     assert completed.stdout.strip(), completed.stderr
-    return json.loads(completed.stdout), completed.returncode, completed.stdout, completed.stderr
+    payload = json.loads(completed.stdout)
+    if "isolation" in payload.get("runtime", {}):
+        _assert_neutral_runtime_isolation(payload)
+    return payload, completed.returncode, completed.stdout, completed.stderr
 
 
 def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout: float = 12.0) -> dict[str, Any]:
@@ -1083,6 +1132,7 @@ def test_real_pi_rpc_smoke_collects_extension_ui_evidence_or_explicit_xfail(scen
 def test_real_pi_slash_status_commits_success_persona() -> None:
     payload = _run_runtime_scenario("slash-status", persona="ok")
     _xfail_if_rpc_surface_hidden(payload)
+    _assert_state_uses_neutral_route(payload, "state-after-persona")
 
     ui_requests = payload["rpc"].get("uiRequests", [])
     assert any(
@@ -1102,6 +1152,7 @@ def test_real_pi_slash_status_commits_success_persona() -> None:
 def test_real_pi_startup_status_commits_startup_persona() -> None:
     payload = _run_runtime_scenario("startup-status", persona="startup")
     _xfail_if_rpc_surface_hidden(payload)
+    _assert_state_uses_neutral_route(payload, "state-1")
 
     assert any(
         request.get("method") == "setStatus"
@@ -1565,10 +1616,33 @@ def test_real_pi_persona_invocation_bus_bad_input_result_via_shared_events(tmp_p
           '--approve',
           '-e', {json.dumps(str(EXTENSION))},
           '-e', {json.dumps(str(probe_path))},
+          '--session-dir', {json.dumps(str(tmp_path / "pi-session"))},
         ];
+        const isolatedRoot = {json.dumps(str(tmp_path))};
+        const selectorKeys = [
+          'HOME', 'TMPDIR', 'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME',
+          'PI_CODING_AGENT_DIR', 'PI_CODING_AGENT_SESSION_DIR',
+          'PI_MODEL', 'PI_PROVIDER', 'PI_REASONING_LEVEL', 'PI_SESSION_FILE', 'PI_SESSION_ID',
+          'LARVA_CONFIG_DIR', 'LARVA_HOME', 'LARVA_SESSION_DIR',
+          'LARVA_PI_AGENT_PERSONA_SWITCH',
+          'LARVA_PI_INITIAL_PERSONA_ID', 'LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI',
+          'LARVA_PI_MODEL_MAP_FILE', 'LARVA_PI_TOOL_POLICY_FILE',
+          'LARVA_PI_CHILD_SESSION_DIR', 'LARVA_PI_SUBAGENT_CONFIG_FILE',
+        ];
+        const env = {{ ...process.env }};
+        const quarantinedInheritedKeys = selectorKeys.filter((key) => env[key] !== undefined);
+        for (const key of selectorKeys) delete env[key];
+        Object.assign(env, {{
+          HOME: isolatedRoot,
+          TMPDIR: isolatedRoot,
+          PI_CODING_AGENT_DIR: {json.dumps(str(tmp_path / "pi-agent"))},
+          PI_CODING_AGENT_SESSION_DIR: {json.dumps(str(tmp_path / "pi-session"))},
+          PI_OFFLINE: '1',
+          LARVA_PI_AGENT_PERSONA_SWITCH: 'manual',
+        }});
         const child = spawn('pi', args, {{
-          cwd: {json.dumps(str(ROOT))},
-          env: {{ ...process.env, PI_OFFLINE: '1', LARVA_PI_AGENT_PERSONA_SWITCH: 'manual' }},
+          cwd: isolatedRoot,
+          env,
           stdio: ['pipe', 'pipe', 'pipe'],
         }});
         const interesting = [];
@@ -1592,6 +1666,15 @@ def test_real_pi_persona_invocation_bus_bad_input_result_via_shared_events(tmp_p
             count: count?.message ?? null,
             interesting,
             stderr: stderr.join(''),
+            isolation: {{
+              root: isolatedRoot,
+              quarantinedInheritedKeys,
+              initialPersonaPresent: env.LARVA_PI_INITIAL_PERSONA_ID !== undefined,
+              initialPersonaModelPresent: env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI !== undefined,
+              modelMapPresent: env.LARVA_PI_MODEL_MAP_FILE !== undefined,
+              toolPolicyPresent: env.LARVA_PI_TOOL_POLICY_FILE !== undefined,
+              sessionPathsInsideRoot: [env.HOME, env.TMPDIR, env.PI_CODING_AGENT_DIR, env.PI_CODING_AGENT_SESSION_DIR].every((value) => value === isolatedRoot || value.startsWith(isolatedRoot + '/')),
+            }},
           }}));
           process.exit(0);
         }}
@@ -1626,6 +1709,11 @@ def test_real_pi_persona_invocation_bus_bad_input_result_via_shared_events(tmp_p
 
     assert payload["timedOut"] is False, evidence
     assert payload["stderr"] == "", evidence
+    assert payload["isolation"]["initialPersonaPresent"] is False, evidence
+    assert payload["isolation"]["initialPersonaModelPresent"] is False, evidence
+    assert payload["isolation"]["modelMapPresent"] is False, evidence
+    assert payload["isolation"]["toolPolicyPresent"] is False, evidence
+    assert payload["isolation"]["sessionPathsInsideRoot"] is True, evidence
     assert payload["surface"] is not None, evidence
     assert payload["result"] is not None, evidence
     assert payload["count"] == "PIINV_RESULTS_COUNT 1", evidence
@@ -1680,6 +1768,7 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
         "childRpcSetModelOrdered": True,
         "inFlightOldThenNextNew": True,
         "noExternalProvider": True,
+        "harnessIsolation": True,
         "parentRollback": True,
         "boundedReadyChildFanout": True,
         "terminalDuringStarting": True,
@@ -1691,6 +1780,7 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert proof["observations"] == {
         "publicStatus": True,
         "parentRollback": True,
+        "harnessIsolation": True,
         "boundedReadyChildFanout": True,
         "terminalDuringStarting": True,
         "partialRetryIdentity": True,
@@ -1700,8 +1790,14 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
         "inFlightOldNextNew": True,
     }
     assert "rpc_tx" in proof["childRpcEventNames"]
+    assert proof["isolation"]["status"] == "PASS"
     assert proof["isolation"]["offline"] is True
     assert proof["isolation"]["providerUrl"].startswith("http://127.0.0.1:")
+    assert proof["isolation"]["environmentObservation"] == {
+        "owned_selector_keys": proof["isolation"]["environmentObservation"]["owned_selector_keys"],
+        "unowned_selector_keys_present": [],
+        "owned_paths_outside_root": [],
+    }
 
 
 def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence() -> None:
@@ -1728,6 +1824,12 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     assert all(isinstance(child["actual_pid"], int) for child in children)
     assert proof["limits"]["rpc_timeout_ms"] == 5_000
     assert proof["limits"]["case_deadline_ms"] == 30_000
+    assert proof["isolation"]["environment_status"] == "PASS"
+    assert proof["isolation"]["environment_observation"] == {
+        "owned_selector_keys": proof["isolation"]["environment_observation"]["owned_selector_keys"],
+        "unowned_selector_keys_present": [],
+        "owned_paths_outside_root": [],
+    }
 
     observation = proof["observation"]
     assert observation["clock"] == "process.hrtime.bigint"
@@ -1825,9 +1927,10 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
 def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprints() -> None:
     """Source-level contract anchors for extension-facing PIINV event bus stay present."""
     payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
-        "persona-invocation-bus", timeout=8.0
+        "persona-invocation-bus", timeout=12.0
     )
     contract = payload["runtime"]["personaInvocationBus"]
+    real_pi = payload["runtime"]["personaInvocationBusRealPi"]
     anchors = [row["machine_anchor"] for row in contract["checks"]]
     raw_json_evidence = {
         "command": ["node", str(RUNTIME_SMOKE), "--scenario", "persona-invocation-bus"],
@@ -1847,3 +1950,6 @@ def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprin
     )
     assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
     assert contract["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
+    assert real_pi["status"] == "PASS", json.dumps(real_pi, indent=2, sort_keys=True)
+    assert real_pi["initialPersonaOwned"] is False
+    assert real_pi["stderr"] == ""
