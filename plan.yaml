@@ -140164,7 +140164,7 @@ phases:
       de8668da..., `tests/shell/test_pi_extension_subagent_ux.py` 0c50bc88....'
   - id: pi-model-map-profile-switch.isolate-real-runtime-harness
     name: Isolate Pi real-runtime harness from ambient configuration
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140356,3 +140356,5 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.prove-actual-installed-child-seams
     agent: general
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-25T23:08:09.966357Z'
