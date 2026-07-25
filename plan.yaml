@@ -139596,7 +139596,7 @@ phases:
       Backup patch retained under /tmp/larva-agent-artifacts.'
   - id: pi-model-map-profile-switch.remediate-terminal-findings
     name: Remediate terminal profile-switch conformance findings
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -139766,6 +139766,21 @@ phases:
     agent: frontend-engineer
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T14:47:15.885071Z'
+    done_at: '2026-07-25T16:33:56.864909+00:00'
+    evidence: 'Integrated remediation commit 3c907858a94a2ceec24d003bbfd0401f7df2d193
+      (worker commit 669114ee) after production Gate admitted dispatch sha256:26586d8f0cc0e6a7887a53ebf2d642f1b82eb2a0a9707a78b906aae6f74c5dee
+      and worker receipt sha256:350a49d8bb071d0067faf67a5719cd1368e2e89ef5c4c27213a71db57b3d24c3
+      as CONFORMANT. Product changes add explicit ready-child concurrency bound 4
+      and terminal recheck before will_use_new_route; tests/docs/harness cover status
+      secrecy, parent rollback, partial retry identities, generation/lifecycle classifications,
+      fault isolation, and preserved in-flight behavior. Integrated checks: model-map
+      unit/runtime PASS; fixture and installed-Pi scenarios PASS with named remediation
+      observations; real runtime file 39 passed/1 xfailed; focused regressions 200
+      passed/1 xfailed; sanitized full suite 927 passed/1 xfailed; Invar passed; diff
+      check passed. Pi identity remained /opt/homebrew/bin/pi and package 0.82.1;
+      isolated offline loopback-only provider, no external effects, cleanup PASS.
+      Four unrelated primary edits were stash-preserved/restored; backup patch retained
+      under /tmp/larva-agent-artifacts; current dirty fingerprint 7a412c22f976d78bbda5a4e6461fea80380c17e96e48a309b3535cb94ac3433d.'
   - id: pi-model-map-profile-switch.verify-remediation
     name: Independently verify terminal profile-switch remediation
     status: pending
