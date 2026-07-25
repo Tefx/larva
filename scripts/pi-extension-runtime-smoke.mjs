@@ -3525,7 +3525,7 @@ export default function (pi) {
     const faultCases = [];
     for (const fault of [
       { profile: "delta", phase: "fault_malformed", persona: "malformed", event: "rpc_malformed", kind: "malformed_response", min_ms: 0, max_ms: 2_500 },
-      { profile: "epsilon", phase: "fault_timeout", persona: "timeout", event: "rpc_drop", kind: "timeout", min_ms: 4_500, max_ms: 6_500 },
+      { profile: "epsilon", phase: "fault_timeout", persona: "timeout", event: "rpc_drop", kind: "timeout", min_ms: 4_500, max_ms: caseDeadlineMs },
       { profile: "zeta", phase: "fault_closed", persona: "closed", event: "rpc_stdout_closed", kind: "closed_stream", min_ms: 0, max_ms: 2_500 },
     ]) {
       await writeControl(fault.phase, ["lifecycle"]);

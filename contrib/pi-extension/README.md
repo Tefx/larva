@@ -859,9 +859,11 @@ and no more than eight actual child Pi processes are started. Per-case readiness
 and command waits use 30-second deadlines, while the whole scenario uses a
 180-second fail-closed deadline so a loaded test host can schedule the same real
 process work without crossing the former nominal-run margin. The injected child
-RPC timeout remains five seconds and its bounded fault assertion remains
-unchanged. The harness launches the parent and all descendants in a dedicated
-process group. Cleanup signals only that harness-owned group, closes harness
+RPC timeout remains five seconds; its observation ceiling uses the finite
+30-second case deadline so suite scheduling delay cannot misclassify the real
+five-second timeout outcome. The explicit partial-result, zero-fallback, and
+cleanup assertions remain unchanged. The harness launches the parent and all
+descendants in a dedicated process group. Cleanup signals only that harness-owned group, closes harness
 streams and loopback sockets, scans parent/child TCP endpoints, verifies the
 process group and every recorded process are gone, and removes the temporary
 root. The harness does not install or modify

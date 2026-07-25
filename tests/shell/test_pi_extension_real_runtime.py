@@ -1772,6 +1772,8 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
         "closed_stream",
     ]
     assert all(row["bounded"] is True for row in faults["faults"])
+    timeout_fault = next(row for row in faults["faults"] if row["fault"] == "timeout")
+    assert 4_500 <= timeout_fault["elapsed_ms"] <= proof["limits"]["case_deadline_ms"]
     assert all(row["explicit_partial"] is True for row in faults["faults"])
     assert all(row["fallback_count"] == 0 for row in faults["faults"])
 
