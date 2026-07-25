@@ -139911,7 +139911,7 @@ phases:
     agent: integration-verifier
   - id: pi-model-map-profile-switch.prove-actual-installed-child-seams
     name: Prove actual installed child-Pi profile-switch seams
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140081,3 +140081,38 @@ phases:
     agent: general
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T21:29:38.276019Z'
+    done_at: '2026-07-25T22:25:03.794528+00:00'
+    evidence: 'Integrated commit `81751f38d2b8371f017abc0e2f9fe7d93165068a` from isolated
+      worker commit `b91d68884dc0c52ac0065de97584ae63229cce76`; exactly `contrib/pi-extension/README.md`,
+      `scripts/pi-extension-runtime-smoke.mjs`, and `tests/shell/test_pi_extension_real_runtime.py`
+      changed. Admitted dispatch `/tmp/larva-agent-artifacts/pi-model-map-actual-child-general-dispatch.json`,
+      dispatch SHA `sha256:f4f1418f50a7487f12d063fd4a4b3c3787da784fa62325a163504da0b0e3847c`,
+      base `fb6f1ded662c2a02ab148a930e17cdbd50080fa8`, claim `claim:23e1e4d46991247a7790d8ce39e0e921c7daf3445aeb2a6dc61fa6a62adb95c9`.
+      Exact child-written receipt preserved unchanged at `/tmp/larva-agent-artifacts/pi-model-map-actual-child-general-receipt.json`
+      (file SHA-256 `0ab9ef2db9a419b99d91260d03a1d322b80c33f2fcccccf1ffc3b775431ad2a6`,
+      2894 bytes; Gate canonical receipt SHA `sha256:e1f7c3d9632f1c6ccd804d022cce76a0354ab0988cadb0afb624ac7ba2c8a696`).
+      Child callback transport later rejected an oversized session frame, but its
+      durable candidate had already passed child-side lint; parent Gate independently
+      reran every dispatch check against the unchanged candidate and returned CONFORMANT
+      with no reasons in `/tmp/larva-agent-artifacts/parent-general-receipt-gate.stdout.json`.
+
+      Checks from `/Users/tefx/Projects/larva-worktrees/pi-model-map-actual-child-general`:
+      exact installed-child scenario exit 0; runtime file `41 passed in 113.44s`;
+      sanitized full suite `928 passed in 191.35s`; `uv run invar guard` passed (0
+      errors/warnings); `git diff --check` exit 0. Parent Gate reran all five and
+      admitted PASS.
+
+      Raw `larva.pi.model-map.actual-child.v1` artifact `/tmp/larva-agent-artifacts/pi-model-map-actual-child-general-raw.json`,
+      SHA-256 `c013d28b8f4a26c4f3caa4aca79faa9eb9c09c93dfa8e9d90eeefedcc4ea9de4`,
+      294155 bytes: selected parent/child `/opt/homebrew/bin/pi`, CLI/package 0.82.1;
+      one parent and eight actual child Pi processes; max switch RPC concurrency 4;
+      unique correlated five-ready fanout; post-snapshot `ended_during_switch`; exact
+      selective retry with fallback_count 0; generation fence/new/resumed/terminal/ended
+      classifications; malformed/timeout/closed-stream bounded fault case PASS; monotonic
+      terminal observation probe PASS; offline=true, loopback_only=true, external_provider_requests=0,
+      no credential-like env keys; cleanup PASS with parent/process group/all controller
+      and child PIDs dead, loopback closed, temp root removed, unknown_state=false.
+
+      Primary-tree unrelated edits remained unstaged and byte-identical: `contrib/pi-extension/larva.ts`
+      bea9d825..., `design/pi-coding-agent-integration.md` d78bcbcd..., `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`
+      de8668da..., `tests/shell/test_pi_extension_subagent_ux.py` 0c50bc88....'
