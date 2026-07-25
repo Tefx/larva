@@ -138932,11 +138932,13 @@ phases:
 - id: pi_model_map_profile_switch_20260725
   name: Pi Runtime Model-Map Profile Switch 2026-07-25
   status: in_progress
-  gate: The phase closes only after the repository implementation, synchronized developer
-    tests and Pi-extension documentation, independent real-seam runtime verification,
-    and terminal spec conformance review prove MMPS-01 through MMPS-08 with no blocking
-    gaps, no credential or user-specific provider leakage, and preservation of unrelated
-    primary-working-tree changes.
+  gate: The phase closes only after the completed product implementation, the installed-Pi
+    0.82.0 runtime harness with synchronized developer tests and Pi-extension documentation,
+    independent real-seam runtime verification, and terminal spec conformance review
+    prove MMPS-01 through MMPS-08 and MMPS-REAL-01 through MMPS-REAL-04 with no blocking
+    gap, no claimed-seam substitution, no network/auth/provider or user-config effect,
+    deterministic cleanup, and preservation of the four unrelated primary-working-tree
+    edits.
   depends_on:
   - pi_subagent_rpc_memory_bound_20260619
   steps:
