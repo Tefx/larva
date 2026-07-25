@@ -139981,7 +139981,7 @@ phases:
       and persistent runtime/external state are outside authority.
 
       - Execute only in an Orchestrator-created isolated clean worktree at integrated
-      HEAD `42427c4ee1c225ecdf3d69d8688c195e318ba1a2` or an Orchestrator-witnessed
+      HEAD `3230fc11f4c72d4f0bdbc681631b8dc01c86a7e4` or an Orchestrator-witnessed
       descendant containing no later change to the three allowed paths. Use isolated
       HOME, `PI_CODING_AGENT_DIR`, session, Larva config, and model-map roots; offline
       controls; loopback-only neutral providers; at most eight actual child Pi processes
