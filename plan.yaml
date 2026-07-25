@@ -138932,15 +138932,18 @@ phases:
 - id: pi_model_map_profile_switch_20260725
   name: Pi Runtime Model-Map Profile Switch 2026-07-25
   status: in_progress
-  gate: The phase closes only after the completed product implementation, the witnessed-current
-    installed-Pi runtime harness using selected and executed executable `/opt/homebrew/bin/pi`
-    at CLI version `0.82.1` and package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
-    at package version `0.82.1`, synchronized developer tests and Pi-extension documentation,
-    independent real-seam runtime verification, and terminal spec conformance review
-    prove MMPS-01 through MMPS-08 and MMPS-REAL-01 through MMPS-REAL-04 with no blocking
-    gap, no claimed-seam substitution, no Pi install/downgrade/update, no network/auth/provider/user-config/external-state
-    effect, deterministic cleanup, and preservation of the four unrelated primary-working-tree
-    edits.
+  gate: The phase closes only after the completed original implementation/harness
+    evidence remains preserved, the terminal FAIL remediation and synchronized developer
+    tests/Pi-extension documentation are integrated, fresh independent real-seam verification
+    and terminal spec review prove MMPS-01 through MMPS-08, MMPS-REAL-01 through MMPS-REAL-04,
+    and MMPS-REM-01 through MMPS-REM-08, and the witnessed-current installed Pi binding
+    selects and executes `/opt/homebrew/bin/pi` at CLI version `0.82.1` with package
+    root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` at package
+    version `0.82.1`. Closure requires explicit bounded ready-child fan-out, terminal-during-starting
+    reclassification, public status, parent restoration, partial identity/retry, generation/lifecycle,
+    fault-isolation, and preserved in-flight-old/next-request-new evidence, with no
+    claimed-seam substitution, Pi install/downgrade/update, network/auth/provider/user-config/external-state
+    effect, cleanup gap, or loss of the four unrelated primary-working-tree edits.
   depends_on:
   - pi_subagent_rpc_memory_bound_20260619
   steps:
