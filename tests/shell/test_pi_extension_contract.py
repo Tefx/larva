@@ -249,6 +249,32 @@ def test_initial_persona_commit_is_before_user_visible_none_state() -> None:
     )
 
 
+def test_model_map_profile_switch_contract_is_documented_and_registered() -> None:
+    source = _source()
+    readme = PI_EXTENSION_README.read_text(encoding="utf-8")
+
+    _assert_tokens(
+        source,
+        'registerCommandCompat(pi, "larva-model-map"',
+        "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+        "LARVA_MODEL_MAP_PROFILE_BAD_NAME",
+        "LARVA_MODEL_MAP_PARENT_SWITCH_FAILED",
+        "LARVA_MODEL_MAP_CHILD_SWITCH_FAILED",
+        "modelMapRouteGeneration",
+        'type: "set_model"',
+    )
+    for token in (
+        "/larva-model-map <profile>",
+        "/larva-model-map status",
+        "model-map.<profile>.json",
+        "letters, digits, underscore, and hyphen",
+        "process-local profile",
+        "next provider request",
+        "partial",
+    ):
+        assert token in readme
+
+
 def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     source = _source()
     body = _function_body(source, "export async function initializeExtension")

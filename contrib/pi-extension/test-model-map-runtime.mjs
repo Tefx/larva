@@ -1,9 +1,10 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import assert from "node:assert/strict";
 
+process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI = "openai-codex/gpt-5.5";
 const root = process.cwd();
 const extensionUrl = pathToFileURL(join(root, "contrib/pi-extension/larva.ts"));
 
@@ -58,10 +59,12 @@ async function runCommit({ name, personaId = name, modelMap, personaModels, regi
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
     LARVA_PI_MODEL_MAP_FILE: mapFile,
     PERSONA_MODELS: JSON.stringify(personaModels),
-    ...(startup ? { LARVA_PI_INITIAL_PERSONA_ID: personaId } : {}),
+    LARVA_PI_LAUNCHED: "0",
+    ...(startup ? { LARVA_PI_INITIAL_PERSONA_ID: personaId, LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: "openai-codex/gpt-5.5" } : {}),
   };
   const ctx = {
     env,
+    ...(startup ? { model: { provider: "openai-codex", id: "gpt-5.5" } } : {}),
     ui: {
       setStatus: async (...args) => statuses.push(args),
       notify: async (message, notifyType) => notifications.push({ message, notifyType }),
@@ -248,6 +251,26 @@ const cases = {
 const choice = selectedCase();
 if (choice === "all") {
   for (const name of Object.keys(cases)) await cases[name]();
+  const profileHome = await mkdtemp(join(tmpdir(), "larva-model-map-profile-runtime-"));
+  const configDir = join(profileHome, ".pi", "larva");
+  await mkdir(configDir, { recursive: true });
+  await writeFile(join(configDir, "model-map.green.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v2" } }, prefix_rules: [] }), "utf8");
+  const cli = await makeFakeCli(profileHome);
+  const mod = await importFresh("profile-runtime");
+  const commands = {};
+  const setModels = [];
+  const env = { HOME: profileHome, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), PERSONA_MODELS: JSON.stringify({ parent: "logical/parent" }), LARVA_PI_LAUNCHED: "0", LARVA_PI_INITIAL_PERSONA_ID: "parent" };
+  const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined } };
+  const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return true; }, registerCommand: (name, command) => { commands[name] = command; }, registerTool: () => undefined, on: () => undefined };
+  await mod.initializeExtension(ctx, pi);
+  const switched = await commands["larva-model-map"].handler("green", ctx);
+  const status = await commands["larva-model-map"].handler("status", ctx);
+  assert.equal(switched.status, "success");
+  assert.deepEqual(switched.parent, { state: "switched", persona_id: "parent", provider: "neutral", model_id: "parent-v2" });
+  assert.equal(status.source, "profile");
+  assert.equal(status.profile, "green");
+  assert.deepEqual(setModels.at(-1), { provider: "neutral", modelId: "parent-v2" });
+  console.log("profile runtime switch/status PASS", JSON.stringify({ switched, status }));
   console.log("model-map runtime: PASS");
 } else if (cases[choice]) {
   await cases[choice]();

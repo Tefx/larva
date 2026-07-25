@@ -99,7 +99,42 @@ The canonical model-map path is:
 
 Set `LARVA_PI_MODEL_MAP_FILE` to an absolute path to override the path for tests
 or local adapter experiments. When it is set, the extension reads only that path
-for the model map.
+unless a process-local profile is active.
+
+Named profiles use flat files beside the canonical map:
+
+```text
+~/.pi/larva/model-map.<profile>.json
+```
+
+Use `/larva-model-map <profile>` to activate one in the running Pi process and
+`/larva-model-map status` to inspect the secret-safe source, path, parent route,
+and ready/starting/terminal child counts. Profile names match exactly
+`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`: letters, digits, underscore, and hyphen are
+accepted; dots, separators, absolute paths, empty/dot names, and longer names are
+rejected. The target must be a bounded regular file whose real path remains in
+the canonical Larva Pi configuration directory. Symlink escapes, oversized files,
+and invalid/unknown schema fields fail closed.
+
+Profile precedence is process-local profile, explicit `LARVA_PI_MODEL_MAP_FILE`,
+canonical `model-map.json`, then the first-slash fallback. Selection lasts for the
+current extension process and resets on process restart/resource recreation; it
+does not mutate environment variables, user files, PersonaSpec, registry state,
+models.yaml, or credentials.
+
+A successful switch preflights all routes, commits the parent first, and then
+updates ready children with correlated bounded-timeout `set_model` RPCs. With no
+active parent persona, selection still applies to future children and reports
+`parent: not_applicable`. New and resumed children resolve through the active
+profile; a starting child is generation-fenced before its first prompt. Terminal
+or concurrently ended children are ignored/classified explicitly. A child request
+already in flight may finish on its old model; after a successful `set_model`, its
+next provider request uses the new route.
+
+Parent failure restores the prior selection/model and reports `failed`. Child
+failures retain the committed parent and successful children, report `partial`
+with exact task/persona identities, and never trigger provider/profile fallback.
+Re-running the same profile retries unswitched live children.
 
 Shape:
 

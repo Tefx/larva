@@ -1,9 +1,10 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import assert from "node:assert/strict";
 
+process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI = "openai-codex/gpt-5.5";
 const root = process.cwd();
 const extensionUrl = pathToFileURL(join(root, "contrib/pi-extension/larva.ts"));
 
@@ -51,10 +52,12 @@ async function runCommit({ name, personaId = name, modelMap, personaModels, regi
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
     LARVA_PI_MODEL_MAP_FILE: mapFile,
     PERSONA_MODELS: JSON.stringify(personaModels),
-    ...(startup ? { LARVA_PI_INITIAL_PERSONA_ID: personaId } : {}),
+    LARVA_PI_LAUNCHED: "0",
+    ...(startup ? { LARVA_PI_INITIAL_PERSONA_ID: personaId, LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: "openai-codex/gpt-5.5" } : {}),
   };
   const ctx = {
     env,
+    ...(startup ? { model: { provider: "openai-codex", id: "gpt-5.5" } } : {}),
     ui: { setStatus: async (...args) => statuses.push(args) },
     modelRegistry: {
       find: async (provider, modelId) => {
@@ -202,5 +205,40 @@ const afterStartup = await runCommit({
 assert.equal(afterStartup.result.ok, true);
 assert.deepEqual(afterStartup.registryCalls, [["openai-codex", "gpt-5.5"], ["openrouter", "google/gemini-3.1-pro-preview"]]);
 console.log("slash-switch-after-startup behavior: PASS", JSON.stringify(afterStartup.registryCalls));
+
+async function profileFixture(name) {
+  const home = await mkdtemp(join(tmpdir(), `larva-profile-${name}-`));
+  const configDir = join(home, ".pi", "larva");
+  await mkdir(configDir, { recursive: true });
+  const cli = await makeFakeCli(home, {});
+  const env = { HOME: home, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), PERSONA_MODELS: JSON.stringify({ parent: "logical/parent" }), LARVA_PI_LAUNCHED: "0" };
+  return { home, configDir, env };
+}
+
+const profileBadName = await profileFixture("bad-name");
+const profileBadNameMod = await importFresh("profile-bad-name");
+const badDot = await profileBadNameMod.switchModelMapProfile("bad.name", { env: profileBadName.env }, {});
+assert.equal(badDot.status, "failed");
+assert.equal(badDot.parent.error.code, "LARVA_MODEL_MAP_PROFILE_BAD_NAME");
+console.log("profile bad-name no-dot rule: PASS", badDot.parent.error.code);
+
+const profileSecurity = await profileFixture("security");
+const outsideMap = join(profileSecurity.home, "outside.json");
+await writeFile(outsideMap, JSON.stringify({ models: {}, prefix_rules: [] }), "utf8");
+await symlink(outsideMap, join(profileSecurity.configDir, "model-map.escape.json"));
+const profileSecurityMod = await importFresh("profile-security");
+const escaped = await profileSecurityMod.switchModelMapProfile("escape", { env: profileSecurity.env }, {});
+assert.equal(escaped.status, "failed");
+assert.equal(escaped.parent.error.code, "LARVA_MODEL_MAP_PROFILE_INVALID");
+console.log("profile symlink escape: PASS", escaped.parent.error.code);
+
+const profileNoParent = await profileFixture("no-parent");
+await writeFile(join(profileNoParent.configDir, "model-map.safe_1.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v2" } }, prefix_rules: [] }), "utf8");
+const profileNoParentMod = await importFresh("profile-no-parent");
+const selected = await profileNoParentMod.switchModelMapProfile("safe_1", { env: profileNoParent.env }, {});
+assert.equal(selected.status, "success");
+assert.equal(selected.parent.state, "not_applicable");
+assert.equal(selected.generation, 1);
+console.log("profile no-parent activation: PASS", JSON.stringify(selected));
 
 console.log("model-map unit: PASS");

@@ -25,6 +25,7 @@ const SCENARIOS = [
   "async-subagent-contract",
   "wait-select-pending-callback-handoff",
   "persona-invocation-bus",
+  "model-map-profile-switch",
 ];
 
 const PIINV_REQUIRED_EXPECTED_RED_IDS = [
@@ -2696,6 +2697,39 @@ async function personaInvocationBusContractAnchors(evidence) {
   };
 }
 
+async function modelMapProfileSwitchProof(evidence) {
+  const sessionRoot = await mkdtemp(join(tmpdir(), "larva-model-map-profile-switch-"));
+  const configDir = join(sessionRoot, ".pi", "larva");
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(configDir, { recursive: true }));
+  const cli = join(sessionRoot, "fake-cli.mjs");
+  await writeFile(cli, `
+const [, , command, personaId, jsonFlag] = process.argv;
+if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+const models = { parent: "logical/parent" };
+process.stdout.write(JSON.stringify({ data: { id: personaId, description: personaId, prompt: "prompt", model: models[personaId] || "logical/child", capabilities: {}, spec_version: "0.1.0", spec_digest: "sha256:" + personaId, can_spawn: true } }));
+`, "utf8");
+  await writeFile(join(configDir, "model-map.alpha.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-a" } }, prefix_rules: [] }), "utf8");
+  await writeFile(join(configDir, "model-map.beta.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-b" } }, prefix_rules: [] }), "utf8");
+  const mod = await import(`${pathToFileURL(extensionPath).href}?profile-smoke=${Date.now()}`);
+  const commands = new Map();
+  const setModels = [];
+  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "0", LARVA_PI_INITIAL_PERSONA_ID: "parent" };
+  const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined } };
+  const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return true; }, registerTool: () => undefined, registerCommand: (name, command) => commands.set(typeof name === "string" ? name : name.name, typeof name === "string" ? command : name), on: () => undefined };
+  await mod.initializeExtension(ctx, pi);
+  const command = commands.get("larva-model-map");
+  const [alpha, beta] = await Promise.all([command.handler("alpha", ctx), command.handler("beta", ctx)]);
+  const routeStatus = await command.handler("status", ctx);
+  const assertions = {
+    commandRegistered: Boolean(command),
+    parentSetModel: setModels.some((model) => model.modelId === "parent-a") && setModels.at(-1)?.modelId === "parent-b",
+    serializedFinalProfile: alpha.status === "success" && beta.status === "success" && routeStatus.profile === "beta" && routeStatus.generation === 2,
+    noActiveChildFailures: beta.counts.failed === 0,
+    processLocalSource: routeStatus.source === "profile" && routeStatus.path.endsWith("model-map.beta.json"),
+  };
+  evidence.runtime.modelMapProfileSwitch = { status: Object.values(assertions).every(Boolean) ? "PASS" : "FAIL", assertions, alpha, beta, routeStatus, setModels, tempRoot: sessionRoot, cleanup: "bounded temporary root; process exit cleanup" };
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -2706,7 +2740,7 @@ async function main() {
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
-  if (scenario === "persona-invocation-bus") {
+  if (scenario === "persona-invocation-bus" || scenario === "model-map-profile-switch") {
     evidence.package.piTuiDependency = {
       hardGateStatus: "SKIPPED",
       reason: "persona-invocation-bus smoke is a source-level contract-anchor probe and must not fail on Pi TUI dependency hydration",
@@ -2958,6 +2992,8 @@ async function main() {
     await waitSelectPendingCallbackHandoffExpectedRed(evidence);
   } else if (scenario === "persona-invocation-bus") {
     await personaInvocationBusContractAnchors(evidence);
+  } else if (scenario === "model-map-profile-switch") {
+    await modelMapProfileSwitchProof(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
@@ -2977,6 +3013,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "persona-invocation-bus" && evidence.runtime.personaInvocationBus?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "model-map-profile-switch" && evidence.runtime.modelMapProfileSwitch?.status !== "PASS") {
     process.exitCode = 1;
   }
 }

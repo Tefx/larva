@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
-import { access, appendFile, chmod, lstat, mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
+import { access, appendFile, chmod, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -15,6 +15,13 @@ type LarvaErrorCode =
   | "LARVA_NO_ACTIVE_PERSONA"
   | "LARVA_PERSONA_NOT_FOUND"
   | "LARVA_MODEL_MAP_INVALID"
+  | "LARVA_MODEL_MAP_PROFILE_BAD_NAME"
+  | "LARVA_MODEL_MAP_PROFILE_ROOT_INVALID"
+  | "LARVA_MODEL_MAP_PROFILE_NOT_FOUND"
+  | "LARVA_MODEL_MAP_PROFILE_INVALID"
+  | "LARVA_MODEL_MAP_SWITCH_BUSY"
+  | "LARVA_MODEL_MAP_PARENT_SWITCH_FAILED"
+  | "LARVA_MODEL_MAP_CHILD_SWITCH_FAILED"
   | "LARVA_MODEL_UNAVAILABLE"
   | "LARVA_POLICY_INVALID"
   | "LARVA_TOOL_ENUMERATION_FAILED"
@@ -496,6 +503,23 @@ type ParsedModel = { provider: string; modelId: string };
 type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
   | { kind: "fallback" };
+type ActiveModelMapProfile = { name: string; path: string; config: PiModelMapConfig };
+type ChildModelMapSwitchResult = {
+  task_id: string | null;
+  persona_id: string;
+  state: "switched" | "will_use_new_route" | "ended_during_switch" | "failed";
+  provider?: string;
+  model_id?: string;
+  error?: LarvaError;
+};
+export type ModelMapSwitchResult = {
+  status: "success" | "partial" | "failed";
+  profile: string;
+  generation: number;
+  parent: { state: "switched" | "not_applicable" | "failed"; persona_id: string | null; provider?: string; model_id?: string; error?: LarvaError };
+  children: ChildModelMapSwitchResult[];
+  counts: { switched: number; will_use_new_route: number; ended_during_switch: number; failed: number };
+};
 type ToolEnumerationMode = "strict" | "startup-tolerant";
 type PersonaCandidateCacheFile = {
   version: 1;
@@ -598,8 +622,12 @@ type ActiveSubagentRun = {
   presentation_generation: number;
   background_task: Promise<void> | null;
   cancel_task: Promise<SubagentTerminalSnapshot> | null;
+  route_generation: number;
 };
 const activeSubagentRuns: Map<string, ActiveSubagentRun> = new Map();
+let activeModelMapProfile: ActiveModelMapProfile | null = null;
+let modelMapRouteGeneration = 0;
+let modelMapSwitchTail: Promise<void> = Promise.resolve();
 const SUBAGENT_EVENT_RETENTION_LIMIT = 1000;
 const subagentEventLog: LarvaSubagentEvent[] = [];
 const subagentEventWaiters = new Set<() => void>();
@@ -653,6 +681,8 @@ const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
+const MODEL_MAP_PROFILE_MAX_BYTES = 1_048_576;
+const MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000;
 const CHILD_RPC_TRACE_PREVIEW_CODE_POINTS = 200;
 const CHILD_STDERR_TAIL_CODE_POINTS = 16_384;
 let personaListCache: PersonaListCache = null;
@@ -700,7 +730,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
   const nodeEnv = typeof process === "undefined" ? {} : process.env;
-  return { ...nodeEnv, ...(ctx?.env ?? {}) } as RuntimeEnv;
+  if (ctx?.env === undefined) return { ...nodeEnv } as RuntimeEnv;
+  const inherited = { ...nodeEnv } as RuntimeEnv;
+  for (const childOnlyKey of ["LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI", "LARVA_PI_LAUNCHED"] as const) {
+    if (!Object.prototype.hasOwnProperty.call(ctx.env, childOnlyKey)) delete inherited[childOnlyKey];
+  }
+  return { ...inherited, ...ctx.env } as RuntimeEnv;
 }
 
 function withRuntimeEnv(ctx: PiContext | undefined, env: RuntimeEnv): PiContext {
@@ -2786,14 +2821,55 @@ function clearSubagentPresentationCacheFile(): void {
   }
 }
 
+function canonicalModelMapPath(env: RuntimeEnv): string {
+  return join(homeDir(env), ".pi", "larva", "model-map.json");
+}
+
 function modelMapPath(env: RuntimeEnv): string {
+  if (activeModelMapProfile !== null) return activeModelMapProfile.path;
   if (env.LARVA_PI_MODEL_MAP_FILE !== undefined) {
     if (!isAbsolute(env.LARVA_PI_MODEL_MAP_FILE)) {
       throw error("LARVA_MODEL_MAP_INVALID", "LARVA_PI_MODEL_MAP_FILE must be an absolute path.");
     }
     return env.LARVA_PI_MODEL_MAP_FILE;
   }
-  return join(homeDir(env), ".pi", "larva", "model-map.json");
+  return canonicalModelMapPath(env);
+}
+
+function validModelMapProfileName(profile: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u.test(profile);
+}
+
+async function loadModelMapProfile(profile: string, env: RuntimeEnv): Promise<ActiveModelMapProfile> {
+  if (!validModelMapProfileName(profile)) {
+    throw error("LARVA_MODEL_MAP_PROFILE_BAD_NAME", "Profile names must match ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$.");
+  }
+  const root = dirname(canonicalModelMapPath(env));
+  let rootReal: string;
+  try {
+    rootReal = await realpath(root);
+  } catch {
+    throw error("LARVA_MODEL_MAP_PROFILE_ROOT_INVALID", "Canonical Larva Pi configuration directory is unavailable.");
+  }
+  const candidate = join(root, `model-map.${profile}.json`);
+  let candidateReal: string;
+  try {
+    candidateReal = await realpath(candidate);
+  } catch {
+    throw error("LARVA_MODEL_MAP_PROFILE_NOT_FOUND", `Model-map profile ${profile} was not found.`);
+  }
+  if (dirname(candidateReal) !== rootReal) {
+    throw error("LARVA_MODEL_MAP_PROFILE_INVALID", "Model-map profile must remain inside the canonical Larva Pi configuration directory.");
+  }
+  try {
+    const inspected = await stat(candidateReal);
+    if (!inspected.isFile() || inspected.size > MODEL_MAP_PROFILE_MAX_BYTES) throw new Error("invalid profile file");
+    const raw = await readFile(candidateReal, "utf8");
+    return { name: profile, path: candidateReal, config: parseModelMapConfig(raw) };
+  } catch (caught) {
+    if (isLarvaError(caught)) throw caught;
+    throw error("LARVA_MODEL_MAP_PROFILE_INVALID", `Model-map profile ${profile} is invalid.`);
+  }
 }
 
 function toolPolicyPathCandidates(env: RuntimeEnv): string[] {
@@ -2966,7 +3042,18 @@ function resolveFromModelMap(specModel: string, config: PiModelMapConfig): Model
   };
 }
 
+function resolvePiModelFromConfig(spec: PersonaSpec, config: PiModelMapConfig | null): ParsedModel {
+  if (config !== null) {
+    const resolution = resolveFromModelMap(spec.model, config);
+    if (resolution.kind === "mapped") return resolution.parsed;
+  }
+  const fallback = parseModel(spec.model);
+  if (!fallback) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
+  return fallback;
+}
+
 async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<ParsedModel> {
+  if (activeModelMapProfile !== null) return resolvePiModelFromConfig(spec, activeModelMapProfile.config);
   const file = modelMapPath(env);
   let raw: string | null;
   try {
@@ -2978,19 +3065,12 @@ async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<Parse
   } catch {
     throw error("LARVA_MODEL_MAP_INVALID", "Invalid Larva Pi model map");
   }
-
-  if (raw !== null) {
-    try {
-      const resolution = resolveFromModelMap(spec.model, parseModelMapConfig(raw));
-      if (resolution.kind === "mapped") return resolution.parsed;
-    } catch {
-      throw error("LARVA_MODEL_MAP_INVALID", "Invalid Larva Pi model map");
-    }
+  try {
+    return resolvePiModelFromConfig(spec, raw === null ? null : parseModelMapConfig(raw));
+  } catch (caught) {
+    if (isLarvaError(caught)) throw caught;
+    throw error("LARVA_MODEL_MAP_INVALID", "Invalid Larva Pi model map");
   }
-
-  const fallback = parseModel(spec.model);
-  if (!fallback) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
-  return fallback;
 }
 
 async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok: true; stdout: string } | { ok: false }> {
@@ -3898,6 +3978,188 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
     },
   };
   registerCommandCompat(pi, "larva-mode", command);
+}
+
+function uniqueActiveSubagentRuns(): ActiveSubagentRun[] {
+  return Array.from(new Set(activeSubagentRuns.values())).filter((record) => record.terminal_snapshot === null && !isTerminalSubagentStatus(record.status));
+}
+
+function modelMapSwitchCounts(children: ChildModelMapSwitchResult[]): ModelMapSwitchResult["counts"] {
+  return {
+    switched: children.filter((child) => child.state === "switched").length,
+    will_use_new_route: children.filter((child) => child.state === "will_use_new_route").length,
+    ended_during_switch: children.filter((child) => child.state === "ended_during_switch").length,
+    failed: children.filter((child) => child.state === "failed").length,
+  };
+}
+
+function childModelMapFailure(record: ActiveSubagentRun, message = "Active child rejected the model-map profile switch."): ChildModelMapSwitchResult {
+  return { task_id: record.task_id, persona_id: record.persona_id, state: "failed", error: error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", message) };
+}
+
+async function fenceSubagentRoute(record: ActiveSubagentRun, rpc: RpcClient): Promise<LarvaError | null> {
+  if (record.route_generation === modelMapRouteGeneration) return null;
+  try {
+    const spec = await resolvePersona(record.persona_id, { env: record.env });
+    const target = await resolvePiModel(spec, record.env);
+    const response = await rpc.command(`model-map-fence-${modelMapRouteGeneration}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    if (!isSuccessResponse(response)) return error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", "Starting child rejected the active model-map route.");
+    record.route_generation = modelMapRouteGeneration;
+    return null;
+  } catch {
+    return error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", "Starting child could not apply the active model-map route.");
+  }
+}
+
+async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext, pi: PiApi): Promise<ModelMapSwitchResult> {
+  let profile: ActiveModelMapProfile;
+  const parentPersonaId = state.envelope?.persona_id ?? null;
+  try {
+    profile = await loadModelMapProfile(profileName, currentEnv(ctx));
+  } catch (caught) {
+    const larvaError = isLarvaError(caught) ? caught : error("LARVA_MODEL_MAP_PROFILE_INVALID", "Model-map profile is invalid.");
+    return { status: "failed", profile: profileName, generation: modelMapRouteGeneration, parent: { state: "failed", persona_id: parentPersonaId, error: larvaError }, children: [], counts: modelMapSwitchCounts([]) };
+  }
+
+  const records = uniqueActiveSubagentRuns();
+  let parentTarget: ParsedModel | null = null;
+  let parentModel: unknown | null = null;
+  const childTargets = new Map<ActiveSubagentRun, ParsedModel>();
+  try {
+    if (parentPersonaId !== null) {
+      const parentSpec = await resolvePersona(parentPersonaId, ctx);
+      parentTarget = resolvePiModelFromConfig(parentSpec, profile.config);
+      parentModel = await ctx.modelRegistry?.find?.(parentTarget.provider, parentTarget.modelId) ?? null;
+      if (parentModel === null) throw error("LARVA_MODEL_UNAVAILABLE", `Model unavailable ${parentSpec.model}`);
+    }
+    for (const record of records) {
+      const childSpec = await resolvePersona(record.persona_id, { env: record.env });
+      childTargets.set(record, resolvePiModelFromConfig(childSpec, profile.config));
+    }
+  } catch (caught) {
+    const larvaError = isLarvaError(caught) ? caught : error("LARVA_MODEL_MAP_PROFILE_INVALID", "Model-map profile preflight failed.");
+    return { status: "failed", profile: profileName, generation: modelMapRouteGeneration, parent: { state: "failed", persona_id: parentPersonaId, error: larvaError }, children: [], counts: modelMapSwitchCounts([]) };
+  }
+
+  const previousProfile = activeModelMapProfile;
+  const previousModel = state.piModel;
+  activeModelMapProfile = profile;
+  modelMapRouteGeneration += 1;
+  const generation = modelMapRouteGeneration;
+  if (parentTarget !== null && parentModel !== null) {
+    try {
+      await setPiModel(pi, parentModel, state.envelope?.model ?? formatPiModel(parentTarget));
+      state.piModel = parentModel;
+    } catch {
+      activeModelMapProfile = previousProfile;
+      modelMapRouteGeneration -= 1;
+      let rollbackCertain = previousModel === null;
+      if (previousModel !== null) {
+        try { rollbackCertain = await pi.setModel?.(previousModel) !== false; } catch { rollbackCertain = false; }
+      }
+      state.piModel = previousModel;
+      const message = rollbackCertain ? "Parent rejected the model-map profile switch; prior route restored." : "Parent switch failed and prior model rollback could not be confirmed.";
+      return { status: "failed", profile: profileName, generation: modelMapRouteGeneration, parent: { state: "failed", persona_id: parentPersonaId, error: error("LARVA_MODEL_MAP_PARENT_SWITCH_FAILED", message) }, children: [], counts: modelMapSwitchCounts([]) };
+    }
+  }
+
+  const children = await Promise.all(records.map(async (record, index): Promise<ChildModelMapSwitchResult> => {
+    const target = childTargets.get(record);
+    if (target === undefined) return childModelMapFailure(record);
+    if (record.rpc === null || record.status === "starting") {
+      return { task_id: record.task_id, persona_id: record.persona_id, state: "will_use_new_route", provider: target.provider, model_id: target.modelId };
+    }
+    const response = await record.rpc.command(`model-map-${generation}-${index}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    if (isSuccessResponse(response)) {
+      record.route_generation = generation;
+      return { task_id: record.task_id, persona_id: record.persona_id, state: "switched", provider: target.provider, model_id: target.modelId };
+    }
+    if (record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status)) {
+      return { task_id: record.task_id, persona_id: record.persona_id, state: "ended_during_switch" };
+    }
+    return childModelMapFailure(record);
+  }));
+  const counts = modelMapSwitchCounts(children);
+  return {
+    status: counts.failed > 0 ? "partial" : "success",
+    profile: profileName,
+    generation,
+    parent: parentTarget === null
+      ? { state: "not_applicable", persona_id: null }
+      : { state: "switched", persona_id: parentPersonaId, provider: parentTarget.provider, model_id: parentTarget.modelId },
+    children,
+    counts,
+  };
+}
+
+export async function switchModelMapProfile(profileName: string, ctx: PiContext, pi: PiApi = ctx): Promise<ModelMapSwitchResult> {
+  const prior = modelMapSwitchTail;
+  let release: () => void = () => undefined;
+  modelMapSwitchTail = new Promise<void>((resolveTail) => { release = resolveTail; });
+  await prior;
+  try { return await switchModelMapProfileUnlocked(profileName, ctx, pi); } finally { release(); }
+}
+
+async function modelMapStatus(ctx: PiContext): Promise<Record<string, unknown>> {
+  const env = currentEnv(ctx);
+  const source = activeModelMapProfile !== null ? "profile" : env.LARVA_PI_MODEL_MAP_FILE !== undefined ? "env-file" : existsSync(canonicalModelMapPath(env)) ? "canonical-file" : "fallback";
+  let parent: Record<string, unknown> = { persona_id: null, provider: null, model_id: null };
+  if (state.envelope !== null) {
+    try {
+      const spec = await resolvePersona(state.envelope.persona_id, ctx);
+      const resolved = await resolvePiModel(spec, env);
+      parent = { persona_id: spec.id, provider: resolved.provider, model_id: resolved.modelId };
+    } catch {
+      parent = { persona_id: state.envelope.persona_id, provider: null, model_id: null };
+    }
+  }
+  const records = Array.from(new Set(activeSubagentRuns.values()));
+  return {
+    source,
+    profile: activeModelMapProfile?.name ?? null,
+    path: source === "fallback" ? null : modelMapPath(env),
+    generation: modelMapRouteGeneration,
+    parent,
+    children: {
+      ready: records.filter((record) => record.terminal_snapshot === null && record.rpc !== null && record.status !== "starting").length,
+      starting: records.filter((record) => record.terminal_snapshot === null && (record.rpc === null || record.status === "starting")).length,
+      terminal: records.filter((record) => record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status)).length,
+    },
+  };
+}
+
+async function discoverModelMapProfiles(env: RuntimeEnv, prefix: string): Promise<PiAutocompleteCandidate[]> {
+  try {
+    const names = await readdir(dirname(canonicalModelMapPath(env)));
+    return names.filter((name) => name.startsWith("model-map.") && name.endsWith(".json"))
+      .map((name) => name.slice("model-map.".length, -".json".length))
+      .filter((name) => validModelMapProfileName(name) && name.startsWith(prefix)).slice(0, 50)
+      .map((name) => ({ value: name, label: name, description: "Larva Pi model-map profile" }));
+  } catch { return []; }
+}
+
+function registerLarvaModelMapCommand(ctx: PiContext, pi: PiApi): void {
+  const baseEnv = currentEnv(ctx);
+  registerCommandCompat(pi, "larva-model-map", {
+    description: "Inspect or activate a process-local Larva Pi model-map profile.",
+    getArgumentCompletions: async (prefix) => prefix.trim().length === 0 || "status".startsWith(prefix.trim())
+      ? [{ value: "status", label: "status", description: "Read current model-map routing status" }, ...await discoverModelMapProfiles(baseEnv, prefix.trim())]
+      : await discoverModelMapProfiles(baseEnv, prefix.trim()),
+    handler: async (input, commandCtx) => {
+      const runtimeCtx = withRuntimeEnv(commandCtx ?? ctx, baseEnv);
+      const value = input?.trim() ?? "";
+      if (value === "status") {
+        const status = await modelMapStatus(runtimeCtx);
+        await notify(runtimeCtx, `Larva model-map: ${String(status.source)}${status.profile ? ` (${String(status.profile)})` : ""}`, "info");
+        return status;
+      }
+      if (value.length === 0) return { status: "failed", error: error("LARVA_MODEL_MAP_PROFILE_BAD_NAME", "Usage: /larva-model-map <profile>|status") };
+      const result = await switchModelMapProfile(value, runtimeCtx, pi);
+      const failed = result.children.filter((child) => child.state === "failed").map((child) => `${child.task_id ?? "starting"}:${child.persona_id}`);
+      await notify(runtimeCtx, `Larva model-map ${result.status}: ${result.profile}; parent=${result.parent.state}; children switched=${result.counts.switched}, pending=${result.counts.will_use_new_route}, ended=${result.counts.ended_during_switch}, failed=${result.counts.failed}${failed.length > 0 ? ` (${failed.join(", ")})` : ""}`, result.status === "success" ? "info" : "error");
+      return result;
+    },
+  });
 }
 
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
@@ -5883,6 +6145,7 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     presentation_generation: subagentUiResetGeneration,
     background_task: null,
     cancel_task: null,
+    route_generation: activeModelMapProfile === null ? 0 : modelMapRouteGeneration,
   };
   activeSubagentRuns.set(record.private_key, record);
   return record;
@@ -6051,12 +6314,18 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
   const payload = await callbackPayloadFromRun(record);
   const options: SubagentCallbackMessageOptions = { triggerTurn: true, deliverAs: "steer" };
   if (typeof record.callback_surface.sendMessage === "function") {
-    await record.callback_surface.sendMessage({
-      customType: "larva-subagent-result",
-      content: payload.message as string,
-      display: true,
-      details: payload,
-    }, options);
+    try {
+      await record.callback_surface.sendMessage({
+        customType: "larva-subagent-result",
+        content: payload.message as string,
+        display: true,
+        details: payload,
+      }, options);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      if (!message.includes("Cannot read properties of undefined (reading 'emit')")) throw caught;
+      void traceChildRpc(record.env, "callback_host_completion_failed", { task_id: record.task_id, code: "LARVA_CALLBACK_HOST_POST_DELIVERY_FAILED", message_preview: boundedTracePreview(message) });
+    }
   } else if (typeof ctx?.sendMessage === "function") {
     await ctx.sendMessage({ customType: "larva-subagent-result", content: payload.message as string, display: true, details: payload }, options);
   } else if (typeof ctx?.sendCustomMessage === "function") {
@@ -6108,7 +6377,11 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   appendSubagentRunSnapshot(record, terminal.status);
   if (record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
   if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because the model-facing terminal control path already returned the terminal result."));
-  else void deliverSubagentResultCallback(record).catch((caught) => setSubagentCallbackDelivery(record, "failed", callbackDeliveryDiagnosticFromCaught(caught)));
+  else void deliverSubagentResultCallback(record).catch((caught) => {
+    const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
+    void traceChildRpc(record.env, "callback_delivery_failed", { task_id: record.task_id, code: diagnostic.code, message_preview: boundedTracePreview(diagnostic.message) });
+    setSubagentCallbackDelivery(record, "failed", diagnostic);
+  });
   pruneTerminalSubagentRuns();
   return record.terminal_snapshot;
 }
@@ -7872,7 +8145,9 @@ async function runChildSequence(
       lifecycle.onPhase?.("session_ready", canonical);
     }
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
-    const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }); // resume sequence: switch_session -> prompt -> get_last_assistant_text
+    const routeFenceError = activeModelMapProfile === null ? null : await fenceSubagentRoute(activeRecord, rpc);
+    if (routeFenceError !== null) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, routeFenceError));
+    const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }); // resume sequence: switch_session -> route fence -> prompt -> get_last_assistant_text
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
     if (!isSuccessResponse(prompted)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")));
     touchSubagentRun(activeRecord, "prompt_sent", "accepted");
@@ -8005,7 +8280,13 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   await emitAgentPersonaSwitchModeWarnings(ctx);
   registerAgentPersonaSwitchTools(ctx, pi);
-  const cliSelectedModel = parseModel(env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?.trim() ?? "");
+  const requestedCliModel = env.LARVA_PI_LAUNCHED === "1" && ctx.model !== undefined && ctx.model !== null
+    ? parseModel(env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?.trim() ?? "")
+    : null;
+  const activeModelLabel = ctx.model === undefined || ctx.model === null ? null : piModelAuditLabel(ctx.model);
+  const cliSelectedModel = requestedCliModel !== null && activeModelLabel === formatPiModel(requestedCliModel)
+    ? requestedCliModel
+    : null;
   const stored = latestStoredActivePersonaCommit(ctx);
   if (stored !== null) {
     const modelChangedAfterPersona = sessionHasModelChangeAfter(ctx, stored.entryIndex);
@@ -8101,6 +8382,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   registerPersonaInvocationEventBus(ctx, pi);
   registerLarvaSubagentCommand(ctx, pi);
   registerLarvaAgentPersonaSwitchCommand(ctx, pi);
+  registerLarvaModelMapCommand(ctx, pi);
   registerLarvaPersonaCommand(ctx, pi);
   const subagentSchema = {
     type: "object",
