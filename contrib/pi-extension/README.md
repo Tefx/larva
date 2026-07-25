@@ -861,14 +861,30 @@ and command waits use 30-second deadlines, while the whole scenario uses a
 process work without crossing the former nominal-run margin. The injected child
 RPC timeout remains five seconds; its observation ceiling uses the finite
 30-second case deadline so suite scheduling delay cannot misclassify the real
-five-second timeout outcome. The explicit partial-result, zero-fallback, and
-cleanup assertions remain unchanged. The harness launches the parent and all
-descendants in a dedicated process group. Cleanup signals only that harness-owned group, closes harness
-streams and loopback sockets, scans parent/child TCP endpoints, verifies the
-process group and every recorded process are gone, and removes the temporary
-root. The harness does not install or modify
+five-second timeout outcome. Every observation wait uses
+`process.hrtime.bigint()` and performs one final predicate read at its deadline.
+This terminal read captures an event that completed while the harness event loop
+was descheduled; it does not rerun a product assertion, replay an injected fault,
+or extend the declared deadline. The raw evidence records the clock, the
+zero-budget actual-child terminal-observation probe, and every terminal recheck
+with its label, elapsed time, and match result. The explicit partial-result,
+zero-fallback, and cleanup assertions remain unchanged. The harness launches the
+parent and all descendants in a dedicated process group. Cleanup signals only
+that harness-owned group, closes harness streams and loopback sockets, scans
+parent/child TCP endpoints, verifies the process group and every recorded process
+are gone, and removes the temporary root. The harness does not install or modify
 Pi, read user credentials, contact an external provider, or mutate user
 configuration.
+
+Keep raw gate output in a private artifact when diagnosing a failure:
+
+```bash
+install -d -m 700 /tmp/larva-agent-artifacts
+umask 077
+node scripts/pi-extension-runtime-smoke.mjs \
+  --scenario model-map-profile-switch-installed-child-pi \
+  > /tmp/larva-agent-artifacts/model-map-profile-switch-installed-child-pi.json
+```
 
 The capability-gates output is evidence, not a replacement contract. Normative
 behavior for async/background subagents, targeted cancellation, and the unified
@@ -898,7 +914,6 @@ node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof
 A PASS requires the `runtime.controlledLive` checks to prove fresh child startup,
 resume, abort propagation, and orphan-free cleanup. If Pi or extension loading is
 unavailable, the proof is blocked rather than silently passed.
-
 ## Pi TUI dependency and UI component policy
 
 The Pi extension is a Node/TypeScript runtime surface and formally depends on

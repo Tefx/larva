@@ -1015,14 +1015,23 @@ async function controlledLiveChildRpcProof(evidence, args) {
   };
 }
 
-async function waitForSmokeCondition(predicate, { label = "condition", timeoutMs = 2_000, intervalMs = 10 } = {}) {
-  const startedAt = Date.now();
-  let lastValue = null;
-  while (Date.now() - startedAt < timeoutMs) {
-    lastValue = await predicate();
-    if (lastValue) return lastValue;
-    await new Promise((resolveWait) => setTimeout(resolveWait, intervalMs));
+async function waitForSmokeCondition(predicate, { label = "condition", timeoutMs = 2_000, intervalMs = 10, onTerminalObservation = null } = {}) {
+  const startedAtNs = process.hrtime.bigint();
+  const timeoutNs = BigInt(Math.max(0, Math.trunc(timeoutMs * 1_000_000)));
+  const deadlineNs = startedAtNs + timeoutNs;
+  while (process.hrtime.bigint() < deadlineNs) {
+    const value = await predicate();
+    if (value) return value;
+    const remainingNs = deadlineNs - process.hrtime.bigint();
+    if (remainingNs <= 0n) break;
+    const waitMs = Math.max(1, Math.min(intervalMs, Math.ceil(Number(remainingNs) / 1_000_000)));
+    await new Promise((resolveWait) => setTimeout(resolveWait, waitMs));
   }
+  const terminalValue = await predicate();
+  if (typeof onTerminalObservation === "function") {
+    onTerminalObservation({ matched: Boolean(terminalValue), elapsedMs: Number(process.hrtime.bigint() - startedAtNs) / 1_000_000 });
+  }
+  if (terminalValue) return terminalValue;
   throw new Error(`timed out waiting for ${label}`);
 }
 
@@ -3109,6 +3118,12 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
     },
     executed: { parent: null, children: [] },
     limits: { child_processes: childLimit, switch_rpc_concurrency: 4, rpc_timeout_ms: 5_000, case_deadline_ms: caseDeadlineMs, scenario_deadline_ms: wholeScenarioDeadlineMs, attempts: 1 },
+    observation: {
+      clock: "process.hrtime.bigint",
+      terminal_recheck: "PENDING",
+      probe: null,
+      terminal_rechecks: [],
+    },
     cases: {},
     isolation: {
       offline: true,
@@ -3142,22 +3157,33 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
     events.push({ source: "harness", event, monotonic_ns: process.hrtime.bigint().toString(), ...fields });
   };
   const elapsedMs = (startedNs) => Number(process.hrtime.bigint() - startedNs) / 1_000_000;
+  const recordTerminalObservation = (label, timeoutMs, result) => {
+    const observation = { label, deadline_ms: timeoutMs, matched: result.matched, elapsed_ms: result.elapsedMs };
+    raw.observation.terminal_rechecks.push(observation);
+    appendHarnessEvent("observation_terminal_recheck", observation);
+  };
+  const waitObserved = async (predicate, label, timeoutMs = caseDeadlineMs, intervalMs = 20) => await waitForSmokeCondition(predicate, {
+    label,
+    timeoutMs,
+    intervalMs,
+    onTerminalObservation: (result) => recordTerminalObservation(label, timeoutMs, result),
+  });
   const writeControl = async (phase, releaseState = []) => {
     await writeFile(controlFile, JSON.stringify({ phase, release_state: releaseState }), "utf8");
     appendHarnessEvent("transport_control", { phase, release_state: releaseState });
   };
   const readTransport = async () => await readJsonlTrace(transportFile);
   const readTrace = async () => await readJsonlTrace(traceFile);
-  const waitTransport = async (predicate, label, timeoutMs = caseDeadlineMs) => await waitForSmokeCondition(async () => {
+  const waitTransport = async (predicate, label, timeoutMs = caseDeadlineMs) => await waitObserved(async () => {
     const rows = await readTransport();
     return predicate(rows) ? rows : null;
-  }, { label, timeoutMs, intervalMs: 20 });
-  const waitTrace = async (predicate, label, timeoutMs = caseDeadlineMs) => await waitForSmokeCondition(async () => {
+  }, label, timeoutMs);
+  const waitTrace = async (predicate, label, timeoutMs = caseDeadlineMs) => await waitObserved(async () => {
     const rows = await readTrace();
     return predicate(rows) ? rows : null;
-  }, { label, timeoutMs, intervalMs: 20 });
+  }, label, timeoutMs);
   const parentEventsAfter = (offset) => parentRpcEvents.slice(offset);
-  const waitParentEvent = async (predicate, label, offset = 0, timeoutMs = caseDeadlineMs) => await waitForSmokeCondition(() => parentEventsAfter(offset).find(predicate) ?? null, { label, timeoutMs, intervalMs: 20 });
+  const waitParentEvent = async (predicate, label, offset = 0, timeoutMs = caseDeadlineMs) => await waitObserved(() => parentEventsAfter(offset).find(predicate) ?? null, label, timeoutMs);
   const waitParentAgentEnd = async (offset, label) => await waitParentEvent((event) => event?.type === "agent_end", label, offset);
   const requestParent = (id, body, timeoutMs = caseDeadlineMs) => new Promise((resolveResponse, rejectResponse) => {
     const timer = setTimeout(() => {
@@ -3438,6 +3464,18 @@ export default function (pi) {
     const readyAgentOffset = parentRpcEvents.length;
     await requestParent("launch-ready", { type: "prompt", message: "LAUNCH_READY_CHILDREN" });
     await waitTransport((rows) => readyPersonas.every((persona) => rows.some((row) => row.persona === persona && row.event === "rpc_tx" && row.frame_id === "prompt-1")), "five actual children ready");
+    const terminalProbeRows = await waitTransport(
+      (rows) => readyPersonas.every((persona) => rows.some((row) => row.persona === persona && row.event === "rpc_tx" && row.frame_id === "prompt-1")),
+      "ready-child terminal observation probe",
+      0,
+    );
+    raw.observation.terminal_recheck = "PASS";
+    raw.observation.probe = {
+      label: "ready-child terminal observation probe",
+      deadline_ms: 0,
+      observed_event: "rpc_tx",
+      observed_personas: readyPersonas.filter((persona) => terminalProbeRows.some((row) => row.persona === persona && row.event === "rpc_tx" && row.frame_id === "prompt-1")),
+    };
     await waitParentAgentEnd(readyAgentOffset, "ready launch parent agent_end");
     const statusOffset = parentRpcEvents.length;
     await requestParent("status-five-ready", { type: "prompt", message: "/larva-model-map status" });
@@ -3498,7 +3536,7 @@ export default function (pi) {
     const lifecycleRows = await waitTransport((rows) => rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-2") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1"), "lifecycle fence and prompt ordering");
     const lifecycleFenceIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-2");
     const lifecyclePromptIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1");
-    await waitForSmokeCondition(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, { label: "lifecycle provider request", timeoutMs: caseDeadlineMs, intervalMs: 20 });
+    await waitObserved(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, "lifecycle provider request");
     const lifecycleTask = taskByPersona(lifecycleRows, "lifecycle");
     completeHeld("lifecycle", "LIFECYCLE_NEW_COMPLETE");
     await waitTrace((rows) => rows.some((row) => row.event === "cleanup_end" && row.pid === lifecycleRows.find((entry) => entry.persona === "lifecycle" && entry.event === "process_start")?.controller_pid), "new lifecycle child terminal cleanup");
@@ -3557,7 +3595,7 @@ export default function (pi) {
     let resumeRows = await waitTransport((rows) => rows.filter((row) => row.persona === "lifecycle" && row.event === "process_start").length === 2 && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "switch-1") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_forward" && row.frame_id === "switch-1"), "actual resumed lifecycle session switch");
     const resumeStart = resumeRows.filter((row) => row.persona === "lifecycle" && row.event === "process_start").at(-1);
     await waitTransport((rows) => rows.some((row) => row.persona === "lifecycle" && row.controller_pid === resumeStart?.controller_pid && row.event === "rpc_tx" && row.frame_id === "prompt-1"), "actual resumed lifecycle prompt");
-    await waitForSmokeCondition(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, { label: "resumed lifecycle provider request", timeoutMs: caseDeadlineMs, intervalMs: 20 });
+    await waitObserved(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, "resumed lifecycle provider request");
     completeHeld("lifecycle", "LIFECYCLE_RESUME_COMPLETE");
     await waitParentAgentEnd(resumeParentOffset, "resume launch parent agent_end");
     resumeRows = await readTransport();
@@ -3598,10 +3636,10 @@ export default function (pi) {
     const cleanupOffset = (await readTrace()).length;
     const cleanupResponse = await requestParent("cleanup-new-session", { type: "new_session" }, 20_000);
     appendHarnessEvent("lifecycle_cleanup_requested", { success: cleanupResponse?.success === true });
-    await waitForSmokeCondition(async () => {
+    await waitObserved(async () => {
       const current = await readTransport();
       return processStarts.every((row) => !processAlive(row.controller_pid) && !processAlive(row.actual_pid)) ? current : null;
-    }, { label: "all installed child Pi processes exit", timeoutMs: 20_000, intervalMs: 50 });
+    }, "all installed child Pi processes exit", 20_000, 50);
     cleanupTrace = (await readTrace()).slice(cleanupOffset);
     cleanupTransport = await readTransport();
   } catch (error) {
@@ -3688,7 +3726,7 @@ export default function (pi) {
       .sort((left, right) => left.monotonic_ns.localeCompare(right.monotonic_ns))
       .map((row, index) => ({ sequence: index + 1, ...row }));
     const casesPass = ["bounded_fanout_correlation", "terminal_recheck", "partial_selective_retry", "generation_lifecycle", "rpc_fault_cleanup"].every((key) => raw.cases[key]?.outcome === "PASS");
-    raw.status = casesPass && raw.isolation.loopback_only && raw.isolation.external_provider_requests === 0 && raw.isolation.credential_env_keys_present.length === 0 && raw.executed.children.length >= 5 && raw.executed.children.length <= childLimit && raw.cleanup.outcome === "PASS" && parentStderr.join("").length === 0 ? "PASS" : "FAIL";
+    raw.status = casesPass && raw.observation.terminal_recheck === "PASS" && raw.isolation.loopback_only && raw.isolation.external_provider_requests === 0 && raw.isolation.credential_env_keys_present.length === 0 && raw.executed.children.length >= 5 && raw.executed.children.length <= childLimit && raw.cleanup.outcome === "PASS" && parentStderr.join("").length === 0 ? "PASS" : "FAIL";
     if (raw.status === "FAIL" && raw.error === null) raw.error = { code: "ACTUAL_CHILD_ASSERTION_FAILED", message: "One or more actual-child runtime assertions failed." };
     evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
     evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: expectedVersion, installedVersion: expectedVersion };

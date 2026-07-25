@@ -1726,6 +1726,32 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     assert all(child["package_version"] == "0.82.1" for child in children)
     assert all(isinstance(child["controller_pid"], int) for child in children)
     assert all(isinstance(child["actual_pid"], int) for child in children)
+    assert proof["limits"]["rpc_timeout_ms"] == 5_000
+    assert proof["limits"]["case_deadline_ms"] == 30_000
+
+    observation = proof["observation"]
+    assert observation["clock"] == "process.hrtime.bigint"
+    assert observation["terminal_recheck"] == "PASS"
+    assert observation["probe"] == {
+        "label": "ready-child terminal observation probe",
+        "deadline_ms": 0,
+        "observed_event": "rpc_tx",
+        "observed_personas": ["ready-ok", "retry", "malformed", "timeout", "closed"],
+    }
+    assert any(
+        row["label"] == "ready-child terminal observation probe"
+        and row["deadline_ms"] == 0
+        and row["matched"] is True
+        for row in observation["terminal_rechecks"]
+    )
+    assert any(
+        event["source"] == "harness"
+        and event["event"] == "observation_terminal_recheck"
+        and event["label"] == "ready-child terminal observation probe"
+        and event["deadline_ms"] == 0
+        and event["matched"] is True
+        for event in proof["events"]
+    )
 
     fanout = proof["cases"]["bounded_fanout_correlation"]
     assert fanout["outcome"] == "PASS"
