@@ -139307,17 +139307,20 @@ phases:
       - Enumerate and judge MMPS-01 through MMPS-08 plus the installed-Pi proof closure
       atoms MMPS-REAL-01 through MMPS-REAL-04. Inspect the integrated implementation
       and harness diffs, worker receipts, and independent runtime receipt. Require
-      installed Pi 0.82.0 public extension loading, command invocation/status, and
-      child-RPC evidence; direct initialization/helper calls or source-only assertions
-      cannot close behavioral claims.
+      the witnessed current executable `/opt/homebrew/bin/pi` at CLI version `0.82.1`
+      and package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1`, with same-binary selection/execution, public extension
+      loading, command invocation/status, and child-RPC evidence; direct initialization/helper
+      calls or source-only assertions cannot close behavioral claims.
 
       - Reject a second schema/parser/resolver, hard-coded provider/model/profile/personal
       path, process-env primary state, caller-map/user-config writes, registry/PersonaSpec/models.yaml
       mutation, silent fallback, unbounded filesystem/RPC behavior, first-prompt stale-route
       race, success with a known failed live child, automatic child rollback broadcast
       after parent commit, credential/log leakage, fake Pi or claimed-seam substitution,
-      network/auth/provider request, missing deterministic cleanup, or documentation
-      that claims reload persistence deferred by scope.
+      selected/executed Pi or package identity drift, Pi install/downgrade/update,
+      network/auth/provider request, external-state mutation, missing deterministic
+      cleanup, or documentation that claims reload persistence deferred by scope.
 
       - Confirm controlled fake provider/child endpoints are below the real Pi/extension/command/RPC
       seams, the harness documentation matches its observable isolation contract,
@@ -139328,8 +139331,8 @@ phases:
       Boundary:
 
       - Owner: `spec-verifier`, resolved live and semantic-receipt compatible. Review
-      is read-only and has no remediation, lifecycle, Git, runtime-switch, registry,
-      credential, provider/network, or external-effect authority.
+      is read-only and has no remediation, lifecycle, Git, Pi mutation, runtime-switch,
+      registry, credential, provider/network, or external-effect authority.
 
 
       Admit:
@@ -139340,8 +139343,8 @@ phases:
       implementation and synchronized tests/docs, independent runtime receipt and
       downstream contract impact]`, and requirement coverage for MMPS-01 through MMPS-08
       and MMPS-REAL-01 through MMPS-REAL-04. Static claims need path/line evidence;
-      behavioral/state claims must consume the matching independent installed-Pi runtime
-      evidence.
+      behavioral/state claims must consume the matching independent witnessed-current
+      installed-Pi runtime evidence.
 
       - `downstream_contract.status` must truthfully cover existing model-map, persona
       switching, subagent startup/resume, child RPC lifecycle, runtime harness, and
@@ -139355,13 +139358,16 @@ phases:
 
       - Preserve review evidence and stop on authoritative conflict, absent integrated
       commits, missing/invalid worker or semantic receipt, mutable-primary-only evidence,
-      or any unproven R3 safety/rollback/runtime-isolation atom. Return the smallest
-      exact remediation obligation to the Orchestrator without mutating the plan or
-      repository.'
+      identity drift, or any unproven R3 safety/rollback/runtime-isolation atom. Return
+      the smallest exact remediation obligation to the Orchestrator without mutating
+      the plan or repository.'
     verification: Require a completion-grade spec-verifier vectl.verifier.semantic.v1
       receipt covering MMPS-01..08 and MMPS-REAL-01..04, exact source/implementation/harness/runtime
-      evidence, installed-Pi 0.82.0 claimed-seam integrity, truthful downstream-contract
-      status, no blockers or proof gaps, and no repository changes. This remains the
+      evidence, selected and executed executable `/opt/homebrew/bin/pi` at CLI version
+      `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1`, claimed-seam integrity, truthful downstream-contract
+      status, no Pi install/downgrade/update, no network/auth/provider/user-config/external-state
+      effect, no blockers or proof gaps, and no repository changes. This remains the
       terminal independent R3 safety/rollback judgment; no redundant gate is added.
     refs:
     - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
