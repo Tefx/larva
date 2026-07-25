@@ -663,6 +663,16 @@ function processAlive(pid) {
   }
 }
 
+function processGroupAlive(processGroupId) {
+  if (process.platform === "win32" || !Number.isInteger(processGroupId) || processGroupId <= 0) return false;
+  try {
+    process.kill(-processGroupId, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function uniqueChildPids(events) {
   return Array.from(new Set(events
     .filter((event) => event?.event === "child_spawn" && Number.isInteger(event.pid))
@@ -3115,7 +3125,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
       transport_control: "harness-owned Node interpreter stdio control beneath the unchanged /opt/homebrew/bin/pi child launch seam",
     },
     events: [],
-    cleanup: { outcome: "FAIL", parent_alive: null, child_controllers_alive: {}, child_pi_processes_alive: {}, loopback_closed: false, temporary_root_removed: false, unknown_state: false },
+    cleanup: { outcome: "FAIL", parent_alive: null, process_group_alive: null, child_controllers_alive: {}, child_pi_processes_alive: {}, loopback_closed: false, temporary_root_removed: false, unknown_state: false },
     error: null,
   };
   let parent = null;
@@ -3403,7 +3413,7 @@ export default function (pi) {
       "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
       "-e", providerExtension, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", parentSessionDir,
     ];
-    parent = spawn(installedPi, parentArgs, { cwd: tempRoot, env: baseEnv, stdio: ["pipe", "pipe", "pipe"] });
+    parent = spawn(installedPi, parentArgs, { cwd: tempRoot, env: baseEnv, stdio: ["pipe", "pipe", "pipe"], detached: process.platform !== "win32" });
     parentPid = parent.pid ?? null;
     if (!Number.isInteger(parentPid)) throw new Error("installed parent Pi did not expose a PID");
     raw.executed.parent = { pid: parentPid, selected_binary: installedPi, executable: process.execPath, cli: installedCli, argv: parentArgs, package_version: expectedVersion };
@@ -3606,9 +3616,19 @@ export default function (pi) {
     }
     heldProviderResponses.clear();
     if (parentLines) parentLines.close();
-    if (parent && parent.exitCode === null && parent.signalCode === null) parent.kill("SIGTERM");
+    if (processGroupAlive(parentPid)) {
+      appendHarnessEvent("process_group_cleanup", { process_group_id: parentPid, signal: "SIGTERM" });
+      try { process.kill(-parentPid, "SIGTERM"); } catch {}
+    } else if (parent && parent.exitCode === null && parent.signalCode === null) {
+      parent.kill("SIGTERM");
+    }
     if (parent) await Promise.race([new Promise((resolveClose) => parent.once("close", resolveClose)), new Promise((resolveWait) => setTimeout(resolveWait, 2_000))]);
-    if (parent && parent.exitCode === null && parent.signalCode === null) parent.kill("SIGKILL");
+    if (processGroupAlive(parentPid)) {
+      appendHarnessEvent("process_group_cleanup", { process_group_id: parentPid, signal: "SIGKILL" });
+      try { process.kill(-parentPid, "SIGKILL"); } catch {}
+    } else if (parent && parent.exitCode === null && parent.signalCode === null) {
+      parent.kill("SIGKILL");
+    }
     if (server) {
       for (const socket of sockets) socket.destroy();
       await new Promise((resolveClose) => server.close(() => resolveClose()));
@@ -3627,10 +3647,11 @@ export default function (pi) {
     }
     await new Promise((resolveWait) => setTimeout(resolveWait, 100));
     raw.cleanup.parent_alive = processAlive(parentPid);
+    raw.cleanup.process_group_alive = processGroupAlive(parentPid);
     raw.cleanup.child_controllers_alive = Object.fromEntries(starts.map((row) => [String(row.controller_pid), processAlive(row.controller_pid)]));
     raw.cleanup.child_pi_processes_alive = Object.fromEntries(starts.map((row) => [String(row.actual_pid), processAlive(row.actual_pid)]));
     raw.cleanup.loopback_closed = server === null || !server.listening;
-    raw.cleanup.unknown_state = Object.values(raw.cleanup.child_controllers_alive).some(Boolean) || Object.values(raw.cleanup.child_pi_processes_alive).some(Boolean) || raw.cleanup.parent_alive === true;
+    raw.cleanup.unknown_state = raw.cleanup.process_group_alive || Object.values(raw.cleanup.child_controllers_alive).some(Boolean) || Object.values(raw.cleanup.child_pi_processes_alive).some(Boolean) || raw.cleanup.parent_alive === true;
     try { await rm(tempRoot, { recursive: true, force: true }); } catch (error) { cleanupError = error; }
     raw.cleanup.temporary_root_removed = !(await exists(tempRoot));
     raw.cleanup.outcome = !scenarioDeadlineExceeded && !raw.cleanup.unknown_state && raw.cleanup.loopback_closed && raw.cleanup.temporary_root_removed && cleanupError === null ? "PASS" : "FAIL";

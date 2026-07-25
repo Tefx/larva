@@ -1783,6 +1783,7 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     assert all(sample["loopback_only"] is True for sample in proof["isolation"]["network_samples"])
     assert proof["cleanup"]["outcome"] == "PASS"
     assert proof["cleanup"]["parent_alive"] is False
+    assert proof["cleanup"]["process_group_alive"] is False
     assert all(alive is False for alive in proof["cleanup"]["child_controllers_alive"].values())
     assert all(alive is False for alive in proof["cleanup"]["child_pi_processes_alive"].values())
     assert proof["cleanup"]["loopback_closed"] is True

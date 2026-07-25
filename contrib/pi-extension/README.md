@@ -860,9 +860,11 @@ and command waits use 30-second deadlines, while the whole scenario uses a
 180-second fail-closed deadline so a loaded test host can schedule the same real
 process work without crossing the former nominal-run margin. The injected child
 RPC timeout remains five seconds and its bounded fault assertion remains
-unchanged. Cleanup terminates only harness-started processes, closes harness
-streams and loopback sockets, scans parent/child TCP endpoints, verifies no
-survivor, and removes the temporary root. The harness does not install or modify
+unchanged. The harness launches the parent and all descendants in a dedicated
+process group. Cleanup signals only that harness-owned group, closes harness
+streams and loopback sockets, scans parent/child TCP endpoints, verifies the
+process group and every recorded process are gone, and removes the temporary
+root. The harness does not install or modify
 Pi, read user credentials, contact an external provider, or mutate user
 configuration.
 
