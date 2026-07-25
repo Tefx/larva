@@ -786,7 +786,6 @@ Compaction focus does not:
 - write, migrate, merge, delete, or create user config files automatically.
 
 ## Supplemental local/CI runtime gate
-
 Pi extension work is not complete with source-token contract checks or Invar
 alone. Run the supplemental runtime gate before handing off Pi extension changes:
 
@@ -818,16 +817,50 @@ node scripts/pi-extension-runtime-smoke.mjs --scenario model-map-profile-switch-
 This gate runs the installed Pi executable and bundled extension in RPC mode,
 loads a temporary controlled provider extension, launches a real child Pi RPC
 session, exercises `/larva-model-map status` and profile switching through the
-public command seam, and verifies correlated child `set_model` ordering. The
-combined developer scenarios also cover parent restoration, bounded ready-child
-fan-out, starting-generation fencing, new/resumed/terminal/concurrently-ended
-classifications, exact partial task/persona identity with same-profile retry, and
-malformed/timeout/closed-stream isolation without fallback. It preserves the
-in-flight-old/next-request-new boundary. The gate uses isolated temporary HOME,
-configuration, session, and child-session roots; binds only a loopback provider;
-passes `--offline`; applies process and RPC deadlines; terminates parent and child
-processes; verifies cleanup; and removes the temporary root. It does not install,
-update, or modify Pi, read user credentials, or contact an external provider.
+public command seam, and verifies correlated child `set_model` ordering. It
+preserves public status secrecy, parent restoration, and the
+in-flight-old/next-request-new boundary.
+
+Run the multi-process installed-child gate for the profile-switch concurrency,
+terminal recheck, selective retry, generation/lifecycle, and transport-fault
+proofs:
+
+```bash
+node scripts/pi-extension-runtime-smoke.mjs --scenario model-map-profile-switch-installed-child-pi
+```
+
+The command emits secret-safe raw machine evidence under schema
+`larva.pi.model-map.actual-child.v1`. It records selected and executed parent and
+child Pi/package identities, parent/controller/actual-child process IDs,
+task/persona/request correlation, ordered monotonic events, generations,
+classifications, deadlines and elapsed times, transport faults, exits/signals,
+network observations, and cleanup. A PASS requires:
+
+- at least five simultaneously ready installed child Pi processes and observed
+  profile-switch RPC concurrency no greater than four;
+- unique task/persona/request correlation plus a starting child classified
+  `ended_during_switch` after the initial snapshot and terminal recheck;
+- one exact partial result followed by a same-profile retry that targets only the
+  unswitched live child, with zero fallback;
+- a generation fence before the new child's first prompt and real new, resumed,
+  terminal, and concurrently-ended lifecycle observations; and
+- bounded malformed-response, five-second timeout, and closed-stream failures,
+  each projected as an explicit partial result with zero fallback or process
+  leak.
+
+The harness leaves the installed `/opt/homebrew/bin/pi` launch and shipped
+`dist/cli.js` child process boundary intact. It injects behavior below that seam:
+a harness-owned Node interpreter wrapper launches the unchanged installed child
+Pi and controls only its JSONL output for malformed, timeout, closed-stream, and
+selective-retry cases. The provider binds only to `127.0.0.1`; `PI_OFFLINE=1` and
+`--offline` are applied; credential-like environment variables are removed; HOME,
+`PI_CODING_AGENT_DIR`, model-map, session, and child-session roots are temporary;
+and no more than eight actual child Pi processes are started. Per-case and whole
+scenario deadlines are explicit. Cleanup terminates only harness-started
+processes, closes harness streams and loopback sockets, scans parent/child TCP
+endpoints, verifies no survivor, and removes the temporary root. The harness does
+not install or modify Pi, read user credentials, contact an external provider, or
+mutate user configuration.
 
 The capability-gates output is evidence, not a replacement contract. Normative
 behavior for async/background subagents, targeted cancellation, and the unified
@@ -836,14 +869,16 @@ behavior for async/background subagents, targeted cancellation, and the unified
 in `design/pi-coding-agent-integration.md` remain historical unless they agree
 with that design basis.
 
-The supplemental gate uses `--offline` runtime scenarios and the deterministic
-fake Larva CLI bridge under `tests/fixtures/pi/fake-larva-cli.mjs`; it does not
-require live network access or session credentials. If the real Pi binary is not
-available or cannot report an extension flag, real-Pi scenarios skip with the
-captured availability evidence. If Pi is present but its RPC runtime does not
-expose extension UI/custom-command observability, those scenarios xfail with RPC
-evidence. Plugin load, slash-command liveness, and other product/runtime failures
-must fail the gate rather than being hidden behind unconditional skips.
+The other supplemental scenarios use `--offline` and the deterministic fake
+Larva CLI bridge under `tests/fixtures/pi/fake-larva-cli.mjs`; they do not require
+live network access or session credentials. If the real Pi binary is not
+available or cannot report an extension flag, applicable baseline real-Pi
+scenarios skip with captured availability evidence. If Pi is present but its RPC
+runtime does not expose extension UI/custom-command observability, those baseline
+scenarios xfail with RPC evidence. The pinned installed-child gate fails closed on
+identity drift, unavailable RPC seams, non-loopback traffic, credential/auth
+requests, unknown process state, or cleanup failure. Plugin load, slash-command
+liveness, and other product/runtime failures fail the gate.
 
 For controlled child RPC liveness, run:
 

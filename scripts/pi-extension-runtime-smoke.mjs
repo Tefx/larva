@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { access, chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -28,6 +28,7 @@ const SCENARIOS = [
   "persona-invocation-bus",
   "model-map-profile-switch",
   "model-map-profile-switch-installed-pi",
+  "model-map-profile-switch-installed-child-pi",
 ];
 
 const PIINV_REQUIRED_EXPECTED_RED_IDS = [
@@ -3023,6 +3024,660 @@ export default function (pi) {
   }
 }
 
+function actualChildProfileNameFromFrameId(frameId) {
+  const match = /^model-map-(\d+)-/.exec(String(frameId ?? ""));
+  return match === null ? null : Number.parseInt(match[1], 10);
+}
+
+function actualChildSecretFreeEnv(base, overrides = {}) {
+  const env = { ...base, ...overrides };
+  for (const key of Object.keys(env)) {
+    if (/(?:API[_-]?KEY|AUTH|CREDENTIAL|PASSWORD|SECRET|TOKEN|AWS_|AZURE_|GOOGLE_APPLICATION_CREDENTIALS)/i.test(key)) delete env[key];
+  }
+  return env;
+}
+
+async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
+  const schemaName = "larva.pi.model-map.actual-child.v1";
+  const installedPi = "/opt/homebrew/bin/pi";
+  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const installedCli = join(installedPackageRoot, "dist", "cli.js");
+  const expectedVersion = "0.82.1";
+  const scenarioStartedWallMs = Date.now();
+  const scenarioStartedMonotonicNs = process.hrtime.bigint();
+  const wholeScenarioDeadlineMs = 90_000;
+  const caseDeadlineMs = 15_000;
+  const childLimit = 8;
+  const events = [];
+  const providerRequests = [];
+  const parentRpcEvents = [];
+  const parentRpcResponses = new Map();
+  const parentStderr = [];
+  const heldProviderResponses = new Map();
+  const sockets = new Set();
+  const plans = new Map();
+  const tempRoot = await mkdtemp(join(tmpdir(), "larva-actual-child-profile-switch-"));
+  const home = join(tempRoot, "home");
+  const piCodingAgentDir = join(tempRoot, "pi-agent");
+  const configDir = join(home, ".pi", "larva");
+  const childSessionDir = join(tempRoot, "child-sessions");
+  const parentSessionDir = join(tempRoot, "parent-session");
+  const traceFile = join(tempRoot, "child-rpc.jsonl");
+  const transportFile = join(tempRoot, "transport.jsonl");
+  const controlFile = join(tempRoot, "transport-control.json");
+  const wrapperDir = join(tempRoot, "transport-bin");
+  const wrapperPath = join(wrapperDir, "node");
+  const controllerPath = join(tempRoot, "installed-pi-transport-controller.mjs");
+  const providerExtension = join(tempRoot, "loopback-provider.ts");
+  const larvaCli = join(tempRoot, "larva-cli.mjs");
+  const subagentConfig = join(tempRoot, "subagent-runtime.json");
+  const personaModels = {
+    parent: "logical/parent",
+    "ready-ok": "logical/child",
+    retry: "logical/child",
+    malformed: "logical/child",
+    timeout: "logical/child",
+    closed: "logical/child",
+    ending: "logical/child",
+    lifecycle: "logical/child",
+  };
+  const profileModels = {
+    alpha: { parent: "parent-a", child: "child-a" },
+    beta: { parent: "parent-b", child: "child-b" },
+    gamma: { parent: "parent-c", child: "child-c" },
+    delta: { parent: "parent-d", child: "child-d" },
+    epsilon: { parent: "parent-e", child: "child-e" },
+    zeta: { parent: "parent-z", child: "child-z" },
+  };
+  const raw = {
+    schema_name: schemaName,
+    status: "FAIL",
+    requirements: ["MMPS-CHILD-REAL-01", "MMPS-CHILD-REAL-02", "MMPS-CHILD-REAL-03", "MMPS-CHILD-REAL-04", "MMPS-CHILD-REAL-05"],
+    selected: {
+      parent: { binary: installedPi, package_root: installedPackageRoot, package_version: null, cli: installedCli },
+      child: { binary: installedPi, package_root: installedPackageRoot, package_version: null, cli: installedCli },
+    },
+    executed: { parent: null, children: [] },
+    limits: { child_processes: childLimit, switch_rpc_concurrency: 4, rpc_timeout_ms: 5_000, case_deadline_ms: caseDeadlineMs, scenario_deadline_ms: wholeScenarioDeadlineMs, attempts: 1 },
+    cases: {},
+    isolation: {
+      offline: true,
+      loopback_only: false,
+      external_provider_requests: 0,
+      credential_env_keys_present: [],
+      home,
+      pi_coding_agent_dir: piCodingAgentDir,
+      config_dir: configDir,
+      parent_session_dir: parentSessionDir,
+      child_session_dir: childSessionDir,
+      provider_endpoint: null,
+      network_samples: [],
+      transport_control: "harness-owned Node interpreter stdio control beneath the unchanged /opt/homebrew/bin/pi child launch seam",
+    },
+    events: [],
+    cleanup: { outcome: "FAIL", parent_alive: null, child_controllers_alive: {}, child_pi_processes_alive: {}, loopback_closed: false, temporary_root_removed: false, unknown_state: false },
+    error: null,
+  };
+  let parent = null;
+  let parentLines = null;
+  let server = null;
+  let providerUrl = null;
+  let cleanupTrace = [];
+  let cleanupTransport = [];
+  let cleanupError = null;
+  let parentPid = null;
+  let scenarioDeadlineExceeded = false;
+  let scenarioDeadlineTimer = null;
+  const appendHarnessEvent = (event, fields = {}) => {
+    events.push({ source: "harness", event, monotonic_ns: process.hrtime.bigint().toString(), ...fields });
+  };
+  const elapsedMs = (startedNs) => Number(process.hrtime.bigint() - startedNs) / 1_000_000;
+  const writeControl = async (phase, releaseState = []) => {
+    await writeFile(controlFile, JSON.stringify({ phase, release_state: releaseState }), "utf8");
+    appendHarnessEvent("transport_control", { phase, release_state: releaseState });
+  };
+  const readTransport = async () => await readJsonlTrace(transportFile);
+  const readTrace = async () => await readJsonlTrace(traceFile);
+  const waitTransport = async (predicate, label, timeoutMs = caseDeadlineMs) => await waitForSmokeCondition(async () => {
+    const rows = await readTransport();
+    return predicate(rows) ? rows : null;
+  }, { label, timeoutMs, intervalMs: 20 });
+  const waitTrace = async (predicate, label, timeoutMs = caseDeadlineMs) => await waitForSmokeCondition(async () => {
+    const rows = await readTrace();
+    return predicate(rows) ? rows : null;
+  }, { label, timeoutMs, intervalMs: 20 });
+  const parentEventsAfter = (offset) => parentRpcEvents.slice(offset);
+  const waitParentEvent = async (predicate, label, offset = 0, timeoutMs = caseDeadlineMs) => await waitForSmokeCondition(() => parentEventsAfter(offset).find(predicate) ?? null, { label, timeoutMs, intervalMs: 20 });
+  const waitParentAgentEnd = async (offset, label) => await waitParentEvent((event) => event?.type === "agent_end", label, offset);
+  const requestParent = (id, body, timeoutMs = caseDeadlineMs) => new Promise((resolveResponse, rejectResponse) => {
+    const timer = setTimeout(() => {
+      parentRpcResponses.delete(id);
+      rejectResponse(new Error(`parent RPC timeout: ${id}`));
+    }, timeoutMs);
+    parentRpcResponses.set(id, (response) => {
+      clearTimeout(timer);
+      resolveResponse(response);
+    });
+    parent.stdin.write(`${JSON.stringify({ id, ...body })}\n`);
+    appendHarnessEvent("parent_rpc_tx", { correlation_id: id, frame_type: body.type, command: typeof body.message === "string" && body.message.startsWith("/larva-model-map") ? body.message : null });
+  });
+  const runProfile = async (profile, label) => {
+    const eventOffset = parentRpcEvents.length;
+    const started = process.hrtime.bigint();
+    const response = await requestParent(`profile-${label}`, { type: "prompt", message: `/larva-model-map ${profile}` });
+    const notification = await waitParentEvent(
+      (event) => event?.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.startsWith("Larva model-map ") && event.message.includes(`: ${profile};`),
+      `${label} profile notification`,
+      eventOffset,
+    );
+    appendHarnessEvent("profile_classified", { profile, label, elapsed_ms: elapsedMs(started), message: notification.message });
+    return { response, notification, elapsed_ms: elapsedMs(started), transport: await readTransport(), trace: await readTrace() };
+  };
+  const taskByPersona = (rows, persona) => rows.findLast((row) => row.persona === persona && row.event === "rpc_forward" && row.frame_id === "state-1" && typeof row.task_id === "string")?.task_id ?? null;
+  const setModelRows = (rows, fromIndex = 0) => rows.slice(fromIndex).filter((row) => row.frame_type === "set_model" && typeof row.frame_id === "string");
+  const commandGenerationRows = (rows, generation) => rows.filter((row) => row.event === "rpc_tx" && actualChildProfileNameFromFrameId(row.frame_id) === generation);
+  const concurrencyObservation = (rows, generation) => {
+    const relevant = rows.filter((row) => actualChildProfileNameFromFrameId(row.frame_id) === generation && ["rpc_tx", "rpc_forward", "rpc_drop", "rpc_malformed", "rpc_stdout_closed"].includes(row.event));
+    let active = 0;
+    let maximum = 0;
+    const activeIds = new Set();
+    for (const row of relevant) {
+      if (row.event === "rpc_tx" && !activeIds.has(row.frame_id)) {
+        activeIds.add(row.frame_id);
+        active += 1;
+        maximum = Math.max(maximum, active);
+      } else if (row.event !== "rpc_tx" && activeIds.delete(row.frame_id)) {
+        active = Math.max(0, active - 1);
+      }
+    }
+    return { maximum, final_active: active, rows: relevant };
+  };
+  const setPlan = (marker, calls) => {
+    plans.set(marker, { calls, sent: false });
+    appendHarnessEvent("parent_plan", { marker, call_count: calls.length, personas: calls.map((call) => call.persona_id) });
+  };
+  const completeHeld = (persona, text) => {
+    const entries = heldProviderResponses.get(persona) ?? [];
+    const next = entries.shift();
+    if (entries.length === 0) heldProviderResponses.delete(persona);
+    if (!next) throw new Error(`no held provider response for ${persona}`);
+    sendSse(next.response, [textChunk(next.model, text)]);
+    appendHarnessEvent("provider_release", { persona, model: next.model });
+  };
+  const addHeld = (persona, value) => {
+    const entries = heldProviderResponses.get(persona) ?? [];
+    entries.push(value);
+    heldProviderResponses.set(persona, entries);
+  };
+  const profileNotificationCounts = (message) => {
+    const match = /children switched=(\d+), pending=(\d+), ended=(\d+), failed=(\d+)/.exec(message);
+    return match === null ? null : { switched: Number(match[1]), pending: Number(match[2]), ended: Number(match[3]), failed: Number(match[4]) };
+  };
+  const sendSse = (response, chunks) => {
+    response.writeHead(200, { "content-type": "text/event-stream", connection: "close" });
+    for (const chunk of chunks) response.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    response.end("data: [DONE]\n\n");
+  };
+  const textChunk = (model, text) => ({
+    id: `chat-${Date.now()}`,
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: "stop" }],
+  });
+  const localEndpoint = (value) => /(?:127\.0\.0\.1|\[::1\]|localhost)/.test(value);
+  const processNetworkSample = async (pid, role, persona = null) => {
+    const result = await runProcess("lsof", ["-nP", "-a", "-p", String(pid), "-iTCP", "-FpcnT"], { timeoutMs: 2_000 });
+    const endpoints = result.stdout.split(/\r?\n/).filter((line) => line.startsWith("n")).map((line) => line.slice(1));
+    return { pid, role, persona, endpoints, loopback_only: endpoints.every(localEndpoint) };
+  };
+
+  try {
+    scenarioDeadlineTimer = setTimeout(() => {
+      scenarioDeadlineExceeded = true;
+      appendHarnessEvent("scenario_deadline_exceeded", { deadline_ms: wholeScenarioDeadlineMs });
+      if (parent && parent.exitCode === null && parent.signalCode === null) parent.kill("SIGTERM");
+      for (const socket of sockets) socket.destroy();
+    }, wholeScenarioDeadlineMs);
+    appendHarnessEvent("scenario_start", { temp_root: tempRoot, attempt: 1, deadline_ms: wholeScenarioDeadlineMs });
+    await mkdir(wrapperDir, { recursive: true });
+    await mkdir(configDir, { recursive: true });
+    await mkdir(childSessionDir, { recursive: true });
+    await mkdir(parentSessionDir, { recursive: true });
+    await mkdir(piCodingAgentDir, { recursive: true });
+    await writeControl("normal");
+
+    const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
+    const packageJson = await readJsonFile(join(installedPackageRoot, "package.json"));
+    const cliRealPath = await realpath(installedPi);
+    if (version.exitCode !== 0 || version.stdout.trim() !== expectedVersion || packageJson.version !== expectedVersion || cliRealPath !== installedCli) {
+      throw new Error(`installed Pi identity drift: version=${version.stdout.trim()} package=${packageJson.version} cli=${cliRealPath}`);
+    }
+    raw.selected.parent.package_version = packageJson.version;
+    raw.selected.child.package_version = packageJson.version;
+
+    await writeFile(larvaCli, `
+const [, , command, personaId, jsonFlag] = process.argv;
+const models = ${JSON.stringify(personaModels)};
+if (command !== "resolve" || jsonFlag !== "--json" || typeof models[personaId] !== "string") process.exit(3);
+process.stdout.write(JSON.stringify({ data: { id: personaId, description: personaId, prompt: "ACTUAL_CHILD_PERSONA:" + personaId, model: models[personaId], capabilities: {}, spec_version: "0.1.0", spec_digest: "sha256:" + personaId, can_spawn: true } }));
+`, "utf8");
+
+    await writeFile(controllerPath, `
+import { spawn } from "node:child_process";
+import { appendFileSync, readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+const args = process.argv.slice(2);
+const realNode = process.env.LARVA_ACTUAL_CHILD_REAL_NODE;
+const logFile = process.env.LARVA_ACTUAL_CHILD_TRANSPORT_LOG;
+const controlFile = process.env.LARVA_ACTUAL_CHILD_CONTROL_FILE;
+const persona = process.env.LARVA_PI_INITIAL_PERSONA_ID || "unknown";
+const controllerPid = process.pid;
+const append = (event, fields = {}) => appendFileSync(logFile, JSON.stringify({ event, monotonic_ns: process.hrtime.bigint().toString(), controller_pid: controllerPid, persona, ...fields }) + "\\n", "utf8");
+const control = () => { try { return JSON.parse(readFileSync(controlFile, "utf8")); } catch { return { phase: "invalid", release_state: [] }; } };
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const child = spawn(realNode, args, { env: process.env, stdio: ["pipe", "pipe", "pipe"] });
+append("process_start", { actual_pid: child.pid ?? null, selected_binary: "/opt/homebrew/bin/pi", executable: realNode, cli: args[0] ?? null, argv: args });
+let outputClosed = false;
+const forward = (line, message, extra = {}) => {
+  if (!outputClosed) process.stdout.write(line + "\\n");
+  append("rpc_forward", { frame_id: typeof message?.id === "string" ? message.id : null, frame_type: typeof message?.command === "string" ? message.command : message?.type ?? null, success: message?.success === true, task_id: message?.id === "state-1" && typeof message?.data?.sessionFile === "string" ? message.data.sessionFile : null, ...extra });
+};
+createInterface({ input: process.stdin }).on("line", (line) => {
+  let message = null;
+  try { message = JSON.parse(line); } catch {}
+  append("rpc_tx", { frame_id: typeof message?.id === "string" ? message.id : null, frame_type: typeof message?.type === "string" ? message.type : null, provider: typeof message?.provider === "string" ? message.provider : null, model_id: typeof message?.modelId === "string" ? message.modelId : null });
+  child.stdin.write(line + "\\n");
+});
+createInterface({ input: child.stdout }).on("line", async (line) => {
+  let message = null;
+  try { message = JSON.parse(line); } catch {}
+  const frameId = typeof message?.id === "string" ? message.id : null;
+  const frameType = typeof message?.command === "string" ? message.command : message?.type ?? null;
+  append("rpc_rx_actual", { frame_id: frameId, frame_type: frameType, success: message?.success === true });
+  if (frameId === "state-1" && ["ending", "lifecycle"].includes(persona)) {
+    append("rpc_state_held", { frame_id: frameId });
+    while (!Array.isArray(control().release_state) || !control().release_state.includes(persona)) await sleep(10);
+    forward(line, message, { released: true });
+    return;
+  }
+  if (frameId?.startsWith("model-map-") || frameId?.startsWith("switch-")) {
+    const phase = control().phase;
+    if (phase === "retry_first" && persona === "retry") { append("rpc_drop", { frame_id: frameId, frame_type: "set_model", fault: "selective_retry_timeout" }); return; }
+    if (phase === "fault_malformed" && persona === "malformed") { process.stdout.write("{controlled-malformed\\n"); append("rpc_malformed", { frame_id: frameId, frame_type: "set_model", fault: "malformed_response" }); return; }
+    if (phase === "fault_timeout" && persona === "timeout") { append("rpc_drop", { frame_id: frameId, frame_type: "set_model", fault: "timeout" }); return; }
+    if (phase === "fault_closed" && persona === "closed") { outputClosed = true; process.stdout.end(); append("rpc_stdout_closed", { frame_id: frameId, frame_type: "set_model", fault: "closed_stream" }); return; }
+    await sleep(180);
+    forward(line, message, { delayed_ms: 180 });
+    return;
+  }
+  forward(line, message);
+});
+child.stderr.on("data", (chunk) => { process.stderr.write(chunk); append("child_stderr", { bytes: chunk.byteLength, text_preview: String(chunk).slice(0, 500) }); });
+child.on("close", (code, signal) => { append("process_exit", { actual_pid: child.pid ?? null, code, signal }); if (!outputClosed) process.stdout.end(); process.exit(code ?? (signal ? 1 : 0)); });
+const terminate = (signal) => { append("controller_signal", { signal, actual_pid: child.pid ?? null }); if (child.exitCode === null && child.signalCode === null) child.kill(signal); setTimeout(() => { if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); }, 750).unref(); };
+process.on("SIGTERM", () => terminate("SIGTERM"));
+process.on("SIGINT", () => terminate("SIGINT"));
+`, "utf8");
+
+    await writeFile(wrapperPath, `#!/bin/sh
+if [ "$LARVA_PI_INITIAL_PERSONA_ID" = "parent" ]; then
+  exec "$LARVA_ACTUAL_CHILD_REAL_NODE" "$@"
+fi
+exec "$LARVA_ACTUAL_CHILD_REAL_NODE" "$LARVA_ACTUAL_CHILD_CONTROLLER" "$@"
+`, "utf8");
+    await chmod(wrapperPath, 0o755);
+
+    const modelIds = Object.values(profileModels).flatMap((value) => [value.parent, value.child]);
+    await writeFile(providerExtension, `
+export default function (pi) {
+  const model = (id) => ({ id, name: id, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 });
+  pi.registerProvider("controlled", { name: "Actual-child loopback provider", baseUrl: ${JSON.stringify("__PROVIDER_URL__")}, apiKey: "local-only", api: "openai-completions", models: ${JSON.stringify(modelIds)}.map(model) });
+}
+`, "utf8");
+    await writeFile(subagentConfig, JSON.stringify({ schema_version: 1, extension_sources: [providerExtension] }), "utf8");
+    for (const [profile, models] of Object.entries(profileModels)) {
+      await writeFile(join(configDir, `model-map.${profile}.json`), JSON.stringify({ models: { "logical/parent": { provider: "controlled", model_id: models.parent }, "logical/child": { provider: "controlled", model_id: models.child } }, prefix_rules: [] }), "utf8");
+    }
+    await writeFile(join(configDir, "model-map.json"), JSON.stringify({ models: { "logical/parent": { provider: "controlled", model_id: profileModels.alpha.parent }, "logical/child": { provider: "controlled", model_id: profileModels.alpha.child } }, prefix_rules: [] }), "utf8");
+
+    server = createServer(async (request, response) => {
+      let body = "";
+      for await (const chunk of request) body += chunk.toString("utf8");
+      let payload = {};
+      try { payload = body.length > 0 ? JSON.parse(body) : {}; } catch { response.writeHead(400); response.end(); return; }
+      const model = typeof payload.model === "string" ? payload.model : "unknown";
+      const renderedMessages = JSON.stringify(payload.messages ?? []);
+      const personaMatch = /ACTUAL_CHILD_PERSONA:([A-Za-z0-9_-]+)/.exec(renderedMessages);
+      const persona = personaMatch?.[1] ?? (model.startsWith("parent-") ? "parent" : "unknown");
+      providerRequests.push({ monotonic_ns: process.hrtime.bigint().toString(), model, persona, loopback: true, tool_result_present: Array.isArray(payload.messages) && payload.messages.some((message) => message?.role === "tool") });
+      appendHarnessEvent("provider_request", { model, persona });
+      if (persona === "parent") {
+        const planEntry = Array.from(plans.entries()).find(([marker, plan]) => plan.sent === false && renderedMessages.includes(marker));
+        if (planEntry) {
+          planEntry[1].sent = true;
+          const calls = planEntry[1].calls.map((input, index) => ({ index, id: `${planEntry[0].toLowerCase()}-${index}`, type: "function", function: { name: "larva_subagent", arguments: JSON.stringify(input) } }));
+          sendSse(response, [{ id: `parent-${Date.now()}`, object: "chat.completion.chunk", created: Math.floor(Date.now() / 1000), model, choices: [{ index: 0, delta: { role: "assistant", tool_calls: calls }, finish_reason: "tool_calls" }] }]);
+          return;
+        }
+        sendSse(response, [textChunk(model, "PARENT_PLAN_COMPLETE")]);
+        return;
+      }
+      addHeld(persona, { response, model });
+      request.on("close", () => appendHarnessEvent("provider_client_close", { persona, model }));
+    });
+    server.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
+    await new Promise((resolveListen, rejectListen) => { server.once("error", rejectListen); server.listen(0, "127.0.0.1", resolveListen); });
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("loopback provider failed to bind");
+    providerUrl = `http://127.0.0.1:${address.port}/v1`;
+    raw.isolation.provider_endpoint = providerUrl;
+    await writeFile(providerExtension, (await readFile(providerExtension, "utf8")).replace("__PROVIDER_URL__", providerUrl), "utf8");
+
+    const baseEnv = actualChildSecretFreeEnv(process.env, {
+      HOME: home,
+      PI_CODING_AGENT_DIR: piCodingAgentDir,
+      PI_CODING_AGENT_SESSION_DIR: parentSessionDir,
+      PI_OFFLINE: "1",
+      PATH: `${wrapperDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? "/opt/homebrew/bin:/usr/bin:/bin"}`,
+      LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, larvaCli]),
+      LARVA_PI_REAL_BIN: installedPi,
+      LARVA_PI_EXTENSION_FLAG: "-e",
+      LARVA_PI_EXTENSION_ENTRY: extensionPath,
+      LARVA_PI_INITIAL_PERSONA_ID: "parent",
+      LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: "controlled/parent-a",
+      LARVA_PI_CHILD_SESSION_DIR: childSessionDir,
+      LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+      LARVA_PI_SUBAGENT_CONFIG_FILE: subagentConfig,
+      LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+      LARVA_PI_INTERACTIVE_TUI: "0",
+      LARVA_PI_LAUNCHED: "1",
+      LARVA_ACTUAL_CHILD_REAL_NODE: process.execPath,
+      LARVA_ACTUAL_CHILD_CONTROLLER: controllerPath,
+      LARVA_ACTUAL_CHILD_TRANSPORT_LOG: transportFile,
+      LARVA_ACTUAL_CHILD_CONTROL_FILE: controlFile,
+    });
+    raw.isolation.credential_env_keys_present = Object.keys(baseEnv).filter((key) => /(?:API[_-]?KEY|AUTH|CREDENTIAL|PASSWORD|SECRET|TOKEN)/i.test(key));
+    delete baseEnv.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI;
+    const parentArgs = [
+      "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
+      "-e", providerExtension, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", parentSessionDir,
+    ];
+    parent = spawn(installedPi, parentArgs, { cwd: tempRoot, env: baseEnv, stdio: ["pipe", "pipe", "pipe"] });
+    parentPid = parent.pid ?? null;
+    if (!Number.isInteger(parentPid)) throw new Error("installed parent Pi did not expose a PID");
+    raw.executed.parent = { pid: parentPid, selected_binary: installedPi, executable: process.execPath, cli: installedCli, argv: parentArgs, package_version: expectedVersion };
+    appendHarnessEvent("parent_spawn", { pid: parentPid, selected_binary: installedPi, cli: installedCli });
+    parent.stderr.on("data", (chunk) => parentStderr.push(chunk.toString("utf8")));
+    parentLines = createInterface({ input: parent.stdout });
+    parentLines.on("line", (line) => {
+      let message;
+      try { message = JSON.parse(line); } catch { parentRpcEvents.push({ type: "malformed_parent_output" }); return; }
+      appendHarnessEvent("parent_rpc_rx", { correlation_id: typeof message.id === "string" ? message.id : null, frame_type: message.type ?? null, success: message.success === true });
+      if (message?.id && parentRpcResponses.has(String(message.id))) {
+        parentRpcResponses.get(String(message.id))(message);
+        parentRpcResponses.delete(String(message.id));
+      } else {
+        parentRpcEvents.push(message);
+      }
+    });
+    await requestParent("parent-ready", { type: "get_state" });
+
+    const readyPersonas = ["ready-ok", "retry", "malformed", "timeout", "closed"];
+    setPlan("LAUNCH_READY_CHILDREN", readyPersonas.map((persona) => ({ persona_id: persona, task: `Hold actual child ${persona} on the loopback provider.` })));
+    const readyAgentOffset = parentRpcEvents.length;
+    await requestParent("launch-ready", { type: "prompt", message: "LAUNCH_READY_CHILDREN" });
+    await waitTransport((rows) => readyPersonas.every((persona) => rows.some((row) => row.persona === persona && row.event === "rpc_tx" && row.frame_id === "prompt-1")), "five actual children ready");
+    await waitParentAgentEnd(readyAgentOffset, "ready launch parent agent_end");
+    const statusOffset = parentRpcEvents.length;
+    await requestParent("status-five-ready", { type: "prompt", message: "/larva-model-map status" });
+    const readyStatus = await waitParentEvent((event) => event?.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.includes("children ready=5"), "five-ready status", statusOffset);
+    appendHarnessEvent("five_ready_observed", { message: readyStatus.message });
+
+    const alphaTransportOffset = (await readTransport()).length;
+    const alpha = await runProfile("alpha", "fanout");
+    const alphaRows = alpha.transport.slice(alphaTransportOffset);
+    const alphaConcurrency = concurrencyObservation(alphaRows, 1);
+    const alphaCommands = commandGenerationRows(alphaRows, 1);
+    const alphaIds = alphaCommands.map((row) => row.frame_id);
+    const alphaPersonas = alphaCommands.map((row) => row.persona);
+    const alphaTasks = alphaCommands.map((row) => taskByPersona(alpha.transport, row.persona));
+    raw.cases.bounded_fanout_correlation = {
+      requirement_id: "MMPS-CHILD-REAL-01",
+      outcome: alpha.notification.message.startsWith("Larva model-map success: alpha;") && alphaCommands.length === 5 && new Set(alphaIds).size === 5 && new Set(alphaPersonas).size === 5 && alphaTasks.every((task) => typeof task === "string") && alphaConcurrency.maximum === 4 ? "PASS" : "FAIL",
+      simultaneous_ready_children: readyPersonas.length,
+      actual_child_processes: readyPersonas.map((persona) => ({ persona, task_id: taskByPersona(alpha.transport, persona), controller_pid: alpha.transport.find((row) => row.persona === persona && row.event === "process_start")?.controller_pid ?? null, actual_pid: alpha.transport.find((row) => row.persona === persona && row.event === "process_start")?.actual_pid ?? null })),
+      correlations: alphaCommands.map((row) => ({ correlation_id: row.frame_id, persona_id: row.persona, task_id: taskByPersona(alpha.transport, row.persona), provider: row.provider, model_id: row.model_id })),
+      observed_max_concurrency: alphaConcurrency.maximum,
+      concurrency_limit: 4,
+      elapsed_ms: alpha.elapsed_ms,
+    };
+
+    setPlan("LAUNCH_STARTING_CHILDREN", [
+      { persona_id: "ending", task: "Remain starting until terminated during the profile switch." },
+      { persona_id: "lifecycle", task: "Fence the latest generation before the first prompt." },
+    ]);
+    const startingParentOffset = parentRpcEvents.length;
+    await requestParent("launch-starting", { type: "prompt", message: "LAUNCH_STARTING_CHILDREN" });
+    let startingRows = await waitTransport((rows) => ["ending", "lifecycle"].every((persona) => rows.some((row) => row.persona === persona && row.event === "rpc_state_held")), "two actual children held in starting state");
+    const endingProcess = startingRows.find((row) => row.persona === "ending" && row.event === "process_start");
+    if (!endingProcess || !Number.isInteger(endingProcess.controller_pid)) throw new Error("ending child controller identity missing");
+    const betaEventOffset = parentRpcEvents.length;
+    const betaStarted = process.hrtime.bigint();
+    const betaResponsePromise = requestParent("profile-terminal-recheck", { type: "prompt", message: "/larva-model-map beta" });
+    startingRows = await waitTransport((rows) => rows.some((row) => row.event === "rpc_tx" && actualChildProfileNameFromFrameId(row.frame_id) === 2), "beta snapshot crossed by first installed-child RPC");
+    appendHarnessEvent("profile_snapshot_crossed", { profile: "beta", proof_boundary: "first ready-child set_model tx follows the active-record snapshot", child: "ending" });
+    process.kill(endingProcess.controller_pid, "SIGTERM");
+    appendHarnessEvent("starting_child_terminated", { persona: "ending", controller_pid: endingProcess.controller_pid, actual_pid: endingProcess.actual_pid ?? null });
+    await betaResponsePromise;
+    const betaNotification = await waitParentEvent((event) => event?.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.includes(": beta;"), "beta terminal-recheck notification", betaEventOffset);
+    appendHarnessEvent("profile_classified", { profile: "beta", label: "terminal-recheck", elapsed_ms: elapsedMs(betaStarted), message: betaNotification.message });
+    const betaCounts = profileNotificationCounts(betaNotification.message);
+    raw.cases.terminal_recheck = {
+      requirement_id: "MMPS-CHILD-REAL-02",
+      outcome: betaCounts?.ended === 1 && betaCounts?.pending === 1 ? "PASS" : "FAIL",
+      classification: "ended_during_switch",
+      persona_id: "ending",
+      process: { controller_pid: endingProcess.controller_pid, actual_pid: endingProcess.actual_pid ?? null },
+      ordering: ["profile_snapshot_crossed", "starting_child_terminated", "profile_classified"],
+      notification: betaNotification.message,
+      elapsed_ms: elapsedMs(betaStarted),
+    };
+
+    await writeControl("normal", ["lifecycle"]);
+    const lifecycleRows = await waitTransport((rows) => rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-2") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1"), "lifecycle fence and prompt ordering");
+    const lifecycleFenceIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-2");
+    const lifecyclePromptIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1");
+    await waitForSmokeCondition(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, { label: "lifecycle provider request", timeoutMs: caseDeadlineMs, intervalMs: 20 });
+    const lifecycleTask = taskByPersona(lifecycleRows, "lifecycle");
+    completeHeld("lifecycle", "LIFECYCLE_NEW_COMPLETE");
+    await waitTrace((rows) => rows.some((row) => row.event === "cleanup_end" && row.pid === lifecycleRows.find((entry) => entry.persona === "lifecycle" && entry.event === "process_start")?.controller_pid), "new lifecycle child terminal cleanup");
+    await waitParentAgentEnd(startingParentOffset, "starting launch parent agent_end");
+
+    await writeControl("retry_first", ["lifecycle"]);
+    const retryFirstOffset = (await readTransport()).length;
+    const retryFirst = await runProfile("gamma", "retry-first");
+    const retryTask = taskByPersona(retryFirst.transport, "retry");
+    const retryFirstRows = retryFirst.transport.slice(retryFirstOffset);
+    await writeControl("retry_second", ["lifecycle"]);
+    const retrySecondOffset = (await readTransport()).length;
+    const retrySecond = await runProfile("gamma", "retry-second");
+    const retrySecondRows = retrySecond.transport.slice(retrySecondOffset);
+    const retrySecondCommands = retrySecondRows.filter((row) => row.event === "rpc_tx" && actualChildProfileNameFromFrameId(row.frame_id) === 3);
+    raw.cases.partial_selective_retry = {
+      requirement_id: "MMPS-CHILD-REAL-03",
+      outcome: retryFirst.notification.message.startsWith("Larva model-map partial: gamma;") && retryFirst.notification.message.includes(`${retryTask}:retry`) && retryFirstRows.some((row) => row.persona === "retry" && row.event === "rpc_drop" && row.fault === "selective_retry_timeout") && retrySecond.notification.message.startsWith("Larva model-map success: gamma;") && retrySecondCommands.length === 1 && retrySecondCommands[0]?.persona === "retry" ? "PASS" : "FAIL",
+      partial: { task_id: retryTask, persona_id: "retry", notification: retryFirst.notification.message, elapsed_ms: retryFirst.elapsed_ms },
+      retry: { profile: "gamma", targeted_personas: retrySecondCommands.map((row) => row.persona), correlations: retrySecondCommands.map((row) => row.frame_id), notification: retrySecond.notification.message, elapsed_ms: retrySecond.elapsed_ms },
+      fallback_count: 0,
+    };
+
+    const faultCases = [];
+    for (const fault of [
+      { profile: "delta", phase: "fault_malformed", persona: "malformed", event: "rpc_malformed", kind: "malformed_response", min_ms: 0, max_ms: 2_500 },
+      { profile: "epsilon", phase: "fault_timeout", persona: "timeout", event: "rpc_drop", kind: "timeout", min_ms: 4_500, max_ms: 6_500 },
+      { profile: "zeta", phase: "fault_closed", persona: "closed", event: "rpc_stdout_closed", kind: "closed_stream", min_ms: 0, max_ms: 2_500 },
+    ]) {
+      await writeControl(fault.phase, ["lifecycle"]);
+      const offset = (await readTransport()).length;
+      const result = await runProfile(fault.profile, `fault-${fault.kind}`);
+      const rows = result.transport.slice(offset);
+      const taskId = taskByPersona(result.transport, fault.persona);
+      const observation = rows.find((row) => row.persona === fault.persona && row.event === fault.event);
+      faultCases.push({
+        fault: fault.kind,
+        profile: fault.profile,
+        task_id: taskId,
+        persona_id: fault.persona,
+        observed_event: observation?.event ?? null,
+        elapsed_ms: result.elapsed_ms,
+        bounded: result.elapsed_ms >= fault.min_ms && result.elapsed_ms <= fault.max_ms,
+        explicit_partial: result.notification.message.startsWith(`Larva model-map partial: ${fault.profile};`) && result.notification.message.includes(`${taskId}:${fault.persona}`),
+        fallback_count: 0,
+        notification: result.notification.message,
+      });
+    }
+
+    if (typeof lifecycleTask !== "string") throw new Error("lifecycle task identity missing before resume");
+    await writeFile(join(configDir, "model-map.json"), JSON.stringify({ models: { "logical/parent": { provider: "controlled", model_id: profileModels.zeta.parent }, "logical/child": { provider: "controlled", model_id: profileModels.zeta.child } }, prefix_rules: [] }), "utf8");
+    appendHarnessEvent("canonical_child_bootstrap_route_updated", { profile: "zeta", model_id: profileModels.zeta.child });
+    setPlan("RESUME_LIFECYCLE_CHILD", [{ persona_id: "lifecycle", task: "Resume the terminal lifecycle child on the current route.", task_id: lifecycleTask }]);
+    const resumeParentOffset = parentRpcEvents.length;
+    await requestParent("resume-lifecycle", { type: "prompt", message: "RESUME_LIFECYCLE_CHILD" });
+    let resumeRows = await waitTransport((rows) => rows.filter((row) => row.persona === "lifecycle" && row.event === "process_start").length === 2 && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "switch-1") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_forward" && row.frame_id === "switch-1"), "actual resumed lifecycle session switch");
+    const resumeStart = resumeRows.filter((row) => row.persona === "lifecycle" && row.event === "process_start").at(-1);
+    await waitTransport((rows) => rows.some((row) => row.persona === "lifecycle" && row.controller_pid === resumeStart?.controller_pid && row.event === "rpc_tx" && row.frame_id === "prompt-1"), "actual resumed lifecycle prompt");
+    await waitForSmokeCondition(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, { label: "resumed lifecycle provider request", timeoutMs: caseDeadlineMs, intervalMs: 20 });
+    completeHeld("lifecycle", "LIFECYCLE_RESUME_COMPLETE");
+    await waitParentAgentEnd(resumeParentOffset, "resume launch parent agent_end");
+    resumeRows = await readTransport();
+    const lifecycleStarts = resumeRows.filter((row) => row.persona === "lifecycle" && row.event === "process_start");
+    const lifecycleSwitchIndex = resumeRows.findLastIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "switch-1");
+    const lifecycleResumePromptIndex = resumeRows.findLastIndex((row) => row.persona === "lifecycle" && row.controller_pid === resumeStart?.controller_pid && row.event === "rpc_tx" && row.frame_id === "prompt-1");
+    raw.cases.generation_lifecycle = {
+      requirement_id: "MMPS-CHILD-REAL-04",
+      outcome: lifecycleFenceIndex >= 0 && lifecycleFenceIndex < lifecyclePromptIndex && lifecycleStarts.length === 2 && lifecycleSwitchIndex >= 0 && lifecycleSwitchIndex < lifecycleResumePromptIndex && raw.cases.terminal_recheck.outcome === "PASS" ? "PASS" : "FAIL",
+      generation: 2,
+      fence_correlation: "model-map-fence-2",
+      fence_before_first_prompt: lifecycleFenceIndex >= 0 && lifecycleFenceIndex < lifecyclePromptIndex,
+      classifications: {
+        new: { persona_id: "lifecycle", task_id: lifecycleTask, controller_pid: lifecycleStarts[0]?.controller_pid ?? null, actual_pid: lifecycleStarts[0]?.actual_pid ?? null },
+        resumed: { persona_id: "lifecycle", task_id: lifecycleTask, controller_pid: lifecycleStarts[1]?.controller_pid ?? null, actual_pid: lifecycleStarts[1]?.actual_pid ?? null, switch_before_prompt: lifecycleSwitchIndex < lifecycleResumePromptIndex },
+        terminal: { persona_id: "lifecycle", observed: true },
+        ended_during_switch: { persona_id: "ending", observed: raw.cases.terminal_recheck.outcome === "PASS" },
+      },
+    };
+
+    const allTransportBeforeCleanup = await readTransport();
+    const processStarts = allTransportBeforeCleanup.filter((row) => row.event === "process_start");
+    if (processStarts.length > childLimit) throw new Error(`actual child process limit exceeded: ${processStarts.length}`);
+    raw.executed.children = processStarts.map((row) => ({ persona_id: row.persona, controller_pid: row.controller_pid, actual_pid: row.actual_pid, selected_binary: row.selected_binary, executable: row.executable, cli: row.cli, package_version: expectedVersion }));
+    const networkSamples = [await processNetworkSample(parentPid, "parent")];
+    for (const row of processStarts.filter((entry) => processAlive(entry.actual_pid))) networkSamples.push(await processNetworkSample(row.actual_pid, "child", row.persona));
+    raw.isolation.network_samples = networkSamples;
+    raw.isolation.loopback_only = networkSamples.every((sample) => sample.loopback_only) && providerRequests.every((request) => request.loopback === true);
+    raw.isolation.external_provider_requests = providerRequests.filter((request) => request.loopback !== true).length;
+    raw.cases.rpc_fault_cleanup = {
+      requirement_id: "MMPS-CHILD-REAL-05",
+      outcome: faultCases.length === 3 && faultCases.every((fault) => fault.bounded && fault.explicit_partial && fault.fallback_count === 0) ? "PASS" : "FAIL",
+      faults: faultCases,
+      fallback_count: 0,
+      process_count_before_cleanup: processStarts.length,
+    };
+
+    const cleanupOffset = (await readTrace()).length;
+    const cleanupResponse = await requestParent("cleanup-new-session", { type: "new_session" }, 20_000);
+    appendHarnessEvent("lifecycle_cleanup_requested", { success: cleanupResponse?.success === true });
+    await waitForSmokeCondition(async () => {
+      const current = await readTransport();
+      return processStarts.every((row) => !processAlive(row.controller_pid) && !processAlive(row.actual_pid)) ? current : null;
+    }, { label: "all installed child Pi processes exit", timeoutMs: 20_000, intervalMs: 50 });
+    cleanupTrace = (await readTrace()).slice(cleanupOffset);
+    cleanupTransport = await readTransport();
+  } catch (error) {
+    raw.error = { code: "ACTUAL_CHILD_PROOF_FAILED", message: error?.message ?? String(error) };
+    appendHarnessEvent("scenario_failure", { message: raw.error.message });
+  } finally {
+    if (scenarioDeadlineTimer !== null) clearTimeout(scenarioDeadlineTimer);
+    for (const entries of heldProviderResponses.values()) {
+      for (const entry of entries) {
+        try { entry.response.destroy(); } catch {}
+      }
+    }
+    heldProviderResponses.clear();
+    if (parentLines) parentLines.close();
+    if (parent && parent.exitCode === null && parent.signalCode === null) parent.kill("SIGTERM");
+    if (parent) await Promise.race([new Promise((resolveClose) => parent.once("close", resolveClose)), new Promise((resolveWait) => setTimeout(resolveWait, 2_000))]);
+    if (parent && parent.exitCode === null && parent.signalCode === null) parent.kill("SIGKILL");
+    if (server) {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolveClose) => server.close(() => resolveClose()));
+    }
+    let finalTransport = cleanupTransport;
+    let finalTrace = cleanupTrace;
+    try { if (finalTransport.length === 0) finalTransport = await readTransport(); } catch {}
+    try { if (finalTrace.length === 0) finalTrace = await readTrace(); } catch {}
+    const starts = finalTransport.filter((row) => row.event === "process_start");
+    for (const row of starts) {
+      for (const pid of [row.controller_pid, row.actual_pid]) {
+        if (processAlive(pid)) {
+          try { process.kill(pid, "SIGKILL"); } catch {}
+        }
+      }
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+    raw.cleanup.parent_alive = processAlive(parentPid);
+    raw.cleanup.child_controllers_alive = Object.fromEntries(starts.map((row) => [String(row.controller_pid), processAlive(row.controller_pid)]));
+    raw.cleanup.child_pi_processes_alive = Object.fromEntries(starts.map((row) => [String(row.actual_pid), processAlive(row.actual_pid)]));
+    raw.cleanup.loopback_closed = server === null || !server.listening;
+    raw.cleanup.unknown_state = Object.values(raw.cleanup.child_controllers_alive).some(Boolean) || Object.values(raw.cleanup.child_pi_processes_alive).some(Boolean) || raw.cleanup.parent_alive === true;
+    try { await rm(tempRoot, { recursive: true, force: true }); } catch (error) { cleanupError = error; }
+    raw.cleanup.temporary_root_removed = !(await exists(tempRoot));
+    raw.cleanup.outcome = !scenarioDeadlineExceeded && !raw.cleanup.unknown_state && raw.cleanup.loopback_closed && raw.cleanup.temporary_root_removed && cleanupError === null ? "PASS" : "FAIL";
+    raw.cleanup.trace_cleanup_end_count = finalTrace.filter((row) => row.event === "cleanup_end").length;
+    raw.cleanup.transport_exit_count = finalTransport.filter((row) => row.event === "process_exit").length;
+    if (cleanupError !== null && raw.error === null) raw.error = { code: "ACTUAL_CHILD_CLEANUP_FAILED", message: cleanupError?.message ?? String(cleanupError) };
+
+    for (const row of finalTransport) {
+      events.push({
+        source: "child_transport",
+        event: row.event,
+        monotonic_ns: row.monotonic_ns,
+        controller_pid: row.controller_pid ?? null,
+        actual_pid: row.actual_pid ?? null,
+        persona_id: row.persona ?? null,
+        correlation_id: row.frame_id ?? null,
+        frame_type: row.frame_type ?? null,
+        provider: row.provider ?? null,
+        model_id: row.model_id ?? null,
+        task_id: row.task_id ?? null,
+        fault: row.fault ?? null,
+        code: row.code ?? null,
+        signal: row.signal ?? null,
+        text_preview: row.text_preview ?? null,
+      });
+    }
+    for (const row of finalTrace) {
+      const wallMs = typeof row.ts === "string" ? Date.parse(row.ts) : scenarioStartedWallMs;
+      const monotonicNs = scenarioStartedMonotonicNs + BigInt(Math.max(0, Number.isFinite(wallMs) ? wallMs - scenarioStartedWallMs : 0)) * 1_000_000n;
+      events.push({ source: "extension_trace", event: row.event, monotonic_ns: monotonicNs.toString(), pid: row.pid ?? null, persona_id: row.persona_id ?? null, correlation_id: row.frame_id ?? null, frame_type: row.frame_type ?? null, code: row.code ?? null, signal: row.signal ?? null });
+    }
+    raw.events = events
+      .filter((row) => typeof row.monotonic_ns === "string")
+      .sort((left, right) => left.monotonic_ns.localeCompare(right.monotonic_ns))
+      .map((row, index) => ({ sequence: index + 1, ...row }));
+    const casesPass = ["bounded_fanout_correlation", "terminal_recheck", "partial_selective_retry", "generation_lifecycle", "rpc_fault_cleanup"].every((key) => raw.cases[key]?.outcome === "PASS");
+    raw.status = casesPass && raw.isolation.loopback_only && raw.isolation.external_provider_requests === 0 && raw.isolation.credential_env_keys_present.length === 0 && raw.executed.children.length >= 5 && raw.executed.children.length <= childLimit && raw.cleanup.outcome === "PASS" && parentStderr.join("").length === 0 ? "PASS" : "FAIL";
+    if (raw.status === "FAIL" && raw.error === null) raw.error = { code: "ACTUAL_CHILD_ASSERTION_FAILED", message: "One or more actual-child runtime assertions failed." };
+    evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
+    evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: expectedVersion, installedVersion: expectedVersion };
+    evidence.rpc.attempted = parentPid !== null;
+    evidence.rpc.supported = parentRpcEvents.some((event) => event?.type === "agent_end");
+    evidence.rpc.stderr = parentStderr.join("");
+    evidence.runtime.actualInstalledChildModelMapProfileSwitch = raw;
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -3033,7 +3688,7 @@ async function main() {
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
-  if (scenario === "persona-invocation-bus" || scenario === "model-map-profile-switch" || scenario === "model-map-profile-switch-installed-pi") {
+  if (scenario === "persona-invocation-bus" || scenario === "model-map-profile-switch" || scenario === "model-map-profile-switch-installed-pi" || scenario === "model-map-profile-switch-installed-child-pi") {
     evidence.package.piTuiDependency = {
       hardGateStatus: "SKIPPED",
       reason: "persona-invocation-bus smoke is a source-level contract-anchor probe and must not fail on Pi TUI dependency hydration",
@@ -3289,6 +3944,8 @@ async function main() {
     await modelMapProfileSwitchProof(evidence);
   } else if (scenario === "model-map-profile-switch-installed-pi") {
     await installedPiModelMapProfileSwitchProof(evidence);
+  } else if (scenario === "model-map-profile-switch-installed-child-pi") {
+    await installedActualChildPiModelMapProfileSwitchProof(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
@@ -3314,6 +3971,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "model-map-profile-switch-installed-pi" && evidence.runtime.installedPiModelMapProfileSwitch?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "model-map-profile-switch-installed-child-pi" && evidence.runtime.actualInstalledChildModelMapProfileSwitch?.status !== "PASS") {
     process.exitCode = 1;
   }
 }

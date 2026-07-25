@@ -481,6 +481,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "async-subagent-contract",
         "persona-invocation-bus",
         "model-map-profile-switch-installed-pi",
+        "model-map-profile-switch-installed-child-pi",
     ):
         assert scenario in completed.stdout
 
@@ -1701,6 +1702,95 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert "rpc_tx" in proof["childRpcEventNames"]
     assert proof["isolation"]["offline"] is True
     assert proof["isolation"]["providerUrl"].startswith("http://127.0.0.1:")
+
+
+def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence() -> None:
+    payload = _run_runtime_scenario(
+        "model-map-profile-switch-installed-child-pi", timeout=90.0
+    )
+    proof = payload["runtime"]["actualInstalledChildModelMapProfileSwitch"]
+
+    assert proof["schema_name"] == "larva.pi.model-map.actual-child.v1"
+    assert proof["status"] == "PASS", json.dumps(proof, indent=2, sort_keys=True)
+    assert proof["selected"]["parent"] == {
+        "binary": "/opt/homebrew/bin/pi",
+        "package_root": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+        "package_version": "0.82.1",
+        "cli": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js",
+    }
+    assert proof["selected"]["child"] == proof["selected"]["parent"]
+    assert proof["executed"]["parent"]["selected_binary"] == "/opt/homebrew/bin/pi"
+    children = proof["executed"]["children"]
+    assert 5 <= len(children) <= proof["limits"]["child_processes"] == 8
+    assert all(child["selected_binary"] == "/opt/homebrew/bin/pi" for child in children)
+    assert all(child["package_version"] == "0.82.1" for child in children)
+    assert all(isinstance(child["controller_pid"], int) for child in children)
+    assert all(isinstance(child["actual_pid"], int) for child in children)
+
+    fanout = proof["cases"]["bounded_fanout_correlation"]
+    assert fanout["outcome"] == "PASS"
+    assert fanout["simultaneous_ready_children"] >= 5
+    assert fanout["observed_max_concurrency"] == 4
+    assert fanout["observed_max_concurrency"] <= fanout["concurrency_limit"]
+    assert len(fanout["correlations"]) == fanout["simultaneous_ready_children"]
+    assert len({row["correlation_id"] for row in fanout["correlations"]}) == len(
+        fanout["correlations"]
+    )
+    assert all(row["task_id"] and row["persona_id"] for row in fanout["correlations"])
+
+    terminal = proof["cases"]["terminal_recheck"]
+    assert terminal["outcome"] == "PASS"
+    assert terminal["classification"] == "ended_during_switch"
+    assert terminal["ordering"] == [
+        "profile_snapshot_crossed",
+        "starting_child_terminated",
+        "profile_classified",
+    ]
+
+    retry = proof["cases"]["partial_selective_retry"]
+    assert retry["outcome"] == "PASS"
+    assert retry["partial"]["task_id"]
+    assert retry["partial"]["persona_id"] == "retry"
+    assert retry["retry"]["profile"] == "gamma"
+    assert retry["retry"]["targeted_personas"] == ["retry"]
+    assert retry["fallback_count"] == 0
+
+    lifecycle = proof["cases"]["generation_lifecycle"]
+    assert lifecycle["outcome"] == "PASS"
+    assert lifecycle["fence_before_first_prompt"] is True
+    assert lifecycle["classifications"]["new"]["actual_pid"]
+    assert lifecycle["classifications"]["resumed"]["actual_pid"]
+    assert lifecycle["classifications"]["resumed"]["switch_before_prompt"] is True
+    assert lifecycle["classifications"]["terminal"]["observed"] is True
+    assert lifecycle["classifications"]["ended_during_switch"]["observed"] is True
+
+    faults = proof["cases"]["rpc_fault_cleanup"]
+    assert faults["outcome"] == "PASS"
+    assert [row["fault"] for row in faults["faults"]] == [
+        "malformed_response",
+        "timeout",
+        "closed_stream",
+    ]
+    assert all(row["bounded"] is True for row in faults["faults"])
+    assert all(row["explicit_partial"] is True for row in faults["faults"])
+    assert all(row["fallback_count"] == 0 for row in faults["faults"])
+
+    assert proof["isolation"]["offline"] is True
+    assert proof["isolation"]["provider_endpoint"].startswith("http://127.0.0.1:")
+    assert proof["isolation"]["loopback_only"] is True
+    assert proof["isolation"]["external_provider_requests"] == 0
+    assert proof["isolation"]["credential_env_keys_present"] == []
+    assert all(sample["loopback_only"] is True for sample in proof["isolation"]["network_samples"])
+    assert proof["cleanup"]["outcome"] == "PASS"
+    assert proof["cleanup"]["parent_alive"] is False
+    assert all(alive is False for alive in proof["cleanup"]["child_controllers_alive"].values())
+    assert all(alive is False for alive in proof["cleanup"]["child_pi_processes_alive"].values())
+    assert proof["cleanup"]["loopback_closed"] is True
+    assert proof["cleanup"]["temporary_root_removed"] is True
+    assert proof["cleanup"]["unknown_state"] is False
+    assert [event["sequence"] for event in proof["events"]] == list(
+        range(1, len(proof["events"]) + 1)
+    )
 
 
 def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprints() -> None:
