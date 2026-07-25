@@ -139075,9 +139075,9 @@ phases:
       ,\n      \"tests/shell/test_pi_extension_contract.py\"\n    ],\n    \"blocked_paths\"\
       : [\n      \"plan.yaml\",\n      \"design/**\",\n      \"docs/**\",\n      \"\
       tests/shell/test_pi_extension_subagent_ux.py\",\n      \"src/**\",\n      \"\
-      contracts/**\",\n      \"../opifex/**\"\n    ]\n  },\n  \"claims\": [\n    \"\
-      MMPS-01-runtime-switch\",\n    \"MMPS-02-profile-security\",\n    \"MMPS-03-parent-atomicity\"\
-      ,\n    \"MMPS-04-child-synchronization\",\n    \"MMPS-05-partial-idempotent-results\"\
+      contracts/**\"\n    ]\n  },\n  \"claims\": [\n    \"MMPS-01-runtime-switch\"\
+      ,\n    \"MMPS-02-profile-security\",\n    \"MMPS-03-parent-atomicity\",\n  \
+      \  \"MMPS-04-child-synchronization\",\n    \"MMPS-05-partial-idempotent-results\"\
       ,\n    \"MMPS-06-concurrency-inflight\",\n    \"MMPS-07-status-errors-secrecy\"\
       ,\n    \"MMPS-08-regression-docs\"\n  ],\n  \"checks\": [\n    {\n      \"id\"\
       : \"profile_switch_unit\",\n      \"run\": {\"command\":[\"node\",\"contrib/pi-extension/test-model-map-unit.mjs\"\
