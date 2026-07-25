@@ -139188,8 +139188,10 @@ phases:
       - Independently execute the integrated implementation through the producer-owned
       installed-Pi harness at `scripts/pi-extension-runtime-smoke.mjs` and its regression
       binding in `tests/shell/test_pi_extension_real_runtime.py`. Identify the selected
-      and executed Pi binary/version, exact integrated commit, and producer commit.
-      Require installed Pi 0.82.0, `pi.available=true`, `rpc.attempted=true`, and
+      and executed Pi binary/version, exact package root/version, exact integrated
+      commit, and producer commit. Require selected and executed executable `/opt/homebrew/bin/pi`
+      at CLI version `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1`, `pi.available=true`, `rpc.attempted=true`, and
       observable public extension loading, `/larva-model-map` command registration/invocation,
       and read-only status. Direct `initializeExtension`, direct helper calls, source-token
       assertions, or fake Pi at the claimed seam yield INCONCLUSIVE.
@@ -139209,26 +139211,28 @@ phases:
 
       - Verify safe basename and fixed-root profile behavior, parent success/no-persona/rollback,
       serialized switches, no fallback, typed errors, credential secrecy, and deterministic
-      cleanup. Any unavailable installed runtime, mock substitution at a claimed seam,
-      leaked process/root, missing high-risk path, user-config write, auth/credential
-      access, or provider/network attempt yields BLOCKED/INCONCLUSIVE rather than
-      PASS.
+      cleanup. Any unavailable witnessed runtime, selected/executed binary or package
+      identity mismatch, mock substitution at a claimed seam, leaked process/root,
+      missing high-risk path, user-config write, Pi install/downgrade/update, auth/credential
+      access, external-state mutation, or provider/network attempt yields BLOCKED/INCONCLUSIVE
+      rather than PASS.
 
 
       Boundary:
 
       - Owner: `integration-verifier`, resolved live and semantic-receipt compatible.
       Read-only verification may write only bounded secret-safe raw artifacts under
-      `/tmp/larva-agent-artifacts`; no repository, user configuration, credential,
-      provider, network, paid-service, or external persistent effect is authorized.
+      `/tmp/larva-agent-artifacts`; no repository, Pi installation, user configuration,
+      credential, provider, network, paid-service, or external persistent effect is
+      authorized.
 
       - Use temporary isolated `PI_CODING_AGENT_DIR`, HOME, session, config, and model-map
       roots. Retry an unchanged transient launch/probe at most three times. After
       every attempt observe Pi/child process exit/liveness, RPC closure, temporary-root
       cleanup, network/auth absence, and unchanged primary working-tree status. Stop
-      on unknown child state, cleanup failure, user-config mutation, credential/auth
-      request, provider/network attempt, or overwrite risk to the four retained primary-tree
-      edits.
+      on unknown child state, cleanup failure, user-config mutation, Pi identity drift
+      or mutation, credential/auth request, provider/network attempt, or overwrite
+      risk to the four retained primary-tree edits.
 
 
       Admit:
@@ -139251,10 +139255,10 @@ phases:
 
       - Use Integration Verifier `Smoke Test` only when L3 installed-Pi command/runtime
       liveness is observed. Every command row needs cwd, sanitized environment identity,
-      process state, exit/termination, decisive excerpts, and secret-safe artifact
-      hashes. PASS requires all listed atoms PROVEN, L2/L3 PASS, no blockers, unchanged
-      repository status apart from the four witnessed pre-existing edits, and cleanup
-      PASS.
+      selected/executed Pi and package identity, process state, exit/termination,
+      decisive excerpts, and secret-safe artifact hashes. PASS requires all listed
+      atoms PROVEN, L2/L3 PASS, no blockers, unchanged repository status apart from
+      the four witnessed pre-existing edits, and cleanup PASS.
 
 
       Recovery:
@@ -139262,14 +139266,18 @@ phases:
       - Verification never repairs failures. Terminate only verifier-started Pi/child
       processes, remove only verifier-created roots, retain secret-safe raw evidence,
       and return FAIL for observed product divergence or BLOCKED/INCONCLUSIVE for
-      a missing exact runtime prerequisite or seam substitution. Unknown runtime effects
-      forbid replay; report the exact process/root requiring Orchestrator reconciliation.'
+      a missing exact runtime prerequisite, identity drift, or seam substitution.
+      Unknown runtime effects forbid replay; report the exact process/root requiring
+      Orchestrator reconciliation.'
     verification: Require a completion-grade integration-verifier vectl.verifier.semantic.v1
-      receipt after executing the integrated installed-Pi 0.82.0 harness and all original
-      checks. MMPS-01..07 and MMPS-REAL-01..03 must be PROVEN with public Pi/extension/command/child-RPC
-      L2/L3 evidence, exact binary/version and commit identity, no claimed-seam mock,
-      no network/auth/provider/user-config effect, deterministic cleanup, and no repository
-      changes.
+      receipt after executing the integrated witnessed-current installed-Pi harness
+      and all original checks. MMPS-01..07 and MMPS-REAL-01..03 must be PROVEN with
+      selected and executed executable `/opt/homebrew/bin/pi` at CLI version `0.82.1`,
+      package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1`, public Pi/extension/command/child-RPC L2/L3 evidence,
+      exact commit identity, no claimed-seam mock, no Pi install/downgrade/update,
+      no network/auth/provider/user-config/external-state effect, deterministic cleanup,
+      and no repository changes.
     refs:
     - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
     - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T13-12-39-884Z-2026-07-25T13-06-04-043Z_019f9961-fe8b-719c-9e82-967760b79396.js-2d5f2fcc72d5f3f0.txt
