@@ -139911,7 +139911,7 @@ phases:
     agent: integration-verifier
   - id: pi-model-map-profile-switch.prove-actual-installed-child-seams
     name: Prove actual installed child-Pi profile-switch seams
-    status: claimed
+    status: pending
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140079,5 +140079,3 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.remediate-terminal-findings
     agent: general
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-25T21:21:22.557275Z'
