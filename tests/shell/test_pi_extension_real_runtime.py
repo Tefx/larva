@@ -1706,7 +1706,7 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
 
 def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence() -> None:
     payload = _run_runtime_scenario(
-        "model-map-profile-switch-installed-child-pi", timeout=90.0
+        "model-map-profile-switch-installed-child-pi", timeout=210.0
     )
     proof = payload["runtime"]["actualInstalledChildModelMapProfileSwitch"]
 

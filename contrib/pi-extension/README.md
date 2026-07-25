@@ -855,12 +855,16 @@ Pi and controls only its JSONL output for malformed, timeout, closed-stream, and
 selective-retry cases. The provider binds only to `127.0.0.1`; `PI_OFFLINE=1` and
 `--offline` are applied; credential-like environment variables are removed; HOME,
 `PI_CODING_AGENT_DIR`, model-map, session, and child-session roots are temporary;
-and no more than eight actual child Pi processes are started. Per-case and whole
-scenario deadlines are explicit. Cleanup terminates only harness-started
-processes, closes harness streams and loopback sockets, scans parent/child TCP
-endpoints, verifies no survivor, and removes the temporary root. The harness does
-not install or modify Pi, read user credentials, contact an external provider, or
-mutate user configuration.
+and no more than eight actual child Pi processes are started. Per-case readiness
+and command waits use 30-second deadlines, while the whole scenario uses a
+180-second fail-closed deadline so a loaded test host can schedule the same real
+process work without crossing the former nominal-run margin. The injected child
+RPC timeout remains five seconds and its bounded fault assertion remains
+unchanged. Cleanup terminates only harness-started processes, closes harness
+streams and loopback sockets, scans parent/child TCP endpoints, verifies no
+survivor, and removes the temporary root. The harness does not install or modify
+Pi, read user credentials, contact an external provider, or mutate user
+configuration.
 
 The capability-gates output is evidence, not a replacement contract. Normative
 behavior for async/background subagents, targeted cancellation, and the unified
@@ -877,8 +881,9 @@ scenarios skip with captured availability evidence. If Pi is present but its RPC
 runtime does not expose extension UI/custom-command observability, those baseline
 scenarios xfail with RPC evidence. The pinned installed-child gate fails closed on
 identity drift, unavailable RPC seams, non-loopback traffic, credential/auth
-requests, unknown process state, or cleanup failure. Plugin load, slash-command
-liveness, and other product/runtime failures fail the gate.
+requests, unknown process state, any expired readiness or scenario deadline, or
+cleanup failure. Plugin load, slash-command liveness, and other product/runtime
+failures fail the gate.
 
 For controlled child RPC liveness, run:
 

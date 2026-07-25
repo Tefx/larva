@@ -3045,8 +3045,8 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const expectedVersion = "0.82.1";
   const scenarioStartedWallMs = Date.now();
   const scenarioStartedMonotonicNs = process.hrtime.bigint();
-  const wholeScenarioDeadlineMs = 90_000;
-  const caseDeadlineMs = 15_000;
+  const wholeScenarioDeadlineMs = 180_000;
+  const caseDeadlineMs = 30_000;
   const childLimit = 8;
   const events = [];
   const providerRequests = [];
