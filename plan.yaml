@@ -140345,6 +140345,14 @@ phases:
       Pi/package and neutral loopback route derivation, raw evidence paths/SHA/bytes,
       five-second timeout and process/root cleanup, external-network/auth/provider/user-config
       absence, and primary-tree preservation.
+    refs:
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_real_runtime.py
+    - contrib/pi-extension/README.md
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/05-semantic-receipt.json
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/06-semantic-gate-verdict.json
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/STAGE-A-manifest.md
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/02-pytest-real-runtime-failures.txt
     depends_on:
     - pi-model-map-profile-switch.prove-actual-installed-child-seams
     agent: general
