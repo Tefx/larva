@@ -139370,7 +139370,7 @@ phases:
     agent: spec-verifier
   - id: pi-model-map-profile-switch.add-installed-pi-harness
     name: Add installed-Pi model-map runtime seam harness
-    status: claimed
+    status: pending
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -139514,5 +139514,3 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.implement
     agent: frontend-engineer
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-25T13:17:42.310498Z'
