@@ -138932,18 +138932,25 @@ phases:
 - id: pi_model_map_profile_switch_20260725
   name: Pi Runtime Model-Map Profile Switch 2026-07-25
   status: in_progress
-  gate: The phase closes only after the completed original implementation/harness
-    evidence remains preserved, the terminal FAIL remediation and synchronized developer
-    tests/Pi-extension documentation are integrated, fresh independent real-seam verification
-    and terminal spec review prove MMPS-01 through MMPS-08, MMPS-REAL-01 through MMPS-REAL-04,
-    and MMPS-REM-01 through MMPS-REM-08, and the witnessed-current installed Pi binding
-    selects and executes `/opt/homebrew/bin/pi` at CLI version `0.82.1` with package
-    root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` at package
-    version `0.82.1`. Closure requires explicit bounded ready-child fan-out, terminal-during-starting
-    reclassification, public status, parent restoration, partial identity/retry, generation/lifecycle,
-    fault-isolation, and preserved in-flight-old/next-request-new evidence, with no
-    claimed-seam substitution, Pi install/downgrade/update, network/auth/provider/user-config/external-state
-    effect, cleanup gap, or loss of the four unrelated primary-working-tree edits.
+  gate: The phase closes only after completed implementation/remediation history remains
+    preserved; `pi-model-map-profile-switch.prove-actual-installed-child-seams` integrates
+    a harness-only three-path repository change with synchronized regression tests
+    and Pi-extension documentation; fresh `integration-verifier` and terminal `spec-verifier`
+    semantic receipts prove MMPS-01 through MMPS-08, MMPS-REAL-01 through MMPS-REAL-04,
+    MMPS-REM-01 through MMPS-REM-08, and MMPS-CHILD-REAL-01 through MMPS-CHILD-REAL-06;
+    and selected/executed parent and child processes are `/opt/homebrew/bin/pi` at
+    CLI version `0.82.1` with package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+    at package version `0.82.1`. Closure requires raw independently parsed `larva.pi.model-map.actual-child.v1`
+    evidence from at least five actual child Pi processes for max ready-child RPC
+    concurrency <=4 and correlation, post-snapshot terminal recheck, exact partial
+    identity and selective same-profile retry without fallback, generation-before-first-prompt
+    plus new/resumed/terminal/ended classifications, malformed/timeout/closed-stream
+    bounded failures, public status, parent restoration, preserved in-flight-old/next-request-new
+    behavior, loopback/offline isolation, deterministic cleanup, and byte-preservation
+    of the four unrelated primary-tree edits. Fake/generated child executables, source-token
+    or synthesized response proof, product changes under the harness boundary, Pi
+    install/downgrade/update, non-loopback network/auth/provider/user-config/external-state
+    effects, identity drift, proof gaps, or cleanup gaps keep the phase open.
   depends_on:
   - pi_subagent_rpc_memory_bound_20260619
   steps:
