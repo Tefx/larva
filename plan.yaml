@@ -138942,7 +138942,7 @@ phases:
   steps:
   - id: pi-model-map-profile-switch.implement
     name: Implement runtime model-map profile switching with tests and docs
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\nThe Orchestrator\
       \ must supply exactly one admitted vectl.worker.dispatch.v2 envelope bound to\
@@ -139158,6 +139158,21 @@ phases:
     agent: frontend-engineer
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T12:22:36.823663Z'
+    done_at: '2026-07-25T13:04:59.037297+00:00'
+    evidence: 'Integrated implementation commit 1298a0ffa0dcc864a40603d77a454e8aafb03597
+      (source worker commit 8b2b4c43) after production Gate admitted dispatch sha256:d4179ccddeb6267391d90b3d78ba700628fbf73a9a39e33e5eb0567f09519c2f
+      and unchanged worker receipt sha256:e1119e329e05d75acce063c6fd6da085a4890b543f7227c41e811d609d7a757c.
+      Gate worker receipt verdict CONFORMANT with all MMPS-01..08 claims and six authorized
+      changed paths. Integrated checks: model-map unit PASS; model-map runtime PASS;
+      model-map-profile-switch smoke PASS; focused Pi extension regressions 203 passed;
+      sanitized full suite 927 passed; `uv run invar guard` passed with 0 errors/warnings;
+      `git diff --check` passed. Pi TUI dependencies were installed from contrib/pi-extension/package-lock.json
+      via npm ci for Gate/runtime checks and are ignored/untracked-free. Primary working-tree
+      edits in contrib/pi-extension/larva.ts, design/pi-coding-agent-integration.md,
+      docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md, and tests/shell/test_pi_extension_subagent_ux.py
+      were stashed, feature cherry-picked, and restored without conflict; backup patch
+      retained at /tmp/larva-agent-artifacts/primary-uncommitted-before-model-map-integration.patch.
+      No user config/provider/credential/external effects occurred.'
   - id: pi-model-map-profile-switch.verify-runtime
     name: Independently verify model-map profile switching through Pi runtime seams
     status: pending
