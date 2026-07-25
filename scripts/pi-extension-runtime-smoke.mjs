@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { access, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -26,6 +27,7 @@ const SCENARIOS = [
   "wait-select-pending-callback-handoff",
   "persona-invocation-bus",
   "model-map-profile-switch",
+  "model-map-profile-switch-installed-pi",
 ];
 
 const PIINV_REQUIRED_EXPECTED_RED_IDS = [
@@ -2730,6 +2732,205 @@ process.stdout.write(JSON.stringify({ data: { id: personaId, description: person
   evidence.runtime.modelMapProfileSwitch = { status: Object.values(assertions).every(Boolean) ? "PASS" : "FAIL", assertions, alpha, beta, routeStatus, setModels, tempRoot: sessionRoot, cleanup: "bounded temporary root; process exit cleanup" };
 }
 
+async function installedPiModelMapProfileSwitchProof(evidence) {
+  const installedPi = "/opt/homebrew/bin/pi";
+  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const expectedVersion = "0.82.1";
+  const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
+  const home = join(tempRoot, "home");
+  const configDir = join(home, ".pi", "larva");
+  const childSessionDir = join(configDir, "child-sessions");
+  const traceFile = join(tempRoot, "child-rpc.jsonl");
+  const providerRequests = [];
+  let releaseChildAlpha;
+  const childAlphaRelease = new Promise((resolveRelease) => { releaseChildAlpha = resolveRelease; });
+  let childAlphaObserved;
+  const childAlphaSeen = new Promise((resolveSeen) => { childAlphaObserved = resolveSeen; });
+  let server;
+  let parent;
+
+  const rpcEvents = [];
+  const rpcResponses = new Map();
+  const stderr = [];
+  const sendSse = (response, chunks) => {
+    response.writeHead(200, { "content-type": "text/event-stream", connection: "close" });
+    for (const chunk of chunks) response.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    response.end("data: [DONE]\n\n");
+  };
+  const textChunk = (model, text) => ({
+    id: `chat-${Date.now()}`,
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: "stop" }],
+  });
+  const toolChunk = (model, id, name, args) => ({
+    id: `chat-${Date.now()}`,
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, delta: { role: "assistant", tool_calls: [{ index: 0, id, type: "function", function: { name, arguments: JSON.stringify(args) } }] }, finish_reason: "tool_calls" }],
+  });
+
+  try {
+    await mkdir(childSessionDir, { recursive: true });
+    const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
+    const packageJson = await readJsonFile(join(installedPackageRoot, "package.json"));
+    if (version.exitCode !== 0 || version.stdout.trim() !== expectedVersion || packageJson.version !== expectedVersion) {
+      throw new Error(`installed Pi mismatch: binary=${version.stdout.trim()} package=${packageJson.version}`);
+    }
+
+    server = createServer(async (request, response) => {
+      let body = "";
+      for await (const chunk of request) body += chunk.toString("utf8");
+      const payload = body ? JSON.parse(body) : {};
+      const model = payload.model ?? null;
+      providerRequests.push({ model, toolResultPresent: Array.isArray(payload.messages) && payload.messages.some((message) => message.role === "tool") });
+      if (model === "parent-a" && !providerRequests.some((entry) => entry.parentToolCall)) {
+        providerRequests.at(-1).parentToolCall = true;
+        sendSse(response, [toolChunk(model, "launch-child", "larva_subagent", { persona_id: "child", task: "Exercise child route across profile switch." })]);
+        return;
+      }
+      if (model === "child-a") {
+        childAlphaObserved();
+        await childAlphaRelease;
+        sendSse(response, [toolChunk(model, "child-read", "read", { path: join(tempRoot, "proof.txt") })]);
+        return;
+      }
+      sendSse(response, [textChunk(model, model === "child-b" ? "CHILD_B_COMPLETE" : "PARENT_COMPLETE")]);
+    });
+    await new Promise((resolveListen, rejectListen) => {
+      server.once("error", rejectListen);
+      server.listen(0, "127.0.0.1", resolveListen);
+    });
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("controlled provider did not bind a TCP port");
+    const providerUrl = `http://127.0.0.1:${address.port}/v1`;
+
+    const cli = join(tempRoot, "fake-cli.mjs");
+    const probe = join(tempRoot, "controlled-provider.ts");
+    await writeFile(join(tempRoot, "proof.txt"), "controlled child tool result\n", "utf8");
+    await writeFile(cli, `
+const [, , command, personaId, jsonFlag] = process.argv;
+if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+const model = personaId === "parent" ? "logical/parent" : "logical/child";
+process.stdout.write(JSON.stringify({ data: { id: personaId, description: personaId, prompt: "controlled installed-Pi probe", model, capabilities: {}, spec_version: "0.1.0", spec_digest: "sha256:" + personaId, can_spawn: true } }));
+`, "utf8");
+    await writeFile(probe, `
+export default function (pi) {
+  pi.registerProvider("controlled", {
+    name: "Controlled installed-Pi provider",
+    baseUrl: ${JSON.stringify(providerUrl)},
+    apiKey: "controlled-test-key",
+    api: "openai-completions",
+    models: ["parent-a", "parent-b", "child-a", "child-b"].map((id) => ({ id, name: id, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 }))
+  });
+}
+`, "utf8");
+    const alpha = { models: { "logical/parent": { provider: "controlled", model_id: "parent-a" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
+    const beta = { models: { "logical/parent": { provider: "controlled", model_id: "parent-b" }, "logical/child": { provider: "controlled", model_id: "child-b" } }, prefix_rules: [] };
+    await writeFile(join(configDir, "model-map.json"), JSON.stringify(alpha), "utf8");
+    await writeFile(join(configDir, "model-map.alpha.json"), JSON.stringify(alpha), "utf8");
+    await writeFile(join(configDir, "model-map.beta.json"), JSON.stringify(beta), "utf8");
+
+    await writeFile(join(tempRoot, "subagent-runtime.json"), JSON.stringify({ schema_version: 1, extension_sources: [probe] }), "utf8");
+    const args = [
+      "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
+      "-e", probe, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", join(tempRoot, "parent-session"),
+    ];
+    parent = spawn(installedPi, args, {
+      cwd: root,
+      env: {
+        ...process.env,
+        HOME: home,
+        PI_OFFLINE: "1",
+        LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
+        LARVA_PI_REAL_BIN: installedPi,
+        LARVA_PI_EXTENSION_FLAG: "-e",
+        LARVA_PI_EXTENSION_ENTRY: extensionPath,
+        LARVA_PI_INITIAL_PERSONA_ID: "parent",
+        LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: "controlled/parent-a",
+        LARVA_PI_CHILD_SESSION_DIR: childSessionDir,
+        LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+        LARVA_PI_SUBAGENT_CONFIG_FILE: join(tempRoot, "subagent-runtime.json"),
+        LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+        LARVA_PI_INTERACTIVE_TUI: "0",
+        LARVA_PI_LAUNCHED: "1",
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    evidence.rpc.attempted = Number.isInteger(parent.pid) && parent.pid > 0;
+    parent.stderr.on("data", (chunk) => stderr.push(chunk.toString("utf8")));
+    const lines = createInterface({ input: parent.stdout });
+    lines.on("line", (line) => {
+      const event = JSON.parse(line);
+      rpcEvents.push(event);
+      if (event.id && rpcResponses.has(String(event.id))) {
+        rpcResponses.get(String(event.id))(event);
+        rpcResponses.delete(String(event.id));
+      }
+    });
+    const requestRpc = (id, body, timeoutMs = 8_000) => new Promise((resolveResponse, rejectResponse) => {
+      const timer = setTimeout(() => { rpcResponses.delete(id); rejectResponse(new Error(`RPC timeout: ${id}`)); }, timeoutMs);
+      rpcResponses.set(id, (response) => { clearTimeout(timer); resolveResponse(response); });
+      parent.stdin.write(`${JSON.stringify({ id, ...body })}\n`);
+    });
+
+    await requestRpc("state-ready", { type: "get_state" });
+    await requestRpc("launch", { type: "prompt", message: "Launch the child now." });
+    await Promise.race([childAlphaSeen, new Promise((_, rejectWait) => setTimeout(() => rejectWait(new Error("child alpha provider request timeout")), 10_000))]);
+    const switchResponse = await requestRpc("switch-beta", { type: "prompt", message: "/larva-model-map beta" });
+    const stateAfterSwitch = await requestRpc("state-after-switch", { type: "get_state" });
+    releaseChildAlpha();
+    await waitForSmokeCondition(() => providerRequests.some((entry) => entry.model === "child-b"), { label: "child request on beta route", timeoutMs: 10_000, intervalMs: 25 });
+    const trace = await waitForSmokeCondition(async () => {
+      const events = await readJsonlTrace(traceFile);
+      return events.some((event) => event.event === "rpc_tx" && event.frame_type === "set_model") ? events : null;
+    }, { label: "child set_model trace", timeoutMs: 5_000, intervalMs: 25 });
+    const childPids = uniqueChildPids(trace);
+    evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
+    evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: version.stdout.trim(), installedVersion: packageJson.version };
+    const assertions = {
+      exactInstalledBinary: evidence.pi.binary === installedPi && evidence.package.versionText === expectedVersion,
+      exactInstalledPackage: evidence.package.packageRoot === installedPackageRoot && evidence.package.installedVersion === expectedVersion,
+      realExtensionCommandSeam: switchResponse.type === "response" && switchResponse.success === true,
+      parentRouteSwitched: stateAfterSwitch.data?.model?.provider === "controlled" && stateAfterSwitch.data?.model?.id === "parent-b",
+      childRpcSetModelOrdered: trace.some((event) => event.event === "rpc_tx" && event.frame_type === "set_model") && providerRequests.findIndex((entry) => entry.model === "child-a") < providerRequests.findIndex((entry) => entry.model === "child-b"),
+      inFlightOldThenNextNew: providerRequests.some((entry) => entry.model === "child-a") && providerRequests.some((entry) => entry.model === "child-b"),
+      noExternalProvider: providerRequests.every((entry) => ["parent-a", "parent-b", "child-a", "child-b"].includes(entry.model)),
+    };
+    const parentRpcResponses = rpcEvents.filter((event) => event?.type === "response");
+    const parentRpcEvents = rpcEvents.filter((event) => event?.type !== "response");
+    evidence.rpc.supported = evidence.rpc.attempted
+      && parentRpcResponses.some((response) => response.id === "state-ready" && response.success === true)
+      && parentRpcResponses.some((response) => response.id === "switch-beta" && response.success === true);
+    evidence.rpc.events = parentRpcEvents;
+    evidence.rpc.responses = parentRpcResponses;
+    evidence.rpc.stderr = stderr.join("");
+    evidence.rpc.uiRequests = parentRpcEvents.filter((event) => event?.type === "extension_ui_request");
+    evidence.runtime.installedPiModelMapProfileSwitch = {
+      status: Object.values(assertions).every(Boolean) && evidence.rpc.supported ? "PASS" : "FAIL",
+      assertions,
+      command: [installedPi, ...args],
+      providerRequests,
+      childRpcEventNames: trace.map((event) => event.event),
+      childPids,
+      stderr: stderr.join(""),
+      isolation: { home, configDir, childSessionDir, providerUrl, offline: true },
+    };
+  } finally {
+    releaseChildAlpha?.();
+    if (parent && parent.exitCode === null) parent.kill("SIGTERM");
+    if (parent) await Promise.race([new Promise((resolveClose) => parent.once("close", resolveClose)), new Promise((resolveWait) => setTimeout(resolveWait, 1_500))]);
+    if (parent && parent.exitCode === null) parent.kill("SIGKILL");
+    if (server) await new Promise((resolveClose) => server.close(resolveClose));
+    const trace = await readJsonlTrace(traceFile);
+    for (const pid of uniqueChildPids(trace)) if (processAlive(pid)) { try { process.kill(pid, "SIGKILL"); } catch {} }
+    await rm(tempRoot, { recursive: true, force: true });
+    if (evidence.runtime.installedPiModelMapProfileSwitch) evidence.runtime.installedPiModelMapProfileSwitch.cleanup = "PASS";
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -2740,7 +2941,7 @@ async function main() {
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
   const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
-  if (scenario === "persona-invocation-bus" || scenario === "model-map-profile-switch") {
+  if (scenario === "persona-invocation-bus" || scenario === "model-map-profile-switch" || scenario === "model-map-profile-switch-installed-pi") {
     evidence.package.piTuiDependency = {
       hardGateStatus: "SKIPPED",
       reason: "persona-invocation-bus smoke is a source-level contract-anchor probe and must not fail on Pi TUI dependency hydration",
@@ -2994,6 +3195,8 @@ async function main() {
     await personaInvocationBusContractAnchors(evidence);
   } else if (scenario === "model-map-profile-switch") {
     await modelMapProfileSwitchProof(evidence);
+  } else if (scenario === "model-map-profile-switch-installed-pi") {
+    await installedPiModelMapProfileSwitchProof(evidence);
   }
   const serializable = JSON.parse(JSON.stringify(evidence, (key, value) => (typeof value === "function" ? "[function]" : value)));
   console.log(JSON.stringify(serializable, null, 2));
@@ -3016,6 +3219,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "model-map-profile-switch" && evidence.runtime.modelMapProfileSwitch?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "model-map-profile-switch-installed-pi" && evidence.runtime.installedPiModelMapProfileSwitch?.status !== "PASS") {
     process.exitCode = 1;
   }
 }

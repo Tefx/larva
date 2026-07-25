@@ -480,6 +480,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "live-child-rpc-proof",
         "async-subagent-contract",
         "persona-invocation-bus",
+        "model-map-profile-switch-installed-pi",
     ):
         assert scenario in completed.stdout
 
@@ -1647,6 +1648,36 @@ def test_real_pi_persona_invocation_bus_bad_input_result_via_shared_events(tmp_p
             "message": "persona_id must be a non-empty string.",
         },
     }, evidence
+
+
+def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc() -> None:
+    payload = _run_runtime_scenario("model-map-profile-switch-installed-pi", timeout=30.0)
+    proof = payload["runtime"]["installedPiModelMapProfileSwitch"]
+
+    assert payload["pi"]["binary"] == "/opt/homebrew/bin/pi"
+    assert payload["package"]["packageRoot"] == "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent"
+    assert payload["package"]["versionText"] == "0.82.1"
+    assert payload["package"]["installedVersion"] == "0.82.1"
+    assert payload["rpc"]["attempted"] is True
+    assert payload["rpc"]["supported"] is True
+    assert payload["rpc"]["stderr"] == ""
+    assert any(response.get("id") == "state-ready" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "switch-beta" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert isinstance(payload["rpc"]["events"], list)
+    assert proof["status"] == "PASS", json.dumps(proof, indent=2, sort_keys=True)
+    assert proof["cleanup"] == "PASS"
+    assert proof["assertions"] == {
+        "exactInstalledBinary": True,
+        "exactInstalledPackage": True,
+        "realExtensionCommandSeam": True,
+        "parentRouteSwitched": True,
+        "childRpcSetModelOrdered": True,
+        "inFlightOldThenNextNew": True,
+        "noExternalProvider": True,
+    }
+    assert "rpc_tx" in proof["childRpcEventNames"]
+    assert proof["isolation"]["offline"] is True
+    assert proof["isolation"]["providerUrl"].startswith("http://127.0.0.1:")
 
 
 def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprints() -> None:

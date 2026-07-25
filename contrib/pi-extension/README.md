@@ -804,6 +804,23 @@ Runtime capability/provenance is summarized by:
 node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
 ```
 
+The installed-Pi model-map profile gate is pinned to `/opt/homebrew/bin/pi`
+`0.82.1` and package root
+`/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` `0.82.1`:
+
+```bash
+node scripts/pi-extension-runtime-smoke.mjs --scenario model-map-profile-switch-installed-pi
+```
+
+This gate runs the installed Pi executable and bundled extension in RPC mode,
+loads a temporary controlled provider extension, launches a real child Pi RPC
+session, switches the parent profile through `/larva-model-map`, and verifies the
+child's correlated `set_model` ordering. It uses isolated temporary HOME,
+configuration, session, and child-session roots; binds only a loopback provider;
+passes `--offline`; applies process deadlines; terminates parent and child
+processes; and removes the temporary root. It does not install, update, or
+modify Pi or contact an external provider.
+
 The capability-gates output is evidence, not a replacement contract. Normative
 behavior for async/background subagents, targeted cancellation, and the unified
 `/larva-subagent` UX lives in
