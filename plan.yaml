@@ -139125,22 +139125,23 @@ phases:
       expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\":{}},\n\
       \      \"proves\":[\"MMPS-04-child-synchronization\",\"MMPS-08-regression-docs\"\
       ]\n    },\n    {\n      \"id\": \"repo_pytest\",\n      \"run\": {\"command\"\
-      :[\"uv\",\"run\",\"pytest\",\"-q\"],\"timeout_seconds\":900},\n      \"evidence\"\
+      :[\"env\",\"-u\",\"LARVA_PI_AGENT_PERSONA_SWITCH\",\"uv\",\"run\",\"pytest\"\
+      ,\"-q\"],\"timeout_seconds\":900},\n      \"evidence\": {\"mode\":\"command_outcome\"\
+      ,\"path_bindings\":[{\"path\":\"pyproject.toml\",\"access\":\"read\",\"availability\"\
+      :\"current\"}],\"test_bindings\":[]},\n      \"expect\": {\"outcome\":\"green\"\
+      ,\"exit_codes\":[0],\"stdout_or_stderr\":{}},\n      \"proves\":[\"MMPS-08-regression-docs\"\
+      ]\n    },\n    {\n      \"id\": \"invar_guard\",\n      \"run\": {\"command\"\
+      :[\"uv\",\"run\",\"invar\",\"guard\"],\"timeout_seconds\":600},\n      \"evidence\"\
       : {\"mode\":\"command_outcome\",\"path_bindings\":[{\"path\":\"pyproject.toml\"\
       ,\"access\":\"read\",\"availability\":\"current\"}],\"test_bindings\":[]},\n\
       \      \"expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\"\
       :{}},\n      \"proves\":[\"MMPS-08-regression-docs\"]\n    },\n    {\n     \
-      \ \"id\": \"invar_guard\",\n      \"run\": {\"command\":[\"uv\",\"run\",\"invar\"\
-      ,\"guard\"],\"timeout_seconds\":600},\n      \"evidence\": {\"mode\":\"command_outcome\"\
-      ,\"path_bindings\":[{\"path\":\"pyproject.toml\",\"access\":\"read\",\"availability\"\
-      :\"current\"}],\"test_bindings\":[]},\n      \"expect\": {\"outcome\":\"green\"\
-      ,\"exit_codes\":[0],\"stdout_or_stderr\":{}},\n      \"proves\":[\"MMPS-08-regression-docs\"\
-      ]\n    },\n    {\n      \"id\": \"diff_whitespace\",\n      \"run\": {\"command\"\
-      :[\"git\",\"diff\",\"--check\"],\"timeout_seconds\":120},\n      \"evidence\"\
-      : {\"mode\":\"command_outcome\",\"path_bindings\":[],\"test_bindings\":[]},\n\
-      \      \"expect\": {\"outcome\":\"green\",\"exit_codes\":[0],\"stdout_or_stderr\"\
-      :{}},\n      \"proves\":[\"MMPS-08-regression-docs\"]\n    }\n  ],\n  \"bindings\"\
-      : {\"expected_red\":{\"items\":[]},\"closes_expected_red\":[]}\n}\n</intent_closure_contract>"
+      \ \"id\": \"diff_whitespace\",\n      \"run\": {\"command\":[\"git\",\"diff\"\
+      ,\"--check\"],\"timeout_seconds\":120},\n      \"evidence\": {\"mode\":\"command_outcome\"\
+      ,\"path_bindings\":[],\"test_bindings\":[]},\n      \"expect\": {\"outcome\"\
+      :\"green\",\"exit_codes\":[0],\"stdout_or_stderr\":{}},\n      \"proves\":[\"\
+      MMPS-08-regression-docs\"]\n    }\n  ],\n  \"bindings\": {\"expected_red\":{\"\
+      items\":[]},\"closes_expected_red\":[]}\n}\n</intent_closure_contract>"
     verification: The Orchestrator must admit the worker dispatch, then run the Intent-Closure
       sidecar for this step in its isolated worktree. Every contract check must be
       green with exact raw evidence; changed paths must be a subset of allowed_paths;
