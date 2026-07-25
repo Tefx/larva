@@ -138929,3 +138929,13 @@ phases:
       runner `LARVA_PI_AGENT_PERSONA_SWITCH=manual` was recorded as diagnostic contamination
       only and did not affect controlled-confirm/env-unset receipts. Retest worktree
       was clean; no tracked verifier changes or product/runtime/shared contract changes.'
+- id: pi_model_map_profile_switch_20260725
+  name: Pi Runtime Model-Map Profile Switch 2026-07-25
+  status: pending
+  gate: The phase closes only after the repository implementation, synchronized developer
+    tests and Pi-extension documentation, independent real-seam runtime verification,
+    and terminal spec conformance review prove MMPS-01 through MMPS-08 with no blocking
+    gaps, no credential or user-specific provider leakage, and preservation of unrelated
+    primary-working-tree changes.
+  depends_on:
+  - pi_subagent_rpc_memory_bound_20260619
