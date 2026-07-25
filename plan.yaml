@@ -139816,98 +139816,129 @@ phases:
 
       Deliver:
 
-      - Independently execute and inspect the integrated remediation plus the harness
-      produced by `pi-model-map-profile-switch.prove-actual-installed-child-seams`.
-      Require selected and executed parent and child `/opt/homebrew/bin/pi` at CLI
-      version `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
-      at package version `0.82.1`, shipped extension loading, public command/RPC reachability,
-      and raw `larva.pi.model-map.actual-child.v1` evidence. Direct initialization/helper
-      calls, source-token assertions, fake/generated child executables, synthesized
-      child responses, or producer PASS labels cannot prove behavior.
+      - Independently execute and inspect the exact integrated remediation produced
+      by `pi-model-map-profile-switch.isolate-real-runtime-harness` together with
+      the preserved product and actual-child harness history. Require selected and
+      executed parent and child `/opt/homebrew/bin/pi` at CLI version `0.82.1`, package
+      root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` at package
+      version `0.82.1`, shipped extension loading, public command/event/tool and child-RPC
+      reachability, and fresh raw ordered evidence. Direct helper initialization,
+      source-token assertions, fake/generated child executables, synthesized child
+      responses, producer PASS labels, ambient user configuration, or prior receipts
+      cannot prove fresh behavior.
 
-      - Parse raw ordered process/RPC/provider events and prove MMPS-CHILD-REAL-01
-      through MMPS-CHILD-REAL-06; use that evidence to close the authoritative receipt''s
-      unproven MMPS-REM-01, MMPS-REM-02, MMPS-REM-05, MMPS-REM-06, MMPS-REM-07, MMPS-04,
-      MMPS-05, MMPS-06, and MMPS-REAL-03 atoms. Require at least five actual child
-      Pi processes with observed max profile-switch concurrency `<=4` and unique correlation;
-      terminal end after snapshot and before `ended_during_switch`; exact ready-child
-      task/persona failure and same-profile retry only for unswitched live work with
-      zero fallback; generation fence before first prompt plus new/resumed/terminal/ended
-      classifications; and actual malformed response, timeout, and closed-stream bounded
-      failures with cleanup and no fallback/leak.
+      - Treat `/tmp/larva-agent-artifacts/pi-model-map-verify-remediation/05-semantic-receipt.json`
+      (file SHA-256 `3f4a2a8db3147d353d59f1430ce4058f8baf43bdd9f85daff0481599694b7920`,
+      18599 bytes; canonical SHA `sha256:1a91118f6a121aabc6e56aa06ebc8113645436ac8bd23d1618e55aab87f7b5ef`)
+      and `/tmp/larva-agent-artifacts/pi-model-map-verify-remediation/06-semantic-gate-verdict.json`
+      (file SHA-256 `43f016692de028c1173d964ee37dda9369f759b228524f75ac8eb02e32004ad5`,
+      4068 bytes; Gate `REJECTED`) as the current pre-fix BLOCKED/red proof. Reconfirm
+      its already-proven MMPS-CHILD-REAL-01..05 and mapped actual-child atoms from
+      a fresh run; require fresh closure of MMPS-CHILD-REAL-06, MMPS-REM-03, MMPS-REM-04,
+      MMPS-REM-08, MMPS-03-parent-atomicity, MMPS-07-status-errors-secrecy, and every
+      check previously stopped after the seven-test failure. The five simultaneous
+      correlations `model-map-1-0` through `model-map-1-4` must be unique; later sequential
+      frame-ID reuse on different child channels is permitted and is not a global-uniqueness
+      defect.
 
-      - Reconfirm the previously proven installed public status, parent restoration,
-      installed Pi/extension child-RPC ordering, in-flight-old/next-request-new behavior,
-      no-dot/single-resolver contract, documentation parity, and MMPS-REM-03, MMPS-REM-04,
-      MMPS-REM-08, MMPS-REAL-01, and MMPS-REAL-02. Execute every check declared by
-      the new harness step and all targeted producer checks needed to detect regression;
-      independently inspect raw events and process state rather than accepting summaries.
+      - Prove MMPS-ISOLATION-01 through MMPS-ISOLATION-04: unowned inherited persona/model-map/profile/tool-policy/HOME/Pi/Larva/session
+      configuration is absent from child scenarios; fixture personas resolve through
+      a harness-owned neutral loopback provider/model-map selected by runtime discovery
+      and the current production resolver without hard-coded real provider/profile/model
+      IDs; startup status, slash status, live-child lifecycle, and persona invocation
+      pass from empty isolated roots and under adversarial inherited values; and regression/docs
+      preserve the actual-child five-second timeout, ordered evidence, offline/loopback
+      limits, and cleanup.
+
+      - Execute every check declared by `pi-model-map-profile-switch.isolate-real-runtime-harness`,
+      the completed actual-child scenario, and all previously blocked or unexecuted
+      targeted producer checks needed for public status, parent restoration, in-flight-old/next-request-new,
+      no-dot/single-resolver behavior, full regression, Invar, and documentation parity.
+      Independently parse raw events and inspect child environments/process state
+      rather than accepting summaries.
 
 
       Boundary:
 
-      - Owner: registered `integration-verifier`, resolved live and semantic-receipt
-      compatible. Verification is read-only; it may write only bounded secret-safe
-      raw artifacts under `/tmp/larva-agent-artifacts`. It has no repository, lifecycle,
-      Git, Pi-installation, credential, user-config, provider/network, paid-service,
-      or persistent external/runtime mutation authority.
+      - Owner: registered `integration-verifier`, live-resolved as read-only and semantic-receipt
+      compatible. It may write only bounded mode-0600 secret-safe artifacts under
+      `/tmp/larva-agent-artifacts`; it has no repository, lifecycle, Git, Pi-installation,
+      credential, user-config, real provider/network, paid-service, or persistent
+      external/runtime mutation authority.
 
-      - Use isolated HOME, `PI_CODING_AGENT_DIR`, session, Larva config, and model-map
-      roots; offline controls; loopback-only lower provider/fault controls; at most
-      eight actual child Pi processes per attempt; explicit per-case/whole-run deadlines;
-      and deterministic termination/removal. Retry only an unchanged transient installed-Pi
-      launch failure, at most three attempts. Product divergence is FAIL. Claimed-seam
-      substitution or missing raw actual-child evidence is INCONCLUSIVE. Unknown process/root
-      state forbids replay and requires Orchestrator reconciliation.
+      - Verify from an Orchestrator-provided tracked-clean worktree at the exact integrated
+      commit recorded by the new remediation worker receipt. Use empty isolated HOME,
+      `PI_CODING_AGENT_DIR`, Pi/Larva/session, model-map/profile, and tool-policy
+      roots plus a separate adversarial inherited-value run; `PI_OFFLINE=1`; loopback-only
+      neutral lower provider/fault controls; at most eight actual child Pi processes
+      per attempt; explicit per-case/whole-run deadlines; and deterministic termination/removal.
+
+      - Retry only an unchanged transient installed-Pi launch failure, at most three
+      attempts. Product, isolation, test, Invar, or documentation divergence is FAIL.
+      Claimed-seam substitution or missing fresh raw evidence is INCONCLUSIVE. Unknown
+      process/root state forbids replay and requires Orchestrator reconciliation.
 
 
       Admit:
 
-      - Current producer inputs are `scripts/pi-extension-runtime-smoke.mjs`, `tests/shell/test_pi_extension_real_runtime.py`,
-      and `contrib/pi-extension/README.md`, produced by `pi-model-map-profile-switch.prove-actual-installed-child-seams`;
-      dependency closure and producer path/test authority bind them to this verifier.
-      The completed remediation product paths remain current witnessed inputs for
-      regression only.
+      - Current producer inputs are the exact tracked integrated forms of `scripts/pi-extension-runtime-smoke.mjs`,
+      `tests/shell/test_pi_extension_real_runtime.py`, and `contrib/pi-extension/README.md`,
+      produced by `pi-model-map-profile-switch.isolate-real-runtime-harness`; dependency
+      closure and that step''s path/test authority bind them to this verifier. Require
+      its exact `vectl.worker.execution.v2` receipt and integrated commit. The completed
+      actual-child worker receipt and the current BLOCKED receipt/Gate verdict are
+      provenance and red proof only, never substitutes for the new worker receipt
+      or fresh verification.
 
       - Programmatic output must be exactly one `vectl.verifier.semantic.v1` receipt
       with `verifier_id: integration-verifier`, `step_id: pi-model-map-profile-switch.verify-remediation`,
       ordered scope `[actual installed child-Pi concurrency terminal recheck retry
       lifecycle and fault seams, integrated public status restoration and in-flight
       profile-switch behavior, isolation cleanup regression and documentation parity]`,
-      and requirement coverage for MMPS-CHILD-REAL-01 through MMPS-CHILD-REAL-06,
-      MMPS-REM-01 through MMPS-REM-08, MMPS-03 through MMPS-07, and MMPS-REAL-01 through
-      MMPS-REAL-03.
+      and requirement coverage for MMPS-ISOLATION-01 through MMPS-ISOLATION-04, MMPS-CHILD-REAL-01
+      through MMPS-CHILD-REAL-06, MMPS-REM-01 through MMPS-REM-08, MMPS-03 through
+      MMPS-07, and MMPS-REAL-01 through MMPS-REAL-03.
 
-      - `Smoke Test` PASS requires L2/L3 PASS, every scoped atom PROVEN, exact commands/cwd/sanitized
-      environment/process state/termination/evidence refs, raw artifact SHA/bytes,
-      observed max concurrency/correlation and event ordering, exact parent/child
-      Pi and package identities, no blockers/proof gaps, unchanged repository apart
-      from the four witnessed pre-existing edits, external-network/auth/provider/user-config
-      absence, and cleanup PASS.
+      - `Smoke Test` PASS requires L1/L2/L3 PASS; every scoped atom PROVEN; exact
+      commands/cwd/sanitized and adversarial environments/process state/termination/evidence
+      refs; raw artifact SHA/bytes; installed parent/child and package identities;
+      neutral loopback route discovery/resolver observations; five-second child timeout;
+      max simultaneous RPC concurrency `<=4`; simultaneous unique correlation with
+      permitted sequential cross-channel reuse; all previously blocked and remaining
+      checks green; no blockers/proof gaps; unchanged repository apart from the four
+      witnessed primary-tree edits; no external network/auth/provider/user-config
+      effects; and cleanup PASS.
 
 
       Recovery:
 
       - Do not repair failures. Terminate only verifier-started parent/child Pi processes,
       close only verifier-owned loopback endpoints/streams, remove only verifier-created
-      roots, and retain secret-safe raw evidence. Report the exact divergent transition
-      or unreconciled process/root; no automatic retry may follow unknown effects.'
-    verification: Require one completion-grade integration-verifier semantic receipt
-      with the exact step/scope and all scoped requirement IDs PROVEN after executing
-      the new harness checks through actual installed parent and child Pi 0.82.1 processes.
-      Require independently parsed raw evidence, L2/L3 PASS, finite fan-out <=4, terminal-race
-      closure, selective retry identities, generation/lifecycle ordering, real malformed/timeout/closed-stream
-      isolation, preserved status/restoration/in-flight behavior, no effects outside
-      isolated loopback roots, deterministic cleanup, and no repository changes.
+      roots, and retain secret-safe raw evidence. Report the exact divergent transition,
+      inherited value, resolver selection, or unreconciled process/root; no automatic
+      retry may follow unknown effects.'
+    verification: Require one completion-grade `integration-verifier` semantic receipt
+      with the exact step/scope and all MMPS-ISOLATION-01..04 plus retained scoped
+      MMPS atoms PROVEN after fresh execution of the new remediation checks and actual
+      installed parent/child Pi 0.82.1 seams. Require the isolated and adversarial
+      real-runtime files, all previously blocked and remaining checks, independently
+      parsed raw ordered evidence, L1/L2/L3 PASS, neutral loopback runtime-resolver
+      proof without real provider/model hard-coding, the five-second child timeout,
+      simultaneous fan-out <=4 with unique simultaneous correlations and permitted
+      sequential cross-channel reuse, preserved status/restoration/in-flight/no-dot
+      behavior, no external effects, deterministic cleanup, and no repository changes.
     refs:
     - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
     - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T16-55-51-602Z-2026-07-25T16-35-07-512Z_019f9a21-6478-703a-b73d-f78aa510d488.js-44911b7067053b28.txt
-    - contrib/pi-extension/larva.ts
-    - contrib/pi-extension/README.md
     - scripts/pi-extension-runtime-smoke.mjs
     - tests/shell/test_pi_extension_real_runtime.py
+    - contrib/pi-extension/README.md
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/05-semantic-receipt.json
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/06-semantic-gate-verdict.json
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/STAGE-A-manifest.md
+    - /tmp/larva-agent-artifacts/pi-model-map-verify-remediation/02-pytest-real-runtime-failures.txt
     depends_on:
-    - pi-model-map-profile-switch.prove-actual-installed-child-seams
+    - pi-model-map-profile-switch.isolate-real-runtime-harness
     agent: integration-verifier
   - id: pi-model-map-profile-switch.prove-actual-installed-child-seams
     name: Prove actual installed child-Pi profile-switch seams
