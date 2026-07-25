@@ -139183,77 +139183,102 @@ phases:
 
       Deliver:
 
-      - Independently execute the integrated implementation through the real repository-supported
-      Pi extension/runtime seam. Do not modify product, tests, documentation, plan
-      state, user configuration, or credentials. Use a temporary Larva config/session
-      root with neutral provider/model fixtures and bounded child processes; identify
-      the Pi executable/runtime version and exact integrated commit in evidence.
+      - Independently execute the integrated implementation through the producer-owned
+      installed-Pi harness at `scripts/pi-extension-runtime-smoke.mjs` and its regression
+      binding in `tests/shell/test_pi_extension_real_runtime.py`. Identify the selected
+      and executed Pi binary/version, exact integrated commit, and producer commit.
+      Require installed Pi 0.82.0, `pi.available=true`, `rpc.attempted=true`, and
+      observable public extension loading, `/larva-model-map` command registration/invocation,
+      and read-only status. Direct `initializeExtension`, direct helper calls, source-token
+      assertions, or fake Pi at the claimed seam yield INCONCLUSIVE.
 
-      - Run the three targeted Node checks, focused Python Pi-extension regressions,
+      - Run the installed-Pi scenario and focused regression from `pi-model-map-profile-switch.add-installed-pi-harness`,
+      then the three original targeted Node checks, focused Python Pi-extension regressions,
       full pytest, Invar guard, and diff check named by `pi-model-map-profile-switch.implement`.
-      For the `model-map-profile-switch` smoke scenario, verify public command registration
-      and invocation, read-only status, corrected no-dot basename rules, fixed-root/symlink/size
-      failures, process-local precedence, parent success/no-persona/rollback, new
-      and resumed startup routes, distinct ready-child `set_model` targets and correlated
-      IDs, terminal/ended classifications, starting-child generation fence before
-      first prompt, serialized concurrent switches, bounded malformed/timeout/closed-stream
-      behavior, partial identities, same-profile retry, no fallback, no credential
-      leakage, and in-flight-old/next-request-new semantics.
+      Consume the harness''s machine payload as developer evidence but independently
+      judge every runtime claim; a green producer assertion alone is insufficient.
 
-      - Distinguish real extension/child-process seams from fixture boundaries. A
-      fake registry/provider may prevent network or paid requests, but source inspection
-      or direct helper calls alone cannot prove the command, active-run registry,
-      spawn/resume ordering, or RPC wiring. Any required Pi/runtime launch unavailable,
-      mock substitution at the claimed seam, leaked child, or missing high-risk failure
-      path yields BLOCKED/INCONCLUSIVE rather than PASS.
+      - Prove through the real Pi/extension/command/child-RPC seams: active and starting
+      child correlated `set_model`; latest-generation fence before first prompt; ready/new/resumed/terminal/concurrently-ended
+      classification; malformed/timeout/closed-stream handling; partial task/persona
+      identities and same-profile retry; and in-flight-old/next-request-new routing.
+      Confirm controlled fake provider/child endpoints occur only below those claimed
+      seams and no network/auth/provider request occurs.
+
+      - Verify safe basename and fixed-root profile behavior, parent success/no-persona/rollback,
+      serialized switches, no fallback, typed errors, credential secrecy, and deterministic
+      cleanup. Any unavailable installed runtime, mock substitution at a claimed seam,
+      leaked process/root, missing high-risk path, user-config write, auth/credential
+      access, or provider/network attempt yields BLOCKED/INCONCLUSIVE rather than
+      PASS.
 
 
       Boundary:
 
       - Owner: `integration-verifier`, resolved live and semantic-receipt compatible.
-      Read-only verification may write only bounded raw artifacts under `/tmp/larva-agent-artifacts`;
-      no repository or external persistent effects are authorized.
+      Read-only verification may write only bounded secret-safe raw artifacts under
+      `/tmp/larva-agent-artifacts`; no repository, user configuration, credential,
+      provider, network, paid-service, or external persistent effect is authorized.
 
-      - Retry a transient launch/probe at most three times with the same inputs. After
-      every attempt, observe process exit/liveness, child cleanup, temporary-root
-      cleanup, and unchanged primary working-tree status. Stop on unknown child state,
-      user-config mutation, credential/auth request, or any attempt to overwrite the
-      pre-existing primary-tree changes.
+      - Use temporary isolated `PI_CODING_AGENT_DIR`, HOME, session, config, and model-map
+      roots. Retry an unchanged transient launch/probe at most three times. After
+      every attempt observe Pi/child process exit/liveness, RPC closure, temporary-root
+      cleanup, network/auth absence, and unchanged primary working-tree status. Stop
+      on unknown child state, cleanup failure, user-config mutation, credential/auth
+      request, provider/network attempt, or overwrite risk to the four retained primary-tree
+      edits.
 
 
       Admit:
+
+      - Current producer inputs are the integrated paths `scripts/pi-extension-runtime-smoke.mjs`,
+      `tests/shell/test_pi_extension_real_runtime.py`, and `contrib/pi-extension/README.md`,
+      produced by `pi-model-map-profile-switch.add-installed-pi-harness`; dependency
+      closure and the producer''s path/test authority bind them to this verifier.
+      Run `node scripts/pi-extension-runtime-smoke.mjs --scenario model-map-profile-switch-installed-pi`
+      and `uv run pytest -q tests/shell/test_pi_extension_real_runtime.py` before
+      the original implementation checks.
 
       - Programmatic output must be exactly one `vectl.verifier.semantic.v1` receipt
       with `verifier_id: integration-verifier`, `step_id: pi-model-map-profile-switch.verify-runtime`,
       ordered scope `[/larva-model-map command and status, parent and future-child
       routing, active and starting child RPC synchronization, failure/concurrency/security
-      semantics]`, and requirement coverage for `MMPS-01-runtime-switch` through `MMPS-07-status-errors-secrecy`.
+      semantics]`, and requirement coverage for `MMPS-01-runtime-switch` through `MMPS-07-status-errors-secrecy`
+      plus `MMPS-REAL-01-installed-pi-runtime-harness`, `MMPS-REAL-02-child-rpc-ordering`,
+      and `MMPS-REAL-03-failure-isolation`.
 
-      - Use Integration Verifier `Smoke Test` only when L3 command/runtime liveness
-      is observed; otherwise select the truthful supported mode and do not open completion.
-      Every command row needs cwd, process state, exit/termination, decisive excerpts,
-      and secret-safe artifact hashes.
+      - Use Integration Verifier `Smoke Test` only when L3 installed-Pi command/runtime
+      liveness is observed. Every command row needs cwd, sanitized environment identity,
+      process state, exit/termination, decisive excerpts, and secret-safe artifact
+      hashes. PASS requires all listed atoms PROVEN, L2/L3 PASS, no blockers, unchanged
+      repository status apart from the four witnessed pre-existing edits, and cleanup
+      PASS.
 
 
       Recovery:
 
-      - Verification never repairs failures. Terminate only verifier-started children,
-      remove only verifier temporary roots, preserve raw evidence, and return FAIL
-      for observed product divergence or BLOCKED for a missing exact runtime prerequisite.
-      The implementation/reconciliation owner remains the prior step/Orchestrator.'
-    verification: Run the exact implementation checks plus an independent real Pi-extension
-      smoke of `/larva-model-map`; require a completion-grade vectl.verifier.semantic.v1
-      receipt with MMPS-01..07 PROVEN, no blockers, required L2/L3 seam evidence,
-      no repository changes, and deterministic cleanup.
+      - Verification never repairs failures. Terminate only verifier-started Pi/child
+      processes, remove only verifier-created roots, retain secret-safe raw evidence,
+      and return FAIL for observed product divergence or BLOCKED/INCONCLUSIVE for
+      a missing exact runtime prerequisite or seam substitution. Unknown runtime effects
+      forbid replay; report the exact process/root requiring Orchestrator reconciliation.'
+    verification: Require a completion-grade integration-verifier vectl.verifier.semantic.v1
+      receipt after executing the integrated installed-Pi 0.82.0 harness and all original
+      checks. MMPS-01..07 and MMPS-REAL-01..03 must be PROVEN with public Pi/extension/command/child-RPC
+      L2/L3 evidence, exact binary/version and commit identity, no claimed-seam mock,
+      no network/auth/provider/user-config effect, deterministic cleanup, and no repository
+      changes.
     refs:
     - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-25T13-12-39-884Z-2026-07-25T13-06-04-043Z_019f9961-fe8b-719c-9e82-967760b79396.js-2d5f2fcc72d5f3f0.txt
     - contrib/pi-extension/README.md
     - contrib/pi-extension/test-model-map-unit.mjs
     - contrib/pi-extension/test-model-map-runtime.mjs
     - scripts/pi-extension-runtime-smoke.mjs
     - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
     depends_on:
-    - pi-model-map-profile-switch.implement
+    - pi-model-map-profile-switch.add-installed-pi-harness
     agent: integration-verifier
   - id: pi-model-map-profile-switch.review-conformance
     name: Review profile-switch conformance, safety, and proof closure
