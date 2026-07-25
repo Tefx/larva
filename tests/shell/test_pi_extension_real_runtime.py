@@ -1662,6 +1662,10 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert payload["rpc"]["supported"] is True
     assert payload["rpc"]["stderr"] == ""
     assert any(response.get("id") == "state-ready" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "status" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "reject-parent" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "state-after-reject" and response.get("data", {}).get("model", {}).get("id") == "parent-a" for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "status-after-reject" and response.get("success") is True for response in payload["rpc"]["responses"])
     assert any(response.get("id") == "switch-beta" and response.get("success") is True for response in payload["rpc"]["responses"])
     assert isinstance(payload["rpc"]["events"], list)
     assert proof["status"] == "PASS", json.dumps(proof, indent=2, sort_keys=True)
@@ -1670,10 +1674,29 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
         "exactInstalledBinary": True,
         "exactInstalledPackage": True,
         "realExtensionCommandSeam": True,
+        "publicStatus": True,
         "parentRouteSwitched": True,
         "childRpcSetModelOrdered": True,
         "inFlightOldThenNextNew": True,
         "noExternalProvider": True,
+        "parentRollback": True,
+        "boundedReadyChildFanout": True,
+        "terminalDuringStarting": True,
+        "partialRetryIdentity": True,
+        "startingGenerationFence": True,
+        "lifecycleClassifications": True,
+        "faultIsolation": True,
+    }
+    assert proof["observations"] == {
+        "publicStatus": True,
+        "parentRollback": True,
+        "boundedReadyChildFanout": True,
+        "terminalDuringStarting": True,
+        "partialRetryIdentity": True,
+        "startingGenerationFence": True,
+        "lifecycleClassifications": True,
+        "faultIsolation": True,
+        "inFlightOldNextNew": True,
     }
     assert "rpc_tx" in proof["childRpcEventNames"]
     assert proof["isolation"]["offline"] is True

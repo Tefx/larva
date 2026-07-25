@@ -683,6 +683,7 @@ const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
 const MODEL_MAP_PROFILE_MAX_BYTES = 1_048_576;
 const MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000;
+const MODEL_MAP_CHILD_SWITCH_CONCURRENCY = 4;
 const CHILD_RPC_TRACE_PREVIEW_CODE_POINTS = 200;
 const CHILD_STDERR_TAIL_CODE_POINTS = 16_384;
 let personaListCache: PersonaListCache = null;
@@ -3023,6 +3024,10 @@ function parseModelMapConfig(raw: string): PiModelMapConfig {
   return { models, prefix_rules };
 }
 
+function sameModelMapConfig(left: PiModelMapConfig, right: PiModelMapConfig): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function resolveFromModelMap(specModel: string, config: PiModelMapConfig): ModelMapResolution {
   const exact = config.models[specModel];
   if (exact !== undefined) return { kind: "mapped", parsed: { provider: exact.provider, modelId: exact.model_id } };
@@ -3997,6 +4002,20 @@ function childModelMapFailure(record: ActiveSubagentRun, message = "Active child
   return { task_id: record.task_id, persona_id: record.persona_id, state: "failed", error: error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", message) };
 }
 
+async function mapWithConcurrency<T, R>(items: readonly T[], limit: number, mapper: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function fenceSubagentRoute(record: ActiveSubagentRun, rpc: RpcClient): Promise<LarvaError | null> {
   if (record.route_generation === modelMapRouteGeneration) return null;
   try {
@@ -4021,7 +4040,10 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
     return { status: "failed", profile: profileName, generation: modelMapRouteGeneration, parent: { state: "failed", persona_id: parentPersonaId, error: larvaError }, children: [], counts: modelMapSwitchCounts([]) };
   }
 
-  const records = uniqueActiveSubagentRuns();
+  const sameProfileRetry = activeModelMapProfile !== null
+    && activeModelMapProfile.path === profile.path
+    && sameModelMapConfig(activeModelMapProfile.config, profile.config);
+  const records = uniqueActiveSubagentRuns().filter((record) => !sameProfileRetry || record.route_generation !== modelMapRouteGeneration);
   let parentTarget: ParsedModel | null = null;
   let parentModel: unknown | null = null;
   const childTargets = new Map<ActiveSubagentRun, ParsedModel>();
@@ -4043,10 +4065,12 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
 
   const previousProfile = activeModelMapProfile;
   const previousModel = state.piModel;
-  activeModelMapProfile = profile;
-  modelMapRouteGeneration += 1;
+  if (!sameProfileRetry) {
+    activeModelMapProfile = profile;
+    modelMapRouteGeneration += 1;
+  }
   const generation = modelMapRouteGeneration;
-  if (parentTarget !== null && parentModel !== null) {
+  if (!sameProfileRetry && parentTarget !== null && parentModel !== null) {
     try {
       await setPiModel(pi, parentModel, state.envelope?.model ?? formatPiModel(parentTarget));
       state.piModel = parentModel;
@@ -4063,10 +4087,13 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
     }
   }
 
-  const children = await Promise.all(records.map(async (record, index): Promise<ChildModelMapSwitchResult> => {
+  const children = await mapWithConcurrency(records, MODEL_MAP_CHILD_SWITCH_CONCURRENCY, async (record, index): Promise<ChildModelMapSwitchResult> => {
     const target = childTargets.get(record);
     if (target === undefined) return childModelMapFailure(record);
     if (record.rpc === null || record.status === "starting") {
+      if (record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status)) {
+        return { task_id: record.task_id, persona_id: record.persona_id, state: "ended_during_switch" };
+      }
       return { task_id: record.task_id, persona_id: record.persona_id, state: "will_use_new_route", provider: target.provider, model_id: target.modelId };
     }
     const response = await record.rpc.command(`model-map-${generation}-${index}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
@@ -4078,7 +4105,7 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
       return { task_id: record.task_id, persona_id: record.persona_id, state: "ended_during_switch" };
     }
     return childModelMapFailure(record);
-  }));
+  });
   const counts = modelMapSwitchCounts(children);
   return {
     status: counts.failed > 0 ? "partial" : "success",
@@ -4150,7 +4177,9 @@ function registerLarvaModelMapCommand(ctx: PiContext, pi: PiApi): void {
       const value = input?.trim() ?? "";
       if (value === "status") {
         const status = await modelMapStatus(runtimeCtx);
-        await notify(runtimeCtx, `Larva model-map: ${String(status.source)}${status.profile ? ` (${String(status.profile)})` : ""}`, "info");
+        const parent = isRecord(status.parent) ? status.parent : {};
+        const children = isRecord(status.children) ? status.children : {};
+        await notify(runtimeCtx, `Larva model-map: source=${String(status.source)}; profile=${status.profile === null ? "none" : String(status.profile)}; path=${status.path === null ? "none" : String(status.path)}; parent=${String(parent.persona_id ?? "none")}:${String(parent.provider ?? "none")}/${String(parent.model_id ?? "none")}; children ready=${String(children.ready ?? 0)}, starting=${String(children.starting ?? 0)}, terminal=${String(children.terminal ?? 0)}`, "info");
         return status;
       }
       if (value.length === 0) return { status: "failed", error: error("LARVA_MODEL_MAP_PROFILE_BAD_NAME", "Usage: /larva-model-map <profile>|status") };

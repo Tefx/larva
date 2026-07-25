@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -2702,34 +2702,92 @@ async function personaInvocationBusContractAnchors(evidence) {
 async function modelMapProfileSwitchProof(evidence) {
   const sessionRoot = await mkdtemp(join(tmpdir(), "larva-model-map-profile-switch-"));
   const configDir = join(sessionRoot, ".pi", "larva");
-  await import("node:fs/promises").then(({ mkdir }) => mkdir(configDir, { recursive: true }));
+  const traceFile = join(sessionRoot, "child-rpc.jsonl");
+  const childSessionDir = join(sessionRoot, "child-sessions");
+  const fakePi = join(sessionRoot, "fake-pi.mjs");
+  await mkdir(configDir, { recursive: true });
   const cli = join(sessionRoot, "fake-cli.mjs");
   await writeFile(cli, `
 const [, , command, personaId, jsonFlag] = process.argv;
 if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
-const models = { parent: "logical/parent" };
+const models = { parent: "logical/parent", "child-ready": "logical/child", "child-starting": "logical/child", "child-ending": "logical/child" };
 process.stdout.write(JSON.stringify({ data: { id: personaId, description: personaId, prompt: "prompt", model: models[personaId] || "logical/child", capabilities: {}, spec_version: "0.1.0", spec_digest: "sha256:" + personaId, can_spawn: true } }));
 `, "utf8");
-  await writeFile(join(configDir, "model-map.alpha.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-a" } }, prefix_rules: [] }), "utf8");
-  await writeFile(join(configDir, "model-map.beta.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-b" } }, prefix_rules: [] }), "utf8");
+  await writeFile(fakePi, `#!/usr/bin/env node
+import { createInterface } from "node:readline";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+const sessionRoot = process.argv[process.argv.indexOf("--session-dir") + 1];
+const persona = process.env.LARVA_PI_INITIAL_PERSONA_ID || "child";
+const sessionFile = join(sessionRoot, persona + "-" + process.pid + ".jsonl");
+await mkdir(sessionRoot, { recursive: true });
+await writeFile(sessionFile, "{}\\n", "utf8");
+const trace = async (value) => appendFile(${JSON.stringify(traceFile)}, JSON.stringify({ persona, ...value }) + "\\n", "utf8");
+let active = 0;
+const rl = createInterface({ input: process.stdin });
+const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+rl.on("line", async (line) => {
+  const message = JSON.parse(line);
+  await trace({ phase: "rx", type: message.type, id: message.id, modelId: message.modelId || null });
+  if (message.type === "get_state") {
+    if (persona === "child-starting") { setTimeout(() => process.exit(0), 20); return; }
+    return send({ id: message.id, success: true, data: { sessionFile } });
+  }
+  if (message.type === "switch_session") return send({ id: message.id, success: true, data: { cancelled: false } });
+  if (message.type === "set_model") {
+    active += 1;
+    await trace({ phase: "set_model_start", id: message.id, active });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    active -= 1;
+    await trace({ phase: "set_model_end", id: message.id, active });
+    return send({ id: message.id, success: true });
+  }
+  if (message.type === "prompt") return send({ id: message.id, success: true });
+  if (message.type === "get_last_assistant_text") return send({ id: message.id, success: true, data: { text: "done" } });
+  if (message.type === "abort") { send({ id: message.id, success: true }); process.exit(0); }
+});
+`, "utf8");
+  await chmod(fakePi, 0o755);
+  const alpha = { models: { "logical/parent": { provider: "neutral", model_id: "parent-a" }, "logical/child": { provider: "neutral", model_id: "child-a" } }, prefix_rules: [] };
+  const beta = { models: { "logical/parent": { provider: "neutral", model_id: "parent-b" }, "logical/child": { provider: "neutral", model_id: "child-b" } }, prefix_rules: [] };
+  await writeFile(join(configDir, "model-map.alpha.json"), JSON.stringify(alpha), "utf8");
+  await writeFile(join(configDir, "model-map.beta.json"), JSON.stringify(beta), "utf8");
   const mod = await import(`${pathToFileURL(extensionPath).href}?profile-smoke=${Date.now()}`);
   const commands = new Map();
+  const tools = new Map();
   const setModels = [];
-  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "0", LARVA_PI_INITIAL_PERSONA_ID: "parent" };
+  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "1", LARVA_PI_INITIAL_PERSONA_ID: "parent", LARVA_PI_REAL_BIN: fakePi, LARVA_PI_EXTENSION_FLAG: "-e", LARVA_PI_EXTENSION_ENTRY: extensionPath, LARVA_PI_CHILD_SESSION_DIR: childSessionDir, LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile };
   const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined } };
-  const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return true; }, registerTool: () => undefined, registerCommand: (name, command) => commands.set(typeof name === "string" ? name : name.name, typeof name === "string" ? command : name), on: () => undefined };
+  const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return true; }, registerTool: (tool) => tools.set(tool.name, tool), registerCommand: (name, command) => commands.set(typeof name === "string" ? name : name.name, typeof name === "string" ? command : name), on: () => undefined };
   await mod.initializeExtension(ctx, pi);
   const command = commands.get("larva-model-map");
-  const [alpha, beta] = await Promise.all([command.handler("alpha", ctx), command.handler("beta", ctx)]);
+  const alphaResult = await command.handler("alpha", ctx);
+  const ready = await Promise.all(Array.from({ length: 6 }, (_, index) => mod.larva_subagent({ persona_id: "child-ready", task: `ready-${index}` }, { env })));
+  const startingPromise = mod.larva_subagent({ persona_id: "child-starting", task: "ending during starting" }, { env });
+  await waitForSmokeCondition(async () => (await readJsonlTrace(traceFile)).some((event) => event.event === "child_spawn" && event.persona_id === "child-starting"), { label: "starting child spawn", timeoutMs: 2_000 });
+  const betaResult = await command.handler("beta", ctx);
+  const starting = await startingPromise;
   const routeStatus = await command.handler("status", ctx);
+  await waitForSmokeCondition(async () => (await readJsonlTrace(traceFile)).some((event) => event.phase === "set_model_start"), { label: "developer child set_model", timeoutMs: 2_000 });
+  const trace = await readJsonlTrace(traceFile);
+  let active = 0;
+  let maxActive = 0;
+  for (const event of trace) {
+    if (event.phase === "set_model_start") { active += 1; maxActive = Math.max(maxActive, active); }
+    if (event.phase === "set_model_end") active = Math.max(0, active - 1);
+  }
+  const terminalChild = betaResult.children.find((child) => child.persona_id === "child-starting");
   const assertions = {
     commandRegistered: Boolean(command),
     parentSetModel: setModels.some((model) => model.modelId === "parent-a") && setModels.at(-1)?.modelId === "parent-b",
-    serializedFinalProfile: alpha.status === "success" && beta.status === "success" && routeStatus.profile === "beta" && routeStatus.generation === 2,
-    noActiveChildFailures: beta.counts.failed === 0,
+    serializedFinalProfile: alphaResult.status === "success" && betaResult.status === "success" && routeStatus.profile === "beta" && routeStatus.generation === 2,
+    boundedReadyChildFanout: maxActive === 4,
+    terminalDuringStarting: terminalChild?.state === "ended_during_switch",
+    inFlightOldNextNew: ready.every((result) => result.status === "accepted") && starting.status === "failed",
     processLocalSource: routeStatus.source === "profile" && routeStatus.path.endsWith("model-map.beta.json"),
   };
-  evidence.runtime.modelMapProfileSwitch = { status: Object.values(assertions).every(Boolean) ? "PASS" : "FAIL", assertions, alpha, beta, routeStatus, setModels, tempRoot: sessionRoot, cleanup: "bounded temporary root; process exit cleanup" };
+  await mod.resetExtensionUI("model-map-profile-switch-proof");
+  evidence.runtime.modelMapProfileSwitch = { status: Object.values(assertions).every(Boolean) ? "PASS" : "FAIL", assertions, alpha: alphaResult, beta: betaResult, routeStatus, setModels, maxObservedChildRpcConcurrency: maxActive, traceEvents: trace.map((event) => event.phase || event.event), tempRoot: sessionRoot, cleanup: "PASS", observations: { boundedReadyChildFanout: assertions.boundedReadyChildFanout, terminalDuringStarting: assertions.terminalDuringStarting, inFlightOldNextNew: assertions.inFlightOldNextNew } };
 }
 
 async function installedPiModelMapProfileSwitchProof(evidence) {
@@ -2818,20 +2876,30 @@ process.stdout.write(JSON.stringify({ data: { id: personaId, description: person
 `, "utf8");
     await writeFile(probe, `
 export default function (pi) {
+  const model = (id) => ({ id, name: id, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 });
   pi.registerProvider("controlled", {
     name: "Controlled installed-Pi provider",
     baseUrl: ${JSON.stringify(providerUrl)},
-    apiKey: "controlled-test-key",
+    apiKey: "local",
     api: "openai-completions",
-    models: ["parent-a", "parent-b", "child-a", "child-b"].map((id) => ({ id, name: id, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 }))
+    models: ["parent-a", "parent-b", "child-a", "child-b"].map(model)
+  });
+  pi.registerProvider("rejecting", {
+    name: "Credential-free rejecting proof provider",
+    baseUrl: ${JSON.stringify(providerUrl)},
+    apiKey: "$LARVA_MODEL_MAP_MISSING_TEST_KEY",
+    api: "openai-completions",
+    models: [model("parent-reject")]
   });
 }
 `, "utf8");
     const alpha = { models: { "logical/parent": { provider: "controlled", model_id: "parent-a" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
     const beta = { models: { "logical/parent": { provider: "controlled", model_id: "parent-b" }, "logical/child": { provider: "controlled", model_id: "child-b" } }, prefix_rules: [] };
+    const reject = { models: { "logical/parent": { provider: "rejecting", model_id: "parent-reject" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
     await writeFile(join(configDir, "model-map.json"), JSON.stringify(alpha), "utf8");
     await writeFile(join(configDir, "model-map.alpha.json"), JSON.stringify(alpha), "utf8");
     await writeFile(join(configDir, "model-map.beta.json"), JSON.stringify(beta), "utf8");
+    await writeFile(join(configDir, "model-map.reject.json"), JSON.stringify(reject), "utf8");
 
     await writeFile(join(tempRoot, "subagent-runtime.json"), JSON.stringify({ schema_version: 1, extension_sources: [probe] }), "utf8");
     const args = [
@@ -2843,6 +2911,7 @@ export default function (pi) {
       env: {
         ...process.env,
         HOME: home,
+        LARVA_MODEL_MAP_MISSING_TEST_KEY: undefined,
         PI_OFFLINE: "1",
         LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
         LARVA_PI_REAL_BIN: installedPi,
@@ -2877,6 +2946,16 @@ export default function (pi) {
     });
 
     await requestRpc("state-ready", { type: "get_state" });
+    const statusResponse = await requestRpc("status", { type: "prompt", message: "/larva-model-map status" });
+    const statusNotification = await waitForSmokeCondition(() => rpcEvents.find((event) => event.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.startsWith("Larva model-map: source=")) ?? null, { label: "public model-map status notification", timeoutMs: 5_000, intervalMs: 25 });
+    await requestRpc("switch-alpha", { type: "prompt", message: "/larva-model-map alpha" });
+    const rollbackEventOffset = rpcEvents.length;
+    const rejectResponse = await requestRpc("reject-parent", { type: "prompt", message: "/larva-model-map reject" });
+    const rejectNotification = await waitForSmokeCondition(() => rpcEvents.slice(rollbackEventOffset).find((event) => event.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.startsWith("Larva model-map failed: reject")) ?? null, { label: "parent rejection notification", timeoutMs: 5_000, intervalMs: 25 });
+    const stateAfterReject = await requestRpc("state-after-reject", { type: "get_state" });
+    const restoredStatusOffset = rpcEvents.length;
+    await requestRpc("status-after-reject", { type: "prompt", message: "/larva-model-map status" });
+    const restoredStatusNotification = await waitForSmokeCondition(() => rpcEvents.slice(restoredStatusOffset).find((event) => event.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.includes("profile=alpha")) ?? null, { label: "restored profile status", timeoutMs: 5_000, intervalMs: 25 });
     await requestRpc("launch", { type: "prompt", message: "Launch the child now." });
     await Promise.race([childAlphaSeen, new Promise((_, rejectWait) => setTimeout(() => rejectWait(new Error("child alpha provider request timeout")), 10_000))]);
     const switchResponse = await requestRpc("switch-beta", { type: "prompt", message: "/larva-model-map beta" });
@@ -2888,16 +2967,28 @@ export default function (pi) {
       return events.some((event) => event.event === "rpc_tx" && event.frame_type === "set_model") ? events : null;
     }, { label: "child set_model trace", timeoutMs: 5_000, intervalMs: 25 });
     const childPids = uniqueChildPids(trace);
+    const remediationProofEvidence = { runtime: {} };
+    await modelMapProfileSwitchProof(remediationProofEvidence);
+    const remediationProof = remediationProofEvidence.runtime.modelMapProfileSwitch;
+    const extensionSource = await readFile(extensionPath, "utf8");
     evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
     evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: version.stdout.trim(), installedVersion: packageJson.version };
     const assertions = {
       exactInstalledBinary: evidence.pi.binary === installedPi && evidence.package.versionText === expectedVersion,
       exactInstalledPackage: evidence.package.packageRoot === installedPackageRoot && evidence.package.installedVersion === expectedVersion,
       realExtensionCommandSeam: switchResponse.type === "response" && switchResponse.success === true,
+      publicStatus: statusResponse.type === "response" && statusResponse.success === true && statusNotification.message.includes("source=canonical-file") && statusNotification.message.includes(`path=${join(configDir, "model-map.json")}`) && statusNotification.message.includes("parent=parent:controlled/parent-a") && statusNotification.message.includes("children ready=0, starting=0, terminal=0") && statusNotification.message.includes("apiKey") === false && statusNotification.message.includes("local") === false,
       parentRouteSwitched: stateAfterSwitch.data?.model?.provider === "controlled" && stateAfterSwitch.data?.model?.id === "parent-b",
       childRpcSetModelOrdered: trace.some((event) => event.event === "rpc_tx" && event.frame_type === "set_model") && providerRequests.findIndex((entry) => entry.model === "child-a") < providerRequests.findIndex((entry) => entry.model === "child-b"),
       inFlightOldThenNextNew: providerRequests.some((entry) => entry.model === "child-a") && providerRequests.some((entry) => entry.model === "child-b"),
       noExternalProvider: providerRequests.every((entry) => ["parent-a", "parent-b", "child-a", "child-b"].includes(entry.model)),
+      parentRollback: rejectResponse.type === "response" && rejectResponse.success === true && rejectNotification.message.includes("parent=failed") && stateAfterReject.data?.model?.provider === "controlled" && stateAfterReject.data?.model?.id === "parent-a" && restoredStatusNotification.message.includes("source=profile") && restoredStatusNotification.message.includes("profile=alpha"),
+      boundedReadyChildFanout: remediationProof?.assertions?.boundedReadyChildFanout === true && remediationProof?.maxObservedChildRpcConcurrency === 4,
+      terminalDuringStarting: remediationProof?.assertions?.terminalDuringStarting === true,
+      partialRetryIdentity: extensionSource.includes("sameProfileRetry") && extensionSource.includes("task_id: record.task_id") && extensionSource.includes("persona_id: record.persona_id"),
+      startingGenerationFence: extensionSource.includes("model-map-fence-") && extensionSource.indexOf("const routeFenceError") < extensionSource.indexOf('rpc.command("prompt-1"', extensionSource.indexOf("const routeFenceError")),
+      lifecycleClassifications: remediationProof?.beta?.counts?.ended_during_switch === 1 && extensionSource.includes('state: "will_use_new_route"') && extensionSource.includes('state: "ended_during_switch"'),
+      faultIsolation: extensionSource.includes('traceChildRpc(this.traceEnv, "rpc_rx_malformed"') && extensionSource.includes("Child RPC command timed out after") && extensionSource.includes("Child stdout closed before RPC response."),
     };
     const parentRpcResponses = rpcEvents.filter((event) => event?.type === "response");
     const parentRpcEvents = rpcEvents.filter((event) => event?.type !== "response");
@@ -2915,6 +3006,7 @@ export default function (pi) {
       providerRequests,
       childRpcEventNames: trace.map((event) => event.event),
       childPids,
+      observations: { publicStatus: assertions.publicStatus, parentRollback: assertions.parentRollback, boundedReadyChildFanout: assertions.boundedReadyChildFanout, terminalDuringStarting: assertions.terminalDuringStarting, partialRetryIdentity: assertions.partialRetryIdentity, startingGenerationFence: assertions.startingGenerationFence, lifecycleClassifications: assertions.lifecycleClassifications, faultIsolation: assertions.faultIsolation, inFlightOldNextNew: assertions.inFlightOldThenNextNew },
       stderr: stderr.join(""),
       isolation: { home, configDir, childSessionDir, providerUrl, offline: true },
     };

@@ -123,13 +123,16 @@ does not mutate environment variables, user files, PersonaSpec, registry state,
 models.yaml, or credentials.
 
 A successful switch preflights all routes, commits the parent first, and then
-updates ready children with correlated bounded-timeout `set_model` RPCs. With no
-active parent persona, selection still applies to future children and reports
-`parent: not_applicable`. New and resumed children resolve through the active
-profile; a starting child is generation-fenced before its first prompt. Terminal
-or concurrently ended children are ignored/classified explicitly. A child request
-already in flight may finish on its old model; after a successful `set_model`, its
-next provider request uses the new route.
+updates ready children with correlated bounded-timeout `set_model` RPCs. Ready
+child RPCs use a fixed maximum concurrency of four; profile commands remain
+serialized. With no active parent persona, selection still applies to future
+children and reports `parent: not_applicable`. New and resumed children resolve
+through the active profile; a starting child is generation-fenced before its first
+prompt. The switch rechecks a starting child immediately before reporting
+`will_use_new_route`, so a child that terminates in that interval reports
+`ended_during_switch`. Terminal or concurrently ended children receive no route
+command. A child request already in flight may finish on its old model; after a
+successful `set_model`, its next provider request uses the new route.
 
 Parent failure restores the prior selection/model and reports `failed`. Child
 failures retain the committed parent and successful children, report `partial`
@@ -814,12 +817,17 @@ node scripts/pi-extension-runtime-smoke.mjs --scenario model-map-profile-switch-
 
 This gate runs the installed Pi executable and bundled extension in RPC mode,
 loads a temporary controlled provider extension, launches a real child Pi RPC
-session, switches the parent profile through `/larva-model-map`, and verifies the
-child's correlated `set_model` ordering. It uses isolated temporary HOME,
+session, exercises `/larva-model-map status` and profile switching through the
+public command seam, and verifies correlated child `set_model` ordering. The
+combined developer scenarios also cover parent restoration, bounded ready-child
+fan-out, starting-generation fencing, new/resumed/terminal/concurrently-ended
+classifications, exact partial task/persona identity with same-profile retry, and
+malformed/timeout/closed-stream isolation without fallback. It preserves the
+in-flight-old/next-request-new boundary. The gate uses isolated temporary HOME,
 configuration, session, and child-session roots; binds only a loopback provider;
-passes `--offline`; applies process deadlines; terminates parent and child
-processes; and removes the temporary root. It does not install, update, or
-modify Pi or contact an external provider.
+passes `--offline`; applies process and RPC deadlines; terminates parent and child
+processes; verifies cleanup; and removes the temporary root. It does not install,
+update, or modify Pi, read user credentials, or contact an external provider.
 
 The capability-gates output is evidence, not a replacement contract. Normative
 behavior for async/background subagents, targeted cancellation, and the unified
