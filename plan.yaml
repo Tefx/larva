@@ -139390,12 +139390,12 @@ phases:
       Deliver:
 
       - Close the independent receipt''s runtime-proof gap by extending the repository-supported
-      Pi runtime smoke into a real installed-Pi 0.82.0 seam harness for `model-map-profile-switch`.
-      Launch the installed Pi binary with the shipped extension through Pi''s public
-      extension-loading/RPC interfaces; invoke the registered `/larva-model-map` command
-      and read-only status through that runtime. Direct `initializeExtension` calls,
-      direct helper calls, source-token assertions, and fake Pi at the claimed Pi/extension
-      seam cannot satisfy this outcome.
+      Pi runtime smoke into a real installed-Pi 0.82.1 seam harness for `model-map-profile-switch`.
+      Launch the witnessed current Pi executable `/opt/homebrew/bin/pi` with the shipped
+      extension through Pi''s public extension-loading/RPC interfaces; invoke the
+      registered `/larva-model-map` command and read-only status through that runtime.
+      Direct `initializeExtension` calls, direct helper calls, source-token assertions,
+      and fake Pi at the claimed Pi/extension seam cannot satisfy this outcome.
 
       - Use temporary isolated `PI_CODING_AGENT_DIR`, HOME, session, Larva config,
       and model-map roots; neutral provider/model/persona fixtures; offline/no-session
@@ -139411,8 +139411,8 @@ phases:
       classification; malformed response, timeout, and closed-stream handling; explicit
       partial task/persona identities and same-profile retry; and an in-flight old
       request followed by a next request using the new route. Emit a deterministic
-      secret-safe machine payload identifying Pi binary/version, seam boundaries,
-      attempts, process exits, cleanup, and each MMPS proof result.
+      secret-safe machine payload identifying Pi binary/version, package root/version,
+      seam boundaries, attempts, process exits, cleanup, and each MMPS proof result.
 
       - Coalesce developer/regression tests and `contrib/pi-extension/README.md` updates
       with the harness. Document how to run the installed-Pi smoke, its isolation/no-network
@@ -139441,27 +139441,36 @@ phases:
       Stop on unknown child state, cleanup failure, credential/auth request, user-config
       mutation, network/provider attempt, or ambiguous seam substitution.
 
+      - The harness may identify and execute only the witnessed current runtime binding:
+      executable `/opt/homebrew/bin/pi`, CLI version `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`,
+      and package version `0.82.1`. It must select and launch that same executable.
+      Installing, downgrading, updating, or otherwise mutating Pi; using the network;
+      or mutating external runtime state is forbidden.
+
 
       Admit:
 
       - Witness installed Pi through the repository''s supported Pi adapter family:
-      identify the selected executable and its `0.82.0` version, then launch that
-      same executable with the shipped extension and isolated roots. The harness''s
-      machine payload and Python regression assertions are developer evidence consumed
-      independently by `pi-model-map-profile-switch.verify-runtime`.
+      identify selected executable `/opt/homebrew/bin/pi` and its `0.82.1` version
+      together with package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      and package version `0.82.1`, then launch that same executable with the shipped
+      extension and isolated roots. The harness''s machine payload and Python regression
+      assertions are developer evidence consumed independently by `pi-model-map-profile-switch.verify-runtime`.
 
       - The check `installed_pi_profile_switch_runtime` executes `node scripts/pi-extension-runtime-smoke.mjs
       --scenario model-map-profile-switch-installed-pi`; it must exit 0 and report
-      the scenario, `pi.available: true`, Pi version `0.82.0`, `rpc.attempted: true`,
-      real command registration/invocation/status, all listed child/failure/concurrency
-      proof IDs PASS, no network/auth/provider call, and cleanup PASS. `installed_pi_profile_switch_regression`
-      executes the focused Python test binding over the same public harness.
+      the scenario, selected and executed executable `/opt/homebrew/bin/pi`, `pi.available:
+      true`, Pi version `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`,
+      package version `0.82.1`, `rpc.attempted: true`, real command registration/invocation/status,
+      all listed child/failure/concurrency proof IDs PASS, no network/auth/provider
+      call, and cleanup PASS. `installed_pi_profile_switch_regression` executes the
+      focused Python test binding over the same public harness.
 
-      - Record exact commands, cwd, selected/executed Pi identity, exits/signals,
-      decisive output, sanitized environment bindings, changed paths, and cleanup
-      observations in the worker receipt. No expected-red artifact is introduced because
-      the authoritative INCONCLUSIVE receipt already establishes the missing outcome
-      and the new harness check is producer-owned developer proof.
+      - Record exact commands, cwd, selected/executed Pi identity, package identity,
+      exits/signals, decisive output, sanitized environment bindings, changed paths,
+      and cleanup observations in the worker receipt. No expected-red artifact is
+      introduced because the authoritative INCONCLUSIVE receipt already establishes
+      the missing outcome and the new harness check is producer-owned developer proof.
 
 
       Recovery:
@@ -139481,9 +139490,11 @@ phases:
       ordering.","Isolation must prevent user-config, credential, network, and provider
       effects while still preserving the real Pi/extension seams.","Generation fencing,
       correlated RPC failures, partial retry, and in-flight request boundaries require
-      runtime rather than fixture-only proof."],"primary_outcome":"MMPS-REAL-01-installed-pi-runtime-harness","rollback_class":"NONTRIVIAL","observation_ledger":[{"requirement_id":"MMPS-REAL-01-installed-pi-runtime-harness","atom":"Installed
-      Pi 0.82.0 loads the shipped extension and exposes real command invocation and
-      status under isolated roots.","modality":"installed_cli_runtime","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-runtime"},{"requirement_id":"MMPS-REAL-02-child-rpc-ordering","atom":"Real
+      runtime rather than fixture-only proof."],"primary_outcome":"MMPS-REAL-01-installed-pi-runtime-harness","rollback_class":"NONTRIVIAL","observation_ledger":[{"requirement_id":"MMPS-REAL-01-installed-pi-runtime-harness","atom":"Witnessed
+      current Pi executable /opt/homebrew/bin/pi at CLI version 0.82.1 and package
+      root /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent at package
+      version 0.82.1 loads the shipped extension and exposes real command invocation
+      and status under isolated roots.","modality":"installed_cli_runtime","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-runtime"},{"requirement_id":"MMPS-REAL-02-child-rpc-ordering","atom":"Real
       Pi/extension child RPC wiring proves correlated active/starting synchronization,
       generation-before-prompt, lifecycle classification, partial retry, and in-flight
       boundaries.","modality":"child_rpc_and_concurrency","seam":"real","check_id":"installed_pi_profile_switch_runtime","independent_step":"pi-model-map-profile-switch.verify-runtime"},{"requirement_id":"MMPS-REAL-03-failure-isolation","atom":"Malformed,
@@ -139497,16 +139508,18 @@ phases:
 
       <intent_closure_contract>
 
-      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_real_runtime.py","contrib/pi-extension/README.md"],"blocked_paths":["plan.yaml","contrib/pi-extension/larva.ts","design/**","docs/**","tests/shell/test_pi_extension_subagent_ux.py","src/**","contracts/**"]},"claims":["MMPS-REAL-01-installed-pi-runtime-harness","MMPS-REAL-02-child-rpc-ordering","MMPS-REAL-03-failure-isolation","MMPS-REAL-04-doc-regression"],"checks":[{"id":"installed_pi_profile_switch_runtime","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","model-map-profile-switch-installed-pi"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map-profile-switch-installed-pi"},{"literal":"\"available\":
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_real_runtime.py","contrib/pi-extension/README.md"],"blocked_paths":["plan.yaml","contrib/pi-extension/larva.ts","design/**","docs/**","tests/shell/test_pi_extension_subagent_ux.py","src/**","contracts/**"]},"claims":["MMPS-REAL-01-installed-pi-runtime-harness","MMPS-REAL-02-child-rpc-ordering","MMPS-REAL-03-failure-isolation","MMPS-REAL-04-doc-regression"],"checks":[{"id":"installed_pi_profile_switch_runtime","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","model-map-profile-switch-installed-pi"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map-profile-switch-installed-pi"},{"literal":"/opt/homebrew/bin/pi"},{"literal":"0.82.1"},{"literal":"/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent"},{"literal":"\"available\":
       true"},{"literal":"\"attempted\": true"},{"literal":"\"status\": \"PASS\""}]}},"proves":["MMPS-REAL-01-installed-pi-runtime-harness","MMPS-REAL-02-child-rpc-ordering","MMPS-REAL-03-failure-isolation"]},{"id":"installed_pi_profile_switch_regression","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_real_runtime.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REAL-01-installed-pi-runtime-harness","MMPS-REAL-02-child-rpc-ordering","MMPS-REAL-03-failure-isolation","MMPS-REAL-04-doc-regression"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-REAL-04-doc-regression"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
 
       </intent_closure_contract>'
     verification: The Orchestrator must admit a worker-v2 dispatch and run Intent-Closure
       in an isolated clean worktree. Require the installed-Pi scenario and focused
-      Python regression green, exact three-path scope, Pi 0.82.0 selected/executed
-      identity, real public Pi/extension/command/child-RPC seam evidence, all MMPS-REAL-01..04
-      claims, no network/auth/provider/user-config effects, deterministic process/root
-      cleanup, and preservation of the four unrelated primary-tree edits.
+      Python regression green, exact three-path scope, selected and executed executable
+      `/opt/homebrew/bin/pi` at CLI version `0.82.1`, package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      at package version `0.82.1`, real public Pi/extension/command/child-RPC seam
+      evidence, all MMPS-REAL-01..04 claims, no Pi install/downgrade/update, no network/auth/provider/user-config/external-state
+      effects, deterministic process/root cleanup, and preservation of the four unrelated
+      primary-tree edits.
     evidence_template: Integrated commit and unchanged worker-v2 receipt; Gate verdict;
       installed Pi binary/version and exact scenario output; focused pytest output;
       changed-path list; process/root/network/auth cleanup observations; primary-tree
