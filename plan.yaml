@@ -139596,7 +139596,7 @@ phases:
       Backup patch retained under /tmp/larva-agent-artifacts.'
   - id: pi-model-map-profile-switch.remediate-terminal-findings
     name: Remediate terminal profile-switch conformance findings
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -139764,6 +139764,8 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.verify-runtime
     agent: frontend-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-25T14:47:15.885071Z'
   - id: pi-model-map-profile-switch.verify-remediation
     name: Independently verify terminal profile-switch remediation
     status: pending
