@@ -138932,12 +138932,14 @@ phases:
 - id: pi_model_map_profile_switch_20260725
   name: Pi Runtime Model-Map Profile Switch 2026-07-25
   status: in_progress
-  gate: The phase closes only after the completed product implementation, the installed-Pi
-    0.82.0 runtime harness with synchronized developer tests and Pi-extension documentation,
+  gate: The phase closes only after the completed product implementation, the witnessed-current
+    installed-Pi runtime harness using selected and executed executable `/opt/homebrew/bin/pi`
+    at CLI version `0.82.1` and package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+    at package version `0.82.1`, synchronized developer tests and Pi-extension documentation,
     independent real-seam runtime verification, and terminal spec conformance review
     prove MMPS-01 through MMPS-08 and MMPS-REAL-01 through MMPS-REAL-04 with no blocking
-    gap, no claimed-seam substitution, no network/auth/provider or user-config effect,
-    deterministic cleanup, and preservation of the four unrelated primary-working-tree
+    gap, no claimed-seam substitution, no Pi install/downgrade/update, no network/auth/provider/user-config/external-state
+    effect, deterministic cleanup, and preservation of the four unrelated primary-working-tree
     edits.
   depends_on:
   - pi_subagent_rpc_memory_bound_20260619
