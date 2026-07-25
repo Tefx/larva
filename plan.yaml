@@ -139386,7 +139386,7 @@ phases:
     agent: spec-verifier
   - id: pi-model-map-profile-switch.add-installed-pi-harness
     name: Add installed-Pi model-map runtime seam harness
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -139545,3 +139545,19 @@ phases:
     agent: frontend-engineer
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T13:32:33.083368Z'
+    done_at: '2026-07-25T14:09:48.606193+00:00'
+    evidence: 'Integrated harness commit b9847c8755994dbec3fa9862565cc63a18ca38f3
+      (worker commit 63ce65a7) after production Gate admitted dispatch sha256:953d9f2a0e3e10d4644c76c60765d61d0a1d38173b905effed294f99954ceb48
+      and worker receipt sha256:0b4298ebb062832bc2b2cd1402f281c56ce0f5a86475a4d0c8942c2bf439b834
+      as CONFORMANT. Installed-Pi scenario executed /opt/homebrew/bin/pi 0.82.1 and
+      package root /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent
+      0.82.1 through real Pi RPC/extension command seams with top-level rpc.attempted=true,
+      command/status events, real child Pi RPC ordering, controlled loopback provider
+      only, offline mode, isolated HOME/config/session roots, no external provider/auth/user-config
+      effects, and cleanup PASS. Integrated verification: installed scenario PASS;
+      tests/shell/test_pi_extension_real_runtime.py 39 passed, 1 xfailed; sanitized
+      full suite 927 passed, 1 xfailed; Invar passed with 0 errors/warnings; git diff
+      --check passed. Only authorized README/smoke/runtime-test paths changed. Four
+      unrelated primary-tree edits were stash-preserved and restored; resulting dirty
+      fingerprint 6c93c9234d8d20b413f9eba7c187187adfb5781036a7791470e6156186e5f315.
+      Backup patch retained under /tmp/larva-agent-artifacts.'
