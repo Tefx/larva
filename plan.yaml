@@ -138942,7 +138942,7 @@ phases:
   steps:
   - id: pi-model-map-profile-switch.implement
     name: Implement runtime model-map profile switching with tests and docs
-    status: claimed
+    status: pending
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: vectl-assurance-worker]\n[VECTL_WORKER_PROTOCOL:v2]\nThe Orchestrator\
       \ must supply exactly one admitted vectl.worker.dispatch.v2 envelope bound to\
@@ -139155,8 +139155,6 @@ phases:
     - scripts/pi-extension-runtime-smoke.mjs
     - tests/shell/test_pi_extension_contract.py
     agent: frontend-engineer
-    claimed_by: frontend-engineer
-    claimed_at: '2026-07-25T10:57:11.128112Z'
   - id: pi-model-map-profile-switch.verify-runtime
     name: Independently verify model-map profile switching through Pi runtime seams
     status: pending
