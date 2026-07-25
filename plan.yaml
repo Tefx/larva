@@ -138932,25 +138932,29 @@ phases:
 - id: pi_model_map_profile_switch_20260725
   name: Pi Runtime Model-Map Profile Switch 2026-07-25
   status: in_progress
-  gate: The phase closes only after completed implementation/remediation history remains
-    preserved; `pi-model-map-profile-switch.prove-actual-installed-child-seams` integrates
-    a harness-only three-path repository change with synchronized regression tests
-    and Pi-extension documentation; fresh `integration-verifier` and terminal `spec-verifier`
-    semantic receipts prove MMPS-01 through MMPS-08, MMPS-REAL-01 through MMPS-REAL-04,
-    MMPS-REM-01 through MMPS-REM-08, and MMPS-CHILD-REAL-01 through MMPS-CHILD-REAL-06;
-    and selected/executed parent and child processes are `/opt/homebrew/bin/pi` at
-    CLI version `0.82.1` with package root `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
-    at package version `0.82.1`. Closure requires raw independently parsed `larva.pi.model-map.actual-child.v1`
-    evidence from at least five actual child Pi processes for max ready-child RPC
-    concurrency <=4 and correlation, post-snapshot terminal recheck, exact partial
-    identity and selective same-profile retry without fallback, generation-before-first-prompt
-    plus new/resumed/terminal/ended classifications, malformed/timeout/closed-stream
-    bounded failures, public status, parent restoration, preserved in-flight-old/next-request-new
-    behavior, loopback/offline isolation, deterministic cleanup, and byte-preservation
-    of the four unrelated primary-tree edits. Fake/generated child executables, source-token
-    or synthesized response proof, product changes under the harness boundary, Pi
-    install/downgrade/update, non-loopback network/auth/provider/user-config/external-state
-    effects, identity drift, proof gaps, or cleanup gaps keep the phase open.
+  gate: The phase closes only after all completed implementation/remediation definitions
+    and evidence remain unchanged; `pi-model-map-profile-switch.isolate-real-runtime-harness`
+    integrates exactly one three-path repository remediation after the completed actual-child
+    producer; and fresh `integration-verifier` plus terminal `spec-verifier` semantic
+    receipts prove MMPS-01 through MMPS-08, MMPS-REAL-01 through MMPS-REAL-04, MMPS-REM-01
+    through MMPS-REM-08, MMPS-CHILD-REAL-01 through MMPS-CHILD-REAL-06, and MMPS-ISOLATION-01
+    through MMPS-ISOLATION-04. Closure requires the new remediation worker receipt/integrated
+    commit and fresh raw evidence showing empty isolated HOME/Pi/Larva/model-map/tool-policy/session
+    roots, quarantine of adversarial inherited persona/profile/config values, a harness-owned
+    neutral loopback route selected by runtime discovery and the production resolver
+    without hard-coded real provider/profile/model IDs, startup/status/live-child/persona-invocation
+    success, selected/executed parent and child `/opt/homebrew/bin/pi` and package
+    `0.82.1`, actual-child fanout <=4 with unique simultaneous correlations and permitted
+    sequential cross-channel frame-ID reuse, terminal recheck, selective retry, generation
+    fencing, malformed/five-second-timeout/closed-stream isolation, public status,
+    parent restoration, in-flight-old/next-request-new behavior, offline/loopback-only
+    operation, deterministic cleanup, and byte-preservation of the four unrelated
+    primary-tree edits. The prior actual-child receipt and current BLOCKED receipt/Gate
+    verdict are provenance/red proof only. Fake/generated child executables, ambient
+    user configuration, source/synthesized proof, product changes, Pi mutation, real
+    provider credentials, non-loopback network/auth/provider/user-config/external
+    effects, identity drift, proof gaps, or cleanup gaps keep the phase open. No additional
+    gate step exists.
   depends_on:
   - pi_subagent_rpc_memory_bound_20260619
   steps:
