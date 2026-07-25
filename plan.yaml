@@ -139947,8 +139947,10 @@ phases:
 
       Boundary:
 
-      - Owner: registered `frontend-engineer`, resolved live and worker-v2 compatible.
-      Repository authority is limited to `scripts/pi-extension-runtime-smoke.mjs`,
+      - Owner: registered `general`, resolved live with worker-v2 support and selected
+      because the indivisible mutable surface spans Node process/RPC harness engineering,
+      Python runtime regression, CLI integration, and documentation with no registered
+      Node systems specialist. Repository authority is limited to `scripts/pi-extension-runtime-smoke.mjs`,
       `tests/shell/test_pi_extension_real_runtime.py`, and `contrib/pi-extension/README.md`.
       Product extension logic, other tests/docs, acceptance surfaces, user configuration,
       credentials, registry/PersonaSpec/models.yaml, provider state, Pi installation,
@@ -140039,12 +140041,12 @@ phases:
       {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_real_runtime.py","contrib/pi-extension/README.md"],"blocked_paths":["plan.yaml","contrib/pi-extension/larva.ts","contrib/pi-extension/test-model-map-unit.mjs","contrib/pi-extension/test-model-map-runtime.mjs","tests/shell/test_pi_extension_contract.py","design/**","docs/**","tests/shell/test_pi_extension_subagent_ux.py","src/**","contracts/**","pyproject.toml","uv.lock"]},"claims":["MMPS-CHILD-REAL-01-bounded-fanout-correlation","MMPS-CHILD-REAL-02-terminal-recheck","MMPS-CHILD-REAL-03-partial-selective-retry","MMPS-CHILD-REAL-04-generation-lifecycle","MMPS-CHILD-REAL-05-rpc-fault-cleanup","MMPS-CHILD-REAL-06-harness-regression-docs"],"checks":[{"id":"installed_pi_actual_child_seams","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","model-map-profile-switch-installed-child-pi"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"larva.pi.model-map.actual-child.v1"},{"literal":"/opt/homebrew/bin/pi"},{"literal":"0.82.1"},{"literal":"MMPS-CHILD-REAL-01"},{"literal":"MMPS-CHILD-REAL-02"},{"literal":"MMPS-CHILD-REAL-03"},{"literal":"MMPS-CHILD-REAL-04"},{"literal":"MMPS-CHILD-REAL-05"},{"literal":"PASS"}]}},"proves":["MMPS-CHILD-REAL-01-bounded-fanout-correlation","MMPS-CHILD-REAL-02-terminal-recheck","MMPS-CHILD-REAL-03-partial-selective-retry","MMPS-CHILD-REAL-04-generation-lifecycle","MMPS-CHILD-REAL-05-rpc-fault-cleanup"]},{"id":"installed_pi_actual_child_regression","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_real_runtime.py"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-CHILD-REAL-01-bounded-fanout-correlation","MMPS-CHILD-REAL-02-terminal-recheck","MMPS-CHILD-REAL-03-partial-selective-retry","MMPS-CHILD-REAL-04-generation-lifecycle","MMPS-CHILD-REAL-05-rpc-fault-cleanup","MMPS-CHILD-REAL-06-harness-regression-docs"]},{"id":"sanitized_repo_suite","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-CHILD-REAL-06-harness-regression-docs"]},{"id":"invar_guard","run":{"command":["uv","run","invar","guard"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-CHILD-REAL-06-harness-regression-docs"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMPS-CHILD-REAL-06-harness-regression-docs"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
 
       </intent_closure_contract>'
-    verification: Admit one frontend-engineer worker-v2 dispatch and run the installed
-      Intent-Closure sidecar from an isolated clean worktree. Require exactly the
-      three allowed changed paths; every declared check green; actual selected/executed
-      parent and child `/opt/homebrew/bin/pi` 0.82.1 identities; independently consumable
-      raw ordered evidence for MMPS-CHILD-REAL-01..06; no fake/generated child, source-token
-      proof, synthesized response, product change, Pi mutation, non-loopback network/auth/provider/user-config/external
+    verification: Admit one general worker-v2 dispatch and run the installed Intent-Closure
+      sidecar from an isolated clean worktree. Require exactly the three allowed changed
+      paths; every declared check green; actual selected/executed parent and child
+      `/opt/homebrew/bin/pi` 0.82.1 identities; independently consumable raw ordered
+      evidence for MMPS-CHILD-REAL-01..06; no fake/generated child, source-token proof,
+      synthesized response, product change, Pi mutation, non-loopback network/auth/provider/user-config/external
       effect, process/root leak, or loss of the four unrelated primary-tree edits.
     evidence_template: Integrated commit and worker receipt; exact commands/cwd/base/changed
       paths; raw `larva.pi.model-map.actual-child.v1` artifact path+SHA+bytes; parent/child
@@ -140052,4 +140054,4 @@ phases:
       preservation.
     depends_on:
     - pi-model-map-profile-switch.remediate-terminal-findings
-    agent: frontend-engineer
+    agent: general
