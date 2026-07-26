@@ -140471,7 +140471,7 @@ phases:
   steps:
   - id: pi-model-map-external-symlink.implement
     name: Evolve model-map profile symlink contract and implementation
-    status: done
+    status: rejected
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140632,27 +140632,19 @@ phases:
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T08:14:15.224427Z'
     done_at: '2026-07-26T08:43:20.872144+00:00'
-    evidence: 'Integrated commit c401fceedad77352d71dd0ebc805fc559ccc4b24 (worker
-      5cf267099f028a41fa6fccb4cea3c2d32a65a4f4). Production parent Gate CONFORMANT:
-      /tmp/larva-agent-artifacts/pi-model-map-external-symlink/parent-worker-gate-v3.json,
-      file SHA-256 71267795d88e778506dfece4e0441f423ed33a61e9be55ad8dc657d6f783dcc1;
-      admitted receipt canonical SHA sha256:c68ec45063ad0acf04d548da812d65238ca00b5e05d05c0408baa377d768d6ff.
-      Base-bound pre-source red: worker-v3/pre-source-red.meta.json SHA 38bac568b0217f69a12a36844b43e9a01563ad0c4293a0af66654fd90bd9da10,
-      exit 1 with LARVA_MODEL_MAP_PROFILE_INVALID. Integrated checks manifest /tmp/larva-agent-artifacts/pi-model-map-external-symlink/integrated-checks/manifest.json
-      SHA 7c1b336961bde79d8719019ac6d07aa8274897ec0673846bc2a18db51144d1c4: unit PASS;
-      runtime PASS; profile-switch smoke PASS; Pi-extension 202 passed; remaining
-      repo 888 passed; Invar 11/11 functions and 1100 examples; git diff --check PASS.
-      Loader opens lexical entry O_RDONLY|O_NONBLOCK, descriptor-fstats regular/<=1MiB,
-      bounded positional read, lexical lstat and target descriptor stability checks,
-      strict existing parser, unconditional close, lexical status path; tests cover
-      external/dangling/directory/FIFO/device/oversize/malformed/schema/name/retarget/mutation.
-      Real startup harness observation is bounded at 5000ms without changing production
-      child RPC timeout. Base/candidate A/B proved prior state-1 timeout existed on
-      unchanged base; behavior drift report sent to dotfile-agent and routing drift
-      root cause reconciled. Four unrelated primary edits were stash-preserved; semantic
-      patch SHA before/after is identical 3cddded888c629acd5cf92a49c2c5d25a75bdbf923ba7a45214411742dd956c5,
-      no conflicts. CLI binding restored offline to project Larva 0.5.1 after checks.
-      No external profile/credential/registry mutation.'
+    rejection_reason: 'Independent installed-Pi verification proved the external symlink/reload/public
+      command seam uses the wrong fixture registry identity: observed controlled/parent-openrouter;
+      accepted contract requires credential-free loopback openrouter/openai/gpt-5.6-sol.
+      The producer checks did not enforce the exact registry identity. Rework remains
+      within the existing implementation step and admitted seven paths; no new topology.'
+    rejection_history:
+    - reason: 'Independent installed-Pi verification proved the external symlink/reload/public
+        command seam uses the wrong fixture registry identity: observed controlled/parent-openrouter;
+        accepted contract requires credential-free loopback openrouter/openai/gpt-5.6-sol.
+        The producer checks did not enforce the exact registry identity. Rework remains
+        within the existing implementation step and admitted seven paths; no new topology.'
+      timestamp: '2026-07-26T09:01:18.578479+00:00'
+      reviewer: integration-verifier
   - id: pi-model-map-external-symlink.verify-installed-pi
     name: Independently verify external profile symlink through installed Pi
     status: pending
