@@ -262,12 +262,31 @@ def test_model_map_profile_switch_contract_is_documented_and_registered() -> Non
         "LARVA_MODEL_MAP_CHILD_SWITCH_FAILED",
         "modelMapRouteGeneration",
         'type: "set_model"',
+        "constants.O_RDONLY | constants.O_NONBLOCK",
+        "lexicalBefore = await lstat(candidate)",
+        "const targetBefore = await handle.stat()",
+        "await handle.read(",
+        "const targetAfter = await handle.stat()",
+        "const lexicalAfter = await lstat(candidate)",
+        "lexicalStable",
+        "targetStable",
+        "await handle.close()",
+        "path: candidate",
     )
+    profile_loader = _function_body(source, "async function loadModelMapProfile")
+    assert profile_loader.index("const targetAfter") < profile_loader.index("config = parseModelMapConfig")
+    assert profile_loader.index("const lexicalAfter") < profile_loader.index("config = parseModelMapConfig")
+    assert profile_loader.index("config = parseModelMapConfig") < profile_loader.index("await handle.close()")
     for token in (
         "/larva-model-map <profile>",
         "/larva-model-map status",
         "model-map.<profile>.json",
         "letters, digits, underscore, and hyphen",
+        "external regular file",
+        "lexical profile path",
+        "nonblocking descriptor",
+        "lexical lstat identity",
+        "target descriptor metadata",
         "process-local profile",
         "next provider request",
         "partial",

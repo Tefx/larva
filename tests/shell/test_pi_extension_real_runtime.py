@@ -1751,6 +1751,11 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert payload["rpc"]["supported"] is True
     assert payload["rpc"]["stderr"] == ""
     assert any(response.get("id") == "state-ready" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "reload-extensions" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "commands-after-reload" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "switch-openrouter" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "status-openrouter" and response.get("success") is True for response in payload["rpc"]["responses"])
+    assert any(response.get("id") == "prompt-openrouter" and response.get("success") is True for response in payload["rpc"]["responses"])
     assert any(response.get("id") == "status" and response.get("success") is True for response in payload["rpc"]["responses"])
     assert any(response.get("id") == "reject-parent" and response.get("success") is True for response in payload["rpc"]["responses"])
     assert any(response.get("id") == "state-after-reject" and response.get("data", {}).get("model", {}).get("id") == "parent-a" for response in payload["rpc"]["responses"])
@@ -1762,6 +1767,10 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert proof["assertions"] == {
         "exactInstalledBinary": True,
         "exactInstalledPackage": True,
+        "ctxReloadBeforePublicCommand": True,
+        "externalSymlinkPublicCommand": True,
+        "externalLexicalStatus": True,
+        "externalLoopbackRoute": True,
         "realExtensionCommandSeam": True,
         "publicStatus": True,
         "parentRouteSwitched": True,
@@ -1777,8 +1786,31 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
         "lifecycleClassifications": True,
         "faultIsolation": True,
     }
+    assert proof["selected"] == {
+        "binary": "/opt/homebrew/bin/pi",
+        "packageRoot": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+        "packageVersion": "0.82.1",
+    }
+    assert proof["executed"] == proof["selected"]
+    assert proof["reload"] == {
+        "publicCommand": "/larva-proof-reload",
+        "contextMethod": "ctx.reload()",
+        "responseId": "reload-extensions",
+        "commandsResponseId": "commands-after-reload",
+    }
+    assert proof["externalProfile"]["publicCommand"] == "/larva-model-map openrouter"
+    assert proof["externalProfile"]["lexicalPath"].endswith("/.pi/larva/model-map.openrouter.json")
+    assert proof["externalProfile"]["externalTargetPath"].endswith("/controlled-external-openrouter.json")
+    assert proof["externalProfile"]["externalTargetPath"] not in proof["externalProfile"]["statusMessage"]
+    assert proof["externalProfile"]["lexicalPath"] in proof["externalProfile"]["statusMessage"]
+    assert proof["externalProfile"]["modelRegistryResult"] == {"provider": "controlled", "modelId": "parent-openrouter"}
+    assert proof["externalProfile"]["loopbackRequestObserved"] is True
     assert proof["observations"] == {
         "publicStatus": True,
+        "ctxReloadBeforePublicCommand": True,
+        "externalSymlinkPublicCommand": True,
+        "externalLexicalStatus": True,
+        "externalLoopbackRoute": True,
         "parentRollback": True,
         "harnessIsolation": True,
         "boundedReadyChildFanout": True,

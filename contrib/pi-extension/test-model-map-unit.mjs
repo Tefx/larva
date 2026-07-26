@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rename, symlink, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -217,20 +218,187 @@ async function profileFixture(name) {
 
 const profileBadName = await profileFixture("bad-name");
 const profileBadNameMod = await importFresh("profile-bad-name");
-const badDot = await profileBadNameMod.switchModelMapProfile("bad.name", { env: profileBadName.env }, {});
-assert.equal(badDot.status, "failed");
-assert.equal(badDot.parent.error.code, "LARVA_MODEL_MAP_PROFILE_BAD_NAME");
-console.log("profile bad-name no-dot rule: PASS", badDot.parent.error.code);
+for (const badName of ["bad.name", "../escape", "/absolute", "", `x${"y".repeat(64)}`]) {
+  const rejected = await profileBadNameMod.switchModelMapProfile(badName, { env: profileBadName.env }, {});
+  assert.equal(rejected.status, "failed");
+  assert.equal(rejected.parent.error.code, "LARVA_MODEL_MAP_PROFILE_BAD_NAME");
+}
+console.log("profile invalid/traversal names: PASS LARVA_MODEL_MAP_PROFILE_BAD_NAME");
 
-const profileSecurity = await profileFixture("security");
-const outsideMap = join(profileSecurity.home, "outside.json");
-await writeFile(outsideMap, JSON.stringify({ models: {}, prefix_rules: [] }), "utf8");
-await symlink(outsideMap, join(profileSecurity.configDir, "model-map.escape.json"));
-const profileSecurityMod = await importFresh("profile-security");
-const escaped = await profileSecurityMod.switchModelMapProfile("escape", { env: profileSecurity.env }, {});
-assert.equal(escaped.status, "failed");
-assert.equal(escaped.parent.error.code, "LARVA_MODEL_MAP_PROFILE_INVALID");
-console.log("profile symlink escape: PASS", escaped.parent.error.code);
+const validExternalProfile = await profileFixture("external-regular");
+const outsideMap = join(validExternalProfile.home, "outside.json");
+const outsideMapBytes = JSON.stringify({ models: {}, prefix_rules: [] });
+await writeFile(outsideMap, outsideMapBytes, "utf8");
+const externalLexicalPath = join(validExternalProfile.configDir, "model-map.escape.json");
+await symlink(outsideMap, externalLexicalPath);
+const validExternalMod = await importFresh("profile-external-regular");
+const escaped = await validExternalMod.switchModelMapProfile("escape", { env: validExternalProfile.env }, {});
+assert.equal(escaped.status, "success");
+assert.equal(escaped.parent.state, "not_applicable");
+console.log("profile external regular-file symlink activation: PASS", JSON.stringify({ lexical: externalLexicalPath, target: outsideMap }));
+
+async function assertExternalProfileFailure(name, target, expectedCode = "LARVA_MODEL_MAP_PROFILE_INVALID") {
+  const fixture = await profileFixture(name);
+  const lexical = join(fixture.configDir, `model-map.${name}.json`);
+  await symlink(target, lexical);
+  const mod = await importFresh(`profile-${name}`);
+  const started = Date.now();
+  const result = await mod.switchModelMapProfile(name, { env: fixture.env }, {});
+  const elapsedMs = Date.now() - started;
+  assert.equal(result.status, "failed");
+  assert.equal(result.parent.error.code, expectedCode);
+  assert.deepEqual(result.children, []);
+  assert.ok(elapsedMs < 1_000, `${name} rejection exceeded bound: ${elapsedMs}ms`);
+  return { elapsedMs, code: result.parent.error.code };
+}
+
+const danglingFixture = await profileFixture("dangling");
+const danglingLexical = join(danglingFixture.configDir, "model-map.dangling.json");
+await symlink(join(danglingFixture.home, "missing-target.json"), danglingLexical);
+const danglingMod = await importFresh("profile-dangling");
+const danglingStarted = Date.now();
+const dangling = await danglingMod.switchModelMapProfile("dangling", { env: danglingFixture.env }, {});
+assert.equal(dangling.status, "failed");
+assert.equal(dangling.parent.error.code, "LARVA_MODEL_MAP_PROFILE_NOT_FOUND");
+assert.ok(Date.now() - danglingStarted < 1_000);
+
+const directoryTarget = await mkdtemp(join(tmpdir(), "larva-profile-directory-target-"));
+const directoryFailure = await assertExternalProfileFailure("directory", directoryTarget);
+const oversizedTarget = join((await profileFixture("oversized-target-root")).home, "oversized.json");
+await writeFile(oversizedTarget, Buffer.alloc(1_048_577, 0x20));
+const oversizedFailure = await assertExternalProfileFailure("oversized", oversizedTarget);
+const malformedTarget = join((await profileFixture("malformed-target-root")).home, "malformed.json");
+await writeFile(malformedTarget, "{not-json", "utf8");
+const malformedFailure = await assertExternalProfileFailure("malformed", malformedTarget);
+const unknownSchemaTarget = join((await profileFixture("unknown-target-root")).home, "unknown.json");
+await writeFile(unknownSchemaTarget, JSON.stringify({ models: {}, prefix_rules: [], unknown: true }), "utf8");
+const unknownSchemaFailure = await assertExternalProfileFailure("unknown", unknownSchemaTarget);
+let deviceFailure = null;
+if (process.platform !== "win32") deviceFailure = await assertExternalProfileFailure("device", "/dev/null");
+console.log("profile bounded fail-closed objects: PASS", JSON.stringify({ dangling: dangling.parent.error.code, directoryFailure, oversizedFailure, malformedFailure, unknownSchemaFailure, deviceFailure }));
+
+if (process.platform !== "win32") {
+  const fifoFixture = await profileFixture("fifo");
+  const fifoTarget = join(fifoFixture.home, "external.fifo");
+  const mkfifo = spawnSync("mkfifo", [fifoTarget], { encoding: "utf8" });
+  assert.equal(mkfifo.status, 0, mkfifo.stderr);
+  await symlink(fifoTarget, join(fifoFixture.configDir, "model-map.fifo.json"));
+  const probe = join(fifoFixture.home, "fifo-probe.mjs");
+  await writeFile(probe, `
+const mod = await import(${JSON.stringify(extensionUrl.href)} + "?fifo-probe=" + Date.now());
+const result = await mod.switchModelMapProfile("fifo", { env: ${JSON.stringify(fifoFixture.env)} }, {});
+process.stdout.write(JSON.stringify({ status: result.status, code: result.parent.error?.code }));
+`, "utf8");
+  const fifoOutcome = spawnSync(process.execPath, [probe], { cwd: root, encoding: "utf8", timeout: 1_500 });
+  assert.equal(fifoOutcome.status, 0, JSON.stringify({ signal: fifoOutcome.signal, error: fifoOutcome.error?.message, stderr: fifoOutcome.stderr }));
+  assert.deepEqual(JSON.parse(fifoOutcome.stdout), { status: "failed", code: "LARVA_MODEL_MAP_PROFILE_INVALID" });
+  console.log("profile FIFO nonblocking rejection: PASS", fifoOutcome.stdout);
+}
+
+const closeFixture = await profileFixture("close");
+const closeTarget = join(closeFixture.home, "external-malformed.json");
+await writeFile(closeTarget, "{not-json", "utf8");
+await symlink(closeTarget, join(closeFixture.configDir, "model-map.close.json"));
+const closeMod = await importFresh("profile-close");
+const descriptorRoot = process.platform === "linux" ? "/proc/self/fd" : "/dev/fd";
+await closeMod.switchModelMapProfile("close", { env: closeFixture.env }, {});
+const descriptorCountBefore = (await readdir(descriptorRoot)).length;
+for (let attempt = 0; attempt < 32; attempt += 1) {
+  const result = await closeMod.switchModelMapProfile("close", { env: closeFixture.env }, {});
+  assert.equal(result.parent.error.code, "LARVA_MODEL_MAP_PROFILE_INVALID");
+}
+const descriptorCountAfter = (await readdir(descriptorRoot)).length;
+assert.equal(descriptorCountAfter, descriptorCountBefore);
+console.log("profile descriptor closure: PASS", JSON.stringify({ descriptorCountBefore, descriptorCountAfter }));
+
+const raceFixture = await profileFixture("race");
+const raceLexical = join(raceFixture.configDir, "model-map.race.json");
+const raceTargetA = join(raceFixture.home, "race-a.json");
+const raceTargetB = join(raceFixture.home, "race-b.json");
+const nearLimitMap = (modelId) => {
+  const raw = JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: modelId } }, prefix_rules: [] });
+  return `${raw}${" ".repeat(1_040_000 - Buffer.byteLength(raw))}`;
+};
+const raceMapA = nearLimitMap("race-a");
+const raceMapB = nearLimitMap("race-b");
+await writeFile(raceTargetA, raceMapA, "utf8");
+await writeFile(raceTargetB, raceMapB, "utf8");
+await symlink(raceTargetA, raceLexical);
+const raceMod = await importFresh("profile-race");
+const raceSetModels = [];
+const raceCtx = {
+  env: { ...raceFixture.env, LARVA_PI_INITIAL_PERSONA_ID: "parent" },
+  model: { provider: "logical", id: "parent" },
+  modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
+  ui: { setStatus: async () => undefined, notify: async () => undefined },
+};
+const racePi = {
+  getAllTools: async () => [],
+  setActiveTools: async () => true,
+  setModel: async (model) => { raceSetModels.push(model); return true; },
+  registerTool: () => undefined,
+  registerCommand: () => undefined,
+  on: () => undefined,
+};
+await raceMod.initializeExtension(raceCtx, racePi);
+const stableRaceA = await raceMod.switchModelMapProfile("race", raceCtx, racePi);
+assert.equal(stableRaceA.parent.model_id, "race-a");
+await symlink(raceTargetB, `${raceLexical}.stable-b`);
+await rename(`${raceLexical}.stable-b`, raceLexical);
+const stableRaceB = await raceMod.switchModelMapProfile("race", raceCtx, racePi);
+assert.equal(stableRaceB.parent.model_id, "race-b");
+
+let retargeting = true;
+let retargetCount = 0;
+const retargetLoop = (async () => {
+  while (retargeting) {
+    const target = retargetCount % 2 === 0 ? raceTargetA : raceTargetB;
+    const next = `${raceLexical}.next-${retargetCount}`;
+    await symlink(target, next);
+    await rename(next, raceLexical);
+    retargetCount += 1;
+  }
+})();
+while (retargetCount < 5) await new Promise((resolveTurn) => setImmediate(resolveTurn));
+const retargetResults = [];
+for (let attempt = 0; attempt < 60; attempt += 1) retargetResults.push(await raceMod.switchModelMapProfile("race", raceCtx, racePi));
+retargeting = false;
+await retargetLoop;
+const retargetFailures = retargetResults.filter((result) => result.status === "failed");
+assert.ok(retargetFailures.length > 0, "active atomic symlink retarget must be detected at least once");
+for (const result of retargetResults) {
+  if (result.status === "success") assert.ok(["race-a", "race-b"].includes(result.parent.model_id));
+  else assert.equal(result.parent.error.code, "LARVA_MODEL_MAP_PROFILE_INVALID");
+}
+
+const mutationLexical = join(raceFixture.configDir, "model-map.mutate.json");
+const mutationTarget = join(raceFixture.home, "race-mutate.json");
+await writeFile(mutationTarget, raceMapA, "utf8");
+await symlink(mutationTarget, mutationLexical);
+const stableMutation = await raceMod.switchModelMapProfile("mutate", raceCtx, racePi);
+assert.equal(stableMutation.parent.model_id, "race-a");
+let mutating = true;
+let mutationCount = 0;
+const mutationLoop = (async () => {
+  while (mutating) {
+    await writeFile(mutationTarget, mutationCount % 2 === 0 ? raceMapB : raceMapA, "utf8");
+    mutationCount += 1;
+  }
+})();
+while (mutationCount < 5) await new Promise((resolveTurn) => setImmediate(resolveTurn));
+const mutationResults = [];
+for (let attempt = 0; attempt < 40; attempt += 1) mutationResults.push(await raceMod.switchModelMapProfile("mutate", raceCtx, racePi));
+mutating = false;
+await mutationLoop;
+const mutationFailures = mutationResults.filter((result) => result.status === "failed");
+assert.ok(mutationFailures.length > 0, "active target metadata mutation must be detected at least once");
+for (const result of mutationResults) {
+  if (result.status === "success") assert.ok(["race-a", "race-b"].includes(result.parent.model_id));
+  else assert.equal(result.parent.error.code, "LARVA_MODEL_MAP_PROFILE_INVALID");
+}
+const stableMutationAfter = await raceMod.switchModelMapProfile("mutate", raceCtx, racePi);
+assert.ok(["race-a", "race-b"].includes(stableMutationAfter.parent.model_id));
+console.log("profile lexical-retarget/target-mutation stability detection: PASS", JSON.stringify({ retargets: retargetCount, retargetSuccesses: retargetResults.length - retargetFailures.length, retargetFailures: retargetFailures.length, mutations: mutationCount, mutationSuccesses: mutationResults.length - mutationFailures.length, mutationFailures: mutationFailures.length }));
 
 const profileNoParent = await profileFixture("no-parent");
 await writeFile(join(profileNoParent.configDir, "model-map.safe_1.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v2" } }, prefix_rules: [] }), "utf8");

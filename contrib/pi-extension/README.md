@@ -83,7 +83,6 @@ launcher sentinel may degrade to an unavailable status instead of being process
 fatal.
 
 ## Adapter-local model map
-
 PersonaSpec `model` remains canonical Larva data and is stored as the active
 variant's runtime routing label. Larva canonical validation requires it to be a
 non-empty string, but it does not maintain a static provider/model allowlist and
@@ -101,20 +100,28 @@ Set `LARVA_PI_MODEL_MAP_FILE` to an absolute path to override the path for tests
 or local adapter experiments. When it is set, the extension reads only that path
 unless a process-local profile is active.
 
-Named profiles use flat files beside the canonical map:
+Named profiles use flat lexical entries beside the canonical map:
 
 ```text
 ~/.pi/larva/model-map.<profile>.json
 ```
 
 Use `/larva-model-map <profile>` to activate one in the running Pi process and
-`/larva-model-map status` to inspect the secret-safe source, path, parent route,
-and ready/starting/terminal child counts. Profile names match exactly
+`/larva-model-map status` to inspect the secret-safe source, lexical profile path,
+parent route, and ready/starting/terminal child counts. Profile names match exactly
 `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`: letters, digits, underscore, and hyphen are
 accepted; dots, separators, absolute paths, empty/dot names, and longer names are
-rejected. The target must be a bounded regular file whose real path remains in
-the canonical Larva Pi configuration directory. Symlink escapes, oversized files,
-and invalid/unknown schema fields fail closed.
+rejected. The lexical entry may be a symlink to an external regular file. The
+extension captures the lexical lstat identity, opens that entry once with a
+nonblocking descriptor, validates the opened target with descriptor-local `fstat`,
+and performs a bounded read from the same descriptor. After reading, it compares
+the lexical identity and target descriptor metadata (`dev`, `ino`, `size`, `mtime`,
+and `ctime`; read-mutated `atime` is excluded) with their pre-read values. It parses
+only after both stability checks pass and closes the descriptor on every path. The
+1 MiB limit still applies. Dangling links, directories, FIFOs, devices, oversized
+files, malformed JSON, invalid/unknown schema fields, observed atomic symlink
+replacement, and observed target mutation fail closed. Status always reports the
+lexical entry and never discloses the resolved external target.
 
 Profile precedence is process-local profile, explicit `LARVA_PI_MODEL_MAP_FILE`,
 canonical `model-map.json`, then the first-slash fallback. Selection lasts for the
@@ -207,6 +214,18 @@ Contract verification cases for the implementation step:
   `LARVA_MODEL_MAP_INVALID` at runtime and are rejected by the draft helper.
 - Startup persona application and `/larva-persona` switching use the same model
   resolver and the same unavailable-model error projection.
+- A valid `model-map.<profile>.json` symlink to an external regular file activates,
+  while status retains the lexical path and omits the resolved target.
+- Descriptor validation, bounded bytes, strict parsing, and closure use one opened
+  file descriptor. Stable near-limit A and B snapshots may each succeed whole;
+  active atomic lexical retargeting and active target metadata mutation must each
+  produce at least one typed failure, and no mixed, alternate, or fallback route
+  may be committed.
+- Dangling, directory, FIFO/device where supported, oversized, malformed,
+  unknown-schema, and invalid/traversal-name cases fail boundedly without fallback.
+- Installed Pi 0.82.1 proof calls `ctx.reload()` before the public
+  `/larva-model-map openrouter` command and uses only a controlled external target
+  plus a neutral loopback provider.
 - `openrouter/google/gemini-3.5-flash` resolves through an `openrouter/` prefix
   rule with empty `to_model_id_prefix` to provider `openrouter` and model id
   `google/gemini-3.5-flash`; it must not require a Larva validation snapshot

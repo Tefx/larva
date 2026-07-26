@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
-import { access, appendFile, chmod, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -2846,31 +2846,73 @@ async function loadModelMapProfile(profile: string, env: RuntimeEnv): Promise<Ac
     throw error("LARVA_MODEL_MAP_PROFILE_BAD_NAME", "Profile names must match ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$.");
   }
   const root = dirname(canonicalModelMapPath(env));
-  let rootReal: string;
   try {
-    rootReal = await realpath(root);
+    await realpath(root);
   } catch {
     throw error("LARVA_MODEL_MAP_PROFILE_ROOT_INVALID", "Canonical Larva Pi configuration directory is unavailable.");
   }
   const candidate = join(root, `model-map.${profile}.json`);
-  let candidateReal: string;
+  let lexicalBefore: Awaited<ReturnType<typeof lstat>>;
   try {
-    candidateReal = await realpath(candidate);
-  } catch {
-    throw error("LARVA_MODEL_MAP_PROFILE_NOT_FOUND", `Model-map profile ${profile} was not found.`);
-  }
-  if (dirname(candidateReal) !== rootReal) {
-    throw error("LARVA_MODEL_MAP_PROFILE_INVALID", "Model-map profile must remain inside the canonical Larva Pi configuration directory.");
-  }
-  try {
-    const inspected = await stat(candidateReal);
-    if (!inspected.isFile() || inspected.size > MODEL_MAP_PROFILE_MAX_BYTES) throw new Error("invalid profile file");
-    const raw = await readFile(candidateReal, "utf8");
-    return { name: profile, path: candidateReal, config: parseModelMapConfig(raw) };
+    lexicalBefore = await lstat(candidate);
   } catch (caught) {
-    if (isLarvaError(caught)) throw caught;
+    const code = isRecord(caught) ? caught.code : undefined;
+    if (code === "ENOENT") throw error("LARVA_MODEL_MAP_PROFILE_NOT_FOUND", `Model-map profile ${profile} was not found.`);
     throw error("LARVA_MODEL_MAP_PROFILE_INVALID", `Model-map profile ${profile} is invalid.`);
   }
+
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    handle = await open(candidate, constants.O_RDONLY | constants.O_NONBLOCK);
+  } catch (caught) {
+    const code = isRecord(caught) ? caught.code : undefined;
+    if (code === "ENOENT") throw error("LARVA_MODEL_MAP_PROFILE_NOT_FOUND", `Model-map profile ${profile} was not found.`);
+    throw error("LARVA_MODEL_MAP_PROFILE_INVALID", `Model-map profile ${profile} is invalid.`);
+  }
+
+  let config: PiModelMapConfig | null = null;
+  let failure: { caught: unknown } | null = null;
+  try {
+    const targetBefore = await handle.stat();
+    if (!targetBefore.isFile() || targetBefore.size > MODEL_MAP_PROFILE_MAX_BYTES) throw new Error("invalid profile file");
+    const bytes = Buffer.alloc(MODEL_MAP_PROFILE_MAX_BYTES + 1);
+    let byteCount = 0;
+    while (byteCount < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, byteCount, bytes.length - byteCount, byteCount);
+      if (bytesRead === 0) break;
+      byteCount += bytesRead;
+    }
+    if (byteCount > MODEL_MAP_PROFILE_MAX_BYTES) throw new Error("oversized profile file");
+
+    const targetAfter = await handle.stat();
+    const lexicalAfter = await lstat(candidate);
+    const lexicalStable = lexicalBefore.dev === lexicalAfter.dev
+      && lexicalBefore.ino === lexicalAfter.ino
+      && lexicalBefore.mode === lexicalAfter.mode
+      && lexicalBefore.size === lexicalAfter.size
+      && lexicalBefore.mtimeMs === lexicalAfter.mtimeMs
+      && lexicalBefore.ctimeMs === lexicalAfter.ctimeMs;
+    const targetStable = targetBefore.dev === targetAfter.dev
+      && targetBefore.ino === targetAfter.ino
+      && targetBefore.size === targetAfter.size
+      && targetBefore.mtimeMs === targetAfter.mtimeMs
+      && targetBefore.ctimeMs === targetAfter.ctimeMs;
+    if (!lexicalStable || !targetStable) throw new Error("model-map profile changed while reading");
+    config = parseModelMapConfig(bytes.toString("utf8", 0, byteCount));
+  } catch (caught) {
+    failure = { caught };
+  }
+  try {
+    await handle.close();
+  } catch (caught) {
+    if (failure === null) failure = { caught };
+  }
+  if (failure !== null) {
+    if (isLarvaError(failure.caught)) throw failure.caught;
+    throw error("LARVA_MODEL_MAP_PROFILE_INVALID", `Model-map profile ${profile} is invalid.`);
+  }
+  if (config === null) throw error("LARVA_MODEL_MAP_PROFILE_INVALID", `Model-map profile ${profile} is invalid.`);
+  return { name: profile, path: candidate, config };
 }
 
 function toolPolicyPathCandidates(env: RuntimeEnv): string[] {

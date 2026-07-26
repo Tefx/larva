@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -255,7 +255,10 @@ if (choice === "all") {
   const configDir = join(profileHome, ".pi", "larva");
   await mkdir(configDir, { recursive: true });
   await writeFile(join(configDir, "model-map.blue.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v1" } }, prefix_rules: [] }), "utf8");
-  await writeFile(join(configDir, "model-map.green.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v2" } }, prefix_rules: [] }), "utf8");
+  const externalGreenMap = join(profileHome, "controlled-external-green.json");
+  const lexicalGreenMap = join(configDir, "model-map.green.json");
+  await writeFile(externalGreenMap, JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v2" } }, prefix_rules: [] }), "utf8");
+  await symlink(externalGreenMap, lexicalGreenMap);
   const cli = await makeFakeCli(profileHome);
   const mod = await importFresh("profile-runtime");
   const commands = {};
@@ -283,8 +286,11 @@ if (choice === "all") {
   assert.deepEqual(switched.parent, { state: "switched", persona_id: "parent", provider: "neutral", model_id: "parent-v2" });
   assert.equal(status.source, "profile");
   assert.equal(status.profile, "green");
+  assert.equal(status.path, lexicalGreenMap);
+  assert.notEqual(status.path, externalGreenMap);
+  assert.equal(JSON.stringify(status).includes(externalGreenMap), false);
   assert.deepEqual(setModels.at(-1), { provider: "neutral", modelId: "parent-v2" });
-  console.log("profile runtime switch/status/parent rollback PASS", JSON.stringify({ blue, rejected, restored, switched, status }));
+  console.log("profile runtime external-symlink switch/lexical-status/parent rollback PASS", JSON.stringify({ blue, rejected, restored, switched, status, lexicalGreenMap }));
   console.log("model-map runtime: PASS");
 } else if (cases[choice]) {
   await cases[choice]();
