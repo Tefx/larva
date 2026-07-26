@@ -140471,7 +140471,7 @@ phases:
   steps:
   - id: pi-model-map-external-symlink.implement
     name: Evolve model-map profile symlink contract and implementation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140631,7 +140631,23 @@ phases:
     agent: frontend-engineer
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T09:01:31.284038Z'
-    done_at: '2026-07-26T08:43:20.872144+00:00'
+    done_at: '2026-07-26T09:26:54.132110+00:00'
+    evidence: 'Rejected-step remediation integrated as 7b932d0b042e19f7db72aed3a0ee4ef110280b5d
+      (worker ef6fbf7ec43dfb8aaa98961b2b91f573f419b02b). Pre-fix red asserted exact
+      identity and failed with observed controlled/parent-openrouter: worker-v4/pre-source-red.raw.log
+      SHA 6436d0ba54ccb058a3b1e7b769be49b681a57ba2e59969684e6f0b28e6ea38d6. Narrow
+      green SHA ff0dc0e0ac7f924c50c8f81166a29f6b9f0ffb398ca128f99e62e969aebd510a.
+      Parent production Gate CONFORMANT: /tmp/larva-agent-artifacts/pi-model-map-external-symlink/parent-worker-gate-v4.json
+      SHA 2fdba24480c749f4d5ec2676151b01b058d25f3a9bc4367a08c8b7487f8f25c2; canonical
+      receipt sha256:45691d04808c007b629387e074b35085ddb0ef6d86d907eefcdb2a41f9d6154f.
+      All seven contract checks green. Integrated installed-Pi scenario exit 0, status
+      PASS, all assertion booleans true, raw /tmp/larva-agent-artifacts/pi-model-map-external-symlink/integrated-remediation/installed-smoke.raw.log
+      SHA b8a72fb41a918e47c82ee3123e4337580603caf383941d13d93b5e83a1df3343; RPC state
+      model and actual loopback assistant events show provider openrouter/model openai/gpt-5.6-sol;
+      runtime externalProfile.modelRegistryResult is exactly {provider:openrouter,
+      modelId:openai/gpt-5.6-sol}. Only producer-owned smoke and real-runtime test
+      changed; product loader unchanged. Four unrelated primary files retain exact
+      pre-remediation hashes. No user config/registry/credential/external mutation.'
     rejection_reason: 'Independent installed-Pi verification proved the external symlink/reload/public
       command seam uses the wrong fixture registry identity: observed controlled/parent-openrouter;
       accepted contract requires credential-free loopback openrouter/openai/gpt-5.6-sol.
