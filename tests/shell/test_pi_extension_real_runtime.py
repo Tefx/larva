@@ -1803,7 +1803,11 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert proof["externalProfile"]["externalTargetPath"].endswith("/controlled-external-openrouter.json")
     assert proof["externalProfile"]["externalTargetPath"] not in proof["externalProfile"]["statusMessage"]
     assert proof["externalProfile"]["lexicalPath"] in proof["externalProfile"]["statusMessage"]
-    assert proof["externalProfile"]["modelRegistryResult"] == {"provider": "controlled", "modelId": "parent-openrouter"}
+    assert proof["externalProfile"]["modelRegistryResult"] == {
+        "provider": "openrouter",
+        "modelId": "openai/gpt-5.6-sol",
+    }
+    assert "parent=parent:openrouter/openai/gpt-5.6-sol" in proof["externalProfile"]["statusMessage"]
     assert proof["externalProfile"]["loopbackRequestObserved"] is True
     assert proof["observations"] == {
         "publicStatus": True,

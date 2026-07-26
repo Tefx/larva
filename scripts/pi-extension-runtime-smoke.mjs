@@ -3315,7 +3315,14 @@ export default function (pi) {
     baseUrl: ${JSON.stringify(providerUrl)},
     apiKey: "local",
     api: "openai-completions",
-    models: ["parent-a", "parent-b", "parent-openrouter", "child-a", "child-b"].map(model)
+    models: ["parent-a", "parent-b", "child-a", "child-b"].map(model)
+  });
+  pi.registerProvider("openrouter", {
+    name: "Credential-free OpenRouter loopback proof provider",
+    baseUrl: ${JSON.stringify(providerUrl)},
+    apiKey: "local",
+    api: "openai-completions",
+    models: [model("openai/gpt-5.6-sol")]
   });
   pi.registerProvider("rejecting", {
     name: "Credential-free rejecting proof provider",
@@ -3328,7 +3335,7 @@ export default function (pi) {
 `, "utf8");
     const alpha = { models: { "logical/parent": { provider: "controlled", model_id: "parent-a" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
     const beta = { models: { "logical/parent": { provider: "controlled", model_id: "parent-b" }, "logical/child": { provider: "controlled", model_id: "child-b" } }, prefix_rules: [] };
-    const openrouter = { models: { "logical/parent": { provider: "controlled", model_id: "parent-openrouter" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
+    const openrouter = { models: { "logical/parent": { provider: "openrouter", model_id: "openai/gpt-5.6-sol" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
     const reject = { models: { "logical/parent": { provider: "rejecting", model_id: "parent-reject" }, "logical/child": { provider: "controlled", model_id: "child-a" } }, prefix_rules: [] };
     const lexicalOpenrouterPath = join(configDir, "model-map.openrouter.json");
     const externalOpenrouterPath = join(tempRoot, "controlled-external-openrouter.json");
@@ -3404,7 +3411,7 @@ export default function (pi) {
     const externalStatusNotification = await waitForSmokeCondition(() => rpcEvents.slice(externalStatusOffset).find((event) => event.type === "extension_ui_request" && event.method === "notify" && typeof event.message === "string" && event.message.includes("profile=openrouter")) ?? null, { label: "external openrouter lexical status", timeoutMs: 5_000, intervalMs: 25 });
     const externalPromptOffset = rpcEvents.length;
     const externalPromptResponse = await requestRpc("prompt-openrouter", { type: "prompt", message: "Exercise the controlled external profile." });
-    await waitForSmokeCondition(() => providerRequests.some((entry) => entry.model === "parent-openrouter"), { label: "external openrouter loopback provider request", timeoutMs: 5_000, intervalMs: 25 });
+    await waitForSmokeCondition(() => providerRequests.some((entry) => entry.model === "openai/gpt-5.6-sol"), { label: "external openrouter loopback provider request", timeoutMs: 5_000, intervalMs: 25 });
     await waitForSmokeCondition(() => rpcEvents.slice(externalPromptOffset).some((event) => event.type === "agent_end"), { label: "external openrouter agent end", timeoutMs: 5_000, intervalMs: 25 });
     await requestRpc("switch-alpha", { type: "prompt", message: "/larva-model-map alpha" });
     const rollbackEventOffset = rpcEvents.length;
@@ -3435,15 +3442,15 @@ export default function (pi) {
       exactInstalledBinary: evidence.pi.binary === installedPi && evidence.package.versionText === expectedVersion,
       exactInstalledPackage: evidence.package.packageRoot === installedPackageRoot && evidence.package.installedVersion === expectedVersion,
       ctxReloadBeforePublicCommand: reloadResponse.type === "response" && reloadResponse.success === true && Array.isArray(commandsAfterReload.data?.commands) && commandsAfterReload.data.commands.some((command) => command.name === "larva-model-map"),
-      externalSymlinkPublicCommand: externalSwitchResponse.type === "response" && externalSwitchResponse.success === true && externalSwitchNotification.message.includes("parent=switched") && stateAfterExternalSwitch.data?.model?.provider === "controlled" && stateAfterExternalSwitch.data?.model?.id === "parent-openrouter",
-      externalLexicalStatus: externalStatusNotification.message.includes(`path=${lexicalOpenrouterPath}`) && externalStatusNotification.message.includes(externalOpenrouterPath) === false && externalStatusNotification.message.includes("apiKey") === false && externalStatusNotification.message.includes("local") === false,
-      externalLoopbackRoute: externalPromptResponse.type === "response" && externalPromptResponse.success === true && providerRequests.some((entry) => entry.model === "parent-openrouter") && providerUrl.startsWith("http://127.0.0.1:"),
+      externalSymlinkPublicCommand: externalSwitchResponse.type === "response" && externalSwitchResponse.success === true && externalSwitchNotification.message.includes("parent=switched") && stateAfterExternalSwitch.data?.model?.provider === "openrouter" && stateAfterExternalSwitch.data?.model?.id === "openai/gpt-5.6-sol",
+      externalLexicalStatus: externalStatusNotification.message.includes(`path=${lexicalOpenrouterPath}`) && externalStatusNotification.message.includes(externalOpenrouterPath) === false && externalStatusNotification.message.includes("parent=parent:openrouter/openai/gpt-5.6-sol") && externalStatusNotification.message.includes("apiKey") === false && externalStatusNotification.message.includes("local") === false,
+      externalLoopbackRoute: externalPromptResponse.type === "response" && externalPromptResponse.success === true && providerRequests.some((entry) => entry.model === "openai/gpt-5.6-sol") && providerUrl.startsWith("http://127.0.0.1:"),
       realExtensionCommandSeam: switchResponse.type === "response" && switchResponse.success === true,
       publicStatus: statusResponse.type === "response" && statusResponse.success === true && statusNotification.message.includes("source=canonical-file") && statusNotification.message.includes(`path=${join(configDir, "model-map.json")}`) && statusNotification.message.includes("parent=parent:controlled/parent-a") && statusNotification.message.includes("children ready=0, starting=0, terminal=0") && statusNotification.message.includes("apiKey") === false && statusNotification.message.includes("local") === false,
       parentRouteSwitched: stateAfterSwitch.data?.model?.provider === "controlled" && stateAfterSwitch.data?.model?.id === "parent-b",
       childRpcSetModelOrdered: trace.some((event) => event.event === "rpc_tx" && event.frame_type === "set_model") && providerRequests.findIndex((entry) => entry.model === "child-a") < providerRequests.findIndex((entry) => entry.model === "child-b"),
       inFlightOldThenNextNew: providerRequests.some((entry) => entry.model === "child-a") && providerRequests.some((entry) => entry.model === "child-b"),
-      noExternalProvider: providerRequests.every((entry) => ["parent-a", "parent-b", "parent-openrouter", "child-a", "child-b"].includes(entry.model)),
+      noExternalProvider: providerRequests.every((entry) => ["parent-a", "parent-b", "openai/gpt-5.6-sol", "child-a", "child-b"].includes(entry.model)),
       harnessIsolation: parentEnvObservation.unowned_selector_keys_present.length === 0 && parentEnvObservation.owned_paths_outside_root.length === 0,
       parentRollback: rejectResponse.type === "response" && rejectResponse.success === true && rejectNotification.message.includes("parent=failed") && stateAfterReject.data?.model?.provider === "controlled" && stateAfterReject.data?.model?.id === "parent-a" && restoredStatusNotification.message.includes("source=profile") && restoredStatusNotification.message.includes("profile=alpha"),
       boundedReadyChildFanout: remediationProof?.assertions?.boundedReadyChildFanout === true && remediationProof?.maxObservedChildRpcConcurrency === 4,
@@ -3472,7 +3479,7 @@ export default function (pi) {
       selected: { binary: installedPi, packageRoot: installedPackageRoot, packageVersion: expectedVersion },
       executed: { binary: installedPi, packageRoot: installedPackageRoot, packageVersion: packageJson.version },
       reload: { publicCommand: "/larva-proof-reload", contextMethod: "ctx.reload()", responseId: reloadResponse.id, commandsResponseId: commandsAfterReload.id },
-      externalProfile: { publicCommand: "/larva-model-map openrouter", lexicalPath: lexicalOpenrouterPath, externalTargetPath: externalOpenrouterPath, modelRegistryResult: { provider: stateAfterExternalSwitch.data?.model?.provider ?? null, modelId: stateAfterExternalSwitch.data?.model?.id ?? null }, statusMessage: externalStatusNotification.message, loopbackRequestObserved: providerRequests.some((entry) => entry.model === "parent-openrouter") },
+      externalProfile: { publicCommand: "/larva-model-map openrouter", lexicalPath: lexicalOpenrouterPath, externalTargetPath: externalOpenrouterPath, modelRegistryResult: { provider: stateAfterExternalSwitch.data?.model?.provider ?? null, modelId: stateAfterExternalSwitch.data?.model?.id ?? null }, statusMessage: externalStatusNotification.message, loopbackRequestObserved: providerRequests.some((entry) => entry.model === "openai/gpt-5.6-sol") },
       observations: { publicStatus: assertions.publicStatus, ctxReloadBeforePublicCommand: assertions.ctxReloadBeforePublicCommand, externalSymlinkPublicCommand: assertions.externalSymlinkPublicCommand, externalLexicalStatus: assertions.externalLexicalStatus, externalLoopbackRoute: assertions.externalLoopbackRoute, parentRollback: assertions.parentRollback, harnessIsolation: assertions.harnessIsolation, boundedReadyChildFanout: assertions.boundedReadyChildFanout, terminalDuringStarting: assertions.terminalDuringStarting, partialRetryIdentity: assertions.partialRetryIdentity, startingGenerationFence: assertions.startingGenerationFence, lifecycleClassifications: assertions.lifecycleClassifications, faultIsolation: assertions.faultIsolation, inFlightOldNextNew: assertions.inFlightOldThenNextNew },
       stderr: stderr.join(""),
       isolation: {
