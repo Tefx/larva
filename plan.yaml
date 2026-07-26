@@ -140663,7 +140663,7 @@ phases:
       reviewer: integration-verifier
   - id: pi-model-map-external-symlink.verify-installed-pi
     name: Independently verify external profile symlink through installed Pi
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -140762,6 +140762,8 @@ phases:
     depends_on:
     - pi-model-map-external-symlink.implement
     agent: integration-verifier
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T09:27:11.575220Z'
   - id: pi-model-map-external-symlink.review-evolution
     name: Review authorized external-symlink contract evolution
     status: pending
