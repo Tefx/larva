@@ -140895,3 +140895,365 @@ phases:
       file SHA b9d00963aafef1b31b9133ca162a9c158a12770e988499018e88cd54f1cec547; CONFORMANT,
       semantic_completion_admissible true, canonical receipt sha256:e9fda56e3f600440bd096baa49749e414e4f7e5e2eb7ef717d1d86784bd6f714.
       No repository changes or external effects; primary pre-existing hashes match.'
+- id: pi_async_subagent_no_progress_watchdog_20260726
+  name: Pi Async Subagent No-Progress Watchdog 2026-07-26
+  status: pending
+  gate: Phase closes after one worker-v2 implementation receipt proves watchdog-specific
+    test-first red before product mutation and every declared green check, then one
+    client-runtime-verifier semantic receipt independently proves NPW-01 through NPW-06
+    through the installed Pi and real child-Pi blocking-tool seam with exact integration-base
+    lineage, unchanged settings bytes, deterministic cleanup, and no repository-external
+    or persistent effects. No separate gate step exists.
+  steps:
+  - id: pi-async-subagent-no-progress-watchdog.implement
+    name: Implement async-subagent consecutive no-progress watchdog
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply exactly one admitted `vectl.worker.dispatch.v2`
+      envelope bound to the active claim, immutable clean-worktree base, current plan
+      SHA, exact allowed paths, checks, and test bindings. Completion requires the
+      unchanged `vectl.worker.execution.v2` receipt. This plan grants no claim, worktree,
+      integration, Git, provider, or external-effect authority.
+
+
+      Deliver:
+
+      - Extend the existing model-facing `larva_subagent` input with optional integer
+      `no_progress_timeout_ms`. The consecutive-silence deadline defaults to 3,600,000
+      ms and accepts 120,000 through 86,400,000 inclusive. Runtime admission and the
+      actual tool JSON schema must reject booleans, floats, values outside the range,
+      zero, and unlimited forms before child spawn, session-file allocation/mutation,
+      registry mutation, or callback state exists. The tool description must expose
+      the default, range, consecutive-progress semantics, and long-silent-work guidance
+      to every model.
+
+      - Use monotonic elapsed time for one silence episode. At T/2 with no recognized
+      progress, retain `status=running`, set `phase=stall_suspected`, retain `result_pending=true`,
+      emit exactly one authoritative phase event for that silence episode, send no
+      terminal callback, and leave the child running. Recognized progress restores
+      `phase=waiting_for_child`, resets a full T, and permits a later silence episode
+      to emit its own single warning.
+
+      - Count only normalized nonempty assistant delta, thinking activity, tool execution
+      start/update/end, and agent end as progress. Status, wait, select, and events
+      reads; presentation/cache writes; callback attempts; stderr/trace traffic; watchdog
+      events; empty deltas; and unknown frames cannot arm, reset, extend, recover,
+      or cancel the watchdog.
+
+      - At T silence, enter the existing exact-run `abortSubagentRun` -> RpcClient
+      abort -> kill-grace -> cleanup -> finalize path. Add only the internal cancellation-source
+      value `watchdog`; retain the existing bounded cancellation reason, public cancelled
+      terminal contract, one terminal snapshot, and at-most-once callback. Existing
+      terminal ownership wins; the first cancel task owns the cause; late progress
+      after watchdog commitment cannot recover the run; cleanup invalidates timers;
+      callback-time logic rechecks terminal ownership and monotonic elapsed time.
+
+      - Add only `last_progress_at_ms` and `stall_timer` to private `ActiveSubagentRun`
+      state. Keep the immutable timeout in the existing run/closure flow. A generation
+      field is forbidden unless the required pre-fix proof demonstrates an otherwise
+      uncloseable stale-timer race. Do not introduce a watchdog class/object, service,
+      daemon, scheduler, durable ledger, registry, new terminal error code, new tool,
+      runtime-config field, PersonaSpec or registry field, model-map change, shared-contract
+      change, or upstream Pi dependency.
+
+      - Never retry, replay the prompt, roll back prior child tool effects, or auto-resume
+      after watchdog cancellation. Preserve JSONL/candidate state. The bounded terminal
+      reason and authoritative documentation must state that prior child tool effects
+      can be unknown and require explicit reconciliation before any user-authorized
+      resume.
+
+      - Preserve `larva_subagent_wait.timeout_ms` as observer-only. Wait/status/select/events
+      activity cannot influence execution timing. Main-agent guidance must use bounded
+      wait checkpoints followed by status/events inspection, forbid shell-sleep polling,
+      require a larger `no_progress_timeout_ms` before spawning known long-silent
+      work, and state that this version has no live extension mechanism. Explain command/tool
+      timeout, child consecutive-no-progress timeout, and observer wait timeout as
+      three separate layers.
+
+      - Make `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md` authoritative for the
+      full lifecycle, timeout distinctions, examples, main-agent decision flow, recognized-progress
+      table, warning/recovery/cancellation races, and resume/unknown-effect rules.
+      Add copyable examples to `contrib/pi-extension/README.md`, a concise top-level
+      `README.md` link, and only a brief cross-reference in `design/pi-coding-agent-integration.md`.
+
+      - Add developer coverage for strict admission/default/range, soft warning without
+      cancellation/callback, progress recovery and full-T reset, hard cancellation,
+      total runtime longer than T with continuing progress, a larger explicit silent
+      deadline, observer neutrality, cancel/terminal races, timer cleanup, at-most-once
+      callback, no replay/resume, model-facing schema/description and docs parity,
+      and a real child Pi blocking-tool runtime path. Use existing harness/fake-time
+      capabilities or a bounded test technique; do not add production-only test abstractions.
+      Modify `scripts/pi-extension-runtime-smoke.mjs` only when the existing harness
+      cannot produce the required real child-Pi blocking-tool observation.
+
+      - Before changing `contrib/pi-extension/larva.ts`, change only the authorized
+      developer tests/harness, run `uv run pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py`,
+      and retain a mode-0600 raw artifact, command/cwd/exit, changed-path snapshot,
+      and `larva.ts` base hash. The red must contain at least one watchdog-specific
+      failed assertion after successful collection/execution; import, environment,
+      installed-Pi absence, unrelated baseline failure, or timeout is invalid red
+      proof. Final green checks do not erase this same-step pre-fix observation.
+
+
+      Boundary:
+
+      - Owner: `frontend-engineer`, operating only through the admitted worker-v2
+      dispatch. Repository mutation is limited to `contrib/pi-extension/larva.ts`,
+      the three named documentation surfaces plus top-level README, the three named
+      Python test files, and `scripts/pi-extension-runtime-smoke.mjs` only if required
+      by the real blocking-tool seam. Tests remain developer-owned; acceptance mutation
+      is forbidden.
+
+      - The selected runtime identity for real-child evidence is current `/opt/homebrew/bin/pi`
+      CLI `0.82.1` with package `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`
+      version `0.82.1`. Use isolated temporary HOME, Pi, Larva, session, and child
+      roots; credential-free loopback/offline fixtures only. No network authentication,
+      paid provider/model call, user configuration write, Pi installation/update,
+      repository-external persistent state, or external service effect is authorized.
+
+      - The dispatch base must be a witnessed `main` descendant of exact pre-plan
+      integration HEAD `1806691b402600c247e1a400b6649ece52b214c3`; committed changes
+      between that anchor and dispatch base may contain only Vectl-owned `plan.yaml`.
+      Record the exact dispatch base and plan hash. Preserve all unrelated primary-tree
+      bytes.
+
+      - Capture SHA-256 and byte count of `$HOME/.pi/agent/settings.json` immediately
+      before worker mutation/check execution and after final checks/cleanup; equality
+      is mandatory. The path is an observed external invariant and is intentionally
+      absent from Gate `blocked_paths`.
+
+
+      Admit:
+
+      - Same-step expected-red evidence must precede the first product-source mutation
+      and prove a missing NPW behavior rather than infrastructure failure. The final
+      worker receipt must bind the red artifact and all green command artifacts to
+      the same immutable base, dispatch, and changed-path set.
+
+      - The focused Python tests must exercise public tool registration/admission
+      plus run-state races; the existing `async-subagent-contract` smoke adapter must
+      expose ordered watchdog observations; the real-runtime test must execute an
+      actual installed child Pi and blocking tool rather than a generated/fake child
+      or direct helper. Static source tokens, test-only production abstractions, self-attested
+      payloads, and presentation activity are insufficient.
+
+      - Require every check in the Intent-Closure contract green, exact allowed changed
+      paths, NPW-01 through NPW-06 claimed, empty unresolved, installed-Pi identity
+      match, exact integration-base proof, settings before/after equality, no process/root
+      leak, and no external effect. The downstream `client-runtime-verifier` independently
+      consumes the integrated commit, unchanged worker receipt, red artifact, raw
+      ordered runtime evidence, docs/schema surfaces, and cleanup observations.
+
+
+      Recovery:
+
+      - Repository rollback is one Git revert of the integrated implementation commit;
+      it does not replay, resume, or compensate child work. Preserve JSONL/candidate
+      state and all secret-safe red/green evidence.
+
+      - Ordinary implementation or check failure stays on this step. A safe rerun
+      is allowed only after proving no unknown repository, child, callback, settings,
+      process, or external state and retaining the prior observation. Unknown child
+      tool effects, timer/callback ownership, settings drift, leaked process/root,
+      identity drift, or partial repository mutation stops execution for explicit
+      reconciliation. Terminate only worker-created processes and remove only worker-created
+      temporary roots.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-async-subagent-no-progress-watchdog.implement","risk_tier":"R2","risk_reasons":["The
+      change extends a model-facing tool schema and public async-subagent lifecycle
+      contract.","Timer, cancellation, terminal, and callback ownership races require
+      independent runtime observation.","A real installed child Pi with a blocking
+      tool is required to distinguish execution liveness from observer activity."],"primary_outcome":"NPW-01-strict-tool-contract","rollback_class":"TRIVIAL","observation_ledger":[{"requirement_id":"NPW-01-strict-tool-contract","atom":"The
+      model-facing larva_subagent schema and runtime admission expose one optional
+      integer consecutive-silence deadline with default 3600000, inclusive range 120000..86400000,
+      and pre-spawn rejection of booleans, floats, zero, unlimited, and out-of-range
+      input.","modality":"public_tool_runtime","seam":"real","check_id":"watchdog_focused","independent_step":"pi-async-subagent-no-progress-watchdog.verify-runtime"},{"requirement_id":"NPW-02-soft-stall-progress-reset","atom":"One
+      T/2 stall_suspected event preserves running/result_pending and child liveness;
+      only the exact recognized-progress set restores waiting_for_child and resets
+      a full T.","modality":"monotonic_state_transition","seam":"real","check_id":"watchdog_smoke","independent_step":"pi-async-subagent-no-progress-watchdog.verify-runtime"},{"requirement_id":"NPW-03-hard-cancel-race-ownership","atom":"T
+      silence uses the existing exact-run abort/kill-grace/cleanup/finalize path with
+      watchdog cause, existing cancelled result, first-owner race rules, timer invalidation,
+      one terminal snapshot, and at-most-once callback.","modality":"runtime_race_adversarial","seam":"real","check_id":"watchdog_focused","independent_step":"pi-async-subagent-no-progress-watchdog.verify-runtime"},{"requirement_id":"NPW-04-observer-timeout-guidance","atom":"Observer
+      reads remain timing-neutral; three timeout layers, bounded wait checkpoints,
+      no shell-sleep polling, pre-spawn longer silent deadlines, no live extension,
+      and explicit reconciliation-before-resume guidance are model- and agent-visible.","modality":"public_contract_and_docs","seam":"real","check_id":"watchdog_focused","independent_step":"pi-async-subagent-no-progress-watchdog.verify-runtime"},{"requirement_id":"NPW-05-real-child-liveness","atom":"An
+      actual installed child Pi blocking-tool path proves soft warning, progress recovery,
+      hard cancellation, total runtime beyond T with progress, and an explicit longer
+      silent deadline without fake-child substitution.","modality":"installed_child_runtime","seam":"real","check_id":"watchdog_real_runtime","independent_step":"pi-async-subagent-no-progress-watchdog.verify-runtime"},{"requirement_id":"NPW-06-scope-integrity-cleanup","atom":"Only
+      authorized extension/test/doc paths change; forbidden shared/core/registry/model-map/dependency
+      surfaces remain unchanged; exact main-base lineage, settings hash equality,
+      full-suite/Invar/diff success, process/root cleanup, and zero external effects
+      are proved.","modality":"repository_and_environment_integrity","seam":"static","check_id":"repo_pytest","independent_step":"pi-async-subagent-no-progress-watchdog.verify-runtime"}],"test_authority":{"developer_test_globs":["tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","tests/shell/test_pi_extension_real_runtime.py","scripts/pi-extension-runtime-smoke.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","README.md","design/pi-coding-agent-integration.md","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","tests/shell/test_pi_extension_real_runtime.py","scripts/pi-extension-runtime-smoke.mjs"],"blocked_paths":["plan.yaml","contracts/**","src/**","pyproject.toml","uv.lock","package.json","package-lock.json","contrib/pi-extension/package.json","contrib/pi-extension/test-model-map*.mjs","contrib/pi-extension/*model-map*.json"]},"claims":["NPW-01-strict-tool-contract","NPW-02-soft-stall-progress-reset","NPW-03-hard-cancel-race-ownership","NPW-04-observer-timeout-guidance","NPW-05-real-child-liveness","NPW-06-scope-integrity-cleanup"],"checks":[{"id":"watchdog_focused","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-01-strict-tool-contract","NPW-02-soft-stall-progress-reset","NPW-03-hard-cancel-race-ownership","NPW-04-observer-timeout-guidance"]},{"id":"watchdog_smoke","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","async-subagent-contract"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"\"status\":
+      \"PASS\""},{"literal":"noProgressWatchdog"}]}},"proves":["NPW-02-soft-stall-progress-reset","NPW-03-hard-cancel-race-ownership","NPW-04-observer-timeout-guidance","NPW-05-real-child-liveness"]},{"id":"watchdog_real_runtime","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_real_runtime.py"],"timeout_seconds":1800},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-01-strict-tool-contract","NPW-02-soft-stall-progress-reset","NPW-03-hard-cancel-race-ownership","NPW-04-observer-timeout-guidance","NPW-05-real-child-liveness","NPW-06-scope-integrity-cleanup"]},{"id":"repo_pytest","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":2400},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-06-scope-integrity-cleanup"]},{"id":"invar_guard_all","run":{"command":["uv","run","invar","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-06-scope-integrity-cleanup"]},{"id":"main_base_ancestry","run":{"command":["git","merge-base","--is-ancestor","1806691b402600c247e1a400b6649ece52b214c3","HEAD"],"timeout_seconds":60},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-06-scope-integrity-cleanup"]},{"id":"main_base_scope","run":{"command":["git","diff","--quiet","1806691b402600c247e1a400b6649ece52b214c3","HEAD","--",".",":(exclude)plan.yaml"],"timeout_seconds":60},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-06-scope-integrity-cleanup"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["NPW-06-scope-integrity-cleanup"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require one admitted frontend-engineer worker-v2 receipt bound to
+      the exact dispatch, plan SHA, immutable main-descendant base, and allowed scope.
+      It must prove watchdog-specific red before any `larva.ts` mutation, every declared
+      check green, exact NPW-01..NPW-06 claim coverage, actual installed child Pi
+      blocking-tool evidence, model-facing schema/description and docs parity, exact
+      settings byte/hash equality, process/root cleanup, no external effects, no forbidden-path
+      change, and empty unresolved.
+    evidence_template: Record dispatch/base/plan SHA; pre-source red command, raw
+      artifact path/SHA/bytes, `larva.ts` base hash, and red changed paths; unchanged
+      worker receipt; integrated commit and exact changed paths; every check command/cwd/exit/log;
+      Pi/package identity and ordered runtime observations; settings before/after
+      byte count and SHA; process/root/network/auth/provider cleanup and absence evidence.
+    refs:
+    - AGENTS.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - README.md
+    - design/pi-coding-agent-integration.md
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - pyproject.toml
+    agent: frontend-engineer
+  - id: pi-async-subagent-no-progress-watchdog.verify-runtime
+    name: Independently verify watchdog runtime and agent-facing contract
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independently inspect the integrated public `larva_subagent` tool registration
+      through the installed Pi extension. Prove the actual model-facing JSON schema
+      and description carry optional integer `no_progress_timeout_ms`, default 3,600,000,
+      inclusive 120,000..86,400,000 range, consecutive-silence semantics, and long-silent-work
+      guidance. Exercise booleans, floats, zero, unlimited representations, and boundary/out-of-range
+      values; invalid input must fail before spawn, session, registry, timer, or callback
+      mutation.
+
+      - Through current `/opt/homebrew/bin/pi` CLI `0.82.1` and package version `0.82.1`,
+      launch an actual child Pi that enters a real blocking tool under isolated temporary
+      HOME/Pi/Larva/session roots. Direct helper invocation, generated/fake child
+      executables, source-token assertions, and self-attested payloads do not prove
+      this seam.
+
+      - Observe one T/2 silence episode with `status=running`, `phase=stall_suspected`,
+      `result_pending=true`, one authoritative phase event, no callback, and a live
+      child. Then prove each recognized progress class restores `waiting_for_child`
+      and grants a full new T; excluded observer/presentation/callback/stderr/watchdog/unknown
+      activity cannot reset it. Prove total runtime may exceed T while qualifying
+      progress continues and prove a pre-spawn larger timeout permits the corresponding
+      longer silent interval.
+
+      - Observe T silence entering the existing abort/RpcClient abort/kill-grace/cleanup/finalize
+      path and the existing cancelled result with bounded watchdog reason. Adversarially
+      cover existing-terminal victory, first cancel-task cause ownership, late-progress
+      non-recovery, callback-time elapsed/terminal rechecks, timer cleanup, one terminal
+      snapshot, at-most-once callback, and no automatic retry, rollback, prompt replay,
+      or resume. Confirm JSONL/candidate preservation and explicit reconciliation
+      guidance for unknown prior tool effects.
+
+      - Prove `larva_subagent_wait.timeout_ms` and status/select/events reads remain
+      observer-only. Inspect the authoritative reference, copyable extension README
+      examples, top-level link, brief design cross-reference, model-facing tool text,
+      and tests for exact three-timeout-layer and main-agent decision-flow parity.
+
+      - Independently rerun the focused public/runtime probes and consume the implementation''s
+      full-suite, Invar, diff, integration-base, red-before-source, changed-path,
+      settings-equality, and cleanup evidence. Judge NPW-01 through NPW-06 from raw
+      observations rather than producer assertions.
+
+
+      Boundary:
+
+      - Owner: `client-runtime-verifier`, read-only. Repository mutation, plan mutation,
+      lifecycle completion, user configuration writes, Pi installation/update, provider
+      authentication, paid model/provider calls, non-loopback network, and external
+      or persistent effects are forbidden. Mode-0600 temporary evidence, verifier-owned
+      local child processes, and isolated temporary roots are allowed only for the
+      declared probes and must be cleaned deterministically.
+
+      - Bind the exact integrated commit and producer receipt to the dispatch base
+      whose history descends from `1806691b402600c247e1a400b6649ece52b214c3` with
+      only the Vectl-owned plan commit before implementation. Capture `$HOME/.pi/agent/settings.json`
+      byte count and SHA-256 before all verifier probes and after cleanup; require
+      equality. Do not add that repository-external path to Gate `blocked_paths`.
+
+
+      Admit:
+
+      - Return exactly one production-Gate-admitted `vectl.verifier.semantic.v1` receipt
+      for step `pi-async-subagent-no-progress-watchdog.verify-runtime`, verifier `client-runtime-verifier`,
+      ordered scope `["public larva_subagent watchdog schema and strict admission","soft-stall
+      progress reset and observer neutrality","hard-cancel race ownership and cleanup","installed
+      child Pi blocking-tool liveness","agent-facing timeout and resume guidance","repository,
+      base, settings, and external-effect integrity"]`, and requirement coverage NPW-01
+      through NPW-06. Every row must be `PROVEN`; require L2/L3 real-runtime evidence,
+      `verdict=PASS`, closed blocking status, no proof gap, empty blockers/warnings,
+      gate-open allowed, and orchestrator-only completion authority.
+
+      - Evidence must identify selected/executed Pi binary and package version, exact
+      integrated/base commits and plan SHA, public tool schema/description, ordered
+      phase/events/terminal/callback observations, child/process cleanup, raw artifact
+      paths/SHA/bytes, exact changed paths, settings before/after hash/bytes, and
+      zero network/auth/provider/user-config/external effects. Missing real-child,
+      race, cleanup, settings, red, docs/schema, or integration-base evidence is blocking.
+
+
+      Recovery:
+
+      - A verifier probe may be rerun once only for an observed transient launch/transport
+      failure after proving the immutable target and identities are unchanged and
+      all verifier-owned process/root/settings state is reconciled. After every attempt,
+      observe the child process tree, temporary roots, terminal snapshot/callback
+      state, settings hash, and repository fingerprint.
+
+      - Product assertion failure, identity drift, unknown child tool effects, watchdog
+      commitment, timer/callback ambiguity, settings drift, leaked process/root, repository
+      mutation, or external-effect uncertainty stops verification. Do not resume or
+      replay the child. Preserve secret-safe raw evidence and report the smallest
+      reconciliation need; terminate only verifier-created processes and remove only
+      verifier-created roots.'
+    verification: Require one production-Gate-admitted client-runtime-verifier semantic
+      receipt with the exact ordered scope and NPW-01..NPW-06 coverage. PASS requires
+      real installed child-Pi blocking-tool evidence, public schema/admission proof,
+      soft/reset/hard/race/observer/no-replay behavior, docs parity, exact base lineage
+      and changed paths, settings before/after equality, deterministic cleanup, empty
+      blockers/warnings/proof gaps, and no repository or external effect.
+    evidence_template: Exact semantic receipt and Gate verdict; selected/executed
+      Pi/package identities; integrated/base/plan hashes; ordered public schema, admission,
+      progress, stall, cancel, race, callback, observer, and cleanup evidence; focused
+      commands/exits; producer evidence refs; settings before/after bytes/SHA; repository/external-effect
+      absence.
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - README.md
+    - design/pi-coding-agent-integration.md
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - pyproject.toml
+    depends_on:
+    - pi-async-subagent-no-progress-watchdog.implement
+    agent: client-runtime-verifier
