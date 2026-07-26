@@ -139324,7 +139324,7 @@ phases:
       remained unchanged apart from four witnessed pre-existing edits.'
   - id: pi-model-map-profile-switch.review-conformance
     name: Review profile-switch conformance, safety, and proof closure
-    status: pending
+    status: claimed
     description: 'step_type: review
 
       repo_change_policy: no_repo_change
@@ -139457,6 +139457,8 @@ phases:
     depends_on:
     - pi-model-map-profile-switch.verify-remediation
     agent: spec-verifier
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T00:26:01.992872Z'
   - id: pi-model-map-profile-switch.add-installed-pi-harness
     name: Add installed-Pi model-map runtime seam harness
     status: done
