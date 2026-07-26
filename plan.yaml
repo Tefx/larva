@@ -140460,7 +140460,7 @@ phases:
       changed. Four primary-tree edits remained unstaged and byte-identical.'
 - id: pi_model_map_external_symlink_profiles_20260726
   name: Pi Model-Map External Symlink Profiles 2026-07-26
-  status: in_progress
+  status: done
   gate: Phase closes when the bounded implementation receipt contains pre-source-mutation
     red proof and green code/test/doc evidence, independent installed-Pi verification
     proves the public reload/command seam with an external regular-file symlink and
@@ -140786,7 +140786,7 @@ phases:
       and primary fingerprints PASS, no external effects.
   - id: pi-model-map-external-symlink.review-evolution
     name: Review authorized external-symlink contract evolution
-    status: claimed
+    status: done
     description: 'step_type: review
 
       repo_change_policy: no_repo_change
@@ -140876,3 +140876,22 @@ phases:
     agent: spec-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T09:40:15.499867Z'
+    done_at: '2026-07-26T09:51:45.724184+00:00'
+    evidence: 'Fresh terminal spec-verifier review PASS on clean worktree HEAD ad3c02b7da0a1b7a8933c380a28ca19330c35caa.
+      Stage-A manifest /tmp/larva-agent-artifacts/pi-model-map-external-symlink/review-v1/manifest.json
+      SHA 0c0069851474113a6959472dd21f512923dc0eda9b9d752e8a97fd24c26dbe0a; all four
+      ledger/fingerprint entries independently match SHA/bytes/mode 0600. Authority
+      ledger limits supersession to exactly five authorized prior meanings and binds
+      authority:spec-migration:MMES-20260726-external-symlink-target. Requirement
+      ledger covers exact eight IDs: MMES-01 and MMES-06 INTENT_MET_VIA_EVOLUTION;
+      remaining six CONFORMS; aggregate INTENT_MET_VIA_EVOLUTION; downstream MIGRATED_AUTHORIZED;
+      blockers/warnings/proof_gaps/open_problems empty; residual risk none. Source
+      review covers exact seven integrated product paths, commits c401fcee and 7b932d0b,
+      README/tests parity, red proof, 202 focused + 887 remaining tests, 1100 Invar
+      examples, diff, installed Pi 0.82.1 exact registry route, descriptor algorithm,
+      preserved routing/isolation/cleanup. Semantic receipt /tmp/larva-agent-artifacts/pi-model-map-external-symlink/review-v1/semantic-receipt.json
+      file SHA 622b726c2ffd36d70a8cb77ef5676696a8c73e7d444a658eda4074c0d92a2ab0, 16269
+      bytes, mode 0600. Production Gate verdict /tmp/larva-agent-artifacts/pi-model-map-external-symlink/review-v1/semantic-gate-verdict.json
+      file SHA b9d00963aafef1b31b9133ca162a9c158a12770e988499018e88cd54f1cec547; CONFORMANT,
+      semantic_completion_admissible true, canonical receipt sha256:e9fda56e3f600440bd096baa49749e414e4f7e5e2eb7ef717d1d86784bd6f714.
+      No repository changes or external effects; primary pre-existing hashes match.'
