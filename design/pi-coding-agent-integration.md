@@ -1133,16 +1133,24 @@ Live streaming target:
   after child completion. Live assistant text is a realtime preview only and is
   replaced or reconciled by the final result; preserving terminal
   `timeline_events` for same-process `Timeline` inspection must not make live
-  assistant preview text a final-output authority.
+  assistant preview text a final-output authority. For human readability, the
+  Output pane may fold obvious adjacent tool-call argument JSON fragments into a
+  short marker that points to the Timeline pane. This is presentation-only:
+  canonical `result_text`, callbacks, artifacts, wait/status details, and cache
+  persistence must keep their existing data contracts. Final assistant JSON that
+  is not an obvious tool-call payload remains visible.
 - Tool execution events are grouped by `toolCallId` into one changing tool row or
   snapshot per tool call. `tool_execution_start`, `tool_execution_update`, and
   `tool_execution_end` must not create an unbounded three-event firehose. Updates
   replace the current status/output preview for that tool while preserving the
   tool row's first-seen position in the chronological Timeline.
 - Tool output belongs in the `Timeline` pane as a bounded preview, not in the
-  assistant `Output` pane. The `Output` pane is for assistant live/final text;
-  the `Timeline` pane is chronological and action-first: it shows assistant
-  message excerpts, hidden-thinking markers, terminal status, tool name,
+  assistant `Output` pane. Heavy tool argument keys such as `content`, `edits`,
+  `patch`, `diff`, `message`, and `prompt` must not render in the Output pane
+  when they arrive as raw tool-call payload fragments. The `Output` pane is for
+  assistant live/final text; the `Timeline` pane is chronological and
+  action-first: it shows assistant message excerpts, hidden-thinking markers,
+  terminal status, tool name,
   human-readable bounded argument summary, bounded output/error preview, and final
   success/failure state. Internal `toolCallId`, frame ids, UUIDs, and provider
   correlation ids are hidden by default and may appear only in bounded

@@ -513,7 +513,12 @@ Use one canonical command:
 
 `/larva-subagent` opens the Subagent Console in TUI mode. The former separate
 log command has been removed; new docs, tests, and user flows should use only
-`/larva-subagent`.
+`/larva-subagent`. The TUI Output tab displays assistant live/final text for
+human inspection, but it may fold obvious adjacent tool-call argument JSON
+fragments into `[tool-call payloads hidden; see Timeline tab]`. That folding is
+presentation-only: canonical `result_text`, callbacks, artifacts, wait/status
+details, and cache contracts remain unchanged, and final assistant JSON that is
+not an obvious tool-call payload remains visible.
 
 ### User-facing mode matrix
 | Pi mode | `/larva-subagent` | `/larva-subagent <task_id>` | `--cancel <task_id>` | `--clear` |

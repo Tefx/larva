@@ -1484,6 +1484,47 @@ const SUBAGENT_TIMELINE_TOOL_PAYLOAD_KEYS = new Set([
   "timeout_ms",
   "url",
 ]);
+const SUBAGENT_OUTPUT_TOOL_PAYLOAD_MARKER = "[tool-call payloads hidden; see Timeline tab]";
+const SUBAGENT_OUTPUT_TOOL_PAYLOAD_STRONG_KEYS = new Set([
+  "agent",
+  "check_refs",
+  "command",
+  "depends_on",
+  "field",
+  "file",
+  "force",
+  "glob",
+  "include_done",
+  "index",
+  "item_id",
+  "keyword",
+  "path",
+  "pattern",
+  "phase_id",
+  "query",
+  "regex",
+  "requests",
+  "step_id",
+  "target",
+  "timeout",
+  "timeout_ms",
+  "url",
+]);
+const SUBAGENT_OUTPUT_TOOL_PAYLOAD_HEAVY_KEYS = new Set([
+  "base64",
+  "content",
+  "contents",
+  "data",
+  "designMdBase64",
+  "diff",
+  "edits",
+  "file_data",
+  "message",
+  "patch",
+  "prompt",
+]);
+
+type SubagentJsonObjectSpan = { start: number; end: number; value: Record<string, unknown> };
 
 function isSubagentToolPayloadObject(value: unknown): boolean {
   if (!isRecord(value)) return false;
@@ -1504,6 +1545,114 @@ function assistantTextLooksLikeToolPayload(text: string): boolean {
     if (/"(?:schema_version|decision|final_text|result_text)"\s*:/.test(trimmed)) return false;
     return /"(?:action|agent|check_refs|command|field|file|force|glob|include_done|item_id|keyword|path|pattern|phase_id|query|regex|requests|step_id|target|timeout|timeout_ms|url)"\s*:/.test(trimmed);
   }
+}
+
+function subagentOutputObjectIsPreservedResult(value: Record<string, unknown>): boolean {
+  return "schema_version" in value || "decision" in value || "final_text" in value || "result_text" in value;
+}
+
+function subagentOutputToolPayloadKind(value: Record<string, unknown>): "none" | "strong" | "heavy" {
+  if (subagentOutputObjectIsPreservedResult(value)) return "none";
+  const keys = Object.keys(value);
+  if (keys.length === 0) return "none";
+  if (keys.some((key) => SUBAGENT_OUTPUT_TOOL_PAYLOAD_HEAVY_KEYS.has(key))) return "heavy";
+  if (keys.some((key) => SUBAGENT_OUTPUT_TOOL_PAYLOAD_STRONG_KEYS.has(key))) return "strong";
+  return "none";
+}
+
+function findSubagentJsonObjectSpans(text: string): SubagentJsonObjectSpan[] {
+  const spans: SubagentJsonObjectSpan[] = [];
+  let index = 0;
+  while (index < text.length) {
+    if (text[index] !== "{") {
+      index += 1;
+      continue;
+    }
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let end = -1;
+    for (let cursor = index; cursor < text.length; cursor += 1) {
+      const char = text[cursor];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === "\"") inString = false;
+        continue;
+      }
+      if (char === "\"") {
+        inString = true;
+        continue;
+      }
+      if (char === "{") depth += 1;
+      else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          end = cursor + 1;
+          break;
+        }
+      }
+    }
+    if (end < 0) {
+      index += 1;
+      continue;
+    }
+    const raw = text.slice(index, end);
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (isRecord(parsed)) {
+        spans.push({ start: index, end, value: parsed });
+        index = end;
+        continue;
+      }
+    } catch {
+      // Not a JSON object; keep scanning after the opening brace.
+    }
+    index += 1;
+  }
+  return spans;
+}
+
+function appendSubagentOutputMarker(result: string): string {
+  let next = result.replace(/[ \t]+$/u, "");
+  if (next.length > 0 && !next.endsWith("\n")) next += "\n";
+  return `${next}${SUBAGENT_OUTPUT_TOOL_PAYLOAD_MARKER}\n`;
+}
+
+function subagentOutputTextForDisplay(value: string): string {
+  const safe = rendererSafeMarkdownSource(value);
+  const spans = findSubagentJsonObjectSpans(safe).map((span) => ({ ...span, kind: subagentOutputToolPayloadKind(span.value) }));
+  if (spans.every((span) => span.kind === "none")) return safe;
+  let result = "";
+  let cursor = 0;
+  for (let index = 0; index < spans.length;) {
+    const span = spans[index];
+    if (span.kind === "none") {
+      result += safe.slice(cursor, span.end);
+      cursor = span.end;
+      index += 1;
+      continue;
+    }
+    let runEnd = index + 1;
+    let hasHeavyPayload = span.kind === "heavy";
+    while (runEnd < spans.length && spans[runEnd]?.kind !== "none" && safe.slice(spans[runEnd - 1]?.end ?? span.end, spans[runEnd]?.start ?? span.end).trim().length === 0) {
+      hasHeavyPayload ||= spans[runEnd]?.kind === "heavy";
+      runEnd += 1;
+    }
+    const shouldFold = hasHeavyPayload || runEnd - index >= 2;
+    if (!shouldFold) {
+      result += safe.slice(cursor, span.end);
+      cursor = span.end;
+      index += 1;
+      continue;
+    }
+    result += safe.slice(cursor, span.start);
+    result = appendSubagentOutputMarker(result);
+    cursor = spans[runEnd - 1]?.end ?? span.end;
+    index = runEnd;
+  }
+  result += safe.slice(cursor);
+  return result.replace(/\n{3,}/gu, "\n\n");
 }
 
 function hasFollowingToolRowForAssistantPayload(events: SubagentTimelineEvent[], index: number): boolean {
@@ -1574,6 +1723,10 @@ function subagentEntryOutput(entry: SubagentPresentationLogEntry): string {
     return boundedAssistantPreview(entry.live_assistant_preview);
   }
   return typeof entry.result_text === "string" && entry.status !== "running" ? entry.result_text : "";
+}
+
+function subagentEntryOutputForDisplay(entry: SubagentPresentationLogEntry): string {
+  return subagentOutputTextForDisplay(subagentEntryOutput(entry));
 }
 
 function subagentEntryOutputIsPresent(entry: SubagentPresentationLogEntry): boolean {
@@ -1950,7 +2103,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Initial", this.entry.task_prompt ? `recorded (${Array.from(this.entry.task_prompt).length} chars) — see Prompt tab` : "not recorded", contentWidth),
       "",
       this.sectionLine("Result", contentWidth),
-      ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview available — see Output tab" : "available — see Output tab (newline-preserving)") : "No final output observed.", contentWidth),
+      ...this.fieldLines("Output", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview available — see Output tab" : "available — see Output tab (newline-preserving; tool payloads may be folded)") : "No final output observed.", contentWidth),
       ...this.fieldLines("Timeline", (this.entry.timeline_events?.length ?? 0) > 0 || (this.entry.tool_snapshots?.length ?? 0) > 0 || this.entry.live_assistant_preview ? "available — see Timeline/Output tabs" : "not observed", contentWidth),
       ...this.fieldLines("Error", subagentEntryErrorText(this.entry), contentWidth),
       "",
@@ -2035,7 +2188,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private paneLines(contentWidth: number): string[] {
     const tab = this.activeTab();
     if (tab === "output") {
-      const output = subagentEntryOutput(this.entry);
+      const output = subagentEntryOutputForDisplay(this.entry);
       const thinkingLine = subagentThinkingHiddenLine(this.entry);
       if (output.trim().length === 0) {
         return renderRendererSafePlainLines(thinkingLine ?? "No final subagent output is available for this observed entry.", contentWidth);

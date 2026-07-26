@@ -704,6 +704,64 @@ def test_larva_subagent_timeline_suppresses_tool_call_json_duplicates(tmp_path: 
     }
 
 
+def test_larva_subagent_output_tab_folds_tool_payload_fragments_without_mutating_result_text(tmp_path: Path) -> None:
+    """Output tab folds raw tool-call JSON fragments while keeping final assistant text."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\\\[[0-9;]*m`, "g");
+        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const toolPayloads = [
+          JSON.stringify({ path: "/tmp/worktree/README.md", limit: 200 }),
+          JSON.stringify({ command: "python3 - <<'PY'\\nprint('secret')\\nPY", timeout: 30 }),
+          JSON.stringify({ path: "/tmp/worktree/helper.py", content: "SECRET_HEAVY_PAYLOAD\\n" + "x".repeat(240) }),
+        ].join("");
+        const finalJson = JSON.stringify({ action: "PASS", summary: "final JSON after tools remains visible" });
+        const rawResult = `<intuition>\nReadable final reasoning.\n</intuition>${toolPayloads}\n${finalJson}\nNatural tail remains visible.`;
+        const component = new mod.SubagentPresentationLogOverlay({
+          entry: {
+            task_id: "/tmp/readable.jsonl",
+            persona_id: "ux",
+            status: "success",
+            sequence: 1,
+            result_text: rawResult,
+            error: null,
+            task_prompt: "Inspect Output tab payload folding.",
+            timeline_events: [
+              { kind: "tool", toolCallId: "call_read", snapshot: { toolCallId: "call_read", name: "read", status: "success", args_preview: JSON.stringify({ path: "/tmp/worktree/README.md", limit: 200 }) } },
+              { kind: "tool", toolCallId: "call_bash", snapshot: { toolCallId: "call_bash", name: "bash", status: "success", args_preview: JSON.stringify({ command: "python3 - <<'PY'\\nprint('secret')\\nPY", timeout: 30 }) } },
+              { kind: "terminal", status: "success" },
+            ],
+          },
+          generation: 1,
+          tui: { terminal: { rows: 50 } },
+        });
+        component.handleInput?.("3");
+        const plain = component.render(120).map(stripAnsi).join("\\n");
+        console.log(JSON.stringify({
+          naturalTextVisible: plain.includes("<intuition>") && plain.includes("Readable final reasoning.") && plain.includes("Natural tail remains visible."),
+          markerVisible: plain.includes("[tool-call payloads hidden; see Timeline tab]"),
+          finalActionJsonVisible: plain.includes("final JSON after tools remains visible"),
+          rawToolPayloadHidden: !plain.includes('"/tmp/worktree/README.md"') && !plain.includes('"command"') && !plain.includes("python3 - <<"),
+          heavyPayloadHidden: !plain.includes("SECRET_HEAVY_PAYLOAD"),
+          rawResultPreserved: rawResult.includes("SECRET_HEAVY_PAYLOAD") && rawResult.includes('"/tmp/worktree/README.md"'),
+        }, null, 2));
+        """,
+    )
+
+    assert payload == {
+        "naturalTextVisible": True,
+        "markerVisible": True,
+        "finalActionJsonVisible": True,
+        "rawToolPayloadHidden": True,
+        "heavyPayloadHidden": True,
+        "rawResultPreserved": True,
+    }
+
+
+
 def test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch(tmp_path: Path) -> None:
     """Pin public resume task_id validation codes before child launch."""
 
