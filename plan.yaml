@@ -140897,7 +140897,7 @@ phases:
       No repository changes or external effects; primary pre-existing hashes match.'
 - id: pi_async_subagent_no_progress_watchdog_20260726
   name: Pi Async Subagent No-Progress Watchdog 2026-07-26
-  status: pending
+  status: in_progress
   gate: Phase closes after one worker-v2 implementation receipt proves watchdog-specific
     test-first red before product mutation and every declared green check, then one
     client-runtime-verifier semantic receipt independently proves NPW-01 through NPW-06
@@ -140907,7 +140907,7 @@ phases:
   steps:
   - id: pi-async-subagent-no-progress-watchdog.implement
     name: Implement async-subagent consecutive no-progress watchdog
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -141131,6 +141131,8 @@ phases:
     - scripts/pi-extension-runtime-smoke.mjs
     - pyproject.toml
     agent: frontend-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T16:18:20.217061Z'
   - id: pi-async-subagent-no-progress-watchdog.verify-runtime
     name: Independently verify watchdog runtime and agent-facing contract
     status: pending
