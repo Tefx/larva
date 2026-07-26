@@ -140897,7 +140897,7 @@ phases:
       No repository changes or external effects; primary pre-existing hashes match.'
 - id: pi_async_subagent_no_progress_watchdog_20260726
   name: Pi Async Subagent No-Progress Watchdog 2026-07-26
-  status: in_progress
+  status: done
   gate: Phase closes after one worker-v2 implementation receipt proves watchdog-specific
     test-first red before product mutation and every declared green check, then one
     client-runtime-verifier semantic receipt independently proves NPW-01 through NPW-06
@@ -141166,7 +141166,7 @@ phases:
       effect.'
   - id: pi-async-subagent-no-progress-watchdog.verify-runtime
     name: Independently verify watchdog runtime and agent-facing contract
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -141292,3 +141292,32 @@ phases:
     agent: client-runtime-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T18:57:32.431717Z'
+    done_at: '2026-07-26T19:27:44.666216+00:00'
+    evidence: 'Independent client-runtime-verifier PASS at immutable main target 6ed42dfe2d09fdb1fb50ad88349dbf9bcf24fa00,
+      product commit a2bb701ca8ef3dfa00df7425f0a105446f50ba11, plan SHA 7dff51ca1a45fe0ac1eecdedcc44c06130b7bdd398e475f503841f8f04b7201d.
+      Exact semantic receipt `/tmp/npw-verifier-r2-semantic-receipt.json`, 4293 bytes,
+      SHA a747663b9d22cfc3f43e16a6008238cc8c907318e81564e4009354d44347bd8f; verdict
+      PASS, all NPW-01..NPW-06 PROVEN, blocking CLOSED, proof gap NONE, gate open
+      true, blockers/warnings empty, completion authority ORCHESTRATOR_ONLY. Parent
+      production Gate validation CONFORMANT at `/tmp/npw-verifier-r2-semantic-verdict.json`,
+      SHA d7ff2d3de915ac6595b6edc07c103e78cc51ebd176b282e117d27d43ba8f924e. Fresh
+      runtime binding used outer HOME=/Users/tefx while the smoke scenario retained
+      isolated child HOME/Pi/Larva/session roots; installed `/opt/homebrew/bin/pi`
+      and package 0.82.1, credential-free loopback, public schema/admission, stall/recovery/reset,
+      observer neutrality, hard cancel/race/callback/cleanup/no replay, real blocking
+      child, docs, Git/settings/process/root integrity all passed. Mode-0600 r2 artifacts:
+      public contract SHA 92b3a189b398f5cd6985f65378bf763b87e6a7a66b9b89e3292a8246086de895;
+      runtime observations SHA e4fe26115a15e820d5a475fa22366804ae0af61cb96d18470b501c9b8f03cdf4;
+      races/cleanup SHA 8d8a16301d4b37daaa91bdba07999361fe4136f8b6497b952e88af1b5bb88b14;
+      docs SHA 59f4a10372dd95be958a7c86013dec9b538a3fa319a7b51997c6e7e1a1e99f8a; settings
+      SHA 5a4ddac784a12049e6a9236dbe6e953cb50eaa4310512d4204b620cbfbcbe3ff; command
+      log SHA fec8d2a553188836a4bf20838a5e90baed1e2f53d413bf5f6e7b0686a4377db8. Attempt-1
+      Gate-valid REJECTED evidence is retained at `/Users/tefx/.pi/larva/verifier-artifacts/npw-attempt1-20260726T191729Z/manifest.json`;
+      causal diagnosis showed its outer ctx sandbox HOME hid the host settings file
+      while all product watchdog assertions except hostSettingsFingerprintsRecorded
+      were true, so a fresh equivalent read-only binding closed the obsolete harness
+      failure without rewriting history. Producer receipt/red/integration/Invar evidence
+      remained available and hash-bound. Final main tree clean; host settings restored/preserved
+      at original 2007 bytes/SHA 473b232db7e8e9dd29fc4daa7513b5c25da24cf0e7de33ce5d34a541e86ec0a8
+      (`defaultThinkingLevel=medium`); no verifier/worker watchdog child process or
+      temp root remains; no network/auth/provider/install/repository/external effect.'
