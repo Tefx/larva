@@ -140471,7 +140471,7 @@ phases:
   steps:
   - id: pi-model-map-external-symlink.implement
     name: Evolve model-map profile symlink contract and implementation
-    status: rejected
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140630,7 +140630,7 @@ phases:
     - pyproject.toml
     agent: frontend-engineer
     claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-26T08:14:15.224427Z'
+    claimed_at: '2026-07-26T09:01:31.284038Z'
     done_at: '2026-07-26T08:43:20.872144+00:00'
     rejection_reason: 'Independent installed-Pi verification proved the external symlink/reload/public
       command seam uses the wrong fixture registry identity: observed controlled/parent-openrouter;
