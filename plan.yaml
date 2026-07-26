@@ -140663,7 +140663,7 @@ phases:
       reviewer: integration-verifier
   - id: pi-model-map-external-symlink.verify-installed-pi
     name: Independently verify external profile symlink through installed Pi
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -140764,6 +140764,26 @@ phases:
     agent: integration-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T09:27:11.575220Z'
+    done_at: '2026-07-26T09:39:51.879682+00:00'
+    evidence: Fresh independent integration-verifier PASS on clean worktree HEAD 057441c5a1af626a1b48d0a1dc2820cfed3b694a.
+      Stage-A manifest /tmp/larva-agent-artifacts/pi-model-map-external-symlink/verification-v2/manifest.json
+      SHA f2afb62d4daf2581aa84102b0b64419caaf1c5d06555d4066bfc3c14489fb633; 13 entries
+      independently rehashed with exact bytes and mode 0600, permission record SHA
+      f2e492c43bb55dd0a8b1fb682d7f93f2c51805767d159f837c0b0b591ec10ed9 zero mismatches.
+      Analysis ledger SHA db6a7f0daf012a7b77f90aca80a7d893b37e3e29028f497da79dfc21b5d9adf1
+      proves selected/executed /opt/homebrew/bin/pi and installed package 0.82.1,
+      real ctx.reload ordered before public /larva-model-map openrouter, external
+      regular target plus lexical canonical symlink, exact ModelRegistry result openrouter/openai/gpt-5.6-sol,
+      loopback request, lexical-only status, no external provider, all runtime assertions
+      true, adversarial FIFO/device/directory/dangling/oversize/malformed/schema/name/descriptor/race/mutation
+      behavior, routing/rollback/fanout/generation/timeout/isolation/cleanup. Semantic
+      receipt /tmp/larva-agent-artifacts/pi-model-map-external-symlink/verification-v2/semantic-receipt.json
+      file SHA 2fa4750780cefeb10cad89ad7a8941b909d53235cec7a751149c3af1c1bc617b, 19790
+      bytes, mode 0600. Production Gate verdict /tmp/larva-agent-artifacts/pi-model-map-external-symlink/verification-v2/semantic-gate-verdict.json
+      file SHA 2b749fa4ce98f61af7d363e15f95bcea22eda506c1a16840a8f13f503e28c7e5; CONFORMANT,
+      semantic_completion_admissible true, canonical receipt sha256:d24cfd9e364b467d1661cb6c1522c33ac4feee515ffa22f744e691583d350791.
+      All seven requirements PROVEN, L2/L3 PASS, no blockers/warnings/gaps, cleanup
+      and primary fingerprints PASS, no external effects.
   - id: pi-model-map-external-symlink.review-evolution
     name: Review authorized external-symlink contract evolution
     status: pending
