@@ -140471,7 +140471,7 @@ phases:
   steps:
   - id: pi-model-map-external-symlink.implement
     name: Evolve model-map profile symlink contract and implementation
-    status: claimed
+    status: pending
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140629,8 +140629,6 @@ phases:
     - contrib/pi-extension/README.md
     - pyproject.toml
     agent: frontend-engineer
-    claimed_by: vectl-orchestrator
-    claimed_at: '2026-07-26T07:40:46.562828Z'
   - id: pi-model-map-external-symlink.verify-installed-pi
     name: Independently verify external profile symlink through installed Pi
     status: pending
