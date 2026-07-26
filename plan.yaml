@@ -138931,7 +138931,7 @@ phases:
       was clean; no tracked verifier changes or product/runtime/shared contract changes.'
 - id: pi_model_map_profile_switch_20260725
   name: Pi Runtime Model-Map Profile Switch 2026-07-25
-  status: in_progress
+  status: done
   gate: The phase closes only after all completed implementation/remediation definitions
     and evidence remain unchanged; `pi-model-map-profile-switch.isolate-real-runtime-harness`
     integrates exactly one three-path repository remediation after the completed actual-child
@@ -139324,7 +139324,7 @@ phases:
       remained unchanged apart from four witnessed pre-existing edits.'
   - id: pi-model-map-profile-switch.review-conformance
     name: Review profile-switch conformance, safety, and proof closure
-    status: claimed
+    status: done
     description: 'step_type: review
 
       repo_change_policy: no_repo_change
@@ -139459,6 +139459,41 @@ phases:
     agent: spec-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T00:26:01.992872Z'
+    done_at: '2026-07-26T00:44:16.888316+00:00'
+    evidence: 'Fresh terminal `spec-verifier` R3 review from tracked-clean detached
+      HEAD `ecb1fd93cb59c823c449c1f9594ff5a02a78f810`; exact accepted artifact blobs
+      were bound to isolation remediation commit `2ac7da935ad330abf0965e4c6aae7d1ae0a5b7e9`,
+      with only plan.yaml changed afterward. Initial callback exceeded the 1 MiB JSONL
+      frame after durable Stage-A artifacts were written; no evidence was recreated.
+      Parent recovered and hash-verified those immutable artifacts, then resumed the
+      same reviewer solely for compact Stage B.
+
+
+      Stage-A manifest `/tmp/larva-agent-artifacts/pi-model-map-review-conformance/03-stage-a-manifest.json`,
+      SHA-256 `654fc9779f4ba8f88c4fe8aefa4f1d4fac33a8132d911b30c6ee24f7a626164b`,
+      4268 bytes; review ledger `02-review-ledger.json`, SHA-256 `e81dd4e608a3f1c332a898a44bdd49fd6bf897b0874f994a580e942e3f96d9e5`,
+      35747 bytes. Review applied authoritative §5.1 no-dot regex over contradictory
+      §11.1, used original INCONCLUSIVE/pre-fix BLOCKED artifacts only as red provenance,
+      consumed exact current worker/integration receipts plus fresh installed parent/child
+      raw evidence, and found 30 CONFORMS, 0 diverges/unproven/blockers/open problems,
+      downstream contract UNCHANGED, residual risk none. Static path/line/blob evidence
+      and current raw behavior jointly cover process-local state, single resolver,
+      neutral loopback isolation, ambient quarantine, installed public seams, bounded
+      fanout/correlation, terminal recheck, targeted retry, generation/lifecycle,
+      5000ms fault isolation, status secrecy/restoration/in-flight ordering, Pi/package
+      0.82.1, no external effects, docs/tests, cleanup, and four preserved primary-tree
+      edits.
+
+
+      Terminal receipt `/tmp/larva-agent-artifacts/pi-model-map-review-conformance/04-semantic-receipt.json`,
+      file SHA-256 `da8a852428a7ad39fb9e48027c3ffa1082e3be1d1dd5d8a9825a6a9ea6cb9fdd`,
+      25962 bytes, mode 0600: exact spec-verifier/step/ordered scope, PASS, intent
+      met, all 30 required atoms PROVEN and CONFORMS, downstream UNCHANGED, no blockers/warnings/gaps.
+      Reviewer Gate and independent parent Gate both CONFORMANT/admissible with no
+      reasons; canonical semantic SHA `sha256:d8fb11cd88237e36e18996db48c079ab66e7fd9066fdb2a74c3e0941476c0227`.
+      Parent verdict `/tmp/larva-agent-artifacts/pi-model-map-review-conformance/06-parent-semantic-gate-verdict.json`,
+      SHA-256 `2ea8fa5312c4b1949096d21ae70ea5c08e74743e1d37805e2c919f6bec701925`,
+      6855 bytes.'
   - id: pi-model-map-profile-switch.add-installed-pi-harness
     name: Add installed-Pi model-map runtime seam harness
     status: done
