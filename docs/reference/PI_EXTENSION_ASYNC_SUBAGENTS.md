@@ -182,6 +182,116 @@ extension runtime. The no-sleep guidance belongs in the accepted result because
 that is the exact decision point where a parent agent otherwise tends to retain
 control by calling `sleep` and polling status.
 
+### Consecutive no-progress watchdog
+
+The initial silence episode is armed after the child prompt succeeds and the run
+enters `waiting_for_child`; launcher/startup and prompt-command time remain under
+their existing startup/RPC command bounds. This prevents a slow child process
+launch from producing a pre-acceptance stall event or cancellation.
+
+
+Every new or resumed `larva_subagent` run has one immutable consecutive-silence
+deadline. The optional `no_progress_timeout_ms` input defaults to `3600000`
+(one hour) and accepts integers from `120000` through `86400000` inclusive.
+The JSON schema exposes the same default and bounds. Booleans, floats, `null`,
+zero, strings such as `"unlimited"`, and values outside the range return
+`LARVA_BAD_INPUT` before child spawn, child-session allocation or mutation,
+active-run registry mutation, or callback state exists.
+
+The deadline measures monotonic elapsed time since the latest recognized child
+progress. It is a silence deadline, not a cap on total run duration:
+
+1. At `T/2` with no recognized progress, the run remains `status: "running"`
+   with `result_pending: true`, changes to `phase: "stall_suspected"`, and
+   appends exactly one authoritative phase event for that silence episode. The
+   child remains alive and no terminal callback is sent.
+2. Recognized progress changes the phase back to `waiting_for_child`, resets a
+   full `T`, and allows a later silence episode to emit one new warning.
+3. At `T` consecutive silence, Larva commits the internal cancellation source
+   `watchdog` and uses the existing exact-run RPC abort, 1500 ms kill grace,
+   cleanup, terminal snapshot, and callback path. The public terminal state is
+   still `cancelled` with `LARVA_CHILD_CANCELLED`; no watchdog-specific public
+   error code or tool exists.
+
+Only normalized child RPC execution activity can reset the deadline:
+
+| Observation | Progress? | Rule |
+| --- | --- | --- |
+| Assistant delta | Yes | The normalized visible delta must be non-empty. |
+| Thinking activity | Yes | A normalized thinking stream event counts even though its content stays hidden. |
+| Tool execution start/update/end | Yes | The frame must normalize to an identified tool execution event. |
+| `agent_end` | Yes | Terminal ownership is then resolved by the existing completion/cancellation race. |
+| Empty or whitespace-only assistant delta | No | It cannot arm, reset, extend, recover, or cancel the watchdog. |
+| `status`, `events`, `wait`, or `select` read | No | Observer activity is timing-neutral. |
+| Presentation/cache write or callback attempt | No | UI and delivery work never proves child execution progress. |
+| Child stderr, trace traffic, watchdog event, or unknown frame | No | Diagnostic or unrecognized traffic is not execution progress. |
+
+Three timeout layers remain separate:
+
+| Layer | Purpose | Effect |
+| --- | --- | --- |
+| Command/tool timeout | Bounds one RPC command or one tool implementation. | Fails or aborts that operation under its own contract; it is not the child silence deadline. |
+| `no_progress_timeout_ms` | Bounds consecutive child silence for the whole accepted run. | Warns at half, resets only on recognized progress, and cancels at the full deadline. |
+| `larva_subagent_wait.timeout_ms` | Bounds one parent observer call. | Returns a readiness snapshot on timeout and never changes child timing. |
+
+Main-agent decision flow:
+
+1. Before spawn, estimate the longest legitimate silent child tool call. Use the
+   default for ordinary work and set a larger `no_progress_timeout_ms` for known
+   long-silent work. This version has no live deadline-extension mechanism.
+2. Treat the accepted result as pending. Use bounded `larva_subagent_wait`
+   checkpoints, then inspect exact-task `status` or `events` when needed. Prefer
+   `timeout_ms: 0` or short checkpoints in a large interactive transcript. Do
+   not use shell-sleep polling.
+3. Treat `stall_suspected` as a liveness warning, not terminal evidence. Leave
+   the child running unless independent evidence justifies explicit cancellation.
+4. If progress resumes, continue with the reset full deadline. If the watchdog
+   cancels, preserve the child JSONL/session state and reconcile repository,
+   tool, callback, and external effects before any user-authorized resume.
+
+Default deadline:
+
+```json
+{
+  "persona_id": "doc-reviewer",
+  "task": "Review the release notes and return evidence."
+}
+```
+
+Known long-silent tool call (15-minute silence allowance):
+
+```json
+{
+  "persona_id": "integration-verifier",
+  "task": "Run the bounded offline device probe and report raw evidence.",
+  "no_progress_timeout_ms": 900000
+}
+```
+
+Bounded observer checkpoint after acceptance:
+
+```json
+{
+  "task_ids": ["/absolute/child-session.jsonl"],
+  "return_when": "all",
+  "timeout_ms": 0
+}
+```
+
+The timer callback rechecks terminal ownership and monotonic elapsed time before
+warning or cancellation. Existing terminal state wins. Once one cancellation
+path commits, its first cancellation source and bounded reason own the run; late
+progress cannot recover it. Finalization and cleanup invalidate the timer, one
+terminal snapshot remains authoritative, and callback delivery stays at most
+once. Larva never retries the child turn, replays the prompt, rolls back prior
+child tool effects, or auto-resumes after watchdog cancellation.
+
+A cancelled session may be resumed only through a new explicit
+`larva_subagent` call with the exact `task_id`, a new user-authorized task, and a
+new pre-spawn deadline choice. Prior child tool effects can be unknown even when
+abort and cleanup succeed. Reconciliation is mandatory before that resume;
+resume does not compensate, replay, or make those effects known.
+
 ### Result callback
 Final child results return to the parent agent through a Pi custom message:
 
@@ -441,7 +551,6 @@ Subagent Console presentation cache is intentionally excluded from the indicator
 so stale UI history cannot masquerade as live background work.
 
 ### Targeted cancellation
-
 Cancellation is exact-`task_id` only.
 
 Allowed cancellation surfaces:
@@ -449,6 +558,7 @@ Allowed cancellation surfaces:
 - user command: `/larva-subagent --cancel <task_id>`
 - model tool: `larva_subagent_cancel(task_id, reason)`
 - TUI overlay action on the selected exact task
+- internal consecutive-no-progress watchdog after the immutable full deadline
 
 Forbidden cancellation surfaces:
 
@@ -462,24 +572,30 @@ Forbidden cancellation surfaces:
 Cancellation can be requested only after public `task_id` allocation. Before that
 point the run has no public handle, so user/model targeted cancellation must
 return `LARVA_SUBAGENT_NOT_OBSERVED`. Parent-turn abort or session shutdown may
-still abort private startup operations through lifecycle cleanup.
+still abort private startup operations through lifecycle cleanup. The watchdog
+is private run ownership, not a public target selector, and may commit after the
+run exists even if no model/user cancellation request was made.
 
 Cancellation sequence:
 
-1. look up exact active run by `task_id`,
+1. look up or retain the exact active run,
 2. if status is `accepted` or `running`, transition to `cancelling`,
-3. send child RPC abort,
-4. wait the adapter grace period of 1500 ms,
-5. kill the child process only if it has not exited after that grace period,
-6. transition to `cancelled` with `LARVA_CHILD_CANCELLED` if child did not
+3. record the first cancellation source and bounded reason,
+4. send child RPC abort,
+5. wait the adapter grace period of 1500 ms,
+6. kill the child process only if it has not exited after that grace period,
+7. transition to `cancelled` with `LARVA_CHILD_CANCELLED` if child did not
    complete first,
-7. return/emit the terminal or in-progress cancellation state exactly once.
+8. return/emit the terminal or in-progress cancellation state exactly once.
 
-If the child succeeds before abort completes, success wins from either
-`accepted` or `running` cancellation. If cancellation wins, late child completion
-must not revive or duplicate the task. Failures during `accepted` or `running`
-transition to `failed`; cancellation requested after `failed`, `success`, or
-`cancelled` returns the existing terminal state without a new abort.
+If the child succeeds before abort commitment, success wins from either
+`accepted` or `running` cancellation. Existing terminal ownership always wins.
+After cancellation commitment, the first cancel task owns the source and reason;
+late child progress or completion cannot recover, revive, or duplicate the run.
+Watchdog cancellation uses this same sequence with internal source `watchdog` and
+a reason that names the elapsed silence and requires explicit reconciliation of
+possibly unknown prior child tool effects. It does not retry, replay, compensate,
+or auto-resume child work.
 
 Callback rule by cancellation source:
 
@@ -490,6 +606,9 @@ Callback rule by cancellation source:
 - User command or TUI Console cancellation: the command/overlay result is for the
   human control surface; the eventual terminal event must deliver exactly one
   callback to the parent agent unless the parent session becomes stale.
+- Watchdog cancellation: the eventual terminal event delivers exactly one
+  callback unless the parent session is stale. The soft `stall_suspected` warning
+  never sends a terminal callback.
 - TUI Console `c` cancellation confirmation is rendered inside the existing
   overlay, not through a separate `ctx.ui.confirm` widget. The confirmation is a
   warning panel fixed at the top of the overlay with `⚠ CANCEL SUBAGENT?`, the
@@ -610,7 +729,7 @@ Shared numeric bounds:
   process. When event `sequence` exceeds this window, older cursors expire
   deterministically.
 
-### `larva_subagent(persona_id, task, task_id?)`
+### `larva_subagent(persona_id, task, task_id?, no_progress_timeout_ms?)`
 
 Starts or resumes one child session. Returns accepted status, not final task
 evidence.
@@ -624,6 +743,11 @@ Input contract:
   resume-path file checks. Empty, `null`, relative, out-of-root, non-`.jsonl`,
   non-normalized, unreadable, non-regular, or symlink-escaping paths return
   `LARVA_BAD_INPUT`.
+- `no_progress_timeout_ms: integer | omitted`; optional consecutive recognized-
+  progress silence deadline. It defaults to `3600000` and accepts
+  `120000..86400000` inclusive. Invalid values return `LARVA_BAD_INPUT` before
+  spawn or other run effects. The value is fixed for this invocation and cannot
+  be extended live.
 
 Accepted details schema:
 
@@ -637,7 +761,11 @@ Accepted details schema:
 }
 ```
 
-The visible accepted text must include that final evidence is pending.
+The visible accepted text states that final evidence is pending, forbids shell
+sleep polling, recommends bounded wait checkpoints followed by status/events
+inspection, and tells agents to choose a larger deadline before spawning known
+long-silent work. Full watchdog lifecycle and recovery rules are defined in
+[Consecutive no-progress watchdog](#consecutive-no-progress-watchdog).
 
 ### `larva_subagent_status(task_id?, limit?)`
 
@@ -857,6 +985,12 @@ The implementation must retain the latest `1000` recent events. Cursor rules:
 Do not fabricate old events by reading child JSONL files.
 
 ### `larva_subagent_wait(task_ids, return_when?, timeout_ms?)`
+
+This is an observer-only timeout. Calling `wait`—including a timeout, immediate
+snapshot, or long wait—cannot arm, reset, extend, recover, or cancel the child
+consecutive-no-progress watchdog. Use bounded checkpoints followed by exact-task
+status/events inspection; do not replace them with shell-sleep polling.
+
 Waits for exact observed task handles to satisfy one small condition. This tool
 returns snapshots; it does not consume results. It is the primary automation
 waiting surface for minute-scale and hour-scale subagent work.
@@ -1200,9 +1334,14 @@ Conceptual run fields:
 - `elapsed_ms`, `age_ms`, `sequence_latest` for orchestration diagnostics
 - child RPC/process handle
 - parent session identity at acceptance time
-- cancellation reason, if any
+- cancellation reason and first cancellation source, if any
 - callback delivery state
 - terminal result/error snapshot
+- private monotonic `last_progress_at_ms` and one private `stall_timer`
+
+The invocation keeps its validated `no_progress_timeout_ms` immutable in the run
+closure. No generation counter, watchdog object/service, durable timer ledger, or
+runtime-config field is part of this state.
 
 Conceptual event-log fields:
 
@@ -1220,10 +1359,12 @@ Every public state change that matters to orchestration appends one event to the
 in-memory event log. The event log keeps the latest `1000` events and is a
 projection of the registry, not a second source of truth.
 
-State transitions:
+State and phase transitions include:
 
 ```text
-starting -> accepted -> running -> success
+starting -> accepted -> running/waiting_for_child -> success
+running/waiting_for_child -> running/stall_suspected
+running/stall_suspected -> running/waiting_for_child
 starting -> failed
 accepted -> failed
 accepted -> cancelling -> cancelled
@@ -1235,10 +1376,11 @@ running -> cancelling -> success
 
 No transition may leave a child untracked after the accepted result is returned.
 Terminal states are immutable except for bounded presentation/cache annotation.
+Finalization and child cleanup clear the stall timer before returning authority.
 Events are also immutable once appended, but events older than the latest `1000`
 may be dropped; callers must honor `cursor_expired`. Cache annotation is for UI
-continuity only and must not mutate terminal state, event history, or active-run
-authority.
+continuity only and must not mutate terminal state, event history, active-run
+authority, or watchdog timing.
 
 ## Session lifecycle rules
 On parent session shutdown, reload, new session, resume, or fork:
@@ -1260,6 +1402,11 @@ process exit, cached presentation rows may be displayed for human continuity, bu
 `status`, `events`, `wait`, `select`, cancellation, and the background indicator
 must still rely only on process-local observed runtime state.
 
+
+Lifecycle abort, ordinary terminal finalization, and child cleanup all invalidate
+the run's stall timer. Cached rows, late callback attempts, and post-cleanup
+frames cannot re-arm it or change terminal ownership.
+
 ## Trace-file proof instrumentation
 
 `LARVA_PI_CHILD_RPC_TRACE_FILE` is available for runtime proof probes only. Trace
@@ -1271,7 +1418,9 @@ child runtime behavior.
 ## Error and duplicate rules
 - `LARVA_BAD_INPUT`: malformed tool/command input, including invalid path,
   invalid `limit`, invalid `since_sequence`, invalid `return_when`, invalid
-  `timeout_ms`, blank required strings, or overlong cancel reason.
+  observer `timeout_ms`, invalid child `no_progress_timeout_ms`, blank required
+  strings, or overlong cancel reason. Invalid child deadlines fail before spawn,
+  session mutation, active-run registration, or callback state.
 - `LARVA_NO_ACTIVE_PERSONA`: parent persona required but absent.
 - `LARVA_CHILD_PROTOCOL_FAILED`: child RPC contract failed before accepted state
   or while collecting terminal state.
@@ -1299,15 +1448,20 @@ child runtime behavior.
 - `LARVA_SUBAGENT_LOG_CONFIG_INVALID`: adapter-local presentation cache/config
   path, parse, bounds, write, or clear failure. It may appear in `/larva-subagent`
   command output and diagnostics; it is not a child terminal error and must not
-  affect active-run registry authority.
-- `LARVA_CHILD_CANCELLED`: exact child cancelled by user/model/parent lifecycle.
+  affect active-run registry authority or watchdog timing.
+- `LARVA_CHILD_CANCELLED`: exact child cancelled by user/model/parent lifecycle
+  or the internal watchdog. A watchdog cancellation message states that prior
+  child tool effects may be unknown and require explicit reconciliation before
+  any user-authorized resume; the public code remains unchanged.
 - stale callback suppression is not model-visible as an error; it is recorded as
   adapter-local diagnostic state and appears in `callback_delivery`.
-- stale/late success after cancellation must not revive the run.
+- stale/late success or progress after cancellation commitment must not revive the
+  run, reset the timer, replace the first cancellation source, or duplicate the
+  terminal snapshot.
 - repeated terminal events must not duplicate callbacks or duplicate terminal
   orchestration events.
-- user command and TUI Console cancellation should deliver one terminal callback
-  to the parent agent unless the parent session becomes stale.
+- user command, TUI Console, and watchdog cancellation should deliver one terminal
+  callback to the parent agent unless the parent session becomes stale.
 - model-facing `larva_subagent_cancel` suppresses a duplicate callback only when
   its own ToolResult already returned a terminal outcome; if it returned
   non-terminal `cancelling`, the eventual terminal outcome still gets one
@@ -1369,6 +1523,28 @@ Implementation is not complete until these gates pass:
 20. Real Pi isolation test: exact cancellation, invalid provider/startup failure,
     normal child cleanup, and all child termination leave shared settings and the
     parent persona/model unchanged.
+
+21. Admission test: default, inclusive bounds, booleans, floats, zero, `null`,
+    unlimited forms, and out-of-range child deadlines agree between public tool
+    schema and runtime behavior; invalid input creates no run or child root.
+22. Monotonic runtime test: one half-deadline warning preserves running/pending
+    state and sends no callback; recognized progress restores
+    `waiting_for_child`, resets a full deadline, and permits one warning in a
+    later silence episode.
+23. Race test: full-deadline silence uses exact-run abort/kill/cleanup,
+    first-cancellation ownership, one terminal snapshot, timer invalidation, and
+    at-most-once callback; late progress cannot recover the run.
+24. Observer test: status/events/wait/select and presentation/diagnostic traffic
+    do not change warning or cancellation timing.
+25. Installed Pi test: `/opt/homebrew/bin/pi` `0.82.1` executes a real blocking
+    tool through child RPC and proves soft warning, recovery, hard cancellation,
+    total runtime beyond `T` with continuing progress, a larger explicit silent
+    deadline, loopback-only isolation, settings equality, and process/root cleanup.
+26. Documentation test: the model-facing schema/description, this reference,
+    operator README, top-level link, and brief integration-design cross-reference
+    agree on all three timeout layers, bounded wait guidance, no live extension,
+    and reconciliation-before-resume rules.
+
 ## Non-goals
 
 - No implicit `general` persona.
@@ -1388,6 +1564,9 @@ Implementation is not complete until these gates pass:
 - No shared PersonaSpec or opifex contract change.
 - No full Pi TUI overlay in RPC/print/json modes.
 - No guarantee that background work survives process exit.
+
+- No live no-progress deadline extension, unlimited deadline, watchdog daemon,
+  durable watchdog ledger, retry/replay, effect rollback, or automatic resume.
 
 ## Implementation handoff
 

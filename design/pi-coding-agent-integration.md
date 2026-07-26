@@ -855,11 +855,10 @@ There is no `ask` action.
 ## Subagent spawning
 
 ### Public tool
-
 The extension registers the primary child-session custom tool:
 
 ```text
-larva_subagent(persona_id, task, task_id?)
+larva_subagent(persona_id, task, task_id?, no_progress_timeout_ms?)
 ```
 
 Input contract:
@@ -867,15 +866,19 @@ Input contract:
 - `persona_id`: required non-empty string; target Larva persona id.
 - `task`: required non-empty string; instruction to send to the child session for
   this invocation.
-- `task_id`: optional non-empty string; absolute child Pi session `.jsonl` file
-  path under the Larva child session root. Omitted or explicit `null` means new
-  child session; empty, blank, non-string non-null, relative, or out-of-root
-  values remain invalid.
+- `task_id`: optional exact child Pi session `.jsonl` path. Omit it for a new
+  child; use the exact prior handle for resume.
+- `no_progress_timeout_ms`: optional immutable consecutive-progress-silence
+  deadline. It defaults to one hour and must be an integer in the documented
+  inclusive range.
 
-Bad input returns `status: "failed"` with `LARVA_BAD_INPUT`; it does not create or
-resume a child process. For these pre-session failures, public `task_id` is
-`null`. `persona_id` in the result is the requested target id only after it passed
-basic non-empty string validation; otherwise it is an empty string.
+Bad input returns `status: "failed"` with `LARVA_BAD_INPUT` before child/run
+effects. The authoritative accepted-result lifecycle, exact path validation,
+consecutive-no-progress warning/cancellation rules, three timeout layers,
+observer guidance, and reconciliation-before-resume contract live in
+[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#consecutive-no-progress-watchdog).
+This integration design is a brief cross-reference and does not override that
+runtime authority.
 
 ### Canonical process-local status tool
 

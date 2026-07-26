@@ -345,9 +345,11 @@ selecting a persona still inserts canonical `@persona:<id>`, and submitted raw
 `@<id>` text is not a persona semantic form.
 
 The bundled extension's async subagent authority is
-[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md).
-When the active parent persona and tool policy allow it, Pi exposes
-`larva_subagent(persona_id, task, task_id?)`,
+[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md),
+including the consecutive-no-progress watchdog, timeout layers, and
+reconciliation-before-resume rules. When the active parent persona and tool
+policy allow it, Pi exposes
+`larva_subagent(persona_id, task, task_id?, no_progress_timeout_ms?)`,
 `larva_subagent_status(task_id?, limit?)`,
 `larva_subagent_events(since_sequence?, task_ids?, limit?)`,
 `larva_subagent_wait(task_ids, return_when?, timeout_ms?)`,

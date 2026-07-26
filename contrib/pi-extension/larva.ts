@@ -163,7 +163,7 @@ type PersonaCandidateCacheRefreshResult =
 type PersonaCommandResult = PersonaSwitchResult | PersonaCandidateCacheRefreshResult;
 
 export type ToolPolicyDecision = { action: "allow" } | { action: "deny"; error: LarvaError };
-export type LarvaSubagentInput = { persona_id?: unknown; task?: unknown; task_id?: unknown };
+export type LarvaSubagentInput = { persona_id?: unknown; task?: unknown; task_id?: unknown; no_progress_timeout_ms?: unknown };
 type LarvaSubagentTerminalStatus = "success" | "failed" | "cancelled";
 type LarvaSubagentControlStatus = "accepted" | "running" | "cancelling";
 type LarvaSubagentPublicStatus = LarvaSubagentTerminalStatus | LarvaSubagentControlStatus;
@@ -534,7 +534,11 @@ type PersonaListInFlight = { key: string; promise: Promise<PersonaCandidate[] | 
 const CLI_TIMEOUT_MS = 10_000;
 const SUBAGENT_WAIT_DEFAULT_TIMEOUT_MS = 10_000;
 const SUBAGENT_WAIT_MAX_TIMEOUT_MS = 86_400_000; // 24h: subagents may run for minutes or hours.
-const SUBAGENT_WAIT_TIMEOUT_DESCRIPTION = "Maximum wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Do not use shell sleep polling.";
+const SUBAGENT_WAIT_TIMEOUT_DESCRIPTION = "Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling.";
+const SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS = 3_600_000;
+const SUBAGENT_NO_PROGRESS_MIN_TIMEOUT_MS = 120_000;
+const SUBAGENT_NO_PROGRESS_MAX_TIMEOUT_MS = 86_400_000;
+const SUBAGENT_NO_PROGRESS_TIMEOUT_DESCRIPTION = "Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it.";
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
 const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 300;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
@@ -569,7 +573,7 @@ const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piM
 
 type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale" | "failed";
 type SubagentCallbackDeliveryDiagnostic = Readonly<{ code: string; message: string }>;
-type SubagentCancellationSource = "model" | "user" | "console" | "lifecycle";
+type SubagentCancellationSource = "model" | "user" | "console" | "lifecycle" | "watchdog";
 type SubagentFullOutputArtifact = Readonly<{
   path: string;
   sha256: string;
@@ -623,6 +627,8 @@ type ActiveSubagentRun = {
   background_task: Promise<void> | null;
   cancel_task: Promise<SubagentTerminalSnapshot> | null;
   route_generation: number;
+  last_progress_at_ms: number;
+  stall_timer: ReturnType<typeof setTimeout> | null;
 };
 const activeSubagentRuns: Map<string, ActiveSubagentRun> = new Map();
 let activeModelMapProfile: ActiveModelMapProfile | null = null;
@@ -5253,8 +5259,8 @@ function failed(task_id: string | null, persona_id: string, larvaError: LarvaErr
   return terminalResult(task_id, persona_id, "failed", "", larvaError);
 }
 
-function cancelled(task_id: string | null, persona_id: string): LarvaSubagentResult {
-  return terminalResult(task_id, persona_id, "cancelled", "", error("LARVA_CHILD_CANCELLED", "Child run was cancelled."));
+function cancelled(task_id: string | null, persona_id: string, message = "Child run was cancelled."): LarvaSubagentResult {
+  return terminalResult(task_id, persona_id, "cancelled", "", error("LARVA_CHILD_CANCELLED", message));
 }
 
 function success(task_id: string, persona_id: string, result_text: string): LarvaSubagentResult {
@@ -5270,7 +5276,7 @@ function isTerminalSubagentStatus(status: string): status is LarvaSubagentTermin
 }
 
 function larvaSubagentResultText(result: LarvaSubagentResult): string {
-  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. Do not use shell sleep polling. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. For conversational Pi continuation, yield for the larva-subagent-result push callback.";
+  if (result.status === "accepted") return "Larva subagent accepted. Do not treat this accepted result as task evidence; a Larva subagent result callback is still pending. Do not use shell sleep polling. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by larva_subagent_status or larva_subagent_events inspection; these observer reads never extend the child no-progress deadline. For known long-silent work, set a larger no_progress_timeout_ms before spawn because this version has no live extension mechanism. For conversational Pi continuation, yield for the larva-subagent-result push callback.";
   if (result.status === "success") return result.result_text || "Larva subagent completed without final assistant text.";
   if (result.error) return `${result.error.code}: ${result.error.message}`;
   return result.status === "cancelled" ? "Larva subagent was cancelled." : "Larva subagent failed.";
@@ -6217,6 +6223,8 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     background_task: null,
     cancel_task: null,
     route_generation: activeModelMapProfile === null ? 0 : modelMapRouteGeneration,
+    last_progress_at_ms: performance.now(),
+    stall_timer: null,
   };
   activeSubagentRuns.set(record.private_key, record);
   return record;
@@ -6252,6 +6260,52 @@ function touchSubagentRun(record: ActiveSubagentRun, phase: string, status?: Lar
   if (status !== undefined) record.status = status;
   record.result_pending = !isTerminalSubagentStatus(record.status);
   appendSubagentRunSnapshot(record, record.status === "starting" ? "accepted" : record.status);
+}
+
+function clearSubagentStallTimer(record: ActiveSubagentRun): void {
+  if (record.stall_timer !== null) clearTimeout(record.stall_timer);
+  record.stall_timer = null;
+}
+
+function subagentWatchdogCancellationReason(timeoutMs: number): string {
+  return `Child run was cancelled after ${timeoutMs} ms of consecutive recognized-progress silence. Prior child tool effects may be unknown; explicitly reconcile them before any user-authorized resume. Larva does not retry, replay the prompt, roll back prior effects, or auto-resume.`;
+}
+
+function scheduleSubagentNoProgressWatchdog(record: ActiveSubagentRun, timeoutMs: number, onPhase?: (phase: string, taskId?: string | null) => void): void {
+  clearSubagentStallTimer(record);
+  if (record.terminal_snapshot !== null || record.cancel_task !== null || record.cancellation_source !== null || record.status === "cancelling") return;
+  const elapsedMs = Math.max(0, performance.now() - record.last_progress_at_ms);
+  const warningAtMs = timeoutMs / 2;
+  if (elapsedMs >= timeoutMs) {
+    const reason = subagentWatchdogCancellationReason(timeoutMs);
+    void abortSubagentRun(record, "watchdog", reason).catch((caught) => {
+      void traceChildRpc(record.env, "watchdog_abort_failed", { task_id: record.task_id, message_preview: boundedTracePreview(caught instanceof Error ? caught.message : String(caught)) });
+    });
+    return;
+  }
+  if (elapsedMs >= warningAtMs && record.phase !== "stall_suspected") {
+    touchSubagentRun(record, "stall_suspected", "running");
+    onPhase?.("stall_suspected", record.task_id);
+  }
+  const nextDeadlineMs = elapsedMs < warningAtMs ? warningAtMs : timeoutMs;
+  record.stall_timer = setTimeout(() => {
+    record.stall_timer = null;
+    scheduleSubagentNoProgressWatchdog(record, timeoutMs, onPhase);
+  }, Math.max(1, Math.ceil(nextDeadlineMs - elapsedMs)));
+}
+
+function recognizedSubagentProgress(eventValue: NormalizedSubagentStreamEvent): boolean {
+  if (eventValue.kind === "assistant_delta") return visibleText(eventValue.text).length > 0;
+  return eventValue.kind === "thinking_hidden" || eventValue.kind === "tool" || eventValue.kind === "terminal";
+}
+
+function noteSubagentProgress(record: ActiveSubagentRun, timeoutMs: number, eventValue: NormalizedSubagentStreamEvent, onPhase?: (phase: string, taskId?: string | null) => void): void {
+  if (!recognizedSubagentProgress(eventValue)) return;
+  if (record.terminal_snapshot !== null || record.cancel_task !== null || record.cancellation_source !== null || record.status === "cancelling") return;
+  record.last_progress_at_ms = performance.now();
+  touchSubagentRun(record, "waiting_for_child", "running");
+  onPhase?.("waiting_for_child", record.task_id);
+  scheduleSubagentNoProgressWatchdog(record, timeoutMs, onPhase);
 }
 
 function terminalResultFromSnapshot(snapshot: SubagentTerminalSnapshot): LarvaSubagentTerminalResult {
@@ -6422,6 +6476,7 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
 
 function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentResult, options: { suppressCallback?: boolean } = {}): SubagentTerminalSnapshot {
   if (record.terminal_snapshot !== null) return record.terminal_snapshot;
+  clearSubagentStallTimer(record);
   const terminal = result.status === "accepted" ? failed(result.task_id, result.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Accepted run cannot be terminalized as accepted.")) : result;
   const completedAt = timestampNow();
   record.status = terminal.status;
@@ -7369,6 +7424,7 @@ export function resetSubagentPresentationStateForTests(): void {
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
   subagentUiResetGeneration += 1;
+  for (const record of new Set(activeSubagentRuns.values())) clearSubagentStallTimer(record);
   activeSubagentRuns.clear();
   subagentEventLog.length = 0;
   subagentEventSequence = 0;
@@ -7558,15 +7614,19 @@ function canSpawn(activeParent: PersonaEnvelope | null, personaId: string): Larv
   return error("LARVA_SPAWN_NOT_ALLOWED", "Active parent persona cannot spawn the requested persona.");
 }
 
-function validateInput(input: LarvaSubagentInput): { personaId: string; task: string; taskId: string | null } | LarvaSubagentResult {
+function validateInput(input: LarvaSubagentInput): { personaId: string; task: string; taskId: string | null; noProgressTimeoutMs: number } | LarvaSubagentResult {
   const personaId = normalizeString(input.persona_id);
   if (!personaId) return failed(null, "", error("LARVA_BAD_INPUT", "persona_id must be a non-empty string."));
   const task = normalizeString(input.task);
   if (!task) return failed(null, personaId, error("LARVA_BAD_INPUT", "task must be a non-empty string."));
-  if (input.task_id === undefined || input.task_id === null) return { personaId, task, taskId: null };
+  const noProgressTimeoutMs = input.no_progress_timeout_ms === undefined ? SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS : input.no_progress_timeout_ms;
+  if (typeof noProgressTimeoutMs !== "number" || !Number.isInteger(noProgressTimeoutMs) || noProgressTimeoutMs < SUBAGENT_NO_PROGRESS_MIN_TIMEOUT_MS || noProgressTimeoutMs > SUBAGENT_NO_PROGRESS_MAX_TIMEOUT_MS) {
+    return failed(null, personaId, error("LARVA_BAD_INPUT", "no_progress_timeout_ms must be an integer from 120000 to 86400000."));
+  }
+  if (input.task_id === undefined || input.task_id === null) return { personaId, task, taskId: null, noProgressTimeoutMs };
   const taskId = normalizeString(input.task_id);
   if (!taskId) return failed(null, personaId, error("LARVA_BAD_INPUT", "task_id must be a non-empty string."));
-  return { personaId, task, taskId };
+  return { personaId, task, taskId, noProgressTimeoutMs };
 }
 
 async function childSessionRoot(env: RuntimeEnv): Promise<string | LarvaError> {
@@ -8045,6 +8105,7 @@ async function cleanupChild(child: ChildProcessWithoutNullStreams, env: RuntimeE
 }
 
 async function cleanupSubagentRunChild(record: ActiveSubagentRun): Promise<void> {
+  clearSubagentStallTimer(record);
   const child = record.child;
   if (child === null) return;
   record.child = null;
@@ -8084,8 +8145,12 @@ export async function resetExtensionUI(reason = "manual"): Promise<{ status: "su
 
 async function abortSubagentRun(record: ActiveSubagentRun, source: SubagentCancellationSource, reason: string, options: { awaitTerminal?: boolean; suppressCallbackOnTerminalReturn?: boolean } = {}): Promise<SubagentTerminalSnapshot | null> {
   if (record.terminal_snapshot !== null) return record.terminal_snapshot;
+  if (record.cancel_task !== null || record.cancellation_source !== null || record.status === "cancelling") {
+    return options.awaitTerminal === true && record.cancel_task !== null ? await record.cancel_task : null;
+  }
   record.cancellation_source = source;
   record.cancellation_reason = boundedNormalizedCodePoints(reason, SUBAGENT_CANCEL_REASON_LIMIT);
+  clearSubagentStallTimer(record);
   if (source === "lifecycle" && record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "stale");
   touchSubagentRun(record, "cancelling", "cancelling");
   if (record.cancel_task === null) {
@@ -8104,7 +8169,7 @@ async function abortSubagentRun(record: ActiveSubagentRun, source: SubagentCance
         : abortOutcome === "success"
           ? success(record.task_id ?? "", record.persona_id, "")
           : abortOutcome === "cancelled"
-            ? cancelled(record.task_id, record.persona_id)
+            ? cancelled(record.task_id, record.persona_id, record.cancellation_source === "watchdog" ? record.cancellation_reason ?? subagentWatchdogCancellationReason(SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS) : undefined)
             : failed(record.task_id, record.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Child abort state became unknowable."));
       const snapshot = finalizeSubagentRun(record, result, { suppressCallback: options.suppressCallbackOnTerminalReturn === true && options.awaitTerminal === true });
       await cleanupSubagentRunChild(record);
@@ -8166,20 +8231,24 @@ async function runChildSequence(
   personaId: string,
   task: string,
   taskId: string | null,
+  noProgressTimeoutMs: number,
   extensionSources: string[] = [],
   abortSignal?: AbortSignal,
   callbacks?: SubagentLifecycleCallbacks,
   record?: ActiveSubagentRun,
 ): Promise<LarvaSubagentResult> {
   const lifecycle = callbacks ?? {};
-  const activeRecord = record ?? createSubagentRun({ persona_id: personaId, task, task_id: taskId }, env, personaId, taskId);
+  const activeRecord = record ?? createSubagentRun({ persona_id: personaId, task, task_id: taskId, no_progress_timeout_ms: noProgressTimeoutMs }, env, personaId, taskId);
   const child = await startChild(env, root, personaId, extensionSources);
   if (isLarvaError(child)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, child));
   const activeChildEntry = { child, env };
   activeRecord.child = child;
   activeSubagentChildren.add(activeChildEntry);
   let allocatedTaskId = taskId;
-  const rpc = new RpcClient(child, env, (eventValue) => lifecycle.onStreamEvent?.(eventValue, allocatedTaskId));
+  const rpc = new RpcClient(child, env, (eventValue) => {
+    noteSubagentProgress(activeRecord, noProgressTimeoutMs, eventValue, lifecycle.onPhase);
+    lifecycle.onStreamEvent?.(eventValue, allocatedTaskId);
+  });
   activeRecord.rpc = rpc;
   let abortPromise: Promise<SubagentTerminalSnapshot> | null = null;
   const requestAbort = (): void => {
@@ -8221,11 +8290,13 @@ async function runChildSequence(
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }); // resume sequence: switch_session -> route fence -> prompt -> get_last_assistant_text
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
     if (!isSuccessResponse(prompted)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")));
+    if (activeRecord.stall_timer === null) activeRecord.last_progress_at_ms = performance.now();
     touchSubagentRun(activeRecord, "prompt_sent", "accepted");
     lifecycle.onPhase?.("prompt_sent", taskId);
     const acceptedResult = accepted(taskId ?? activeRecord.task_id ?? "", personaId, "waiting_for_child");
     touchSubagentRun(activeRecord, "waiting_for_child", "running");
     lifecycle.onPhase?.("waiting_for_child", taskId);
+    scheduleSubagentNoProgressWatchdog(activeRecord, noProgressTimeoutMs, lifecycle.onPhase);
     activeRecord.background_task = collectAcceptedSubagentTerminalState(activeRecord, rpc, lifecycle, isResume);
     return acceptedResult;
   })();
@@ -8246,7 +8317,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(parsed, input, ctx?.presentationCallId);
     return parsed; // public task_id: null on bad input pre-session failures
   }
-  const { personaId, task, taskId } = parsed;
+  const { personaId, task, taskId, noProgressTimeoutMs } = parsed;
   const env = currentEnv(ctx);
   const lexicallyValidTaskId = taskId === null ? null : validateExactPublicTaskIdLexical(taskId, env);
   if (isLarvaError(lexicallyValidTaskId)) {
@@ -8291,7 +8362,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   const record = createSubagentRun(input, env, personaId, canonicalTaskId, ctx);
   if (canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
-  const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, runtimeConfig.extension_sources, ctx?.abortSignal, {
+  const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, noProgressTimeoutMs, runtimeConfig.extension_sources, ctx?.abortSignal, {
     onPhase: ctx?.onPhase,
     onTaskAllocated: (allocatedTaskId) => {
       if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
@@ -8461,6 +8532,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
       persona_id: { type: "string", description: "Target Larva persona id." },
       task: { type: "string", description: "Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task." },
       task_id: { type: "string", description: "Optional child session .jsonl path to resume. Omit this field to start a new child session." },
+      no_progress_timeout_ms: { type: "integer", minimum: SUBAGENT_NO_PROGRESS_MIN_TIMEOUT_MS, maximum: SUBAGENT_NO_PROGRESS_MAX_TIMEOUT_MS, default: SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS, description: SUBAGENT_NO_PROGRESS_TIMEOUT_DESCRIPTION },
     },
     required: ["persona_id", "task"],
     additionalProperties: false,
@@ -8468,7 +8540,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",
-    description: "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Automation must use larva_subagent_wait, larva_subagent_select, or larva_subagent_events for completion; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
+    description: `Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. ${SUBAGENT_NO_PROGRESS_TIMEOUT_DESCRIPTION} At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.`,
     inputSchema: subagentSchema,
     parameters: subagentSchema,
     handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal, callbackSurface: callbackSurfaceFrom(ctx, pi) }).then((result) => wrapLarvaSubagentToolResult(result)),

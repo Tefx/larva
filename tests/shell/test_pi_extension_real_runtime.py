@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -16,6 +17,18 @@ RUNTIME_SMOKE = ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"
 AGENT_PERSONA_POLICY_SMOKE = ROOT / "scripts" / "pi-agent-persona-switch-policy-smoke.mjs"
 AUTOCOMPLETE_RUNTIME = ROOT / "contrib" / "pi-extension" / "test-autocomplete-runtime.mjs"
 FAKE_LARVA_CLI = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
+HOST_SETTINGS = Path.home() / ".pi" / "agent" / "settings.json"
+
+
+def _host_settings_fingerprint() -> tuple[int, str] | None:
+    try:
+        data = HOST_SETTINGS.read_bytes()
+    except OSError:
+        return None
+    return len(data), hashlib.sha256(data).hexdigest()
+
+
+HOST_SETTINGS_BASELINE = _host_settings_fingerprint()
 
 
 def _run_autocomplete_case(case: str, *, prefix: str | None = None) -> dict[str, Any]:
@@ -1367,13 +1380,14 @@ def test_live_child_rpc_terminal_cancel_and_orphan_cleanup_proof_passes() -> Non
 
 
 def test_runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence() -> None:
-    """Expected-red: async accepted receipt, one callback, streaming command, non-TUI fallbacks."""
+    """Async contract includes the installed-child consecutive no-progress watchdog proof."""
 
     payload, returncode, raw_stdout, raw_stderr = _run_runtime_scenario_raw(
-        "async-subagent-contract", timeout=12.0
+        "async-subagent-contract", timeout=90.0
     )
     contract = payload["runtime"]["asyncSubagentContract"]
     assertion_groups = contract["assertionGroups"]
+    host_settings_after = _host_settings_fingerprint()
     raw_json_evidence = {
         "command": ["node", str(RUNTIME_SMOKE), "--scenario", "async-subagent-contract"],
         "exit_code": returncode,
@@ -1394,16 +1408,35 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
         "abortGraceProbe": contract.get("abortGraceProbe"),
         "lifecycleCleanupProbe": contract.get("lifecycleCleanupProbe"),
         "docsParityProbe": contract.get("docsParityProbe"),
+        "noProgressWatchdog": contract.get("noProgressWatchdog"),
         "subagentConsoleRuntimeProbe": contract.get("subagentConsoleRuntimeProbe"),
         "callbackEntries": contract["callbackEntries"],
+        "hostSettingsBaseline": HOST_SETTINGS_BASELINE,
+        "hostSettingsAfter": host_settings_after,
     }
 
+    assert HOST_SETTINGS_BASELINE is not None
+    assert host_settings_after == HOST_SETTINGS_BASELINE, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
     assert payload["package"]["piTuiDependency"]["hardGateStatus"] == "PASS", json.dumps(
         raw_json_evidence, indent=2, sort_keys=True
     )
     assert returncode == 0, json.dumps(raw_json_evidence, indent=2, sort_keys=True)
     assert contract["status"] == "PASS", json.dumps(raw_json_evidence, indent=2, sort_keys=True)
     assert assertion_groups == {
+        "no_progress_watchdog": {
+            "installedPiIdentity": True,
+            "realChildrenSpawned": True,
+            "blockingToolExecutedByInstalledChildren": True,
+            "hardWarningPreservesRunning": True,
+            "hardWatchdogCancelsOnce": True,
+            "observerReadsNeutral": True,
+            "hardNoReplayOrResume": True,
+            "longerDeadlineWarnsRecoversSucceeds": True,
+            "continuingProgressOutlivesDeadline": True,
+            "timerAndProcessCleanup": True,
+            "isolatedLoopbackOnly": True,
+            "hostSettingsFingerprintsRecorded": True,
+        },
         "accepted_return_timing": {
             "acceptedStatus": True,
             "resultPendingTrue": True,
@@ -1496,8 +1529,13 @@ def test_runtime_smoke_async_subagent_background_contract_expected_red_records_j
         },
         "docs_parity_against_reference": {
             "authorityReviewed": True,
+            "authorityDocumentsWatchdogLifecycle": True,
             "readmeNamesCanonicalSubagent": True,
             "removedLogAliasDocumented": True,
+            "readmeIncludesCopyableWatchdogExamples": True,
+            "topReadmeLinksWatchdogAuthority": True,
+            "designUsesBriefAuthoritativeCrossReference": True,
+            "modelSchemaAndDescriptionMatchDocs": True,
             "sourceRegistersCanonicalCommand": True,
             "sourceRegistersStatusAndCancelTools": True,
         },

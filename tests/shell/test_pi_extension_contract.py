@@ -368,6 +368,67 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
 
 
+def test_larva_subagent_no_progress_watchdog_model_contract_expected_red() -> None:
+    """Expected-red: model schema and description expose the consecutive-silence watchdog."""
+    source = _source()
+    body = _function_body(source, "export async function initializeExtension")
+
+    for token in (
+        "SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS = 3_600_000",
+        "SUBAGENT_NO_PROGRESS_MIN_TIMEOUT_MS = 120_000",
+        "SUBAGENT_NO_PROGRESS_MAX_TIMEOUT_MS = 86_400_000",
+        'no_progress_timeout_ms: { type: "integer", minimum: SUBAGENT_NO_PROGRESS_MIN_TIMEOUT_MS, maximum: SUBAGENT_NO_PROGRESS_MAX_TIMEOUT_MS, default: SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS',
+        "defaults to 3600000 ms",
+        "consecutive recognized-progress silence",
+        "At half of the deadline",
+        "known long-silent work",
+        "cannot be extended after spawn",
+        "command/tool timeout",
+        "observer wait timeout",
+    ):
+        assert token in body or token in source, f"watchdog model contract missing: {token}"
+    for forbidden in (
+        "watchdog_generation",
+        "class SubagentNoProgressWatchdog",
+        "LARVA_PI_NO_PROGRESS_TIMEOUT",
+        'name: "larva_subagent_watchdog"',
+        "watchdog_ledger",
+    ):
+        assert forbidden not in source
+
+
+def test_larva_subagent_no_progress_watchdog_documentation_parity() -> None:
+    """Authoritative and summary docs expose one consistent watchdog contract."""
+    authority = (ROOT / "docs" / "reference" / "PI_EXTENSION_ASYNC_SUBAGENTS.md").read_text(encoding="utf-8")
+    extension_readme = (ROOT / "contrib" / "pi-extension" / "README.md").read_text(encoding="utf-8")
+    top_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    integration_design = (ROOT / "design" / "pi-coding-agent-integration.md").read_text(encoding="utf-8")
+
+    for token in (
+        "Consecutive no-progress watchdog",
+        "3600000",
+        "120000",
+        "86400000",
+        "stall_suspected",
+        "Assistant delta",
+        "Thinking activity",
+        "Tool execution start/update/end",
+        "Command/tool timeout",
+        "no_progress_timeout_ms",
+        "larva_subagent_wait.timeout_ms",
+        "no live deadline-extension mechanism",
+        "Prior child tool effects can be unknown",
+        "explicit reconciliation",
+    ):
+        assert token in authority, f"authoritative watchdog docs missing: {token}"
+    assert '"no_progress_timeout_ms": 900000' in extension_readme
+    assert '"timeout_ms": 0' in extension_readme
+    assert "are separate layers" in extension_readme
+    assert "consecutive-no-progress watchdog" in top_readme
+    assert "#consecutive-no-progress-watchdog" in integration_design
+    assert "brief cross-reference" in integration_design
+
+
 @pytest.mark.parametrize(
     ("tool_name", "required_tokens"),
     [

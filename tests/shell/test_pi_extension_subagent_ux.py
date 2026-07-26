@@ -2452,7 +2452,7 @@ def _run_runtime_smoke_allow_expected_red(scenario: str) -> tuple[dict[str, Any]
         check=False,
         capture_output=True,
         text=True,
-        timeout=16,
+        timeout=120 if scenario == "async-subagent-contract" else 16,
     )
     assert completed.stdout.strip(), completed.stderr
     return json.loads(completed.stdout), completed.returncode, completed.stderr
@@ -2499,6 +2499,7 @@ def _assert_async_contract_group_true(group_name: str) -> None:
             "abortGraceProbe": contract.get("abortGraceProbe"),
             "lifecycleCleanupProbe": contract.get("lifecycleCleanupProbe"),
             "docsParityProbe": contract.get("docsParityProbe"),
+            "noProgressWatchdog": contract.get("noProgressWatchdog"),
             "subagentConsoleRuntimeProbe": contract.get("subagentConsoleRuntimeProbe"),
         },
         indent=2,
@@ -3159,6 +3160,478 @@ def test_async_subagent_docs_parity_against_reference_expected_red() -> None:
 
     _assert_async_contract_group_true("docs_parity_against_reference")
 
+
+def test_async_subagent_installed_pi_no_progress_watchdog_runtime() -> None:
+    """The smoke adapter observes the watchdog through an installed child Pi blocking tool."""
+
+    _assert_async_contract_group_true("no_progress_watchdog")
+
+
+def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) -> None:
+    """Watchdog warning, progress reset, observer neutrality, races, and cleanup use the real run lifecycle."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + """
+        const realPerformanceNow = globalThis.performance.now.bind(globalThis.performance);
+        const realSetTimeout = globalThis.setTimeout.bind(globalThis);
+        const clockScale = 100;
+        const realClockOrigin = realPerformanceNow();
+        const realSleep = (ms) => new Promise((resolve) => realSetTimeout(resolve, ms));
+        Object.defineProperty(globalThis.performance, "now", {
+          configurable: true,
+          value: () => (realPerformanceNow() - realClockOrigin) * clockScale,
+        });
+        globalThis.setTimeout = (callback, delay = 0, ...args) => {
+          const numericDelay = Number(delay);
+          return realSetTimeout(callback, numericDelay >= 50_000 ? Math.ceil(numericDelay / clockScale) + 2 : numericDelay, ...args);
+        };
+
+        const { access, appendFile, readFile } = await import("node:fs/promises");
+        const childBin = join(tmpRoot, "watchdog-child.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { appendFile, mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          const root = process.argv[process.argv.length - 1];
+          const scenario = process.env.LARVA_WATCHDOG_CASE || "observer-noise";
+          const transcript = process.env.LARVA_WATCHDOG_TRANSCRIPT;
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, scenario + ".jsonl");
+          const rl = createInterface({ input: process.stdin });
+          const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
+          const record = async (direction, value) => appendFile(transcript, JSON.stringify({ direction, value }) + "\\\\n");
+          const later = (delay, value) => setTimeout(async () => { await record("tx", value); send(value); }, delay);
+          rl.on("line", async (line) => {
+            const message = JSON.parse(line);
+            await record("rx", message);
+            if (message.type === "get_state") {
+              await writeFile(sessionFile, "{}\\\\n", "utf8");
+              send({ id: message.id, success: true, data: { sessionFile } });
+            } else if (message.type === "switch_session") {
+              send({ id: message.id, success: true, data: { cancelled: false } });
+            } else if (message.type === "prompt") {
+              send({ id: message.id, success: true, data: {} });
+              if (scenario === "observer-noise") {
+                for (const delay of [40, 80, 120, 160, 200]) {
+                  const frame = delay === 80
+                    ? { type: "message_update", channel: "assistant", assistantMessageEvent: { delta: "   " } }
+                    : delay === 120
+                      ? { type: "unknown_watchdog_frame", state: "still-alive", delay }
+                      : { type: "status", state: "still-alive", delay };
+                  later(delay, frame);
+                }
+                setTimeout(() => process.stderr.write("watchdog diagnostic noise\\\\n"), 60);
+              } else if (scenario === "recovery") {
+                later(1500, { type: "message_update", channel: "assistant", assistantMessageEvent: { delta: "recognized progress" } });
+              } else if (scenario === "continuing") {
+                later(400, { type: "message_update", channel: "thinking", assistantMessageEvent: { delta: "" } });
+                later(800, { type: "tool_execution_start", toolCallId: "tool-1", name: "bounded-work" });
+                later(1200, { type: "tool_execution_update", toolCallId: "tool-1", name: "bounded-work", output: "step" });
+                later(1600, { type: "tool_execution_end", toolCallId: "tool-1", name: "bounded-work", success: true });
+                later(2000, { type: "message_update", channel: "assistant", assistantMessageEvent: { delta: "still progressing" } });
+                later(2200, { type: "agent_end" });
+              } else if (scenario === "longer-silent") {
+                later(1800, { type: "agent_end" });
+              } else if (scenario === "terminal-first") {
+                later(2200, { type: "agent_end" });
+              }
+            } else if (message.type === "get_last_assistant_text") {
+              send({ id: message.id, success: true, data: { text: scenario + " final" } });
+              setTimeout(() => process.exit(0), 5);
+            } else if (message.type === "abort") {
+              send({ id: message.id, success: true, data: {} });
+              setTimeout(() => process.exit(0), 5);
+            }
+          });
+          setInterval(() => undefined, 1000);
+        `, { mode: 0o755 });
+
+        const callbackMessages = [];
+        const piWithCallbacks = {
+          ...piBase,
+          sendMessage: async (message, options) => callbackMessages.push({ message, options, observedAt: performance.now() }),
+        };
+        const exists = async (path) => { try { await access(path); return true; } catch (_) { return false; } };
+        const terminalStatuses = new Set(["success", "failed", "cancelled"]);
+
+        async function setupCase(name) {
+          mod.resetSubagentPresentationStateForTests();
+          callbackMessages.length = 0;
+          const transcript = join(tmpRoot, name + "-transcript.jsonl");
+          const env = baseEnv({
+            LARVA_PI_REAL_BIN: childBin,
+            LARVA_PI_EXTENSION_FLAG: "-e",
+            LARVA_PI_EXTENSION_ENTRY: childBin,
+            LARVA_WATCHDOG_CASE: name,
+            LARVA_WATCHDOG_TRANSCRIPT: transcript,
+          });
+          const { tools, ctx } = await registeredTools(env, piWithCallbacks);
+          await mod.commitPersona("ok", ctx, piWithCallbacks);
+          const byName = (toolName) => tools.find((tool) => tool.name === toolName);
+          return {
+            env,
+            ctx,
+            transcript,
+            subagent: byName("larva_subagent"),
+            status: byName("larva_subagent_status"),
+            events: byName("larva_subagent_events"),
+            wait: byName("larva_subagent_wait"),
+            select: byName("larva_subagent_select"),
+            cancel: byName("larva_subagent_cancel"),
+          };
+        }
+
+        async function statusRow(caseCtx, taskId) {
+          const result = await caseCtx.status.execute("status", { task_id: taskId }, undefined, undefined, caseCtx.ctx);
+          return result.details?.runs?.[0] ?? null;
+        }
+
+        async function taskEvents(caseCtx, taskId) {
+          const result = await caseCtx.events.execute("events", { task_ids: [taskId], since_sequence: 0 }, undefined, undefined, caseCtx.ctx);
+          return result.details?.events ?? [];
+        }
+
+        async function terminalRow(caseCtx, taskId, timeoutMs = 2500) {
+          return await waitFor(async () => {
+            const row = await statusRow(caseCtx, taskId);
+            return row && terminalStatuses.has(row.status) ? row : null;
+          }, timeoutMs, 10);
+        }
+
+        const preflightRegistration = await registeredTools(baseEnv(), piWithCallbacks);
+        const preflightSubagent = preflightRegistration.tools.find((tool) => tool.name === "larva_subagent");
+        const preflight = { watchdogSchema: preflightSubagent?.inputSchema?.properties?.no_progress_timeout_ms ?? null };
+        if (preflight.watchdogSchema === null) {
+          console.log(JSON.stringify({ preflight }));
+          process.exit(0);
+        }
+
+        mod.resetSubagentPresentationStateForTests();
+        const invalidInputs = [true, 1.5, 119999, 86400001, 0, null, "unlimited"];
+        const invalidAdmission = [];
+        for (let index = 0; index < invalidInputs.length; index += 1) {
+          const invalidRoot = join(tmpRoot, "invalid-root-" + index);
+          const result = await mod.larva_subagent(
+            { persona_id: "ok", task: "must fail before spawn", no_progress_timeout_ms: invalidInputs[index] },
+            { env: baseEnv({ LARVA_PI_CHILD_SESSION_DIR: invalidRoot }) },
+          );
+          invalidAdmission.push({
+            valueType: invalidInputs[index] === null ? "null" : typeof invalidInputs[index],
+            status: result.status,
+            errorCode: result.error?.code ?? null,
+            taskId: result.task_id,
+            rootCreated: await exists(invalidRoot),
+          });
+        }
+
+        const defaultCase = await setupCase("default-silent");
+        const schema = defaultCase.subagent.inputSchema;
+        const defaultReceipt = await defaultCase.subagent.execute(
+          "default-watchdog",
+          { persona_id: "ok", task: "default watchdog admission" },
+          undefined,
+          undefined,
+          defaultCase.ctx,
+        );
+        const defaultCancel = await defaultCase.cancel.execute(
+          "default-watchdog-cancel",
+          { task_id: defaultReceipt.task_id, reason: "test cleanup" },
+          undefined,
+          undefined,
+          defaultCase.ctx,
+        );
+        await terminalRow(defaultCase, defaultReceipt.task_id);
+        const schemaContract = {
+          required: schema.required,
+          additionalProperties: schema.additionalProperties,
+          watchdog: schema.properties?.no_progress_timeout_ms ?? null,
+          description: defaultCase.subagent.description,
+          defaultAccepted: defaultReceipt.status,
+          cleanupStatus: defaultCancel.details?.status ?? defaultCancel.status,
+        };
+
+        const observerCase = await setupCase("observer-noise");
+        const observerReceipt = await observerCase.subagent.execute(
+          "observer-noise",
+          { persona_id: "ok", task: "ignore observer and unknown activity", no_progress_timeout_ms: 120000 },
+          undefined,
+          undefined,
+          observerCase.ctx,
+        );
+        const observerReads = [];
+        for (let index = 0; index < 5; index += 1) {
+          await sleep(35);
+          const status = await statusRow(observerCase, observerReceipt.task_id);
+          const waitResult = await observerCase.wait.execute("observer-wait-" + index, { task_ids: [observerReceipt.task_id], timeout_ms: 0 }, undefined, undefined, observerCase.ctx);
+          const selectResult = await observerCase.select.execute("observer-select-" + index, { task_ids: [observerReceipt.task_id], timeout_ms: 0 }, undefined, undefined, observerCase.ctx);
+          const events = await taskEvents(observerCase, observerReceipt.task_id);
+          observerReads.push({ phase: status?.phase ?? null, waitTimedOut: waitResult.details?.timed_out ?? null, selectTimedOut: selectResult.details?.timed_out ?? null, eventCount: events.length });
+        }
+        const observerTerminal = await terminalRow(observerCase, observerReceipt.task_id);
+        await sleep(80);
+        const observerEvents = await taskEvents(observerCase, observerReceipt.task_id);
+        const observerDiagnostics = mod.subagentActiveRunDiagnosticsForTests().find((row) => row.task_id === observerReceipt.task_id) ?? null;
+        const observerTranscript = (await exists(observerCase.transcript))
+          ? (await readFile(observerCase.transcript, "utf8")).trim().split(/\\r?\\n/).filter(Boolean).map((line) => JSON.parse(line))
+          : [];
+        const observerSessionPreserved = await exists(observerReceipt.task_id);
+        const observerCallbackCount = callbackMessages.filter((entry) => entry.message?.details?.task_id === observerReceipt.task_id).length;
+
+        const recoveryCase = await setupCase("recovery");
+        const recoveryReceipt = await recoveryCase.subagent.execute(
+          "recovery",
+          { persona_id: "ok", task: "recover once then become silent", no_progress_timeout_ms: 240000 },
+          undefined,
+          undefined,
+          recoveryCase.ctx,
+        );
+        const firstWarning = await waitFor(async () => {
+          const events = await taskEvents(recoveryCase, recoveryReceipt.task_id);
+          return events.find((event) => event.phase === "stall_suspected") ?? null;
+        }, 2200, 5);
+        const callbackCountAtWarning = callbackMessages.filter((entry) => entry.message?.details?.task_id === recoveryReceipt.task_id).length;
+        const recovered = await waitFor(async () => {
+          const events = await taskEvents(recoveryCase, recoveryReceipt.task_id);
+          return firstWarning ? events.find((event) => event.sequence > firstWarning.sequence && event.phase === "waiting_for_child") ?? null : null;
+        }, 1500, 5);
+        await sleep(300);
+        const recoveryCheckpoint = await statusRow(recoveryCase, recoveryReceipt.task_id);
+        const recoveryTerminal = await terminalRow(recoveryCase, recoveryReceipt.task_id);
+        await sleep(80);
+        const recoveryEvents = await taskEvents(recoveryCase, recoveryReceipt.task_id);
+        const recoveryCallbackCount = callbackMessages.filter((entry) => entry.message?.details?.task_id === recoveryReceipt.task_id).length;
+
+        const continuingCase = await setupCase("continuing");
+        const continuingStarted = performance.now();
+        const continuingReceipt = await continuingCase.subagent.execute(
+          "continuing",
+          { persona_id: "ok", task: "progress beyond one deadline", no_progress_timeout_ms: 120000 },
+          undefined,
+          undefined,
+          continuingCase.ctx,
+        );
+        const continuingTerminal = await terminalRow(continuingCase, continuingReceipt.task_id);
+        const continuingElapsed = performance.now() - continuingStarted;
+        const continuingEvents = await taskEvents(continuingCase, continuingReceipt.task_id);
+
+        const longerCase = await setupCase("longer-silent");
+        const longerReceipt = await longerCase.subagent.execute(
+          "longer-silent",
+          { persona_id: "ok", task: "known long-silent child", no_progress_timeout_ms: 480000 },
+          undefined,
+          undefined,
+          longerCase.ctx,
+        );
+        await realSleep(1500);
+        const longerCheckpoint = await statusRow(longerCase, longerReceipt.task_id);
+        const longerCallbackCountAtCheckpoint = callbackMessages.filter((entry) => entry.message?.details?.task_id === longerReceipt.task_id).length;
+        const longerTerminal = await terminalRow(longerCase, longerReceipt.task_id);
+
+        const terminalFirstCase = await setupCase("terminal-first");
+        const terminalFirstReceipt = await terminalFirstCase.subagent.execute(
+          "terminal-first",
+          { persona_id: "ok", task: "terminal wins before watchdog commitment", no_progress_timeout_ms: 240000 },
+          undefined,
+          undefined,
+          terminalFirstCase.ctx,
+        );
+        const terminalFirstTerminal = await terminalRow(terminalFirstCase, terminalFirstReceipt.task_id);
+        await sleep(300);
+        const terminalFirstDiagnostics = mod.subagentActiveRunDiagnosticsForTests().find((row) => row.task_id === terminalFirstReceipt.task_id) ?? null;
+        const terminalFirstCallbackCount = callbackMessages.filter((entry) => entry.message?.details?.task_id === terminalFirstReceipt.task_id).length;
+
+        const cancelFirstCase = await setupCase("cancel-first");
+        const cancelFirstReceipt = await cancelFirstCase.subagent.execute(
+          "cancel-first",
+          { persona_id: "ok", task: "model cancellation owns before watchdog", no_progress_timeout_ms: 120000 },
+          undefined,
+          undefined,
+          cancelFirstCase.ctx,
+        );
+        const cancelFirstResult = await cancelFirstCase.cancel.execute(
+          "cancel-first-control",
+          { task_id: cancelFirstReceipt.task_id, reason: "model owns cancellation race" },
+          undefined,
+          undefined,
+          cancelFirstCase.ctx,
+        );
+        const cancelFirstTerminal = await terminalRow(cancelFirstCase, cancelFirstReceipt.task_id);
+        const cancelFirstEventsAtTerminal = await taskEvents(cancelFirstCase, cancelFirstReceipt.task_id);
+        await realSleep(1400);
+        const cancelFirstAfterDeadline = await statusRow(cancelFirstCase, cancelFirstReceipt.task_id);
+        const cancelFirstEventsAfterDeadline = await taskEvents(cancelFirstCase, cancelFirstReceipt.task_id);
+        const cancelFirstDiagnostics = mod.subagentActiveRunDiagnosticsForTests().find((row) => row.task_id === cancelFirstReceipt.task_id) ?? null;
+        const cancelFirstCallbackCount = callbackMessages.filter((entry) => entry.message?.details?.task_id === cancelFirstReceipt.task_id).length;
+        const cancelFirstTranscript = (await exists(cancelFirstCase.transcript))
+          ? (await readFile(cancelFirstCase.transcript, "utf8")).trim().split(/\\r?\\n/).filter(Boolean).map((line) => JSON.parse(line))
+          : [];
+
+        mod.resetSubagentPresentationStateForTests();
+        console.log(JSON.stringify({
+          preflight,
+          clockScale,
+          invalidAdmission,
+          registryAfterInvalid: mod.subagentActiveRunDiagnosticsForTests(),
+          schemaContract,
+          observer: {
+            receiptStatus: observerReceipt.status,
+            reads: observerReads,
+            terminal: observerTerminal,
+            warningCount: observerEvents.filter((event) => event.phase === "stall_suspected").length,
+            phases: observerEvents.map((event) => event.phase),
+            diagnostics: observerDiagnostics,
+            callbackCount: observerCallbackCount,
+            transcript: observerTranscript,
+            sessionPreserved: observerSessionPreserved,
+          },
+          recovery: {
+            firstWarning,
+            callbackCountAtWarning,
+            recovered,
+            checkpoint: recoveryCheckpoint,
+            terminal: recoveryTerminal,
+            warningCount: recoveryEvents.filter((event) => event.phase === "stall_suspected").length,
+            phases: recoveryEvents.map((event) => event.phase),
+            callbackCount: recoveryCallbackCount,
+          },
+          continuing: {
+            terminal: continuingTerminal,
+            elapsedMs: continuingElapsed,
+            warningCount: continuingEvents.filter((event) => event.phase === "stall_suspected").length,
+          },
+          longer: {
+            checkpoint: longerCheckpoint,
+            callbackCountAtCheckpoint: longerCallbackCountAtCheckpoint,
+            terminal: longerTerminal,
+          },
+          terminalFirst: {
+            terminal: terminalFirstTerminal,
+            diagnostics: terminalFirstDiagnostics,
+            callbackCount: terminalFirstCallbackCount,
+          },
+          cancelFirst: {
+            result: cancelFirstResult.details ?? cancelFirstResult,
+            terminal: cancelFirstTerminal,
+            afterDeadline: cancelFirstAfterDeadline,
+            terminalEventCountAtTerminal: cancelFirstEventsAtTerminal.filter((event) => event.kind === "terminal").length,
+            terminalEventCountAfterDeadline: cancelFirstEventsAfterDeadline.filter((event) => event.kind === "terminal").length,
+            warningCountAfterDeadline: cancelFirstEventsAfterDeadline.filter((event) => event.phase === "stall_suspected").length,
+            diagnostics: cancelFirstDiagnostics,
+            callbackCount: cancelFirstCallbackCount,
+            transcript: cancelFirstTranscript,
+          },
+        }, null, 2));
+        """,
+        timeout=30.0,
+    )
+
+    assert payload["preflight"]["watchdogSchema"] == {
+        "type": "integer",
+        "minimum": 120000,
+        "maximum": 86400000,
+        "default": 3600000,
+        "description": payload["preflight"]["watchdogSchema"]["description"],
+    }, "registered larva_subagent is missing the no_progress_timeout_ms watchdog schema"
+
+    assert all(
+        case == {
+            "valueType": case["valueType"],
+            "status": "failed",
+            "errorCode": "LARVA_BAD_INPUT",
+            "taskId": None,
+            "rootCreated": False,
+        }
+        for case in payload["invalidAdmission"]
+    )
+    assert payload["registryAfterInvalid"] == []
+    schema = payload["schemaContract"]
+    assert schema["required"] == ["persona_id", "task"]
+    assert schema["additionalProperties"] is False
+    assert schema["watchdog"] == {
+        "type": "integer",
+        "minimum": 120000,
+        "maximum": 86400000,
+        "default": 3600000,
+        "description": schema["watchdog"]["description"],
+    }
+    for token in (
+        "defaults to 3600000 ms",
+        "120000 through 86400000 inclusive",
+        "consecutive recognized-progress silence",
+        "stall_suspected",
+        "known long-silent work",
+        "cannot be extended after spawn",
+        "command/tool timeout",
+        "observer wait timeout",
+        "explicit reconciliation",
+    ):
+        assert token in schema["description"] or token in schema["watchdog"]["description"]
+    assert schema["defaultAccepted"] == "accepted"
+    assert schema["cleanupStatus"] in {"cancelling", "cancelled"}
+
+    observer = payload["observer"]
+    assert observer["receiptStatus"] == "accepted"
+    assert observer["warningCount"] == 1
+    assert observer["phases"].index("waiting_for_child") < observer["phases"].index("stall_suspected")
+    assert observer["terminal"]["status"] == "cancelled"
+    assert observer["terminal"]["error"]["code"] == "LARVA_CHILD_CANCELLED"
+    assert "Prior child tool effects may be unknown" in observer["terminal"]["error"]["message"]
+    assert "explicitly reconcile" in observer["terminal"]["error"]["message"]
+    assert observer["diagnostics"]["cancellation_source"] == "watchdog"
+    assert observer["callbackCount"] == 1
+    assert observer["sessionPreserved"] is True
+    assert all(read["waitTimedOut"] in {True, False} and read["selectTimedOut"] in {True, False} for read in observer["reads"])
+    received_types = [row["value"].get("type") for row in observer["transcript"] if row["direction"] == "rx"]
+    assert received_types.count("prompt") == 1
+    assert received_types.count("switch_session") == 0
+    assert received_types.count("abort") == 1
+
+    recovery = payload["recovery"]
+    assert recovery["firstWarning"] is not None
+    assert recovery["callbackCountAtWarning"] == 0
+    assert recovery["recovered"] is not None
+    assert recovery["checkpoint"]["status"] == "running"
+    assert recovery["checkpoint"]["result_pending"] is True
+    assert recovery["terminal"]["status"] == "cancelled"
+    assert recovery["warningCount"] == 2
+    assert recovery["callbackCount"] == 1
+    first_stall = recovery["phases"].index("stall_suspected")
+    recovered_wait = recovery["phases"].index("waiting_for_child", first_stall + 1)
+    second_stall = recovery["phases"].index("stall_suspected", recovered_wait + 1)
+    assert first_stall < recovered_wait < second_stall
+
+    continuing = payload["continuing"]
+    assert continuing["terminal"]["status"] == "success"
+    assert continuing["elapsedMs"] > 120000
+    assert continuing["warningCount"] == 0
+
+    longer = payload["longer"]
+    assert longer["checkpoint"]["status"] == "running"
+    assert longer["checkpoint"]["result_pending"] is True
+    assert longer["callbackCountAtCheckpoint"] == 0
+    assert longer["terminal"]["status"] == "success"
+
+    terminal_first = payload["terminalFirst"]
+    assert terminal_first["terminal"]["status"] == "success"
+    assert terminal_first["diagnostics"]["cancellation_source"] is None
+    assert terminal_first["diagnostics"]["child_running"] is False
+    assert terminal_first["callbackCount"] == 1
+
+    cancel_first = payload["cancelFirst"]
+    assert cancel_first["result"]["status"] in {"cancelling", "cancelled"}
+    assert cancel_first["terminal"]["status"] == "cancelled"
+    assert cancel_first["afterDeadline"]["status"] == "cancelled"
+    assert cancel_first["diagnostics"]["cancellation_source"] == "model"
+    assert cancel_first["terminalEventCountAtTerminal"] == 1
+    assert cancel_first["terminalEventCountAfterDeadline"] == 1
+    assert cancel_first["warningCountAfterDeadline"] == 0
+    expected_cancel_callback_count = 1 if cancel_first["result"]["status"] == "cancelling" else 0
+    assert cancel_first["callbackCount"] == expected_cancel_callback_count
+    cancel_received_types = [row["value"].get("type") for row in cancel_first["transcript"] if row["direction"] == "rx"]
+    assert cancel_received_types.count("prompt") == 1
+    assert cancel_received_types.count("abort") == 1
 
 
 def test_persona_invocation_contract_does_not_extend_subagent_console_or_wait_surfaces() -> None:

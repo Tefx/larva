@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
@@ -96,6 +97,19 @@ const piExtensionPackageJson = join(piExtensionRoot, "package.json");
 const piExtensionLockfile = join(piExtensionRoot, "package-lock.json");
 const piExtensionNodeModules = join(piExtensionRoot, "node_modules");
 const pinnedPiTuiVersion = "0.78.0";
+const inheritedHostSettingsPath = typeof process.env.HOME === "string" && process.env.HOME.length > 0
+  ? join(process.env.HOME, ".pi", "agent", "settings.json")
+  : null;
+
+async function fileFingerprint(path) {
+  if (typeof path !== "string" || path.length === 0) return null;
+  try {
+    const bytes = await readFile(path);
+    return { path, bytes: bytes.byteLength, sha256: createHash("sha256").update(bytes).digest("hex") };
+  } catch {
+    return null;
+  }
+}
 
 function baseEvidence(scenario) {
   return {
@@ -1868,6 +1882,286 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
   };
 }
 
+async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
+  const installedPi = "/opt/homebrew/bin/pi";
+  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const expectedVersion = "0.82.1";
+  const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
+  const childSessionRoot = join(proofRoot, "child-sessions");
+  const providerExtension = join(proofRoot, "watchdog-provider.ts");
+  const blockingExtension = join(proofRoot, "watchdog-blocking-tool.ts");
+  const modelMapPath = join(proofRoot, "model-map.json");
+  const subagentConfigPath = join(proofRoot, "subagent-runtime.json");
+  const traceFile = join(proofRoot, "child-rpc.jsonl");
+  const toolLogFile = join(proofRoot, "blocking-tool.jsonl");
+  const providerRequests = [];
+  const sockets = new Set();
+  const callbacks = [];
+  const hostSettingsBefore = await fileFingerprint(inheritedHostSettingsPath);
+  const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
+  let packageVersion = null;
+  try { packageVersion = (await readJsonFile(join(installedPackageRoot, "package.json"))).version ?? null; } catch {}
+
+  await mkdir(childSessionRoot, { recursive: true });
+  await writeFile(toolLogFile, "", { mode: 0o600 });
+  const sendSse = (response, chunk) => {
+    response.writeHead(200, { "content-type": "text/event-stream", connection: "close" });
+    response.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    response.end("data: [DONE]\n\n");
+  };
+  const textChunk = (model, text) => ({
+    id: `npw-text-${Date.now()}`,
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, delta: { role: "assistant", content: text }, finish_reason: "stop" }],
+  });
+  const toolChunk = (model, id, args) => ({
+    id: `npw-tool-${Date.now()}`,
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, delta: { role: "assistant", tool_calls: [{ index: 0, id, type: "function", function: { name: "npw_blocking_tool", arguments: JSON.stringify(args) } }] }, finish_reason: "tool_calls" }],
+  });
+  const markers = ["NPW_REAL_HARD_SILENT", "NPW_REAL_LONGER_SILENT", "NPW_REAL_CONTINUING"];
+  const server = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk.toString("utf8");
+    const remoteAddress = request.socket.remoteAddress ?? "";
+    const loopback = /^(?:127\.|::1$|::ffff:127\.)/.test(remoteAddress);
+    let payload = {};
+    try { payload = body.length > 0 ? JSON.parse(body) : {}; } catch {}
+    const renderedMessages = JSON.stringify(payload.messages ?? []);
+    const marker = markers.find((candidate) => renderedMessages.includes(candidate)) ?? null;
+    const toolResultCount = Array.isArray(payload.messages) ? payload.messages.filter((message) => message?.role === "tool").length : 0;
+    providerRequests.push({ sequence: providerRequests.length + 1, marker, model: payload.model ?? null, tool_result_count: toolResultCount, loopback });
+    if (!loopback) {
+      response.writeHead(403, { connection: "close" });
+      response.end();
+      return;
+    }
+    const model = payload.model ?? "npw-model";
+    if (marker === "NPW_REAL_HARD_SILENT" && toolResultCount === 0) {
+      sendSse(response, toolChunk(model, "npw-hard-0", { delay_ms: 3_000, label: "hard-silent", emit_update: false }));
+      return;
+    }
+    if (marker === "NPW_REAL_LONGER_SILENT" && toolResultCount === 0) {
+      sendSse(response, toolChunk(model, "npw-longer-0", { delay_ms: 3_000, label: "longer-silent", emit_update: false }));
+      return;
+    }
+    if (marker === "NPW_REAL_CONTINUING" && toolResultCount < 3) {
+      sendSse(response, toolChunk(model, `npw-continuing-${toolResultCount}`, { delay_ms: 900, label: `continuing-${toolResultCount}`, emit_update: true }));
+      return;
+    }
+    sendSse(response, textChunk(model, `${marker ?? "NPW_UNKNOWN"}_COMPLETE`));
+  });
+  server.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
+  await new Promise((resolveListen, rejectListen) => { server.once("error", rejectListen); server.listen(0, "127.0.0.1", resolveListen); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("watchdog loopback provider failed to bind");
+  const providerUrl = `http://127.0.0.1:${address.port}/v1`;
+  const providerId = `larva-npw-${proofRoot.replace(/[^A-Za-z0-9]/g, "").slice(-10).toLowerCase()}`;
+  const modelId = "npw-model";
+
+  await writeFile(providerExtension, `
+export default function (pi) {
+  const model = { id: ${JSON.stringify(modelId)}, name: ${JSON.stringify(modelId)}, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 };
+  pi.registerProvider(${JSON.stringify(providerId)}, { name: "Larva NPW loopback provider", baseUrl: ${JSON.stringify(providerUrl)}, apiKey: "loopback-only", api: "openai-completions", models: [model] });
+}
+`, "utf8");
+  await writeFile(blockingExtension, `
+import { appendFileSync } from "node:fs";
+export default function (pi) {
+  const record = (value) => appendFileSync(${JSON.stringify(toolLogFile)}, JSON.stringify({ pid: process.pid, monotonic_ns: process.hrtime.bigint().toString(), ...value }) + "\\n", { mode: 0o600 });
+  pi.registerTool({
+    name: "npw_blocking_tool",
+    label: "NPW blocking tool",
+    description: "Credential-free bounded blocking tool for installed-child watchdog verification.",
+    parameters: { type: "object", properties: { delay_ms: { type: "integer" }, label: { type: "string" }, emit_update: { type: "boolean" } }, required: ["delay_ms", "label", "emit_update"], additionalProperties: false },
+    execute: async (toolCallId, params, signal, onUpdate) => {
+      record({ event: "start", tool_call_id: toolCallId, label: params.label, delay_ms: params.delay_ms, aborted: signal?.aborted === true });
+      const outcome = await new Promise((resolveOutcome) => {
+        let settled = false;
+        const finish = (value) => { if (settled) return; settled = true; clearTimeout(doneTimer); if (updateTimer !== null) clearTimeout(updateTimer); resolveOutcome(value); };
+        const doneTimer = setTimeout(() => finish("completed"), params.delay_ms);
+        const updateTimer = params.emit_update === true ? setTimeout(() => {
+          onUpdate?.({ content: [{ type: "text", text: "NPW_UPDATE " + params.label }], details: { label: params.label, phase: "midpoint" } });
+          record({ event: "update", tool_call_id: toolCallId, label: params.label });
+        }, Math.max(1, Math.floor(params.delay_ms / 2))) : null;
+        signal?.addEventListener?.("abort", () => finish("aborted"), { once: true });
+      });
+      record({ event: outcome === "aborted" ? "aborted" : "end", tool_call_id: toolCallId, label: params.label });
+      return { content: [{ type: "text", text: "NPW_TOOL_RESULT " + params.label + " " + outcome }], details: { status: outcome, label: params.label } };
+    }
+  });
+}
+`, "utf8");
+  await writeFile(modelMapPath, JSON.stringify({ models: { "openai/gpt-5.5": { provider: providerId, model_id: modelId } }, prefix_rules: [] }), "utf8");
+  await writeFile(subagentConfigPath, JSON.stringify({ schema_version: 1, extension_sources: [providerExtension, blockingExtension] }), "utf8");
+
+  const env = runtimeEnv({
+    LARVA_PI_REAL_BIN: installedPi,
+    LARVA_PI_EXTENSION_FLAG: "-e",
+    LARVA_PI_EXTENSION_ENTRY: extensionPath,
+    LARVA_PI_CHILD_SESSION_DIR: childSessionRoot,
+    LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+    LARVA_PI_MODEL_MAP_FILE: modelMapPath,
+    LARVA_PI_SUBAGENT_CONFIG_FILE: subagentConfigPath,
+    LARVA_PI_INTERACTIVE_TUI: "0",
+  });
+  const registeredTools = [];
+  const proofCtx = { env, modelRegistry: { find: async (provider, model) => ({ provider, modelId: model }) }, ui: { setStatus: async () => undefined } };
+  const proofPi = {
+    getAllTools: async () => ["larva_subagent", "larva_subagent_status", "larva_subagent_events", "larva_subagent_wait", "larva_subagent_select"],
+    setActiveTools: async () => true,
+    setModel: async () => true,
+    registerTool: (tool) => { registeredTools.push(tool); },
+    registerCommand: () => undefined,
+    registerShortcut: () => undefined,
+    on: () => undefined,
+    sendMessage: async (message, options) => { callbacks.push({ message, options }); },
+  };
+  await mod.initializeExtension(proofCtx, proofPi);
+  await mod.commitPersona("ok", proofCtx, proofPi);
+  const byName = (name) => registeredTools.find((tool) => tool.name === name) ?? null;
+  const subagentTool = byName("larva_subagent");
+  const statusTool = byName("larva_subagent_status");
+  const eventsTool = byName("larva_subagent_events");
+  const waitTool = byName("larva_subagent_wait");
+  const selectTool = byName("larva_subagent_select");
+  const detailsOf = (result) => result?.details ?? result ?? null;
+  const realPerformanceNow = globalThis.performance.now.bind(globalThis.performance);
+  const realSetTimeout = globalThis.setTimeout.bind(globalThis);
+  const performanceNowDescriptor = Object.getOwnPropertyDescriptor(globalThis.performance, "now");
+  const clockScale = 50;
+  const clockOrigin = realPerformanceNow();
+  const realSleep = (ms) => new Promise((resolveSleep) => realSetTimeout(resolveSleep, ms));
+  const callbackCount = (taskId) => callbacks.filter((entry) => entry?.message?.details?.task_id === taskId).length;
+  const invoke = async (tool, callId, input) => tool.execute(callId, input, undefined, undefined, proofCtx);
+  const statusRow = async (taskId) => detailsOf(await invoke(statusTool, `npw-status-${Date.now()}`, { task_id: taskId }))?.runs?.[0] ?? null;
+  const taskEvents = async (taskId) => detailsOf(await invoke(eventsTool, `npw-events-${Date.now()}`, { task_ids: [taskId], since_sequence: 0, limit: 100 }))?.events ?? [];
+  const readToolRows = async () => {
+    try { return (await readFile(toolLogFile, "utf8")).trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line)); }
+    catch { return []; }
+  };
+  const runCase = async ({ label, marker, noProgressTimeoutMs, observeReads = false, waitAfterTerminalMs = 150 }) => {
+    const callbackStart = callbacks.length;
+    const startedAt = realPerformanceNow();
+    const acceptedResult = await invoke(subagentTool, `npw-${label}`, { persona_id: "child", task: `${marker} execute the installed blocking-tool watchdog case`, no_progress_timeout_ms: noProgressTimeoutMs });
+    const acceptedDetails = detailsOf(acceptedResult);
+    const taskId = acceptedDetails?.task_id ?? null;
+    let warning = null;
+    let terminal = null;
+    const observerReads = [];
+    const observations = [];
+    if (typeof taskId === "string") {
+      const deadline = startedAt + 10_000;
+      while (realPerformanceNow() < deadline) {
+        const events = await taskEvents(taskId);
+        const row = await statusRow(taskId);
+        const warningEvent = events.find((event) => event.phase === "stall_suspected") ?? null;
+        if (warning === null && warningEvent !== null) warning = { event: warningEvent, row, callback_count: callbackCount(taskId), observed_elapsed_ms: realPerformanceNow() - startedAt };
+        observations.push({ elapsed_ms: realPerformanceNow() - startedAt, status: row?.status ?? null, phase: row?.phase ?? null, event_count: events.length, callback_count: callbackCount(taskId) });
+        if (observeReads && !["success", "failed", "cancelled"].includes(row?.status)) {
+          const waited = detailsOf(await invoke(waitTool, `npw-wait-${observerReads.length}`, { task_ids: [taskId], timeout_ms: 0 }));
+          const selected = detailsOf(await invoke(selectTool, `npw-select-${observerReads.length}`, { task_ids: [taskId], timeout_ms: 0 }));
+          observerReads.push({ wait_timed_out: waited?.timed_out ?? null, select_timed_out: selected?.timed_out ?? null, phase: row?.phase ?? null });
+        }
+        if (["success", "failed", "cancelled"].includes(row?.status)) { terminal = row; break; }
+        await realSleep(35);
+      }
+      const callbackDeadline = realPerformanceNow() + 1_000;
+      while (callbackCount(taskId) === 0 && realPerformanceNow() < callbackDeadline) await realSleep(20);
+      await realSleep(waitAfterTerminalMs);
+    }
+    const events = typeof taskId === "string" ? await taskEvents(taskId) : [];
+    const diagnostics = typeof taskId === "string" ? mod.subagentActiveRunDiagnosticsForTests().find((row) => row.task_id === taskId) ?? null : null;
+    const toolRows = (await readToolRows()).filter((row) => typeof row.label === "string" && (row.label === label || row.label.startsWith(`${label}-`)));
+    const caseProviderRequests = providerRequests.filter((row) => row.marker === marker);
+    return {
+      label,
+      marker,
+      task_id: taskId,
+      accepted_status: acceptedDetails?.status ?? null,
+      terminal,
+      terminal_elapsed_ms: realPerformanceNow() - startedAt,
+      virtual_elapsed_ms: (realPerformanceNow() - startedAt) * clockScale,
+      warning,
+      warning_count: events.filter((event) => event.phase === "stall_suspected").length,
+      phases: events.map((event) => event.phase),
+      terminal_event_count: events.filter((event) => event.kind === "terminal").length,
+      callback_count: typeof taskId === "string" ? callbackCount(taskId) : callbacks.length - callbackStart,
+      callback_count_delta: callbacks.length - callbackStart,
+      observer_reads: observerReads,
+      observations,
+      diagnostics,
+      tool_rows: toolRows,
+      provider_requests: caseProviderRequests,
+    };
+  };
+
+  let cases = {};
+  let traceEvents = [];
+  let childPids = [];
+  let pidsAliveAfterCleanup = {};
+  try {
+    Object.defineProperty(globalThis.performance, "now", { configurable: true, value: () => (realPerformanceNow() - clockOrigin) * clockScale });
+    globalThis.setTimeout = (callback, delay = 0, ...args) => {
+      const numericDelay = Number(delay);
+      return realSetTimeout(callback, numericDelay >= 50_000 ? Math.ceil(numericDelay / clockScale) + 2 : numericDelay, ...args);
+    };
+    cases.hard = await runCase({ label: "hard-silent", marker: "NPW_REAL_HARD_SILENT", noProgressTimeoutMs: 120_000, observeReads: true });
+    cases.longer = await runCase({ label: "longer-silent", marker: "NPW_REAL_LONGER_SILENT", noProgressTimeoutMs: 240_000 });
+    cases.continuing = await runCase({ label: "continuing", marker: "NPW_REAL_CONTINUING", noProgressTimeoutMs: 120_000, waitAfterTerminalMs: 2_600 });
+    await mod.resetExtensionUI("installed-no-progress-watchdog-proof");
+    await realSleep(100);
+    traceEvents = await readJsonlTrace(traceFile);
+    childPids = Array.from(new Set(traceEvents.filter((event) => event?.event === "child_spawn" && Number.isInteger(event.pid)).map((event) => event.pid)));
+    pidsAliveAfterCleanup = Object.fromEntries(childPids.map((pid) => {
+      try { process.kill(pid, 0); return [String(pid), true]; } catch { return [String(pid), false]; }
+    }));
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+    if (performanceNowDescriptor === undefined) delete globalThis.performance.now;
+    else Object.defineProperty(globalThis.performance, "now", performanceNowDescriptor);
+    for (const socket of sockets) socket.destroy();
+    if (server.listening) await new Promise((resolveClose) => server.close(resolveClose));
+  }
+  const hostSettingsAfter = await fileFingerprint(inheritedHostSettingsPath);
+  const hardError = cases.hard?.terminal?.error ?? null;
+  const hardWaitingIndex = cases.hard?.phases?.indexOf("waiting_for_child") ?? -1;
+  const hardStallIndex = cases.hard?.phases?.indexOf("stall_suspected") ?? -1;
+  const hardAbortCount = cases.hard?.provider_requests?.filter((request) => request.tool_result_count > 0).length ?? 0;
+  const longerStallIndex = cases.longer?.phases?.indexOf("stall_suspected") ?? -1;
+  const longerRecoveryIndex = longerStallIndex >= 0 ? cases.longer.phases.indexOf("waiting_for_child", longerStallIndex + 1) : -1;
+  const assertions = {
+    installedPiIdentity: version.exitCode === 0 && version.stdout.trim() === expectedVersion && packageVersion === expectedVersion,
+    realChildrenSpawned: childPids.length === 3 && traceEvents.filter((event) => event?.event === "child_spawn").length === 3,
+    blockingToolExecutedByInstalledChildren: ["hard-silent", "longer-silent", "continuing-0", "continuing-1", "continuing-2"].every((label) => [cases.hard, cases.longer, cases.continuing].flatMap((row) => row?.tool_rows ?? []).some((entry) => entry.label === label && entry.event === "start")),
+    hardWarningPreservesRunning: cases.hard?.warning_count === 1 && hardWaitingIndex >= 0 && hardStallIndex > hardWaitingIndex && cases.hard?.warning?.row?.status === "running" && cases.hard?.warning?.row?.phase === "stall_suspected" && cases.hard?.warning?.row?.result_pending === true && cases.hard?.warning?.callback_count === 0,
+    hardWatchdogCancelsOnce: cases.hard?.accepted_status === "accepted" && cases.hard?.terminal?.status === "cancelled" && hardError?.code === "LARVA_CHILD_CANCELLED" && String(hardError?.message ?? "").includes("Prior child tool effects may be unknown") && cases.hard?.terminal_event_count === 1 && cases.hard?.callback_count === 1,
+    observerReadsNeutral: (cases.hard?.observer_reads?.length ?? 0) > 2 && cases.hard.observer_reads.every((row) => typeof row.wait_timed_out === "boolean" && typeof row.select_timed_out === "boolean") && cases.hard?.terminal_elapsed_ms >= 2_000 && cases.hard?.terminal_elapsed_ms <= 9_000,
+    hardNoReplayOrResume: cases.hard?.provider_requests?.length === 1 && hardAbortCount === 0 && cases.hard?.tool_rows?.filter((row) => row.event === "start").length === 1,
+    longerDeadlineWarnsRecoversSucceeds: cases.longer?.accepted_status === "accepted" && cases.longer?.warning_count === 1 && longerStallIndex >= 0 && longerRecoveryIndex > longerStallIndex && cases.longer?.terminal?.status === "success" && cases.longer?.callback_count === 1,
+    continuingProgressOutlivesDeadline: cases.continuing?.accepted_status === "accepted" && cases.continuing?.terminal?.status === "success" && cases.continuing?.virtual_elapsed_ms > 120_000 && cases.continuing?.warning_count === 0 && cases.continuing?.tool_rows?.filter((row) => row.event === "start").length === 3,
+    timerAndProcessCleanup: Object.values(pidsAliveAfterCleanup).every((alive) => alive === false) && [cases.hard, cases.longer, cases.continuing].every((row) => row?.diagnostics?.child_running === false && row?.terminal_event_count === 1 && row?.callback_count === 1),
+    isolatedLoopbackOnly: providerRequests.length >= 5 && providerRequests.every((request) => request.loopback) && !server.listening,
+    hostSettingsFingerprintsRecorded: hostSettingsBefore !== null && hostSettingsAfter !== null,
+  };
+  return {
+    status: Object.values(assertions).every(Boolean) ? "PASS" : "FAIL",
+    identity: { binary: installedPi, package_root: installedPackageRoot, expected_version: expectedVersion, binary_version: version.stdout.trim(), package_version: packageVersion },
+    clock: { source: "performance.now", scale: clockScale, accelerated_only_for_deadlines_at_or_above_ms: 50_000 },
+    files: { proof_root: proofRoot, trace_file: traceFile, tool_log_file: toolLogFile, model_map_path: modelMapPath, subagent_config_path: subagentConfigPath },
+    host_settings_before: hostSettingsBefore,
+    host_settings_after: hostSettingsAfter,
+    provider: { url: providerUrl, requests: providerRequests, loopback_only: providerRequests.every((request) => request.loopback) },
+    cases,
+    trace: { event_count: traceEvents.length, child_pids: childPids, pids_alive_after_cleanup: pidsAliveAfterCleanup, child_spawn_count: traceEvents.filter((event) => event?.event === "child_spawn").length, child_exit_count: traceEvents.filter((event) => event?.event === "child_exit").length },
+    assertions,
+  };
+}
+
 async function asyncSubagentContractExpectedRed(evidence) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const sessionRoot = await mkdtemp(join(tmpdir(), "larva-async-subagent-contract-"));
@@ -2722,19 +3016,32 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const authorityDocPath = join(root, "docs", "reference", "PI_EXTENSION_ASYNC_SUBAGENTS.md");
   const authorityDoc = await readFile(authorityDocPath, "utf8");
   let extensionReadme = "";
+  let topReadme = "";
+  let integrationDesign = "";
   try { extensionReadme = await readFile(join(root, "contrib", "pi-extension", "README.md"), "utf8"); } catch {}
+  try { topReadme = await readFile(join(root, "README.md"), "utf8"); } catch {}
+  try { integrationDesign = await readFile(join(root, "design", "pi-coding-agent-integration.md"), "utf8"); } catch {}
+  const watchdogSchema = subagentTool?.inputSchema?.properties?.no_progress_timeout_ms ?? null;
+  const watchdogDescription = `${subagentTool?.description ?? ""} ${watchdogSchema?.description ?? ""}`;
   const docsParityProbe = {
     authorityPath: authorityDocPath,
     authorityReviewed: authorityDoc.includes("larva_subagent_status")
       && authorityDoc.includes("larva_subagent_cancel")
       && authorityDoc.includes("Accepted result requirements")
       && authorityDoc.includes("1500 ms"),
+    authorityDocumentsWatchdogLifecycle: ["Consecutive no-progress watchdog", "Recognized progress", "stall_suspected", "Command/tool timeout", "larva_subagent_wait.timeout_ms", "no live deadline-extension mechanism", "Prior child tool effects can be unknown", "explicit reconciliation"].every((token) => authorityDoc.includes(token)),
     readmeNamesCanonicalSubagent: extensionReadme.includes("/larva-subagent"),
     readmeDocumentsRemovedLogAlias: /former log alias has been removed/i.test(extensionReadme),
+    readmeIncludesCopyableWatchdogExamples: extensionReadme.includes('"no_progress_timeout_ms": 900000') && extensionReadme.includes('"timeout_ms": 0') && extensionReadme.includes("are separate layers"),
+    topReadmeLinksWatchdogAuthority: topReadme.includes("PI_EXTENSION_ASYNC_SUBAGENTS.md") && topReadme.includes("consecutive-no-progress watchdog"),
+    designUsesBriefAuthoritativeCrossReference: integrationDesign.includes("brief cross-reference") && integrationDesign.includes("#consecutive-no-progress-watchdog"),
+    modelSchemaAndDescriptionMatchDocs: watchdogSchema?.type === "integer" && watchdogSchema?.minimum === 120000 && watchdogSchema?.maximum === 86400000 && watchdogSchema?.default === 3600000 && ["consecutive recognized-progress silence", "known long-silent work", "cannot be extended after spawn", "command/tool timeout", "observer wait timeout"].every((token) => watchdogDescription.includes(token)),
     sourceRegistersCanonicalCommand: commands.has("larva-subagent"),
     sourceRegistersStatusAndCancelTools: Boolean(statusTool) && Boolean(cancelTool),
   };
+  const noProgressWatchdog = await installedPiNoProgressWatchdogProof(mod, sessionRoot);
   const assertionGroups = {
+    no_progress_watchdog: noProgressWatchdog.assertions,
     accepted_return_timing: {
       acceptedStatus: acceptedDetails?.status === "accepted",
       resultPendingTrue: acceptedDetails?.result_pending === true || acceptedResult?.result_pending === true,
@@ -2873,8 +3180,13 @@ async function asyncSubagentContractExpectedRed(evidence) {
     },
     docs_parity_against_reference: {
       authorityReviewed: docsParityProbe.authorityReviewed === true,
+      authorityDocumentsWatchdogLifecycle: docsParityProbe.authorityDocumentsWatchdogLifecycle === true,
       readmeNamesCanonicalSubagent: docsParityProbe.readmeNamesCanonicalSubagent === true,
       removedLogAliasDocumented: docsParityProbe.readmeDocumentsRemovedLogAlias === true,
+      readmeIncludesCopyableWatchdogExamples: docsParityProbe.readmeIncludesCopyableWatchdogExamples === true,
+      topReadmeLinksWatchdogAuthority: docsParityProbe.topReadmeLinksWatchdogAuthority === true,
+      designUsesBriefAuthoritativeCrossReference: docsParityProbe.designUsesBriefAuthoritativeCrossReference === true,
+      modelSchemaAndDescriptionMatchDocs: docsParityProbe.modelSchemaAndDescriptionMatchDocs === true,
       sourceRegistersCanonicalCommand: docsParityProbe.sourceRegistersCanonicalCommand === true,
       sourceRegistersStatusAndCancelTools: docsParityProbe.sourceRegistersStatusAndCancelTools === true,
     },
@@ -2925,10 +3237,12 @@ async function asyncSubagentContractExpectedRed(evidence) {
     abortGraceProbe,
     lifecycleCleanupProbe: { rows: lifecycleRows },
     docsParityProbe,
+    noProgressWatchdog,
     subagentConsoleRuntimeProbe,
     callbackEntries,
     assertionGroups,
     assertions: {
+      noProgressWatchdog: Object.values(assertionGroups.no_progress_watchdog).every(Boolean),
       acceptedStatus: assertionGroups.accepted_return_timing.acceptedStatus,
       resultPendingTrue: assertionGroups.accepted_return_timing.resultPendingTrue,
       returnedBeforeTerminalOutput: assertionGroups.accepted_return_timing.returnedBeforeTerminalOutput,

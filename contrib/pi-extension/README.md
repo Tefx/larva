@@ -807,6 +807,13 @@ Compaction focus does not:
 ## Supplemental local/CI runtime gate
 ### Runtime harness isolation
 
+The `async-subagent-contract` scenario also launches the pinned installed child Pi
+with a generated blocking-tool extension and credential-free loopback provider.
+Its `runtime.asyncSubagentContract.noProgressWatchdog` evidence records ordered
+warning/recovery/cancellation observations, real tool rows, child PIDs/exits,
+observer reads, host settings fingerprints, and cleanup.
+
+
 Every real-Pi smoke process owns a temporary runtime root. Before Pi starts, the
 harness removes inherited persona, model-map, tool-policy, Pi/Larva config, HOME,
 and session selectors. It then assigns only scenario-owned HOME, XDG,
@@ -1050,7 +1057,7 @@ When the active parent persona and Pi tool policy allow subagents, the extension
 exposes these model-facing tools:
 
 ```text
-larva_subagent(persona_id, task, task_id?)
+larva_subagent(persona_id, task, task_id?, no_progress_timeout_ms?)
 larva_subagent_status(task_id?, limit?)
 larva_subagent_events(since_sequence?, task_ids?, limit?)
 larva_subagent_wait(task_ids, return_when?, timeout_ms?)
@@ -1261,6 +1268,63 @@ metadata, not model-facing helper state, and not authority for `larva_subagent_s
 Trace write failures are ignored so proof instrumentation cannot change child
 runtime behavior.
 
+### Consecutive no-progress watchdog
+
+`larva_subagent` accepts optional `no_progress_timeout_ms`, an integer from
+`120000` through `86400000` inclusive. Omit it for the `3600000` ms default.
+The value bounds consecutive recognized child silence and is fixed at spawn; this
+version cannot extend it live. Invalid booleans, floats, zero, `null`, unlimited
+forms, and out-of-range values fail before a child or active run is created.
+
+At half the deadline, one `stall_suspected` phase event keeps the run running and
+pending; no terminal callback is sent. Nonempty assistant deltas, thinking
+activity, tool execution start/update/end, and `agent_end` reset a full deadline.
+Status/events/wait/select reads, cache/presentation work, callback attempts,
+stderr/trace traffic, empty deltas, watchdog events, and unknown frames do not.
+At the full deadline, the existing exact-run abort, 1500 ms kill grace, cleanup,
+`cancelled` terminal state, and at-most-once callback path applies.
+
+Ordinary spawn with the one-hour default:
+
+```json
+{
+  "persona_id": "doc-reviewer",
+  "task": "Review the release notes and return evidence."
+}
+```
+
+Known long-silent work with a 15-minute silence allowance:
+
+```json
+{
+  "persona_id": "integration-verifier",
+  "task": "Run the bounded offline device probe and report raw evidence.",
+  "no_progress_timeout_ms": 900000
+}
+```
+
+After the accepted receipt, use a bounded observer checkpoint rather than a shell
+sleep loop:
+
+```json
+{
+  "task_ids": ["/absolute/child-session.jsonl"],
+  "return_when": "all",
+  "timeout_ms": 0
+}
+```
+
+Command/tool timeout, child `no_progress_timeout_ms`, and observer
+`larva_subagent_wait.timeout_ms` are separate layers. Observer reads never change
+execution timing. If the watchdog cancels, preserve the child session and
+explicitly reconcile repository, tool, callback, and external effects before any
+user-authorized resume. Prior child tool effects may be unknown. Larva does not
+retry, replay the prompt, roll back effects, or auto-resume. A later resume is a
+new explicit call with the exact `task_id`, a new task, and a new pre-spawn
+deadline choice. The authoritative lifecycle, progress table, race rules, and
+main-agent flow are in
+[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#consecutive-no-progress-watchdog).
+
 ### Long output artifacts
 
 Short child final outputs remain inline in the `larva-subagent-result` callback;
@@ -1371,7 +1435,6 @@ must not delete child Pi session files, consume orchestration events, change
 exact-`task_id` rules, or mutate persona/model/tool-policy state.
 
 ### Verification requirements
-
 The async subagent implementation is not complete unless tests or runtime smoke
 prove:
 
@@ -1393,6 +1456,18 @@ prove:
 11. The `larva-subagent-result` push callback and `larva_subagent_events`,
     `larva_subagent_wait`, and `larva_subagent_select` observe the same exact
     child terminal result without shell sleep polling or repeated status polling.
+12. Watchdog admission is strict and effect-free for invalid input; the schema,
+    runtime default, and inclusive bounds match.
+13. Soft warning, recognized-progress recovery, full-deadline cancellation,
+    observer neutrality, first-owner races, timer cleanup, and at-most-once
+    callback behavior are observed through the real run lifecycle.
+14. Total runtime may exceed the silence deadline when recognized progress
+    continues, and a larger explicit deadline permits known long-silent work.
+15. `/opt/homebrew/bin/pi` `0.82.1` executes the blocking-tool runtime proof with
+    loopback-only provider traffic, unchanged host settings, no leaked process or
+    root, and preserved child session evidence.
+16. The authoritative reference, model-facing schema/description, examples, and
+    summary links remain in parity.
 
 ## Extension-Facing Persona Invocation
 
