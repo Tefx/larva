@@ -140458,3 +140458,13 @@ phases:
       unowned selectors/credential-like env, asserts owned paths remain under temporary
       root, and removes the root; no product extension or real provider/model hard-coding
       changed. Four primary-tree edits remained unstaged and byte-identical.'
+- id: pi_model_map_external_symlink_profiles_20260726
+  name: Pi Model-Map External Symlink Profiles 2026-07-26
+  status: pending
+  gate: Phase closes when the bounded implementation receipt contains pre-source-mutation
+    red proof and green code/test/doc evidence, independent installed-Pi verification
+    proves the public reload/command seam with an external regular-file symlink and
+    no external effects, and terminal spec review admits the authorized evolution
+    with no blockers, warnings, proof gaps, or residual risk.
+  depends_on:
+  - pi_model_map_profile_switch_20260725
