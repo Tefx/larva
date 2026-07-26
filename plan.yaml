@@ -141166,7 +141166,7 @@ phases:
       effect.'
   - id: pi-async-subagent-no-progress-watchdog.verify-runtime
     name: Independently verify watchdog runtime and agent-facing contract
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -141290,3 +141290,5 @@ phases:
     depends_on:
     - pi-async-subagent-no-progress-watchdog.implement
     agent: client-runtime-verifier
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T18:57:32.431717Z'
