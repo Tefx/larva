@@ -140897,7 +140897,7 @@ phases:
       No repository changes or external effects; primary pre-existing hashes match.'
 - id: pi_thinking_level_isolation_20260726
   name: Pi Thinking-Level Process Isolation 2026-07-26
-  status: pending
+  status: in_progress
   gate: Phase closes when one feature-branch implementation receipt proves persona
     thinking policy, parent/child Pi settings isolation, model-map route integration,
     resume/lease semantics, and Subagent Console startup metadata; independent installed-Pi
@@ -140910,7 +140910,7 @@ phases:
   steps:
   - id: pi-thinking-level-isolation.implement
     name: Implement persona thinking policy and Pi process isolation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -141070,6 +141070,8 @@ phases:
       observations; changed-path list; protected-edit reconciliation; external-effect
       absence.
     agent: frontend-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T11:37:48.565370Z'
   - id: pi-thinking-level-isolation.verify-installed-pi
     name: Verify installed-Pi thinking and settings isolation
     status: pending
