@@ -140468,3 +140468,348 @@ phases:
     with no blockers, warnings, proof gaps, or residual risk.
   depends_on:
   - pi_model_map_profile_switch_20260725
+  steps:
+  - id: pi-model-map-external-symlink.implement
+    name: Evolve model-map profile symlink contract and implementation
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply one admitted vectl.worker.dispatch.v2 envelope
+      bound to the active claim, immutable clean-worktree base, exact allowed paths/checks,
+      and current plan SHA. The unchanged vectl.worker.execution.v2 receipt is required
+      for completion; this plan grants no claim, worktree, integration, or Git authority.
+
+
+      Deliver:
+
+      - Before changing `contrib/pi-extension/larva.ts`, change only the external-symlink
+      developer assertion so a valid external regular-file target is expected to succeed,
+      run `node contrib/pi-extension/test-model-map-unit.mjs`, and retain a secret-safe
+      raw artifact proving nonzero exit and the current `LARVA_MODEL_MAP_PROFILE_INVALID`
+      rejection. Bind the artifact to the immutable base, command, cwd, test diff,
+      exit, SHA-256, and byte count in the worker receipt. Missing pre-source-mutation
+      red proof blocks product mutation and completion.
+
+      - Implement `MMES-01-lexical-external-target`: the lexical entry remains exactly
+      `~/.pi/larva/model-map.<profile>.json`, profile names still match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`,
+      and traversal remains impossible; a symlink may resolve to a regular file outside
+      the canonical directory. This authorized evolution supersedes only completed
+      MMPS-02 containment/symlink rejection, the implementation''s reject-symlink-escapes
+      clause and realpath-directory check, the obsolete unit expected-error assertion,
+      README containment text, and the prior change request''s rejection. Preserve
+      completed history and every other MMPS obligation.
+
+      - Implement `MMES-02-single-descriptor`: open the lexical entry once without
+      blocking on non-regular targets, fstat that descriptor, accept only a regular
+      file at most the existing 1 MiB maximum, read and strict-parse from the same
+      descriptor, and close it on every success/failure path. A symlink-retarget race
+      must fail boundedly without selecting mixed, alternate, or fallback bytes.
+
+      - Implement `MMES-03-bounded-fail-closed`: FIFO, device, directory, dangling
+      link, oversize, malformed JSON, unknown schema, invalid/traversal name, and
+      retarget-race cases return typed bounded failure with no fallback route and
+      no leaked descriptor/process/root.
+
+      - Implement `MMES-04-lexical-status`: process-local status reports the lexical
+      profile entry and never the external resolved target or credentials. Synchronize
+      unit/runtime/installed-smoke/Python contract tests and `contrib/pi-extension/README.md`
+      with the evolved rule.
+
+      - Preserve `MMES-05-routing-regression`: one resolver, exact Pi ModelRegistry
+      lookup, process-local routing, parent rollback, child behavior, 5000 ms timeout,
+      ready-child concurrency 4, generation/isolation/cleanup, and in-flight-old/next-new
+      behavior. Do not write/copy/migrate user config or mutate env, registry, PersonaSpec,
+      `models.yaml`, credentials, provider state, or external runtime state.
+
+
+      Boundary:
+
+      - Owner: live-resolved `frontend-engineer`, worker-v2 compatible. Repository
+      authority is exactly the seven allowed paths in the contract. Use an Orchestrator-created
+      isolated clean worktree; do not use mutable primary-tree contents as implementation
+      input.
+
+      - The primary tree has unrelated edits in `contrib/pi-extension/larva.ts`, `design/pi-coding-agent-integration.md`,
+      `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, and `tests/shell/test_pi_extension_subagent_ux.py`.
+      Integration must stash-preserve and restore their pre-integration bytes; conflict
+      or byte drift stops for reconciliation.
+
+      - Runtime checks may create only controlled temporary HOME/Pi/Larva/session/external-target
+      roots and a neutral loopback provider, with bounded processes and deterministic
+      cleanup. No user credentials, non-loopback network, paid service, Pi installation
+      mutation, or persistent external effect is authorized.
+
+
+      Admit:
+
+      - Requirements are `MMES-01` through `MMES-06` in the policy. The pre-fix red
+      artifact is causal evidence only; completion additionally requires every contract
+      check green, exact changed-path scope, source/test/doc parity, full pytest,
+      full Invar, diff check, no external effects, and byte preservation of the four
+      primary-tree edits.
+
+      - Developer tests must observe descriptor identity/close behavior and all adversarial
+      objects without blocking. The installed-Pi harness produced here must expose
+      machine-readable selected/executed binary and package identity, `ctx.reload()`
+      before the public command, lexical/external paths, ModelRegistry result, status
+      secrecy, loopback-only requests, and cleanup for independent consumption.
+
+
+      Recovery:
+
+      - Repository rollback is the single integrated commit (`TRIVIAL`). Terminate
+      only worker-started processes and remove only worker-created roots. Unknown
+      file-descriptor, process, root, primary-tree, or external state blocks replay;
+      preserve raw logs and report exact reconciliation needs. Ordinary check failure
+      stays on this step.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-model-map-external-symlink.implement","risk_tier":"R3","risk_reasons":["The
+      change evolves a completed filesystem security contract to authorize external
+      symlink targets.","TOCTOU, FIFO/device blocking, descriptor closure, and symlink-retarget
+      behavior require adversarial runtime proof.","The installed Pi reload/command
+      seam must remain isolated from credentials, user configuration, and external
+      network effects."],"primary_outcome":"MMES-01-lexical-external-target","rollback_class":"TRIVIAL","observation_ledger":[{"requirement_id":"MMES-01-lexical-external-target","atom":"A
+      canonical lexical profile entry may resolve to an external bounded regular file
+      while exact profile naming and traversal rejection remain unchanged.","modality":"filesystem_runtime","seam":"real","check_id":"external_symlink_unit","independent_step":"pi-model-map-external-symlink.verify-installed-pi"},{"requirement_id":"MMES-02-single-descriptor","atom":"Validation,
+      bytes, strict parse, and closure use one opened descriptor and reject retarget
+      races without alternate or fallback bytes.","modality":"filesystem_race_adversarial","seam":"real","check_id":"external_symlink_unit","independent_step":"pi-model-map-external-symlink.verify-installed-pi"},{"requirement_id":"MMES-03-bounded-fail-closed","atom":"FIFO,
+      device, directory, dangling, oversize, malformed, unknown-schema, invalid-name,
+      and race inputs fail within bounds without leaks or fallback.","modality":"filesystem_adversarial","seam":"real","check_id":"external_symlink_unit","independent_step":"pi-model-map-external-symlink.verify-installed-pi"},{"requirement_id":"MMES-04-lexical-status","atom":"Status
+      reports the lexical profile entry without disclosing the external target or
+      credentials.","modality":"runtime_output","seam":"real","check_id":"external_symlink_runtime","independent_step":"pi-model-map-external-symlink.verify-installed-pi"},{"requirement_id":"MMES-05-routing-regression","atom":"One
+      resolver, exact registry lookup, process-local parent/child routing, rollback,
+      5000 ms timeout, concurrency four, generation fencing, isolation, and cleanup
+      remain unchanged.","modality":"runtime_state_transition","seam":"real","check_id":"profile_switch_smoke","independent_step":"pi-model-map-external-symlink.verify-installed-pi"},{"requirement_id":"MMES-06-authorized-doc-evolution","atom":"Tests
+      and Pi-extension documentation explicitly migrate only the prior containment/rejection
+      contract and preserve all other MMPS semantics.","modality":"artifact_and_contract_review","seam":"static","check_id":"pi_extension_regressions","independent_step":"pi-model-map-external-symlink.review-evolution"}],"test_authority":{"developer_test_globs":["contrib/pi-extension/test-model-map-unit.mjs","contrib/pi-extension/test-model-map-runtime.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/test-model-map-unit.mjs","contrib/pi-extension/test-model-map-runtime.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","contrib/pi-extension/README.md"],"blocked_paths":["plan.yaml","design/**","docs/**","tests/shell/test_pi_extension_subagent_ux.py","src/**","contracts/**"]},"claims":["MMES-01-lexical-external-target","MMES-02-single-descriptor","MMES-03-bounded-fail-closed","MMES-04-lexical-status","MMES-05-routing-regression","MMES-06-authorized-doc-evolution"],"checks":[{"id":"external_symlink_unit","run":{"command":["node","contrib/pi-extension/test-model-map-unit.mjs"],"timeout_seconds":180},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/test-model-map-unit.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-model-map-unit.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map
+      unit: PASS"}]}},"proves":["MMES-01-lexical-external-target","MMES-02-single-descriptor","MMES-03-bounded-fail-closed","MMES-04-lexical-status"]},{"id":"external_symlink_runtime","run":{"command":["node","contrib/pi-extension/test-model-map-runtime.mjs"],"timeout_seconds":240},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/test-model-map-runtime.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-model-map-runtime.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map
+      runtime: PASS"}]}},"proves":["MMES-04-lexical-status","MMES-05-routing-regression"]},{"id":"profile_switch_smoke","run":{"command":["node","scripts/pi-extension-runtime-smoke.mjs","--scenario","model-map-profile-switch"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map-profile-switch"},{"literal":"\"status\":
+      \"PASS\""}]}},"proves":["MMES-04-lexical-status","MMES-05-routing-regression"]},{"id":"pi_extension_regressions","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py"],"timeout_seconds":480},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMES-01-lexical-external-target","MMES-03-bounded-fail-closed","MMES-05-routing-regression","MMES-06-authorized-doc-evolution"]},{"id":"repo_pytest","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMES-05-routing-regression","MMES-06-authorized-doc-evolution"]},{"id":"invar_guard_all","run":{"command":["uv","run","invar","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMES-05-routing-regression","MMES-06-authorized-doc-evolution"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["MMES-06-authorized-doc-evolution"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require an admitted worker-v2 receipt bound to the exact dispatch/base/plan
+      SHA. It must include pre-larva.ts red proof for current external-symlink rejection,
+      all seven post-change checks green, exact allowed changed paths, descriptor/race/non-regular/close
+      evidence, docs parity, no external effects, cleanup, and byte-identical restoration
+      of the four unrelated primary-tree edits.
+    refs:
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-26T06-15-13-357Z-2026-07-26T06-12-55-982Z_019f9d0e-1e2e-7865-b872-73bfb3f609ef.js-137e9157f2b9461d.txt
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - AGENTS.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - contrib/pi-extension/README.md
+    - pyproject.toml
+    agent: frontend-engineer
+  - id: pi-model-map-external-symlink.verify-installed-pi
+    name: Independently verify external profile symlink through installed Pi
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independently execute the integrated producer through `/opt/homebrew/bin/pi`
+      and package `0.82.1`. Under isolated temporary HOME/Pi/Larva/session roots,
+      create an external regular model-map file outside the canonical config directory
+      and only the lexical `~/.pi/larva/model-map.openrouter.json` symlink inside
+      it; register a credential-free neutral loopback provider `openrouter` with model
+      `openai/gpt-5.6-sol`.
+
+      - Through the real Pi extension context, execute `ctx.reload()` and then the
+      public `/larva-model-map openrouter` command. Prove the production resolver
+      calls Pi ModelRegistry and resolves `openrouter/openai/gpt-5.6-sol`, with selected
+      and executed binary `/opt/homebrew/bin/pi`, CLI/package version `0.82.1`, real
+      extension loading/command handling, no direct helper substitution, and no fake
+      Pi at the claimed seam.
+
+      - Prove status reports the lexical profile path and does not expose the external
+      target. Independently run the producer''s unit/runtime/smoke/focused/full-pytest/Invar/diff
+      checks and judge MMES-01 through MMES-05 rather than trusting producer assertions.
+
+      - Execute high-risk external-target cases: FIFO/device/directory without blocking,
+      dangling, oversize, malformed/unknown schema, invalid/traversal names, descriptor
+      closure on every path, and symlink retarget race with bounded fail-closed/no-alternate/no-fallback
+      evidence. Reconfirm one resolver, parent rollback, active/new/resumed/starting
+      child behavior, 5000 ms timeout, concurrency four, generation fence, in-flight-old/next-new,
+      isolation, and cleanup.
+
+
+      Boundary:
+
+      - Owner: live-resolved read-only `integration-verifier`, semantic-receipt compatible.
+      Repository writes are forbidden; bounded secret-safe artifacts may be written
+      only under `/tmp/larva-agent-artifacts`.
+
+      - No user config/credential read or write, env/registry/PersonaSpec/models.yaml
+      mutation, Pi installation change, non-loopback network, paid service, provider
+      request outside the harness, or external persistent effect is authorized. Attempts
+      use temporary roots and exact witnessed installed identity.
+
+      - Retry only an unchanged transient launch/probe, at most three attempts. After
+      each attempt observe Pi/child/descriptor state, RPC closure, loopback closure,
+      root removal, network/auth absence, and the unchanged repository/primary-tree
+      fingerprint. Unknown effects or cleanup failure stop without replay.
+
+
+      Admit:
+
+      - Inputs are the exact integrated producer commit/worker receipt and tracked
+      producer-owned seven paths from `pi-model-map-external-symlink.implement`, plus
+      the authorized change brief SHA-256. Run `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario model-map-profile-switch-installed-pi`, `uv run pytest -q tests/shell/test_pi_extension_real_runtime.py`,
+      and all implementation contract checks.
+
+      - Output exactly one `vectl.verifier.semantic.v1` receipt with `verifier_id:
+      integration-verifier`, `step_id: pi-model-map-external-symlink.verify-installed-pi`,
+      ordered scope `[/larva-model-map external-symlink reload command and lexical
+      status, single-descriptor adversarial filesystem behavior, preserved parent
+      child routing isolation and cleanup]`, and coverage for `MMES-01-lexical-external-target`
+      through `MMES-05-routing-regression` plus `MMES-REAL-01-installed-pi-reload`
+      and `MMES-REAL-02-no-external-effects`.
+
+      - PASS requires L2/L3 PASS, all atoms PROVEN, exact installed identity, `ctx.reload()`
+      ordered before public command, successful registry lookup, all adversarial/bounded/closure
+      observations, no seam mock, no blockers/warnings/proof gaps, no repo change
+      beyond the four witnessed pre-existing primary edits, deterministic cleanup,
+      and no external effects.
+
+
+      Recovery:
+
+      - Verification never repairs. Terminate only verifier-started processes, close
+      only verifier-owned descriptors/listeners, remove only verifier-created roots,
+      and preserve secret-safe raw evidence. Product divergence returns FAIL; missing
+      identity/prerequisite or unknown effects returns BLOCKED/INCONCLUSIVE with exact
+      reconciliation needs.'
+    verification: Require one production-Gate-admitted integration-verifier semantic
+      receipt with the exact step/scope/requirements, L2/L3 PASS, installed Pi/package
+      0.82.1 identity, ordered ctx.reload then public command, external target and
+      lexical status evidence, registry lookup success, adversarial descriptor proof,
+      no external effects, cleanup PASS, and unchanged repository/primary-tree fingerprint.
+    refs:
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-26T06-15-13-357Z-2026-07-26T06-12-55-982Z_019f9d0e-1e2e-7865-b872-73bfb3f609ef.js-137e9157f2b9461d.txt
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - contrib/pi-extension/README.md
+    - pyproject.toml
+    depends_on:
+    - pi-model-map-external-symlink.implement
+    agent: integration-verifier
+  - id: pi-model-map-external-symlink.review-evolution
+    name: Review authorized external-symlink contract evolution
+    status: pending
+    description: 'step_type: review
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Perform a fresh terminal adversarial review of the exact integrated artifacts
+      against the authorized change brief SHA-256 `137e9157f2b9461db608ff0ce67709ae9f47d63ce1c1d0a801ec1db7615cd546`,
+      the completed `pi_model_map_profile_switch_20260725` contract/evidence, and
+      migration authority `authority:spec-migration:MMES-20260726-external-symlink-target`.
+
+      - Record `INTENT_MET_VIA_EVOLUTION` only if external regular-file symlink support
+      satisfies MMES-01..06 and the only superseded completed meanings are MMPS-02
+      symlink containment, the implementation reject-symlink-escapes clause/realpath-directory
+      check, unit expected `LARVA_MODEL_MAP_PROFILE_INVALID`, README containment clause,
+      and the prior change request''s rejection. Completed history remains immutable;
+      profile regex/traversal, 1 MiB strict schema, process-local routing, one resolver,
+      exact registry lookup, parent rollback, child/timeout/concurrency/generation/in-flight
+      behavior, secrecy/isolation/cleanup, and no-write/no-external-effect constraints
+      still conform.
+
+      - Consume the implementation''s pre-fix red artifact and worker receipt plus
+      the fresh installed-Pi verifier receipt/raw evidence. Static source or green
+      producer assertions cannot substitute for descriptor/race/non-regular boundedness,
+      `ctx.reload()` then public command, ModelRegistry, exact Pi identity, status
+      secrecy, routing, effect-absence, and cleanup observations.
+
+      - Review all seven allowed artifacts, docs/test parity, full pytest, full Invar,
+      diff, changed-path scope, and byte-preservation of unrelated primary edits.
+      Return no remediation; any divergence, unproven atom, source/receipt drift,
+      external effect, cleanup gap, warning, or residual risk keeps the phase open.
+
+
+      Boundary:
+
+      - Owner: live-resolved read-only `spec-verifier`, semantic-receipt compatible.
+      No repository, Vectl lifecycle, Pi/runtime switch, user config, credential,
+      provider/network, or external-effect authority.
+
+
+      Admit:
+
+      - Acceptance inputs are closed to the exact tracked integrated producer paths/commit,
+      admitted worker receipt and red artifact, admitted `pi-model-map-external-symlink.verify-installed-pi`
+      semantic receipt/raw evidence, the change brief, prior change request, and completed
+      phase definitions/evidence as superseded provenance only.
+
+      - Output exactly one `vectl.verifier.semantic.v1` receipt with `verifier_id:
+      spec-verifier`, `step_id: pi-model-map-external-symlink.review-evolution`, ordered
+      scope `[authorized external-symlink change brief and completed containment contract,
+      exact integrated source tests documentation and pre-fix red worker evidence,
+      fresh installed-Pi reload command descriptor safety routing and no-effect evidence]`,
+      and requirement coverage for MMES-01 through MMES-06 plus MMES-REAL-01 and MMES-REAL-02.
+
+      - PASS requires each requirement `CONFORMS` or `INTENT_MET_VIA_EVOLUTION`, aggregate
+      intent `INTENT_MET_VIA_EVOLUTION`, downstream contract `MIGRATED_AUTHORIZED`
+      with exact migration authority `authority:spec-migration:MMES-20260726-external-symlink-target`,
+      exact Pi/package 0.82.1, no blockers/warnings/proof gaps/open problems, residual
+      risk none, and no repository changes.
+
+
+      Recovery:
+
+      - Preserve evidence and stop on authority conflict, absent/invalid current receipts,
+      mutable-primary substitution, stale runtime identity, incomplete supersession
+      ledger, unproven race/boundedness/closure/status/routing/effect atom, or cleanup
+      gap. Report the smallest unmet obligation without mutating plan or product.'
+    verification: Require a production-Gate-admitted spec-verifier semantic receipt
+      with exact scope and eight requirement rows, INTENT_MET_VIA_EVOLUTION, MIGRATED_AUTHORIZED
+      under the exact authority token, all other completed MMPS semantics preserved,
+      no blockers/warnings/proof gaps/open problems, residual risk none, and no repository
+      changes.
+    refs:
+    - /Users/tefx/.pi/larva/subagent-output-artifacts/2026-07-26T06-15-13-357Z-2026-07-26T06-12-55-982Z_019f9d0e-1e2e-7865-b872-73bfb3f609ef.js-137e9157f2b9461d.txt
+    - /Users/tefx/dotfiles/agent/output/larva-model-map-profile-switch-change-request.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-model-map-unit.mjs
+    - contrib/pi-extension/test-model-map-runtime.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - contrib/pi-extension/README.md
+    - pyproject.toml
+    depends_on:
+    - pi-model-map-external-symlink.verify-installed-pi
+    agent: spec-verifier
