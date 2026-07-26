@@ -140460,7 +140460,7 @@ phases:
       changed. Four primary-tree edits remained unstaged and byte-identical.'
 - id: pi_model_map_external_symlink_profiles_20260726
   name: Pi Model-Map External Symlink Profiles 2026-07-26
-  status: pending
+  status: in_progress
   gate: Phase closes when the bounded implementation receipt contains pre-source-mutation
     red proof and green code/test/doc evidence, independent installed-Pi verification
     proves the public reload/command seam with an external regular-file symlink and
@@ -140471,7 +140471,7 @@ phases:
   steps:
   - id: pi-model-map-external-symlink.implement
     name: Evolve model-map profile symlink contract and implementation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -140624,6 +140624,8 @@ phases:
     - contrib/pi-extension/README.md
     - pyproject.toml
     agent: frontend-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T06:27:54.328899Z'
   - id: pi-model-map-external-symlink.verify-installed-pi
     name: Independently verify external profile symlink through installed Pi
     status: pending
