@@ -140907,7 +140907,7 @@ phases:
   steps:
   - id: pi-async-subagent-no-progress-watchdog.implement
     name: Implement async-subagent consecutive no-progress watchdog
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -141133,6 +141133,37 @@ phases:
     agent: frontend-engineer
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-26T16:18:20.217061Z'
+    done_at: '2026-07-26T18:57:00.463049+00:00'
+    evidence: 'Integrated on main at a2bb701ca8ef3dfa00df7425f0a105446f50ba11 from
+      immutable dispatch base ea6fe69dac3754284aa5f46960f82444d6e53281 (pre-plan anchor
+      1806691b402600c247e1a400b6649ece52b214c3); claim claim:d33af8cfdc0d1a8ae1acee2754245d6ede1e56f390b44d780a6c0d3f89b86c41;
+      plan SHA 933c90af5f68c8684f7e618200379e3de6431427907dc1ab4f663f905345bf15; admitted
+      dispatch `/tmp/pi-no-progress-watchdog-dispatch.json` (file SHA c13e60e30010e0e7e60d7f4580ddbdaa9bddc99220656230a03e729f26633e9a,
+      Gate canonical dispatch sha256:70dcb2870685fe345360505f3162b71f7833cbb16fc65dac6992e6c1949b1997).
+      Durable same-base expected-red: `/tmp/larva-npw-attempt2-evidence/expected-red-base-equivalent.log`,
+      mode 0600, exit 1, 22786 bytes, SHA 1291c1977bafe588c1fcbf234a0bc7bb80dd9f94d1980ef5ffb5703bf011078c,
+      before recovered product-source mutation. Exact PASS worker receipt `/tmp/npw-worker-receipt-pass.json`,
+      3984 bytes, SHA aa411d20881b774cc904c75b594b5ca7d070a0d1f1065da3142a26f58978dc8d,
+      unresolved []; Gate lint CONFORMANT; first full admission observed a transient
+      real-runtime mismatch, exact isolated repro then passed 40 passed/1 xfailed,
+      and the one bounded Gate rerun was CONFORMANT (`/tmp/npw-worker-receipt-pass-validate-rerun.json`,
+      SHA 33d9a215a89d7989212aa534bd0ca4c177db8bd42a88fb65632458bca4bcc6d6). Actual
+      integrated-main reruns: watchdog_focused 212 passed (SHA e8488d879b5513603bc7a820b787334c12b5fcbd461f1574ba91b815804bb899);
+      async-subagent smoke PASS (SHA 2724fd69826b75df89448a95b9617ed71656938f0fb10cf0bad44b99f8a5d552);
+      real runtime 41 passed (SHA 3d4ef63cb90f2006059ef869b916d41aa4471b1ca1acc175c79814ac85d325aa);
+      full repo 932 passed (SHA ed293cc6d113265a102385d46da33e7bc1ebaed11f1dee0f6580d355e66a43d6);
+      artifacts under `/tmp/npw-integration-a2bb701c`. Invar formal worker/Gate check
+      passed; independent Invar MCP full scan `grd_66a8bac5e6ea4d69a5f014d1` complete
+      ok=true, 0 errors, 5 warnings, 43 files, review_suggested=false. Exact changed
+      paths: README.md; contrib/pi-extension/README.md; contrib/pi-extension/larva.ts;
+      design/pi-coding-agent-integration.md; docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md;
+      scripts/pi-extension-runtime-smoke.mjs; tests/shell/test_pi_extension_contract.py;
+      tests/shell/test_pi_extension_real_runtime.py; tests/shell/test_pi_extension_subagent_ux.py.
+      `$HOME/.pi/agent/settings.json` remained 2004 bytes/SHA 01e081c1a934f87b6a67ece5a50986496c327b9a797a282230e9a60833e7de2e
+      before/after. One worker-created leaked watchdog PID was explicitly terminated
+      and its exact temp root removed before final checks; final process scan clean.
+      Main tree clean, diff check clean, no network/auth/provider/install/user-config/external
+      effect.'
   - id: pi-async-subagent-no-progress-watchdog.verify-runtime
     name: Independently verify watchdog runtime and agent-facing contract
     status: pending
