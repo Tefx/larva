@@ -140895,3 +140895,341 @@ phases:
       file SHA b9d00963aafef1b31b9133ca162a9c158a12770e988499018e88cd54f1cec547; CONFORMANT,
       semantic_completion_admissible true, canonical receipt sha256:e9fda56e3f600440bd096baa49749e414e4f7e5e2eb7ef717d1d86784bd6f714.
       No repository changes or external effects; primary pre-existing hashes match.'
+- id: pi_thinking_level_isolation_20260726
+  name: Pi Thinking-Level Process Isolation 2026-07-26
+  status: pending
+  gate: Phase closes when one feature-branch implementation receipt proves persona
+    thinking policy, parent/child Pi settings isolation, model-map route integration,
+    resume/lease semantics, and Subagent Console startup metadata; independent installed-Pi
+    verification proves concurrent parents and children cannot mutate the base Pi
+    settings and observes requested/effective thinking through real RPC seams; terminal
+    spec review admits every requirement with no blockers, warnings, proof gaps, open
+    problems, or residual risk. Implementation and integration are forbidden on main.
+  depends_on:
+  - pi_model_map_external_symlink_profiles_20260726
+  steps:
+  - id: pi-thinking-level-isolation.implement
+    name: Implement persona thinking policy and Pi process isolation
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply one admitted vectl.worker.dispatch.v2 envelope
+      bound to the active claim, immutable feature-branch base, exact allowed paths/checks,
+      and current plan SHA. The unchanged vectl.worker.execution.v2 receipt is required
+      for completion; this plan grants no claim, worktree, integration, Git, or main-branch
+      authority.
+
+
+      Deliver:
+
+      - Implement PTI-01 policy: read adapter-local `$HOME/.pi/larva/thinking-policy.json`
+      or absolute `LARVA_PI_THINKING_POLICY_FILE`; accept exactly schema_version 1,
+      one valid default, and exact persona-id level overrides; missing file uses medium,
+      while an existing invalid file fails the affected activation/invocation before
+      the next prompt. Do not add model entries, wildcard rules, hot reload, PersonaSpec/registry/Opifex
+      fields, slash commands, or model-facing thinking arguments.
+
+      - Implement PTI-02 process isolation: `larva pi` and every child Pi use a private
+      `$HOME/.pi/larva/runtime/<run-id>/agent` capsule with private settings, retained
+      base Pi resources/session locations, safe 0700/0600 permissions, bounded stale
+      cleanup, and cleanup that never follows links or merges settings back. Base
+      Pi settings must remain byte-identical across concurrent parent/child model
+      and thinking changes.
+
+      - Implement PTI-03 route semantics: combine the existing resolved provider/model
+      with requested persona thinking without creating a second registry/generation.
+      Explicit parent persona activation/switch applies policy; no-persona parent
+      and ordinary parent resume preserve session thinking; turn-scoped borrow restores
+      origin model and thinking. New/resumed children never inherit parent thinking,
+      launch with explicit `--model` and `--thinking`, then verify child `get_state`
+      before prompt; a valid clamp records requested/effective values.
+
+      - Implement PTI-04 model-map integration: reuse activeModelMapProfile, modelMapSwitchTail,
+      route_generation, starting-child fence, bounded fan-out, rollback, partial classification,
+      and in-flight-old/next-prompt-new semantics. Model and thinking both verify
+      before generation advances; failure restores both or reports the existing partial/failed
+      state.
+
+      - Implement PTI-05 presentation: persist bounded view-only startup_model, requested_thinking,
+      and RPC-observed startup_thinking; show effective thinking in selector and requested/effective
+      plus startup model in Metadata; keep `thinking hidden` semantically separate
+      and keep cache outside status/wait/events/cancel/route authority.
+
+      - Synchronize source, developer tests, `README.md`, `contrib/pi-extension/README.md`,
+      `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, and `design/pi-coding-agent-integration.md`
+      with `design/pi-thinking-level-isolation.md`. Keep source in existing owner
+      files unless a separate module becomes demonstrably necessary.
+
+
+      Boundary:
+
+      - Owner: live-resolved worker-v2-compatible `frontend-engineer`; its declared
+      production TypeScript/runtime behavior specialty matches the dominant Pi extension
+      surface. Python launcher changes remain confined to the same cohesive route/isolation
+      outcome.
+
+      - Work only on `feature/pi-thinking-isolation` or an Orchestrator-created worktree
+      whose integration target is that exact branch. Before every write and integration,
+      assert the target branch is not `main`; any main target stops the step. Do not
+      merge, cherry-pick, rebase, or commit this feature onto main.
+
+      - Current feature-branch bytes outside the worker''s admitted base are protected,
+      including unrelated edits in `contrib/pi-extension/larva.ts`, `design/pi-coding-agent-integration.md`,
+      `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, and `tests/shell/test_pi_extension_subagent_ux.py`,
+      plus the untracked design authority. The Orchestrator must preserve/reconcile
+      those bytes; conflict or unknown drift blocks replay.
+
+      - Repository authority is limited to `src/larva/shell/pi.py`, `contrib/pi-extension/larva.ts`,
+      existing Pi launcher/model-map/subagent/overlay tests under `tests/shell`, existing
+      Pi extension harnesses under `contrib/pi-extension` and `scripts`, `README.md`,
+      `contrib/pi-extension/README.md`, `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`,
+      and `design/pi-coding-agent-integration.md`. `design/pi-thinking-level-isolation.md`
+      is read-only authority. No Pi installation, user base settings, credentials,
+      registry, PersonaSpec, Opifex, external config repository, non-loopback network,
+      paid service, provider, or persistent external-state mutation is authorized.
+
+
+      Admit:
+
+      - Authoritative requirements PTI-01 through PTI-06 come from `design/pi-thinking-level-isolation.md`;
+      PTI-06 is branch/effect/doc parity. Before product mutation, add only focused
+      developer assertions for the shared-settings leak, absent persona-specific child
+      thinking, model-only profile transition, and absent overlay startup metadata;
+      execute them against the immutable base and retain secret-safe nonzero expected-red
+      evidence. Ordinary same-step red evidence is causal only and must be followed
+      by all green checks.
+
+      - Developer checks must cover strict policy admission, missing/invalid file
+      behavior, capsule permissions/link safety/stale cleanup, startup/failure/cancel
+      cleanup, base-settings hashes, parent activation/resume/lease, child new/resume/clamp,
+      route rollback/generation, and overlay/cache authority. Run focused Pi tests,
+      full repository pytest, full Invar, and diff checks. Real installed-Pi acceptance
+      remains immutable and belongs to the independent verifier.
+
+
+      Recovery:
+
+      - Repository rollback is NONTRIVIAL because this branch already contains overlapping
+      edits. Revert only the feature''s integrated commit after byte-reconciling protected
+      edits; stop on conflict, main target, unknown base-settings change, process/root
+      leak, or external effect. Terminate only feature-started Pi/child/loopback processes
+      and remove only feature-created capsule roots. Ordinary implementation or check
+      failure remains on this step; do not add remediation topology.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-thinking-level-isolation.implement","risk_tier":"R3","risk_reasons":["The
+      change redirects Pi configuration state for parent and child processes and must
+      preserve credentials, resources, sessions, and cleanup boundaries.","Concurrent
+      model-map transitions and thinking changes require atomic route evidence and
+      rollback judgment.","The implementation overlaps current feature-branch edits
+      and is forbidden on main."],"primary_outcome":"PTI-02-process-isolation","rollback_class":"NONTRIVIAL","observation_ledger":[{"requirement_id":"PTI-01-policy","atom":"Strict
+      adapter-local persona policy selects requested thinking, missing policy uses
+      medium, and malformed existing policy fails before prompt without shared-contract
+      expansion.","modality":"configuration_runtime","seam":"real","check_id":"thinking_policy_tests","independent_step":"pi-thinking-level-isolation.verify-installed-pi"},{"requirement_id":"PTI-02-process-isolation","atom":"Concurrent
+      parent and child Pi model/thinking writes remain inside private capsules while
+      base settings/resources/session authority and bounded cleanup remain intact.","modality":"concurrency_adversarial","seam":"real","check_id":"capsule_isolation_tests","independent_step":"pi-thinking-level-isolation.verify-installed-pi"},{"requirement_id":"PTI-03-route-semantics","atom":"Parent
+      activation/resume/lease and child new/resume/clamp behavior follow the documented
+      policy without parent-to-child inheritance.","modality":"runtime_state_transition","seam":"real","check_id":"thinking_route_tests","independent_step":"pi-thinking-level-isolation.verify-installed-pi"},{"requirement_id":"PTI-04-model-map-integration","atom":"Model
+      and thinking share the existing profile-switch generation, fence, rollback,
+      partial, and in-flight ordering semantics.","modality":"runtime_state_transition","seam":"real","check_id":"thinking_profile_switch_tests","independent_step":"pi-thinking-level-isolation.verify-installed-pi"},{"requirement_id":"PTI-05-presentation","atom":"Subagent
+      selector and Metadata show bounded RPC-observed startup model and requested/effective
+      thinking without granting cache authority.","modality":"rendered_state","seam":"real","check_id":"thinking_overlay_tests","independent_step":"pi-thinking-level-isolation.verify-installed-pi"},{"requirement_id":"PTI-06-branch-effects-docs","atom":"Implementation
+      stays on feature/pi-thinking-isolation, preserves protected edits and base settings,
+      avoids external effects, and synchronizes Larva documentation.","modality":"artifact_and_effect_review","seam":"static","check_id":"repo_closure","independent_step":"pi-thinking-level-isolation.review-conformance"}],"test_authority":{"developer_test_globs":["tests/shell/test_pi*.py","contrib/pi-extension/test-*.mjs","scripts/pi-extension*.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["src/larva/shell/pi.py","contrib/pi-extension/larva.ts","tests/shell/test_pi.py","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","tests/shell/test_pi_extension_subagent_model_isolation.py","tests/shell/test_pi_extension_subagent_ux.py","contrib/pi-extension/test-model-map-unit.mjs","contrib/pi-extension/test-model-map-runtime.mjs","contrib/pi-extension/README.md","scripts/pi-extension-runtime-smoke.mjs","README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","design/pi-coding-agent-integration.md"],"blocked_paths":["plan.yaml","design/pi-thinking-level-isolation.md","../opifex/**","src/larva/core/**","src/larva/shell/registry.py","contracts/**"]},"claims":["PTI-01-policy","PTI-02-process-isolation","PTI-03-route-semantics","PTI-04-model-map-integration","PTI-05-presentation","PTI-06-branch-effects-docs"],"checks":[{"id":"feature_branch_guard","run":{"command":["sh","-c","test
+      \"$(git branch --show-current)\" = feature/pi-thinking-isolation && test \"$(git
+      branch --show-current)\" != main"],"timeout_seconds":30},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-06-branch-effects-docs"]},{"id":"thinking_policy_tests","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","-k","thinking_policy"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-01-policy"]},{"id":"capsule_isolation_tests","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi.py","tests/shell/test_pi_extension_subagent_model_isolation.py"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_model_isolation.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-02-process-isolation","PTI-03-route-semantics","PTI-06-branch-effects-docs"]},{"id":"thinking_route_tests","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","-k","thinking
+      or persona or resume or lease"],"timeout_seconds":720},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-01-policy","PTI-03-route-semantics"]},{"id":"thinking_profile_switch_tests","run":{"command":["node","contrib/pi-extension/test-model-map-runtime.mjs"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/test-model-map-runtime.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-model-map-runtime.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"model-map
+      runtime: PASS"}]}},"proves":["PTI-04-model-map-integration"]},{"id":"thinking_overlay_tests","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_subagent_ux.py","-k","thinking"],"timeout_seconds":360},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-05-presentation"]},{"id":"repo_pytest","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1800},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-01-policy","PTI-02-process-isolation","PTI-03-route-semantics","PTI-04-model-map-integration","PTI-05-presentation","PTI-06-branch-effects-docs"]},{"id":"invar_guard_all","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-06-branch-effects-docs"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["PTI-06-branch-effects-docs"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require an admitted worker-v2 receipt from an isolated feature-branch
+      worktree, pre-source-mutation expected-red proof, all declared checks green,
+      exact allowed changed paths, preserved protected feature-branch bytes, base
+      Pi settings byte identity, deterministic process/capsule cleanup, no external
+      effects, and no main-branch mutation.
+    evidence_template: Feature branch/worktree and immutable base; worker-v2 receipt
+      and integrated commit; expected-red artifact SHA/bytes/exit; focused/full test
+      and Invar outputs; base-settings before/after hashes; capsule permission/link/cleanup
+      observations; changed-path list; protected-edit reconciliation; external-effect
+      absence.
+  - id: pi-thinking-level-isolation.verify-installed-pi
+    name: Verify installed-Pi thinking and settings isolation
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independently execute the integrated feature branch through the selected and
+      executed installed Pi binary/package discovered at runtime; record exact binary,
+      CLI version, package root, and package version. Use isolated temporary HOME/base-agent/Larva/session
+      roots, credential-free neutral loopback providers, and no ambient user configuration.
+
+      - Prove PTI-01 through PTI-05 at real seams: concurrent parent sessions use
+      distinct requested thinking and mutate only their capsules; concurrent persona
+      children use distinct policy values without inheriting parent thinking; base
+      settings remain byte-identical; parent resume and turn lease semantics hold;
+      child new/resume applies explicit model/thinking and RPC `get_state` supplies
+      effective startup values before prompt; a valid capability clamp is recorded.
+
+      - Through the public model-map profile switch seam, prove model and thinking
+      share the existing generation/fence/rollback/partial/in-flight behavior for
+      parent, ready/new/resumed/starting children. Inject one thinking-application
+      failure and prove restoration or exact partial classification without advancing
+      an unverified generation.
+
+      - Exercise the real Subagent Console/render seam and prove selector/Metadata
+      match RPC startup state, `thinking hidden` remains distinct, presentation cache
+      is bounded/view-only, and deterministic status/events/wait/cancel never consume
+      it.
+
+      - Re-run all implementation contract checks independently and judge requirements
+      rather than trusting producer assertions.
+
+
+      Boundary:
+
+      - Owner: live-resolved read-only `integration-verifier`, semantic-receipt compatible.
+      Repository writes are forbidden; secret-safe evidence may be written only under
+      `/tmp/larva-agent-artifacts`.
+
+      - Verify the exact integrated commit on `feature/pi-thinking-isolation`; any
+      main branch target, dirty verifier mutation, mutable-primary substitution, or
+      protected-edit drift blocks admission.
+
+      - No user credentials/config read or write, Pi installation mutation, registry/PersonaSpec/Opifex/external-repository
+      mutation, non-loopback network, paid service, provider request outside the harness,
+      or persistent external effect is authorized. Retry only an unchanged transient
+      launch/probe up to three attempts; observe process/listener/root cleanup and
+      base/repository hashes after each attempt.
+
+
+      Admit:
+
+      - Inputs are the exact integrated producer commit, worker receipt/red artifact,
+      tracked producer paths, and `design/pi-thinking-level-isolation.md`. Required
+      coverage IDs are PTI-01-policy through PTI-05-presentation plus PTI-REAL-01-installed-pi-identity
+      and PTI-REAL-02-no-external-effects.
+
+      - Output exactly one `vectl.verifier.semantic.v1` receipt with `verifier_id:
+      integration-verifier`, `step_id: pi-thinking-level-isolation.verify-installed-pi`,
+      and ordered scope `[concurrent parent and child capsule isolation with persona
+      thinking policy, parent child resume lease clamp and model-map route transitions,
+      Subagent Console RPC-observed startup model thinking and authority boundaries]`.
+
+      - PASS requires L2/L3 PASS, all atoms PROVEN, exact installed identity, real
+      launcher/extension/RPC/render seams, base settings unchanged, no seam mock at
+      claimed boundaries, no blockers/warnings/proof gaps/open problems, deterministic
+      cleanup, no external effects, and no repository changes.
+
+
+      Recovery:
+
+      - Verification never repairs. Terminate only verifier-started processes/listeners
+      and remove only verifier-created roots. Product divergence returns FAIL; missing
+      installed identity, branch mismatch, unknown base-settings state, external effect,
+      or cleanup gap returns BLOCKED/INCONCLUSIVE with the smallest reconciliation
+      need.'
+    verification: Require one production-Gate-admitted integration-verifier semantic
+      receipt with exact step/scope/requirements, L2/L3 PASS, installed Pi identity,
+      concurrent capsule/base-settings evidence, parent/child route and rollback observations,
+      real overlay rendering matched to get_state, cleanup PASS, no external effects,
+      and unchanged feature-branch repository fingerprint.
+    evidence_template: Semantic receipt/Gate verdict; installed binary/package identity;
+      commands/cwd/env; parent/child concurrency and get_state excerpts; base-settings
+      hashes; route failure/rollback evidence; overlay render evidence; process/listener/root
+      cleanup; external-effect absence; repository fingerprint.
+    depends_on:
+    - pi-thinking-level-isolation.implement
+    agent: integration-verifier
+  - id: pi-thinking-level-isolation.review-conformance
+    name: Review thinking-isolation contract conformance
+    status: pending
+    description: 'step_type: review
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Perform a fresh terminal adversarial review of the exact integrated feature-branch
+      artifacts against `design/pi-thinking-level-isolation.md`, completed model-map
+      profile/symlink contracts, the implementation worker receipt/red proof, and
+      the fresh installed-Pi verifier receipt/raw evidence.
+
+      - Determine conformance for PTI-01 through PTI-06. Confirm policy remains adapter-local
+      and persona-only; capsules isolate settings without changing credential/resource/session
+      authority; route semantics cover parent no-persona/activation/resume/lease and
+      child new/resume/clamp; model/thinking reuse the existing profile generation/fence/rollback/partial/in-flight
+      control path; overlay startup facts are RPC-observed and view-only; documentation,
+      branch, effect, and protected-edit boundaries hold.
+
+      - Confirm no Pi/PersonaSpec/registry/Opifex/model-map schema or model-facing
+      tool expansion, no second generation/control plane, no main-branch implementation,
+      no base-settings/external effect, and no unresolved warning/risk. Static source
+      or producer assertions cannot substitute for required runtime evidence.
+
+
+      Boundary:
+
+      - Owner: live-resolved read-only `spec-verifier`, semantic-receipt compatible.
+      No repository, Vectl lifecycle, Git, Pi/runtime switch, user config, credential,
+      provider/network, external repository, or persistent-effect authority.
+
+
+      Admit:
+
+      - Acceptance inputs are closed to the exact tracked integrated commit/paths,
+      feature branch identity, implementation worker receipt/red artifact, admitted
+      `pi-thinking-level-isolation.verify-installed-pi` semantic receipt/raw evidence,
+      design authority, and completed model-map definitions/evidence.
+
+      - Output exactly one `vectl.verifier.semantic.v1` receipt with `verifier_id:
+      spec-verifier`, `step_id: pi-thinking-level-isolation.review-conformance`, ordered
+      scope `[authoritative thinking isolation design and completed model-map contracts,
+      exact integrated launcher extension tests documentation and worker evidence,
+      fresh installed-Pi concurrency route overlay cleanup and no-effect evidence]`,
+      and requirement coverage for PTI-01-policy through PTI-06-branch-effects-docs
+      plus PTI-REAL-01-installed-pi-identity and PTI-REAL-02-no-external-effects.
+
+      - PASS requires every row CONFORMS, aggregate intent INTENT_MET, downstream
+      contract UNCHANGED, no blockers/warnings/proof gaps/open problems, residual
+      risk none, exact feature branch, and no repository changes.
+
+
+      Recovery:
+
+      - Preserve evidence and stop on source-authority conflict, invalid/stale receipts,
+      main target, mutable-primary substitution, protected-edit drift, unproven isolation/route/render/effect/cleanup
+      atom, or any external effect. Report the smallest unmet obligation without adding
+      remediation topology.'
+    verification: Require a production-Gate-admitted spec-verifier semantic receipt
+      with exact scope and eight requirement rows, INTENT_MET, downstream UNCHANGED,
+      feature-branch and no-effect proof, all runtime-dependent atoms backed by the
+      admitted verifier receipt, no blockers/warnings/proof gaps/open problems, residual
+      risk none, and no repository changes.
+    evidence_template: Semantic receipt/Gate verdict; requirement verdict ledger;
+      intent/downstream status; exact commit/branch/path inventory; worker and runtime
+      receipt hashes; protected-edit/base-settings/no-effect/cleanup evidence; residual
+      risk statement.
+    depends_on:
+    - pi-thinking-level-isolation.verify-installed-pi
+    agent: spec-verifier
