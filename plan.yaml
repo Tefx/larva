@@ -140910,7 +140910,7 @@ phases:
   steps:
   - id: pi-thinking-level-isolation.implement
     name: Implement persona thinking policy and Pi process isolation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -141069,6 +141069,8 @@ phases:
       observations; changed-path list; protected-edit reconciliation; external-effect
       absence.
     agent: frontend-engineer
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-07-26T13:18:11.941443Z'
   - id: pi-thinking-level-isolation.verify-installed-pi
     name: Verify installed-Pi thinking and settings isolation
     status: pending
