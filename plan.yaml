@@ -140564,11 +140564,13 @@ phases:
 
       Recovery:
 
-      - Repository rollback is the single integrated commit (`TRIVIAL`). Terminate
-      only worker-started processes and remove only worker-created roots. Unknown
-      file-descriptor, process, root, primary-tree, or external state blocks replay;
-      preserve raw logs and report exact reconciliation needs. Ordinary check failure
-      stays on this step.
+      - Repository and integration rollback are `NONTRIVIAL` because the implementation
+      overlaps an unrelated primary-tree edit in `contrib/pi-extension/larva.ts`:
+      revert the integrated commit only after stash-preserving and hash-verifying
+      restoration; stop on conflict or byte drift. Terminate only worker-started processes
+      and remove only worker-created roots. Unknown file-descriptor, process, root,
+      primary-tree, or external state blocks replay; preserve raw logs and report
+      exact reconciliation needs. Ordinary check failure stays on this step.
 
 
       <vectl_step_policy>
@@ -140578,7 +140580,7 @@ phases:
       symlink targets.","TOCTOU, FIFO/device blocking, descriptor closure, and symlink-retarget
       behavior require adversarial runtime proof.","The installed Pi reload/command
       seam must remain isolated from credentials, user configuration, and external
-      network effects."],"primary_outcome":"MMES-01-lexical-external-target","rollback_class":"TRIVIAL","observation_ledger":[{"requirement_id":"MMES-01-lexical-external-target","atom":"A
+      network effects."],"primary_outcome":"MMES-01-lexical-external-target","rollback_class":"NONTRIVIAL","observation_ledger":[{"requirement_id":"MMES-01-lexical-external-target","atom":"A
       canonical lexical profile entry may resolve to an external bounded regular file
       while exact profile naming and traversal rejection remain unchanged.","modality":"filesystem_runtime","seam":"real","check_id":"external_symlink_unit","independent_step":"pi-model-map-external-symlink.verify-installed-pi"},{"requirement_id":"MMES-02-single-descriptor","atom":"Validation,
       bytes, strict parse, and closure use one opened descriptor and reject retarget
