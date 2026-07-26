@@ -139823,7 +139823,7 @@ phases:
       under /tmp/larva-agent-artifacts; current dirty fingerprint 7a412c22f976d78bbda5a4e6461fea80380c17e96e48a309b3535cb94ac3433d.'
   - id: pi-model-map-profile-switch.verify-remediation
     name: Independently verify terminal profile-switch remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -139957,6 +139957,43 @@ phases:
     agent: integration-verifier
     claimed_by: vectl-orchestrator
     claimed_at: '2026-07-25T23:51:29.694925Z'
+    done_at: '2026-07-26T00:25:50.767982+00:00'
+    evidence: 'Fresh `integration-verifier` Stage A/B completed from tracked-clean
+      detached worktree HEAD `352843dd9ed2d212cbd684bea85c6fda23017e65` with integrated
+      remediation ancestor `2ac7da935ad330abf0965e4c6aae7d1ae0a5b7e9`; integrated→HEAD
+      tracked diff was plan.yaml only. Initial verifier attempt was stopped and excluded
+      because parent-supplied node_modules symlinks resolved Pi TUI outside the target;
+      parent physically hydrated dependencies, proved @earendil-works/pi-tui realpath
+      inside the worktree, then used a fresh verifier run.
+
+
+      Fresh checks: empty isolated real-runtime file `41 passed in 85.23s`; adversarial
+      inherited selector runtime file `41 passed in 84.89s`; installed actual-child
+      smoke exit 0; sanitized full suite `928 passed in 152.54s`; Invar PASS; `git
+      diff --check` PASS; model-map unit PASS; model-map runtime PASS; installed-parent
+      smoke exit 0; docs contract `1 passed`. Stage-A manifest `/tmp/larva-agent-artifacts/pi-model-map-verify-remediation-v3/13-stage-a-manifest.json`,
+      SHA-256 `33c2c001668f172119d398041eafe6c2f7fc9730ddcf10a8879ce27a7c06351f`,
+      7019 bytes. Independent raw analysis `/tmp/larva-agent-artifacts/pi-model-map-verify-remediation-v3/11-independent-raw-analysis.json`,
+      SHA-256 `181d0df2b87d200998748be010eaa255936daf24536ac4287e79dce0d17f171f`,
+      8577 bytes: exact parent/child `/opt/homebrew/bin/pi`, package root/version
+      0.82.1, 8 child records, max concurrency 4, exact simultaneous correlation IDs
+      model-map-1-0..4, terminal ordering, targeted retry/fallback 0, generation/lifecycle,
+      malformed/5000ms timeout/closed-stream, secret-safe status, restoration, in-flight
+      old→new, neutral loopback isolation, no ambient selectors/credentials/external
+      requests. Cleanup ledger proves all recorded PIDs absent, loopback closed, root
+      removed, unknown state false, tracked tree clean.
+
+
+      Completion receipt `/tmp/larva-agent-artifacts/pi-model-map-verify-remediation-v3/14-semantic-receipt.json`,
+      file SHA-256 `d55d058b404a6cdaaebdcdee2044f038496a7e1d2f47315280067d6e56ac1ee0`,
+      31617 bytes, mode 0600: exact verifier/step/ordered scope, Smoke Test L1/L2/L3
+      PASS, all 26 required MMPS isolation/child/remediation/public/real atoms PROVEN,
+      no blockers, proof gaps, warnings, open problems, or residual risk. Verifier
+      Gate and independent parent Gate both CONFORMANT/admissible with no reasons
+      and canonical receipt SHA `sha256:ce353839064d764f20d375348967f4f9023d9eb483a0458374e2db7033722247`;
+      parent verdict `/tmp/larva-agent-artifacts/pi-model-map-verify-remediation-v3/16-parent-semantic-gate-verdict.json`,
+      file SHA-256 `fd5b966981d6cc7891b151c3068e183471d0ceb5c225c125cb3ac6432b7157c4`,
+      4766 bytes.'
   - id: pi-model-map-profile-switch.prove-actual-installed-child-seams
     name: Prove actual installed child-Pi profile-switch seams
     status: done
