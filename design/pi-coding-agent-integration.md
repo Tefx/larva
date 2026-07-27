@@ -96,6 +96,8 @@ must not recreate OpenCode's full runtime or add unrelated workspace management.
 ## Runtime UX
 
 ### Launch
+Supported `larva pi` launches isolate Pi settings before process start. The launcher records the effective base agent directory in `LARVA_PI_BASE_AGENT_DIR`, creates an owner-only private agent-directory capsule, copies `settings.json` with mode `0600`, links other agent resources to the base directory, and points `PI_CODING_AGENT_DIR` at the capsule. Parent cleanup removes only that capsule root and never merges settings into the base. An absolute `LARVA_PI_THINKING_POLICY_FILE` selects adapter-local persona thinking policy; a missing default file uses `medium`, while an existing invalid file fails the affected explicit activation before prompt.
+
 
 Preferred entry point:
 
@@ -1032,6 +1034,8 @@ P2 result rendering:
 
 
 ### Presentation log view-only overlay
+Each retained presentation entry may include immutable `startup_model`, `requested_thinking`, and RPC-observed `startup_thinking` facts captured immediately before the invocation's first prompt. Selector rows show `think=<effective>` or `think=<requested>-><effective>` when Pi clamps. Metadata labels all three fields. They remain view-only cache data and never become status, event, wait, selection, cancellation, route, or resume authority; `thinking hidden` continues to describe hidden reasoning content only.
+
 
 `/larva-subagent [task_id?]` is the canonical Pi-adapter slash command for
 viewing the parent extension's subagent presentation log and optional
@@ -1271,6 +1275,8 @@ controls Pi tools inside the parent or child session. A policy denying
 allow/deny policy entry for that tool.
 
 ### Child startup
+Child startup extends the request-scoped route with persona thinking. Before every new or resumed invocation, the parent resolves the current policy and creates a separate `0700` Pi agent-directory capsule whose `settings.json` is `0600`. Pi receives `--model <provider>/<model-id> --thinking <requested-level>` and the child session directory remains explicit. After initial state allocation or `switch_session`, and after the active model-map generation fence, Larva requires a final successful `get_state` with the resolved model and a valid `thinkingLevel` before prompt. A valid Pi clamp is retained as requested versus effective; missing or malformed state fails before prompt. Completion, cancellation, startup failure, and bounded stale cleanup remove only child capsule roots.
+
 
 When a new child is spawned, the tool starts one child Pi process for that
 `larva_subagent` invocation. The process is not retained after the result is
@@ -1833,6 +1839,8 @@ resume validation remains path-based and is performed only by
 
 
 ## Launcher contract
+The supported launcher also creates a private parent Pi agent-directory capsule before invocation. It records the base directory in `LARVA_PI_BASE_AGENT_DIR`, passes the capsule through `PI_CODING_AGENT_DIR`, validates an optional absolute `LARVA_PI_THINKING_POLICY_FILE`, and removes the capsule on normal return or startup failure. Child launches inherit the recorded base directory but create separate capsules. Capsule settings never merge back into the base.
+
 
 The launcher consumes only Larva-owned flags before forwarding remaining
 arguments to Pi.

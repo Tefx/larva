@@ -870,7 +870,7 @@ async function writeFakeSubagentChild(scriptPath, { sessionFile, finalText = "fr
     const rl = createInterface({ input: process.stdin });
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
-      if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile } }) + "\\n");
+      if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }) + "\\n");
       if (message.type === "switch_session") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
       if (message.type === "prompt") {
         await writeFile(sessionFile, JSON.stringify({ prompt: message.message }) + "\\n", "utf8");
@@ -902,7 +902,7 @@ async function writeDelayedAsyncSubagentChild(scriptPath, { sessionFile, finalTe
       const message = JSON.parse(line);
       if (message.type === "get_state") {
         await writeFile(sessionFile, "{}\\n", "utf8");
-        send({ id: message.id, success: true, data: { sessionFile } });
+        send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
@@ -936,7 +936,7 @@ async function writeNonresponsiveAbortSubagentChild(scriptPath, { sessionFile })
       const message = JSON.parse(line);
       if (message.type === "get_state") {
         await writeFile(sessionFile, "{}\\n", "utf8");
-        send({ id: message.id, success: true, data: { sessionFile } });
+        send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
@@ -1355,7 +1355,7 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile) {
       const message = JSON.parse(line);
       if (message.type === "get_state") {
         await writeFile(sessionFile, "{}\\n", "utf8");
-        send({ id: message.id, success: true, data: { sessionFile } });
+        send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
@@ -2605,7 +2605,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
-      if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile } }); }
+      if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
       else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); send({ type: "agent_end" }); }
       else if (message.type === "get_last_assistant_text") { send({ id: message.id, success: true, data: { text: { malformed: true } } }); setTimeout(() => process.exit(0), 5); }
       else if (message.type === "abort") { send({ id: message.id, success: true }); process.exit(0); }
@@ -2714,6 +2714,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
 
     const selectedTaskId = selectedRunning?.task_id ?? selectedSession;
     const siblingTaskIdForConsole = siblingRunningForConsole?.task_id ?? siblingSession;
+    await selectedPromise;
     if (!(await exists(selectedTaskId))) await writeFile(selectedTaskId, "{}\n", "utf8");
     if (!(await exists(siblingTaskIdForConsole))) await writeFile(siblingTaskIdForConsole, "{}\n", "utf8");
     mod.recordSubagentPresentationEntryForTests(siblingTaskIdForConsole, "sibling", "running", {
@@ -3452,6 +3453,11 @@ import { join } from "node:path";
 const sessionRoot = process.argv[process.argv.indexOf("--session-dir") + 1];
 const persona = process.env.LARVA_PI_INITIAL_PERSONA_ID || "child";
 const sessionFile = join(sessionRoot, persona + "-" + process.pid + ".jsonl");
+const initialModel = process.argv[process.argv.indexOf("--model") + 1];
+const initialSlash = initialModel.indexOf("/");
+let activeProvider = initialModel.slice(0, initialSlash);
+let activeModelId = initialModel.slice(initialSlash + 1);
+let activeThinking = process.argv[process.argv.indexOf("--thinking") + 1];
 await mkdir(sessionRoot, { recursive: true });
 await writeFile(sessionFile, "{}\\n", "utf8");
 const trace = async (value) => appendFile(${JSON.stringify(traceFile)}, JSON.stringify({ persona, ...value }) + "\\n", "utf8");
@@ -3463,15 +3469,21 @@ rl.on("line", async (line) => {
   await trace({ phase: "rx", type: message.type, id: message.id, modelId: message.modelId || null });
   if (message.type === "get_state") {
     if (persona === "child-starting") { setTimeout(() => process.exit(0), 20); return; }
-    return send({ id: message.id, success: true, data: { sessionFile } });
+    return send({ id: message.id, success: true, data: { sessionFile, model: { provider: activeProvider, id: activeModelId }, thinkingLevel: activeThinking } });
   }
   if (message.type === "switch_session") return send({ id: message.id, success: true, data: { cancelled: false } });
   if (message.type === "set_model") {
     active += 1;
     await trace({ phase: "set_model_start", id: message.id, active });
     await new Promise((resolve) => setTimeout(resolve, 40));
+    activeProvider = message.provider;
+    activeModelId = message.modelId;
     active -= 1;
     await trace({ phase: "set_model_end", id: message.id, active });
+    return send({ id: message.id, success: true });
+  }
+  if (message.type === "set_thinking_level") {
+    activeThinking = message.level;
     return send({ id: message.id, success: true });
   }
   if (message.type === "prompt") return send({ id: message.id, success: true });
@@ -3823,7 +3835,7 @@ export default function (pi) {
 }
 
 function actualChildProfileNameFromFrameId(frameId) {
-  const match = /^model-map-(\d+)-/.exec(String(frameId ?? ""));
+  const match = /^model-map-(?:model-|thinking-)?(\d+)-/.exec(String(frameId ?? ""));
   return match === null ? null : Number.parseInt(match[1], 10);
 }
 
@@ -3991,9 +4003,9 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   };
   const taskByPersona = (rows, persona) => rows.findLast((row) => row.persona === persona && row.event === "rpc_forward" && row.frame_id === "state-1" && typeof row.task_id === "string")?.task_id ?? null;
   const setModelRows = (rows, fromIndex = 0) => rows.slice(fromIndex).filter((row) => row.frame_type === "set_model" && typeof row.frame_id === "string");
-  const commandGenerationRows = (rows, generation) => rows.filter((row) => row.event === "rpc_tx" && actualChildProfileNameFromFrameId(row.frame_id) === generation);
+  const commandGenerationRows = (rows, generation) => rows.filter((row) => row.event === "rpc_tx" && row.frame_type === "set_model" && actualChildProfileNameFromFrameId(row.frame_id) === generation);
   const concurrencyObservation = (rows, generation) => {
-    const relevant = rows.filter((row) => actualChildProfileNameFromFrameId(row.frame_id) === generation && ["rpc_tx", "rpc_forward", "rpc_drop", "rpc_malformed", "rpc_stdout_closed"].includes(row.event));
+    const relevant = rows.filter((row) => row.frame_type === "set_model" && actualChildProfileNameFromFrameId(row.frame_id) === generation && ["rpc_tx", "rpc_forward", "rpc_drop", "rpc_malformed", "rpc_stdout_closed"].includes(row.event));
     let active = 0;
     let maximum = 0;
     const activeIds = new Set();
@@ -4324,8 +4336,9 @@ export default function (pi) {
     };
 
     await writeControl("normal", ["lifecycle"]);
-    const lifecycleRows = await waitTransport((rows) => rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-2") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1"), "lifecycle fence and prompt ordering");
-    const lifecycleFenceIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-2");
+    const lifecycleRows = await waitTransport((rows) => rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-model-2") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-thinking-2") && rows.some((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1"), "lifecycle model/thinking fence and prompt ordering");
+    const lifecycleModelFenceIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-model-2");
+    const lifecycleThinkingFenceIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "model-map-fence-thinking-2");
     const lifecyclePromptIndex = lifecycleRows.findIndex((row) => row.persona === "lifecycle" && row.event === "rpc_tx" && row.frame_id === "prompt-1");
     await waitObserved(() => (heldProviderResponses.get("lifecycle")?.length ?? 0) > 0, "lifecycle provider request");
     const lifecycleTask = taskByPersona(lifecycleRows, "lifecycle");
@@ -4342,7 +4355,7 @@ export default function (pi) {
     const retrySecondOffset = (await readTransport()).length;
     const retrySecond = await runProfile("gamma", "retry-second");
     const retrySecondRows = retrySecond.transport.slice(retrySecondOffset);
-    const retrySecondCommands = retrySecondRows.filter((row) => row.event === "rpc_tx" && actualChildProfileNameFromFrameId(row.frame_id) === 3);
+    const retrySecondCommands = commandGenerationRows(retrySecondRows, 3);
     raw.cases.partial_selective_retry = {
       requirement_id: "MMPS-CHILD-REAL-03",
       outcome: retryFirst.notification.message.startsWith("Larva model-map partial: gamma;") && retryFirst.notification.message.includes(`${retryTask}:retry`) && retryFirstRows.some((row) => row.persona === "retry" && row.event === "rpc_drop" && row.fault === "selective_retry_timeout") && retrySecond.notification.message.startsWith("Larva model-map success: gamma;") && retrySecondCommands.length === 1 && retrySecondCommands[0]?.persona === "retry" ? "PASS" : "FAIL",
@@ -4395,10 +4408,10 @@ export default function (pi) {
     const lifecycleResumePromptIndex = resumeRows.findLastIndex((row) => row.persona === "lifecycle" && row.controller_pid === resumeStart?.controller_pid && row.event === "rpc_tx" && row.frame_id === "prompt-1");
     raw.cases.generation_lifecycle = {
       requirement_id: "MMPS-CHILD-REAL-04",
-      outcome: lifecycleFenceIndex >= 0 && lifecycleFenceIndex < lifecyclePromptIndex && lifecycleStarts.length === 2 && lifecycleSwitchIndex >= 0 && lifecycleSwitchIndex < lifecycleResumePromptIndex && raw.cases.terminal_recheck.outcome === "PASS" ? "PASS" : "FAIL",
+      outcome: lifecycleModelFenceIndex >= 0 && lifecycleModelFenceIndex < lifecycleThinkingFenceIndex && lifecycleThinkingFenceIndex < lifecyclePromptIndex && lifecycleStarts.length === 2 && lifecycleSwitchIndex >= 0 && lifecycleSwitchIndex < lifecycleResumePromptIndex && raw.cases.terminal_recheck.outcome === "PASS" ? "PASS" : "FAIL",
       generation: 2,
-      fence_correlation: "model-map-fence-2",
-      fence_before_first_prompt: lifecycleFenceIndex >= 0 && lifecycleFenceIndex < lifecyclePromptIndex,
+      fence_correlations: ["model-map-fence-model-2", "model-map-fence-thinking-2"],
+      fence_before_first_prompt: lifecycleModelFenceIndex >= 0 && lifecycleModelFenceIndex < lifecycleThinkingFenceIndex && lifecycleThinkingFenceIndex < lifecyclePromptIndex,
       classifications: {
         new: { persona_id: "lifecycle", task_id: lifecycleTask, controller_pid: lifecycleStarts[0]?.controller_pid ?? null, actual_pid: lifecycleStarts[0]?.actual_pid ?? null },
         resumed: { persona_id: "lifecycle", task_id: lifecycleTask, controller_pid: lifecycleStarts[1]?.controller_pid ?? null, actual_pid: lifecycleStarts[1]?.actual_pid ?? null, switch_before_prompt: lifecycleSwitchIndex < lifecycleResumePromptIndex },
@@ -4648,7 +4661,7 @@ async function main() {
       const rl = createInterface({ input: process.stdin });
       rl.on("line", (line) => {
         const message = JSON.parse(line);
-        if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile } }) + "\\n");
+        if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }) + "\\n");
         if (message.type === "prompt") {
           process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
           process.stdout.write(JSON.stringify({ type: "agent_end" }) + "\\n");

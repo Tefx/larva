@@ -7,7 +7,9 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
+from secrets import token_hex
 from typing import TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
@@ -26,7 +28,12 @@ LARVA_PI_BIN_ENV = "LARVA_PI_BIN"
 LARVA_PI_MODEL_MAP_FILE_ENV = "LARVA_PI_MODEL_MAP_FILE"
 LARVA_PI_TOOL_POLICY_FILE_ENV = "LARVA_PI_TOOL_POLICY_FILE"
 LARVA_PI_SUBAGENT_CONFIG_FILE_ENV = "LARVA_PI_SUBAGENT_CONFIG_FILE"
+LARVA_PI_THINKING_POLICY_FILE_ENV = "LARVA_PI_THINKING_POLICY_FILE"
+LARVA_PI_BASE_AGENT_DIR_ENV = "LARVA_PI_BASE_AGENT_DIR"
 LARVA_PI_LAUNCHED_ENV = "LARVA_PI_LAUNCHED"
+PI_AGENT_DIR_ENV = "PI_CODING_AGENT_DIR"
+CAPSULE_STALE_SECONDS = 24 * 60 * 60
+CAPSULE_STALE_SCAN_LIMIT = 8
 PI_EXTENSION_FLAG = "-e"
 
 
@@ -206,11 +213,81 @@ def _validate_config_overrides(environ: Mapping[str, str]) -> Result[None, CliFa
         LARVA_PI_MODEL_MAP_FILE_ENV,
         LARVA_PI_TOOL_POLICY_FILE_ENV,
         LARVA_PI_SUBAGENT_CONFIG_FILE_ENV,
+        LARVA_PI_THINKING_POLICY_FILE_ENV,
     ):
         validated = _validate_absolute_override(environ, name)
         if isinstance(validated, Failure):
             return Failure(validated.failure())
     return Success(None)
+
+
+def _base_pi_agent_dir(environ: Mapping[str, str]) -> Result[Path, object]:
+    configured = environ.get(PI_AGENT_DIR_ENV)
+    if configured:
+        return Success(Path(configured).expanduser().resolve())
+    base_agent = Path(environ.get("HOME", str(Path.home()))).expanduser() / ".pi" / "agent"
+    return Success(base_agent.resolve())
+
+
+def _capsule_runtime_root(environ: Mapping[str, str]) -> Result[Path, object]:
+    home = Path(environ.get("HOME", str(Path.home()))).expanduser().resolve()
+    return Success(home / ".pi" / "larva" / "runtime")
+
+
+def _remove_capsule_root(path: Path, runtime_root: Path) -> None:
+    try:
+        if path.is_symlink() or path.parent != runtime_root or not path.name:
+            return
+        shutil.rmtree(path)
+    except OSError:
+        return
+
+
+def _cleanup_stale_capsules(runtime_root: Path) -> None:
+    try:
+        candidates = list(runtime_root.iterdir())[:CAPSULE_STALE_SCAN_LIMIT]
+    except OSError:
+        return
+    cutoff = time.time() - CAPSULE_STALE_SECONDS
+    for candidate in candidates:
+        try:
+            if candidate.is_symlink() or not candidate.is_dir() or candidate.stat().st_mtime >= cutoff:
+                continue
+        except OSError:
+            continue
+        _remove_capsule_root(candidate, runtime_root)
+
+
+def _create_pi_capsule(environ: Mapping[str, str]) -> Result[tuple[Path, Path], object]:
+    base_agent = _base_pi_agent_dir(environ).unwrap()
+    runtime_root = _capsule_runtime_root(environ).unwrap()
+    capsule_root: Path | None = None
+    try:
+        runtime_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(runtime_root, 0o700)
+        _cleanup_stale_capsules(runtime_root)
+        capsule_root = runtime_root / f"parent-{os.getpid()}-{token_hex(8)}"
+        capsule_agent = capsule_root / "agent"
+        capsule_agent.mkdir(mode=0o700, parents=True)
+        os.chmod(capsule_root, 0o700)
+        os.chmod(capsule_agent, 0o700)
+        if base_agent.is_dir():
+            for resource in base_agent.iterdir():
+                if resource.name == "settings.json":
+                    continue
+                (capsule_agent / resource.name).symlink_to(
+                    resource.resolve(), target_is_directory=resource.is_dir()
+                )
+        base_settings = base_agent / "settings.json"
+        settings_bytes = base_settings.read_bytes() if base_settings.is_file() else b"{}\n"
+        private_settings = capsule_agent / "settings.json"
+        private_settings.write_bytes(settings_bytes)
+        os.chmod(private_settings, 0o600)
+    except Exception as caught:
+        if capsule_root is not None:
+            _remove_capsule_root(capsule_root, runtime_root)
+        return Failure(caught)
+    return Success((capsule_root, base_agent))
 
 
 def _preflight_persona(persona_id: str | None, facade: LarvaFacade) -> Result[None, CliFailure]:
@@ -248,7 +325,7 @@ def _build_child_env(
         child_env["LARVA_PI_INITIAL_PERSONA_ID"] = persona_id
     if agent_persona_switch is not None:
         child_env["LARVA_PI_AGENT_PERSONA_SWITCH"] = agent_persona_switch
-    elif child_env.get("LARVA_PI_AGENT_PERSONA_SWITCH") not in {"manual", "confirm", "auto", "free"}:
+    else:
         child_env["LARVA_PI_AGENT_PERSONA_SWITCH"] = "confirm"
     child_env["LARVA_PI_REAL_BIN"] = pi_bin
     child_env["LARVA_PI_EXTENSION_FLAG"] = extension_flag
@@ -297,9 +374,24 @@ def pi_command(
         extension_entry=extension_entry,
         pi_args=pi_args,
     ).unwrap()
-    completed = subprocess.run(
-        [pi_bin, extension_flag, str(extension_entry), *pi_args], env=child_env, check=False
-    )
+    runtime_root = _capsule_runtime_root(active_environ).unwrap()
+    capsule_result = _create_pi_capsule(active_environ)
+    if isinstance(capsule_result, Failure):
+        return Failure(
+            _launcher_failure(
+                "LARVA_PI_CAPSULE_FAILED",
+                "private Pi agent-directory capsule could not be created",
+            ).unwrap()
+        )
+    capsule_root, base_agent = capsule_result.unwrap()
+    child_env[LARVA_PI_BASE_AGENT_DIR_ENV] = str(base_agent)
+    child_env[PI_AGENT_DIR_ENV] = str(capsule_root / "agent")
+    try:
+        completed = subprocess.run(
+            [pi_bin, extension_flag, str(extension_entry), *pi_args], env=child_env, check=False
+        )
+    finally:
+        _remove_capsule_root(capsule_root, runtime_root)
     stderr = _decode_process_text(getattr(completed, "stderr", "")).unwrap()
     stdout = _decode_process_text(getattr(completed, "stdout", "")).unwrap()
     if completed.returncode != 0:

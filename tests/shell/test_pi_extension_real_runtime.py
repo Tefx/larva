@@ -345,7 +345,7 @@ const rl = createInterface({ input: process.stdin });
 function send(value) { process.stdout.write(JSON.stringify(value) + "\n"); }
 rl.on("line", async (line) => {
   const msg = JSON.parse(line);
-  if (msg.type === "get_state") { await writeFile(sessionFile, "{}\n", "utf8"); send({ id: msg.id, success: true, data: { sessionFile } }); }
+  if (msg.type === "get_state") { await writeFile(sessionFile, "{}\n", "utf8"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
   else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
   else if (msg.type === "prompt") { send({ id: msg.id, success: true }); setTimeout(() => send({ type: "agent_end" }), 5); }
   else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "real AgentSession callback output" } }); setTimeout(() => process.exit(0), 1); }

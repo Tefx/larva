@@ -99,6 +99,81 @@ def test_cli_selected_child_startup_commits_prompt_and_tools_without_set_model(
     assert "Child prompt" in payload["prompt"]
 
 
+def test_thinking_policy_drives_explicit_persona_child_startup(tmp_path: Path) -> None:
+    """Child startup resolves strict adapter policy and passes explicit thinking."""
+    source = EXTENSION.read_text(encoding="utf-8")
+    start_child = source.split("async function startChild", 1)[1].split(
+        "function parseStartupError", 1
+    )[0]
+
+    assert "LARVA_PI_THINKING_POLICY_FILE" in source
+    assert "schema_version" in source and "requested_thinking" in source
+    assert '"--thinking"' in start_child
+    assert "childThinkingArgument" in start_child
+
+    fake_cli = tmp_path / "thinking-policy-cli.mjs"
+    fake_cli.write_text(
+        """
+        const [, , command, personaId, jsonFlag] = process.argv;
+        if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+        process.stdout.write(JSON.stringify({ data: {
+          id: personaId, description: "thinking", prompt: "prompt", model: "provider/model-a",
+          capabilities: {}, spec_version: "0.1.0", spec_digest: "sha256:" + "a".repeat(64)
+        } }));
+        """,
+        encoding="utf-8",
+    )
+    policy = tmp_path / "thinking-policy.json"
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const fs = await import("node:fs/promises");
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const calls = [];
+        let thinking = "off";
+        const env = {{ HOME: {json.dumps(str(tmp_path))}, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]), LARVA_PI_THINKING_POLICY_FILE: {json.dumps(str(policy))} }};
+        const ctx = {{ env, modelRegistry: {{ find: async (provider, id) => ({{ provider, id }}) }}, ui: {{ setStatus: () => undefined }} }};
+        const pi = {{
+          getAllTools: async () => [], setActiveTools: async () => true, setModel: async () => true,
+          getThinkingLevel: () => thinking,
+          setThinkingLevel: (level) => {{ calls.push(level); thinking = level === "xhigh" ? "high" : level; }},
+        }};
+        await fs.rm({json.dumps(str(policy))}, {{ force: true }});
+        const missing = await mod.commitPersona("worker", ctx, pi);
+        await fs.writeFile({json.dumps(str(policy))}, JSON.stringify({{ schema_version: 1, default: "low", personas: {{ worker: "xhigh" }} }}));
+        const override = await mod.commitPersona("worker", ctx, pi);
+        await fs.writeFile({json.dumps(str(policy))}, JSON.stringify({{ schema_version: 1, default: "medium", personas: {{}}, extra: true }}));
+        const invalid = await mod.commitPersona("worker", ctx, pi);
+        console.log(JSON.stringify({{ missing, override, invalid, calls, thinking }}));
+        """,
+    )
+    assert payload["missing"]["ok"] is True
+    assert payload["calls"][0] == "medium"
+    assert payload["override"]["ok"] is True
+    assert payload["calls"][1] == "xhigh"
+    assert payload["thinking"] == "high"
+    assert payload["invalid"] == {
+        "ok": False,
+        "error": {
+            "code": "LARVA_POLICY_INVALID",
+            "message": "Thinking policy must contain exactly schema_version 1, default, and personas.",
+        },
+    }
+
+
+def test_thinking_profile_route_switches_and_verifies_model_and_thinking() -> None:
+    """The existing model-map generation must transition both route dimensions."""
+    source = EXTENSION.read_text(encoding="utf-8")
+    switch = source.split("async function switchModelMapProfileUnlocked", 1)[1].split(
+        "export async function switchModelMapProfile", 1
+    )[0]
+
+    assert "set_thinking_level" in switch
+    assert "get_state" in switch
+    assert "previousThinking" in switch
+    assert "requested_thinking" in switch
+
+
 def test_child_model_isolation_documentation_stays_in_sync() -> None:
     """Operator, design, and async references describe the same isolation mechanism."""
 
@@ -111,8 +186,12 @@ def test_child_model_isolation_documentation_stays_in_sync() -> None:
     for document in documents:
         text = document.read_text(encoding="utf-8")
         assert "--model" in text, document
+        assert "--thinking" in text, document
         assert "LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI" in text, document
+        assert "LARVA_PI_BASE_AGENT_DIR" in text, document
+        assert "PI_CODING_AGENT_DIR" in text, document
         assert "pi.setModel()" in text, document
+        assert "thinkingLevel" in text, document
         assert "settings" in text.lower(), document
 
 

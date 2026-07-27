@@ -1,8 +1,8 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { accessSync, constants, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { accessSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
@@ -51,6 +51,11 @@ type LarvaErrorCode =
 
 type LarvaError = { code: LarvaErrorCode; message: string };
 type PiToolPolicy = { allow?: string[]; deny?: string[] };
+const PI_THINKING_LEVEL_VALUES = ["o\u0066f", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+type PiThinkingLevel = typeof PI_THINKING_LEVEL_VALUES[number];
+type PiThinkingPolicy = { schema_version: 1; default: PiThinkingLevel; personas: Record<string, PiThinkingLevel> };
+type RuntimeRoute = ParsedModel & { requested_thinking: PiThinkingLevel };
+const PI_THINKING_LEVELS = new Set<PiThinkingLevel>(PI_THINKING_LEVEL_VALUES);
 
 type LarvaCompactionConfig = {
   enabled: boolean;
@@ -83,6 +88,10 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?: string;
   LARVA_PI_MODEL_MAP_FILE?: string;
   LARVA_PI_TOOL_POLICY_FILE?: string;
+  LARVA_PI_THINKING_POLICY_FILE?: string;
+  LARVA_PI_BASE_AGENT_DIR?: string;
+  LARVA_PI_CAPSULE_ROOT?: string;
+  LARVA_PI_CHILD_REQUESTED_THINKING?: string;
   LARVA_PI_CHILD_SESSION_DIR?: string;
   LARVA_PI_PARENT_PERSONA_ID?: string;
   LARVA_PI_REAL_BIN?: string;
@@ -285,6 +294,9 @@ type SubagentPresentationLogEntry = {
   updated_at?: string;
   live_assistant_preview?: string;
   live_thinking_hidden?: boolean;
+  startup_model?: string;
+  requested_thinking?: PiThinkingLevel;
+  startup_thinking?: PiThinkingLevel;
   tool_snapshots?: SubagentToolSnapshot[];
   timeline_events?: SubagentTimelineEvent[];
   session_assistant_message_ids?: string[];
@@ -451,6 +463,7 @@ type PiApi = {
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
   getThinkingLevel?: () => unknown;
+  setThinkingLevel?: (level: PiThinkingLevel) => void;
   getStreamFn?: () => unknown;
   streamFn?: unknown;
   compactAdapter?: LarvaCompactAdapter;
@@ -465,6 +478,8 @@ type PiContext = PiApi & {
   env?: RuntimeEnv;
   ui?: PiUi;
   modelRegistry?: ModelRegistry;
+  model?: unknown;
+  thinkingLevel?: unknown;
   sessionManager?: { getEntries?: () => unknown[] };
   session?: {
     entries?: unknown[];
@@ -489,7 +504,7 @@ type SubagentCallbackSurface = {
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
 };
-type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null };
+type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null; requestedThinking: PiThinkingLevel | null; effectiveThinking: PiThinkingLevel | null };
 type PersonaSwitchToolInput = { persona_id?: unknown; reason?: unknown; handoff?: unknown; continue_task?: unknown; max_switches_per_chain?: unknown };
 type AgentPersonaSwitchToolResult = {
   status: "success" | "failed";
@@ -569,7 +584,7 @@ const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
   underline: (text) => text,
   codeBlockIndent: "  ",
 };
-const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null };
+const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null, requestedThinking: null, effectiveThinking: null };
 
 type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale" | "failed";
 type SubagentCallbackDeliveryDiagnostic = Readonly<{ code: string; message: string }>;
@@ -629,6 +644,9 @@ type ActiveSubagentRun = {
   route_generation: number;
   last_progress_at_ms: number;
   stall_timer: ReturnType<typeof setTimeout> | null;
+  startup_model: string | null;
+  requested_thinking: PiThinkingLevel | null;
+  startup_thinking: PiThinkingLevel | null;
 };
 const activeSubagentRuns: Map<string, ActiveSubagentRun> = new Map();
 let activeModelMapProfile: ActiveModelMapProfile | null = null;
@@ -700,6 +718,7 @@ const DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN = 20;
 let agentPersonaSwitchMode: AgentPersonaSwitchMode = "confirm";
 let activePersonaLease: PersonaLease | null = null;
 let activePersonaLeaseOriginPiModel: unknown | null = null;
+let activePersonaLeaseOriginPiThinking: PiThinkingLevel | null = null;
 let pendingPersonaSwitchContinuation: PersonaSwitchContinuation | null = null;
 let restoreFailureState: PersonaRestoreFailureState | null = null;
 let lastPersonaLeaseRuntimeCtx: PiContext | null = null;
@@ -2026,6 +2045,9 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Started", this.entry.started_at ?? "unknown", contentWidth),
       ...this.fieldLines("Updated", this.entry.updated_at ?? "unknown", contentWidth),
       ...this.fieldLines("Phase", this.entry.phase ?? this.entry.status, contentWidth),
+      ...this.fieldLines("Startup model", this.entry.startup_model ?? "not observed", contentWidth),
+      ...this.fieldLines("Requested thinking", this.entry.requested_thinking ?? "not observed", contentWidth),
+      ...this.fieldLines("Startup thinking", this.entry.startup_thinking ?? "not observed", contentWidth),
       ...this.fieldLines("Task preview", this.entry.task_preview ?? "", contentWidth),
       ...this.fieldLines("Initial prompt", this.entry.task_prompt ? "recorded — see Prompt tab" : "not recorded", contentWidth),
       ...this.fieldLines("Call ID", this.entry.call_id ?? "", contentWidth),
@@ -2826,6 +2848,58 @@ function clearSubagentPresentationCacheFile(): void {
   } catch {
     subagentPresentationCacheError = error("LARVA_SUBAGENT_LOG_CONFIG_INVALID", "Unable to clear subagent presentation cache.");
   }
+}
+
+function thinkingPolicyPath(env: RuntimeEnv): string {
+  if (env.LARVA_PI_THINKING_POLICY_FILE !== undefined) {
+    if (!isAbsolute(env.LARVA_PI_THINKING_POLICY_FILE)) {
+      throw error("LARVA_POLICY_INVALID", "LARVA_PI_THINKING_POLICY_FILE must be an absolute path.");
+    }
+    return env.LARVA_PI_THINKING_POLICY_FILE;
+  }
+  return join(homeDir(env), ".pi", "larva", "thinking-policy.json");
+}
+
+function isPiThinkingLevel(value: unknown): value is PiThinkingLevel {
+  return typeof value === "string" && PI_THINKING_LEVELS.has(value as PiThinkingLevel);
+}
+
+async function loadThinkingPolicy(env: RuntimeEnv): Promise<PiThinkingPolicy> {
+  const path = thinkingPolicyPath(env);
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (caught) {
+    if (isRecord(caught) && caught.code === "ENOENT") return { schema_version: 1, default: "medium", personas: {} };
+    throw error("LARVA_POLICY_INVALID", "Thinking policy could not be read.");
+  }
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { throw error("LARVA_POLICY_INVALID", "Thinking policy is not valid JSON."); }
+  if (!isRecord(parsed) || Object.getPrototypeOf(parsed) !== Object.prototype) throw error("LARVA_POLICY_INVALID", "Thinking policy must be a plain object.");
+  if (Object.keys(parsed).sort().join(",") !== "default,personas,schema_version" || parsed.schema_version !== 1 || !isPiThinkingLevel(parsed.default) || !isRecord(parsed.personas)) {
+    throw error("LARVA_POLICY_INVALID", "Thinking policy must contain exactly schema_version 1, default, and personas.");
+  }
+  const personas: Record<string, PiThinkingLevel> = {};
+  for (const [personaId, level] of Object.entries(parsed.personas)) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(personaId) || !isPiThinkingLevel(level)) throw error("LARVA_POLICY_INVALID", "Thinking policy persona overrides must use exact persona ids and valid levels.");
+    personas[personaId] = level;
+  }
+  return { schema_version: 1, default: parsed.default, personas };
+}
+
+async function requestedThinkingForPersona(env: RuntimeEnv, personaId: string): Promise<PiThinkingLevel> {
+  const policy = await loadThinkingPolicy(env);
+  return policy.personas[personaId] ?? policy.default;
+}
+
+function effectiveThinkingFromPi(pi: PiApi, fallback: PiThinkingLevel): PiThinkingLevel {
+  const observed = pi.getThinkingLevel?.();
+  return isPiThinkingLevel(observed) ? observed : fallback;
+}
+
+function setPiThinking(pi: PiApi, requested: PiThinkingLevel): PiThinkingLevel {
+  pi.setThinkingLevel?.(requested);
+  return effectiveThinkingFromPi(pi, requested);
 }
 
 function canonicalModelMapPath(env: RuntimeEnv): string {
@@ -3917,6 +3991,7 @@ function clearActivePersonaLease(reason: string, ctx?: PiContext, pi?: PiApi): v
   }
   activePersonaLease = null;
   activePersonaLeaseOriginPiModel = null;
+  activePersonaLeaseOriginPiThinking = null;
   pendingPersonaSwitchContinuation = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;
@@ -3951,6 +4026,8 @@ function createTurnScopedPersonaLease(originPersonaId: string | null, borrowedPe
   }
   const originModel = currentPiModelSnapshot(ctx);
   activePersonaLeaseOriginPiModel = originModel.model;
+  const originThinking = pi === undefined ? null : pi.getThinkingLevel?.();
+  activePersonaLeaseOriginPiThinking = isPiThinkingLevel(originThinking) ? originThinking : null;
   activePersonaLease = { originPersonaId, borrowedPersonaId, scope: "turn", initiatedBy, originPiModelCaptured: originModel.captured, originPiModelLabel: originModel.label };
   return activePersonaLease;
 }
@@ -4069,8 +4146,14 @@ async function fenceSubagentRoute(record: ActiveSubagentRun, rpc: RpcClient): Pr
   try {
     const spec = await resolvePersona(record.persona_id, { env: record.env });
     const target = await resolvePiModel(spec, record.env);
-    const response = await rpc.command(`model-map-fence-${modelMapRouteGeneration}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
-    if (!isSuccessResponse(response)) return error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", "Starting child rejected the active model-map route.");
+    const requestedThinking = await requestedThinkingForPersona(record.env, record.persona_id);
+    const modelResponse = await rpc.command(`model-map-fence-model-${modelMapRouteGeneration}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    if (!isSuccessResponse(modelResponse)) return error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", "Starting child rejected the active model-map model route.");
+    const thinkingResponse = await rpc.command(`model-map-fence-thinking-${modelMapRouteGeneration}`, { type: "set_thinking_level", level: requestedThinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    if (!isSuccessResponse(thinkingResponse)) return error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", "Starting child rejected the active model-map thinking route.");
+    record.env.LARVA_PI_CHILD_REQUESTED_THINKING = requestedThinking;
+    const verified = await verifyChildRoute(record, rpc);
+    if (verified !== null) return error("LARVA_MODEL_MAP_CHILD_SWITCH_FAILED", verified.message);
     record.route_generation = modelMapRouteGeneration;
     return null;
   } catch {
@@ -4092,19 +4175,21 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
     && activeModelMapProfile.path === profile.path
     && sameModelMapConfig(activeModelMapProfile.config, profile.config);
   const records = uniqueActiveSubagentRuns().filter((record) => !sameProfileRetry || record.route_generation !== modelMapRouteGeneration);
-  let parentTarget: ParsedModel | null = null;
+  let parentTarget: RuntimeRoute | null = null;
   let parentModel: unknown | null = null;
-  const childTargets = new Map<ActiveSubagentRun, ParsedModel>();
+  const childTargets = new Map<ActiveSubagentRun, RuntimeRoute>();
   try {
     if (parentPersonaId !== null) {
       const parentSpec = await resolvePersona(parentPersonaId, ctx);
-      parentTarget = resolvePiModelFromConfig(parentSpec, profile.config);
+      const parentModelTarget = resolvePiModelFromConfig(parentSpec, profile.config);
+      parentTarget = { ...parentModelTarget, requested_thinking: await requestedThinkingForPersona(currentEnv(ctx), parentPersonaId) };
       parentModel = await ctx.modelRegistry?.find?.(parentTarget.provider, parentTarget.modelId) ?? null;
       if (parentModel === null) throw error("LARVA_MODEL_UNAVAILABLE", `Model unavailable ${parentSpec.model}`);
     }
     for (const record of records) {
       const childSpec = await resolvePersona(record.persona_id, { env: record.env });
-      childTargets.set(record, resolvePiModelFromConfig(childSpec, profile.config));
+      const childModelTarget = resolvePiModelFromConfig(childSpec, profile.config);
+      childTargets.set(record, { ...childModelTarget, requested_thinking: await requestedThinkingForPersona(record.env, record.persona_id) });
     }
   } catch (caught) {
     const larvaError = isLarvaError(caught) ? caught : error("LARVA_MODEL_MAP_PROFILE_INVALID", "Model-map profile preflight failed.");
@@ -4113,6 +4198,7 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
 
   const previousProfile = activeModelMapProfile;
   const previousModel = state.piModel;
+  const previousThinking = isPiThinkingLevel(pi.getThinkingLevel?.()) ? pi.getThinkingLevel?.() as PiThinkingLevel : state.effectiveThinking;
   if (!sameProfileRetry) {
     activeModelMapProfile = profile;
     modelMapRouteGeneration += 1;
@@ -4121,7 +4207,11 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
   if (!sameProfileRetry && parentTarget !== null && parentModel !== null) {
     try {
       await setPiModel(pi, parentModel, state.envelope?.model ?? formatPiModel(parentTarget));
+      const effectiveThinking = setPiThinking(pi, parentTarget.requested_thinking);
+      if (!isPiThinkingLevel(effectiveThinking)) throw error("LARVA_MODEL_MAP_PARENT_SWITCH_FAILED", "Parent thinking route could not be verified.");
       state.piModel = parentModel;
+      state.requestedThinking = parentTarget.requested_thinking;
+      state.effectiveThinking = effectiveThinking;
     } catch {
       activeModelMapProfile = previousProfile;
       modelMapRouteGeneration -= 1;
@@ -4129,7 +4219,12 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
       if (previousModel !== null) {
         try { rollbackCertain = await pi.setModel?.(previousModel) !== false; } catch { rollbackCertain = false; }
       }
+      if (previousThinking !== null) {
+        try { pi.setThinkingLevel?.(previousThinking); } catch { rollbackCertain = false; }
+      }
       state.piModel = previousModel;
+      state.requestedThinking = previousThinking;
+      state.effectiveThinking = previousThinking;
       const message = rollbackCertain ? "Parent rejected the model-map profile switch; prior route restored." : "Parent switch failed and prior model rollback could not be confirmed.";
       return { status: "failed", profile: profileName, generation: modelMapRouteGeneration, parent: { state: "failed", persona_id: parentPersonaId, error: error("LARVA_MODEL_MAP_PARENT_SWITCH_FAILED", message) }, children: [], counts: modelMapSwitchCounts([]) };
     }
@@ -4144,15 +4239,38 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
       }
       return { task_id: record.task_id, persona_id: record.persona_id, state: "will_use_new_route", provider: target.provider, model_id: target.modelId };
     }
-    const response = await record.rpc.command(`model-map-${generation}-${index}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
-    if (isSuccessResponse(response)) {
-      record.route_generation = generation;
-      return { task_id: record.task_id, persona_id: record.persona_id, state: "switched", provider: target.provider, model_id: target.modelId };
+    const previousStateResponse = await record.rpc.command(`model-map-previous-${generation}-${index}`, { type: "get_state" }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    const previousData = isSuccessResponse(previousStateResponse) && isRecord((previousStateResponse as { data?: unknown }).data)
+      ? (previousStateResponse as { data: Record<string, unknown> }).data
+      : null;
+    const previousRouteModel = previousData !== null && isRecord(previousData.model) ? previousData.model : null;
+    const previousRouteProvider = typeof previousRouteModel?.provider === "string" ? previousRouteModel.provider : null;
+    const previousRouteModelId = typeof (previousRouteModel?.id ?? previousRouteModel?.modelId) === "string" ? String(previousRouteModel?.id ?? previousRouteModel?.modelId) : null;
+    const previousRouteThinking = previousData !== null && isPiThinkingLevel(previousData.thinkingLevel) ? previousData.thinkingLevel : null;
+    const modelResponse = await record.rpc.command(`model-map-model-${generation}-${index}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    const thinkingResponse = isSuccessResponse(modelResponse)
+      ? await record.rpc.command(`model-map-thinking-${generation}-${index}`, { type: "set_thinking_level", level: target.requested_thinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS)
+      : null;
+    if (isSuccessResponse(modelResponse) && isSuccessResponse(thinkingResponse)) {
+      record.env.LARVA_PI_CHILD_REQUESTED_THINKING = target.requested_thinking;
+      const verified = await verifyChildRoute(record, record.rpc);
+      if (verified === null) {
+        record.route_generation = generation;
+        return { task_id: record.task_id, persona_id: record.persona_id, state: "switched", provider: target.provider, model_id: target.modelId };
+      }
     }
     if (record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status)) {
       return { task_id: record.task_id, persona_id: record.persona_id, state: "ended_during_switch" };
     }
-    return childModelMapFailure(record);
+    if (previousRouteProvider !== null && previousRouteModelId !== null && previousRouteThinking !== null) {
+      const restoredModel = await record.rpc.command(`model-map-rollback-model-${generation}-${index}`, { type: "set_model", provider: previousRouteProvider, modelId: previousRouteModelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+      const restoredThinking = await record.rpc.command(`model-map-rollback-thinking-${generation}-${index}`, { type: "set_thinking_level", level: previousRouteThinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+      const restoredState = await record.rpc.command(`model-map-rollback-state-${generation}-${index}`, { type: "get_state" }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+      void restoredModel;
+      void restoredThinking;
+      void restoredState;
+    }
+    return childModelMapFailure(record, "Active child rejected the model/thinking route; paired rollback was attempted.");
   });
   const counts = modelMapSwitchCounts(children);
   return {
@@ -4481,6 +4599,7 @@ type CommitPersonaOptions = {
   toolBaseline?: (pi: PiApi) => Promise<string[]>;
   sessionCommitSource?: ActivePersonaCommitSource | null;
   applyModel?: boolean;
+  applyThinking?: boolean;
   preselectedModel?: ParsedModel;
 };
 
@@ -4493,7 +4612,8 @@ async function commitPersonaWithOptions(
   const toolBaseline = options.toolBaseline ?? enumerateTools;
   const sessionCommitSource = Object.prototype.hasOwnProperty.call(options, "sessionCommitSource") ? options.sessionCommitSource ?? null : "api";
   const applyModel = options.applyModel ?? true;
-  return commitPersonaInternal(personaId, ctx, pi, toolBaseline, sessionCommitSource, applyModel, options.preselectedModel ?? null);
+  const applyThinking = options.applyThinking ?? true;
+  return commitPersonaInternal(personaId, ctx, pi, toolBaseline, sessionCommitSource, applyModel, applyThinking, options.preselectedModel ?? null);
 }
 
 async function commitPersonaInternal(
@@ -4503,16 +4623,21 @@ async function commitPersonaInternal(
   toolBaseline: (pi: PiApi) => Promise<string[]>,
   sessionCommitSource: ActivePersonaCommitSource | null,
   applyModel: boolean,
+  applyThinking: boolean,
   preselectedModel: ParsedModel | null,
 ): Promise<PersonaSwitchResult> {
   const previousEnvelope = state.envelope;
   const previousActiveTools = new Set(state.activeTools);
   const previousPiModel = state.piModel;
+  const previousRequestedThinking = state.requestedThinking;
+  const previousEffectiveThinking = isPiThinkingLevel(pi.getThinkingLevel?.()) ? pi.getThinkingLevel?.() as PiThinkingLevel : state.effectiveThinking;
   let rollbackTools: string[] | null = null;
   let modelUpdated = false;
+  let thinkingUpdated = false;
   let activeToolsUpdated = false;
   try {
     const spec = await resolvePersona(personaId, ctx);
+    const requestedThinking = applyThinking ? await requestedThinkingForPersona(currentEnv(ctx), spec.id) : null;
     const model = applyModel
       ? await validateModel(spec, ctx)
       : preselectedModel === null
@@ -4527,6 +4652,8 @@ async function commitPersonaInternal(
       await setPiModel(pi, model, spec.model);
       modelUpdated = true;
     }
+    const effectiveThinking = requestedThinking === null ? previousEffectiveThinking : setPiThinking(pi, requestedThinking);
+    thinkingUpdated = requestedThinking !== null;
     let applied: boolean | void | undefined;
     try {
       applied = await pi.setActiveTools?.(activeTools);
@@ -4548,6 +4675,8 @@ async function commitPersonaInternal(
     state.envelope = envelope;
     state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
     if (model !== null) state.piModel = model;
+    if (requestedThinking !== null) state.requestedThinking = requestedThinking;
+    state.effectiveThinking = effectiveThinking;
     if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
     rememberSessionInitialized(ctx);
     await setStatus(ctx);
@@ -4559,9 +4688,14 @@ async function commitPersonaInternal(
     if (modelUpdated && previousPiModel !== null) {
       try { await pi.setModel?.(previousPiModel); } catch { /* fail-safe: do not report a false active persona after model rollback failure */ }
     }
+    if (thinkingUpdated && previousEffectiveThinking !== null) {
+      try { pi.setThinkingLevel?.(previousEffectiveThinking); } catch { /* preserve prior route best-effort */ }
+    }
     state.envelope = previousEnvelope; // previousEnvelope rollback preserves user-visible persona state.
     state.activeTools = previousActiveTools;
     state.piModel = previousPiModel;
+    state.requestedThinking = previousRequestedThinking;
+    state.effectiveThinking = previousEffectiveThinking;
     const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
     return { ok: false, error: larvaError };
   }
@@ -5153,6 +5287,13 @@ async function restoreLeaseOriginPiModel(lease: PersonaLease, pi: PiApi): Promis
   return null;
 }
 
+function restoreLeaseOriginPiThinking(pi: PiApi): void {
+  if (activePersonaLeaseOriginPiThinking === null) return;
+  pi.setThinkingLevel?.(activePersonaLeaseOriginPiThinking);
+  state.requestedThinking = activePersonaLeaseOriginPiThinking;
+  state.effectiveThinking = effectiveThinkingFromPi(pi, activePersonaLeaseOriginPiThinking);
+}
+
 async function failPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", lease: PersonaLease, cause: LarvaError): Promise<void> {
   const restoreError = error("LARVA_PERSONA_RESTORE_FAILED", `Failed to restore persona ${lease.originPersonaId}: ${cause.message}`);
   restoreFailureState = {
@@ -5172,6 +5313,7 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
   if (lease.originPersonaId === null) {
     activePersonaLease = null;
     activePersonaLeaseOriginPiModel = null;
+    activePersonaLeaseOriginPiThinking = null;
     appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: false, reason: "no origin persona" });
     return;
   }
@@ -5185,8 +5327,10 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
     await failPersonaLeaseRestore(ctx, pi, terminal, lease, modelRestoreError);
     return;
   }
+  restoreLeaseOriginPiThinking(pi);
   activePersonaLease = null;
   activePersonaLeaseOriginPiModel = null;
+  activePersonaLeaseOriginPiThinking = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;
   lastPersonaLeasePi = null;
@@ -5743,6 +5887,11 @@ async function runPersonaInvocationChild(record: PersonaInvocationActiveRequest)
       await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, personaInvocationError("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", canonical.message)));
       return;
     }
+    const route = await observeVerifiedChildRoute(record.env, record.persona_id, rpc);
+    if (isLarvaError(route)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, personaInvocationError("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", route.message)));
+      return;
+    }
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: record.prompt }, personaInvocationRemainingMs(record)); // Prompt trim-check sends the original prompt unchanged.
     if (record.terminal) return;
     if (!isSuccessResponse(prompted)) {
@@ -6225,6 +6374,9 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     route_generation: activeModelMapProfile === null ? 0 : modelMapRouteGeneration,
     last_progress_at_ms: performance.now(),
     stall_timer: null,
+    startup_model: null,
+    requested_thinking: null,
+    startup_thinking: null,
   };
   activeSubagentRuns.set(record.private_key, record);
   return record;
@@ -6474,10 +6626,27 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
   setSubagentCallbackDelivery(record, "delivered");
 }
 
+function isChildStdoutClosedBeforeAgentEnd(result: LarvaSubagentResult | LarvaError | null): boolean {
+  if (result === null) return false;
+  const larvaError = isLarvaError(result) ? result : result.status === "failed" ? result.error : null;
+  return larvaError?.code === "LARVA_CHILD_PROTOCOL_FAILED" && larvaError.message === "Child stdout closed before agent_end.";
+}
+
 function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentResult, options: { suppressCallback?: boolean } = {}): SubagentTerminalSnapshot {
   if (record.terminal_snapshot !== null) return record.terminal_snapshot;
   clearSubagentStallTimer(record);
-  const terminal = result.status === "accepted" ? failed(result.task_id, result.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Accepted run cannot be terminalized as accepted.")) : result;
+  const cancellationOwnsStdoutClose = record.cancellation_source !== null && isChildStdoutClosedBeforeAgentEnd(result);
+  const terminal = cancellationOwnsStdoutClose
+    ? cancelled(
+      result.task_id,
+      result.persona_id,
+      record.cancellation_source === "watchdog"
+        ? record.cancellation_reason ?? subagentWatchdogCancellationReason(SUBAGENT_NO_PROGRESS_DEFAULT_TIMEOUT_MS)
+        : undefined,
+    )
+    : result.status === "accepted"
+      ? failed(result.task_id, result.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Accepted run cannot be terminalized as accepted."))
+      : result;
   const completedAt = timestampNow();
   record.status = terminal.status;
   record.phase = terminal.status;
@@ -6693,6 +6862,9 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
     timeline_events: boundedSubagentTimelineEvents(appendSubagentTimelineEvent({ timeline_events: preservedWithSessionExcerpts?.timeline_events } as SubagentPresentationLogEntry, { kind: "terminal", status: result.status })),
     session_assistant_message_ids: preservedWithSessionExcerpts?.session_assistant_message_ids,
     active_tool_state: null,
+    startup_model: preservedWithSessionExcerpts?.startup_model,
+    requested_thinking: preservedWithSessionExcerpts?.requested_thinking,
+    startup_thinking: preservedWithSessionExcerpts?.startup_thinking,
   };
   appendSubagentPresentationLog(statusEntry);
 }
@@ -7214,7 +7386,12 @@ function presentationStatusToken(status: SubagentPresentationStatus): string {
 function presentationRow(entry: SubagentPresentationLogEntry): string {
   const cursorSafeStarted = localSubagentTimeLabel(entry.started_at ?? entry.updated_at);
   const status = presentationStatusToken(entry.status).padEnd(6);
-  const persona = boundedPresentationPreview(entry.persona_id, 18).padEnd(18);
+  const thinking = entry.requested_thinking === undefined || entry.startup_thinking === undefined
+    ? ""
+    : ` think=${entry.requested_thinking === entry.startup_thinking ? entry.startup_thinking : `${entry.requested_thinking}->${entry.startup_thinking}`}`;
+  const personaWidth = 40;
+  const personaBudget = Math.max(1, personaWidth - Array.from(thinking).length);
+  const persona = `${boundedPresentationPreview(entry.persona_id, personaBudget)}${thinking}`.padEnd(personaWidth);
   const shortTask = shortSubagentTaskLabel(entry.task_id).padEnd(12);
   const progress = boundedPresentationPreview(entry.phase ?? entry.status, 22);
   const taskPreview = entry.task_preview ? ` │ ${boundedPresentationPreview(entry.task_preview, 72)}` : "";
@@ -7324,6 +7501,9 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     }
     lines.push("  [Metadata]");
     lines.push(`  mode: ${entry.mode ?? "unknown"}`);
+    lines.push(`  startup_model: ${entry.startup_model ?? "not observed"}`);
+    lines.push(`  requested_thinking: ${entry.requested_thinking ?? "not observed"}`);
+    lines.push(`  startup_thinking: ${entry.startup_thinking ?? "not observed"}`);
     lines.push(`  sequence: ${entry.sequence}`);
     lines.push(`  phase: ${entry.phase ?? entry.status}`);
     if (entry.task_preview) lines.push(`  task_preview: ${entry.task_preview}`);
@@ -7714,6 +7894,77 @@ async function validateFreshChildSessionFile(sessionFile: string, root: string):
   return sessionPath;
 }
 
+const CHILD_CAPSULE_STALE_MS = 24 * 60 * 60 * 1_000;
+const CHILD_CAPSULE_STALE_SCAN_LIMIT = 8;
+
+function childCapsuleRuntimeRoot(env: RuntimeEnv): string {
+  return join(homeDir(env), ".pi", "larva", "runtime");
+}
+
+function childCapsuleBaseAgentDir(env: RuntimeEnv): string {
+  return resolve(env.LARVA_PI_BASE_AGENT_DIR || env.PI_CODING_AGENT_DIR || join(homeDir(env), ".pi", "agent"));
+}
+
+function removeChildCapsuleRoot(env: RuntimeEnv): void {
+  const capsuleRoot = env.LARVA_PI_CAPSULE_ROOT;
+  if (!capsuleRoot) return;
+  const runtimeRoot = childCapsuleRuntimeRoot(env);
+  try {
+    if (dirname(capsuleRoot) !== runtimeRoot || lstatSync(capsuleRoot).isSymbolicLink()) return;
+    rmSync(capsuleRoot, { recursive: true, force: true });
+    delete env.LARVA_PI_CAPSULE_ROOT;
+  } catch { /* bounded cleanup diagnostic remains in child RPC trace */ }
+}
+
+function cleanupStaleChildCapsules(env: RuntimeEnv): void {
+  const runtimeRoot = childCapsuleRuntimeRoot(env);
+  let entries: string[];
+  try { entries = readdirSync(runtimeRoot).slice(0, CHILD_CAPSULE_STALE_SCAN_LIMIT); } catch { return; }
+  const cutoff = Date.now() - CHILD_CAPSULE_STALE_MS;
+  for (const name of entries) {
+    const candidate = join(runtimeRoot, name);
+    try {
+      const info = lstatSync(candidate);
+      if (info.isSymbolicLink() || !info.isDirectory() || info.mtimeMs >= cutoff) continue;
+      rmSync(candidate, { recursive: true, force: true });
+    } catch { /* stale cleanup is best effort and never follows links */ }
+  }
+}
+
+function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
+  const runtimeRoot = childCapsuleRuntimeRoot(env);
+  const baseAgent = childCapsuleBaseAgentDir(env);
+  const capsuleRoot = join(runtimeRoot, `child-${process.pid}-${randomBytes(8).toString("hex")}`);
+  const capsuleAgent = join(capsuleRoot, "agent");
+  try {
+    mkdirSync(runtimeRoot, { recursive: true, mode: 0o700 });
+    chmodSync(runtimeRoot, 0o700);
+    cleanupStaleChildCapsules(env);
+    mkdirSync(capsuleAgent, { recursive: true, mode: 0o700 });
+    chmodSync(capsuleRoot, 0o700);
+    chmodSync(capsuleAgent, 0o700);
+    if (existsSync(baseAgent) && statSync(baseAgent).isDirectory()) {
+      for (const name of readdirSync(baseAgent)) {
+        if (name === "settings.json") continue;
+        const source = join(baseAgent, name);
+        symlinkSync(realpathSync(source), join(capsuleAgent, name), statSync(source).isDirectory() ? "dir" : "file");
+      }
+    }
+    const sourceSettings = join(baseAgent, "settings.json");
+    const privateSettings = join(capsuleAgent, "settings.json");
+    if (existsSync(sourceSettings) && statSync(sourceSettings).isFile()) copyFileSync(sourceSettings, privateSettings);
+    else writeFileSync(privateSettings, "{}\n", { encoding: "utf8", mode: 0o600 });
+    chmodSync(privateSettings, 0o600);
+    env.LARVA_PI_BASE_AGENT_DIR = baseAgent;
+    env.LARVA_PI_CAPSULE_ROOT = capsuleRoot;
+    env.PI_CODING_AGENT_DIR = capsuleAgent;
+    return capsuleAgent;
+  } catch {
+    try { rmSync(capsuleRoot, { recursive: true, force: true }); } catch { /* no base target removal */ }
+    return error("LARVA_CHILD_START_FAILED", "Private child Pi agent-directory capsule could not be created.");
+  }
+}
+
 function isLarvaPiLaunched(env: RuntimeEnv): boolean {
   return env.LARVA_PI_LAUNCHED === "1";
 }
@@ -7728,22 +7979,33 @@ function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[
   return [realBin, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc"];
 }
 
-async function childModelArgument(env: RuntimeEnv, personaId: string): Promise<string | LarvaError> {
+async function childModelArgument(env: RuntimeEnv, personaId: string): Promise<RuntimeRoute | LarvaError> {
   try {
     const spec = await resolvePersona(personaId, { env });
-    return formatPiModel(await resolvePiModel(spec, env));
+    const model = await resolvePiModel(spec, env);
+    const requested_thinking = await requestedThinkingForPersona(env, personaId);
+    return { ...model, requested_thinking };
   } catch (caught) {
-    return isLarvaError(caught) ? caught : error("LARVA_MODEL_UNAVAILABLE", `Unable to resolve child model for ${personaId}`);
+    return isLarvaError(caught) ? caught : error("LARVA_MODEL_UNAVAILABLE", `Unable to resolve child route for ${personaId}`);
   }
+}
+
+function childThinkingArgument(route: RuntimeRoute): PiThinkingLevel {
+  return route.requested_thinking;
 }
 
 async function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = []): Promise<ChildProcessWithoutNullStreams | LarvaError> {
   const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;
-  const modelArgument = await childModelArgument(env, personaId);
-  if (isLarvaError(modelArgument)) return modelArgument;
+  const route = await childModelArgument(env, personaId);
+  if (isLarvaError(route)) return route;
+  const capsule = createChildPiCapsule(env);
+  if (isLarvaError(capsule)) return capsule;
+  const modelArgument = formatPiModel(route);
+  const thinkingArgument = childThinkingArgument(route);
+  env.LARVA_PI_CHILD_REQUESTED_THINKING = thinkingArgument;
   const [realBin, ...tail] = prefix;
-  const args = [...tail, "--model", modelArgument, "--session-dir", root];
+  const args = [...tail, "--model", modelArgument, "--thinking", thinkingArgument, "--session-dir", root];
   try {
     const child = spawn(realBin, args, {
       env: {
@@ -7762,6 +8024,7 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
     return child;
   } catch {
     void traceChildRpc(env, "child_spawn_error", { command: realBin, args, root, persona_id: personaId });
+    removeChildCapsuleRoot(env);
     return error("LARVA_CHILD_START_FAILED", "Child Pi process could not be started.");
   }
 }
@@ -8047,6 +8310,53 @@ function sessionFileFromState(value: unknown): string | LarvaError {
   return sessionFile;
 }
 
+function captureSubagentStartupRoute(record: ActiveSubagentRun, startupModel: string, requestedThinking: PiThinkingLevel, startupThinking: PiThinkingLevel): void {
+  if (record.startup_model !== null || record.requested_thinking !== null || record.startup_thinking !== null) return;
+  record.startup_model = startupModel;
+  record.requested_thinking = requestedThinking;
+  record.startup_thinking = startupThinking;
+  for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
+    const entry = retainedSubagentPresentationLog[index];
+    if ((record.task_id !== null && entry.task_id === record.task_id) || (record.presentation_call_id !== undefined && entry.call_id === record.presentation_call_id)) {
+      retainedSubagentPresentationLog[index] = touchSubagentEntryTimestamp({ ...entry, startup_model: startupModel, requested_thinking: requestedThinking, startup_thinking: startupThinking });
+      persistSubagentPresentationCache();
+      notifySubagentPresentationOverlay();
+      return;
+    }
+  }
+}
+
+type ObservedChildRoute = { startup_model: string; requested_thinking: PiThinkingLevel; startup_thinking: PiThinkingLevel };
+
+async function observeVerifiedChildRoute(env: RuntimeEnv, personaId: string, rpc: RpcClient): Promise<ObservedChildRoute | LarvaError> {
+  let target: ParsedModel;
+  try {
+    const spec = await resolvePersona(personaId, { env });
+    target = await resolvePiModel(spec, env);
+  } catch {
+    return error("LARVA_CHILD_PROTOCOL_FAILED", "Child route could not be resolved for verification.");
+  }
+  const requestedThinking = env.LARVA_PI_CHILD_REQUESTED_THINKING;
+  if (!isPiThinkingLevel(requestedThinking)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child requested thinking was unavailable for verification.");
+  const observed = await rpc.command(`route-state-${modelMapRouteGeneration}`, { type: "get_state" });
+  if (!isSuccessResponse(observed) || !isRecord((observed as { data?: unknown }).data)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state route verification failed.");
+  const data = (observed as { data: Record<string, unknown> }).data;
+  const model = isRecord(data.model) ? data.model : null;
+  const provider = model?.provider;
+  const modelId = model?.id ?? model?.modelId;
+  const effectiveThinking = data.thinkingLevel;
+  if (provider !== target.provider || modelId !== target.modelId) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child model did not match the resolved route before prompt.");
+  if (!isPiThinkingLevel(effectiveThinking)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state omitted a valid thinkingLevel.");
+  return { startup_model: formatPiModel(target), requested_thinking: requestedThinking, startup_thinking: effectiveThinking };
+}
+
+async function verifyChildRoute(record: ActiveSubagentRun, rpc: RpcClient): Promise<LarvaError | null> {
+  const observed = await observeVerifiedChildRoute(record.env, record.persona_id, rpc);
+  if (isLarvaError(observed)) return observed;
+  captureSubagentStartupRoute(record, observed.startup_model, observed.requested_thinking, observed.startup_thinking);
+  return null;
+}
+
 function finalText(value: unknown): string | LarvaError {
   if (isLarvaError(value)) return value;
   if (!isSuccessResponse(value)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child final text request failed.");
@@ -8101,6 +8411,7 @@ async function cleanupChild(child: ChildProcessWithoutNullStreams, env: RuntimeE
   try { child.stdin.destroy(); } catch { /* ignore stream cleanup errors */ }
   try { child.stdout.destroy(); } catch { /* ignore stream cleanup errors */ }
   try { child.stderr.destroy(); } catch { /* ignore stream cleanup errors */ }
+  removeChildCapsuleRoot(env);
   void traceChildRpc(env, "cleanup_end", { pid: child.pid ?? null, running: childStillRunning(child), exitCode: child.exitCode, signalCode: child.signalCode });
 }
 
@@ -8189,6 +8500,9 @@ async function collectAcceptedSubagentTerminalState(record: ActiveSubagentRun, r
   try {
     const ended = await rpc.waitForAgentEnd();
     if (record.terminal_snapshot !== null) return;
+    if (isChildStdoutClosedBeforeAgentEnd(ended) && record.cancellation_source === null) {
+      await new Promise((resolveWait) => setTimeout(resolveWait, 25));
+    }
     // Selected exact cancellation can race with either child stdout closing
     // before agent_end or Pi emitting an agent_end frame whose assistant content
     // is intentionally empty because the turn was aborted. Once cancellation is
@@ -8287,6 +8601,8 @@ async function runChildSequence(
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
     const routeFenceError = activeModelMapProfile === null ? null : await fenceSubagentRoute(activeRecord, rpc);
     if (routeFenceError !== null) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, routeFenceError));
+    const routeVerificationError = await verifyChildRoute(activeRecord, rpc);
+    if (routeVerificationError !== null) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, routeVerificationError));
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }); // resume sequence: switch_session -> route fence -> prompt -> get_last_assistant_text
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
     if (!isSuccessResponse(prompted)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")));
@@ -8436,6 +8752,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       toolBaseline: startupToolBaseline,
       sessionCommitSource: null,
       applyModel: cliSelectedModel === null && !modelChangedAfterPersona,
+      applyThinking: false,
       ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
     });
     if (!restored.ok) {
@@ -8514,6 +8831,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   agentPersonaSwitchToolsRegistered = false;
   activePersonaLease = null;
   activePersonaLeaseOriginPiModel = null;
+  activePersonaLeaseOriginPiThinking = null;
   pendingPersonaSwitchContinuation = null;
   restoreFailureState = null;
   lastPersonaLeaseRuntimeCtx = null;

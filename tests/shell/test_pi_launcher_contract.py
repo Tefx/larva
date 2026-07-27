@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -142,6 +143,80 @@ def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
     assert child_env["LARVA_PI_INTERACTIVE_TUI"] == "1"
     assert "LARVA_PI_TOOL_POLICY_FILE" not in child_env
     assert child_env["LARVA_PI_LAUNCHED"] == "1"
+
+
+def test_launcher_private_capsule_prevents_shared_settings_leak(
+    mock_shutil_which, mock_subprocess_run, tmp_path, monkeypatch
+):
+    """Larva-launched Pi must write only a private settings capsule."""
+    import io
+
+    base_agent = tmp_path / ".pi" / "agent"
+    base_agent.mkdir(parents=True)
+    base_settings = base_agent / "settings.json"
+    original = b'{"model":"shared/base","thinkingLevel":"medium"}\n'
+    base_settings.write_bytes(original)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("PI_CODING_AGENT_DIR", str(base_agent))
+    runtime_root = tmp_path / ".pi" / "larva" / "runtime"
+    stale = runtime_root / "stale-run"
+    stale.mkdir(parents=True)
+    os.utime(stale, (0, 0))
+    outside = tmp_path / "outside-preserved"
+    outside.mkdir()
+    (runtime_root / "stale-link").symlink_to(outside, target_is_directory=True)
+
+    observed: dict[str, object] = {}
+
+    def inspect_capsule(*_args, **kwargs):
+        child_env = kwargs["env"]
+        capsule = Path(child_env["PI_CODING_AGENT_DIR"])
+        observed.update(
+            base=child_env["LARVA_PI_BASE_AGENT_DIR"],
+            capsule=capsule,
+            capsule_mode=capsule.stat().st_mode & 0o777,
+            settings=(capsule / "settings.json").read_bytes(),
+            settings_mode=(capsule / "settings.json").stat().st_mode & 0o777,
+        )
+        return MagicMock(returncode=0, stdout=b"", stderr=b"")
+
+    mock_subprocess_run.side_effect = inspect_capsule
+    code = run_cli(
+        ["pi", "--persona", "known", "--", "--version"],
+        facade=_make_facade(),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+
+    assert code == 0
+    capsule = observed["capsule"]
+    assert observed["base"] == str(base_agent)
+    assert capsule != base_agent
+    assert observed["capsule_mode"] == 0o700
+    assert observed["settings"] == original
+    assert observed["settings_mode"] == 0o600
+    assert not capsule.exists()
+    assert not stale.exists()
+    assert outside.is_dir()
+    assert (runtime_root / "stale-link").is_symlink()
+    assert base_settings.read_bytes() == original
+
+    failed_capsules: list[Path] = []
+
+    def fail_after_start(*_args, **kwargs):
+        failed_capsules.append(Path(kwargs["env"]["PI_CODING_AGENT_DIR"]).parent)
+        return MagicMock(returncode=7, stdout=b"", stderr=b"startup failed")
+
+    mock_subprocess_run.side_effect = fail_after_start
+    failed_code = run_cli(
+        ["pi", "--persona", "known"],
+        facade=_make_facade(),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+    assert failed_code == 7
+    assert failed_capsules and all(not path.exists() for path in failed_capsules)
+    assert base_settings.read_bytes() == original
 
 
 def test_launcher_absent_policy_env_ignores_legacy_tool_policy_path(

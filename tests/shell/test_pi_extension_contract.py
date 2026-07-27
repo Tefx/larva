@@ -135,6 +135,95 @@ def _runtime_extension_copy(tmp_path: Path, appended_exports: str) -> Path:
     return extension
 
 
+def test_thinking_policy_strict_runtime_contract(tmp_path: Path) -> None:
+    """Thinking policy accepts only the exact schema and resolves persona precedence."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(
+        tmp_path,
+        """
+        export { loadThinkingPolicy, requestedThinkingForPersona };
+        """,
+    )
+
+    payload = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(extension.as_uri())});
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+        const tmp = {json.dumps(str(tmp_path))};
+        const failures = [];
+        const record = (condition, label, detail = null) => {{
+          if (!condition) failures.push({{ label, detail }});
+        }};
+        const writePolicy = (name, value) => {{
+          const file = path.join(tmp, `${{name}}.json`);
+          fs.writeFileSync(file, JSON.stringify(value), "utf8");
+          return file;
+        }};
+        const expectInvalid = async (name, env) => {{
+          try {{
+            await mod.loadThinkingPolicy(env);
+            failures.push({{ label: `${{name}} should fail` }});
+          }} catch (caught) {{
+            record(caught?.code === "LARVA_POLICY_INVALID", `${{name}} error code`, caught);
+          }}
+        }};
+
+        const missingHome = path.join(tmp, "missing-home");
+        const missing = await mod.loadThinkingPolicy({{ HOME: missingHome }});
+        record(missing.schema_version === 1, "missing policy schema", missing);
+        record(missing.default === "medium", "missing policy built-in default", missing);
+        record(Object.keys(missing.personas).length === 0, "missing policy persona map", missing);
+        record(!fs.existsSync(path.join(missingHome, ".pi")), "missing policy read must not create files");
+
+        const validPath = writePolicy("valid", {{
+          schema_version: 1,
+          default: "low",
+          personas: {{ "software-architect": "xhigh", "python-executor": "minimal" }},
+        }});
+        const validEnv = {{ LARVA_PI_THINKING_POLICY_FILE: validPath }};
+        record(await mod.requestedThinkingForPersona(validEnv, "software-architect") === "xhigh", "exact persona override");
+        record(await mod.requestedThinkingForPersona(validEnv, "unknown-persona") === "low", "unknown persona default");
+
+        const allowed = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+        for (const level of allowed) {{
+          const file = writePolicy(`allowed-${{level}}`, {{ schema_version: 1, default: level, personas: {{}} }});
+          const loaded = await mod.loadThinkingPolicy({{ LARVA_PI_THINKING_POLICY_FILE: file }});
+          record(loaded.default === level, `allowed level ${{level}}`, loaded);
+        }}
+
+        const invalidValues = [
+          ["null-root", null],
+          ["array-root", []],
+          ["unknown-key", {{ schema_version: 1, default: "medium", personas: {{}}, extra: true }}],
+          ["schema-version", {{ schema_version: 2, default: "medium", personas: {{}} }}],
+          ["unknown-level", {{ schema_version: 1, default: "ultra", personas: {{}} }}],
+          ["personas-array", {{ schema_version: 1, default: "medium", personas: [] }}],
+          ["persona-level", {{ schema_version: 1, default: "medium", personas: {{ "python-executor": 1 }} }}],
+          ["persona-id", {{ schema_version: 1, default: "medium", personas: {{ "Python Executor": "low" }} }}],
+        ];
+        for (const [name, value] of invalidValues) {{
+          const file = writePolicy(name, value);
+          await expectInvalid(name, {{ LARVA_PI_THINKING_POLICY_FILE: file }});
+        }}
+        const invalidJson = path.join(tmp, "invalid-json.json");
+        fs.writeFileSync(invalidJson, "{{invalid", "utf8");
+        await expectInvalid("invalid-json", {{ LARVA_PI_THINKING_POLICY_FILE: invalidJson }});
+        await expectInvalid("relative-override", {{ LARVA_PI_THINKING_POLICY_FILE: "relative.json" }});
+
+        if (failures.length > 0) {{
+          console.error(JSON.stringify(failures, null, 2));
+          process.exit(1);
+        }}
+        console.log(JSON.stringify({{ strict_cases: invalidValues.length + 2, allowed_levels: allowed.length }}));
+        """,
+        timeout=8,
+    )
+
+    assert payload == {"strict_cases": 10, "allowed_levels": 7}
+
+
 def _run_selector_ui_harness() -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
@@ -2262,6 +2351,8 @@ def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_ke
         "rpc",
         "--model",
         "provider/model",
+        "--thinking",
+        "medium",
         "--session-dir",
         str(tmp_path),
     ]
@@ -4292,7 +4383,7 @@ def test_async_subagent_lifecycle_cleanup_aborts_via_child_rpc_stales_callbacks_
             const rl = createInterface({{ input: process.stdin }});
             rl.on("line", async (line) => {{
               const message = JSON.parse(line);
-              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); await log({{ event: "get_state" }}); send({{ id: message.id, success: true, data: {{ sessionFile }} }}); }}
+              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); await log({{ event: "get_state" }}); send({{ id: message.id, success: true, data: {{ sessionFile, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
               else if (message.type === "prompt") {{ await log({{ event: "prompt" }}); send({{ id: message.id, success: true, data: {{}} }}); }}
               else if (message.type === "abort") {{ await log({{ event: "abort_rpc" }}); send({{ id: message.id, success: true, data: {{}} }}); }}
               else if (message.type === "get_last_assistant_text") {{ await log({{ event: "last_text" }}); send({{ id: message.id, success: true, data: {{ text: "SHOULD_NOT_CALLBACK" }} }}); }}
@@ -4432,7 +4523,7 @@ def test_async_subagent_stale_parent_session_identity_suppresses_late_callback(t
             const rl = createInterface({{ input: process.stdin }});
             rl.on("line", async (line) => {{
               const message = JSON.parse(line);
-              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); send({{ id: message.id, success: true, data: {{ sessionFile }} }}); }}
+              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); send({{ id: message.id, success: true, data: {{ sessionFile, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
               else if (message.type === "prompt") {{ send({{ id: message.id, success: true, data: {{}} }}); setTimeout(() => send({{ type: "agent_end" }}), 80); }}
               else if (message.type === "get_last_assistant_text") {{ send({{ id: message.id, success: true, data: {{ text: "LATE_STALE_FINAL" }} }}); setTimeout(() => process.exit(0), 5); }}
               else if (message.type === "abort") {{ send({{ id: message.id, success: true }}); process.exit(0); }}

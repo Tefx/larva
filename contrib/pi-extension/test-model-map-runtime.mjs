@@ -255,6 +255,8 @@ if (choice === "all") {
   const configDir = join(profileHome, ".pi", "larva");
   await mkdir(configDir, { recursive: true });
   await writeFile(join(configDir, "model-map.blue.json"), JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v1" } }, prefix_rules: [] }), "utf8");
+  const thinkingPolicy = join(configDir, "thinking-policy.json");
+  await writeFile(thinkingPolicy, JSON.stringify({ schema_version: 1, default: "low", personas: { parent: "low" } }), "utf8");
   const externalGreenMap = join(profileHome, "controlled-external-green.json");
   const lexicalGreenMap = join(configDir, "model-map.green.json");
   await writeFile(externalGreenMap, JSON.stringify({ models: { "logical/parent": { provider: "neutral", model_id: "parent-v2" } }, prefix_rules: [] }), "utf8");
@@ -263,12 +265,15 @@ if (choice === "all") {
   const mod = await importFresh("profile-runtime");
   const commands = {};
   const setModels = [];
+  const setThinkings = [];
+  let thinkingLevel = "medium";
   const env = { HOME: profileHome, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), PERSONA_MODELS: JSON.stringify({ parent: "logical/parent" }), LARVA_PI_LAUNCHED: "0", LARVA_PI_INITIAL_PERSONA_ID: "parent" };
   const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined } };
   let rejectParentV2 = false;
-  const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return !(rejectParentV2 && model.modelId === "parent-v2"); }, registerCommand: (name, command) => { commands[name] = command; }, registerTool: () => undefined, on: () => undefined };
+  const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return !(rejectParentV2 && model.modelId === "parent-v2"); }, getThinkingLevel: () => thinkingLevel, setThinkingLevel: (level) => { setThinkings.push(level); thinkingLevel = level; }, registerCommand: (name, command) => { commands[name] = command; }, registerTool: () => undefined, on: () => undefined };
   await mod.initializeExtension(ctx, pi);
   const blue = await commands["larva-model-map"].handler("blue", ctx);
+  await writeFile(thinkingPolicy, JSON.stringify({ schema_version: 1, default: "high", personas: { parent: "high" } }), "utf8");
   rejectParentV2 = true;
   const rejected = await commands["larva-model-map"].handler("green", ctx);
   const restored = await commands["larva-model-map"].handler("status", ctx);
@@ -290,7 +295,10 @@ if (choice === "all") {
   assert.notEqual(status.path, externalGreenMap);
   assert.equal(JSON.stringify(status).includes(externalGreenMap), false);
   assert.deepEqual(setModels.at(-1), { provider: "neutral", modelId: "parent-v2" });
-  console.log("profile runtime external-symlink switch/lexical-status/parent rollback PASS", JSON.stringify({ blue, rejected, restored, switched, status, lexicalGreenMap }));
+  assert.equal(setThinkings.includes("low"), true);
+  assert.equal(setThinkings.at(-1), "high");
+  assert.equal(thinkingLevel, "high");
+  console.log("profile runtime model/thinking switch/lexical-status/paired rollback PASS", JSON.stringify({ blue, rejected, restored, switched, status, lexicalGreenMap, setThinkings }));
   console.log("model-map runtime: PASS");
 } else if (cases[choice]) {
   await cases[choice]();

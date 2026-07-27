@@ -83,6 +83,52 @@ Cancellation, provider/startup failure, normal completion, and concurrent childr
 using different models must leave shared settings and the parent persona/model
 unchanged.
 
+### Child thinking and settings isolation
+
+Every new or resumed child resolves the requested persona's adapter-local
+thinking policy independently. The policy lives at
+`$HOME/.pi/larva/thinking-policy.json` or the absolute
+`LARVA_PI_THINKING_POLICY_FILE` override. Missing policy selects `medium`.
+Existing invalid policy fails the invocation with `LARVA_POLICY_INVALID` before
+prompt. Levels are exactly `off|minimal|low|medium|high|xhigh|max`; policy keys
+are exact persona ids and do not extend PersonaSpec.
+
+The child process receives both request-scoped CLI values:
+
+```text
+--model <provider>/<model-id> --thinking <requested-level>
+```
+
+It never inherits the parent session's current thinking level. Resume resolves
+the current persona policy again. After initial `get_state` or `switch_session`
+and the active model-map generation fence, the parent requires another successful
+`get_state` whose model matches the resolved route and whose `thinkingLevel` is a
+valid Pi level. Pi capability clamping is valid; Larva retains the requested and
+RPC-observed effective levels. Missing/malformed thinking state or model mismatch
+fails before prompt.
+
+Parent and child Pi processes use separate private
+`$HOME/.pi/larva/runtime/<run-id>/agent` capsules. `settings.json` is copied with
+mode `0600`, capsule directories use `0700`, and non-settings resources refer to
+the base Pi agent directory recorded in `LARVA_PI_BASE_AGENT_DIR`. Cleanup on
+completion, cancellation, and startup failure removes only the capsule root and
+never follows links or merges settings into the base. This isolation allows
+`pi.setModel()` and `pi.setThinkingLevel()` inside one process without changing
+another process's settings.
+
+The process-local model-map profile generation covers both model and thinking.
+A route transition captures both prior values, applies both target values,
+verifies state, and attempts paired rollback on failure. The existing serialized
+switch tail, bounded child fan-out, starting-child fence, partial outcome, and
+in-flight-old/next-prompt-new behavior remain unchanged.
+
+Presentation entries may retain bounded immutable `startup_model`,
+`requested_thinking`, and RPC-observed `startup_thinking`. Selector rows show the
+effective value or a requested-to-effective clamp, and Metadata labels all three.
+These fields are view-only cache metadata; deterministic status/events/wait/select
+and cancellation continue to use `activeSubagentRuns` and never presentation
+cache state. `thinking hidden` remains a content-visibility marker.
+
 ### Public subagent handle
 
 Expose only `task_id` as the public handle.

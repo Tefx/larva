@@ -230,6 +230,36 @@ see the new agent list. See `contrib/opencode-plugin/README.md` for current
 behavior, target refresh semantics, and failure handling.
 
 ## Pi Coding Agent integration
+### Thinking-level and settings isolation
+Child route verification requires RPC `get_state.model` plus a valid `get_state.thinkingLevel` before the prompt.
+
+
+`larva pi` gives the parent Pi process a private
+`$HOME/.pi/larva/runtime/<run-id>/agent` capsule. Each child Pi receives a
+separate capsule. Capsules copy `settings.json` with mode `0600`, keep the agent
+and capsule directories at `0700`, and link other Pi resources back to the base
+agent directory recorded in `LARVA_PI_BASE_AGENT_DIR`. Normal return, startup
+failure, child completion, and cancellation remove only the capsule root; bounded
+stale cleanup never follows links. Capsule settings are never merged into the
+base Pi settings.
+
+Persona thinking policy is adapter-local at
+`$HOME/.pi/larva/thinking-policy.json`, or at the absolute path in
+`LARVA_PI_THINKING_POLICY_FILE`:
+
+```json
+{"schema_version":1,"default":"medium","personas":{"software-architect":"high"}}
+```
+
+Allowed levels are `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and
+`max`. The file is a closed object with exact persona ids. A missing file uses
+`medium`; an existing invalid file fails the affected activation before its next
+prompt. New and resumed children receive explicit `--model` and `--thinking`
+arguments, then Larva verifies RPC `get_state` before prompting. Pi may clamp a
+valid requested level; the Subagent Console shows `requested->effective` plus the
+RPC-observed startup model in Metadata. Model-map profile changes apply model and
+thinking through the existing serialized generation and paired rollback path.
+
 
 ```bash
 larva pi --persona python-senior --agent-persona-switch confirm -- <pi args...>

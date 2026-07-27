@@ -82,6 +82,59 @@ prompt/model turn when `LARVA_PI_LAUNCHED=1`. Manual extension loads without the
 launcher sentinel may degrade to an unavailable status instead of being process
 fatal.
 
+## Adapter-local thinking policy and Pi capsules
+
+Larva isolates every supported parent and child Pi process from shared Pi
+settings. `larva pi` records the effective base agent directory in
+`LARVA_PI_BASE_AGENT_DIR`, creates a private
+`$HOME/.pi/larva/runtime/<run-id>/agent`, and sets `PI_CODING_AGENT_DIR` to that
+capsule before Pi starts. Child RPC processes create separate capsules. Each
+capsule has mode `0700`; its copied `settings.json` has mode `0600`; other Pi
+resources resolve to the base agent directory. Cleanup removes only a lexical
+capsule root under the runtime directory and never follows links or writes
+capsule settings back to the base. Normal exit, startup failure, child completion,
+and cancellation clean their capsules; later launches scan only a bounded set of
+stale roots.
+
+Thinking policy defaults to `$HOME/.pi/larva/thinking-policy.json`. An absolute
+`LARVA_PI_THINKING_POLICY_FILE` overrides it. The exact shape is:
+
+```json
+{
+  "schema_version": 1,
+  "default": "medium",
+  "personas": {
+    "software-architect": "high",
+    "frontend-engineer": "low"
+  }
+}
+```
+
+The only levels are `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and
+`max`. Top-level keys, schema version, default, persona ids, and values are
+validated strictly. Missing policy uses `medium`; an existing unreadable,
+malformed, or structurally invalid policy returns `LARVA_POLICY_INVALID` before
+the affected prompt. This policy remains Pi-adapter configuration: it does not
+add PersonaSpec fields, model-specific entries, wildcard rules, or a public
+subagent argument.
+
+Explicit parent persona activation and switching apply the persona policy. A
+parent without an active persona and ordinary parent session restore retain the
+session thinking level. A temporary persona borrow captures and restores both
+model and thinking. Every new or resumed child resolves policy again, starts Pi
+with explicit `--model <provider>/<model-id> --thinking <level>`, and verifies
+RPC `get_state.model` and `get_state.thinkingLevel` before prompt. A valid Pi
+clamp is recorded as requested/effective rather than rejected.
+
+`/larva-model-map <profile>` keeps one serialized route generation. It applies
+model and thinking, verifies the resulting route, and attempts paired rollback on
+failure; starting children use the same fence. The Subagent Console selector
+shows `think=<effective>` or `think=<requested>-><effective>`. Metadata shows
+`Startup model`, `Requested thinking`, and `Startup thinking`. These bounded
+fields are presentation facts only and never status, events, wait, select,
+cancellation, or resume authority. The existing `thinking hidden` marker still
+means hidden reasoning content, not thinking level.
+
 ## Adapter-local model map
 PersonaSpec `model` remains canonical Larva data and is stored as the active
 variant's runtime routing label. Larva canonical validation requires it to be a
