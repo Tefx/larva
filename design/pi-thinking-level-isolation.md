@@ -202,8 +202,14 @@ attempts to restore both previous values and uses the existing partial/failed
 classification if restoration cannot be confirmed. An in-flight model request
 keeps its old route; the next prompt uses the newly verified route.
 
-A starting child resolves or fences both model and thinking before its first
-prompt. No second generation counter is permitted.
+A starting child and profile switching share one serialized route lock. Child
+admission captures one snapshot containing the profile path, resolved model,
+requested thinking, and route generation before releasing that lock. The child
+process receives that profile path through its cloned
+spawn environment, so initial-persona validation and `--model` use the same map.
+If a switch starts after the snapshot, the existing post-RPC fence applies the
+newer model and thinking before the first prompt. No second generation counter is
+permitted.
 
 ## Subagent Console
 

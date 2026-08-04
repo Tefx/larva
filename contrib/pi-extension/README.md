@@ -128,7 +128,12 @@ clamp is recorded as requested/effective rather than rejected.
 
 `/larva-model-map <profile>` keeps one serialized route generation. It applies
 model and thinking, verifies the resulting route, and attempts paired rollback on
-failure; starting children use the same fence. The Subagent Console selector
+failure. Child admission and profile switching share one route lock; admission
+captures one complete generation before releasing it, then derives both the
+explicit `--model` route and child `LARVA_PI_MODEL_MAP_FILE`
+from that snapshot. The profile path is added only to the cloned spawn environment;
+the parent environment is not mutated. A switch after admission is handled by the
+same post-RPC generation fence. The Subagent Console selector
 shows `think=<effective>` or `think=<requested>-><effective>`. Metadata shows
 `Startup model`, `Requested thinking`, and `Startup thinking`. These bounded
 fields are presentation facts only and never status, events, wait, select,
@@ -174,7 +179,14 @@ only after both stability checks pass and closes the descriptor on every path. T
 1 MiB limit still applies. Dangling links, directories, FIFOs, devices, oversized
 files, malformed JSON, invalid/unknown schema fields, observed atomic symlink
 replacement, and observed target mutation fail closed. Status always reports the
-lexical entry and never discloses the resolved external target.
+lexical entry and never discloses the resolved external target. Known child
+startup errors retain at most 200 sanitized code points of route-stage detail;
+child stderr/error trace previews use the same bound and redaction. ANSI/control
+characters and credential-like values are removed or redacted. A child that exits
+before task allocation is retained in the bounded process-local status/events
+stream as `startup_failed`, keyed by diagnostic-only `startup_id` and optional Pi
+`call_id`; no `.jsonl` task handle is fabricated, and wait/select/cancel/resume do
+not accept the provisional identifier.
 
 Profile precedence is process-local profile, explicit `LARVA_PI_MODEL_MAP_FILE`,
 canonical `model-map.json`, then the first-slash fallback. Selection lasts for the
@@ -276,7 +288,7 @@ Contract verification cases for the implementation step:
   may be committed.
 - Dangling, directory, FIFO/device where supported, oversized, malformed,
   unknown-schema, and invalid/traversal-name cases fail boundedly without fallback.
-- Installed Pi 0.82.1 proof calls `ctx.reload()` before the public
+- Installed Pi 0.83.0 proof calls `ctx.reload()` before the public
   `/larva-model-map openrouter` command and uses only a controlled external target
   plus a neutral loopback provider.
 - `openrouter/google/gemini-3.5-flash` resolves through an `openrouter/` prefix
@@ -933,8 +945,8 @@ node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
 ```
 
 The installed-Pi model-map profile gate is pinned to `/opt/homebrew/bin/pi`
-`0.82.1` and package root
-`/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` `0.82.1`:
+`0.83.0` and package root
+`/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent` `0.83.0`:
 
 ```bash
 node scripts/pi-extension-runtime-smoke.mjs --scenario model-map-profile-switch-installed-pi
@@ -970,9 +982,9 @@ network observations, and cleanup. A PASS requires:
   unswitched live child, with zero fallback;
 - a generation fence before the new child's first prompt and real new, resumed,
   terminal, and concurrently-ended lifecycle observations; and
-- bounded malformed-response, five-second timeout, and closed-stream failures,
-  each projected as an explicit partial result with zero fallback or process
-  leak.
+- bounded malformed-response and five-second timeout failures projected as
+  explicit partial results, plus a closed stream classified as
+  `ended_during_switch`; all three retain zero fallback and no process leak.
 
 The harness leaves the installed `/opt/homebrew/bin/pi` launch and shipped
 `dist/cli.js` child process boundary intact. It injects behavior below that seam:
@@ -1516,7 +1528,7 @@ prove:
     callback behavior are observed through the real run lifecycle.
 14. Total runtime may exceed the silence deadline when recognized progress
     continues, and a larger explicit deadline permits known long-silent work.
-15. `/opt/homebrew/bin/pi` `0.82.1` executes the blocking-tool runtime proof with
+15. `/opt/homebrew/bin/pi` `0.83.0` executes the blocking-tool runtime proof with
     loopback-only provider traffic, unchanged host settings, no leaked process or
     root, and preserved child session evidence.
 16. The authoritative reference, model-facing schema/description, examples, and

@@ -252,9 +252,19 @@ type LarvaSubagentRunSnapshot = {
 type LarvaSubagentWaitRunSnapshot = LarvaSubagentRunSnapshot & {
   terminal_result?: LarvaSubagentTerminalResultMetadata;
 };
+type LarvaSubagentStartupFailure = {
+  sequence: number;
+  startup_id: string;
+  call_id: string | null;
+  persona_id: string;
+  status: "failed";
+  phase: "startup_failed";
+  updated_at: string;
+  error: LarvaError;
+};
 type LarvaSubagentStatusResult = {
   content: PiTextContent[];
-  details: { status: "success" | "failed"; runs: LarvaSubagentRunSnapshot[]; error: LarvaError | null };
+  details: { status: "success" | "failed"; runs: LarvaSubagentRunSnapshot[]; startup_failures: LarvaSubagentStartupFailure[]; error: LarvaError | null };
   isError: boolean;
 };
 type LarvaSubagentCancelResult = {
@@ -341,7 +351,7 @@ type LarvaSubagentEvent = {
 };
 type LarvaSubagentEventsResult = {
   content: PiTextContent[];
-  details: { status: "success" | "failed"; events: LarvaSubagentEvent[]; next_sequence: number; cursor_expired: boolean; error: LarvaError | null };
+  details: { status: "success" | "failed"; events: LarvaSubagentEvent[]; startup_failures: LarvaSubagentStartupFailure[]; next_sequence: number; cursor_expired: boolean; error: LarvaError | null };
   isError: boolean;
 };
 type LarvaSubagentWaitReturnWhen = "all" | "any" | "first_error";
@@ -519,6 +529,7 @@ type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
   | { kind: "fallback" };
 type ActiveModelMapProfile = { name: string; path: string; config: PiModelMapConfig };
+type ChildRouteSnapshot = RuntimeRoute & { generation: number; profile_path: string | null };
 type ChildModelMapSwitchResult = {
   task_id: string | null;
   persona_id: string;
@@ -654,6 +665,7 @@ let modelMapRouteGeneration = 0;
 let modelMapSwitchTail: Promise<void> = Promise.resolve();
 const SUBAGENT_EVENT_RETENTION_LIMIT = 1000;
 const subagentEventLog: LarvaSubagentEvent[] = [];
+const subagentStartupFailureLog: LarvaSubagentStartupFailure[] = [];
 const subagentEventWaiters = new Set<() => void>();
 let subagentEventSequence = 0;
 const subagentBackgroundIndicatorContexts = new Set<PiContext>();
@@ -2906,8 +2918,7 @@ function canonicalModelMapPath(env: RuntimeEnv): string {
   return join(homeDir(env), ".pi", "larva", "model-map.json");
 }
 
-function modelMapPath(env: RuntimeEnv): string {
-  if (activeModelMapProfile !== null) return activeModelMapProfile.path;
+function configuredModelMapPath(env: RuntimeEnv): string {
   if (env.LARVA_PI_MODEL_MAP_FILE !== undefined) {
     if (!isAbsolute(env.LARVA_PI_MODEL_MAP_FILE)) {
       throw error("LARVA_MODEL_MAP_INVALID", "LARVA_PI_MODEL_MAP_FILE must be an absolute path.");
@@ -2915,6 +2926,10 @@ function modelMapPath(env: RuntimeEnv): string {
     return env.LARVA_PI_MODEL_MAP_FILE;
   }
   return canonicalModelMapPath(env);
+}
+
+function modelMapPath(env: RuntimeEnv): string {
+  return activeModelMapProfile?.path ?? configuredModelMapPath(env);
 }
 
 function validModelMapProfileName(profile: string): boolean {
@@ -3179,9 +3194,8 @@ function resolvePiModelFromConfig(spec: PersonaSpec, config: PiModelMapConfig | 
   return fallback;
 }
 
-async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<ParsedModel> {
-  if (activeModelMapProfile !== null) return resolvePiModelFromConfig(spec, activeModelMapProfile.config);
-  const file = modelMapPath(env);
+async function resolvePiModelFromConfiguredFile(spec: PersonaSpec, env: RuntimeEnv): Promise<ParsedModel> {
+  const file = configuredModelMapPath(env);
   let raw: string | null;
   try {
     raw = await readFile(file, "utf8").catch((readError: unknown) => {
@@ -3198,6 +3212,11 @@ async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<Parse
     if (isLarvaError(caught)) throw caught;
     throw error("LARVA_MODEL_MAP_INVALID", "Invalid Larva Pi model map");
   }
+}
+
+async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<ParsedModel> {
+  if (activeModelMapProfile !== null) return resolvePiModelFromConfig(spec, activeModelMapProfile.config);
+  return await resolvePiModelFromConfiguredFile(spec, env);
 }
 
 async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok: true; stdout: string } | { ok: false }> {
@@ -4233,13 +4252,14 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
   const children = await mapWithConcurrency(records, MODEL_MAP_CHILD_SWITCH_CONCURRENCY, async (record, index): Promise<ChildModelMapSwitchResult> => {
     const target = childTargets.get(record);
     if (target === undefined) return childModelMapFailure(record);
-    if (record.rpc === null || record.status === "starting") {
+    const rpc = record.rpc;
+    if (rpc === null || record.status === "starting") {
       if (record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status)) {
         return { task_id: record.task_id, persona_id: record.persona_id, state: "ended_during_switch" };
       }
       return { task_id: record.task_id, persona_id: record.persona_id, state: "will_use_new_route", provider: target.provider, model_id: target.modelId };
     }
-    const previousStateResponse = await record.rpc.command(`model-map-previous-${generation}-${index}`, { type: "get_state" }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    const previousStateResponse = await rpc.command(`model-map-previous-${generation}-${index}`, { type: "get_state" }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
     const previousData = isSuccessResponse(previousStateResponse) && isRecord((previousStateResponse as { data?: unknown }).data)
       ? (previousStateResponse as { data: Record<string, unknown> }).data
       : null;
@@ -4247,25 +4267,25 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
     const previousRouteProvider = typeof previousRouteModel?.provider === "string" ? previousRouteModel.provider : null;
     const previousRouteModelId = typeof (previousRouteModel?.id ?? previousRouteModel?.modelId) === "string" ? String(previousRouteModel?.id ?? previousRouteModel?.modelId) : null;
     const previousRouteThinking = previousData !== null && isPiThinkingLevel(previousData.thinkingLevel) ? previousData.thinkingLevel : null;
-    const modelResponse = await record.rpc.command(`model-map-model-${generation}-${index}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+    const modelResponse = await rpc.command(`model-map-model-${generation}-${index}`, { type: "set_model", provider: target.provider, modelId: target.modelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
     const thinkingResponse = isSuccessResponse(modelResponse)
-      ? await record.rpc.command(`model-map-thinking-${generation}-${index}`, { type: "set_thinking_level", level: target.requested_thinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS)
+      ? await rpc.command(`model-map-thinking-${generation}-${index}`, { type: "set_thinking_level", level: target.requested_thinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS)
       : null;
     if (isSuccessResponse(modelResponse) && isSuccessResponse(thinkingResponse)) {
       record.env.LARVA_PI_CHILD_REQUESTED_THINKING = target.requested_thinking;
-      const verified = await verifyChildRoute(record, record.rpc);
+      const verified = await verifyChildRoute(record, rpc);
       if (verified === null) {
         record.route_generation = generation;
         return { task_id: record.task_id, persona_id: record.persona_id, state: "switched", provider: target.provider, model_id: target.modelId };
       }
     }
-    if (record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status)) {
+    if (record.terminal_snapshot !== null || isTerminalSubagentStatus(record.status) || record.rpc !== rpc || record.child === null || rpc.isClosed()) {
       return { task_id: record.task_id, persona_id: record.persona_id, state: "ended_during_switch" };
     }
     if (previousRouteProvider !== null && previousRouteModelId !== null && previousRouteThinking !== null) {
-      const restoredModel = await record.rpc.command(`model-map-rollback-model-${generation}-${index}`, { type: "set_model", provider: previousRouteProvider, modelId: previousRouteModelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
-      const restoredThinking = await record.rpc.command(`model-map-rollback-thinking-${generation}-${index}`, { type: "set_thinking_level", level: previousRouteThinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
-      const restoredState = await record.rpc.command(`model-map-rollback-state-${generation}-${index}`, { type: "get_state" }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+      const restoredModel = await rpc.command(`model-map-rollback-model-${generation}-${index}`, { type: "set_model", provider: previousRouteProvider, modelId: previousRouteModelId }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+      const restoredThinking = await rpc.command(`model-map-rollback-thinking-${generation}-${index}`, { type: "set_thinking_level", level: previousRouteThinking }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
+      const restoredState = await rpc.command(`model-map-rollback-state-${generation}-${index}`, { type: "get_state" }, MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS);
       void restoredModel;
       void restoredThinking;
       void restoredState;
@@ -4285,12 +4305,16 @@ async function switchModelMapProfileUnlocked(profileName: string, ctx: PiContext
   };
 }
 
-export async function switchModelMapProfile(profileName: string, ctx: PiContext, pi: PiApi = ctx): Promise<ModelMapSwitchResult> {
+async function withModelMapRouteLock<T>(operation: () => Promise<T>): Promise<T> {
   const prior = modelMapSwitchTail;
   let release: () => void = () => undefined;
   modelMapSwitchTail = new Promise<void>((resolveTail) => { release = resolveTail; });
   await prior;
-  try { return await switchModelMapProfileUnlocked(profileName, ctx, pi); } finally { release(); }
+  try { return await operation(); } finally { release(); }
+}
+
+export async function switchModelMapProfile(profileName: string, ctx: PiContext, pi: PiApi = ctx): Promise<ModelMapSwitchResult> {
+  return await withModelMapRouteLock(async () => await switchModelMapProfileUnlocked(profileName, ctx, pi));
 }
 
 async function modelMapStatus(ctx: PiContext): Promise<Record<string, unknown>> {
@@ -4547,7 +4571,10 @@ async function validatePreselectedPiModel(spec: PersonaSpec, ctx: PiContext, exp
     || active.provider !== expected.provider
     || active.id !== expected.modelId
   ) {
-    throw error("LARVA_MODEL_UNAVAILABLE", `Pi did not start with the resolved persona model ${formatPiModel(expected)}`);
+    const activeRoute = isRecord(active) && typeof active.provider === "string" && typeof active.id === "string"
+      ? `${active.provider}/${active.id}`
+      : "unavailable";
+    throw error("LARVA_MODEL_UNAVAILABLE", `Initial persona route mismatch for ${spec.id}: cli=${formatPiModel(expected)} profile=${formatPiModel(resolved)} active=${activeRoute}`);
   }
   return active;
 }
@@ -6217,10 +6244,37 @@ function subagentEventFromSnapshot(snapshot: LarvaSubagentRunSnapshot, kind: Lar
   };
 }
 
+function trimSubagentEventRetention(): void {
+  while (subagentEventLog.length + subagentStartupFailureLog.length > SUBAGENT_EVENT_RETENTION_LIMIT) {
+    const taskSequence = subagentEventLog[0]?.sequence ?? Number.POSITIVE_INFINITY;
+    const startupSequence = subagentStartupFailureLog[0]?.sequence ?? Number.POSITIVE_INFINITY;
+    if (taskSequence <= startupSequence) subagentEventLog.shift();
+    else subagentStartupFailureLog.shift();
+  }
+}
+
 function appendSubagentEvent(snapshot: LarvaSubagentRunSnapshot, kind: LarvaSubagentEventKind): void {
   subagentEventLog.push(subagentEventFromSnapshot(snapshot, kind));
-  while (subagentEventLog.length > SUBAGENT_EVENT_RETENTION_LIMIT) subagentEventLog.shift();
+  trimSubagentEventRetention();
   updateSubagentBackgroundIndicator();
+  notifySubagentEventWaiters();
+}
+
+function appendSubagentStartupFailure(record: ActiveSubagentRun, larvaError: LarvaError): void {
+  subagentEventSequence += 1;
+  const boundedCallId = record.presentation_call_id === undefined ? "" : sanitizedStartupDiagnostic(record.presentation_call_id);
+  const boundedErrorMessage = sanitizedStartupDiagnostic(larvaError.message);
+  subagentStartupFailureLog.push({
+    sequence: subagentEventSequence,
+    startup_id: record.private_key,
+    call_id: boundedCallId.length === 0 ? null : boundedCallId,
+    persona_id: record.persona_id,
+    status: "failed",
+    phase: "startup_failed",
+    updated_at: record.updated_at,
+    error: error(larvaError.code, boundedErrorMessage.length === 0 ? "Child startup failed." : boundedErrorMessage),
+  });
+  trimSubagentEventRetention();
   notifySubagentEventWaiters();
 }
 
@@ -6474,6 +6528,9 @@ function terminalResultFromSnapshot(snapshot: SubagentTerminalSnapshot): LarvaSu
 }
 
 function pruneTerminalSubagentRuns(): void {
+  for (const record of new Set(activeSubagentRuns.values())) {
+    if (record.terminal_snapshot !== null && record.task_id === null) activeSubagentRuns.delete(record.private_key);
+  }
   const terminalRecords = Array.from(activeSubagentRuns.values())
     .filter((record) => record.terminal_snapshot !== null)
     .sort((left, right) => Date.parse(left.updated_at) - Date.parse(right.updated_at));
@@ -6670,6 +6727,7 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
     completed_at: completedAt,
   });
   appendSubagentRunSnapshot(record, terminal.status);
+  if (record.task_id === null && terminal.status === "failed" && terminal.error !== null) appendSubagentStartupFailure(record, terminal.error);
   if (record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
   if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because the model-facing terminal control path already returned the terminal result."));
   else void deliverSubagentResultCallback(record).catch((caught) => {
@@ -6982,6 +7040,19 @@ function subagentSnapshotLine(run: LarvaSubagentRunSnapshot): string {
   return `- ${run.task_id} ${run.persona_id}:${run.status}:${run.phase} ${pending} elapsed=${elapsed}s age=${age}s seq=${run.sequence_latest} ${callback}${errorCode}`;
 }
 
+function cloneSubagentStartupFailure(value: LarvaSubagentStartupFailure): LarvaSubagentStartupFailure {
+  return { ...value, error: cloneLarvaError(value.error) ?? value.error };
+}
+
+function latestStartupFailures(limit: number): LarvaSubagentStartupFailure[] {
+  return subagentStartupFailureLog.slice(-limit).reverse().map(cloneSubagentStartupFailure);
+}
+
+function subagentStartupFailureLine(value: LarvaSubagentStartupFailure): string {
+  const call = value.call_id === null ? "" : ` call_id=${value.call_id}`;
+  return `- ${value.startup_id} ${value.persona_id}:failed:startup_failed seq=${value.sequence}${call} error=${value.error.code}`;
+}
+
 function snapshotsByTaskId(runs: LarvaSubagentWaitRunSnapshot[]): Record<string, LarvaSubagentWaitRunSnapshot> {
   return Object.fromEntries(runs.map((run) => [run.task_id, run]));
 }
@@ -7027,25 +7098,30 @@ function firstReadyTerminalResult(runs: LarvaSubagentWaitRunSnapshot[], readyTas
     ?? runs.find((run) => run.terminal_result !== undefined)?.terminal_result;
 }
 
-function wrapSubagentStatusResult(runs: LarvaSubagentRunSnapshot[], larvaError: LarvaError | null = null): LarvaSubagentStatusResult {
+function wrapSubagentStatusResult(runs: LarvaSubagentRunSnapshot[], startupFailures: LarvaSubagentStartupFailure[], larvaError: LarvaError | null = null): LarvaSubagentStatusResult {
   const failedStatus = larvaError !== null;
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
-    : runs.length === 0
-      ? "Larva subagent status (inspection/debugging only): no observed runs\nThis surface is not output retrieval."
-      : [`Larva subagent status (inspection/debugging only): ${runs.length} observed run(s)`, "This surface is not output retrieval.", ...runs.map(subagentSnapshotLine)].join("\n");
-  return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", runs, error: larvaError }, isError: failedStatus };
+    : runs.length === 0 && startupFailures.length === 0
+      ? "Larva subagent status (inspection/debugging only): no observed runs or startup failures\nThis surface is not output retrieval."
+      : [
+          `Larva subagent status (inspection/debugging only): ${runs.length} observed run(s), ${startupFailures.length} startup failure(s)`,
+          "This surface is not output retrieval. Provisional startup_id values are diagnostic-only, not task_id handles.",
+          ...runs.map(subagentSnapshotLine),
+          ...startupFailures.map(subagentStartupFailureLine),
+        ].join("\n");
+  return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", runs, startup_failures: startupFailures, error: larvaError }, isError: failedStatus };
 }
 
 export async function larva_subagent_status(input?: unknown, ctx?: { env?: RuntimeEnv }): Promise<LarvaSubagentStatusResult> {
   const parsed = parseSubagentStatusInput(input);
-  if (isLarvaError(parsed)) return wrapSubagentStatusResult([], parsed);
+  if (isLarvaError(parsed)) return wrapSubagentStatusResult([], [], parsed);
   if (parsed.taskId !== null) {
     const validated = validatePublicTaskIdForStatus(parsed.taskId, currentEnv(ctx));
-    if (isLarvaError(validated)) return wrapSubagentStatusResult([], validated);
-    return wrapSubagentStatusResult(statusSnapshotForExactTask(validated));
+    if (isLarvaError(validated)) return wrapSubagentStatusResult([], [], validated);
+    return wrapSubagentStatusResult(statusSnapshotForExactTask(validated), []);
   }
-  return wrapSubagentStatusResult(latestStatusSnapshots(parsed.limit));
+  return wrapSubagentStatusResult(latestStatusSnapshots(parsed.limit), latestStartupFailures(parsed.limit));
 }
 
 type ParsedSubagentEventsInput = { sinceSequence: number; taskIds: string[] | null; limit: number };
@@ -7098,14 +7174,14 @@ function parseSubagentEventsInput(input: unknown, env: RuntimeEnv): ParsedSubage
   return { sinceSequence, taskIds, limit };
 }
 
-function wrapSubagentEventsResult(events: LarvaSubagentEvent[], nextSequence: number, cursorExpired: boolean, larvaError: LarvaError | null = null): LarvaSubagentEventsResult {
+function wrapSubagentEventsResult(events: LarvaSubagentEvent[], startupFailures: LarvaSubagentStartupFailure[], nextSequence: number, cursorExpired: boolean, larvaError: LarvaError | null = null): LarvaSubagentEventsResult {
   const failedStatus = larvaError !== null;
   const text = failedStatus
     ? `${larvaError.code}: ${larvaError.message}`
-    : events.length === 0
+    : events.length === 0 && startupFailures.length === 0
       ? `Larva subagent events: no events after cursor ${nextSequence}`
-      : `Larva subagent events: ${events.length} event(s), next_sequence ${nextSequence}`;
-  return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", events, next_sequence: nextSequence, cursor_expired: cursorExpired, error: larvaError }, isError: failedStatus };
+      : `Larva subagent events: ${events.length} task event(s), ${startupFailures.length} startup failure(s), next_sequence ${nextSequence}`;
+  return { content: [{ type: "text", text }], details: { status: failedStatus ? "failed" : "success", events, startup_failures: startupFailures, next_sequence: nextSequence, cursor_expired: cursorExpired, error: larvaError }, isError: failedStatus };
 }
 
 function cloneSubagentEvent(eventValue: LarvaSubagentEvent): LarvaSubagentEvent {
@@ -7114,18 +7190,27 @@ function cloneSubagentEvent(eventValue: LarvaSubagentEvent): LarvaSubagentEvent 
 
 export function larva_subagent_events(input?: unknown, ctx?: { env?: RuntimeEnv }): LarvaSubagentEventsResult {
   const parsed = parseSubagentEventsInput(input, currentEnv(ctx));
-  if (isLarvaError(parsed)) return wrapSubagentEventsResult([], highestSubagentEventSequence(), false, parsed);
-  const highestRetained = subagentEventLog.at(-1)?.sequence ?? highestSubagentEventSequence();
-  const oldestRetained = subagentEventLog[0]?.sequence ?? 0;
-  const cursorExpired = subagentEventLog.length > 0 && parsed.sinceSequence < oldestRetained - 1;
+  if (isLarvaError(parsed)) return wrapSubagentEventsResult([], [], highestSubagentEventSequence(), false, parsed);
+  const retainedSequences = [...subagentEventLog, ...subagentStartupFailureLog].map((value) => value.sequence);
+  const highestRetained = retainedSequences.length > 0 ? Math.max(...retainedSequences) : highestSubagentEventSequence();
+  const oldestRetained = retainedSequences.length > 0 ? Math.min(...retainedSequences) : 0;
+  const cursorExpired = retainedSequences.length > 0 && parsed.sinceSequence < oldestRetained - 1;
   const effectiveSince = cursorExpired ? oldestRetained - 1 : parsed.sinceSequence;
-  const candidateWindow = subagentEventLog.filter((eventValue) => eventValue.sequence > effectiveSince);
   const taskFilter = parsed.taskIds === null ? null : new Set(parsed.taskIds);
-  const filtered = taskFilter === null ? candidateWindow : candidateWindow.filter((eventValue) => taskFilter.has(eventValue.task_id));
-  const returned = filtered.slice(0, parsed.limit).map(cloneSubagentEvent);
-  const paging = filtered.length > parsed.limit;
-  const nextSequence = paging && returned.length > 0 ? returned[returned.length - 1].sequence : highestRetained;
-  return wrapSubagentEventsResult(returned, nextSequence, cursorExpired);
+  const candidates: Array<{ kind: "task"; value: LarvaSubagentEvent } | { kind: "startup"; value: LarvaSubagentStartupFailure }> = [
+    ...subagentEventLog
+      .filter((eventValue) => eventValue.sequence > effectiveSince && (taskFilter === null || taskFilter.has(eventValue.task_id)))
+      .map((value) => ({ kind: "task" as const, value })),
+    ...(taskFilter === null
+      ? subagentStartupFailureLog.filter((value) => value.sequence > effectiveSince).map((value) => ({ kind: "startup" as const, value }))
+      : []),
+  ].sort((left, right) => left.value.sequence - right.value.sequence);
+  const selected = candidates.slice(0, parsed.limit);
+  const events = selected.filter((item): item is { kind: "task"; value: LarvaSubagentEvent } => item.kind === "task").map((item) => cloneSubagentEvent(item.value));
+  const startupFailures = selected.filter((item): item is { kind: "startup"; value: LarvaSubagentStartupFailure } => item.kind === "startup").map((item) => cloneSubagentStartupFailure(item.value));
+  const paging = candidates.length > parsed.limit;
+  const nextSequence = paging && selected.length > 0 ? selected[selected.length - 1].value.sequence : highestRetained;
+  return wrapSubagentEventsResult(events, startupFailures, nextSequence, cursorExpired);
 }
 
 function parseSubagentWaitInput(input: unknown, env: RuntimeEnv, forceReturnWhen?: LarvaSubagentWaitReturnWhen): ParsedSubagentWaitInput | LarvaError {
@@ -7979,26 +8064,33 @@ function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[
   return [realBin, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc"];
 }
 
-async function childModelArgument(env: RuntimeEnv, personaId: string): Promise<RuntimeRoute | LarvaError> {
-  try {
-    const spec = await resolvePersona(personaId, { env });
-    const model = await resolvePiModel(spec, env);
-    const requested_thinking = await requestedThinkingForPersona(env, personaId);
-    return { ...model, requested_thinking };
-  } catch (caught) {
-    return isLarvaError(caught) ? caught : error("LARVA_MODEL_UNAVAILABLE", `Unable to resolve child route for ${personaId}`);
-  }
+async function childModelArgument(env: RuntimeEnv, personaId: string): Promise<ChildRouteSnapshot | LarvaError> {
+  return await withModelMapRouteLock(async () => {
+    const profile = activeModelMapProfile;
+    const generation = profile === null ? 0 : modelMapRouteGeneration;
+    try {
+      const spec = await resolvePersona(personaId, { env });
+      const model = profile === null
+        ? await resolvePiModelFromConfiguredFile(spec, env)
+        : resolvePiModelFromConfig(spec, profile.config);
+      const requested_thinking = await requestedThinkingForPersona(env, personaId);
+      return { ...model, requested_thinking, generation, profile_path: profile?.path ?? null };
+    } catch (caught) {
+      return isLarvaError(caught) ? caught : error("LARVA_MODEL_UNAVAILABLE", `Unable to resolve child route for ${personaId}`);
+    }
+  });
 }
 
 function childThinkingArgument(route: RuntimeRoute): PiThinkingLevel {
   return route.requested_thinking;
 }
 
-async function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = []): Promise<ChildProcessWithoutNullStreams | LarvaError> {
+async function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = [], record?: ActiveSubagentRun): Promise<ChildProcessWithoutNullStreams | LarvaError> {
   const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;
   const route = await childModelArgument(env, personaId);
   if (isLarvaError(route)) return route;
+  if (record !== undefined) record.route_generation = route.generation;
   const capsule = createChildPiCapsule(env);
   if (isLarvaError(capsule)) return capsule;
   const modelArgument = formatPiModel(route);
@@ -8011,6 +8103,7 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
       env: {
         ...process.env,
         ...env,
+        ...(route.profile_path === null ? {} : { LARVA_PI_MODEL_MAP_FILE: route.profile_path }),
         LARVA_PI_INITIAL_PERSONA_ID: personaId,
         LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: modelArgument,
         LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
@@ -8029,8 +8122,21 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
   }
 }
 
+function sanitizedStartupDiagnostic(value: string): string {
+  const redacted = value
+    .replace(/(["'][A-Za-z0-9_-]*(?:authorization|api[-_]?key|access[-_]?token|refresh[-_]?token|password|passwd|secret|credential|token)["']\s*:\s*)(["'])(?:\\.|(?!\2)[^\r\n])*\2/giu, "$1$2[REDACTED]$2")
+    .replace(/\b(authorization)\b\s*[:=]\s*[^\r\n]*/giu, "$1=[REDACTED]")
+    .replace(/\b(Basic|Bearer|API[-_ ]?Key)\s+\S+/giu, "$1 [REDACTED]")
+    .replace(/\b[A-Za-z0-9_-]*(?:api[-_]?key|access[-_]?token|refresh[-_]?token|password|passwd|secret|credential|token)\b\s*[:=]\s*\S+/giu, "[REDACTED]")
+    .replace(/\b(api key|access token|refresh token)\b\s*[:=]\s*\S+/giu, "$1=[REDACTED]")
+    .replace(/([A-Za-z][A-Za-z0-9+.-]*:\/\/)[^@\s/]+@/gu, "$1[REDACTED]@")
+    .replace(/\b(?:sk|pk)-[A-Za-z0-9_-]{8,}\b/gu, "[REDACTED]");
+  return boundedTracePreview(redacted);
+}
+
 function parseStartupError(stderr: string): LarvaError {
-  const match = /larva pi: (LARVA_[A-Z_]+):/.exec(stderr);
+  const stripped = stderr.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(/\r\n?/g, "\n");
+  const match = /larva pi: (LARVA_[A-Z_]+):\s*([^\n]*)/u.exec(stripped);
   const whitelist: LarvaErrorCode[] = [
     "LARVA_PERSONA_NOT_FOUND",
     "LARVA_MODEL_UNAVAILABLE",
@@ -8038,9 +8144,19 @@ function parseStartupError(stderr: string): LarvaError {
     "LARVA_TOOL_ENUMERATION_FAILED",
   ];
   if (match && whitelist.includes(match[1] as LarvaErrorCode)) {
-    return error(match[1] as LarvaErrorCode, "Child startup failed with a Larva startup error.");
+    const diagnostic = sanitizedStartupDiagnostic(match[2]);
+    const message = diagnostic.length === 0 ? "Child startup failed with a Larva startup error." : `Child startup failed: ${diagnostic}`;
+    return error(match[1] as LarvaErrorCode, message);
   }
   return error("LARVA_CHILD_START_FAILED", "Child Pi process exited before RPC readiness.");
+}
+
+export function parseStartupErrorForTests(stderr: string): LarvaError {
+  return parseStartupError(stderr);
+}
+
+export function sanitizeChildDiagnosticForTests(value: string): string {
+  return sanitizedStartupDiagnostic(value);
 }
 
 function boundedTracePreview(value: string): string {
@@ -8114,11 +8230,11 @@ class RpcClient {
       this.stderr = appendBoundedTail(this.stderr, text);
       const startupError = parseStartupError(this.stderr);
       if (startupError.code !== "LARVA_CHILD_START_FAILED") this.startupErrorSeen = startupError;
-      void traceChildRpc(this.traceEnv, "child_stderr", { pid: this.child.pid ?? null, bytes: chunk.byteLength, text_preview: boundedTracePreview(text), stderr_tail_bytes: Buffer.byteLength(this.stderr, "utf8") });
+      void traceChildRpc(this.traceEnv, "child_stderr", { pid: this.child.pid ?? null, bytes: chunk.byteLength, text_preview: sanitizedStartupDiagnostic(text), stderr_tail_bytes: Buffer.byteLength(this.stderr, "utf8") });
     });
     child.once("error", (caught: unknown) => {
       this.childError = caught;
-      void traceChildRpc(this.traceEnv, "child_error", { pid: this.child.pid ?? null, message_preview: boundedTracePreview(caught instanceof Error ? caught.message : String(caught)) });
+      void traceChildRpc(this.traceEnv, "child_error", { pid: this.child.pid ?? null, message_preview: sanitizedStartupDiagnostic(caught instanceof Error ? caught.message : String(caught)) });
       this.failPending(this.closedError());
     });
     child.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
@@ -8135,6 +8251,10 @@ class RpcClient {
     rl.on("line", (line) => this.consume(line));
   }
 
+  isClosed(): boolean {
+    return this.closed || this.stdoutClosed;
+  }
+
   private failProtocol(larvaError: LarvaError): void {
     this.protocolFailed = larvaError;
     this.failPending(larvaError);
@@ -8144,13 +8264,13 @@ class RpcClient {
     const bytes = Buffer.byteLength(line, "utf8");
     if (bytes > CHILD_RPC_JSONL_MAX_BYTES) {
       const protocolError = protocolFailure(`Child emitted oversized JSONL frame over ${CHILD_RPC_JSONL_MAX_BYTES} bytes.`);
-      void traceChildRpc(this.traceEnv, "rpc_rx_oversized", { pid: this.child.pid ?? null, bytes, max_bytes: CHILD_RPC_JSONL_MAX_BYTES, line_preview: boundedTracePreview(line) });
+      void traceChildRpc(this.traceEnv, "rpc_rx_oversized", { pid: this.child.pid ?? null, bytes, max_bytes: CHILD_RPC_JSONL_MAX_BYTES, line_preview: sanitizedStartupDiagnostic(line) });
       this.failProtocol(protocolError);
       return;
     }
     let message: unknown;
     try { message = JSON.parse(line); } catch {
-      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, bytes, line_preview: boundedTracePreview(line) });
+      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, bytes, line_preview: sanitizedStartupDiagnostic(line) });
       this.failProtocol(protocolFailure("Child emitted malformed JSONL."));
       return;
     }
@@ -8553,7 +8673,7 @@ async function runChildSequence(
 ): Promise<LarvaSubagentResult> {
   const lifecycle = callbacks ?? {};
   const activeRecord = record ?? createSubagentRun({ persona_id: personaId, task, task_id: taskId, no_progress_timeout_ms: noProgressTimeoutMs }, env, personaId, taskId);
-  const child = await startChild(env, root, personaId, extensionSources);
+  const child = await startChild(env, root, personaId, extensionSources, activeRecord);
   if (isLarvaError(child)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, child));
   const activeChildEntry = { child, env };
   activeRecord.child = child;
@@ -8912,14 +9032,14 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     type: "object",
     properties: {
       task_id: { type: "string", description: "Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null." },
-      limit: { type: "integer", minimum: 1, maximum: 25, description: "Maximum runs to return (default 10, max 25)." },
+      limit: { type: "integer", minimum: 1, maximum: 25, description: "Maximum recent runs and startup failures to return per list (default 10, max 25)." },
     },
     additionalProperties: false,
   };
   pi.registerTool?.({
     name: "larva_subagent_status",
     label: "Larva Subagent Status",
-    description: "Inspect active and recent process-local Larva subagent runs by exact public task_id. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.",
+    description: "Inspect active/recent process-local Larva subagent runs and bounded pre-task startup failures. Exact task_id lookup never treats provisional startup_id as a task handle. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.",
     inputSchema: statusSchema,
     parameters: statusSchema,
     handler: async (input: unknown) => larva_subagent_status(input, { env }),
@@ -8929,7 +9049,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     type: "object",
     properties: {
       since_sequence: { type: "integer", minimum: 0, description: "Exclusive cursor; returns events with sequence > since_sequence. Omit for 0. Cursor expiry is reported when older than the latest 1000 recent events." },
-      task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Optional exact public task_id filters. Omit for all observed tasks; do not pass null. Duplicates and fuzzy handles are rejected." },
+      task_ids: { type: "array", minItems: 1, maxItems: 25, items: { type: "string" }, description: "Optional exact public task_id filters. Omit to include all task events and pre-task startup failures; filtered calls exclude provisional startup_id records. Do not pass null. Duplicates and fuzzy handles are rejected." },
       limit: { type: "integer", minimum: 1, maximum: 100, description: "Maximum events to return (default 50, max 100)." },
     },
     additionalProperties: false,
@@ -8937,7 +9057,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent_events",
     label: "Larva Subagent Events",
-    description: "Read ordered process-local Larva subagent orchestration events from the latest 1000 recent events for deterministic automation. Events are readiness/inspection records, not child-output retrieval; this tool never scans files, consumes results, or accepts fuzzy handles.",
+    description: "Read the latest 1000 ordered process-local Larva subagent task events and bounded pre-task startup failures. Provisional startup_id records are diagnostic-only and never become task handles. Events are readiness/inspection records, not child-output retrieval; this tool never scans files, consumes results, or accepts fuzzy handles.",
     inputSchema: eventsSchema,
     parameters: eventsSchema,
     handler: async (input: unknown) => larva_subagent_events(input, { env }),

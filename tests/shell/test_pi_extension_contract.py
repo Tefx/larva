@@ -2604,7 +2604,7 @@ def test_resume_parent_preflight_defers_model_resolution_to_child_start() -> Non
     assert "resolvePersona" not in subagent_body
     assert "resolvePersona" not in child_sequence_body
     assert "childModelArgument" in start_child_body
-    assert child_sequence_body.index("startChild(env, root, personaId, extensionSources)") < child_sequence_body.index('rpc.command("switch-1"')
+    assert child_sequence_body.index("startChild(env, root, personaId, extensionSources, activeRecord)") < child_sequence_body.index('rpc.command("switch-1"')
 
 
 def test_concurrent_same_task_resume_uses_in_memory_active_run_registry() -> None:
@@ -2681,7 +2681,7 @@ def test_resume_re_resolves_persona_and_cli_model_at_child_start() -> None:
     assert "resolvePersona" not in child_sequence_body
     _assert_regex(
         source,
-        r"startChild\(env, root, personaId, extensionSources\)[\s\S]+switch_session",
+        r"startChild\(env, root, personaId, extensionSources, activeRecord\)[\s\S]+switch_session",
         "resume must resolve the supplied persona model and start the child before switching session",
     )
 

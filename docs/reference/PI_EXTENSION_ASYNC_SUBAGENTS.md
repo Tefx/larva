@@ -118,9 +118,15 @@ another process's settings.
 
 The process-local model-map profile generation covers both model and thinking.
 A route transition captures both prior values, applies both target values,
-verifies state, and attempts paired rollback on failure. The existing serialized
-switch tail, bounded child fan-out, starting-child fence, partial outcome, and
-in-flight-old/next-prompt-new behavior remain unchanged.
+verifies state, and attempts paired rollback on failure. Child admission and
+profile switching share the serialized route lock. Admission captures the profile
+path, route, requested thinking, and generation as one operation before releasing
+that lock. A new OS child receives the
+captured profile path as `LARVA_PI_MODEL_MAP_FILE` in its cloned spawn environment,
+so initial-persona validation resolves the same route used for `--model`. A later
+switch is applied by the starting-child fence after RPC readiness. Bounded child
+fan-out, partial outcome, and in-flight-old/next-prompt-new behavior remain
+unchanged.
 
 Presentation entries may retain bounded immutable `startup_model`,
 `requested_thinking`, and RPC-observed `startup_thinking`. Selector rows show the
@@ -131,18 +137,23 @@ cache state. `thinking hidden` remains a content-visibility marker.
 
 ### Public subagent handle
 
-Expose only `task_id` as the public handle.
+Expose only `task_id` as the durable control/resume handle.
 
 - `task_id` is the child Pi `.jsonl` session file path under the child session
   root.
 - The child session root defaults to `~/.pi/larva/child-sessions`.
 - No public `run_id`, alias such as `last`, fuzzy selector, or sidecar provenance
   handle is introduced.
-- Internal private operation keys may exist before Pi allocates the child session
-  file, but they must never appear in model-facing or user-facing public APIs.
+- A child that fails before task allocation may expose a bounded provisional
+  `startup_id` plus optional Pi `call_id` only in status/events diagnostics. A
+  `startup_id` is not a `task_id`: wait, select, cancel, resume, session inventory,
+  and exact-task filters must reject or ignore it rather than treating it as a
+  child session.
+- Internal private operation keys for successful startup never appear in public
+  APIs.
 
-Rationale: one durable public handle is enough and avoids split identity between
-resume, status, cancel, and UI selection.
+Rationale: one durable public handle avoids split control identity. The diagnostic
+`startup_id` makes pre-RPC failure inspectable without fabricating a child task.
 
 ### Async tool model
 
@@ -846,11 +857,25 @@ Success details schema:
       "error": null
     }
   ],
+  "startup_failures": [
+    {
+      "sequence": 13,
+      "startup_id": "startup:...",
+      "call_id": "pi-tool-call-id-or-null",
+      "persona_id": "doc-reviewer",
+      "status": "failed",
+      "phase": "startup_failed",
+      "updated_at": "RFC3339 timestamp",
+      "error": { "code": "LARVA_MODEL_UNAVAILABLE", "message": "bounded sanitized detail" }
+    }
+  ],
   "error": null
 }
 ```
 
-If an exact well-formed `task_id` is not observed by this parent process, return
+Omitted-`task_id` status includes retained pre-task startup failures newest first.
+Exact-task status returns `startup_failures: []`; provisional identifiers are not
+accepted as task handles. If an exact well-formed `task_id` is not observed by this parent process, return
 success with `runs: []`; do not guess, stat candidate files, canonicalize via the
 filesystem, or scan the filesystem. Exact observed `task_id` lookup returns one
 run: the latest process-local registry snapshot for that public handle.
@@ -986,14 +1011,28 @@ Success details schema:
       "error": null
     }
   ],
-  "next_sequence": 12,
+  "startup_failures": [
+    {
+      "sequence": 13,
+      "startup_id": "startup:...",
+      "call_id": "pi-tool-call-id-or-null",
+      "persona_id": "doc-reviewer",
+      "status": "failed",
+      "phase": "startup_failed",
+      "updated_at": "RFC3339 timestamp",
+      "error": { "code": "LARVA_MODEL_UNAVAILABLE", "message": "bounded sanitized detail" }
+    }
+  ],
+  "next_sequence": 13,
   "cursor_expired": false,
   "error": null
 }
 ```
 
-Allowed event kinds: `accepted`, `phase`, `terminal`, `callback_delivery`,
-`lifecycle`. Lifecycle events are per-task only: each lifecycle event must carry
+Allowed task event kinds: `accepted`, `phase`, `terminal`, `callback_delivery`,
+`lifecycle`. Pre-task failures are returned separately in `startup_failures` and
+share the same ordered sequence/cursor. Supplying `task_ids` excludes provisional
+startup failures because they have no task handle. Lifecycle events are per-task only: each lifecycle event must carry
 that task's exact `task_id`; global lifecycle notices are diagnostics/status-bar
 updates, not entries in the model-facing event stream.
 
@@ -1582,7 +1621,7 @@ Implementation is not complete until these gates pass:
     at-most-once callback; late progress cannot recover the run.
 24. Observer test: status/events/wait/select and presentation/diagnostic traffic
     do not change warning or cancellation timing.
-25. Installed Pi test: `/opt/homebrew/bin/pi` `0.82.1` executes a real blocking
+25. Installed Pi test: `/opt/homebrew/bin/pi` `0.83.0` executes a real blocking
     tool through child RPC and proves soft warning, recovery, hard cancellation,
     total runtime beyond `T` with continuing progress, a larger explicit silent
     deadline, loopback-only isolation, settings equality, and process/root cleanup.

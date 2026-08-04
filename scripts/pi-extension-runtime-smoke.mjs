@@ -1885,7 +1885,7 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
 async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.82.1";
+  const expectedVersion = "0.83.0";
   const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
   const childSessionRoot = join(proofRoot, "child-sessions");
   const providerExtension = join(proofRoot, "watchdog-provider.ts");
@@ -3541,7 +3541,7 @@ rl.on("line", async (line) => {
 async function installedPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.82.1";
+  const expectedVersion = "0.83.0";
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
@@ -3848,7 +3848,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
   const installedCli = join(installedPackageRoot, "dist", "cli.js");
-  const expectedVersion = "0.82.1";
+  const expectedVersion = "0.83.0";
   const scenarioStartedWallMs = Date.now();
   const scenarioStartedMonotonicNs = process.hrtime.bigint();
   const wholeScenarioDeadlineMs = 180_000;
@@ -4366,9 +4366,9 @@ export default function (pi) {
 
     const faultCases = [];
     for (const fault of [
-      { profile: "delta", phase: "fault_malformed", persona: "malformed", event: "rpc_malformed", kind: "malformed_response", min_ms: 0, max_ms: 2_500 },
-      { profile: "epsilon", phase: "fault_timeout", persona: "timeout", event: "rpc_drop", kind: "timeout", min_ms: 4_500, max_ms: caseDeadlineMs },
-      { profile: "zeta", phase: "fault_closed", persona: "closed", event: "rpc_stdout_closed", kind: "closed_stream", min_ms: 0, max_ms: 2_500 },
+      { profile: "delta", phase: "fault_malformed", persona: "malformed", event: "rpc_malformed", kind: "malformed_response", expected_state: "failed", min_ms: 0, max_ms: 2_500 },
+      { profile: "epsilon", phase: "fault_timeout", persona: "timeout", event: "rpc_drop", kind: "timeout", expected_state: "failed", min_ms: 4_500, max_ms: caseDeadlineMs },
+      { profile: "zeta", phase: "fault_closed", persona: "closed", event: "rpc_stdout_closed", kind: "closed_stream", expected_state: "ended_during_switch", min_ms: 0, max_ms: 2_500 },
     ]) {
       await writeControl(fault.phase, ["lifecycle"]);
       const offset = (await readTransport()).length;
@@ -4376,6 +4376,11 @@ export default function (pi) {
       const rows = result.transport.slice(offset);
       const taskId = taskByPersona(result.transport, fault.persona);
       const observation = rows.find((row) => row.persona === fault.persona && row.event === fault.event);
+      const notificationCounts = profileNotificationCounts(result.notification.message);
+      const explicitPartial = result.notification.message.startsWith(`Larva model-map partial: ${fault.profile};`) && result.notification.message.includes(`${taskId}:${fault.persona}`);
+      const explicitOutcome = fault.expected_state === "ended_during_switch"
+        ? result.notification.message.startsWith(`Larva model-map success: ${fault.profile};`) && notificationCounts?.ended === 1 && notificationCounts.failed === 0
+        : explicitPartial;
       faultCases.push({
         fault: fault.kind,
         profile: fault.profile,
@@ -4384,7 +4389,9 @@ export default function (pi) {
         observed_event: observation?.event ?? null,
         elapsed_ms: result.elapsed_ms,
         bounded: result.elapsed_ms >= fault.min_ms && result.elapsed_ms <= fault.max_ms,
-        explicit_partial: result.notification.message.startsWith(`Larva model-map partial: ${fault.profile};`) && result.notification.message.includes(`${taskId}:${fault.persona}`),
+        expected_state: fault.expected_state,
+        explicit_outcome: explicitOutcome,
+        explicit_partial: explicitPartial,
         fallback_count: 0,
         notification: result.notification.message,
       });
@@ -4431,7 +4438,7 @@ export default function (pi) {
     raw.isolation.external_provider_requests = providerRequests.filter((request) => request.loopback !== true).length;
     raw.cases.rpc_fault_cleanup = {
       requirement_id: "MMPS-CHILD-REAL-05",
-      outcome: faultCases.length === 3 && faultCases.every((fault) => fault.bounded && fault.explicit_partial && fault.fallback_count === 0) ? "PASS" : "FAIL",
+      outcome: faultCases.length === 3 && faultCases.every((fault) => fault.bounded && fault.explicit_outcome && fault.fallback_count === 0) ? "PASS" : "FAIL",
       faults: faultCases,
       fallback_count: 0,
       process_count_before_cleanup: processStarts.length,

@@ -259,6 +259,13 @@ arguments, then Larva verifies RPC `get_state` before prompting. Pi may clamp a
 valid requested level; the Subagent Console shows `requested->effective` plus the
 RPC-observed startup model in Metadata. Model-map profile changes apply model and
 thinking through the existing serialized generation and paired rollback path.
+Child admission and profile switching share one route lock, so each admission
+captures one complete generation. When a process-local profile is active, the
+child receives its validated absolute path through a cloned
+`LARVA_PI_MODEL_MAP_FILE` environment and derives `--model` from the same snapshot.
+A later switch is handled by the post-RPC generation fence. Pre-RPC child
+failures remain inspectable through bounded status/events `startup_failures`
+records without fabricating a task ID.
 
 
 ```bash
