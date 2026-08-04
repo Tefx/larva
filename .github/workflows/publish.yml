@@ -12,10 +12,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install build tools
-        run: pip install build
+      - name: Install build and smoke tools
+        run: pip install build uv "mcp>=1.20,<2" anyio
       - name: Build package
         run: python -m build
+      - name: Verify clean uvx MCP startup and tool list
+        run: python scripts/mcp-release-smoke.py dist/*.whl
       - uses: actions/upload-artifact@v4
         with:
           name: dist

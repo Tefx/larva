@@ -9,12 +9,20 @@ These tests require the ``mcp`` optional dependency.
 
 from __future__ import annotations
 
+import email
+import importlib.metadata
+import subprocess
 import sys
+import zipfile
+from pathlib import Path
 
 import anyio
 import pytest
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
+
+ROOT = Path(__file__).resolve().parents[2]
+PYPROJECT = ROOT / "pyproject.toml"
 
 LARVA_MCP_CMD = StdioServerParameters(
     command=sys.executable,
@@ -26,6 +34,54 @@ LARVA_MCP_CMD = StdioServerParameters(
 def _require_mcp() -> None:
     """Skip if mcp package is not available."""
     pytest.importorskip("mcp")
+
+
+def _mcp_requirements_from_wheel(wheel: Path) -> list[str]:
+    """Return MCP Requires-Dist entries from one built wheel."""
+    with zipfile.ZipFile(wheel) as archive:
+        metadata_name = next(
+            name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+        )
+        message = email.message_from_bytes(archive.read(metadata_name))
+    return [
+        requirement
+        for requirement in message.get_all("Requires-Dist", [])
+        if requirement.lower().startswith("mcp")
+    ]
+
+
+def test_mcp_dependency_excludes_incompatible_major() -> None:
+    """Project metadata must keep the FastMCP 1.x import compatible."""
+    import tomllib
+
+    project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
+    requirements = [
+        requirement
+        for requirement in project["dependencies"]
+        if requirement.lower().startswith("mcp")
+    ]
+    assert requirements == ["mcp>=1.20,<2"]
+
+
+def test_built_wheel_metadata_excludes_mcp_2(tmp_path: Path) -> None:
+    """Release artifact must carry the MCP upper bound, not only source config."""
+    completed = subprocess.run(
+        ["uv", "build", "--wheel", "--out-dir", str(tmp_path)],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert completed.returncode == 0, completed.stderr
+    wheels = list(tmp_path.glob("larva-*.whl"))
+    assert len(wheels) == 1
+    assert _mcp_requirements_from_wheel(wheels[0]) == ["mcp<2,>=1.20"]
+
+
+def test_runtime_uses_supported_mcp_major() -> None:
+    """The checked environment must exercise the supported SDK major."""
+    assert int(importlib.metadata.version("mcp").split(".", 1)[0]) == 1
 
 
 @pytest.mark.usefixtures("_require_mcp")

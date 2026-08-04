@@ -146,6 +146,12 @@ Start larva as an MCP server:
 larva mcp
 ```
 
+Larva currently uses the MCP Python SDK 1.x `mcp.server.fastmcp` API and declares
+`mcp>=1.20,<2`. MCP 2.x support requires a separate server-integration migration;
+package installers must not resolve MCP 2.x for this release line. The publish
+workflow builds the wheel, installs it through a clean `uvx --from <wheel>`
+process, initializes MCP, and verifies the 13-tool list before upload.
+
 ### CLI
 
 ```bash

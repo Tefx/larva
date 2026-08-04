@@ -6,7 +6,7 @@ tools from ``LARVA_MCP_TOOLS`` and delegating to the handler methods.
 Usage::
 
     larva mcp          # starts stdio transport (used by MCP clients)
-    pip install larva[mcp]  # required for mcp dependency
+    pip install larva  # installs the supported MCP 1.x SDK (>=1.20,<2)
 
 Architecture:
     Shell zone module — handles I/O (MCP transport), delegates to

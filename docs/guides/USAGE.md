@@ -10,7 +10,11 @@
 
 ### Primary: MCP Server
 
-Prefer MCP for programmatic access.
+Prefer MCP for programmatic access. Start the stdio server with `larva mcp`.
+This release line uses MCP Python SDK 1.x (`mcp>=1.20,<2`); MCP 2.x requires a
+future server-integration migration before the upper bound can be removed. The
+release gate installs the built wheel through clean `uvx`, initializes the stdio
+server, and checks the 13-tool list.
 
 Available tools:
 
