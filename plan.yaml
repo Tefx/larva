@@ -142081,7 +142081,7 @@ phases:
       paths. Residual risk: none.'
 - id: package_version_0_6_0_20260808
   name: Larva Package Version 0.6.0
-  status: pending
+  status: in_progress
   gate: One R0 repository implementation bumps the canonical Larva package version
     from 0.5.1 to 0.6.0 in exactly pyproject.toml, src/larva/__init__.py, and the
     editable larva package entry in uv.lock; proves synchronized/importable metadata,
@@ -142093,7 +142093,7 @@ phases:
   steps:
   - id: package-version-0-6-0.bump
     name: Bump Larva package version from 0.5.1 to 0.6.0
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -142201,3 +142201,5 @@ phases:
     - .github/workflows/publish.yml
     - INVAR.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-08-08T12:40:09.161057Z'
