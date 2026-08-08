@@ -35,6 +35,27 @@ project_guidance: 'Larva Pi integration planning guidance:
 
   - Preserve Pi runtime/deployability evidence: source-only, mock-only, or docs-only
   proof is insufficient for runnable Pi extension, command, callback, or TUI/CLI surfaces.'
+clipboard:
+  author: vectl-orchestrator
+  summary: 'Planner repair: dispatch validator rejects blocked path'
+  content: 'Original contract: `pi-rpc-oversized-frame-recovery.implement` is claimed
+    by exact owner `frontend-engineer`; implementation outcome, target, repo-change
+    effect, tests/docs scope, rollback, and no-shared-contract boundary remain unchanged.
+    Installed Gate lint/preflight were CONFORMANT before claim. Observed facts: production
+    `--validate-worker-dispatch` rejects the derived exact dispatch because contract
+    scope includes blocked path `../opifex/**`; worker dispatch schema requires repository-relative
+    paths and reports `CONTRACT_SCHEMA_INVALID: worker dispatch blocked_paths contains
+    a non-repository-relative path: ''../opifex/**''`. No child was spawned and isolated
+    worktree at `/Users/tefx/Projects/larva/.vectl/worktrees/pi-rpc-oversized-frame-recovery.implement`
+    is clean at base `4da1b808891a351f679b5d207026883ea5ea2415`; dispatch artifact
+    is preserved but INVALID. Proposed delta: in-place edit the pending/claimed step
+    contract to remove only `../opifex/**` from `scope.blocked_paths`; retain prose
+    prohibition on shared PersonaSpec/opifex changes, all allowed paths, owner, checks,
+    claims, risk tier, rollback, and acceptance authority. Revalidate installed lint/preflight.
+    Authority provenance: installed production validator’s repository-relative dispatch
+    schema; no product or external authority change.'
+  written_at: '2026-08-08T09:20:59.207303Z'
+  expires_at: '2026-08-09T09:20:59.207303Z'
 phases:
 - id: meta.discovery
   name: Discovery
