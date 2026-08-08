@@ -142220,7 +142220,7 @@ phases:
       push, workflow, test, or external-state effect performed. Residual risk: none.'
 - id: release_0_6_0_runtime_20260808
   name: Larva 0.6.0 Release and Local uvx Activation
-  status: in_progress
+  status: done
   gate: The phase closes after the orchestrator reconciles and proves the exact 7de5344ccbc00b3533ea09ec709e1f64e122373c
     release commit on GitHub and PyPI 0.6.0, then proves both refreshed and no-refresh
     local uvx resolution at 0.6.0. The two serial implementation steps alone own these
@@ -142416,7 +142416,7 @@ phases:
       recovery.'
   - id: release-0-6-0-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.0
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -142535,3 +142535,23 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-08-08T13:42:25.514522Z'
+    done_at: '2026-08-08T13:44:45.282032+00:00'
+    evidence: 'PASS. Dependency release/PyPI evidence confirmed GitHub release v0.6.0
+      and PyPI `larva==0.6.0`. Installed executable `/opt/homebrew/bin/uvx`, version
+      `uvx 0.12.0 (Homebrew 2026-07-28 aarch64-apple-darwin)`. Before-state at 2026-08-08T13:42:50Z:
+      `uvx --from larva larva --version` -> `larva 0.5.0`; repository clean. Initial
+      pinned refresh without explicit public index returned resolver no-version evidence
+      despite PyPI JSON/simple index availability; read-only reconciliation proved
+      https://pypi.org/simple/larva/ contained 0.6.0 wheel/sdist and exact hashes,
+      so the same target was retried with the installed uv-supported explicit index
+      syntax. Successful local-only refresh: `uvx --refresh --index-url https://pypi.org/simple
+      --from larva==0.6.0 larva --version` -> exit 0, `larva 0.6.0`, installed 36
+      packages in target uv cache. A second equivalent explicit-index refresh also
+      resolved 0.6.0. Stable no-refresh proofs: `uvx --index-url https://pypi.org/simple
+      --from larva==0.6.0 larva --version` -> 0.6.0; unpinned `uvx --from larva larva
+      --version` -> 0.6.0. Provenance: public PyPI simple/JSON endpoints, pinned version,
+      wheel SHA256 `3ed01db01a659fa10f54ad1f8e022d40a65fb4ba6536cc9c2429ba32cfcafa92`;
+      no checkout/editable/local source. Git metadata hash before and after exactly
+      `sha256:7d510245cb7cd29ca7ced1709ab185aff14618954dacc62575e42833fd1832ff`; repository
+      remained clean. Only local uv cache resolution changed; no repo/Git/GitHub/PyPI/credential/global-tool
+      effect and no cleanup needed.'
