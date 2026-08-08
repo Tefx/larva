@@ -142081,7 +142081,7 @@ phases:
       paths. Residual risk: none.'
 - id: package_version_0_6_0_20260808
   name: Larva Package Version 0.6.0
-  status: in_progress
+  status: done
   gate: One R0 repository implementation bumps the canonical Larva package version
     from 0.5.1 to 0.6.0 in exactly pyproject.toml, src/larva/__init__.py, and the
     editable larva package entry in uv.lock; proves synchronized/importable metadata,
@@ -142093,7 +142093,7 @@ phases:
   steps:
   - id: package-version-0-6-0.bump
     name: Bump Larva package version from 0.5.1 to 0.6.0
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -142203,3 +142203,16 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-08-08T12:40:09.161057Z'
+    done_at: '2026-08-08T12:53:48.296701+00:00'
+    evidence: 'PASS. Bumped old_version `0.5.1` to new_version `0.6.0` in exactly
+      `pyproject.toml`, `src/larva/__init__.py`, and editable `larva` entry in `uv.lock`.
+      Worker commit `c9a91fa820fa2b16f4710586edc31c7fecfdfed3` (`chore: bump version
+      to 0.6.0`) integrated on main via merge commit. Worker receipt `/tmp/larva-agent-artifacts/package-version-0-6-0-bump/worker-receipt.json`:
+      PASS, mode 0600; worker lint CONFORMANT; parent receipt admission CONFORMANT
+      with `worker_execution_admissible: true` and exact changed files. Integrated
+      checks: `uv lock --check` exit 0 (`Resolved 85 packages`); frozen five-way project/source/lock/import/distribution
+      metadata probe exit 0 (`VERSION_METADATA_OK 0.6.0`); `uvx invar-tools guard
+      --all` exit 0 (11/11 functions, 1100 examples); `git diff --check` exit 0. No
+      narrative docs required because none carries canonical package version and publish
+      workflow derives artifacts from package metadata. No tag, release, publish,
+      push, workflow, test, or external-state effect performed. Residual risk: none.'
