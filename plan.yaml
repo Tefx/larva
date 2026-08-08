@@ -141822,7 +141822,7 @@ phases:
       effect. Final feature tree clean; no runtime/process/root leak.
 - id: pi_rpc_oversized_frame_recovery_20260808
   name: Pi Child RPC Oversized Frame Recovery 2026-08-08
-  status: pending
+  status: in_progress
   gate: One repository implementation must preserve bounded child-RPC memory, recover
     oversized events/final output without misclassifying execution, expose execution
     and delivery separately, synchronize tests/docs, and pass focused runtime proof,
@@ -141832,7 +141832,7 @@ phases:
   steps:
   - id: pi-rpc-oversized-frame-recovery.implement
     name: Recover oversized child RPC frames without losing execution terminal state
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -142018,3 +142018,5 @@ phases:
     - contrib/pi-extension/README.md
     - README.md
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-08-08T09:18:08.793736Z'
