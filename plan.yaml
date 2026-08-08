@@ -141843,7 +141843,7 @@ phases:
       effect. Final feature tree clean; no runtime/process/root leak.
 - id: pi_rpc_oversized_frame_recovery_20260808
   name: Pi Child RPC Oversized Frame Recovery 2026-08-08
-  status: in_progress
+  status: done
   gate: One repository implementation must preserve bounded child-RPC memory, recover
     oversized events/final output without misclassifying execution, expose execution
     and delivery separately, synchronize tests/docs, and pass focused runtime proof,
@@ -141853,7 +141853,7 @@ phases:
   steps:
   - id: pi-rpc-oversized-frame-recovery.implement
     name: Recover oversized child RPC frames without losing execution terminal state
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -142041,3 +142041,41 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-08-08T09:18:08.793736Z'
+    done_at: '2026-08-08T12:21:17.896536+00:00'
+    evidence: 'PASS. Exact owner `frontend-engineer`; claim `claim:de41f64ce60cdbbbf3a8b92f91d16f8959b2e607da96fa4794efba7c0d8a7fd7`;
+      admitted dispatch SHA `sha256:08d81eacae5a23ca72105106d902d4664b468fbd44f852b4b38fe68efd63619d`.
+
+
+      Incident proof: reported parent terminal at 2026-08-08T08:08:47.552Z was `LARVA_CHILD_PROTOCOL_FAILED`;
+      original child session had 1,923,045 bytes / 725 lines / maximum persisted line
+      105,725 bytes and a final PASS message, proving the over-limit object was live
+      RPC transport. During execution, the first child callback itself reproduced
+      the same oversized transport failure; candidate commit, clean worktree, PASS
+      receipt, and lint were recovered without replaying product effects.
+
+
+      Implementation: integrated candidate commits `1f97986d` and `c95fdc14` at main
+      HEAD `699d91ed1531d1687e528bcc23916dfce96b5eb4`. Child extension installs a
+      bounded stdout JSONL writer under `LARVA_PI_CHILD_RPC_FRAME_BOUND=1`; oversized
+      stream events become bounded type-aware projections and oversized final response
+      text becomes a local 0600 artifact manifest. Parent exposes separate `execution_status`
+      and `delivery_status`, preserves execution-owned compatibility status/phase,
+      ignores later transport faults after terminal authority, and emits bounded metadata-only
+      diagnostics. Controlled runtime enumerates child outbound records and proves
+      every encoded frame is <= 1,048,576 bytes; verifies tool/assistant/thinking/final/late-after-terminal/escaping-Unicode/artifact-failure
+      cases, artifact SHA/bytes/lines, callback/wait/select status separation, and
+      raw-payload absence.
+
+
+      Worker receipt `/tmp/larva-agent-artifacts/pi-rpc-oversized-frame-recovery-implement/worker-receipt.json`:
+      `vectl.worker.execution.v2`, PASS, mode 0600, canonical SHA `sha256:bf1250ac7466108005c372e3021bc9cd10ec2b2ea3b55c6df7e096fde25f110a`.
+      Worker lint and final parent receipt admission: `CONFORMANT`, `worker_execution_admissible:
+      true`, no reasons, clean candidate.
+
+
+      Integrated-target checks at `699d91ed`: `node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`
+      -> PASS; targeted async contract/runtime pytest -> 256 passed; all Pi extension
+      Node regressions -> exit 0; full `uv run pytest -q` -> 943 passed; `uvx invar-tools
+      guard --all` -> exit 0 with 12/12 functions and 1200 examples; `git diff --check`
+      -> exit 0. Changed source, tests, and docs synchronously across the 10 admitted
+      paths. Residual risk: none.'
