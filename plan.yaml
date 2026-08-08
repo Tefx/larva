@@ -141820,3 +141820,209 @@ phases:
       RPC-observed view-only startup presentation, watchdog preservation, docs/test
       parity, no second control plane/shared schema/upstream/main mutation, no user-config/provider/network/external
       effect. Final feature tree clean; no runtime/process/root leak.
+- id: pi_rpc_oversized_frame_recovery_20260808
+  name: Pi Child RPC Oversized Frame Recovery 2026-08-08
+  status: pending
+  gate: One repository implementation must preserve bounded child-RPC memory, recover
+    oversized events/final output without misclassifying execution, expose execution
+    and delivery separately, synchronize tests/docs, and pass focused runtime proof,
+    full pytest, Invar, structural refs, assurance lint, and preflight.
+  depends_on:
+  - pi_thinking_level_isolation_20260726
+  steps:
+  - id: pi-rpc-oversized-frame-recovery.implement
+    name: Recover oversized child RPC frames without losing execution terminal state
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - Reproduce the reported boundary with deterministic controlled-runtime tests
+      before the fix, then implement one bounded child-RPC transport path in `contrib/pi-extension/larva.ts`
+      and synchronized tests/docs.
+
+      - Every child RPC record is measured by serialized UTF-8 bytes, including JSON
+      escaping. Records at or below 1,048,576 bytes retain existing behavior. An over-limit
+      record never enters retained presentation/status/callback state as raw content
+      and never causes an already successful child execution to become execution failure.
+
+      - For oversized nonterminal events (`message_update`, tool start/update/end,
+      message/turn events, and equivalent stream notifications), consume only a bounded
+      type-aware projection needed for progress/presentation, record bounded diagnostic
+      metadata, discard heavy payloads, and continue. Thinking content remains hidden.
+
+      - Treat a compact terminal signal (`agent_settled`, with legacy `agent_end`
+      compatibility where safe) as execution authority. Preserve provider/runtime
+      failure classification from bounded terminal fields. A later nonterminal transport/delivery
+      fault cannot overwrite an established execution terminal state.
+
+      - Recover final assistant output through an adapter-owned bounded child response:
+      inline when it fits; otherwise persist exact UTF-8 bytes in the existing controlled
+      subagent artifact storage and return a small manifest with path, SHA-256, bytes,
+      lines, and bounded preview. Do not reconstruct final output by scanning child
+      session JSONL.
+
+      - Public terminal snapshots/callbacks expose separate `execution_status` (`success|failed|cancelled`)
+      and `delivery_status` (`inline|artifactized|failed`) while preserving existing
+      bounded status/phase compatibility fields. Successful execution plus artifact-write/delivery
+      failure remains execution success with delivery failure and a bounded diagnostic.
+
+      - Diagnostics expose task_id, adapter frame sequence, frame/command type when
+      recoverable, encoded bytes, limit, phase, whether execution terminal was seen,
+      artifactization attempted, and artifact manifest when available; diagnostics
+      never echo raw oversized content.
+
+      - Artifact write failure is bounded and explicit; no blind retry, raw payload
+      trace, cross-session scan, shared PersonaSpec/opifex change, or upstream Pi
+      package mutation.
+
+
+      Boundary:
+
+      - Owner: `frontend-engineer`. Candidate comparison: `frontend-engineer` covers
+      production TypeScript implementation; `toolsmith` is design/RFC-only and does
+      not own product mutation; `general` is broader than needed. The existing completed
+      memory-bound step also assigned this exact Pi TypeScript surface to `frontend-engineer`.
+
+      - Repository authority: only the Pi extension, its controlled runtime/memory
+      regression harnesses, shell contract/runtime tests, and synchronized Pi integration/reference/operator
+      docs named in refs and path scope. No external service/device operation, credentials,
+      paid API, shared contract, PersonaSpec, or installed Pi package mutation.
+
+      - Effects: reversible local repository edits and local test artifacts only.
+      Rollback is one Git revert; local generated artifacts are disposable.
+
+
+      Admit:
+
+      - Witnessed incident facts: parent terminal at 2026-08-08T08:08:47.552Z reported
+      `LARVA_CHILD_PROTOCOL_FAILED`; the child session file is 1,923,045 bytes across
+      725 lines with maximum persisted line 105,725 bytes and contains a final PASS
+      assistant message, proving the over-limit record was live Pi RPC stdout rather
+      than the session file.
+
+      - Red-first developer proof covers 1.2 MiB final output; tool result; assistant
+      text delta; thinking delta; JSON escaping; newline/backslash/Unicode encoding
+      expansion; oversized nonterminal after durable child work; success receipt followed
+      by oversized final output; artifact write failure; preview/manifest integrity;
+      and terminal ownership after later transport failure.
+
+      - Exact observations must include all outbound child RPC JSONL records from
+      the controlled writer and assert each is within 1,048,576 UTF-8 bytes, artifact
+      bytes/hash/line count, no raw payload in trace/presentation/status, callback/wait/select
+      terminal metadata, and `execution_status: success` with `delivery_status: artifactized|failed`
+      where applicable.
+
+      - Run focused Node and Python Pi extension tests, controlled runtime smoke,
+      every existing Pi extension Node regression, full repository pytest, and Invar
+      guard. Tests and documentation change in the same implementation commit.
+
+
+      Recovery:
+
+      - Before execution terminal authority exists, malformed or unrecoverable command-response
+      framing remains bounded `LARVA_CHILD_PROTOCOL_FAILED`; cleanup preserves current
+      child-process rules.
+
+      - After execution terminal authority exists, delivery faults update only delivery
+      state. Preserve artifact/diagnostic evidence and stop without replaying child
+      work or external effects.
+
+      - Artifactization may try the existing ordered controlled local directories
+      once each. If none succeeds, publish `delivery_status: failed`; do not retry
+      the child task or scan worktrees/receipts/session logs to infer success.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-rpc-oversized-frame-recovery.implement","risk_tier":"R1","risk_reasons":["The
+      change is a reversible adapter-local TypeScript transport fix with deterministic
+      controlled-runtime seams and no credentials, destructive data, external service,
+      device, or shared-contract effect.","Focused tests can directly observe byte
+      bounds, terminal ownership, artifact integrity, and callback status separation;
+      an independent observer would not add distinct information beyond these seams."],"primary_outcome":"RPC-OVERSIZE-01","rollback_class":"TRIVIAL","observation_ledger":[{"requirement_id":"RPC-OVERSIZE-01","atom":"Oversized
+      stream events are projected or artifactized without raw retention and cannot
+      convert successful execution into failure.","modality":"controlled_runtime_transport","seam":"real","check_id":"oversized_rpc_runtime","independent_step":"pi-rpc-oversized-frame-recovery.implement"},{"requirement_id":"RPC-OVERSIZE-02","atom":"Final
+      output is inline or represented by an integrity-checked artifact manifest and
+      bounded preview.","modality":"filesystem_artifact_runtime","seam":"real","check_id":"oversized_rpc_runtime","independent_step":"pi-rpc-oversized-frame-recovery.implement"},{"requirement_id":"RPC-OVERSIZE-03","atom":"Execution
+      and delivery status remain separately observable through callback and wait/select
+      terminal metadata.","modality":"public_adapter_contract","seam":"real","check_id":"targeted_async_contract_runtime","independent_step":"pi-rpc-oversized-frame-recovery.implement"},{"requirement_id":"RPC-OVERSIZE-04","atom":"Existing
+      child RPC lifecycle, memory privacy, cancellation, and repository behavior remain
+      green.","modality":"regression_suite","seam":"real","check_id":"repo_pytest","independent_step":"pi-rpc-oversized-frame-recovery.implement"}],"test_authority":{"developer_test_globs":["contrib/pi-extension/test-*.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension*.py"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","tests/shell/test_pi_extension_subagent_ux.py","design/pi-coding-agent-integration.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","contrib/pi-extension/README.md","README.md"],"blocked_paths":["plan.yaml","contracts/**","src/larva/core/**","src/larva/shell/**","../opifex/**"]},"claims":["RPC-OVERSIZE-01","RPC-OVERSIZE-02","RPC-OVERSIZE-03","RPC-OVERSIZE-04"],"checks":[{"id":"oversized_rpc_runtime","run":{"command":["node","contrib/pi-extension/test-subagent-rpc-memory-bound.mjs"],"timeout_seconds":240},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","availability":"current"},{"path":"contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","availability":"current"}]},"expect":{"exit_codes":[0],"contains_all":[{"literal":"subagent
+      child RPC memory bound regression: PASS"}]},"proves":["RPC-OVERSIZE-01","RPC-OVERSIZE-02"]},{"id":"targeted_async_contract_runtime","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","availability":"current"}]},"expect":{"exit_codes":[0],"contains_all":[{"literal":"passed"}]},"proves":["RPC-OVERSIZE-03"]},{"id":"pi_extension_node_regressions","run":{"command":["bash","-lc","for
+      f in contrib/pi-extension/test-*.mjs; do node \"$f\"; done"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","availability":"current"}]},"expect":{"exit_codes":[0]},"proves":["RPC-OVERSIZE-04"]},{"id":"repo_pytest","run":{"command":["uv","run","pytest","-q"],"timeout_seconds":720},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","availability":"current"},{"path":"design/pi-coding-agent-integration.md","availability":"current"},{"path":"docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","availability":"current"},{"path":"contrib/pi-extension/README.md","availability":"current"},{"path":"README.md","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","availability":"current"}]},"expect":{"exit_codes":[0],"contains_all":[{"literal":"passed"}]},"proves":["RPC-OVERSIZE-04"]},{"id":"invar_guard","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"AGENTS.md","availability":"current"}],"test_bindings":[]},"expect":{"exit_codes":[0]},"proves":["RPC-OVERSIZE-04"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":30},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"exit_codes":[0]},"proves":["RPC-OVERSIZE-04"]}],"bindings":[{"claim_id":"RPC-OVERSIZE-01","check_ids":["oversized_rpc_runtime"]},{"claim_id":"RPC-OVERSIZE-02","check_ids":["oversized_rpc_runtime"]},{"claim_id":"RPC-OVERSIZE-03","check_ids":["targeted_async_contract_runtime"]},{"claim_id":"RPC-OVERSIZE-04","check_ids":["pi_extension_node_regressions","repo_pytest","invar_guard","diff_whitespace"]}]}
+
+      </intent_closure_contract>'
+    verification: Before mutation capture the failing controlled-runtime proof for
+      oversized final output, tool result, stream delta/thinking, JSON escaping/Unicode,
+      artifact-write failure, and terminal ownership. Completion requires every listed
+      contract check green, exact artifact hash/bytes/lines validation, no JSONL record
+      above 1,048,576 UTF-8 bytes in the controlled writer, execution_status/delivery_status
+      assertions through callback and wait/select, clean worker receipt admission,
+      and synchronized source/tests/docs.
+    evidence_template: '## Incident and red proof
+
+      - Reported parent terminal timestamp/error:
+
+      - Child session total bytes/line count/max persisted line:
+
+      - Final child PASS text present:
+
+      - Red command, exit code, and exact failing scenario fingerprints:
+
+
+      ## Runtime outcomes
+
+      - Oversized frame scenario matrix (final/tool/delta/thinking/escaping/Unicode/nonterminal-after-work/receipt/final/artifact-failure/terminal
+      ownership):
+
+      - Maximum emitted JSONL UTF-8 bytes:
+
+      - execution_status / delivery_status callback and wait/select samples:
+
+      - Artifact path, mode, sha256, bytes, lines, and independently recomputed values:
+
+      - Bounded diagnostic fields and raw-content absence proof:
+
+
+      ## Verification
+
+      - `node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`:
+
+      - targeted async contract/runtime pytest:
+
+      - all Pi extension Node regressions:
+
+      - full `uv run pytest -q`:
+
+      - `uvx invar-tools guard --all`:
+
+      - `git diff --check`:
+
+      - Worker dispatch/receipt verdicts:
+
+      - Changed files and synchronized documentation:
+
+      - Residual risk: none'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - design/pi-coding-agent-integration.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - contrib/pi-extension/README.md
+    - README.md
+    agent: frontend-engineer
