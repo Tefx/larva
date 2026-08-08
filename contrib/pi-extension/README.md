@@ -1441,6 +1441,23 @@ normal workstation retention policy. Orchestrators should consume
 `sha256`/`bytes` against the local file. Orchestrators should not scrape child `.jsonl` logs when manifest exists; they must not scrape or replay child `.jsonl`
 session logs to reconstruct long output when the manifest exists.
 
+
+The child extension installs an adapter-owned stdout writer before RPC emission.
+It enforces a 1,048,576-byte inclusive serialized UTF-8 boundary for every
+outbound child JSONL record. Oversized progress frames are replaced before
+writing by bounded type-aware state and metadata; thinking and raw assistant/tool
+payloads never enter stdout. Compact
+`agent_settled` terminal state, with bounded legacy `agent_end` compatibility,
+owns execution classification even if later transport or callback delivery
+fails.
+
+Terminal callback and wait/select metadata expose separate
+`execution_status` (`success`, `failed`, `cancelled`) and `delivery_status`
+(`inline`, `artifactized`, `failed`). Before stdout delivery, oversized successful
+final text is written exactly to controlled 0600 artifact storage; the compact
+response publishes only `path`, `sha256`, `bytes`, `lines`, and a bounded preview. If all artifact locations fail,
+execution remains successful, delivery is failed with a bounded diagnostic, and
+Larva does not replay the child or scan its session JSONL.
 ### `/larva-subagent` console
 
 The canonical user command is:

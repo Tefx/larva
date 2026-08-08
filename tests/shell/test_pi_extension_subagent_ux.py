@@ -3074,7 +3074,7 @@ def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not
           const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
           rl.on("line", async (line) => {
             const message = JSON.parse(line);
-            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: { provider: "openai", id: "gpt-5.5" }, thinkingLevel: "medium" } }); }
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: { provider: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/")[0], id: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/").slice(1).join("/") }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
             else if (message.type === "abort") { process.stdout.end(); setTimeout(() => process.exit(0), 120); }
           });
@@ -3092,7 +3092,7 @@ def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not
           const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
           rl.on("line", async (line) => {
             const message = JSON.parse(line);
-            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: { provider: "openai", id: "gpt-5.5" }, thinkingLevel: "medium" } }); }
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: { provider: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/")[0], id: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/").slice(1).join("/") }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); process.stdout.end(); setTimeout(() => process.exit(0), 120); }
             else if (message.type === "abort") { process.exit(0); }
           });
