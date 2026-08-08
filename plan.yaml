@@ -37,25 +37,25 @@ project_guidance: 'Larva Pi integration planning guidance:
   proof is insufficient for runnable Pi extension, command, callback, or TUI/CLI surfaces.'
 clipboard:
   author: vectl-orchestrator
-  summary: 'Planner repair: dispatch validator rejects blocked path'
-  content: 'Original contract: `pi-rpc-oversized-frame-recovery.implement` is claimed
-    by exact owner `frontend-engineer`; implementation outcome, target, repo-change
-    effect, tests/docs scope, rollback, and no-shared-contract boundary remain unchanged.
-    Installed Gate lint/preflight were CONFORMANT before claim. Observed facts: production
-    `--validate-worker-dispatch` rejects the derived exact dispatch because contract
-    scope includes blocked path `../opifex/**`; worker dispatch schema requires repository-relative
-    paths and reports `CONTRACT_SCHEMA_INVALID: worker dispatch blocked_paths contains
-    a non-repository-relative path: ''../opifex/**''`. No child was spawned and isolated
-    worktree at `/Users/tefx/Projects/larva/.vectl/worktrees/pi-rpc-oversized-frame-recovery.implement`
-    is clean at base `4da1b808891a351f679b5d207026883ea5ea2415`; dispatch artifact
-    is preserved but INVALID. Proposed delta: in-place edit the pending/claimed step
-    contract to remove only `../opifex/**` from `scope.blocked_paths`; retain prose
-    prohibition on shared PersonaSpec/opifex changes, all allowed paths, owner, checks,
-    claims, risk tier, rollback, and acceptance authority. Revalidate installed lint/preflight.
-    Authority provenance: installed production validator’s repository-relative dispatch
-    schema; no product or external authority change.'
-  written_at: '2026-08-08T09:20:59.207303Z'
-  expires_at: '2026-08-09T09:20:59.207303Z'
+  summary: Plan version bump 0.5.1 to 0.6.0
+  content: 'Original contract: User explicitly requested `bump版本号` immediately after
+    completing substantive post-v0.5.0 Pi runtime features/fixes. Repository current
+    canonical version is 0.5.1 in exactly `pyproject.toml`, `src/larva/__init__.py`,
+    and editable package entry in `uv.lock`. Prior bump commit `ec8664f3` changed
+    exactly these 3 files with message `chore: bump version to 0.5.1`. Latest released
+    tag is v0.5.0; since it, repository added user-visible Pi thinking isolation,
+    model-map profile/symlink support, async-subagent watchdog, and oversized RPC
+    artifact/status protocol. Proposed semantic target: minor bump 0.5.1 -> 0.6.0
+    (new user-visible capabilities since v0.5.0). Authority/effect: local repo metadata
+    only, no tag/release/publish/push; rollback is one revert. Owner: python-executor
+    (well-defined Python/package metadata task). Tests/docs parity: version synchronization
+    test/probe plus build metadata check; no narrative doc update needed because no
+    doc carries current package version and publish workflow derives version from
+    package metadata. Create one compact R0 implementation step/phase, exact allowed
+    paths 3 files, checks for synchronized versions, `uv lock --check`, package build/metadata
+    or focused pytest, full Invar guard, diff check. No independent verifier/gate.'
+  written_at: '2026-08-08T12:30:08.399603Z'
+  expires_at: '2026-08-09T12:30:08.399603Z'
 phases:
 - id: meta.discovery
   name: Discovery
