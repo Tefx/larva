@@ -142220,7 +142220,7 @@ phases:
       push, workflow, test, or external-state effect performed. Residual risk: none.'
 - id: release_0_6_0_runtime_20260808
   name: Larva 0.6.0 Release and Local uvx Activation
-  status: pending
+  status: in_progress
   gate: The phase closes after the orchestrator reconciles and proves the exact 7de5344ccbc00b3533ea09ec709e1f64e122373c
     release commit on GitHub and PyPI 0.6.0, then proves both refreshed and no-refresh
     local uvx resolution at 0.6.0. The two serial implementation steps alone own these
@@ -142231,7 +142231,7 @@ phases:
   steps:
   - id: release-0-6-0-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.0
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -142391,6 +142391,8 @@ phases:
     refs:
     - .github/workflows/publish.yml
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-08-08T13:38:27.636434Z'
   - id: release-0-6-0-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.0
     status: pending
