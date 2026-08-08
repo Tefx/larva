@@ -142079,3 +142079,125 @@ phases:
       guard --all` -> exit 0 with 12/12 functions and 1200 examples; `git diff --check`
       -> exit 0. Changed source, tests, and docs synchronously across the 10 admitted
       paths. Residual risk: none.'
+- id: package_version_0_6_0_20260808
+  name: Larva Package Version 0.6.0
+  status: pending
+  gate: One R0 repository implementation bumps the canonical Larva package version
+    from 0.5.1 to 0.6.0 in exactly pyproject.toml, src/larva/__init__.py, and the
+    editable larva package entry in uv.lock; proves synchronized/importable metadata,
+    lock freshness, full Invar, and clean whitespace; commits the three-file change;
+    and performs no tag, release, publish, push, or narrative-document mutation. No
+    downstream verification, review, or gate step is required.
+  depends_on:
+  - pi_rpc_oversized_frame_recovery_20260808
+  steps:
+  - id: package-version-0-6-0.bump
+    name: Bump Larva package version from 0.5.1 to 0.6.0
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - Change the canonical Larva package version from `0.5.1` to `0.6.0` in exactly
+      `pyproject.toml`, `src/larva/__init__.py`, and the editable `larva` package
+      entry in `uv.lock`. The three values, `larva.__version__`, and installed package
+      metadata must all resolve to `0.6.0`.
+
+      - Keep the lockfile fresh and commit only those three repository files. Do not
+      tag, release, publish, push, or alter runtime/external state.
+
+      - Documentation parity decision: narrative documentation contains no canonical
+      current package version, and `.github/workflows/publish.yml` derives release
+      artifacts from package metadata with `python -m build`; therefore no narrative
+      documentation mutation is required or authorized.
+
+
+      Boundary:
+
+      - Owner: `python-executor`, which supports Worker-v2 execution and directly
+      covers this well-defined Python package-metadata edit. Candidate comparison:
+      `python-senior` is reserved for ambiguous, high-risk, or architecture-heavy
+      Python work; `general` applies when no specialist fits. Both are broader than
+      this mechanical three-file change.
+
+      - Repository authority is limited to `pyproject.toml`, `src/larva/__init__.py`,
+      and `uv.lock`. Tests, narrative docs, workflow files, source behavior, shared
+      contracts, and `plan.yaml` are read-only or blocked.
+
+      - Effects are one reversible local repository commit. There is no credential,
+      account, paid service, device, tag, release, publish, push, or other external-effect
+      authority. Rollback is one Git revert.
+
+
+      Admit:
+
+      - Witnessed current inputs at HEAD: `pyproject.toml`, `src/larva/__init__.py`,
+      and the editable `larva` entry in `uv.lock` each contain `0.5.1`; prior convention
+      commit `ec8664f3` changed exactly those files for the 0.5.1 bump.
+
+      - Command-outcome checks must prove lock freshness before any metadata probe,
+      exact five-way `0.6.0` equality across the three files plus import/package metadata,
+      full `uvx invar-tools guard --all`, and `git diff --check`.
+
+      - Exact allowed-path enforcement and final changed-file evidence prove that
+      no narrative docs, tests, workflows, or other repository paths changed. R0 and
+      trivial rollback require no independent verification, review, or phase gate
+      consumer.
+
+
+      Recovery:
+
+      - If lock freshness, metadata equality, Invar, whitespace, or exact path scope
+      fails, leave the step incomplete and reconcile only within the three authorized
+      files. Do not widen scope, mutate narrative docs, or perform release-side effects.
+
+      - Revert the one local commit to restore `0.5.1`; remove disposable local build/cache
+      artifacts if any. Stop for new authority if recovery would require any repository
+      path or external operation outside this boundary.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"package-version-0-6-0.bump","risk_tier":"R0","risk_reasons":["The
+      change is a mechanical, reversible three-file package-metadata synchronization
+      with no runtime, credential, destructive-data, or external-service effect.","Deterministic
+      local checks directly prove the version, lock, import metadata, repository quality,
+      and path scope; an independent observer would add no distinct information."],"primary_outcome":"VERSION-0.6.0","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":[],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["pyproject.toml","src/larva/__init__.py","uv.lock"],"blocked_paths":["plan.yaml","README.md","docs/**","design/**",".github/**","tests/**","src/larva/core/**","src/larva/shell/**","contrib/**","scripts/**"],"ignored_runtime_paths":[]},"claims":["VERSION-0.6.0","VERSION-LOCK-01","VERSION-QUALITY-01"],"checks":[{"id":"lock_freshness","run":{"command":["uv","lock","--check"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"uv.lock","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["VERSION-LOCK-01"]},{"id":"version_metadata_equality","run":{"command":["uv","run","--frozen","python","-c","import
+      importlib.metadata as metadata; import pathlib, re, tomllib; import larva; expected=''0.6.0'';
+      pyproject=tomllib.loads(pathlib.Path(''pyproject.toml'').read_text())[''project''][''version''];
+      source=re.search(r''^__version__ = \"([^\"]+)\"$'', pathlib.Path(''src/larva/__init__.py'').read_text(),
+      re.MULTILINE).group(1); packages=tomllib.loads(pathlib.Path(''uv.lock'').read_text())[''package''];
+      editable=[p[''version''] for p in packages if p.get(''name'') == ''larva'' and
+      p.get(''source'', {}).get(''editable'') == ''.'']; values={''pyproject'':pyproject,''source'':source,''lock'':editable[0]
+      if len(editable)==1 else editable,''import'':larva.__version__,''metadata'':metadata.version(''larva'')};
+      assert all(value == expected for value in values.values()), values; print(''VERSION_METADATA_OK
+      0.6.0'')"],"timeout_seconds":120},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"src/larva/__init__.py","access":"read","availability":"current"},{"path":"uv.lock","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"VERSION_METADATA_OK
+      0.6.0"}],"contains_any":[],"forbids":[]}},"proves":["VERSION-0.6.0"]},{"id":"invar_guard","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"INVAR.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["VERSION-QUALITY-01"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":30},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["VERSION-QUALITY-01"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require every Intent-Closure check green on the worker candidate,
+      exact changed paths `pyproject.toml`, `src/larva/__init__.py`, and `uv.lock`,
+      a clean Worker-v2 receipt, and completion evidence that records the commit and
+      confirms no tag/release/publish/push or narrative-document mutation.
+    evidence_template: Record old_version=0.5.1 and new_version=0.6.0; list the exact
+      three changed files; include each declared check command, exit code, and bounded
+      output (including VERSION_METADATA_OK 0.6.0); show the final changed-file set;
+      confirm no tag, release, publish, push, workflow, test, or narrative-doc side
+      effect; record the implementation commit SHA.
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    - .github/workflows/publish.yml
+    - INVAR.md
+    agent: python-executor
