@@ -2147,6 +2147,28 @@ def test_subagent_success_result_contract() -> None:
     )
 
 
+def test_oversized_child_rpc_execution_and_delivery_contract_is_documented() -> None:
+    source = _source()
+    readme = (ROOT / "contrib" / "pi-extension" / "README.md").read_text(encoding="utf-8")
+    authority = (ROOT / "docs" / "reference" / "PI_EXTENSION_ASYNC_SUBAGENTS.md").read_text(encoding="utf-8")
+    _assert_tokens(
+        source,
+        "CHILD_RPC_JSONL_MAX_BYTES = 1_048_576",
+        'execution_status: snapshot.status',
+        'delivery_status: record.delivery_status',
+        'message.type === "agent_settled" || message.type === "agent_end"',
+        "LARVA_CHILD_OUTPUT_ARTIFACT_WRITE_FAILED",
+        "adapter_frame_sequence",
+        "encoded_bytes",
+        "artifactization_attempted",
+    )
+    for document in (readme, authority):
+        assert "execution_status" in document
+        assert "delivery_status" in document
+        assert "1,048,576" in document
+        assert "agent_settled" in document
+
+
 def test_subagent_failed_after_allocation_keeps_task_id() -> None:
     _assert_tokens(_source(), "status: \"failed\"", "error", "task_id")
 

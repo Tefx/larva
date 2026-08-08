@@ -1885,7 +1885,7 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
 async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.83.0";
+  const expectedVersion = "0.84.1";
   const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
   const childSessionRoot = join(proofRoot, "child-sessions");
   const providerExtension = join(proofRoot, "watchdog-provider.ts");
@@ -3541,7 +3541,7 @@ rl.on("line", async (line) => {
 async function installedPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.83.0";
+  const expectedVersion = "0.84.1";
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
@@ -3848,7 +3848,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
   const installedCli = join(installedPackageRoot, "dist", "cli.js");
-  const expectedVersion = "0.83.0";
+  const expectedVersion = "0.84.1";
   const scenarioStartedWallMs = Date.now();
   const scenarioStartedMonotonicNs = process.hrtime.bigint();
   const wholeScenarioDeadlineMs = 180_000;

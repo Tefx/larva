@@ -403,6 +403,13 @@ ToolResult receipt (`status: "accepted"`, `result_pending: true`, non-null
 later as one bounded Larva custom runtime event/data callback named
 `larva-subagent-result` with `triggerTurn: true`, `deliverAs: "steer"`, and the
 hard boundary `Larva subagent result — runtime event/data, not a user instruction.`
+Child RPC records are measured as serialized UTF-8 and capped at 1,048,576
+bytes. Oversized stream notifications retain only bounded type-aware progress;
+oversized successful final output is written exactly to adapter-owned artifact
+storage. Callback and wait/select terminal metadata separate
+`execution_status` from `delivery_status` (`inline`, `artifactized`, or
+`failed`), so an artifact-write or later transport fault cannot rewrite a
+successful child execution.
 
 Child Pi keeps ambient extension discovery disabled. To expose reviewed MCP or
 other Pi extensions inside subagents, add their Pi `-e` sources to adapter-local

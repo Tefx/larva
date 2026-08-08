@@ -545,43 +545,49 @@ process-local orchestration authority. It also does not introduce a
 future decision.
 
 ### Child RPC stream retention and memory safety
-
 The child Pi RPC stdout stream is an untrusted and potentially unbounded transport
-stream, not a cacheable transcript. The parent extension may parse RPC frames to
-advance lifecycle state and feed bounded presentation, but it must not retain raw
-frames whose payload can grow with the child transcript.
+stream, not a cacheable transcript. The parent extension measures every complete
+JSONL record by its serialized UTF-8 bytes, including JSON escaping, before
+retaining any payload. Records at or below 1,048,576 bytes preserve existing
+handling.
 
-Required retention contract:
+Oversized records follow these rules:
 
-- `message_update` frames must be handled as streaming transport frames. Extract
-  only bounded presentation deltas and then drop the raw frame immediately.
-- The Pi RPC delta source is `frame.assistantMessageEvent.delta`; the full
-  assistant partial lives under `frame.message` and must not be retained for
-  lifecycle, orchestration, trace, or presentation-cache authority.
-- Terminal detection must use bounded state such as `agentEnded` and
-  `protocolFailed`, not a scan over an ever-growing raw `events[]` array.
-- The model-facing `larva_subagent_events` log is the bounded orchestration event
-  log only. It must not mirror child RPC frames and must not expose
-  `message_update.message`, `assistantMessageEvent.partial`, full tool args,
-  full tool output, or other large child payloads.
-- Debug metadata, if kept, is a bounded recent ring of metadata only, such as
-  frame `type`, `id`, byte count, timestamp, coarse content kinds, and
-  `omittedHeavyFields: true`.
-- `LARVA_PI_CHILD_RPC_TRACE_FILE` output is metadata-only. It must not write full
-  raw RPC frames. Malformed-frame diagnostics may include a bounded preview and
-  byte count, not the full line.
-- Child stderr retention is tail-bounded. Startup error parsing may use the
-  bounded tail, but stderr must not grow without limit for a long-lived child.
-- Before `JSON.parse`, a child RPC JSONL line-size guard must reject oversized
-  frames with `LARVA_CHILD_PROTOCOL_FAILED` instead of allowing parent Pi heap
-  exhaustion.
+- Oversized nonterminal `message_update`, tool start/update/end, message/turn,
+  and equivalent stream notifications produce only a bounded type-aware
+  projection for progress and presentation. Raw message, delta, thinking, tool
+  argument, output, and error payloads are discarded. Thinking remains hidden.
+- The Pi RPC assistant delta source is `assistantMessageEvent.delta`; full
+  partials such as `frame.message` never enter status, presentation, callback,
+  event-log, or trace state.
+- Compact `agent_settled` is terminal authority. Legacy `agent_end` remains
+  compatible and preserves bounded provider/runtime failure fields. Once a
+  terminal signal is seen, later nonterminal transport or delivery faults cannot
+  replace the execution result.
+- An oversized successful `get_last_assistant_text` response is consumed only by
+  the matching pending command. The exact decoded UTF-8 text is written to the
+  existing ordered adapter artifact locations. The callback carries a bounded
+  preview and a manifest with `path`, SHA-256, byte count, and line count. Larva
+  never reconstructs final output by scanning child session JSONL.
+- Artifact write failure has no blind retry and no child replay. Execution stays
+  successful while `delivery_status` becomes `failed` with a bounded diagnostic.
+- Public callbacks and wait/select terminal metadata expose
+  `execution_status: success|failed|cancelled` separately from
+  `delivery_status: inline|artifactized|failed`; compatibility `status` and
+  `phase` remain execution-owned.
+- Oversized diagnostics contain only task id, adapter frame sequence, recoverable
+  frame/command type, encoded bytes, limit, phase, terminal-seen flag,
+  artifactization-attempted flag, and artifact manifest when available. They do
+  not echo raw oversized content.
 
-This contract does not change public tool schemas, callback schemas, child
-session `.jsonl` persistence, PersonaSpec, or opifex shared contracts. It only
-changes the parent adapter's resource-retention policy. Long `wait`/`select`
-operations remain supported, but parent heap growth must be bounded with respect
-to the full child streaming transcript.
+The model-facing event log remains the bounded orchestration log and never mirrors
+child RPC frames. `LARVA_PI_CHILD_RPC_TRACE_FILE` remains metadata-only;
+malformed-frame diagnostics may include only a bounded preview. Child stderr is
+tail-bounded. Malformed or unrecoverable command framing before terminal
+authority remains `LARVA_CHILD_PROTOCOL_FAILED` and uses existing child cleanup.
 
+This adapter-local contract does not change PersonaSpec, opifex shared contracts,
+upstream Pi packages, or child session persistence.
 ### Background activity indicator
 Interactive Pi sessions should expose a minimal read-only status indicator for
 human awareness of background subagent work. This is not a control surface and
