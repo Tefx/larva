@@ -2161,6 +2161,10 @@ def test_oversized_child_rpc_execution_and_delivery_contract_is_documented() -> 
         "adapter_frame_sequence",
         "encoded_bytes",
         "artifactization_attempted",
+        "LARVA_PI_CHILD_RPC_FRAME_BOUND",
+        "installChildRpcFrameWriter",
+        "boundedChildRpcOutputEnvelope",
+        "output_delivery",
     )
     for document in (readme, authority):
         assert "execution_status" in document

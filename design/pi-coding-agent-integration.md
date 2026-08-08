@@ -2278,19 +2278,20 @@ RPC command response rules:
   `LARVA_CHILD_RUNTIME_FAILED` before `get_last_assistant_text`.
 #### Oversized child RPC recovery
 
-The parent adapter measures each serialized child JSONL record in UTF-8 bytes
-with a 1,048,576-byte inclusive limit. Oversized nonterminal frames contribute
-only bounded type-aware progress and diagnostic metadata; raw assistant,
-thinking, tool, message, and turn payloads are discarded. `agent_settled` owns
+The child extension installs an adapter-owned stdout writer before RPC emission.
+It measures each serialized child JSONL record in UTF-8 bytes and guarantees a
+1,048,576-byte inclusive outbound limit. Oversized nonterminal frames are
+replaced before writing with bounded type-aware progress and diagnostic metadata;
+raw assistant, thinking, tool, message, and turn payloads are discarded. `agent_settled` owns
 terminal execution state, with bounded legacy `agent_end` compatibility for
 runtime failure classification. Later transport or delivery faults cannot
 replace that state.
 
-A matching oversized final-text response is handled by the pending command and
-never recovered from the child session file. Successful final text stays inline
-when bounded; otherwise the adapter writes exact UTF-8 bytes to controlled
-subagent artifact storage and publishes path, SHA-256, bytes, lines, and a
-bounded preview. Write failure leaves `execution_status: success` and reports
+A matching oversized final-text response is artifactized by the child writer
+before stdout delivery and never recovered from the child session file. Successful
+final text stays inline when bounded; otherwise the writer stores exact UTF-8
+bytes in controlled 0600 subagent artifact storage and emits only the correlated
+bounded response with path, SHA-256, bytes, lines, and a bounded preview. Write failure leaves `execution_status: success` and reports
 `delivery_status: failed`; successful persistence reports `artifactized`.
 Callbacks and wait/select metadata expose both fields while compatibility
 `status`/`phase` remain execution-owned. Diagnostics are metadata-only and do

@@ -545,18 +545,20 @@ process-local orchestration authority. It also does not introduce a
 future decision.
 
 ### Child RPC stream retention and memory safety
-The child Pi RPC stdout stream is an untrusted and potentially unbounded transport
-stream, not a cacheable transcript. The parent extension measures every complete
-JSONL record by its serialized UTF-8 bytes, including JSON escaping, before
-retaining any payload. Records at or below 1,048,576 bytes preserve existing
-handling.
+The child Pi RPC stdout stream is an untrusted transport, not a cacheable
+transcript. The Larva child extension installs an adapter-owned stdout writer
+before RPC frames are emitted. The writer measures every complete JSONL record by
+its serialized UTF-8 bytes, including JSON escaping. Every outbound child stdout
+record is at most 1,048,576 bytes; records at or below that inclusive limit keep
+existing behavior.
 
 Oversized records follow these rules:
 
-- Oversized nonterminal `message_update`, tool start/update/end, message/turn,
-  and equivalent stream notifications produce only a bounded type-aware
-  projection for progress and presentation. Raw message, delta, thinking, tool
-  argument, output, and error payloads are discarded. Thinking remains hidden.
+- Before writing oversized nonterminal `message_update`, tool start/update/end,
+  message/turn, and equivalent stream notifications, the writer replaces them
+  with a bounded type-aware projection for progress and presentation. Raw
+  message, delta, thinking, tool argument, output, and error payloads never enter
+  stdout. Thinking remains hidden.
 - The Pi RPC assistant delta source is `assistantMessageEvent.delta`; full
   partials such as `frame.message` never enter status, presentation, callback,
   event-log, or trace state.
@@ -564,11 +566,12 @@ Oversized records follow these rules:
   compatible and preserves bounded provider/runtime failure fields. Once a
   terminal signal is seen, later nonterminal transport or delivery faults cannot
   replace the execution result.
-- An oversized successful `get_last_assistant_text` response is consumed only by
-  the matching pending command. The exact decoded UTF-8 text is written to the
-  existing ordered adapter artifact locations. The callback carries a bounded
-  preview and a manifest with `path`, SHA-256, byte count, and line count. Larva
-  never reconstructs final output by scanning child session JSONL.
+- Before an oversized successful `get_last_assistant_text` response is written,
+  the child writer persists the exact decoded UTF-8 text in the existing ordered
+  adapter artifact locations with file mode `0600`. Stdout carries only the
+  matching response id plus bounded delivery state, preview, and a manifest with
+  `path`, SHA-256, byte count, and line count. The parent consumes that compact
+  response and never reconstructs final output by scanning child session JSONL.
 - Artifact write failure has no blind retry and no child replay. Execution stays
   successful while `delivery_status` becomes `failed` with a bounded diagnostic.
 - Public callbacks and wait/select terminal metadata expose

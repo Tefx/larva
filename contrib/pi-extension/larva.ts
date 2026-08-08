@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { accessSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { accessSync, appendFileSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
@@ -101,6 +101,8 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_INTERACTIVE_TUI?: string;
   LARVA_PI_LAUNCHED?: string;
   LARVA_PI_CHILD_RPC_TRACE_FILE?: string;
+  LARVA_PI_CHILD_RPC_FRAME_BOUND?: string;
+  LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE?: string;
   LARVA_PI_SUBAGENT_LOG_FILE?: string;
   LARVA_PI_SUBAGENT_CONFIG_FILE?: string;
   LARVA_PI_SUBAGENT_ARTIFACT_DIR?: string;
@@ -760,6 +762,19 @@ type OversizedChildRpcResponse = Readonly<{
   type: string | null;
   encoded_bytes: number;
   data: Record<string, unknown> | null;
+}>;
+type ChildRpcOutputDeliveryEnvelope = Readonly<{
+  status: "artifactized" | "failed";
+  preview: string;
+  manifest: SubagentFullOutputArtifact | null;
+  diagnostic: SubagentCallbackDeliveryDiagnostic | null;
+  encoded_bytes: number;
+  limit: number;
+}>;
+type ChildRpcOversizedFrameMetadata = Readonly<{
+  encoded_bytes: number;
+  limit: number;
+  frame_type: string | null;
 }>;
 
 function childRpcTraceFile(env: RuntimeEnv): string | null {
@@ -6154,6 +6169,113 @@ function subagentOutputLineCount(value: string): number {
   return value.split(/\r\n|\r|\n/).length;
 }
 
+function childRpcFrameBoundEnabled(env: RuntimeEnv = process.env as RuntimeEnv): boolean {
+  return env.LARVA_PI_CHILD_RPC_FRAME_BOUND === "1";
+}
+
+function childRpcProjection(frame: Record<string, unknown>, encodedBytes: number): Record<string, unknown> {
+  const projection = normalizeSubagentChildStreamEventForPresentation(frame, true);
+  if (projection?.kind === "tool") {
+    return {
+      type: frame.type,
+      toolCallId: projection.toolCallId,
+      toolName: projection.name,
+      success: projection.status === "failed" ? false : frame.success,
+      output: projection.output_preview,
+      error: projection.error_preview,
+      oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: frame.type },
+    };
+  }
+  if (projection?.kind === "thinking_hidden") {
+    return { type: "message_update", channel: "thinking", assistantMessageEvent: { type: "thinking_delta", delta: "" }, oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: frame.type } };
+  }
+  if (projection?.kind === "assistant_delta") {
+    return { type: "message_update", channel: "assistant", assistantMessageEvent: { delta: projection.text }, oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: frame.type } };
+  }
+  return { type: typeof frame.type === "string" ? frame.type : "oversized_notification", oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: typeof frame.type === "string" ? frame.type : null } };
+}
+
+function childRpcArtifactSnapshot(): SubagentTerminalSnapshot {
+  const completedAt = timestampNow();
+  return {
+    task_id: null,
+    persona_id: "child-rpc-writer",
+    status: "success",
+    result_text: "",
+    full_result_text: "",
+    result_pending: false,
+    phase: "success",
+    updated_at: completedAt,
+    error: null,
+    callback_id: `child-rpc-writer:${completedAt}`,
+    completed_at: completedAt,
+  };
+}
+
+function boundedChildRpcOutputEnvelope(fullOutput: string, env: RuntimeEnv): ChildRpcOutputDeliveryEnvelope {
+  const encodedBytes = Buffer.byteLength(fullOutput, "utf8");
+  const preview = "[oversized child output artifactized; see manifest]";
+  try {
+    const manifest = writeSubagentFullOutputArtifactSync(childRpcArtifactSnapshot(), env, fullOutput);
+    return { status: "artifactized", preview, manifest, diagnostic: null, encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES };
+  } catch (caught) {
+    return {
+      status: "failed",
+      preview,
+      manifest: null,
+      diagnostic: subagentCallbackDeliveryDiagnostic(
+        "LARVA_CHILD_OUTPUT_ARTIFACT_WRITE_FAILED",
+        boundedVisible(caught instanceof Error ? caught.message : String(caught), 500) || "Child output artifact could not be persisted.",
+      ),
+      encoded_bytes: encodedBytes,
+      limit: CHILD_RPC_JSONL_MAX_BYTES,
+    };
+  }
+}
+
+export function installChildRpcFrameWriterForTests(env: RuntimeEnv = process.env as RuntimeEnv): void {
+  installChildRpcFrameWriter(env);
+}
+
+function installChildRpcFrameWriter(env: RuntimeEnv = process.env as RuntimeEnv): void {
+  if (!childRpcFrameBoundEnabled(env)) return;
+  const stdout = process.stdout;
+  const state = stdout as typeof stdout & { __larvaChildRpcFrameWriterInstalled?: boolean };
+  if (state.__larvaChildRpcFrameWriterInstalled === true) return;
+  state.__larvaChildRpcFrameWriterInstalled = true;
+  const nativeWrite = stdout.write.bind(stdout) as (...args: unknown[]) => boolean;
+  stdout.write = ((chunk: string | Uint8Array, encodingOrCallback?: BufferEncoding | ((error?: Error | null) => void), callback?: (error?: Error | null) => void): boolean => {
+    const encoding = typeof encodingOrCallback === "string" ? encodingOrCallback : "utf8";
+    const done = typeof encodingOrCallback === "function" ? encodingOrCallback : callback;
+    const writeOriginal = (): boolean => typeof done === "function"
+      ? (typeof encodingOrCallback === "string" ? nativeWrite(chunk, encodingOrCallback, done) : nativeWrite(chunk, done))
+      : (typeof encodingOrCallback === "string" ? nativeWrite(chunk, encodingOrCallback) : nativeWrite(chunk));
+    const text = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString(encoding);
+    if (!text.endsWith("\n") || text.slice(0, -1).includes("\n")) return writeOriginal();
+    const line = text.slice(0, -1);
+    const encodedBytes = Buffer.byteLength(line, "utf8");
+    if (encodedBytes <= CHILD_RPC_JSONL_MAX_BYTES) return writeOriginal();
+    let frame: unknown;
+    try { frame = JSON.parse(line); } catch { return writeOriginal(); }
+    if (!isRecord(frame)) return writeOriginal();
+    const responseId = typeof frame.id === "string" || typeof frame.id === "number" ? String(frame.id) : null;
+    const output = isRecord(frame.data) && typeof frame.data.text === "string" ? frame.data.text : null;
+    const boundedFrame = output !== null && responseId !== null
+      ? { id: responseId, success: true, data: { output_delivery: boundedChildRpcOutputEnvelope(output, env) } }
+      : childRpcProjection(frame, encodedBytes);
+    const boundedLine = `${JSON.stringify(boundedFrame)}\n`;
+    const boundedBytes = Buffer.byteLength(boundedLine, "utf8") - 1;
+    if (boundedBytes > CHILD_RPC_JSONL_MAX_BYTES) throw new Error("Larva child RPC writer produced an oversized bounded frame.");
+    if (typeof env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE === "string" && env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE.length > 0) {
+      try {
+        const traceRecord = JSON.stringify({ encoded_bytes: boundedBytes, frame: boundedFrame });
+        if (Buffer.byteLength(traceRecord, "utf8") <= CHILD_RPC_JSONL_MAX_BYTES) appendFileSync(env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE, `${traceRecord}\n`, "utf8");
+      } catch { /* proof-only outbound trace cannot alter child delivery. */ }
+    }
+    return typeof done === "function" ? nativeWrite(boundedLine, "utf8", done) : nativeWrite(boundedLine, "utf8");
+  }) as typeof stdout.write;
+}
+
 function subagentFullOutputArtifactName(snapshot: SubagentTerminalSnapshot, bytesBuffer: Buffer): { fileName: string; sha256: string; bytes: number; lines: number } {
   const sha256 = createHash("sha256").update(bytesBuffer).digest("hex");
   const taskSegment = subagentArtifactSafeSegment(snapshot.task_id === null ? "unallocated" : (snapshot.task_id.split(/[\\/]/).pop() ?? "child-output"));
@@ -8209,6 +8331,7 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
         LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
         LARVA_PI_INTERACTIVE_TUI: "0",
         LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+        LARVA_PI_CHILD_RPC_FRAME_BOUND: "1",
         LARVA_PI_LAUNCHED: "1",
       },
       stdio: ["pipe", "pipe", "pipe"],
@@ -8626,8 +8749,28 @@ function isOversizedChildRpcResponse(value: unknown): value is OversizedChildRpc
   return isRecord(value) && value.oversized === true && typeof value.id === "string" && typeof value.encoded_bytes === "number";
 }
 
+function childRpcOutputDelivery(value: unknown): ChildRpcOutputDeliveryEnvelope | null {
+  if (!isRecord(value) || !isSuccessResponse(value) || !isRecord(value.data) || !isRecord(value.data.output_delivery)) return null;
+  const delivery = value.data.output_delivery;
+  if ((delivery.status !== "artifactized" && delivery.status !== "failed") || typeof delivery.preview !== "string") return null;
+  const manifest = isRecord(delivery.manifest)
+    && typeof delivery.manifest.path === "string"
+    && typeof delivery.manifest.sha256 === "string"
+    && typeof delivery.manifest.bytes === "number"
+    && typeof delivery.manifest.lines === "number"
+    ? delivery.manifest as SubagentFullOutputArtifact
+    : null;
+  const diagnostic = isRecord(delivery.diagnostic) && typeof delivery.diagnostic.code === "string" && typeof delivery.diagnostic.message === "string"
+    ? delivery.diagnostic as SubagentCallbackDeliveryDiagnostic
+    : null;
+  if (typeof delivery.encoded_bytes !== "number" || typeof delivery.limit !== "number") return null;
+  return { status: delivery.status, preview: delivery.preview, manifest, diagnostic, encoded_bytes: delivery.encoded_bytes, limit: delivery.limit };
+}
+
 function finalText(value: unknown): string | LarvaError {
   if (isLarvaError(value)) return value;
+  const outputDelivery = childRpcOutputDelivery(value);
+  if (outputDelivery !== null) return outputDelivery.preview;
   if (!isSuccessResponse(value) && !isOversizedChildRpcResponse(value)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child final text request failed.");
   const text = (value as { data?: { text?: unknown } }).data?.text;
   // Contract token for static harness: typeof data.text === "string"
@@ -8802,7 +8945,17 @@ async function collectAcceptedSubagentTerminalState(record: ActiveSubagentRun, r
     const text = finalText(last);
     if (isLarvaError(text)) finalizeSubagentRun(record, failed(record.task_id, record.persona_id, text));
     else if (record.task_id !== null) {
-      const deliveredText = isOversizedChildRpcResponse(last) ? stageOversizedSubagentOutput(record, text) : text;
+      const childDelivery = childRpcOutputDelivery(last);
+      let deliveredText = text;
+      if (childDelivery !== null) {
+        record.callback_child_output_truncated = true;
+        record.callback_child_output_preview = childDelivery.preview;
+        record.callback_full_output_artifact = childDelivery.manifest;
+        record.delivery_status = childDelivery.status;
+        record.delivery_diagnostic = cloneSubagentCallbackDeliveryDiagnostic(childDelivery.diagnostic);
+      } else if (isOversizedChildRpcResponse(last)) {
+        deliveredText = stageOversizedSubagentOutput(record, text);
+      }
       finalizeSubagentRun(record, success(record.task_id, record.persona_id, deliveredText));
     }
     else finalizeSubagentRun(record, failed(null, record.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile was not available after prompt.")));
@@ -9108,6 +9261,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
 
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
   const env = currentEnv(ctx);
+  installChildRpcFrameWriter(env);
   registerSubagentBackgroundIndicatorContext(ctx);
   agentPersonaSwitchToolsRegistered = false;
   activePersonaLease = null;

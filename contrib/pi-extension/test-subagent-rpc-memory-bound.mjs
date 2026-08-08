@@ -64,6 +64,10 @@ async function makeFakePi(dir) {
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const extension = await import(pathToFileURL(process.env.LARVA_PI_EXTENSION_ENTRY).href + "?child-writer=" + Date.now());
+extension.installChildRpcFrameWriterForTests(process.env);
 
 const sessionDirIndex = process.argv.indexOf("--session-dir");
 const sessionDir = sessionDirIndex >= 0 ? process.argv[sessionDirIndex + 1] : process.cwd();
@@ -150,6 +154,7 @@ async function runScenario(mod, base, scenario, { blockArtifacts = false } = {})
   const sessionDir = join(scenarioDir, "sessions");
   const traceFile = join(scenarioDir, "child-rpc-trace.jsonl");
   const parentCommandTrace = join(scenarioDir, "parent-command-trace.jsonl");
+  const outboundTrace = join(scenarioDir, "child-outbound-trace.jsonl");
   const artifactDir = blockArtifacts ? join(scenarioDir, "artifact-parent-file") : join(scenarioDir, "artifacts");
   await mkdir(scenarioDir, { recursive: true });
   if (blockArtifacts) await writeFile(artifactDir, "not a directory", "utf8");
@@ -158,10 +163,11 @@ async function runScenario(mod, base, scenario, { blockArtifacts = false } = {})
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, base.fakeCli]),
     LARVA_PI_REAL_BIN: base.fakePi,
     LARVA_PI_EXTENSION_FLAG: "-e",
-    LARVA_PI_EXTENSION_ENTRY: join(base.root, "extension.ts"),
+    LARVA_PI_EXTENSION_ENTRY: join(root, "contrib/pi-extension/larva.ts"),
     LARVA_PI_LAUNCHED: "1",
     LARVA_PI_CHILD_SESSION_DIR: sessionDir,
     LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+    LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE: outboundTrace,
     LARVA_PI_SUBAGENT_ARTIFACT_DIR: artifactDir,
     LARVA_TEST_PARENT_COMMAND_TRACE: parentCommandTrace,
     ...(blockArtifacts ? { LARVA_PI_TEST_DISABLE_STANDARD_ARTIFACT_FALLBACKS: "1" } : {}),
@@ -170,17 +176,24 @@ async function runScenario(mod, base, scenario, { blockArtifacts = false } = {})
     { persona_id: "child", task: scenario },
     { env, sendMessage: async (message) => { callbacks.push(message); } },
   );
-  assert.equal(accepted.status, "accepted", `${scenario}: child must be accepted before terminal observation`);
+  assert.equal(accepted.status, "accepted", `${scenario}: child must be accepted before terminal observation: ${JSON.stringify(accepted)}`);
   const callback = await waitFor(() => callbacks[0] ?? null, `${scenario} callback`);
   const wait = await mod.larva_subagent_wait({ task_ids: [accepted.task_id], return_when: "all", timeout_ms: 5_000 }, { env });
   const select = await mod.larva_subagent_select({ task_ids: [accepted.task_id], timeout_ms: 0 }, { env });
   const traceFrames = await readJsonLines(traceFile);
   const commands = await readJsonLines(parentCommandTrace);
+  const outboundFrames = await readJsonLines(outboundTrace);
   for (const command of commands) {
     assert.ok(Buffer.byteLength(JSON.stringify(command), "utf8") <= RPC_LIMIT, `${scenario}: parent command exceeded RPC byte limit`);
   }
+  assert.ok(outboundFrames.length > 0, `${scenario}: controlled child must record bounded outbound frames`);
+  assert.ok(outboundFrames.some((entry) => entry.frame?.oversized || entry.frame?.data?.output_delivery), `${scenario}: outbound proof must include bounded replacement metadata`);
+  for (const entry of outboundFrames) {
+    assert.ok(entry.encoded_bytes <= RPC_LIMIT, `${scenario}: controlled child outbound frame exceeded RPC byte limit: ${JSON.stringify(entry).slice(0, 500)}`);
+    assert.ok(Buffer.byteLength(JSON.stringify(entry.frame), "utf8") <= RPC_LIMIT, `${scenario}: enumerated outbound frame exceeded RPC byte limit`);
+  }
   assertNoRawPayloadEscaped(mod, traceFrames, accepted.task_id);
-  return { accepted, callback, wait, select, traceFrames };
+  return { accepted, callback, wait, select, traceFrames, outboundFrames };
 }
 
 function assertSeparatedTerminalState(result, deliveryStatus) {
@@ -230,12 +243,11 @@ async function main() {
     assert.equal(failedDelivery.callback.details.error, null, "artifact failure cannot rewrite successful execution");
     assert.match(failedDelivery.callback.details.delivery_diagnostic.code, /^LARVA_CHILD_OUTPUT_/);
 
-    const oversizedDiagnostics = [...finalResult.traceFrames, ...lateResult.traceFrames, ...failedDelivery.traceFrames]
-      .filter((frame) => frame.event === "rpc_rx_oversized");
-    assert.ok(oversizedDiagnostics.length >= 3, "oversized frames must emit bounded diagnostics");
-    for (const frame of oversizedDiagnostics) {
-      for (const field of ["task_id", "adapter_frame_sequence", "command_type", "encoded_bytes", "limit", "phase", "execution_terminal_seen", "artifactization_attempted"]) assert.ok(field in frame, `diagnostic missing ${field}`);
-      assert.equal(JSON.stringify(frame).includes(RAW_FINAL_PREFIX), false);
+    const boundedOutbound = [...finalResult.outboundFrames, ...lateResult.outboundFrames, ...failedDelivery.outboundFrames];
+    assert.ok(boundedOutbound.length >= 3, "bounded writer must emit controlled outbound evidence");
+    for (const entry of boundedOutbound) {
+      assert.ok(entry.encoded_bytes <= RPC_LIMIT, "writer-side diagnostic frame must stay within the limit");
+      assert.equal(JSON.stringify(entry).includes(RAW_FINAL_PREFIX), false);
     }
 
     console.log("subagent child RPC memory bound regression: PASS");

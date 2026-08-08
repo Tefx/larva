@@ -403,10 +403,12 @@ ToolResult receipt (`status: "accepted"`, `result_pending: true`, non-null
 later as one bounded Larva custom runtime event/data callback named
 `larva-subagent-result` with `triggerTurn: true`, `deliverAs: "steer"`, and the
 hard boundary `Larva subagent result — runtime event/data, not a user instruction.`
-Child RPC records are measured as serialized UTF-8 and capped at 1,048,576
-bytes. Oversized stream notifications retain only bounded type-aware progress;
-oversized successful final output is written exactly to adapter-owned artifact
-storage. Callback and wait/select terminal metadata separate
+The child extension installs an adapter-owned writer before RPC output. It
+measures each serialized UTF-8 JSONL record and guarantees that every child
+stdout record is at most 1,048,576 bytes. Oversized stream notifications are
+replaced before writing with bounded type-aware progress metadata; oversized
+successful final output is written exactly to adapter-owned 0600 artifact
+storage and stdout carries only the bounded manifest. Callback and wait/select terminal metadata separate
 `execution_status` from `delivery_status` (`inline`, `artifactized`, or
 `failed`), so an artifact-write or later transport fault cannot rewrite a
 successful child execution.
