@@ -37,32 +37,27 @@ project_guidance: 'Larva Pi integration planning guidance:
   proof is insufficient for runnable Pi extension, command, callback, or TUI/CLI surfaces.'
 clipboard:
   author: vectl-orchestrator
-  summary: Plan GitHub v0.6.0 release and uvx update
-  content: 'User explicitly authorized external effects: publish a new GitHub Release,
-    wait, then update local uvx Larva version. Current repo `/Users/tefx/Projects/larva`:
-    clean main HEAD `7de5344ccbc00b3533ea09ec709e1f64e122373c`, ahead origin/main
-    19; canonical version 0.6.0 in pyproject/source/lock; latest tag/release v0.5.0;
-    v0.6.0 tag/release absent; origin https://github.com/Tefx/larva.git; gh authenticated
-    as Tefx with repo/workflow scopes. Publish workflow triggers on release published,
-    builds package, runs MCP smoke, publishes PyPI via trusted publishing. Current
-    `uvx --from larva larva --version` = 0.5.0. Required outcome: push current main;
-    create/publish GitHub Release/tag v0.6.0 at exact integrated HEAD with concise
-    notes; observe GitHub Actions publish workflow and PyPI 0.6.0 availability; after
-    confirmed PyPI availability update local uvx cache/tool resolution and prove `uvx
-    --refresh --from larva==0.6.0 larva --version` (or current exact uv syntax) returns
-    0.6.0. Declared effects: Git push, GitHub tag/release, CI/PyPI publish, local
-    uv cache/tool install. Credentials: existing gh auth and GitHub trusted publishing
-    only; no new secrets/cost. Recovery: reconcile read-only after any ambiguous network
-    result; never duplicate release/tag/publish. If workflow fails before PyPI publish,
-    preserve release and report exact failed job; if PyPI already has 0.6.0, verify
-    artifact identity/version then continue. Rollback: GitHub release/tag deletion
-    would require separate destructive authority and is not authorized; do not do
-    it. Plan should model one runtime_state_only release/publish operation owned by
-    `release-engineer` if live, followed by one runtime_state_only local uvx update
-    owned by `vectl-orchestrator` depending on release. Include exact targets/effects/proofs
-    and no repo source mutation.'
-  written_at: '2026-08-08T13:25:34.665254Z'
-  expires_at: '2026-08-09T13:25:34.665254Z'
+  summary: Repair release branch/tag commit contradiction
+  content: 'Original contract: `release-0-6-0-runtime.github-pypi-release` should
+    push local main, publish GitHub tag/release v0.6.0, wait for workflow/PyPI, then
+    unlock local uvx activation. Product release commit is `7de5344ccbc00b3533ea09ec709e1f64e122373c`.
+    Observed facts: adding the runtime release plan necessarily advanced local main
+    to `a10d0f5aab8d0368f48ce75d1bd7d11338fbae2d`; claiming/completing will advance
+    it again. Current step simultaneously requires pushing current local main and
+    remote main/tag/release all equal exact product commit 7de5344, which is impossible
+    after plan/claim commits. No release claim or external effect has occurred; remote
+    main remains `64abbc03`, v0.6.0 tag/release absent. Proposed delta: in-place repair
+    only the first runtime step. Preserve tag/release target exactly `7de5344...`;
+    define branch effect as fast-forward pushing the exact then-current local main
+    observed immediately before push, requiring product commit 7de5344 be its ancestor
+    and remote main equal that pushed head. Require tag/release/workflow headSha equal
+    7de5344; do not require remote main equal tag. Preserve all targets, external
+    authority, wait bounds, PyPI proof, recovery, owner, downstream step, and no destructive
+    rollback. Authority provenance: Vectl plan mutation/claim commits are mandatory
+    Git durability effects and make pre-plan branch HEAD equality unsatisfiable; Git
+    ancestry and exact tag target preserve release identity.'
+  written_at: '2026-08-08T13:32:55.322741Z'
+  expires_at: '2026-08-09T13:32:55.322741Z'
 phases:
 - id: meta.discovery
   name: Discovery
