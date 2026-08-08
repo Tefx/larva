@@ -142223,3 +142223,271 @@ phases:
       narrative docs required because none carries canonical package version and publish
       workflow derives artifacts from package metadata. No tag, release, publish,
       push, workflow, test, or external-state effect performed. Residual risk: none.'
+- id: release_0_6_0_runtime_20260808
+  name: Larva 0.6.0 Release and Local uvx Activation
+  status: pending
+  gate: The phase closes after the orchestrator reconciles and proves the exact 7de5344ccbc00b3533ea09ec709e1f64e122373c
+    release commit on GitHub and PyPI 0.6.0, then proves both refreshed and no-refresh
+    local uvx resolution at 0.6.0. The two serial implementation steps alone own these
+    runtime/external effects; no worker dispatch, independent review, or gate step
+    is required.
+  depends_on:
+  - package_version_0_6_0_20260808
+  steps:
+  - id: release-0-6-0-runtime.github-pypi-release
+    name: Publish GitHub and PyPI release 0.6.0
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: runtime_state_only
+
+
+      Deliver:
+
+      - Reconcile and publish release `v0.6.0` for GitHub repository `Tefx/larva`
+      from branch `main` at exact commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`:
+      push the current local `main`, create and publish one GitHub tag/release `v0.6.0`,
+      observe `.github/workflows/publish.yml`, and verify PyPI project `larva` version
+      `0.6.0` plus the published package artifact identity, digest, and metadata when
+      the registries expose them.
+
+      - Required observable evidence is remote `main`, tag, and release target equality
+      to the exact commit; release URL and `publishedAt`; the matching workflow run
+      and every required job concluding `success`; PyPI JSON/version availability;
+      and artifact filename/version/hash/metadata where observable.
+
+      - Use idempotent read-only reconciliation before every write. If the exact branch,
+      tag, release, workflow, or PyPI state already exists, verify it and continue
+      without duplicating the effect.
+
+
+      Boundary:
+
+      - Owner: exact live `vectl-orchestrator`; the live roster has no release/devops
+      persona, while this persona owns lifecycle orchestration, recovery, and reconciliation.
+      This is deterministic runtime-state orchestration, so no Worker-v2 dispatch,
+      repository implementation owner, independent review, or gate is authorized.
+
+      - External effect class and targets: push only local `main` to `Tefx/larva`
+      `main`; create/publish only GitHub tag/release `v0.6.0` at the exact commit;
+      observe only the release-triggered `.github/workflows/publish.yml`; allow its
+      existing Trusted Publishing path to publish only PyPI `larva==0.6.0`.
+
+      - Credentials are limited to existing authenticated `gh` state and existing
+      GitHub Trusted Publishing. No new secret, account, paid service, release asset
+      outside workflow output, force push, branch rewrite, workflow edit/rerun, repository
+      file mutation, tag/release deletion, or PyPI yank is authorized; no unplanned
+      cost is authorized.
+
+      - Capture the installed Gate Git-metadata hash immediately before admission.
+      The step may change Git metadata only through the declared push/tag observation
+      effects; it must leave tracked and untracked repository content unchanged.
+
+      - Wait policy: use `gh run watch` or bounded GitHub/PyPI API polling, never
+      shell-sleep polling. Stop after one matching workflow reaches a terminal conclusion,
+      or after 30 minutes / 60 read-only observations, whichever comes first. PyPI
+      propagation may be observed for at most 20 additional minutes / 40 read-only
+      observations after workflow success. These bounds authorize observation only,
+      never a repeated release, publish, workflow rerun, or write.
+
+
+      Admit:
+
+      - Witnessed inputs: completed producer phase `package_version_0_6_0_20260808`;
+      exact local release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`; current
+      tracked `.github/workflows/publish.yml`; repository identity `Tefx/larva`; existing
+      GitHub auth and Trusted Publishing; and pre-effect observations that classify
+      remote branch/tag/release/workflow/PyPI state.
+
+      - The orchestrator must record each attempted write and its immediately preceding
+      read-only reconciliation, then record remote branch/tag/release commit equality,
+      release URL/published time, matching workflow run URL/ID and job conclusions,
+      PyPI JSON availability, and package artifact identity/digest/metadata where
+      observable. Existing exact state satisfies its atom; conflicting state or unverifiable
+      identity does not.
+
+      - Completion requires all final observations to name exact targets and timestamps,
+      workflow/jobs `success`, PyPI `0.6.0` available, no duplicate effects, and no
+      repository content mutation. The step is R1: service writes are externally persistent
+      and rollback is unavailable within this authority, while exact targets, idempotent
+      reconciliation, and public postcondition checks directly close the risk without
+      a distinct independent observer.
+
+
+      Recovery:
+
+      - After any timeout, transport error, or ambiguous response, stop writes and
+      reconcile remote branch, tag, release, workflow, and PyPI state read-only before
+      deciding whether an exact missing write remains. Never blindly replay or duplicate
+      a push, release, tag, workflow, or publish action.
+
+      - If the workflow fails before PyPI publication, preserve the branch/tag/release
+      and report the exact failed run/job; do not rerun it. If PyPI already contains
+      `0.6.0`, verify its version and artifact identity before continuing. Conflicting
+      tag/release commits, unknown publication state, credential drift, or any destructive/data-loss
+      choice leaves the step incomplete and BLOCKED.
+
+      - No destructive rollback authority exists: do not delete or move the tag/release,
+      rewrite remote history, rerun the workflow, or yank the package. Read-only reconciliation
+      and an exact stop-state report are the only recovery actions outside the single
+      still-proven-missing authorized write.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"release-0-6-0-runtime.github-pypi-release","risk_tier":"R1","risk_reasons":["The
+      authorized GitHub release and PyPI publication are externally persistent, but
+      exact immutable targets plus read-before-write reconciliation prevent duplicate
+      or wrong-target effects.","No destructive rollback, credential creation, paid
+      service, force push, workflow rerun, release deletion, or package yank is authorized;
+      direct remote and registry observations prove the required outcome."],"primary_outcome":"RELEASE-0.6.0-PUBLISHED","rollback_class":"NONTRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":[],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>'
+    verification: Before claim/execution, require structural ref validation plus installed-Gate
+      assurance lint and preflight for this exact step. Completion evidence must bind
+      the pre-effect Git-metadata hash, each write to its preceding reconciliation,
+      exact remote branch/tag/release commit equality, release URL/publishedAt, matching
+      workflow and all required job success, PyPI 0.6.0 plus observable artifact identity/digest/metadata,
+      bounded observation counts/times, unchanged repository content, and zero duplicate/destructive/unplanned
+      effects.
+    evidence_template: '- Pre-effect Git metadata hash: <sha256>
+
+      - Read-before-write ledger: <timestamp, observed state, authorized action or
+      no-op>
+
+      - Remote main/tag/release equality: <refs, exact commit>
+
+      - GitHub release: <URL, publishedAt>
+
+      - Workflow: <run URL/ID, workflow path, run conclusion, job conclusions>
+
+      - PyPI: <JSON URL, version, observed time, artifacts and digests/metadata>
+
+      - Wait bounds used: <elapsed time, observation counts, terminal reason>
+
+      - Repository content integrity: <clean status/diff evidence>
+
+      - Recovery/duplicates/destructive effects/unplanned cost: <none or exact blocked
+      stop state>'
+    refs:
+    - .github/workflows/publish.yml
+    agent: vectl-orchestrator
+  - id: release-0-6-0-runtime.local-uvx-activate
+    name: Refresh local uvx resolution to Larva 0.6.0
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: runtime_state_only
+
+
+      Deliver:
+
+      - After the GitHub/PyPI release step completes, update only local uv/uvx cache
+      or tool resolution for package `larva==0.6.0`.
+
+      - Preserve witnessed before-state evidence that unpinned `uvx --from larva larva
+      --version` resolved `0.5.0`. Prove after-state exact `0.6.0` with `uvx --refresh
+      --from larva==0.6.0 larva --version`, or the correct observed equivalent syntax
+      if the installed uv version rejects that spelling, and then prove a second equivalent
+      invocation without `--refresh` resolves exact `0.6.0`.
+
+      - The refreshed and no-refresh invocations must execute the PyPI-published `larva==0.6.0`,
+      not the repository checkout, an editable install, or another local source.
+
+
+      Boundary:
+
+      - Owner: exact live `vectl-orchestrator`; this is the second deterministic operation
+      in the same accepted release lifecycle. No Worker-v2 dispatch, independent review,
+      or gate is authorized.
+
+      - Effect class and target: local runtime state only, limited to uv/uvx cache
+      or tool installation/resolution entries required to run PyPI package `larva==0.6.0`.
+      Repository files, Git refs/config/index, GitHub, PyPI, workflow state, global
+      credentials, unrelated tools, and other package caches are read-only or forbidden.
+
+      - Existing local user permissions and network access to public PyPI may be used.
+      No new credentials, secrets, account, paid service, global package-manager mutation,
+      repository mutation, cache-wide purge, or unplanned cost is authorized.
+
+      - Capture the installed Gate Git-metadata hash immediately before admission
+      and require equality after both invocations. The step must leave tracked and
+      untracked repository content unchanged.
+
+
+      Admit:
+
+      - Inputs are the completed `release-0-6-0-runtime.github-pypi-release` outcome,
+      public PyPI availability of exact `larva==0.6.0`, installed uv/uvx identity/version,
+      and the recorded pre-release local resolution `0.5.0` from the authoritative
+      handoff. Re-observe the current unrefreshed state before mutation when safe,
+      without treating a now-exact `0.6.0` as failure.
+
+      - Record the exact accepted uvx syntax and executable identity. The refresh
+      invocation must return exit 0 and a version output that resolves exactly `0.6.0`;
+      a second no-refresh invocation must independently return exit 0 and exact `0.6.0`.
+      Record enough resolver/package provenance to exclude the repository checkout
+      and editable/local sources.
+
+      - Completion requires the before-state record, both exact after-state observations,
+      local cache/tool scope only, unchanged Git metadata and repository content,
+      and no GitHub/PyPI/repository writes. This is R0 with trivial recovery because
+      the only mutation is replaceable local cache/tool state and direct repeated
+      execution proves the outcome.
+
+
+      Recovery:
+
+      - On resolver/network failure, inspect uv/uvx diagnostics and current cache
+      resolution read-only, then retry only the same local refresh while target `larva==0.6.0`
+      and PyPI identity remain exact. Do not widen to a global install, broad cache
+      purge, repository/editable source, alternate package version, or external registry
+      write.
+
+      - Remove only a step-created incomplete local cache/tool entry when the installed
+      uv tool exposes a target-specific safe cleanup; otherwise preserve it and report
+      the exact local state. Any Git metadata drift, repository content change, credential
+      prompt, unexpected source, or external effect stops the step for reconciliation.
+
+      - Rollback is limited to target-specific local uv cache/tool cleanup. It never
+      includes changing repository files, Git refs/config, GitHub/PyPI state, or unrelated
+      caches/tools.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"release-0-6-0-runtime.local-uvx-activate","risk_tier":"R0","risk_reasons":["Only
+      replaceable local uv/uvx cache or tool state for one pinned public package may
+      change.","Two direct version invocations, including a no-refresh run, prove
+      stable exact 0.6.0 resolution while Git metadata and repository content remain
+      unchanged."],"primary_outcome":"LOCAL-UVX-0.6.0","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":[],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>'
+    verification: Require the dependency's completed PyPI 0.6.0 evidence, pre-effect
+      Git-metadata hash, installed uv/uvx identity, recorded before=0.5.0 handoff,
+      exact refresh invocation output 0.6.0, second no-refresh output 0.6.0, provenance
+      excluding checkout/editable/local sources, unchanged Git metadata and repository
+      content, and zero external/repository effects.
+    evidence_template: '- Dependency/PyPI 0.6.0 evidence: <release step evidence>
+
+      - Installed uv/uvx identity: <path and version>
+
+      - Before resolution: <command, output 0.5.0, timestamp/handoff source>
+
+      - Refresh resolution: <exact command, exit, exact 0.6.0 output>
+
+      - No-refresh resolution: <exact command, exit, exact 0.6.0 output>
+
+      - Package provenance: <PyPI/pinned source evidence; no checkout/editable/local
+      source>
+
+      - Git metadata and repository integrity: <before/after hash and clean status>
+
+      - Local-only effects/recovery: <cache/tool entries touched; cleanup or none>'
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    depends_on:
+    - release-0-6-0-runtime.github-pypi-release
+    agent: vectl-orchestrator
