@@ -142231,7 +142231,7 @@ phases:
   steps:
   - id: release-0-6-0-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.0
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -142393,6 +142393,27 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-08-08T13:38:27.636434Z'
+    done_at: '2026-08-08T13:41:53.093648+00:00'
+    evidence: 'PASS. Pre-effect read-only ledger at 2026-08-08T13:39:16Z: local main
+      `7c335abaee19ed4cdcb55bb081052add65c2d4fe`; product release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`
+      was its ancestor; remote main `64abbc03d8656435d989b891e4fe0e5ffe824a84` was
+      its ancestor; v0.6.0 tag/release absent; PyPI 0.6.0 returned 404; repository
+      clean. Authorized write 1: fast-forward pushed local main to origin main. Immediate
+      post-push/pre-release reconciliation at 13:39:50Z proved remote main == pushed
+      head `7c335aba...`, tag/release still absent. Authorized write 2: created and
+      published one GitHub release/tag `v0.6.0` at exact product commit `7de5344...`;
+      release URL https://github.com/Tefx/larva/releases/tag/v0.6.0, publishedAt 2026-08-08T13:40:06Z,
+      non-draft/non-prerelease. Exact release workflow run https://github.com/Tefx/larva/actions/runs/31260079162,
+      headBranch v0.6.0, headSha `7de5344...`; bounded `gh run watch` observed terminal
+      success in 27.3 seconds. Jobs: build ID 93109420788 success; publish ID 93109462985
+      success. PyPI propagation: 1 observation, 0.273s after workflow check; https://pypi.org/pypi/larva/0.6.0/json
+      reports larva 0.6.0, requires Python >=3.11. Artifacts: `larva-0.6.0-py3-none-any.whl`,
+      234919 bytes, SHA256 `3ed01db01a659fa10f54ad1f8e022d40a65fb4ba6536cc9c2429ba32cfcafa92`;
+      `larva-0.6.0.tar.gz`, 2242533 bytes, SHA256 `5745a6e95ef7979d0b352230aa1922cad2ab7da54f2eb6b042665075be55d19c`.
+      Final remote state: origin/main == `7c335aba...`; tag/release/workflow target
+      == `7de5344...`; repository content clean. No duplicate release/publish, force
+      push, workflow rerun, deletion, yank, new secret, unplanned cost, or destructive
+      recovery.'
   - id: release-0-6-0-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.0
     status: pending
