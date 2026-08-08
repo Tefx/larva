@@ -142239,17 +142239,24 @@ phases:
 
       Deliver:
 
-      - Reconcile and publish release `v0.6.0` for GitHub repository `Tefx/larva`
-      from branch `main` at exact commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`:
-      push the current local `main`, create and publish one GitHub tag/release `v0.6.0`,
-      observe `.github/workflows/publish.yml`, and verify PyPI project `larva` version
+      - Reconcile and publish release `v0.6.0` for GitHub repository `Tefx/larva`:
+      immediately before the branch push, observe the exact current local `main` HEAD
+      as the branch-push head; require exact product release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`
+      to be an ancestor of that observed local head; require remote `main` to be an
+      ancestor of or equal to that observed local head so the update is a fast-forward;
+      push that observed current local `main` to remote `main`; create and publish
+      one GitHub tag/release `v0.6.0` at exact product release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`;
+      observe `.github/workflows/publish.yml`; and verify PyPI project `larva` version
       `0.6.0` plus the published package artifact identity, digest, and metadata when
       the registries expose them.
 
-      - Required observable evidence is remote `main`, tag, and release target equality
-      to the exact commit; release URL and `publishedAt`; the matching workflow run
-      and every required job concluding `success`; PyPI JSON/version availability;
-      and artifact filename/version/hash/metadata where observable.
+      - Required observable evidence separately records (a) the exact branch-push
+      head and final remote `main` equality to that observed pushed local head and
+      (b) the release target head: tag, release target, and matching workflow `headSha`
+      all equal exact product release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`;
+      it also records release URL and `publishedAt`, every required workflow job concluding
+      `success`, PyPI JSON/version availability, and artifact filename/version/hash/metadata
+      where observable.
 
       - Use idempotent read-only reconciliation before every write. If the exact branch,
       tag, release, workflow, or PyPI state already exists, verify it and continue
@@ -142263,10 +142270,12 @@ phases:
       This is deterministic runtime-state orchestration, so no Worker-v2 dispatch,
       repository implementation owner, independent review, or gate is authorized.
 
-      - External effect class and targets: push only local `main` to `Tefx/larva`
-      `main`; create/publish only GitHub tag/release `v0.6.0` at the exact commit;
-      observe only the release-triggered `.github/workflows/publish.yml`; allow its
-      existing Trusted Publishing path to publish only PyPI `larva==0.6.0`.
+      - External effect class and targets: fast-forward push only the immediately
+      pre-push observed current local `main` to `Tefx/larva` `main`; create/publish
+      only GitHub tag/release `v0.6.0` at exact product release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`;
+      observe only the release-triggered `.github/workflows/publish.yml` whose `headSha`
+      equals that exact product release commit; allow its existing Trusted Publishing
+      path to publish only PyPI `larva==0.6.0`.
 
       - Credentials are limited to existing authenticated `gh` state and existing
       GitHub Trusted Publishing. No new secret, account, paid service, release asset
@@ -142289,24 +142298,29 @@ phases:
       Admit:
 
       - Witnessed inputs: completed producer phase `package_version_0_6_0_20260808`;
-      exact local release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`; current
-      tracked `.github/workflows/publish.yml`; repository identity `Tefx/larva`; existing
+      exact product release commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`; the
+      exact current local `main` HEAD observed immediately before push; current tracked
+      `.github/workflows/publish.yml`; repository identity `Tefx/larva`; existing
       GitHub auth and Trusted Publishing; and pre-effect observations that classify
       remote branch/tag/release/workflow/PyPI state.
 
-      - The orchestrator must record each attempted write and its immediately preceding
-      read-only reconciliation, then record remote branch/tag/release commit equality,
-      release URL/published time, matching workflow run URL/ID and job conclusions,
-      PyPI JSON availability, and package artifact identity/digest/metadata where
-      observable. Existing exact state satisfies its atom; conflicting state or unverifiable
-      identity does not.
+      - Before the branch write, prove the product release commit is an ancestor of
+      the observed local `main` head and remote `main` is an ancestor of or equal
+      to that observed local head. Record each attempted write and its immediately
+      preceding read-only reconciliation. Then separately record final remote `main`
+      equality to the observed pushed local head; tag, release target, and matching
+      workflow `headSha` equality to the exact product release commit; release URL/published
+      time; matching workflow run URL/ID and job conclusions; PyPI JSON availability;
+      and package artifact identity/digest/metadata where observable. Existing exact
+      state satisfies its atom; conflicting state or unverifiable identity does not.
 
       - Completion requires all final observations to name exact targets and timestamps,
-      workflow/jobs `success`, PyPI `0.6.0` available, no duplicate effects, and no
-      repository content mutation. The step is R1: service writes are externally persistent
-      and rollback is unavailable within this authority, while exact targets, idempotent
-      reconciliation, and public postcondition checks directly close the risk without
-      a distinct independent observer.
+      exact branch-push head, exact release target head, workflow/jobs `success`,
+      PyPI `0.6.0` available, no duplicate effects, and no repository content mutation.
+      The step is R1: service writes are externally persistent and rollback is unavailable
+      within this authority, while exact targets, ancestry and fast-forward admission,
+      idempotent reconciliation, and public postcondition checks directly close the
+      risk without a distinct independent observer.
 
 
       Recovery:
@@ -142316,11 +142330,15 @@ phases:
       deciding whether an exact missing write remains. Never blindly replay or duplicate
       a push, release, tag, workflow, or publish action.
 
-      - If the workflow fails before PyPI publication, preserve the branch/tag/release
-      and report the exact failed run/job; do not rerun it. If PyPI already contains
-      `0.6.0`, verify its version and artifact identity before continuing. Conflicting
-      tag/release commits, unknown publication state, credential drift, or any destructive/data-loss
-      choice leaves the step incomplete and BLOCKED.
+      - If local `main` changes after its immediate pre-push observation, if the product
+      release commit is not its ancestor, or if remote `main` is not an ancestor of
+      or equal to it, do not push; re-observe and reconcile without force, rewrite,
+      or destructive action. If the workflow fails before PyPI publication, preserve
+      the branch/tag/release and report the exact failed run/job; do not rerun it.
+      If PyPI already contains `0.6.0`, verify its version and artifact identity before
+      continuing. Conflicting tag/release/workflow target commits, unknown publication
+      state, credential drift, or any destructive/data-loss choice leaves the step
+      incomplete and BLOCKED.
 
       - No destructive rollback authority exists: do not delete or move the tag/release,
       rewrite remote history, rerun the workflow, or yank the package. Read-only reconciliation
@@ -142331,20 +142349,26 @@ phases:
       <vectl_step_policy>
 
       {"schema_version":"vectl.step.policy.v2","step_id":"release-0-6-0-runtime.github-pypi-release","risk_tier":"R1","risk_reasons":["The
-      authorized GitHub release and PyPI publication are externally persistent, but
-      exact immutable targets plus read-before-write reconciliation prevent duplicate
-      or wrong-target effects.","No destructive rollback, credential creation, paid
-      service, force push, workflow rerun, release deletion, or package yank is authorized;
-      direct remote and registry observations prove the required outcome."],"primary_outcome":"RELEASE-0.6.0-PUBLISHED","rollback_class":"NONTRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":[],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+      authorized fast-forward branch push, GitHub release, and PyPI publication are
+      externally persistent, but exact branch/release target separation, ancestry
+      checks, immutable release target, and read-before-write reconciliation prevent
+      duplicate, non-fast-forward, or wrong-target effects.","No destructive rollback,
+      credential creation, paid service, force push, workflow rerun, release deletion,
+      or package yank is authorized; separate direct remote and registry observations
+      prove the branch-push head and exact product release head."],"primary_outcome":"RELEASE-0.6.0-PUBLISHED","rollback_class":"NONTRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":[],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
 
       </vectl_step_policy>'
     verification: Before claim/execution, require structural ref validation plus installed-Gate
       assurance lint and preflight for this exact step. Completion evidence must bind
-      the pre-effect Git-metadata hash, each write to its preceding reconciliation,
-      exact remote branch/tag/release commit equality, release URL/publishedAt, matching
-      workflow and all required job success, PyPI 0.6.0 plus observable artifact identity/digest/metadata,
-      bounded observation counts/times, unchanged repository content, and zero duplicate/destructive/unplanned
-      effects.
+      the pre-effect Git-metadata hash; the exact local `main` head observed immediately
+      before push; product commit `7de5344ccbc00b3533ea09ec709e1f64e122373c` as its
+      ancestor; remote `main` as its ancestor or equal before push; each write to
+      its preceding reconciliation; final remote `main` equality to the observed pushed
+      local head; tag, release target, and matching workflow `headSha` equality to
+      exact product commit `7de5344ccbc00b3533ea09ec709e1f64e122373c`; release URL/publishedAt;
+      matching workflow and all required job success; PyPI 0.6.0 plus observable artifact
+      identity/digest/metadata; bounded observation counts/times; unchanged repository
+      content; and zero duplicate/destructive/unplanned effects.
     evidence_template: '- Pre-effect Git metadata hash: <sha256>
 
       - Read-before-write ledger: <timestamp, observed state, authorized action or
