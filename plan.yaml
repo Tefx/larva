@@ -37,25 +37,32 @@ project_guidance: 'Larva Pi integration planning guidance:
   proof is insufficient for runnable Pi extension, command, callback, or TUI/CLI surfaces.'
 clipboard:
   author: vectl-orchestrator
-  summary: Plan version bump 0.5.1 to 0.6.0
-  content: 'Original contract: User explicitly requested `bump版本号` immediately after
-    completing substantive post-v0.5.0 Pi runtime features/fixes. Repository current
-    canonical version is 0.5.1 in exactly `pyproject.toml`, `src/larva/__init__.py`,
-    and editable package entry in `uv.lock`. Prior bump commit `ec8664f3` changed
-    exactly these 3 files with message `chore: bump version to 0.5.1`. Latest released
-    tag is v0.5.0; since it, repository added user-visible Pi thinking isolation,
-    model-map profile/symlink support, async-subagent watchdog, and oversized RPC
-    artifact/status protocol. Proposed semantic target: minor bump 0.5.1 -> 0.6.0
-    (new user-visible capabilities since v0.5.0). Authority/effect: local repo metadata
-    only, no tag/release/publish/push; rollback is one revert. Owner: python-executor
-    (well-defined Python/package metadata task). Tests/docs parity: version synchronization
-    test/probe plus build metadata check; no narrative doc update needed because no
-    doc carries current package version and publish workflow derives version from
-    package metadata. Create one compact R0 implementation step/phase, exact allowed
-    paths 3 files, checks for synchronized versions, `uv lock --check`, package build/metadata
-    or focused pytest, full Invar guard, diff check. No independent verifier/gate.'
-  written_at: '2026-08-08T12:30:08.399603Z'
-  expires_at: '2026-08-09T12:30:08.399603Z'
+  summary: Plan GitHub v0.6.0 release and uvx update
+  content: 'User explicitly authorized external effects: publish a new GitHub Release,
+    wait, then update local uvx Larva version. Current repo `/Users/tefx/Projects/larva`:
+    clean main HEAD `7de5344ccbc00b3533ea09ec709e1f64e122373c`, ahead origin/main
+    19; canonical version 0.6.0 in pyproject/source/lock; latest tag/release v0.5.0;
+    v0.6.0 tag/release absent; origin https://github.com/Tefx/larva.git; gh authenticated
+    as Tefx with repo/workflow scopes. Publish workflow triggers on release published,
+    builds package, runs MCP smoke, publishes PyPI via trusted publishing. Current
+    `uvx --from larva larva --version` = 0.5.0. Required outcome: push current main;
+    create/publish GitHub Release/tag v0.6.0 at exact integrated HEAD with concise
+    notes; observe GitHub Actions publish workflow and PyPI 0.6.0 availability; after
+    confirmed PyPI availability update local uvx cache/tool resolution and prove `uvx
+    --refresh --from larva==0.6.0 larva --version` (or current exact uv syntax) returns
+    0.6.0. Declared effects: Git push, GitHub tag/release, CI/PyPI publish, local
+    uv cache/tool install. Credentials: existing gh auth and GitHub trusted publishing
+    only; no new secrets/cost. Recovery: reconcile read-only after any ambiguous network
+    result; never duplicate release/tag/publish. If workflow fails before PyPI publish,
+    preserve release and report exact failed job; if PyPI already has 0.6.0, verify
+    artifact identity/version then continue. Rollback: GitHub release/tag deletion
+    would require separate destructive authority and is not authorized; do not do
+    it. Plan should model one runtime_state_only release/publish operation owned by
+    `release-engineer` if live, followed by one runtime_state_only local uvx update
+    owned by `vectl-orchestrator` depending on release. Include exact targets/effects/proofs
+    and no repo source mutation.'
+  written_at: '2026-08-08T13:25:34.665254Z'
+  expires_at: '2026-08-09T13:25:34.665254Z'
 phases:
 - id: meta.discovery
   name: Discovery
