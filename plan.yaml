@@ -142416,7 +142416,7 @@ phases:
       recovery.'
   - id: release-0-6-0-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.0
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -142533,3 +142533,5 @@ phases:
     depends_on:
     - release-0-6-0-runtime.github-pypi-release
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-08-08T13:42:25.514522Z'
