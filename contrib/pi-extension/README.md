@@ -1458,6 +1458,46 @@ final text is written exactly to controlled 0600 artifact storage; the compact
 response publishes only `path`, `sha256`, `bytes`, `lines`, and a bounded preview. If all artifact locations fail,
 execution remains successful, delivery is failed with a bounded diagnostic, and
 Larva does not replay the child or scan its session JSONL.
+### Pi 0.84.1 child RPC frame protection
+
+Larva packages `child-rpc-frame-preload.mjs` beside `larva.ts` and injects it
+only into spawned child Pi processes through `NODE_OPTIONS`. It loads before Pi
+0.84.1 calls `takeOverStdout()`, so `writeRawStdout()` still passes through the
+Larva bridge even though Pi captured stdout before the extension initialized.
+Larva does not patch installed Pi or change parent/global Node configuration.
+
+Before any new or resumed prompt, the child `get_state` response must advertise
+`larva-child-rpc-frame-preload-v1`, a 1,048,576-byte maximum record, LF framing,
+and `agent_settled` terminal authority. A missing marker fails before prompt.
+`LARVA_PI_CHILD_RPC_LEGACY_FALLBACK=1` is reserved for explicitly controlled
+legacy adapters; normal Pi 0.84.1 children do not need it.
+
+Every emitted child JSONL record is bounded before Pi's captured raw writer sends
+it. Oversized progress and full `agent_end.messages` become bounded metadata;
+`willRetry` and bounded provider/runtime type/message remain. Modern execution
+settles only on `agent_settled`, so retry, compaction retry, and continuation work
+cannot end on an earlier `agent_end`.
+
+The parent reads stdout with a byte-counted LF decoder rather than Node
+`readline`. It accepts CRLF by stripping one trailing CR, keeps U+2028/U+2029
+inside JSON strings, supports split UTF-8 chunks, and rejects malformed,
+unterminated, invalid-UTF-8, or oversized records before `JSON.parse`. After
+execution settles successfully, a later framing/stdout/artifact anomaly reports
+bounded failed-delivery metadata without changing execution `status` or `phase`.
+
+Repository proof is non-skipping:
+
+```bash
+npm --prefix contrib/pi-extension ci
+node contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs
+```
+
+The probe pins repository-local `@earendil-works/pi-coding-agent` 0.84.1 and
+executes its actual `takeOverStdout`/`writeRawStdout` module without provider
+credentials or network model calls. It enumerates record bytes, checks the
+capability marker, verifies inline/artifact delivery and mode/hash/bytes, scans
+public surfaces for raw payload leakage, exercises retry/failure/anomaly state,
+and covers LF/CRLF/U+2028/U+2029/split-UTF-8/pre-parse bounds.
 ### `/larva-subagent` console
 
 The canonical user command is:

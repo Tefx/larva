@@ -389,6 +389,7 @@ rl.on("line", async (line) => {
               LARVA_PI_EXTENSION_FLAG: "-e",
               LARVA_PI_EXTENSION_ENTRY: childPath,
               LARVA_PI_INITIAL_PERSONA_ID: "",
+              LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
               LARVA_PI_LAUNCHED: "1",
             }};
             const tools = [];
@@ -1978,11 +1979,11 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     assert 4_500 <= timeout_fault["elapsed_ms"] <= proof["limits"]["case_deadline_ms"]
     assert all(row["explicit_outcome"] is True for row in faults["faults"])
     assert [row["expected_state"] for row in faults["faults"]] == [
-        "failed",
+        "ended_during_switch",
         "failed",
         "ended_during_switch",
     ]
-    assert [row["explicit_partial"] for row in faults["faults"]] == [True, True, False]
+    assert [row["explicit_partial"] for row in faults["faults"]] == [False, True, False]
     assert all(row["fallback_count"] == 0 for row in faults["faults"])
 
     assert proof["isolation"]["offline"] is True

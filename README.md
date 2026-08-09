@@ -236,6 +236,18 @@ see the new agent list. See `contrib/opencode-plugin/README.md` for current
 behavior, target refresh semantics, and failure handling.
 
 ## Pi Coding Agent integration
+### Pi 0.84.1 child RPC bound
+
+Spawned child Pi processes preload Larva's packaged frame bridge before Pi
+captures stdout. A capability marker is verified before prompt; every actual Pi
+0.84.1 `writeRawStdout()` JSONL record is limited to 1,048,576 UTF-8 bytes.
+`agent_settled` owns modern terminal state, oversized final output uses exact
+0600 artifacts, and the parent enforces LF/UTF-8/size bounds before JSON parsing.
+Run `node contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs` after
+`npm --prefix contrib/pi-extension ci` for the credential-free exact-runtime
+probe. Details and operator implications are in
+[`docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-stream-retention-and-memory-safety)
+and [`contrib/pi-extension/README.md`](contrib/pi-extension/README.md#pi-0841-child-rpc-frame-protection).
 ### Thinking-level and settings isolation
 Child route verification requires RPC `get_state.model` plus a valid `get_state.thinkingLevel` before the prompt.
 

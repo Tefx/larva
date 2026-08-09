@@ -277,6 +277,11 @@ def test_pi_extension_packaged_path_force_includes_source_extension() -> None:
         '"contrib/pi-extension/larva.ts" = "larva/shell/pi_extension/larva.ts"'
         in pyproject
     )
+    assert (
+        '"contrib/pi-extension/child-rpc-frame-preload.mjs" = '
+        '"larva/shell/pi_extension/child-rpc-frame-preload.mjs"'
+        in pyproject
+    )
 
 
 def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
@@ -2156,12 +2161,16 @@ def test_oversized_child_rpc_execution_and_delivery_contract_is_documented() -> 
         "CHILD_RPC_JSONL_MAX_BYTES = 1_048_576",
         'execution_status: snapshot.status',
         'delivery_status: record.delivery_status',
-        'message.type === "agent_settled" || message.type === "agent_end"',
+        'message.type === "agent_settled"',
+        'message.type === "agent_end"',
         "LARVA_CHILD_OUTPUT_ARTIFACT_WRITE_FAILED",
-        "adapter_frame_sequence",
+        "ChildRpcLfDecoder",
+        'TextDecoder("utf-8", { fatal: true })',
+        "hasChildRpcCapabilityMarker",
         "encoded_bytes",
         "artifactization_attempted",
         "LARVA_PI_CHILD_RPC_FRAME_BOUND",
+        "CHILD_RPC_FRAME_PRELOAD_FILENAME",
         "installChildRpcFrameWriter",
         "boundedChildRpcOutputEnvelope",
         "output_delivery",
@@ -4442,6 +4451,7 @@ def test_async_subagent_lifecycle_cleanup_aborts_via_child_rpc_stales_callbacks_
             LARVA_PI_EXTENSION_FLAG: {json.dumps(str(child))},
             LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
             LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_session_root))},
+            LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
             LARVA_PI_LAUNCHED: "1",
             HOME: {json.dumps(str(tmp_path))},
           }},
@@ -4580,6 +4590,7 @@ def test_async_subagent_stale_parent_session_identity_suppresses_late_callback(t
             LARVA_PI_EXTENSION_FLAG: {json.dumps(str(child))},
             LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
             LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_session_root))},
+            LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
             LARVA_PI_LAUNCHED: "1",
             HOME: {json.dumps(str(tmp_path))},
           }},

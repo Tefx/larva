@@ -235,6 +235,7 @@ const HARNESS_SELECTOR_ENV_KEYS = [
   "LARVA_CLI_ARGV_JSON",
   "LARVA_PI_AGENT_PERSONA_SWITCH",
   "LARVA_PI_CHILD_RPC_TRACE_FILE",
+  "LARVA_PI_CHILD_RPC_LEGACY_FALLBACK",
   "LARVA_PI_CHILD_SESSION_DIR",
   "LARVA_PI_COMPACTION_CONFIG_FILE",
   "LARVA_PI_EXTENSION_ENTRY",
@@ -404,6 +405,7 @@ export default function (pi) {
     LARVA_PI_MODEL_MAP_FILE: modelMapPath,
     LARVA_PI_CHILD_SESSION_DIR: childSessionDir,
     LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile,
+    LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
     LARVA_PI_SUBAGENT_CONFIG_FILE: subagentConfig,
     LARVA_PI_SUBAGENT_ARTIFACT_DIR: artifactDir,
   };
@@ -445,6 +447,7 @@ function runtimeEnv(overrides = {}) {
     LARVA_PI_REAL_BIN: process.env.PI_BIN || "pi",
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,
+    LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
     LARVA_PI_LAUNCHED: "1",
   };
   const env = mergedHarnessEnv(process.env, { ...defaults, ...overrides });
@@ -2606,7 +2609,10 @@ async function asyncSubagentContractExpectedRed(evidence) {
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
       if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
-      else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); send({ type: "agent_end" }); }
+      else if (message.type === "prompt") {
+        send({ id: message.id, success: true, data: {} });
+        send({ type: "agent_end", willRetry: false, messages: [{ role: "assistant", content: [{ type: "text", text: "failed callback" }], stopReason: "error", errorMessage: "bounded runtime failure", diagnostics: [{ type: "provider_transport_failure" }] }] });
+      }
       else if (message.type === "get_last_assistant_text") { send({ id: message.id, success: true, data: { text: { malformed: true } } }); setTimeout(() => process.exit(0), 5); }
       else if (message.type === "abort") { send({ id: message.id, success: true }); process.exit(0); }
     });
@@ -3503,7 +3509,7 @@ rl.on("line", async (line) => {
   const commands = new Map();
   const tools = new Map();
   const setModels = [];
-  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "1", LARVA_PI_INITIAL_PERSONA_ID: "parent", LARVA_PI_REAL_BIN: fakePi, LARVA_PI_EXTENSION_FLAG: "-e", LARVA_PI_EXTENSION_ENTRY: extensionPath, LARVA_PI_CHILD_SESSION_DIR: childSessionDir, LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile };
+  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "1", LARVA_PI_INITIAL_PERSONA_ID: "parent", LARVA_PI_REAL_BIN: fakePi, LARVA_PI_EXTENSION_FLAG: "-e", LARVA_PI_EXTENSION_ENTRY: extensionPath, LARVA_PI_CHILD_SESSION_DIR: childSessionDir, LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile, LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1" };
   const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined } };
   const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return true; }, registerTool: (tool) => tools.set(tool.name, tool), registerCommand: (name, command) => commands.set(typeof name === "string" ? name : name.name, typeof name === "string" ? command : name), on: () => undefined };
   await mod.initializeExtension(ctx, pi);
@@ -4366,7 +4372,7 @@ export default function (pi) {
 
     const faultCases = [];
     for (const fault of [
-      { profile: "delta", phase: "fault_malformed", persona: "malformed", event: "rpc_malformed", kind: "malformed_response", expected_state: "failed", min_ms: 0, max_ms: 2_500 },
+      { profile: "delta", phase: "fault_malformed", persona: "malformed", event: "rpc_malformed", kind: "malformed_response", expected_state: "ended_during_switch", min_ms: 0, max_ms: 2_500 },
       { profile: "epsilon", phase: "fault_timeout", persona: "timeout", event: "rpc_drop", kind: "timeout", expected_state: "failed", min_ms: 4_500, max_ms: caseDeadlineMs },
       { profile: "zeta", phase: "fault_closed", persona: "closed", event: "rpc_stdout_closed", kind: "closed_stream", expected_state: "ended_during_switch", min_ms: 0, max_ms: 2_500 },
     ]) {

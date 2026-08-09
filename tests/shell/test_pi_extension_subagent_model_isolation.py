@@ -287,6 +287,7 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
           LARVA_PI_EXTENSION_FLAG: "-e",
           LARVA_PI_EXTENSION_ENTRY: {json.dumps(str(EXTENSION))},
           LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_sessions))},
+          LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
         }};
         const ctx = {{ env, modelRegistry: {{ find: async (provider, modelId) => ({{ provider, modelId }}) }}, ui: {{ setStatus: () => undefined, notify: () => undefined }} }};
         const pi = {{
@@ -385,8 +386,12 @@ def test_startup_error_diagnostic_is_bounded_sanitized_and_route_specific(tmp_pa
     assert "json-basic-789" not in json_trace_preview
     assert json_trace_preview.count("[REDACTED]") == 3
     rpc_client = EXTENSION.read_text(encoding="utf-8").split("class RpcClient", 1)[1]
-    assert rpc_client.count("line_preview: sanitizedStartupDiagnostic(line)") == 2
-    assert "line_preview: boundedTracePreview(line)" not in rpc_client
+    malformed_trace = rpc_client.split('"rpc_rx_malformed"', 1)[1].split(");", 1)[0]
+    assert "bytes" in malformed_trace
+    assert "error_code: message.code" in malformed_trace
+    assert "line_preview" not in malformed_trace
+    assert "boundedTracePreview" not in malformed_trace
+    assert "sanitizedStartupDiagnostic" not in malformed_trace
 
 
 def test_thinking_profile_route_switches_and_verifies_model_and_thinking() -> None:

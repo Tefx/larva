@@ -5,7 +5,8 @@ import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realp
 import { accessSync, appendFileSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
-import { createInterface } from "node:readline";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { TextDecoder } from "node:util";
 
 type LarvaErrorCode =
   | "LARVA_BAD_INPUT"
@@ -102,6 +103,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_LAUNCHED?: string;
   LARVA_PI_CHILD_RPC_TRACE_FILE?: string;
   LARVA_PI_CHILD_RPC_FRAME_BOUND?: string;
+  LARVA_PI_CHILD_RPC_LEGACY_FALLBACK?: string;
   LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE?: string;
   LARVA_PI_SUBAGENT_LOG_FILE?: string;
   LARVA_PI_SUBAGENT_CONFIG_FILE?: string;
@@ -726,6 +728,10 @@ const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
+const CHILD_RPC_FRAME_PRELOAD_FILENAME = "child-rpc-frame-preload.mjs";
+const CHILD_RPC_FRAME_PRELOAD_SYMBOL = Symbol.for("larva.pi.child-rpc-frame-preload.v1");
+const CHILD_RPC_FRAME_CAPABILITY = "larva-child-rpc-frame-preload-v1";
+const CHILD_RPC_FRAME_CAPABILITY_FIELD = "larvaChildRpcFrame";
 const MODEL_MAP_PROFILE_MAX_BYTES = 1_048_576;
 const MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000;
 const MODEL_MAP_CHILD_SWITCH_CONCURRENCY = 4;
@@ -775,6 +781,13 @@ type ChildRpcOversizedFrameMetadata = Readonly<{
   encoded_bytes: number;
   limit: number;
   frame_type: string | null;
+}>;
+type ChildRpcPreloadBridge = Readonly<{
+  version: number;
+  capability: string;
+  maxRecordBytes: number;
+  configure: (transform: (record: string) => string) => void;
+  isConfigured: () => boolean;
 }>;
 
 function childRpcTraceFile(env: RuntimeEnv): string | null {
@@ -1700,7 +1713,7 @@ type NormalizedSubagentStreamEvent =
   | { kind: "assistant_delta"; text: string }
   | { kind: "thinking_hidden" }
   | { kind: "tool"; toolCallId: string; name?: string; status: SubagentToolStatus; args_preview?: string; output_preview?: string; error_preview?: string }
-  | { kind: "terminal"; type: "agent_end" };
+  | { kind: "terminal"; type: "agent_end" | "agent_settled" };
 
 function subagentToolArgsPreviewFromFrameValue(value: unknown): string | undefined {
   if (typeof value === "string") return boundedToolArgsPreview(value);
@@ -1741,7 +1754,7 @@ function normalizeSubagentChildStreamEventForPresentation(frame: unknown, oversi
       error_preview: oversized && typeof frame.error === "string" ? "[oversized tool error omitted]" : typeof frame.error === "string" ? boundedToolOutputPreview(frame.error) : undefined,
     };
   }
-  if (frame.type === "agent_end") return { kind: "terminal", type: "agent_end" };
+  if (frame.type === "agent_end" || frame.type === "agent_settled") return { kind: "terminal", type: frame.type };
   return null;
 }
 
@@ -5321,6 +5334,16 @@ function terminalRestorePath(event: unknown): "success" | "failure" | "cancellat
 }
 
 function childAgentTerminalError(event: unknown): LarvaError | null {
+  const compactProjection = isRecord(event) && isRecord(event.terminal_projection) ? event.terminal_projection : null;
+  if (compactProjection !== null) {
+    if (compactProjection.status !== "failure") return null;
+    const compactError = compactProjection.error;
+    return isRecord(compactError)
+      && compactError.code === "LARVA_CHILD_RUNTIME_FAILED"
+      && typeof compactError.message === "string"
+      ? error("LARVA_CHILD_RUNTIME_FAILED", boundedVisible(compactError.message, 700))
+      : error("LARVA_CHILD_RUNTIME_FAILED", "Child agent reported a terminal error.");
+  }
   if (terminalRestorePath(event) !== "failure") return null;
   const message = latestAssistantTerminalMessage(event);
   const diagnosticType = message !== null && Array.isArray(message.diagnostics)
@@ -6233,12 +6256,105 @@ function boundedChildRpcOutputEnvelope(fullOutput: string, env: RuntimeEnv): Chi
   }
 }
 
+function childRpcCapabilityMarker(): Record<string, unknown> {
+  return { capability: CHILD_RPC_FRAME_CAPABILITY, max_record_bytes: CHILD_RPC_JSONL_MAX_BYTES, framing: "lf-only", terminal: "agent_settled" };
+}
+
+function hasChildRpcCapabilityMarker(value: unknown): boolean {
+  if (!isRecord(value) || !isSuccessResponse(value) || !isRecord(value.data)) return false;
+  const marker = value.data[CHILD_RPC_FRAME_CAPABILITY_FIELD];
+  return isRecord(marker)
+    && marker.capability === CHILD_RPC_FRAME_CAPABILITY
+    && marker.max_record_bytes === CHILD_RPC_JSONL_MAX_BYTES
+    && marker.framing === "lf-only"
+    && marker.terminal === "agent_settled";
+}
+
+function compactChildAgentEndFrame(frame: Record<string, unknown>): Record<string, unknown> {
+  const terminalError = childAgentTerminalError(frame);
+  const message = latestAssistantTerminalMessage(frame);
+  const diagnosticType = message !== null && Array.isArray(message.diagnostics)
+    ? message.diagnostics.find((diagnostic) => isRecord(diagnostic) && typeof diagnostic.type === "string")?.type
+    : undefined;
+  const status = terminalError === null ? terminalRestorePath(frame) ?? "success" : "failure";
+  const compactError = terminalError === null
+    ? null
+    : {
+      code: terminalError.code,
+      type: typeof diagnosticType === "string" ? boundedVisible(diagnosticType, 100) : "runtime",
+      message: boundedVisible(terminalError.message, 700),
+    };
+  return {
+    type: "agent_end",
+    willRetry: frame.willRetry === true,
+    terminal_projection: { status, error: compactError },
+  };
+}
+
+function traceBoundedChildRpcOutboundFrame(env: RuntimeEnv, frame: Record<string, unknown>, encodedBytes: number): void {
+  if (typeof env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE !== "string" || env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE.length === 0) return;
+  try {
+    const traceRecord = JSON.stringify({ encoded_bytes: encodedBytes, frame });
+    if (Buffer.byteLength(traceRecord, "utf8") <= CHILD_RPC_JSONL_MAX_BYTES) appendFileSync(env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE, `${traceRecord}\n`, "utf8");
+  } catch { /* proof-only outbound trace cannot alter child delivery. */ }
+}
+
+function transformChildRpcSerializedRecord(record: string, env: RuntimeEnv): string {
+  const inputBytes = Buffer.byteLength(record, "utf8");
+  let frame: unknown;
+  try { frame = JSON.parse(record); } catch {
+    if (inputBytes > CHILD_RPC_JSONL_MAX_BYTES) throw new Error("Larva child RPC preload received oversized malformed JSON.");
+    return record;
+  }
+  if (!isRecord(frame)) {
+    if (inputBytes > CHILD_RPC_JSONL_MAX_BYTES) throw new Error("Larva child RPC preload received oversized non-object JSON.");
+    return record;
+  }
+  let boundedFrame = frame;
+  if (frame.type === "agent_end") {
+    boundedFrame = compactChildAgentEndFrame(frame);
+  } else if (frame.type === "response" && frame.command === "get_state" && frame.success === true && isRecord(frame.data)) {
+    boundedFrame = { ...frame, data: { ...frame.data, [CHILD_RPC_FRAME_CAPABILITY_FIELD]: childRpcCapabilityMarker() } };
+  } else if (inputBytes > CHILD_RPC_JSONL_MAX_BYTES) {
+    const responseId = typeof frame.id === "string" || typeof frame.id === "number" ? String(frame.id) : null;
+    const output = isRecord(frame.data) && typeof frame.data.text === "string" ? frame.data.text : null;
+    boundedFrame = output !== null && responseId !== null
+      ? { id: responseId, type: "response", command: typeof frame.command === "string" ? frame.command : "get_last_assistant_text", success: true, data: { output_delivery: boundedChildRpcOutputEnvelope(output, env) } }
+      : childRpcProjection(frame, inputBytes);
+  }
+  const boundedRecord = JSON.stringify(boundedFrame);
+  const boundedBytes = Buffer.byteLength(boundedRecord, "utf8");
+  if (boundedBytes > CHILD_RPC_JSONL_MAX_BYTES) throw new Error("Larva child RPC writer produced an oversized bounded frame.");
+  if (boundedRecord !== record) traceBoundedChildRpcOutboundFrame(env, boundedFrame, boundedBytes);
+  return boundedRecord;
+}
+
+function childRpcPreloadBridge(): ChildRpcPreloadBridge | null {
+  const value = (globalThis as Record<PropertyKey, unknown>)[CHILD_RPC_FRAME_PRELOAD_SYMBOL];
+  return isRecord(value)
+    && value.version === 1
+    && value.capability === CHILD_RPC_FRAME_CAPABILITY
+    && value.maxRecordBytes === CHILD_RPC_JSONL_MAX_BYTES
+    && typeof value.configure === "function"
+    && typeof value.isConfigured === "function"
+    ? value as ChildRpcPreloadBridge
+    : null;
+}
+
+function configureChildRpcPreloadBridge(env: RuntimeEnv): boolean {
+  const bridge = childRpcPreloadBridge();
+  if (bridge === null) return false;
+  bridge.configure((record) => transformChildRpcSerializedRecord(record, env));
+  return bridge.isConfigured();
+}
+
 export function installChildRpcFrameWriterForTests(env: RuntimeEnv = process.env as RuntimeEnv): void {
   installChildRpcFrameWriter(env);
 }
 
 function installChildRpcFrameWriter(env: RuntimeEnv = process.env as RuntimeEnv): void {
   if (!childRpcFrameBoundEnabled(env)) return;
+  if (configureChildRpcPreloadBridge(env)) return;
   const stdout = process.stdout;
   const state = stdout as typeof stdout & { __larvaChildRpcFrameWriterInstalled?: boolean };
   if (state.__larvaChildRpcFrameWriterInstalled === true) return;
@@ -6252,26 +6368,7 @@ function installChildRpcFrameWriter(env: RuntimeEnv = process.env as RuntimeEnv)
       : (typeof encodingOrCallback === "string" ? nativeWrite(chunk, encodingOrCallback) : nativeWrite(chunk));
     const text = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString(encoding);
     if (!text.endsWith("\n") || text.slice(0, -1).includes("\n")) return writeOriginal();
-    const line = text.slice(0, -1);
-    const encodedBytes = Buffer.byteLength(line, "utf8");
-    if (encodedBytes <= CHILD_RPC_JSONL_MAX_BYTES) return writeOriginal();
-    let frame: unknown;
-    try { frame = JSON.parse(line); } catch { return writeOriginal(); }
-    if (!isRecord(frame)) return writeOriginal();
-    const responseId = typeof frame.id === "string" || typeof frame.id === "number" ? String(frame.id) : null;
-    const output = isRecord(frame.data) && typeof frame.data.text === "string" ? frame.data.text : null;
-    const boundedFrame = output !== null && responseId !== null
-      ? { id: responseId, success: true, data: { output_delivery: boundedChildRpcOutputEnvelope(output, env) } }
-      : childRpcProjection(frame, encodedBytes);
-    const boundedLine = `${JSON.stringify(boundedFrame)}\n`;
-    const boundedBytes = Buffer.byteLength(boundedLine, "utf8") - 1;
-    if (boundedBytes > CHILD_RPC_JSONL_MAX_BYTES) throw new Error("Larva child RPC writer produced an oversized bounded frame.");
-    if (typeof env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE === "string" && env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE.length > 0) {
-      try {
-        const traceRecord = JSON.stringify({ encoded_bytes: boundedBytes, frame: boundedFrame });
-        if (Buffer.byteLength(traceRecord, "utf8") <= CHILD_RPC_JSONL_MAX_BYTES) appendFileSync(env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE, `${traceRecord}\n`, "utf8");
-      } catch { /* proof-only outbound trace cannot alter child delivery. */ }
-    }
+    const boundedLine = `${transformChildRpcSerializedRecord(text.slice(0, -1), env)}\n`;
     return typeof done === "function" ? nativeWrite(boundedLine, "utf8", done) : nativeWrite(boundedLine, "utf8");
   }) as typeof stdout.write;
 }
@@ -6805,7 +6902,7 @@ function prepareSubagentCallbackManifest(record: ActiveSubagentRun): PreparedSub
         boundedVisible(caught instanceof Error ? caught.message : String(caught), 500) || "Child output artifact could not be persisted.",
       );
     }
-  } else if (!shouldArtifact) {
+  } else if (!shouldArtifact && record.delivery_status !== "failed") {
     record.delivery_status = "inline";
     record.delivery_diagnostic = null;
   }
@@ -8320,6 +8417,15 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
   env.LARVA_PI_CHILD_REQUESTED_THINKING = thinkingArgument;
   const [realBin, ...tail] = prefix;
   const args = [...tail, "--model", modelArgument, "--thinking", thinkingArgument, "--session-dir", root];
+  const preloadPath = join(dirname(fileURLToPath(import.meta.url)), CHILD_RPC_FRAME_PRELOAD_FILENAME);
+  if (!existsSync(preloadPath) && env.LARVA_PI_CHILD_RPC_LEGACY_FALLBACK !== "1") {
+    removeChildCapsuleRoot(env);
+    return error("LARVA_CHILD_START_FAILED", "Child RPC frame preload is missing beside the Larva Pi extension.");
+  }
+  const inheritedNodeOptions = typeof env.NODE_OPTIONS === "string" ? env.NODE_OPTIONS.trim() : "";
+  const childNodeOptions = existsSync(preloadPath)
+    ? [inheritedNodeOptions, `--import=${pathToFileURL(preloadPath).href}`].filter((value) => value.length > 0).join(" ")
+    : inheritedNodeOptions;
   try {
     const child = spawn(realBin, args, {
       env: {
@@ -8333,6 +8439,7 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
         LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
         LARVA_PI_CHILD_RPC_FRAME_BOUND: "1",
         LARVA_PI_LAUNCHED: "1",
+        ...(childNodeOptions.length > 0 ? { NODE_OPTIONS: childNodeOptions } : {}),
       },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -8429,16 +8536,90 @@ function protocolFailure(message: string): LarvaError {
   return error("LARVA_CHILD_PROTOCOL_FAILED", message);
 }
 
+type ChildRpcDecodeResult = Readonly<{ records: Buffer[]; error: LarvaError | null }>;
+
+class ChildRpcLfDecoder {
+  private pending = Buffer.alloc(0);
+
+  push(chunk: Uint8Array): ChildRpcDecodeResult {
+    const input = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+    const records: Buffer[] = [];
+    let offset = 0;
+    while (offset < input.length) {
+      const lfIndex = input.indexOf(0x0a, offset);
+      const segmentEnd = lfIndex < 0 ? input.length : lfIndex;
+      const segment = input.subarray(offset, segmentEnd);
+      const nextLength = this.pending.length + segment.length;
+      const lastByte = segment.length > 0 ? segment[segment.length - 1] : this.pending[this.pending.length - 1];
+      if (nextLength > CHILD_RPC_JSONL_MAX_BYTES + 1 || (nextLength > CHILD_RPC_JSONL_MAX_BYTES && lastByte !== 0x0d)) {
+        return { records, error: protocolFailure(`Child emitted oversized JSONL frame over ${CHILD_RPC_JSONL_MAX_BYTES} bytes.`) };
+      }
+      if (segment.length > 0) {
+        this.pending = this.pending.length === 0
+          ? Buffer.from(segment)
+          : Buffer.concat([this.pending, segment], nextLength);
+      }
+      if (lfIndex < 0) break;
+      let record = this.pending;
+      if (record.length > 0 && record[record.length - 1] === 0x0d) record = record.subarray(0, record.length - 1);
+      if (record.length > CHILD_RPC_JSONL_MAX_BYTES) {
+        return { records, error: protocolFailure(`Child emitted oversized JSONL frame over ${CHILD_RPC_JSONL_MAX_BYTES} bytes.`) };
+      }
+      records.push(record);
+      this.pending = Buffer.alloc(0);
+      offset = lfIndex + 1;
+    }
+    return { records, error: null };
+  }
+
+  finish(): LarvaError | null {
+    return this.pending.length === 0 ? null : protocolFailure("Child emitted unterminated JSONL.");
+  }
+}
+
+function parseChildRpcJsonRecord(record: Buffer): unknown | LarvaError {
+  let line: string;
+  try {
+    line = new TextDecoder("utf-8", { fatal: true }).decode(record);
+  } catch {
+    return protocolFailure("Child emitted invalid UTF-8 JSONL.");
+  }
+  try {
+    return JSON.parse(line);
+  } catch {
+    return protocolFailure("Child emitted malformed JSONL.");
+  }
+}
+
+export function decodeChildRpcJsonlChunksForTests(chunks: Uint8Array[]): { records: unknown[]; error: LarvaError | null } {
+  const decoder = new ChildRpcLfDecoder();
+  const records: unknown[] = [];
+  for (const chunk of chunks) {
+    const decoded = decoder.push(chunk);
+    for (const record of decoded.records) {
+      const parsed = parseChildRpcJsonRecord(record);
+      if (isLarvaError(parsed)) return { records, error: parsed };
+      records.push(parsed);
+    }
+    if (decoded.error !== null) return { records, error: decoded.error };
+  }
+  return { records, error: decoder.finish() };
+}
+
 class RpcClient {
   private readonly pending = new Map<string, (value: unknown | LarvaError) => void>();
   private readonly pendingCommandTypes = new Map<string, string | null>();
   private readonly child: ChildProcessWithoutNullStreams;
+  private readonly decoder = new ChildRpcLfDecoder();
+  private readonly allowLegacyTerminalFallback: boolean;
   private stderr = "";
   private rpcReady = false;
   private closed = false;
   private stdoutClosed = false;
   private agentEnded = false;
+  private agentEndCandidateFailure: LarvaError | null = null;
   private agentEndFailure: LarvaError | null = null;
+  private modernTerminalAuthority = false;
   private protocolFailed: LarvaError | null = null;
   private startupErrorSeen: LarvaError | null = null;
   private childError: unknown = null;
@@ -8455,6 +8636,7 @@ class RpcClient {
   ) {
     this.child = child;
     this.traceEnv = traceEnv;
+    this.allowLegacyTerminalFallback = traceEnv.LARVA_PI_CHILD_RPC_LEGACY_FALLBACK === "1";
     this.onPresentationEvent = onPresentationEvent;
     this.diagnosticContext = diagnosticContext;
     child.stderr.on("data", (chunk: Buffer) => {
@@ -8479,61 +8661,48 @@ class RpcClient {
       void traceChildRpc(this.traceEnv, "child_stdout_close", { pid: this.child.pid ?? null });
       if (!this.closed && this.rpcReady) this.failPending(this.stdoutClosedError());
     });
-    const rl = createInterface({ input: child.stdout });
-    rl.on("line", (line) => this.consume(line));
+    child.stdout.on("data", (chunk: Buffer) => this.consumeChunk(chunk));
+    child.stdout.once("end", () => {
+      const decoderError = this.decoder.finish();
+      if (decoderError !== null) this.failProtocol(decoderError);
+    });
   }
 
   isClosed(): boolean {
     return this.closed || this.stdoutClosed;
   }
 
+  hasFrameCapability(): boolean {
+    return this.modernTerminalAuthority || this.allowLegacyTerminalFallback;
+  }
+
   private failProtocol(larvaError: LarvaError): void {
+    if (this.agentEnded) {
+      void traceChildRpc(this.traceEnv, "rpc_rx_post_terminal_anomaly", { pid: this.child.pid ?? null, code: larvaError.code, message_preview: boundedTracePreview(larvaError.message) });
+      return;
+    }
+    if (this.protocolFailed !== null) return;
     this.protocolFailed = larvaError;
     this.failPending(larvaError);
   }
 
-  private consume(line: string): void {
-    const bytes = Buffer.byteLength(line, "utf8");
+  private consumeChunk(chunk: Buffer): void {
+    const decoded = this.decoder.push(chunk);
+    for (const record of decoded.records) this.consumeRecord(record);
+    if (decoded.error !== null) this.failProtocol(decoded.error);
+  }
+
+  private consumeRecord(record: Buffer): void {
+    const bytes = record.byteLength;
     this.frameSequence += 1;
-    let message: unknown;
-    try { message = JSON.parse(line); } catch {
-      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, bytes, line_preview: sanitizedStartupDiagnostic(line) });
-      if (!this.agentEnded) this.failProtocol(protocolFailure("Child emitted malformed JSONL."));
+    const message = parseChildRpcJsonRecord(record);
+    if (isLarvaError(message)) {
+      void traceChildRpc(this.traceEnv, "rpc_rx_malformed", { pid: this.child.pid ?? null, bytes, error_code: message.code });
+      this.failProtocol(message);
       return;
     }
     const responseId = isRecord(message) && (typeof message.id === "string" || typeof message.id === "number") ? String(message.id) : "";
-    if (bytes > CHILD_RPC_JSONL_MAX_BYTES) {
-      // Oversized diagnostics intentionally omit the legacy
-      // line_preview: sanitizedStartupDiagnostic(line) payload preview.
-      const projection = normalizeSubagentChildStreamEventForPresentation(message, true);
-      const context = this.diagnosticContext?.() ?? { task_id: null, phase: this.agentEnded ? "terminal" : "unknown", artifactization_attempted: false };
-      void traceChildRpc(this.traceEnv, "rpc_rx_oversized", {
-        pid: this.child.pid ?? null,
-        task_id: context.task_id,
-        adapter_frame_sequence: this.frameSequence,
-        ...childRpcFrameTraceFields(message, bytes),
-        command_type: responseId.length > 0 ? this.pendingCommandTypes.get(responseId) ?? null : null,
-        encoded_bytes: bytes,
-        limit: CHILD_RPC_JSONL_MAX_BYTES,
-        phase: context.phase,
-        execution_terminal_seen: this.agentEnded,
-        artifactization_attempted: context.artifactization_attempted,
-      });
-      const waiter = responseId.length > 0 ? this.pending.get(responseId) : undefined;
-      if (waiter !== undefined && isRecord(message) && message.success === true && isRecord(message.data)) {
-        this.pending.delete(responseId);
-        this.pendingCommandTypes.delete(responseId);
-        waiter(Object.freeze({ oversized: true, id: responseId, type: typeof message.type === "string" ? message.type : null, encoded_bytes: bytes, data: message.data } satisfies OversizedChildRpcResponse));
-        return;
-      }
-      if (projection !== null && projection.kind !== "terminal") {
-        this.onPresentationEvent?.(projection);
-        return;
-      }
-      if (this.agentEnded) return;
-      this.failProtocol(protocolFailure(`Child emitted oversized JSONL frame over ${CHILD_RPC_JSONL_MAX_BYTES} bytes.`));
-      return;
-    }
+    if (hasChildRpcCapabilityMarker(message)) this.modernTerminalAuthority = true;
     void traceChildRpc(this.traceEnv, "rpc_rx", { pid: this.child.pid ?? null, ...childRpcFrameTraceFields(message, bytes) });
     const normalizedPresentationEvent = normalizeSubagentChildStreamEventForPresentation(message);
     if (normalizedPresentationEvent !== null) this.onPresentationEvent?.(normalizedPresentationEvent);
@@ -8544,8 +8713,17 @@ class RpcClient {
       waiter(message);
       return;
     }
-    if (isRecord(message) && (message.type === "agent_settled" || message.type === "agent_end")) {
-      this.agentEndFailure = childAgentTerminalError(message);
+    if (!isRecord(message)) return;
+    if (message.type === "agent_end") {
+      this.agentEndCandidateFailure = childAgentTerminalError(message);
+      if (!this.modernTerminalAuthority && this.allowLegacyTerminalFallback && message.willRetry !== true) {
+        this.agentEndFailure = this.agentEndCandidateFailure;
+        this.agentEnded = true;
+      }
+      return;
+    }
+    if (message.type === "agent_settled") {
+      this.agentEndFailure = this.agentEndCandidateFailure;
       this.agentEnded = true;
     }
   }
@@ -8943,7 +9121,23 @@ async function collectAcceptedSubagentTerminalState(record: ActiveSubagentRun, r
     const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
     if (record.terminal_snapshot !== null) return;
     const text = finalText(last);
-    if (isLarvaError(text)) finalizeSubagentRun(record, failed(record.task_id, record.persona_id, text));
+    if (isLarvaError(text)) {
+      record.delivery_status = "failed";
+      record.delivery_diagnostic = subagentCallbackDeliveryDiagnostic(
+        "LARVA_CHILD_OUTPUT_DELIVERY_FAILED",
+        boundedVisible(text.message, 500) || "Child final output delivery failed after execution settled.",
+      );
+      void traceChildRpc(record.env, "child_output_delivery", {
+        task_id: record.task_id,
+        execution_status: "success",
+        delivery_status: "failed",
+        artifactization_attempted: false,
+        artifact_manifest: null,
+        diagnostic: cloneSubagentCallbackDeliveryDiagnostic(record.delivery_diagnostic),
+      });
+      if (record.task_id !== null) finalizeSubagentRun(record, success(record.task_id, record.persona_id, ""));
+      else finalizeSubagentRun(record, failed(null, record.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile was not available after prompt.")));
+    }
     else if (record.task_id !== null) {
       const childDelivery = childRpcOutputDelivery(last);
       let deliveredText = text;
@@ -9018,6 +9212,9 @@ async function runChildSequence(
     } else {
       const stateResult = await rpc.command("state-1", { type: "get_state" });
       if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
+      if (!rpc.hasFrameCapability()) {
+        return await finishSubagentRunEarly(activeRecord, failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state omitted the Larva RPC frame capability marker before prompt.")));
+      }
       const sessionFile = sessionFileFromState(stateResult);
       if (isLarvaError(sessionFile)) return await finishSubagentRunEarly(activeRecord, failed(null, personaId, sessionFile));
       const canonical = await validateFreshChildSessionFile(sessionFile, root);
@@ -9037,6 +9234,9 @@ async function runChildSequence(
     if (routeFenceError !== null) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, routeFenceError));
     const routeVerificationError = await verifyChildRoute(activeRecord, rpc);
     if (routeVerificationError !== null) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, routeVerificationError));
+    if (!rpc.hasFrameCapability()) {
+      return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state omitted the Larva RPC frame capability marker before prompt.")));
+    }
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }); // resume sequence: switch_session -> route fence -> prompt -> get_last_assistant_text
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
     if (!isSuccessResponse(prompted)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")));

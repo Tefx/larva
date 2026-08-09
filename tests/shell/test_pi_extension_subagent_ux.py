@@ -59,6 +59,7 @@ def _node_prelude(tmp_path: Path) -> str:
           LARVA_PI_LAUNCHED: "1",
           LARVA_PI_INITIAL_PERSONA_ID: "",
           LARVA_PI_CHILD_SESSION_DIR: childRoot,
+          LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
           HOME: tmpRoot,
           LARVA_PI_INTERACTIVE_TUI: "0",
           LARVA_PI_AGENT_PERSONA_SWITCH: "",
@@ -95,7 +96,12 @@ def _node_prelude(tmp_path: Path) -> str:
               const msg = JSON.parse(line);
               if (msg.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\\\n"); send({{ id: msg.id, success: true, data: {{ sessionFile, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
               else if (msg.type === "switch_session") {{ send({{ id: msg.id, success: true, data: {{ cancelled: false }} }}); }}
-              else if (msg.type === "prompt") {{ send({{ id: msg.id, success: true }}); setTimeout(() => send({{ type: "agent_end" }}), 5); }}
+              else if (msg.type === "prompt") {{
+                send({{ id: msg.id, success: true }});
+                setTimeout(() => send(${{JSON.stringify(scenario)}} === "terminal-failure"
+                  ? {{ type: "agent_end", willRetry: false, messages: [{{ role: "assistant", content: [{{ type: "text", text: "failed" }}], stopReason: "error", errorMessage: "bounded runtime failure", diagnostics: [{{ type: "provider_transport_failure" }}] }}] }}
+                  : {{ type: "agent_end" }}), 5);
+              }}
               else if (msg.type === "get_last_assistant_text") {{
                 if (${{JSON.stringify(scenario)}} === "empty-final") send({{ id: msg.id, success: true, data: {{}} }});
                 else if (${{JSON.stringify(scenario)}} === "malformed-final") send({{ id: msg.id, success: true, data: {{ text: {{ bad: true }} }} }});
@@ -144,7 +150,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
         const failedBeforeSession = await subagent.handler({ persona_id: "ok", task: "" });
 
         const malformedChild = join(tmpRoot, "fake-pi-child-malformed.mjs");
-        await writeFakeChild(malformedChild, "malformed-final");
+        await writeFakeChild(malformedChild, "terminal-failure");
         const afterEnv = baseEnv({ LARVA_PI_REAL_BIN: malformedChild, LARVA_PI_EXTENSION_ENTRY: malformedChild });
         const after = await registeredTools(afterEnv);
         await mod.commitPersona("ok", { env: afterEnv, modelRegistry }, piBase);
@@ -226,7 +232,7 @@ def test_larva_subagent_toolresult_wrapper_footer_and_lifecycle_paths(tmp_path: 
     assert payload["failedAfterAllocation"]["task_id"] is not None
     assert payload["failedAfterAllocation"]["hasFooter"] is True
     assert payload["failedAfterAllocation"]["terminalStatus"] == "failed"
-    assert payload["failedAfterAllocation"]["terminalErrorCode"] == "LARVA_CHILD_PROTOCOL_FAILED"
+    assert payload["failedAfterAllocation"]["terminalErrorCode"] == "LARVA_CHILD_RUNTIME_FAILED"
     assert payload["cancelled"]["mirrorOk"] is True
     assert payload["cancelled"]["status"] == "cancelled"
     assert payload["cancelled"]["isError"] is True
@@ -968,7 +974,7 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
     assert payload["cases"]["timeout"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
     assert payload["cases"]["stdoutEof"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
     assert payload["cases"]["malformedRpc"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
-    assert payload["cases"]["finalTextFailure"] == {"status": "failed", "errorCode": "LARVA_CHILD_PROTOCOL_FAILED", "orphan": False}
+    assert payload["cases"]["finalTextFailure"] == {"status": "success", "errorCode": None, "orphan": False}
     assert payload["cases"]["providerTransportFailure"] == {
         "status": "failed",
         "errorCode": "LARVA_CHILD_RUNTIME_FAILED",

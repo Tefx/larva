@@ -88,13 +88,13 @@ rl.on("line", async (line) => {
   if (message.type === "get_state") {
     await mkdir(sessionDir, { recursive: true });
     await writeFile(sessionFile, "", "utf8");
-    send({ id: message.id, success: true, data: { sessionFile, model: { provider: "provider", id: "model" }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING || "high" } });
+    send({ id: message.id, type: "response", command: "get_state", success: true, data: { sessionFile, model: { provider: "provider", id: "model" }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING || "high" } });
     return;
   }
-  if (message.type === "switch_session") { send({ id: message.id, success: true, data: {} }); return; }
+  if (message.type === "switch_session") { send({ id: message.id, type: "response", command: "switch_session", success: true, data: {} }); return; }
   if (message.type === "prompt") {
     scenario = message.message;
-    send({ id: message.id, success: true, data: {} });
+    send({ id: message.id, type: "response", command: "prompt", success: true, data: {} });
     if (scenario === "oversized-tool") {
       send({ type: "tool_execution_start", toolCallId: "tool-big", toolName: "read", args: { path: "/tmp/proof", content: huge(${JSON.stringify(RAW_TOOL_PREFIX)}) } });
     } else if (scenario === "oversized-assistant") {
@@ -109,7 +109,7 @@ rl.on("line", async (line) => {
   }
   if (message.type === "get_last_assistant_text") {
     if (scenario === "terminal-late-oversized") send({ type: "message_update", channel: "assistant", assistantMessageEvent: { delta: huge(${JSON.stringify(RAW_ASSISTANT_PREFIX)} + ":after-terminal") }, message: huge("RAW_LATE_PARTIAL") });
-    send({ id: message.id, success: true, data: { text: finals[scenario] ?? ${JSON.stringify(SHORT_FINAL)} } });
+    send({ id: message.id, type: "response", command: "get_last_assistant_text", success: true, data: { text: finals[scenario] ?? ${JSON.stringify(SHORT_FINAL)} } });
   }
 });
 `, "utf8");

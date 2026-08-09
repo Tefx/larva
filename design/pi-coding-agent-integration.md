@@ -2244,38 +2244,77 @@ Bridge rules:
   contract before building a `PersonaEnvelope`.
 
 ### Child RPC contract
-
-The parent extension communicates with child Pi using Pi RPC JSONL only after the
-child is ready enough to speak RPC. Before RPC readiness, the parent may read
-child stderr only for the whitelisted fatal startup line described in Child
-startup.
+The parent extension communicates with child Pi using LF-delimited RPC JSON only
+after the child is ready enough to speak RPC. Before RPC readiness, the parent
+may read child stderr only for the whitelisted fatal startup line described in
+Child startup.
 
 Supported child RPC commands:
 
-- `get_state`: obtain `data.sessionFile` for public `task_id` allocation.
+- `get_state`: obtain `data.sessionFile`, route fields, and the Larva child-frame
+  capability marker before any prompt.
 - `prompt`: submit the child task.
 - `switch_session`: resume a previous child session file.
-- `get_last_assistant_text`: obtain final assistant text for `result_text`.
+- `get_last_assistant_text`: obtain final assistant text for delivery.
 - `abort`: request child cancellation.
 
 RPC command response rules:
 
 - `get_state`, `switch_session`, `prompt`, and `get_last_assistant_text` must each
   return a command response within ten seconds.
-- Waiting for `agent_end` after an accepted `prompt` has no adapter timeout; it
-  ends when Pi completes, aborts, or the process fails.
-- A command response with `success: false`, invalid JSON, unexpected id/type,
-  missing required data field, or timeout maps to `LARVA_CHILD_PROTOCOL_FAILED`,
-  except `switch_session` with a missing session may map to
-  `LARVA_SESSION_NOT_FOUND` if Pi exposes that distinction clearly.
-- `get_last_assistant_text.data.text` must be a string. Missing, `null`, or
-  non-string `text` maps to `LARVA_CHILD_PROTOCOL_FAILED`.
+- New and resumed children must expose
+  `larvaChildRpcFrame.capability=larva-child-rpc-frame-preload-v1`, the
+  1,048,576-byte inclusive limit, LF-only framing, and `agent_settled` terminal
+  authority before the parent sends `prompt`. Only an explicit controlled legacy
+  adapter may opt into `LARVA_PI_CHILD_RPC_LEGACY_FALLBACK=1`.
+- Waiting after an accepted prompt has no adapter timeout. A marked modern child
+  ends on `agent_settled`, abort, or process failure. `agent_end` is a bounded
+  candidate only; `willRetry: true` never terminates modern or legacy execution.
+- A command response with `success: false`, invalid UTF-8/JSON, unexpected
+  id/type, missing required data, or timeout maps to
+  `LARVA_CHILD_PROTOCOL_FAILED`, except a clearly distinguished missing session
+  may map to `LARVA_SESSION_NOT_FOUND`.
+- `get_last_assistant_text.data.text` is a string when inline. Missing or `null`
+  means empty final text; another type is a delivery failure. After
+  `agent_settled`, output/framing/stdout-close failure cannot rewrite execution
+  success and instead produces bounded failed-delivery metadata.
 - Child stdout is protocol-only. Child stderr is diagnostics-only after RPC
   readiness.
 
-- An `agent_end` with a failed latest assistant message is a child runtime
-  failure, not successful RPC completion. It maps to
-  `LARVA_CHILD_RUNTIME_FAILED` before `get_last_assistant_text`.
+A final compact `agent_end` failure candidate maps to
+`LARVA_CHILD_RUNTIME_FAILED` only when settlement selects that candidate. Its
+public error retains bounded provider/runtime type and message without full
+`messages`, tool, thinking, diagnostic-private, or marker payloads.
+
+#### Pi 0.84.1 `writeRawStdout` frame protection
+
+Larva injects packaged `child-rpc-frame-preload.mjs` into only the spawned child
+through `NODE_OPTIONS`. It runs before Pi 0.84.1 `takeOverStdout()`, so Pi's
+captured `writeRawStdout()` target is the preload bridge. The extension configures
+the bridge after startup; parent Pi and installed Pi files are untouched.
+
+The bridge bounds every complete serialized UTF-8 JSONL record to 1,048,576
+bytes. Oversized nonterminal frames become metadata-only projections; every
+`agent_end` becomes a bounded candidate retaining `willRetry`; oversized final
+text becomes an exact 0600 artifact plus bounded correlated manifest. The parent
+uses a byte-counted LF decoder, strips one CR for CRLF, preserves U+2028/U+2029,
+accepts split UTF-8, and enforces record/accumulator bounds before decode and
+`JSON.parse`.
+
+The preload observes Pi's already serialized string. Removing that temporary
+allocation would require optional upstream pre-serialization projection and is
+outside this repository-local hotfix.
+
+#### Oversized child RPC recovery
+
+Successful bounded final text stays inline. Oversized final text is persisted
+before stdout delivery and never reconstructed from child session JSONL. The
+compact response contains only correlation, bounded preview/delivery state, and
+`path`, SHA-256, bytes, and lines. Write failure leaves
+`execution_status: success` and reports `delivery_status: failed`; successful
+persistence reports `artifactized`. Callback, wait, and select expose the same
+execution/delivery metadata while compatibility `status` and `phase` remain
+execution-owned. Metadata-only traces never contain complete raw payloads.
 #### Oversized child RPC recovery
 
 The child extension installs an adapter-owned stdout writer before RPC emission.
