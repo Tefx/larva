@@ -142557,7 +142557,7 @@ phases:
       effect and no cleanup needed.'
 - id: pi_rpc_write_raw_stdout_hotfix_20260809
   name: Pi 0.84.1 Child RPC writeRawStdout Hotfix 2026-08-09
-  status: in_progress
+  status: done
   gate: The repository hotfix is complete only when one implementation closes RPC-WRITER-0841
     through RPC-PACKAGE-DOC-PARITY and one downstream integration-verifier independently
     observes the exact pinned Pi 0.84.1 takeOverStdout/writeRawStdout seam, bounded
@@ -142800,7 +142800,7 @@ phases:
       external effect.'
   - id: pi-rpc-write-raw-stdout-hotfix.verify-real-pi
     name: Independently verify exact Pi 0.84.1 child RPC recovery
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -142918,3 +142918,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-08-09T11:23:39.298315Z'
+    done_at: '2026-08-09T11:42:17.688741+00:00'
+    evidence: 'Independent integration-verifier semantic receipt `/tmp/larva-agent-artifacts/pi-rpc-write-raw-stdout-hotfix-verify/semantic-receipt.json`
+      mode 0600, file SHA-256 edc01f6a7ac61420bd65a309700475fe398d75a43a9b24ec9ba462625adb8dab,
+      canonical receipt SHA-256 sha256:98436e21b65101b012f7581c729f3ed35f14487debaf8e48e4f9b60aa8e3c484.
+      Installed Gate verdict `/tmp/larva-agent-artifacts/pi-rpc-write-raw-stdout-hotfix-verify/semantic-gate-verdict.json`:
+      CONFORMANT, semantic_completion_admissible=true for exact owner, step, ordered
+      scope, eight requirement IDs, and ten authorized evidence refs. Full Audit L0-L3
+      PASS; all eight requirements PROVEN; no blockers, warnings, or proof gaps. Independent
+      raw evidence rehydrated exact pinned Pi 0.84.1, traversed real output-guard
+      takeOverStdout/writeRawStdout, observed marker before prompt, 6 frames/max 549
+      bytes <= 1,048,576, inline callback/wait/select equality, exact mode-0600 artifact
+      SHA/bytes, leakage absence, willRetry/agent_settled/legacy/provider failure/post-success
+      anomaly behavior, LF/CRLF/U+2028/U+2029/split UTF-8/malformed/unterminated/over-bound
+      preparse handling, cleanup, package/docs provenance, Invar green, and clean
+      tracked tree. Initial malformed child callback was transport-only before probes;
+      same exact verifier session resumed after read-only reconciliation and produced
+      the admitted receipt. No tracked repository mutation, global/installed Pi mutation,
+      provider/network model call, push, release, version change, or external persistent
+      effect.'
