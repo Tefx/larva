@@ -142953,7 +142953,7 @@ phases:
   steps:
   - id: package-version-0-6-1.bump
     name: Bump Larva package version from 0.6.0 to 0.6.1
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143078,6 +143078,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-08-09T12:08:22.890222Z'
+    done_at: '2026-08-09T12:46:05.727373+00:00'
+    evidence: 'Integrated exact product commit de05153b4b7bb2857b356bbb754031852101d06d
+      by fast-forward from admitted base 9da813f347ee9106a941225f2ad5aa981316b5c9;
+      tree 4a3ce60584a7f95128a9da1715fc2013a52bdfe1; main clean. Changed exactly pyproject.toml,
+      src/larva/__init__.py, uv.lock from 0.6.0 to 0.6.1. Worker-v2 claim claim:bba8cd8d12cb47d20dd27b921720633d46aab90aa7bdfbb5925e1e961131adb7;
+      dispatch sha256:374fed32b22f21faece583c3916491d3c6d6d10ba7c4980464e07c1255df6cc9;
+      child lint CONFORMANT; parent dispatch and receipt admissions CONFORMANT. Checks
+      green after declared ignored npm hydration: uv lock --check; five-way VERSION_METADATA_OK
+      0.6.1; CLI larva 0.6.1; focused CLI pytest; full pytest 943 passed; invar guard
+      --all; git diff --check. Integrated metadata/lock/CLI proof rerun green. Initial
+      full pytest red was harness-only missing contrib/pi-extension node_modules;
+      npm ci then exact test passed without tracked mutation. Existing tests/docs
+      contained no canonical current-version artifact, so no test/doc edit required.
+      No push, tag, release, publish, uvx refresh, installed-Pi mutation, credential,
+      or external effect.'
   - id: release-0-6-1-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.1
     status: pending
