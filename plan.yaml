@@ -142555,3 +142555,343 @@ phases:
       `sha256:7d510245cb7cd29ca7ced1709ab185aff14618954dacc62575e42833fd1832ff`; repository
       remained clean. Only local uv cache resolution changed; no repo/Git/GitHub/PyPI/credential/global-tool
       effect and no cleanup needed.'
+- id: pi_rpc_write_raw_stdout_hotfix_20260809
+  name: Pi 0.84.1 Child RPC writeRawStdout Hotfix 2026-08-09
+  status: pending
+  gate: The repository hotfix is complete only when one implementation closes RPC-WRITER-0841
+    through RPC-PACKAGE-DOC-PARITY and one downstream integration-verifier independently
+    observes the exact pinned Pi 0.84.1 takeOverStdout/writeRawStdout seam, bounded
+    LF framing, terminal/delivery convergence, artifact integrity, and raw-data absence.
+    No explicit gate, upstream Pi mutation, package-version bump, publish, push, release,
+    or other persistent external effect is authorized.
+  steps:
+  - id: pi-rpc-write-raw-stdout-hotfix.implement
+    name: Bound actual Pi 0.84.1 child RPC stdout and terminal delivery
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - Add same-step deterministic red proof for the confirmed Pi 0.84.1 bypass before
+      changing runtime code: the exact Pi `takeOverStdout`/`writeRawStdout` path must
+      defeat the current late `process.stdout.write` wrapper; Node `readline` must
+      misframe U+2028/U+2029 or expose the pre-parse memory gap; and modern retry/compaction
+      terminal ordering must expose the current premature `agent_end` behavior. Preserve
+      the red observations as provenance, then make the final checks green; no plan-level
+      expected-red lifecycle is created.
+
+      - Ship a small child-only preload at `contrib/pi-extension/child-rpc-frame-preload.mjs`,
+      include it in the Python wheel beside the packaged Pi extension, and inject
+      it only into Larva-spawned child RPC processes through child `NODE_OPTIONS`.
+      Configure its preloaded global-Symbol bridge from `contrib/pi-extension/larva.ts`;
+      a real `get_state` response must carry a deterministic bounded capability marker
+      before Larva sends or resumes a prompt. Parent Pi, unrelated Node processes,
+      installed/global Pi files, and ambient extension discovery remain unchanged.
+
+      - On the actual pinned `@earendil-works/pi-coding-agent` 0.84.1 `takeOverStdout`/`writeRawStdout`
+      path, every complete child stdout JSONL record is at most 1,048,576 UTF-8 bytes.
+      The preload transforms already serialized strings before the captured raw writer
+      emits them. Pre-serialization compaction is an accurately documented optional
+      upstream follow-up and is not required for this repository-local emitted-record
+      and retained-state hotfix.
+
+      - Keep bounded nonterminal projections and exact final-output delivery: more
+      than 1 MiB of accumulated child messages/tool results followed by a short final
+      response completes with inline callback; an over-callback-limit final response
+      completes with a 0600 artifact whose manifest SHA-256 and byte count match exact
+      UTF-8 bytes. Callback, wait, and select converge on identical execution/delivery
+      metadata and carry only bounded preview/manifest data.
+
+      - Prevent complete `agent_end.messages` and raw tool, thinking, assistant-message,
+      oversized, error, and marker payloads from entering callback, status, events,
+      presentation, or trace. Preserve `willRetry` and bounded provider/runtime failure
+      type/message fields. Modern `agent_settled` owns terminal execution state; cache
+      only a bounded legacy `agent_end` candidate and use it only under explicit legacy
+      capability/fallback so modern retry, compaction retry, or queued continuation
+      cannot terminate early.
+
+      - Once execution success is established, later transport, framing, artifact-delivery,
+      stdout-close, or cleanup anomalies may update bounded delivery diagnostics but
+      cannot rewrite execution-owned `status`, `phase`, or `execution_status` to implementation
+      failure.
+
+      - Replace parent `RpcClient` Node `readline` parsing with an LF-only byte-bounded
+      decoder. Strip one trailing CR for CRLF compatibility, accept U+2028/U+2029
+      inside JSON strings, and enforce record and accumulator bounds before UTF-8
+      decode/`JSON.parse`; malformed or oversized pre-terminal framing remains bounded
+      `LARVA_CHILD_PROTOCOL_FAILED`.
+
+      - Pin `@earendil-works/pi-coding-agent` exactly at 0.84.1 as a repository-local
+      development dependency, retain the controlled fake regression, add a non-skipping
+      exact-real-Pi loopback at `contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs`,
+      and synchronize package lock, wheel inclusion, source/static contracts, focused/full
+      tests, authoritative design/reference text, operator README, and top-level guidance
+      in the same implementation commit. Do not change Larva''s 0.6.0 package version.
+
+
+      Boundary:
+
+      - Owner: `frontend-engineer`. Live Worker-v2 comparison: `frontend-engineer`
+      directly covers the dominant production TypeScript/Node runtime mutation and
+      already owns this exact Pi extension surface; `general` is Worker-v2 compatible
+      but broader than needed. Roster-relevant `toolsmith` is design/RFC-only and
+      lacks Worker-v2 execution support, so it cannot own repository mutation. Python
+      tests, package metadata, and documentation are synchronized evidence for the
+      TypeScript product behavior and do not change the dominant owner.
+
+      - Repository authority is limited to the exact intent-closure allowed paths.
+      The identity-bearing runtime target is the Larva-spawned child process using
+      repository-pinned Pi 0.84.1; the protected state is parent process stdout/environment,
+      public bounded callback/status/events/presentation/trace state, child session
+      persistence, shared Pi settings, and exact artifact bytes. No `src/larva` behavior,
+      PersonaSpec/opifex/shared contract, installed Pi package, global Node configuration,
+      package version, release metadata, GitHub/PyPI object, branch/tag, or upstream
+      Pi source may change.
+
+      - Effects are reversible tracked repository edits, ignored repository-local
+      npm dependency hydration/cache, and disposable loopback child sessions/traces/artifacts
+      only. Tests use loopback/local deterministic providers and no credentials, paid
+      model/API, remote publication, device, or persistent external write. Rollback
+      class is one Git revert plus deletion of disposable local artifacts.
+
+
+      Admit:
+
+      - Witnessed authority is `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, `design/pi-coding-agent-integration.md`,
+      and Pi 0.84.1 `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/rpc.md`:
+      <=1 MiB serialized UTF-8 stdout records, compact `agent_settled` authority,
+      bounded legacy failure compatibility, separate execution/delivery state, artifact
+      delivery, metadata-only diagnostics, and LF-only framing that does not split
+      U+2028/U+2029.
+
+      - Witnessed incident facts include Pi capturing original stdout before Larva
+      initialization, a successful preloaded Symbol-bridge probe on real `get_state`,
+      and affected reconstructed `agent_end` frames of 1,847,025, 1,324,793, and 1,348,459
+      bytes with `stopReason=stop` and only 2.3–3.3 KiB final text. The existing fake
+      child imports the writer before direct stdout writes and the static test checks
+      tokens only; neither is sufficient real-seam evidence.
+
+      - `real_pi_0841_loopback` must fail rather than skip on missing/wrong Pi version,
+      absent preload capability marker, failure to traverse the actual Pi RPC writer,
+      any child stdout record above the inclusive byte limit, raw-public-state leakage,
+      terminal metadata divergence, or artifact mismatch. Its evidence reports actual
+      record count/max UTF-8 bytes, marker/provenance observation, inline and artifact
+      cases, callback/wait/select equality, artifact mode/hash/bytes, modern retry/compaction
+      ordering, bounded provider/runtime failure projection, post-success anomaly
+      behavior, and cleanup.
+
+      - `fake_rpc_regression` retains controlled tool/assistant/thinking/final/artifact-failure
+      coverage; focused Python tests cover source/package/wheel/docs parity and public
+      surface behavior; all Pi Node regressions, full pytest, Invar, and diff checks
+      close repository parity. Source, tests, packaging, and documentation must change
+      together where behavior or operator guidance changes.
+
+      - Independent consumer `pi-rpc-write-raw-stdout-hotfix.verify-real-pi` must
+      re-observe the exact real seam and its public effects after integration; implementation-authored
+      PASS text alone is insufficient.
+
+
+      Recovery:
+
+      - Missing exact dependency, version mismatch, absent preload marker, inability
+      to prove the actual writer path, or a skipped/inconclusive real loopback stops
+      completion. The owner may safely rehydrate the pinned local dependency, rebuild,
+      and rerun local checks without Plan change, but may not fall back to global
+      Pi, the fake child, static token checks, provider calls, or upstream mutation
+      as acceptance.
+
+      - Before terminal authority, malformed, over-bound, unterminated, or invalid
+      UTF-8 framing fails bounded protocol handling and follows existing child cleanup.
+      After proven execution success, preserve that success and report only bounded
+      delivery diagnostics; do not replay child work or reconstruct output from child
+      session JSONL.
+
+      - Artifact-write failure remains execution success with `delivery_status: failed`;
+      preserve bounded diagnostics. Local test sessions, npm cache/node_modules, traces,
+      and artifacts are disposable after evidence capture. Revert the repository commit
+      to roll back the hotfix; no external reconciliation is required.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-rpc-write-raw-stdout-hotfix.implement","risk_tier":"R2","risk_reasons":["Pi
+      0.84.1 captures stdout before extension initialization and writeRawStdout bypasses
+      the current wrapper, while the existing fake and static checks can remain green;
+      an independent exact-real-Pi observer therefore contributes runtime information
+      the implementation''s controlled seams cannot supply.","The tracked change is
+      repository-local and trivially revertible with no credential, destructive data,
+      installed-package, release, or persistent external effect; one terminal verification
+      is sufficient and R3 review is not justified."],"primary_outcome":"RPC-WRITER-0841","rollback_class":"TRIVIAL","observation_ledger":[{"requirement_id":"RPC-WRITER-0841","atom":"Every
+      actual Pi 0.84.1 writeRawStdout child JSONL record stays within 1,048,576 UTF-8
+      bytes and exposes the preload capability marker before prompt.","modality":"exact
+      pinned child-process loopback with emitted-record byte enumeration","seam":"real","check_id":"real_pi_0841_loopback","independent_step":"pi-rpc-write-raw-stdout-hotfix.verify-real-pi"},{"requirement_id":"RPC-TERMINAL-AUTHORITY","atom":"Modern
+      agent_settled, bounded legacy agent_end failure projection, retry/compaction
+      ordering, and later anomaly handling preserve execution-owned terminal state.","modality":"real
+      runtime event ordering plus callback/wait/select terminal comparison","seam":"real","check_id":"real_pi_0841_loopback","independent_step":"pi-rpc-write-raw-stdout-hotfix.verify-real-pi"},{"requirement_id":"RPC-ARTIFACT-DELIVERY","atom":"Over-limit
+      final output is delivered only by bounded preview and a matching 0600 SHA-256/byte
+      manifest while execution remains successful.","modality":"real runtime artifact
+      and public-surface inspection","seam":"real","check_id":"real_pi_0841_loopback","independent_step":"pi-rpc-write-raw-stdout-hotfix.verify-real-pi"}],"test_authority":{"developer_test_globs":["contrib/pi-extension/test-*.mjs","scripts/pi-extension-runtime-smoke.mjs","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","tests/shell/test_pi_extension_subagent_ux.py"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/child-rpc-frame-preload.mjs","contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs","contrib/pi-extension/package.json","contrib/pi-extension/package-lock.json","pyproject.toml","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","design/pi-coding-agent-integration.md","contrib/pi-extension/README.md","README.md"],"blocked_paths":["plan.yaml","src/larva/**","contracts/**","../opifex/**",".github/workflows/**","uv.lock"],"ignored_runtime_paths":[]},"claims":["RPC-WRITER-0841","RPC-LARGE-INLINE-SUCCESS","RPC-ARTIFACT-DELIVERY","RPC-RAW-PRIVACY","RPC-TERMINAL-AUTHORITY","RPC-SUCCESS-IMMUTABLE","RPC-LF-PREPARSE-BOUND","RPC-PACKAGE-DOC-PARITY"],"checks":[{"id":"pi_extension_npm_ci","run":{"command":["npm","--prefix","contrib/pi-extension","ci"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["RPC-PACKAGE-DOC-PARITY"]},{"id":"fake_rpc_regression","run":{"command":["node","contrib/pi-extension/test-subagent-rpc-memory-bound.mjs"],"timeout_seconds":300},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"subagent
+      child RPC memory bound regression: PASS"}],"contains_any":[],"forbids":[]}},"proves":["RPC-LARGE-INLINE-SUCCESS","RPC-ARTIFACT-DELIVERY","RPC-RAW-PRIVACY","RPC-TERMINAL-AUTHORITY","RPC-SUCCESS-IMMUTABLE"]},{"id":"real_pi_0841_loopback","run":{"command":["node","contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs"],"timeout_seconds":480},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"contrib/pi-extension/child-rpc-frame-preload.mjs","access":"read","availability":"produced_by_step"},{"path":"contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs","access":"execute","availability":"produced_by_step"},{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs","classification":"developer","availability":"produced_by_step"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"subagent
+      real Pi 0.84.1 writeRawStdout regression: PASS"}],"contains_any":[],"forbids":[{"literal":"SKIP"},{"literal":"INCONCLUSIVE"}]}},"proves":["RPC-WRITER-0841","RPC-LARGE-INLINE-SUCCESS","RPC-ARTIFACT-DELIVERY","RPC-RAW-PRIVACY","RPC-TERMINAL-AUTHORITY","RPC-SUCCESS-IMMUTABLE"]},{"id":"targeted_pi_extension_pytest","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_real_runtime.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":720},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","access":"execute","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","access":"execute","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","access":"execute","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"read","availability":"current"},{"path":"pyproject.toml","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"passed"}],"contains_any":[],"forbids":[]}},"proves":["RPC-LF-PREPARSE-BOUND","RPC-PACKAGE-DOC-PARITY","RPC-RAW-PRIVACY","RPC-TERMINAL-AUTHORITY"]},{"id":"pi_extension_node_regressions","run":{"command":["bash","-lc","for
+      f in contrib/pi-extension/test-*.mjs; do node \"$f\"; done"],"timeout_seconds":720},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[{"path":"contrib/pi-extension/test-subagent-rpc-memory-bound.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["RPC-WRITER-0841","RPC-LARGE-INLINE-SUCCESS","RPC-ARTIFACT-DELIVERY","RPC-RAW-PRIVACY","RPC-TERMINAL-AUTHORITY","RPC-SUCCESS-IMMUTABLE","RPC-LF-PREPARSE-BOUND","RPC-PACKAGE-DOC-PARITY"]},{"id":"repo_pytest","run":{"command":["uv","run","pytest","-q"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","access":"read","availability":"current"},{"path":"design/pi-coding-agent-integration.md","access":"read","availability":"current"},{"path":"contrib/pi-extension/README.md","access":"read","availability":"current"},{"path":"README.md","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_real_runtime.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[{"literal":"passed"}],"contains_any":[],"forbids":[]}},"proves":["RPC-PACKAGE-DOC-PARITY"]},{"id":"invar_guard","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"INVAR.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["RPC-PACKAGE-DOC-PARITY"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":30},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["RPC-PACKAGE-DOC-PARITY"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Capture pre-fix red outputs, then provide the admitted Worker-v2
+      execution receipt, exact changed paths, pinned package/runtime version, preload
+      marker and actual-writer provenance, emitted record count/max UTF-8 bytes, callback/wait/select
+      equality, artifact mode/SHA-256/bytes, public-state leakage scan, terminal retry/failure/anomaly
+      observations, LF/U+2028/U+2029/pre-parse bound proof, and raw exit summaries
+      for every contract check. State that Larva remains 0.6.0 and that no upstream,
+      installed Pi, publish, push, release, credential, paid-provider, or other persistent
+      external effect occurred.
+    evidence_template: 'Pre-fix red: <commands/exits and observed bypass/framing/terminal
+      facts>. Changed paths: <exact list>. Real Pi 0.84.1: <package provenance, preload
+      marker, actual writer evidence, record count/max bytes>. Public delivery: <inline/artifact
+      mode-hash-bytes and callback/wait/select comparison>. Privacy/terminal/framing:
+      <leak scan, retry/failure/anomaly, LF/U+2028/U+2029/preparse bound>. Checks:
+      <command, exit, key output for all eight checks>. External/version effects:
+      none; residual risk: <none or exact blocker>.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - pyproject.toml
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    - README.md
+    - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/rpc.md
+    agent: frontend-engineer
+  - id: pi-rpc-write-raw-stdout-hotfix.verify-real-pi
+    name: Independently verify exact Pi 0.84.1 child RPC recovery
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independently execute the integrated repository against the exact repository-pinned
+      `@earendil-works/pi-coding-agent` 0.84.1 binary and its actual `takeOverStdout`/`writeRawStdout`
+      path. Do not accept the controlled fake child, globally installed Pi, static
+      source tokens, implementation summary, a skipped probe, or PASS text without
+      raw observations as substitutes.
+
+      - Re-observe a preload capability marker in real `get_state` before prompt and
+      enumerate every actual child stdout JSONL record. Confirm the maximum serialized
+      UTF-8 byte count is <=1,048,576 and that the record set came from real Pi 0.84.1
+      rather than a test-owned direct stdout writer.
+
+      - Re-observe more than 1 MiB of accumulated child message/tool-result state
+      followed by short final text reaching one inline success callback; compare callback,
+      wait, and select terminal metadata field-for-field. Re-observe over-limit final
+      text as execution success with bounded preview/manifest only, verify artifact
+      mode 0600 and exact SHA-256/bytes, and inspect callback/status/events/presentation/trace
+      for absence of complete `agent_end.messages` and every raw tool/thinking/message/oversized
+      marker.
+
+      - Exercise modern retry/compaction/continuation ordering and bounded provider/runtime
+      failure projection: `willRetry` survives projection, modern `agent_settled`
+      owns completion, legacy fallback cannot end a modern run early, and a later
+      transport/delivery anomaly cannot rewrite proven execution success.
+
+      - Exercise the parent LF-only decoder with U+2028/U+2029 inside JSON strings,
+      CRLF compatibility, split multibyte chunks, malformed/unterminated/over-bound
+      input, and proof that the byte/accumulator guard runs before `JSON.parse` without
+      retaining the oversized record.
+
+
+      Boundary:
+
+      - Owner: `integration-verifier`, a supported read-only semantic-receipt verifier
+      for real seam/runtime evidence. It may hydrate the already-declared pinned npm
+      dependency into ignored `node_modules` and create disposable loopback sessions,
+      traces, and output artifacts. It may not modify tracked files, acceptance tests,
+      Plan state, installed/global Pi, parent settings, upstream Pi, package versions,
+      Git refs, GitHub/PyPI, or any external persistent target.
+
+      - The independent observation target is the integrated implementation step''s
+      exact repository commit and pinned local Pi 0.84.1 runtime. No credentials,
+      paid provider, model network call, release action, or destructive state is authorized.
+
+
+      Admit:
+
+      - Dependency `pi-rpc-write-raw-stdout-hotfix.implement` owns the produced preload
+      and exact-real-Pi regression. Recompute package/version provenance and run the
+      non-skipping real loopback after integration; inspect its bounded evidence and
+      public artifacts rather than trusting implementation evidence.
+
+      - Minimum raw evidence includes commands and exit codes; pinned package version
+      and executable/source provenance; preload marker; emitted record count and maximum
+      UTF-8 bytes; inline callback plus wait/select equality; artifact path/mode/hash/bytes
+      and bounded preview; leakage scan surfaces/markers; `willRetry`, modern settled,
+      legacy failure, and post-success anomaly cases; LF/U+2028/U+2029/split-UTF-8/preparse-bound
+      cases; child/root cleanup; and confirmation of zero tracked changes.
+
+      - Emit one admissible `vectl.verifier.semantic.v1` receipt for `integration-verifier`
+      with L2/L3 real-seam evidence and explicit verdicts for `RPC-WRITER-0841`, `RPC-LARGE-INLINE-SUCCESS`,
+      `RPC-ARTIFACT-DELIVERY`, `RPC-RAW-PRIVACY`, `RPC-TERMINAL-AUTHORITY`, `RPC-SUCCESS-IMMUTABLE`,
+      `RPC-LF-PREPARSE-BOUND`, and `RPC-PACKAGE-DOC-PARITY`. PASS requires all eight;
+      missing actual-writer provenance or any skipped/inconclusive observation is
+      FAIL/BLOCKED.
+
+
+      Recovery:
+
+      - If dependency hydration or a disposable local runtime fails transiently, the
+      verifier may safely clean and rerun without Plan change. It must not patch code/tests/docs,
+      substitute another Pi version or global binary, weaken assertions, or invoke
+      a provider/network model.
+
+      - Preserve failure evidence and stop with the exact blocker on version/provenance
+      mismatch, absent marker, over-bound frame, leak, metadata divergence, artifact
+      mismatch, premature terminal, success rewrite, decoder failure, cleanup failure,
+      or tracked drift. Repository rollback/repair remains with the implementation
+      owner; no external reconciliation is required.'
+    verification: From a clean integrated tree, hydrate the pinned local dependency,
+      run `node contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs`, independently
+      inspect its actual-writer and public-surface evidence, run the focused framing/terminal/package
+      tests needed to corroborate it, and prove `git status --porcelain` has no tracked
+      changes. Admit one integration-verifier semantic receipt only when all eight
+      requirement IDs pass with no skip or inconclusive result.
+    evidence_template: 'Semantic receipt: <path/digest/admission>. Exact Pi: <0.84.1
+      package and executable/source provenance>. Writer: <preload marker, actual writeRawStdout
+      evidence, record count/max bytes>. Delivery/privacy: <inline callback and wait/select
+      equality; artifact mode/hash/bytes; bounded preview; surfaces/marker scan>.
+      Terminal/framing: <willRetry/settled/legacy/anomaly; LF/U+2028/U+2029/split
+      UTF-8/preparse bound>. Commands/exits: <raw summaries>. Tracked changes: none.
+      Verdicts: <all eight requirement IDs PASS or exact blocker>.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - pyproject.toml
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    - README.md
+    - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/rpc.md
+    depends_on:
+    - pi-rpc-write-raw-stdout-hotfix.implement
+    agent: integration-verifier
