@@ -143095,7 +143095,7 @@ phases:
       or external effect.'
   - id: release-0-6-1-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.1
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -143223,6 +143223,27 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-08-09T12:46:19.364256Z'
+    done_at: '2026-08-09T12:49:48.549533+00:00'
+    evidence: 'Published Larva 0.6.1 with exact immutable product commit de05153b4b7bb2857b356bbb754031852101d06d.
+      Preflight `/tmp/larva-agent-artifacts/release-0-6-1/preflight.json`: clean main;
+      product ancestor of push head; origin/main fast-forwardable; existing workflow
+      SHA-256 9906538ae7016e8d2e0f29121c90f823232ecca138ddbddc87d393eb27be87a5 retained
+      release-published/build/smoke/id-token Trusted Publishing contract; authenticated
+      Git/GitHub available; v0.6.1 local/remote tag, release, matching run, and PyPI
+      version absent. Ordinary push advanced origin/main 7c335abaee19ed4cdcb55bb081052add65c2d4fe
+      -> ea5d8f3036df536486ce0227592eb3ce93f5792b; local and remote equal. GitHub
+      Release https://github.com/Tefx/larva/releases/tag/v0.6.1 published 2026-08-09T12:47:54Z;
+      tag and release target exactly de05153b4b7bb2857b356bbb754031852101d06d. Matching
+      workflow https://github.com/Tefx/larva/actions/runs/31314182095 headSha exact
+      product commit, event release, conclusion success; build job 93246636573 success
+      including package build and clean uvx MCP smoke; publish job 93246675195 success
+      via Trusted Publishing. Public PyPI larva 0.6.1 observed, Python >=3.11. Wheel
+      larva-0.6.1-py3-none-any.whl size 238524 SHA-256 6446bfa5ab06c97f6946ba5f3dca14a55531a039955b6605184045bb4978fdc6;
+      sdist larva-0.6.1.tar.gz size 2297279 SHA-256 c29a296c7b3a882c7b252cc63c9c45da9b7faca8201e1b8a6adca3f9002e331;
+      downloaded bytes matched PyPI digests/sizes. Final evidence `/tmp/larva-agent-artifacts/release-0-6-1/final-release-evidence.json`;
+      repo clean/content unchanged. Zero force push, tag movement/deletion, duplicate
+      release/publish, workflow edit/rerun, release deletion, PyPI yank, new credential,
+      paid service, destructive recovery, or installed/upstream Pi mutation.'
   - id: release-0-6-1-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.1
     status: pending
