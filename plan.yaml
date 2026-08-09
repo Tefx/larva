@@ -142939,7 +142939,7 @@ phases:
       effect.'
 - id: release_0_6_1_runtime_20260809
   name: Larva 0.6.1 Version, Release, and Local uvx Activation
-  status: in_progress
+  status: done
   gate: The phase closes after one R1 repository implementation synchronizes Larva
     package metadata at 0.6.1 with source, tests, and documentation parity proved;
     the orchestrator then fast-forwards the current main branch, publishes immutable
@@ -143246,7 +143246,7 @@ phases:
       paid service, destructive recovery, or installed/upstream Pi mutation.'
   - id: release-0-6-1-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.1
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -143352,3 +143352,18 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-08-09T12:49:59.108505Z'
+    done_at: '2026-08-09T12:50:46.794521+00:00'
+    evidence: 'Refreshed only target-specific local uvx resolution/cache for public
+      package larva==0.6.1. Executable `/opt/homebrew/bin/uvx`, realpath `/opt/homebrew/Cellar/uv/0.12.0/bin/uvx`,
+      version `uvx 0.12.0`. Public index explicitly `https://pypi.org/simple`. Before-state
+      pinned and unpinned already resolved `larva 0.6.1` with public index. Exact
+      accepted refresh syntax `/opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple
+      --from larva==0.6.1 larva --version` exited 0 => `larva 0.6.1`; pinned no-refresh
+      and unpinned public-PyPI invocations also exited 0 => `larva 0.6.1`. Provenance
+      bound to public PyPI JSON and exact release artifacts: wheel SHA-256 6446bfa5ab06c97f6946ba5f3dca14a55531a039955b6605184045bb4978fdc6
+      size 238524; sdist SHA-256 c29a296c7b3a882c7b252cc63c9c45da9b7faca8201e1b8a6adca3f9002e3316
+      size 2297279. No editable, checkout, local-path, or alternate-index source.
+      Evidence `/tmp/larva-agent-artifacts/release-0-6-1-uvx/final.json`. Git before/after
+      identical: HEAD 239e3a9774cdf537a09f518c391453d52503cbdb, tree e0c4d4d831cb0eb264a741ed502385614c08147c,
+      index SHA-256 f0dc09a87af79c31aa10a29117dac37f6902c155db25dbf932e076efcc963b47,
+      clean status. Zero repository/GitHub/PyPI/Pi/global-tool/unrelated-cache effect.'
