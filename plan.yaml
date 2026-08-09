@@ -142567,7 +142567,7 @@ phases:
   steps:
   - id: pi-rpc-write-raw-stdout-hotfix.implement
     name: Bound actual Pi 0.84.1 child RPC stdout and terminal delivery
-    status: claimed
+    status: pending
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -142777,8 +142777,6 @@ phases:
     - README.md
     - /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/docs/rpc.md
     agent: frontend-engineer
-    claimed_by: frontend-engineer
-    claimed_at: '2026-08-09T08:01:50.323029Z'
   - id: pi-rpc-write-raw-stdout-hotfix.verify-real-pi
     name: Independently verify exact Pi 0.84.1 child RPC recovery
     status: pending
