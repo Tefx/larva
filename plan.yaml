@@ -142939,7 +142939,7 @@ phases:
       effect.'
 - id: release_0_6_1_runtime_20260809
   name: Larva 0.6.1 Version, Release, and Local uvx Activation
-  status: pending
+  status: in_progress
   gate: The phase closes after one R1 repository implementation synchronizes Larva
     package metadata at 0.6.1 with source, tests, and documentation parity proved;
     the orchestrator then fast-forwards the current main branch, publishes immutable
@@ -142953,7 +142953,7 @@ phases:
   steps:
   - id: package-version-0-6-1.bump
     name: Bump Larva package version from 0.6.0 to 0.6.1
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143076,6 +143076,8 @@ phases:
     - docs
     - INVAR.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-08-09T12:08:22.890222Z'
   - id: release-0-6-1-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.1
     status: pending
