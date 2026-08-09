@@ -142800,7 +142800,7 @@ phases:
       external effect.'
   - id: pi-rpc-write-raw-stdout-hotfix.verify-real-pi
     name: Independently verify exact Pi 0.84.1 child RPC recovery
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -142916,3 +142916,5 @@ phases:
     depends_on:
     - pi-rpc-write-raw-stdout-hotfix.implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-08-09T11:23:39.298315Z'
