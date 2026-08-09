@@ -142567,7 +142567,7 @@ phases:
   steps:
   - id: pi-rpc-write-raw-stdout-hotfix.implement
     name: Bound actual Pi 0.84.1 child RPC stdout and terminal delivery
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -142780,6 +142780,24 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-08-09T10:34:31.541786Z'
+    done_at: '2026-08-09T11:23:15.256840+00:00'
+    evidence: 'Integrated commit b7ee8344c72812f49c8bb15d225372308819e59e by fast-forward
+      from admitted base 2bb76d9c9d70f950d177b44a3f10df5d956071e3; main tree equals
+      candidate tree 90535870dc6c7f7fd41fe6f1ea0429ffce8085b5 and is clean. Worker-v2
+      claim claim:17d91bc0d54e3b77e5d5f616768995e4cc36cdcf0b5be191d86148db76e9183e;
+      dispatch canonical sha256:7f63e95114fa1629f130045790fac79a6a7503a98a5c676765fbc73f30bdfaac;
+      child lint CONFORMANT; parent dispatch admission CONFORMANT; parent authoritative
+      receipt rerun CONFORMANT at /tmp/larva-agent-artifacts/pi-rpc-write-raw-stdout-hotfix-implement-v4/parent-receipt-verdict-rerun.json.
+      Exact checks: npm ci green; fake RPC green; real Pi 0.84.1 green; focused pytest
+      256 passed; all Node regressions green; full pytest 943 passed; invar guard
+      --all green; git diff --check green. Integrated revalidation: npm ci exit 0,
+      real Pi exit 0, full pytest 943 passed. Real seam evidence: actual output-guard.js,
+      6 records, max 549 UTF-8 bytes, capability larva-child-rpc-frame-preload-v1/max
+      1048576/LF-only/agent_settled; exact 0600 artifact SHA/bytes evidence; inline/artifact/retry/failure/post-success-anomaly
+      public states; LF/CRLF/U+2028/U+2029/split UTF-8/malformed/over-bound checks.
+      Changed exactly 17 authorized paths; package version remains 0.6.0. No upstream/installed
+      Pi mutation, publish, push, release, credential, paid-provider, or persistent
+      external effect.'
   - id: pi-rpc-write-raw-stdout-hotfix.verify-real-pi
     name: Independently verify exact Pi 0.84.1 child RPC recovery
     status: pending
