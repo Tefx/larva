@@ -143095,7 +143095,7 @@ phases:
       or external effect.'
   - id: release-0-6-1-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.1
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: runtime_state_only
@@ -143221,6 +143221,8 @@ phases:
     depends_on:
     - package-version-0-6-1.bump
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-08-09T12:46:19.364256Z'
   - id: release-0-6-1-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.1
     status: pending
