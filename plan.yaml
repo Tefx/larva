@@ -143058,14 +143058,14 @@ phases:
       0.6.1"}],"contains_any":[],"forbids":[]}},"proves":["VERSION-0.6.1","VERSION-TEST-DOC-PARITY-0.6.1"]},{"id":"full_pytest_0_6_1","run":{"command":["uv","run","--frozen","pytest"],"timeout_seconds":1800},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"src/larva/__init__.py","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["VERSION-TEST-DOC-PARITY-0.6.1","VERSION-QUALITY-0.6.1"]},{"id":"invar_guard_0_6_1","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":1200},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"INVAR.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["VERSION-QUALITY-0.6.1"]},{"id":"diff_whitespace_0_6_1","run":{"command":["git","diff","--check"],"timeout_seconds":30},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{"contains_all":[],"contains_any":[],"forbids":[]}},"proves":["VERSION-QUALITY-0.6.1"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
 
       </intent_closure_contract>'
-    verification: Require all declared Intent-Closure checks green on the isolated
-      worker candidate, exact final changed paths limited to `pyproject.toml`, `src/larva/__init__.py`,
-      and `uv.lock`, source/tests/docs parity rationale, a conformant Worker-v2 receipt,
-      the exact integrated product commit, and confirmation that no push, tag, release,
-      publish, uvx refresh, or installed-Pi mutation occurred.
+    verification: Require every declared Intent-Closure check green on the isolated
+      worker candidate; final changed paths limited exactly to `pyproject.toml`, `src/larva/__init__.py`,
+      and `uv.lock`; explicit source/tests/docs parity rationale; a conformant Worker-v2
+      receipt; the exact integrated product commit; and confirmation that no push,
+      tag, release, publish, uvx refresh, or installed-Pi mutation occurred.
     evidence_template: Record old/new versions, exact product commit, changed paths,
-      lock/metadata/focused/full pytest/Invar/diff results, source-tests-docs parity
-      decision, and explicit zero external/runtime effects.
+      lock/metadata/CLI/full-pytest/Invar/diff results, source-tests-docs parity decision,
+      and explicit zero external/runtime effects.
     refs:
     - pyproject.toml
     - src/larva/__init__.py
