@@ -143616,13 +143616,13 @@ phases:
       risk: none.'
 - id: pi_subagent_json_collapsed_rendering_followup_20260830
   name: Pi Subagent Collapsed JSON Rendering Follow-up 2026-08-30
-  status: pending
+  status: in_progress
   depends_on:
   - pi_subagent_json_rendering_20260830
   steps:
   - id: pi-subagent-json-collapsed-rendering-followup.implement
     name: Pretty-render JSON in the default collapsed callback view
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143779,3 +143779,5 @@ phases:
     - pyproject.toml
     - INVAR.md
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-08-30T13:13:03.296819Z'
