@@ -735,6 +735,7 @@ const SUBAGENT_TIMELINE_TOOL_ROW_LIMIT = 180;
 const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
 const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
+const SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT = 16;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
 const CHILD_RPC_FRAME_PRELOAD_FILENAME = "child-rpc-frame-preload.mjs";
@@ -1479,6 +1480,26 @@ function compactSubagentResultPreview(source: string, limit: number): string {
   }
 }
 
+function collapsedSubagentJsonPreviewLines(source: string, contentWidth: number): string[] | null {
+  const presentation = presentSubagentJsonSource(source);
+  if (presentation === source) return null;
+  const rendered = renderMarkdownLines(subagentOutputMarkdownSource(presentation), contentWidth, liveMarkdownTheme());
+  if (rendered.length <= SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT) return rendered;
+  const lines = presentation.split("\n");
+  const preview = [
+    lines[0],
+    ...lines.slice(1, Math.max(1, SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT - 2)),
+    SUBAGENT_TRUNCATION_MARKER,
+    lines.at(-1),
+  ].join("\n");
+  const bounded = renderMarkdownLines(subagentOutputMarkdownSource(preview), contentWidth, liveMarkdownTheme());
+  if (bounded.length <= SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT) return bounded;
+  return [
+    ...bounded.slice(0, SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT - 1),
+    truncateToWidth(SUBAGENT_TRUNCATION_MARKER, contentWidth, ""),
+  ];
+}
+
 class LarvaSubagentResultMessageView implements PiRenderableComponent {
   resultText: string;
   executionStatus: string;
@@ -1507,11 +1528,14 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     const color = executionStatusHeaderColor(this.executionStatus);
     const statusLabel = this.theme.fg?.(color, this.executionStatus) ?? this.executionStatus;
     const header = truncateToWidth(`${statusLabel} larva-subagent-result`, contentWidth, "");
-    if (!this.expanded) {
-      return [header, truncateToWidth(compactSubagentResultPreview(this.resultText, contentWidth), contentWidth, "")];
-    }
     const pad = Math.max(0, this.outputPad);
     const bodyWidth = Math.max(1, contentWidth - pad * 2);
+    if (!this.expanded) {
+      const jsonPreview = collapsedSubagentJsonPreviewLines(this.resultText, bodyWidth);
+      if (jsonPreview === null) return [header, truncateToWidth(compactSubagentResultPreview(this.resultText, contentWidth), contentWidth, "")];
+      const indent = " ".repeat(pad);
+      return [header, ...jsonPreview.map((line) => truncateToWidth(`${indent}${line}`, contentWidth, ""))];
+    }
     const body = renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(this.resultText)), bodyWidth, liveMarkdownTheme());
     const indent = " ".repeat(pad);
     return [header, ...body.map((line) => truncateToWidth(`${indent}${line}`, contentWidth, ""))];

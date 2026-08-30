@@ -390,11 +390,13 @@ other non-Markdown evidence instead of collapsing them into one paragraph.
 That `text` fence is the model-visible callback content and stays unchanged.
 Display-only, a `larva-subagent-result` custom message renderer pretty-prints
 valid in-memory `details.result_text` through Pi Markdown using the live
-`getMarkdownTheme()` at render time. It never rewrites the stored message, never
-reads `full_output_artifact.path`, and returns Pi's default custom-message
-rendering when required callback details are absent or unusable. Outer callback
-`status` / `execution_status` controls the display header; a JSON field such as
-payload `status` is rendered only as payload data.
+`getMarkdownTheme()` at render time. The default collapsed view shows a bounded,
+multiline pretty JSON preview with an explicit omission marker when needed; the
+expanded view shows the complete bounded in-memory JSON. It never rewrites the
+stored message, never reads `full_output_artifact.path`, and returns Pi's default
+custom-message rendering when required callback details are absent or unusable.
+Outer callback `status` / `execution_status` controls the display header; a JSON
+field such as payload `status` is rendered only as payload data.
 
 Rationale: Pi stores this as `role: custom`, but custom messages are converted to
 LLM-compatible user-role content before provider calls. The boundary text is

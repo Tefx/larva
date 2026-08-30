@@ -2147,6 +2147,8 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
         );
         const renderer = renderers.get("larva-subagent-result");
         const jsonOutput = '{"hello":"world","count":3,"nested":{"ok":true}}';
+        const smallJson = '{"status":"child_payload_ok","nested":{"items":[1,true],"count":1,"message":"测试"}}';
+        const largeJson = JSON.stringify({ rows: Array.from({ length: 40 }, (_value, index) => ({ index, value: `row-${index}` })), tail: "COLLAPSED_JSON_EXPANDED_TAIL" });
         const markdownOutput = ["# Markdown Heading", "", "- bullet one"].join("\n");
         const malformed = '{"hello":"world",}';
         mod.resetSubagentPresentationStateForTests();
@@ -2185,8 +2187,10 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
           highlightCode: (code, lang) => String(code).split(/\n/).map((line) => `[${themeTag}:${lang}]${line}`),
         }));
         const firstTheme = jsonOverlay.render(80).map(stripAnsi).join("\n");
+        const collapsedThemeA = renderer({ customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
         themeTag = "B";
         const secondTheme = jsonOverlay.render(80).map(stripAnsi).join("\n");
+        const collapsedThemeB = renderer({ customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
         let highlighter = { loaded: false, keyStyle: null, scalarStyle: null, differentiated: false };
         try {
           const codingAgent = await import("@earendil-works/pi-coding-agent");
@@ -2209,6 +2213,16 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
         };
         const expanded = renderer(message, { expanded: true, outputPad: 0 }, theme).render(80);
         const compact = renderer(message, { expanded: false, outputPad: 0 }, theme).render(80);
+        const smallMessage = { customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: smallJson, status: "success", execution_status: "success" } };
+        const largeMessage = { customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: largeJson, status: "success", execution_status: "success" } };
+        const smallCompact = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(80);
+        const largeCompact = renderer(largeMessage, { expanded: false, outputPad: 0 }, theme).render(80);
+        const largeExpanded = renderer(largeMessage, { expanded: true, outputPad: 0 }, theme).render(80);
+        const compactByWidth = [40, 80, 120].map((width) => {
+          const lines = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(width);
+          return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width) };
+        });
+        const compactHighlighted = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(120).join("\n");
         const missing = renderer({ customType: "larva-subagent-result", content: "x" }, { expanded: true, outputPad: 0 }, theme);
         const displayIgnoresContentFence = !expanded.some((line) => stripAnsi(line).includes("MODEL_VISIBLE_TEXT_FENCE_ONLY")) && expanded.some((line) => stripAnsi(line).includes("status"));
         console.log(JSON.stringify({
@@ -2217,10 +2231,18 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
           mdKeepsHeading: mdStripped.includes("Markdown Heading"),
           malformedKeepsSource: badStripped.includes('{"hello":"world",}'),
           liveThemeChanged: firstTheme.includes("[A:json]") && secondTheme.includes("[B:json]"),
+          collapsedThemeChanged: collapsedThemeA.includes("[A:json]") && collapsedThemeB.includes("[B:json]"),
           highlighter,
+          compactKeyStyle: lastAnsi(compactHighlighted, "status"),
+          compactScalarStyle: lastAnsi(compactHighlighted, "child_payload_ok"),
           expandedHeader: expanded[0],
           expandedHasJsonFence: expanded.some((line) => stripAnsi(line).includes("```json") || stripAnsi(line).includes("status")),
           compactHeader: compact[0],
+          smallCompactText: smallCompact.map(stripAnsi).join("\n"),
+          largeCompactText: largeCompact.map(stripAnsi).join("\n"),
+          largeCompactLineCount: largeCompact.length,
+          largeExpandedText: largeExpanded.map(stripAnsi).join("\n"),
+          compactByWidth,
           missingIsUndefined: missing === undefined,
           displayIgnoresContentFence,
           helperObject: mod.presentSubagentJsonSourceForTests(jsonOutput).includes('"hello": "world"'),
@@ -2235,8 +2257,20 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
     assert payload["mdKeepsHeading"] is True
     assert payload["malformedKeepsSource"] is True
     assert payload["liveThemeChanged"] is True
+    assert payload["collapsedThemeChanged"] is True
+    if payload["highlighter"]["loaded"]:
+        assert payload["compactKeyStyle"] != payload["compactScalarStyle"]
     assert payload["expandedHeader"].startswith("[success]success")
     assert payload["compactHeader"].startswith("[success]success")
+    small_compact_text = payload["smallCompactText"]
+    assert '"status": "child_payload_ok"' in small_compact_text
+    assert '"items": [' in small_compact_text
+    assert '"message": "测试"' in small_compact_text
+    assert '{"status":"child_payload_ok"' not in small_compact_text
+    assert payload["largeCompactLineCount"] <= 17
+    assert "[truncated]" in payload["largeCompactText"]
+    assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
+    assert all(item["fit"] is True for item in payload["compactByWidth"])
     assert payload["missingIsUndefined"] is True
     assert payload["displayIgnoresContentFence"] is True
 

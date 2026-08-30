@@ -1713,6 +1713,8 @@ async function subagentJsonPresentationProof(evidence) {
   });
   const renderer = renderers.get("larva-subagent-result");
   const objectSource = '{"alphaKey":"betaValue","zetaNum":98765}';
+  const smallJson = '{"status":"child_payload_ok","nested":{"items":[1,true],"count":1,"message":"测试"}}';
+  const largeJson = JSON.stringify({ rows: Array.from({ length: 40 }, (_value, index) => ({ index, value: `row-${index}` })), tail: "COLLAPSED_JSON_EXPANDED_TAIL" });
   const malformed = '{"alphaKey":"betaValue",}';
   const markdownSource = "# Markdown Heading\n\n- bullet one";
   mod.resetSubagentPresentationStateForTests();
@@ -1723,6 +1725,30 @@ async function subagentJsonPresentationProof(evidence) {
     tui: { terminal: { rows: 50 } },
   });
   overlay.handleInput("3");
+  let collapsedThemeTag = "A";
+  const collapsedTheme = () => ({
+    heading: (text) => text,
+    link: (text) => text,
+    linkUrl: (text) => text,
+    code: (text) => text,
+    codeBlock: (text) => text,
+    codeBlockBorder: (text) => text,
+    quote: (text) => text,
+    quoteBorder: (text) => text,
+    hr: (text) => text,
+    listBullet: (text) => text,
+    bold: (text) => text,
+    italic: (text) => text,
+    strikethrough: (text) => text,
+    underline: (text) => text,
+    codeBlockIndent: "  ",
+    highlightCode: (code, lang) => String(code).split(/\n/).map((line) => `[${collapsedThemeTag}:${lang}]${line}`),
+  });
+  mod.setGetMarkdownThemeForTests(collapsedTheme);
+  const collapsedThemeA = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
+  collapsedThemeTag = "B";
+  const collapsedThemeB = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
+  mod.setGetMarkdownThemeForTests(null);
   let highlighter = { loaded: false, keyStyle: null, scalarStyle: null, differentiated: false, langSeen: false };
   try {
     const codingAgent = await import(pathToFileURL(join(piExtensionRoot, "node_modules/@earendil-works/pi-coding-agent/dist/index.js")).href);
@@ -1754,11 +1780,37 @@ async function subagentJsonPresentationProof(evidence) {
     };
   });
   const theme = { fg: (token, text) => `[${token}]${text}`, bold: (text) => text };
+  let artifactReads = 0;
+  const callbackDetails = new Proxy({
+    result_text: smallJson,
+    status: "success",
+    execution_status: "success",
+    artifact_path: "/tmp/larva-json-presentation-artifact-must-not-be-read",
+    full_output_artifact: { path: "/tmp/larva-json-presentation-artifact-must-not-be-read", sha256: "abc", bytes: 1, lines: 1 },
+  }, {
+    get(target, prop) {
+      if (prop === "artifact_path" || prop === "full_output_artifact" || prop === "path") artifactReads += 1;
+      return target[prop];
+    },
+  });
   const expanded = renderer({
     customType: "larva-subagent-result",
     content: "```text\\nkeep-model-visible\\n```",
-    details: { result_text: objectSource, status: "success", execution_status: "success" },
+    details: callbackDetails,
   }, { expanded: true, outputPad: 0 }, theme).render(80);
+  const collapsed = renderer({
+    customType: "larva-subagent-result",
+    content: "```text\\nkeep-model-visible\\n```",
+    details: callbackDetails,
+  }, { expanded: false, outputPad: 0 }, theme).render(80);
+  const largeDetails = { result_text: largeJson, status: "success", execution_status: "success" };
+  const largeCollapsed = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: false, outputPad: 0 }, theme).render(80);
+  const largeExpanded = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: true, outputPad: 0 }, theme).render(80);
+  const collapsedByWidth = [40, 80, 120].map((width) => {
+    const lines = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: callbackDetails }, { expanded: false, outputPad: 0 }, theme).render(width);
+    return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width) };
+  });
+  const collapsedHighlighted = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: callbackDetails }, { expanded: false, outputPad: 0 }, theme).render(120).join("\n");
   const innerFailed = renderer({
     customType: "larva-subagent-result",
     content: "```text\\nkeep-model-visible\\n```",
@@ -1803,7 +1855,15 @@ async function subagentJsonPresentationProof(evidence) {
     highlighterDifferentiated: highlighter.differentiated,
     missingDetailsDefault: missing === undefined,
     outerSuccessNotInnerFailed: innerFailed[0].includes("[success]success") && !innerFailed[0].includes("[error]"),
-    expandedUsesLiveMarkdown: expanded.some((line) => stripAnsi(line).includes("alphaKey") || stripAnsi(line).includes("betaValue")),
+    expandedUsesLiveMarkdown: expanded.some((line) => stripAnsi(line).includes("nested") || stripAnsi(line).includes("child_payload_ok")),
+    collapsedPrettyMultiline: collapsed.length > 3 && collapsed.some((line) => stripAnsi(line).includes('"items": [')) && collapsed.some((line) => stripAnsi(line).includes('"message": "测试"')),
+    collapsedAvoidsMinifiedJson: !renderedPlainText(collapsed).includes('{"status":"child_payload_ok"'),
+    collapsedThemeRefresh: collapsedThemeA.includes("[A:json]") && collapsedThemeB.includes("[B:json]"),
+    collapsedWidthSafe: collapsedByWidth.every((item) => item.fit),
+    collapsedKeyScalarStyles: highlighter.loaded && lastAnsi(collapsedHighlighted, "status") !== lastAnsi(collapsedHighlighted, "child_payload_ok"),
+    collapsedNoArtifactAccess: artifactReads === 0,
+    largeCollapsedBounded: largeCollapsed.length <= 17 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
+    largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
     installedObservationRecorded: installedRender.attempted === true || typeof version.stdout === "string",
   };
   const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);
@@ -1815,6 +1875,13 @@ async function subagentJsonPresentationProof(evidence) {
     overlayByWidth,
     highlighter,
     expandedHeader: expanded[0] ?? null,
+    collapsedText: renderedPlainText(collapsed),
+    collapsedByWidth,
+    collapsedTheme: { first: collapsedThemeA, second: collapsedThemeB },
+    largeCollapsedLineCount: largeCollapsed.length,
+    largeCollapsedText: renderedPlainText(largeCollapsed),
+    largeExpandedText: renderedPlainText(largeExpanded),
+    artifactReads,
     innerFailedHeader: innerFailed[0] ?? null,
     installedPiObservation: {
       binary: installedPi,

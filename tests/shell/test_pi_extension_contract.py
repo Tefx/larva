@@ -462,6 +462,8 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const malformed = '{{"ok":true,}}';
         const commentSource = '// no\\n{{}}';
         const innerFailed = '{{"status":"failed","reason":"payload"}}';
+        const smallJson = '{{"status":"child_payload_ok","nested":{{"items":[1,true],"count":1,"message":"测试"}}}}';
+        const largeJson = JSON.stringify({{ rows: Array.from({{ length: 40 }}, (_value, index) => ({{ index, value: `row-${{index}}` }})), tail: "COLLAPSED_JSON_EXPANDED_TAIL" }});
         const missing = renderer({{ customType: "larva-subagent-result", content: "x" }}, {{ expanded: true, outputPad: 0 }}, theme);
         const unusable = renderer({{ customType: "larva-subagent-result", content: "x", details: {{ status: "success" }} }}, {{ expanded: true, outputPad: 0 }}, theme);
         let artifactReads = 0;
@@ -481,8 +483,20 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const compact = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details }}, {{ expanded: false, outputPad: 0 }}, theme);
         const expandedLines = expanded.render(80);
         const compactLines = compact.render(80);
+        const smallDetails = {{ result_text: smallJson, status: "success", execution_status: "success" }};
+        const smallCompact = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: smallDetails }}, {{ expanded: false, outputPad: 0 }}, theme);
+        const largeDetails = {{ result_text: largeJson, status: "success", execution_status: "success" }};
+        const largeCompact = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: largeDetails }}, {{ expanded: false, outputPad: 0 }}, theme);
+        const largeExpanded = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: largeDetails }}, {{ expanded: true, outputPad: 0 }}, theme);
+        const smallCompactLines = smallCompact.render(80);
+        const largeCompactLines = largeCompact.render(80);
+        const largeExpandedLines = largeExpanded.render(80);
         const widths = [40, 80, 120].map((width) => {{
           const lines = expanded.render(width);
+          return {{ width, fit: lines.every((line) => line.length <= width) }};
+        }});
+        const compactWidths = [40, 80, 120].map((width) => {{
+          const lines = smallCompact.render(width);
           return {{ width, fit: lines.every((line) => line.length <= width) }};
         }});
         console.log(JSON.stringify({{
@@ -504,7 +518,12 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
           artifactReads,
           expandedText: expandedLines.join("\\n"),
           compactText: compactLines.join("\\n"),
+          smallCompactText: smallCompactLines.join("\\n"),
+          largeCompactText: largeCompactLines.join("\\n"),
+          largeCompactLineCount: largeCompactLines.length,
+          largeExpandedText: largeExpandedLines.join("\\n"),
           widths,
+          compactWidths,
         }}));
         """,
         timeout=8.0,
@@ -530,7 +549,16 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
     assert "[error]" not in expanded_text.split("\n", 1)[0]
     assert "```json" in expanded_text
     assert payload["compactText"].startswith("[success]success larva-subagent-result")
+    small_compact_text = payload["smallCompactText"]
+    assert '"status": "child_payload_ok"' in small_compact_text
+    assert '"items": [' in small_compact_text
+    assert '"message": "测试"' in small_compact_text
+    assert '{"status":"child_payload_ok"' not in small_compact_text
+    assert payload["largeCompactLineCount"] <= 17
+    assert "[truncated]" in payload["largeCompactText"]
+    assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert all(item["fit"] is True for item in payload["widths"])
+    assert all(item["fit"] is True for item in payload["compactWidths"])
 
 
 def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:

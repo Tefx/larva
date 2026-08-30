@@ -1175,11 +1175,13 @@ it unless the parent task independently requires them.
 Model-visible callback content keeps the `child_output` body in a renderer-safe
 `text` fence. Display-only, a `larva-subagent-result` custom message renderer
 pretty-prints valid in-memory `details.result_text` through Pi Markdown using
-`getMarkdownTheme()` at render time. It never rewrites the stored message, never
-reads `full_output_artifact.path`, and returns Pi's default custom-message
-rendering when required callback details are absent or unusable. Outer callback
-`status` / `execution_status` controls the display header; a JSON field such as
-payload `status` is rendered only as payload data.
+`getMarkdownTheme()` at render time. The default collapsed view shows a bounded,
+multiline pretty JSON preview with an omission marker when needed; the expanded
+view shows the complete bounded in-memory JSON. It never rewrites the stored
+message, never reads `full_output_artifact.path`, and returns Pi's default
+custom-message rendering when required callback details are absent or unusable.
+Outer callback `status` / `execution_status` controls the display header; a JSON
+field such as payload `status` is rendered only as payload data.
 
 The public `task_id` is the child Pi `.jsonl` session file path under the child
 session root. It is the only durable public resume/status/cancel handle. The child
