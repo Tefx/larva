@@ -144064,3 +144064,20 @@ phases:
     - src/larva/__init__.py
     - uv.lock
     agent: general
+  - id: release-0-6-2-runtime.github-pypi-release
+    name: Publish GitHub and PyPI release 0.6.2
+    status: pending
+    description: Push current main, create immutable GitHub Release/tag v0.6.2 at
+      the exact product commit, and observe the release-triggered Trusted Publishing
+      workflow and public PyPI artifacts.
+    verification: git push origin main && gh release create v0.6.2 --target <product-commit>
+      --generate-notes && gh run watch <run-id> --exit-status && public PyPI JSON
+      exposes 0.6.2
+    evidence_template: Record before/after refs, product commit, release URL/tag target,
+      workflow run/jobs, PyPI version/artifacts/hashes, and reconciliation result.
+    refs:
+    - .github/workflows/publish.yml
+    - pyproject.toml
+    depends_on:
+    - package-version-0-6-2.bump
+    agent: general
