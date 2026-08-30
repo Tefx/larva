@@ -144052,7 +144052,7 @@ phases:
   steps:
   - id: package-version-0-6-2.bump
     name: Bump Larva package version from 0.6.1 to 0.6.2
-    status: claimed
+    status: done
     description: Synchronize canonical Python package metadata and lock metadata at
       0.6.2; commit only version and Vectl state after release checks.
     verification: uv lock --check && uv run --frozen larva --version && uv run pytest
@@ -144066,6 +144066,15 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-08-30T18:03:37.815830Z'
+    done_at: '2026-08-30T18:11:09.074814+00:00'
+    evidence: 'Version product commit 271a58d05a98027d8967da834e454c2acc3e3850 changes
+      exactly pyproject.toml, src/larva/__init__.py, and uv.lock from 0.6.1 to 0.6.2.
+      `uv lock --check`; `uv run --frozen larva --version`; and metadata parity (pyproject/module/distribution)
+      all reported 0.6.2. Full pytest: 945 passed. `uvx invar-tools guard --all`:
+      passed, 0 errors (8 pre-existing warnings). `git diff --check`: clean. Local
+      artifacts /tmp/larva-release-0.6.2-ghy5Lx: wheel SHA-256 5029353542809062bf1459c3dbad0215ff7b7f17339cc5a01e71d64c1a5c5a80;
+      sdist SHA-256 32527f38431abec274d5fd9f75b0b8104a11fee52d85c52b3ea0e7016fde9284;
+      clean uvx MCP smoke resolved larva 0.6.2, mcp 1.29.1, and exact 13-tool surface.'
   - id: release-0-6-2-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.2
     status: pending
