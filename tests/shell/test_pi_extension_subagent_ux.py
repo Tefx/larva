@@ -2124,6 +2124,123 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
     assert payload["requestRenderCount"] >= 2
 
 
+def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path) -> None:
+    """Execute overlay Console Output and registered callback rendering for JSON display."""
+
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r"""
+        const piTui = await import(piTuiRequire.resolve("@earendil-works/pi-tui"));
+        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const lastAnsi = (line, needle) => {
+          const idx = line.indexOf(needle);
+          if (idx < 0) return null;
+          const matches = [...line.slice(0, idx).matchAll(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"))];
+          return matches.at(-1)?.[0] ?? "";
+        };
+        const renderers = new Map();
+        await mod.initializeExtension(
+          { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
+          { ...piBase, registerTool: () => undefined, registerMessageRenderer: (customType, renderer) => renderers.set(customType, renderer) },
+        );
+        const renderer = renderers.get("larva-subagent-result");
+        const jsonOutput = '{"hello":"world","count":3,"nested":{"ok":true}}';
+        const markdownOutput = ["# Markdown Heading", "", "- bullet one"].join("\n");
+        const malformed = '{"hello":"world",}';
+        mod.resetSubagentPresentationStateForTests();
+        mod.recordSubagentPresentationEntryForTests("/tmp/json.jsonl", "json-child", "success", { result_text: jsonOutput, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/md.jsonl", "md-child", "success", { result_text: markdownOutput, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/bad.jsonl", "bad-child", "success", { result_text: malformed, phase: "success" });
+        const jsonOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "json-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        const mdOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "md-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        const badOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "bad-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        jsonOverlay.handleInput("3");
+        mdOverlay.handleInput("3");
+        badOverlay.handleInput("3");
+        const overlayByWidth = [40, 80, 120].map((width) => {
+          const lines = jsonOverlay.render(width);
+          return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width), stripped: lines.map(stripAnsi).join("\n") };
+        });
+        const mdStripped = mdOverlay.render(80).map(stripAnsi).join("\n");
+        const badStripped = badOverlay.render(80).map(stripAnsi).join("\n");
+        let themeTag = "A";
+        mod.setGetMarkdownThemeForTests(() => ({
+          heading: (text) => text,
+          link: (text) => text,
+          linkUrl: (text) => text,
+          code: (text) => text,
+          codeBlock: (text) => text,
+          codeBlockBorder: (text) => text,
+          quote: (text) => text,
+          quoteBorder: (text) => text,
+          hr: (text) => text,
+          listBullet: (text) => text,
+          bold: (text) => text,
+          italic: (text) => text,
+          strikethrough: (text) => text,
+          underline: (text) => text,
+          codeBlockIndent: "  ",
+          highlightCode: (code, lang) => String(code).split(/\n/).map((line) => `[${themeTag}:${lang}]${line}`),
+        }));
+        const firstTheme = jsonOverlay.render(80).map(stripAnsi).join("\n");
+        themeTag = "B";
+        const secondTheme = jsonOverlay.render(80).map(stripAnsi).join("\n");
+        let highlighter = { loaded: false, keyStyle: null, scalarStyle: null, differentiated: false };
+        try {
+          const codingAgent = await import("@earendil-works/pi-coding-agent");
+          if (typeof codingAgent.getMarkdownTheme === "function") {
+            mod.setGetMarkdownThemeForTests(() => codingAgent.getMarkdownTheme());
+            const highlighted = jsonOverlay.render(120).join("\n");
+            highlighter = {
+              loaded: true,
+              keyStyle: lastAnsi(highlighted, "hello"),
+              scalarStyle: lastAnsi(highlighted, "3"),
+              differentiated: lastAnsi(highlighted, "hello") !== lastAnsi(highlighted, "3"),
+            };
+          }
+        } catch {}
+        const theme = { fg: (token, text) => `[${token}]${text}`, bold: (text) => text };
+        const message = {
+          customType: "larva-subagent-result",
+          content: "MODEL_VISIBLE_TEXT_FENCE_ONLY",
+          details: { result_text: '{"status":"failed"}', status: "success", execution_status: "success" },
+        };
+        const expanded = renderer(message, { expanded: true, outputPad: 0 }, theme).render(80);
+        const compact = renderer(message, { expanded: false, outputPad: 0 }, theme).render(80);
+        const missing = renderer({ customType: "larva-subagent-result", content: "x" }, { expanded: true, outputPad: 0 }, theme);
+        const displayIgnoresContentFence = !expanded.some((line) => stripAnsi(line).includes("MODEL_VISIBLE_TEXT_FENCE_ONLY")) && expanded.some((line) => stripAnsi(line).includes("status"));
+        console.log(JSON.stringify({
+          registered: renderers.has("larva-subagent-result"),
+          overlayByWidth,
+          mdKeepsHeading: mdStripped.includes("Markdown Heading"),
+          malformedKeepsSource: badStripped.includes('{"hello":"world",}'),
+          liveThemeChanged: firstTheme.includes("[A:json]") && secondTheme.includes("[B:json]"),
+          highlighter,
+          expandedHeader: expanded[0],
+          expandedHasJsonFence: expanded.some((line) => stripAnsi(line).includes("```json") || stripAnsi(line).includes("status")),
+          compactHeader: compact[0],
+          missingIsUndefined: missing === undefined,
+          displayIgnoresContentFence,
+          helperObject: mod.presentSubagentJsonSourceForTests(jsonOutput).includes('"hello": "world"'),
+        }));
+        """,
+        timeout=20.0,
+    )
+    assert payload["registered"] is True
+    assert payload["helperObject"] is True
+    assert all(item["fit"] is True for item in payload["overlayByWidth"])
+    assert any('"hello": "world"' in item["stripped"] or "hello" in item["stripped"] for item in payload["overlayByWidth"])
+    assert payload["mdKeepsHeading"] is True
+    assert payload["malformedKeepsSource"] is True
+    assert payload["liveThemeChanged"] is True
+    assert payload["expandedHeader"].startswith("[success]success")
+    assert payload["compactHeader"].startswith("[success]success")
+    assert payload["missingIsUndefined"] is True
+    assert payload["displayIgnoresContentFence"] is True
+
+
 def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) -> None:
     """Pin row-local renderCall/onUpdate hooks and deterministic preview bounds."""
 

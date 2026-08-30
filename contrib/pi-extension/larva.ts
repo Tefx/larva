@@ -490,6 +490,14 @@ type PiApi = {
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
   registerShortcut?: (shortcut: string, options: { description?: string; handler: (ctx: PiShortcutContext) => void | Promise<void> }) => void;
   registerTool?: <Input, Output>(tool: ToolDefinition<Input, Output>) => void;
+  registerMessageRenderer?: (
+    customType: string,
+    renderer: (
+      message: SubagentCallbackMessage,
+      options: { expanded: boolean; outputPad: number },
+      theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
+    ) => PiRenderableComponent | undefined,
+  ) => void;
   on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown | Promise<unknown>) => void;
 };
 type PiContext = PiApi & {
@@ -603,6 +611,7 @@ const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
   underline: (text) => text,
   codeBlockIndent: "  ",
 };
+let markdownThemeGetter: (() => MarkdownTheme) | null = null;
 const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null, requestedThinking: null, effectiveThinking: null };
 
 type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale" | "failed";
@@ -1427,10 +1436,16 @@ function renderRendererSafePlainLines(text: string, contentWidth: number): strin
   return lines.length > 0 ? lines : [""];
 }
 
-function renderMarkdownLines(markdown: string, contentWidth: number): string[] {
+function presentationMarkdownTheme(): MarkdownTheme {
+  const live = liveMarkdownTheme();
+  if (live === DEFAULT_MARKDOWN_THEME || typeof live.highlightCode !== "function") return DEFAULT_MARKDOWN_THEME;
+  return { ...DEFAULT_MARKDOWN_THEME, highlightCode: live.highlightCode.bind(live) };
+}
+
+function renderMarkdownLines(markdown: string, contentWidth: number, theme: MarkdownTheme = presentationMarkdownTheme()): string[] {
   const width = Math.max(1, Math.floor(contentWidth));
   try {
-    const component = new Markdown(rendererSafeMarkdownSource(markdown), 0, 0, DEFAULT_MARKDOWN_THEME);
+    const component = new Markdown(rendererSafeMarkdownSource(markdown), 0, 0, theme);
     const rendered = component.render(width);
     return (rendered.length > 0 ? rendered : [""]).map((line) => truncateToWidth(line, width, ""));
   } catch {
@@ -1438,10 +1453,122 @@ function renderMarkdownLines(markdown: string, contentWidth: number): string[] {
   }
 }
 
+function larvaSubagentCallbackDetailsForDisplay(message: SubagentCallbackMessage): { resultText: string; executionStatus: string } | null {
+  const details = message.details;
+  if (!isRecord(details) || typeof details.result_text !== "string") return null;
+  const executionStatus = typeof details.execution_status === "string"
+    ? details.execution_status
+    : typeof details.status === "string"
+      ? details.status
+      : "unknown";
+  return { resultText: details.result_text, executionStatus };
+}
+
+function executionStatusHeaderColor(status: string): string {
+  if (status === "failed") return "error";
+  if (status === "cancelled") return "warning";
+  if (status === "success") return "success";
+  return "muted";
+}
+
+function compactSubagentResultPreview(source: string, limit: number): string {
+  try {
+    return boundedPresentationPreview(JSON.stringify(JSON.parse(source) as unknown), limit);
+  } catch {
+    return boundedPresentationPreview(source, limit);
+  }
+}
+
+class LarvaSubagentResultMessageView implements PiRenderableComponent {
+  resultText: string;
+  executionStatus: string;
+  expanded: boolean;
+  outputPad: number;
+  theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string };
+
+  constructor(
+    resultText: string,
+    executionStatus: string,
+    expanded: boolean,
+    outputPad: number,
+    theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
+  ) {
+    this.resultText = resultText;
+    this.executionStatus = executionStatus;
+    this.expanded = expanded;
+    this.outputPad = outputPad;
+    this.theme = theme;
+  }
+
+  invalidate(): void {}
+
+  render(width: number): string[] {
+    const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+    const color = executionStatusHeaderColor(this.executionStatus);
+    const statusLabel = this.theme.fg?.(color, this.executionStatus) ?? this.executionStatus;
+    const header = truncateToWidth(`${statusLabel} larva-subagent-result`, contentWidth, "");
+    if (!this.expanded) {
+      return [header, truncateToWidth(compactSubagentResultPreview(this.resultText, contentWidth), contentWidth, "")];
+    }
+    const pad = Math.max(0, this.outputPad);
+    const bodyWidth = Math.max(1, contentWidth - pad * 2);
+    const body = renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(this.resultText)), bodyWidth, liveMarkdownTheme());
+    const indent = " ".repeat(pad);
+    return [header, ...body.map((line) => truncateToWidth(`${indent}${line}`, contentWidth, ""))];
+  }
+}
+
+function renderLarvaSubagentResultMessage(
+  message: SubagentCallbackMessage,
+  options: { expanded: boolean; outputPad: number },
+  theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
+): PiRenderableComponent | undefined {
+  const details = larvaSubagentCallbackDetailsForDisplay(message);
+  if (details === null) return undefined;
+  const outputPad = typeof options.outputPad === "number" && Number.isFinite(options.outputPad) ? Math.max(0, Math.floor(options.outputPad)) : 0;
+  return new LarvaSubagentResultMessageView(details.resultText, details.executionStatus, options.expanded === true, outputPad, theme);
+}
+
+function registerLarvaSubagentResultMessageRenderer(pi: PiApi): void {
+  if (typeof pi.registerMessageRenderer !== "function") return;
+  pi.registerMessageRenderer("larva-subagent-result", renderLarvaSubagentResultMessage);
+}
+
 function subagentPromptMarkdownSource(value: string): string {
   const safe = rendererSafeMarkdownSource(value).trim();
   if (safe.length === 0) return "No initial subagent prompt was recorded for this entry.";
   return safe.replace(/\s*\((\d+)\)\s+/g, (_match, number: string) => `\n${number}. `).trim();
+}
+
+function liveMarkdownTheme(): MarkdownTheme {
+  if (markdownThemeGetter === null) return DEFAULT_MARKDOWN_THEME;
+  try {
+    return markdownThemeGetter();
+  } catch {
+    return DEFAULT_MARKDOWN_THEME;
+  }
+}
+
+async function bindLiveMarkdownThemeGetter(): Promise<void> {
+  if (markdownThemeGetter !== null) return;
+  try {
+    const imported = await import("@earendil-works/pi-coding-agent") as { getMarkdownTheme?: () => MarkdownTheme };
+    if (markdownThemeGetter !== null) return;
+    if (typeof imported.getMarkdownTheme === "function") {
+      markdownThemeGetter = () => (imported.getMarkdownTheme as () => MarkdownTheme)();
+    }
+  } catch {
+    // Display highlighting is optional when the Pi coding-agent package is not resolvable.
+  }
+}
+
+function presentSubagentJsonSource(source: string): string {
+  try {
+    const value: unknown = JSON.parse(source);
+    return `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
+  } catch {
+    return source;
+  }
 }
 
 function markdownFence(value: string): string {
@@ -2122,7 +2249,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       if (output.trim().length === 0) {
         return renderRendererSafePlainLines(thinkingLine ?? "No final subagent output is available for this observed entry.", contentWidth);
       }
-      const rendered = this.entry.status === "running" ? renderRendererSafePlainLines(output, contentWidth) : renderMarkdownLines(subagentOutputMarkdownSource(output), contentWidth);
+      const rendered = this.entry.status === "running" ? renderRendererSafePlainLines(output, contentWidth) : renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(output)), contentWidth);
       return thinkingLine === null ? rendered : [...renderRendererSafePlainLines(thinkingLine, contentWidth), "", ...rendered];
     }
     if (tab === "prompt") return this.promptPaneLines(contentWidth);
@@ -7992,6 +8119,14 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
   };
 }
 
+export function setGetMarkdownThemeForTests(getter: (() => MarkdownTheme) | null): void {
+  markdownThemeGetter = getter;
+}
+
+export function presentSubagentJsonSourceForTests(source: string): string {
+  return presentSubagentJsonSource(source);
+}
+
 export function renderSubagentPresentationOverlayForTests(input?: unknown): string {
   return larva_subagent_log(input).content[0]?.text ?? "";
 }
@@ -9479,6 +9614,8 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   registerLarvaAgentPersonaSwitchCommand(ctx, pi);
   registerLarvaModelMapCommand(ctx, pi);
   registerLarvaPersonaCommand(ctx, pi);
+  registerLarvaSubagentResultMessageRenderer(pi);
+  void bindLiveMarkdownThemeGetter();
   const subagentSchema = {
     type: "object",
     properties: {

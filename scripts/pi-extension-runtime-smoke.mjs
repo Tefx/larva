@@ -30,6 +30,7 @@ const SCENARIOS = [
   "model-map-profile-switch",
   "model-map-profile-switch-installed-pi",
   "model-map-profile-switch-installed-child-pi",
+  "subagent-json-presentation",
 ];
 
 const PIINV_REQUIRED_EXPECTED_RED_IDS = [
@@ -1687,6 +1688,144 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   };
 }
 
+async function subagentJsonPresentationProof(evidence) {
+  const mod = await import(`${pathToFileURL(extensionPath).href}?json-presentation=${Date.now()}`);
+  const piTui = await import(createRequire(pathToFileURL(extensionPath).href).resolve("@earendil-works/pi-tui"));
+  const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+  const stripAnsi = (line) => line.replace(ANSI_RE, "");
+  const lastAnsi = (haystack, needle) => {
+    const idx = haystack.indexOf(needle);
+    if (idx < 0) return null;
+    const matches = [...haystack.slice(0, idx).matchAll(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"))];
+    return matches.at(-1)?.[0] ?? "";
+  };
+  const renderers = new Map();
+  const ctx = { env: runtimeEnv(), ui: { setStatus: () => undefined }, modelRegistry: { find: async () => ({ provider: "openai-codex", modelId: "gpt-5.5" }) } };
+  await mod.initializeExtension(ctx, {
+    getAllTools: async () => ["read"],
+    setActiveTools: async () => true,
+    setModel: async () => true,
+    registerCommand: () => undefined,
+    registerShortcut: () => undefined,
+    registerTool: () => undefined,
+    registerMessageRenderer: (customType, renderer) => renderers.set(customType, renderer),
+    on: () => undefined,
+  });
+  const renderer = renderers.get("larva-subagent-result");
+  const objectSource = '{"alphaKey":"betaValue","zetaNum":98765}';
+  const malformed = '{"alphaKey":"betaValue",}';
+  const markdownSource = "# Markdown Heading\n\n- bullet one";
+  mod.resetSubagentPresentationStateForTests();
+  mod.recordSubagentPresentationEntryForTests("/tmp/json.jsonl", "json-child", "success", { result_text: objectSource, phase: "success" });
+  const overlay = new mod.SubagentPresentationLogOverlay({
+    entry: mod.subagentPresentationLogForTests()[0],
+    generation: 1,
+    tui: { terminal: { rows: 50 } },
+  });
+  overlay.handleInput("3");
+  let highlighter = { loaded: false, keyStyle: null, scalarStyle: null, differentiated: false, langSeen: false };
+  try {
+    const codingAgent = await import(pathToFileURL(join(piExtensionRoot, "node_modules/@earendil-works/pi-coding-agent/dist/index.js")).href);
+    if (typeof codingAgent.getMarkdownTheme === "function") {
+      codingAgent.initTheme?.(undefined, false);
+      const mdTheme = codingAgent.getMarkdownTheme();
+      mod.setGetMarkdownThemeForTests(() => mdTheme);
+      const pretty = JSON.stringify({ alphaKey: "betaValue", zetaNum: 98765 }, null, 2);
+      const highlightedLines = typeof mdTheme.highlightCode === "function" ? mdTheme.highlightCode(pretty, "json") : pretty.split("\n");
+      const highlighted = highlightedLines.join("\n");
+      highlighter = {
+        loaded: true,
+        keyStyle: lastAnsi(highlighted, "alphaKey"),
+        scalarStyle: lastAnsi(highlighted, "98765"),
+        differentiated: lastAnsi(highlighted, "alphaKey") !== lastAnsi(highlighted, "98765"),
+        langSeen: true,
+        highlightedSample: highlightedLines,
+      };
+    }
+  } catch (error) {
+    highlighter.error = error instanceof Error ? error.message : String(error);
+  }
+  const overlayByWidth = [40, 80, 120].map((width) => {
+    const lines = overlay.render(width);
+    return {
+      width,
+      fit: lines.every((line) => piTui.visibleWidth(line) <= width),
+      stripped: lines.map(stripAnsi).join("\n"),
+    };
+  });
+  const theme = { fg: (token, text) => `[${token}]${text}`, bold: (text) => text };
+  const expanded = renderer({
+    customType: "larva-subagent-result",
+    content: "```text\\nkeep-model-visible\\n```",
+    details: { result_text: objectSource, status: "success", execution_status: "success" },
+  }, { expanded: true, outputPad: 0 }, theme).render(80);
+  const innerFailed = renderer({
+    customType: "larva-subagent-result",
+    content: "```text\\nkeep-model-visible\\n```",
+    details: { result_text: '{"status":"failed"}', status: "success", execution_status: "success" },
+  }, { expanded: true, outputPad: 0 }, theme).render(80);
+  const missing = renderer({ customType: "larva-subagent-result", content: "x" }, { expanded: true, outputPad: 0 }, theme);
+  const helper = {
+    object: mod.presentSubagentJsonSourceForTests(objectSource),
+    malformed: mod.presentSubagentJsonSourceForTests(malformed),
+    markdown: mod.presentSubagentJsonSourceForTests(markdownSource),
+    number: mod.presentSubagentJsonSourceForTests("42"),
+    array: mod.presentSubagentJsonSourceForTests("[true,null]"),
+  };
+  const installedPi = "/opt/homebrew/bin/pi";
+  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
+  let packageVersion = null;
+  let installedRender = { attempted: false, rendered: false, widthSafe: false, version: null };
+  try {
+    packageVersion = (await readJsonFile(join(installedPackageRoot, "package.json"))).version ?? null;
+    const installed = await import(pathToFileURL(join(installedPackageRoot, "dist/index.js")).href);
+    installedRender.attempted = true;
+    installedRender.version = packageVersion;
+    if (typeof installed.getMarkdownTheme === "function") {
+      mod.setGetMarkdownThemeForTests(() => installed.getMarkdownTheme());
+      const lines = overlay.render(80);
+      installedRender.rendered = true;
+      installedRender.widthSafe = lines.every((line) => piTui.visibleWidth(line) <= 80);
+    }
+  } catch (error) {
+    installedRender.error = error instanceof Error ? error.message : String(error);
+  }
+  const assertions = {
+    rendererRegistered: renderers.has("larva-subagent-result"),
+    helperPrettyObject: helper.object.includes("```json") && helper.object.includes('"alphaKey": "betaValue"'),
+    helperMalformedByteExact: helper.malformed === malformed,
+    helperMarkdownUnchanged: helper.markdown === markdownSource,
+    helperTopLevelNumber: helper.number === "```json\n42\n```",
+    overlayWidthSafe: overlayByWidth.every((item) => item.fit),
+    overlayShowsPrettyJson: overlayByWidth.some((item) => item.stripped.includes('"alphaKey": "betaValue"') || item.stripped.includes("alphaKey")),
+    highlighterLoaded: highlighter.loaded,
+    highlighterDifferentiated: highlighter.differentiated,
+    missingDetailsDefault: missing === undefined,
+    outerSuccessNotInnerFailed: innerFailed[0].includes("[success]success") && !innerFailed[0].includes("[error]"),
+    expandedUsesLiveMarkdown: expanded.some((line) => stripAnsi(line).includes("alphaKey") || stripAnsi(line).includes("betaValue")),
+    installedObservationRecorded: installedRender.attempted === true || typeof version.stdout === "string",
+  };
+  const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);
+  evidence.runtime.subagentJsonPresentation = {
+    status: failed.length === 0 ? "PASS" : "FAIL",
+    assertions,
+    failed,
+    helper,
+    overlayByWidth,
+    highlighter,
+    expandedHeader: expanded[0] ?? null,
+    innerFailedHeader: innerFailed[0] ?? null,
+    installedPiObservation: {
+      binary: installedPi,
+      binaryVersion: version.stdout.trim(),
+      packageRoot: installedPackageRoot,
+      packageVersion,
+      render: installedRender,
+    },
+  };
+}
+
 async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const sessionRoot = await mkdtemp(join(tmpdir(), "larva-wait-select-pending-callback-"));
@@ -1888,7 +2027,7 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
 async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.84.1";
+  const expectedVersion = "0.84.4";
   const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
   const childSessionRoot = join(proofRoot, "child-sessions");
   const providerExtension = join(proofRoot, "watchdog-provider.ts");
@@ -3547,7 +3686,7 @@ rl.on("line", async (line) => {
 async function installedPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.84.1";
+  const expectedVersion = "0.84.4";
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
@@ -3853,8 +3992,8 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const schemaName = "larva.pi.model-map.actual-child.v1";
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const installedCli = join(installedPackageRoot, "dist", "cli.js");
-  const expectedVersion = "0.84.1";
+  const installedCli = join(installedPackageRoot, "dist", "bundle", "cli.js");
+  const expectedVersion = "0.84.4";
   const scenarioStartedWallMs = Date.now();
   const scenarioStartedMonotonicNs = process.hrtime.bigint();
   const wholeScenarioDeadlineMs = 180_000;
@@ -4846,6 +4985,8 @@ async function main() {
     await installedPiModelMapProfileSwitchProof(evidence);
   } else if (scenario === "model-map-profile-switch-installed-child-pi") {
     await installedActualChildPiModelMapProfileSwitchProof(evidence);
+  } else if (scenario === "subagent-json-presentation") {
+    await subagentJsonPresentationProof(evidence);
   }
   } finally {
     if (ownsCompleteRuntimeIsolation) await cleanupNeutralRuntimeIsolation(evidence);
@@ -4877,6 +5018,9 @@ async function main() {
     process.exitCode = 1;
   }
   if (scenario === "model-map-profile-switch-installed-pi" && evidence.runtime.installedPiModelMapProfileSwitch?.status !== "PASS") {
+    process.exitCode = 1;
+  }
+  if (scenario === "subagent-json-presentation" && evidence.runtime.subagentJsonPresentation?.status !== "PASS") {
     process.exitCode = 1;
   }
   if (scenario === "model-map-profile-switch-installed-child-pi" && evidence.runtime.actualInstalledChildModelMapProfileSwitch?.status !== "PASS") {

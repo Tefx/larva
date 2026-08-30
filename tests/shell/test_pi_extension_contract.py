@@ -434,6 +434,105 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     assert "await decideToolCallWithRefresh(name, pi)" in tool_call_registration.group("body")
 
 
+def test_subagent_json_presentation_helper_and_callback_renderer_registration(tmp_path: Path) -> None:
+    """Execute JSON presentation helper plus registered larva-subagent-result rendering."""
+    _write_pi_tui_runtime_mock(tmp_path)
+    extension = _runtime_extension_copy(tmp_path, "")
+    payload = _run_node(
+        tmp_path,
+        f"""
+        process.chdir({json.dumps(str(tmp_path))});
+        const mod = await import({json.dumps(extension.as_uri())});
+        const renderers = new Map();
+        await mod.initializeExtension(
+          {{ env: {{ HOME: {json.dumps(str(tmp_path))}, LARVA_PI_INTERACTIVE_TUI: "0" }}, ui: {{ setStatus: () => undefined }} }},
+          {{
+            getAllTools: () => [],
+            setActiveTools: () => true,
+            registerTool: () => undefined,
+            registerCommand: () => undefined,
+            registerMessageRenderer: (customType, renderer) => renderers.set(customType, renderer),
+            on: () => undefined,
+          }},
+        );
+        const renderer = renderers.get("larva-subagent-result");
+        const theme = {{ fg: (token, text) => "[" + token + "]" + text, bold: (text) => text }};
+        const objectSource = '{{"ok":true,"count":2}}';
+        const arraySource = '[1,true,null]';
+        const malformed = '{{"ok":true,}}';
+        const commentSource = '// no\\n{{}}';
+        const innerFailed = '{{"status":"failed","reason":"payload"}}';
+        const missing = renderer({{ customType: "larva-subagent-result", content: "x" }}, {{ expanded: true, outputPad: 0 }}, theme);
+        const unusable = renderer({{ customType: "larva-subagent-result", content: "x", details: {{ status: "success" }} }}, {{ expanded: true, outputPad: 0 }}, theme);
+        let artifactReads = 0;
+        const details = new Proxy({{
+          result_text: innerFailed,
+          status: "success",
+          execution_status: "success",
+          artifact_path: "/tmp/larva-json-presentation-artifact-must-not-be-read",
+          full_output_artifact: {{ path: "/tmp/larva-json-presentation-artifact-must-not-be-read", sha256: "abc", bytes: 1, lines: 1 }},
+        }}, {{
+          get(target, prop) {{
+            if (prop === "artifact_path" || prop === "full_output_artifact" || prop === "path") artifactReads += 1;
+            return target[prop];
+          }},
+        }});
+        const expanded = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details }}, {{ expanded: true, outputPad: 0 }}, theme);
+        const compact = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details }}, {{ expanded: false, outputPad: 0 }}, theme);
+        const expandedLines = expanded.render(80);
+        const compactLines = compact.render(80);
+        const widths = [40, 80, 120].map((width) => {{
+          const lines = expanded.render(width);
+          return {{ width, fit: lines.every((line) => line.length <= width) }};
+        }});
+        console.log(JSON.stringify({{
+          registered: renderers.has("larva-subagent-result"),
+          helper: {{
+            object: mod.presentSubagentJsonSourceForTests(objectSource),
+            array: mod.presentSubagentJsonSourceForTests(arraySource),
+            number: mod.presentSubagentJsonSourceForTests("42"),
+            boolean: mod.presentSubagentJsonSourceForTests("true"),
+            nul: mod.presentSubagentJsonSourceForTests("null"),
+            text: mod.presentSubagentJsonSourceForTests('"hi"'),
+            malformed: mod.presentSubagentJsonSourceForTests(malformed),
+            comment: mod.presentSubagentJsonSourceForTests(commentSource),
+            plain: mod.presentSubagentJsonSourceForTests("hello from child"),
+            markdown: mod.presentSubagentJsonSourceForTests("# Heading\\n\\n- item"),
+          }},
+          missingIsUndefined: missing === undefined,
+          unusableIsUndefined: unusable === undefined,
+          artifactReads,
+          expandedText: expandedLines.join("\\n"),
+          compactText: compactLines.join("\\n"),
+          widths,
+        }}));
+        """,
+        timeout=8.0,
+    )
+    helper = payload["helper"]
+    assert payload["registered"] is True
+    assert helper["object"] == "```json\n{\n  \"ok\": true,\n  \"count\": 2\n}\n```"
+    assert helper["array"] == "```json\n[\n  1,\n  true,\n  null\n]\n```"
+    assert helper["number"] == "```json\n42\n```"
+    assert helper["boolean"] == "```json\ntrue\n```"
+    assert helper["nul"] == "```json\nnull\n```"
+    assert helper["text"] == '```json\n"hi"\n```'
+    assert helper["malformed"] == '{"ok":true,}'
+    assert helper["comment"] == "// no\n{}"
+    assert helper["plain"] == "hello from child"
+    assert helper["markdown"] == "# Heading\n\n- item"
+    assert payload["missingIsUndefined"] is True
+    assert payload["unusableIsUndefined"] is True
+    assert payload["artifactReads"] == 0
+    expanded_text = payload["expandedText"]
+    assert "[success]success larva-subagent-result" in expanded_text
+    assert '"status": "failed"' in expanded_text
+    assert "[error]" not in expanded_text.split("\n", 1)[0]
+    assert "```json" in expanded_text
+    assert payload["compactText"].startswith("[success]success larva-subagent-result")
+    assert all(item["fit"] is True for item in payload["widths"])
+
+
 def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:
     source = _source()
     body = _function_body(source, "export async function initializeExtension")
@@ -4664,7 +4763,15 @@ def _write_pi_tui_runtime_mock(tmp_path: Path) -> None:
             """
             export class Input {}
             export const Key = {};
-            export class Markdown {}
+            export class Markdown {
+              constructor(source = "") { this.source = String(source ?? ""); }
+              invalidate() {}
+              render(width) {
+                const limit = Math.max(1, Number(width) || 80);
+                const lines = String(this.source).split(String.fromCharCode(10)).map((line) => line.slice(0, limit));
+                return lines.length > 0 ? lines : [""];
+              }
+            }
             export class SelectList {}
             export function matchesKey() { return false; }
             export function truncateToWidth(value, width) { return String(value).slice(0, Math.max(0, width)); }
