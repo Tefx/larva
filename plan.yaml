@@ -143616,13 +143616,13 @@ phases:
       risk: none.'
 - id: pi_subagent_json_collapsed_rendering_followup_20260830
   name: Pi Subagent Collapsed JSON Rendering Follow-up 2026-08-30
-  status: in_progress
+  status: done
   depends_on:
   - pi_subagent_json_rendering_20260830
   steps:
   - id: pi-subagent-json-collapsed-rendering-followup.implement
     name: Pretty-render JSON in the default collapsed callback view
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143781,3 +143781,39 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-08-30T13:13:03.296819Z'
+    done_at: '2026-08-30T13:44:34.464050+00:00'
+    evidence: 'PASS. Integrated candidate `6e4185913e55bc586a7ac12021eb2b00ba190c3c`
+      by fast-forward onto immutable post-claim base `38f9368b99d67c427c17ca9894268cd79b28ead4`;
+      integrated tree `4af1fa192de36bf1873a8f89e8089c2203be686e`. Production-Gate-admitted
+      dispatch `/tmp/larva-vectl-artifacts/pi-subagent-json-collapsed-rendering-followup-38f9368b/worker-dispatch.json`
+      has canonical SHA `sha256:7bb7e4c49e928bc760cb572fcb29ae765e6ae48fc009e27699ed7a8192fbab9f`
+      and claim `claim:f4317eb798313365268b6161e36fe69b6cb565a6acbfc545c391129736b76d11`.
+      Exact Worker-v2 receipt is PASS with COLLAPSED-JSON-01..04 covered, unresolved
+      `[]`, no acceptance authorization, and canonical receipt SHA `sha256:262963100e409a4bca1d68e6bfc16444c047db3b1d7eca920c1c4255b7f3f4e3`;
+      child and parent structural lint are CONFORMANT.
+
+
+      Changed paths exactly: `contrib/pi-extension/larva.ts`, `contrib/pi-extension/README.md`,
+      `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, `scripts/pi-extension-runtime-smoke.mjs`,
+      `tests/shell/test_pi_extension_contract.py`, and `tests/shell/test_pi_extension_subagent_ux.py`.
+      The default `expanded:false` callback now routes valid JSON through the shared
+      pretty JSON source and live Markdown theme. Small JSON is shown completely as
+      multiline two-space-indented JSON; large collapsed JSON is capped at 16 body
+      lines with explicit `… [truncated]`, while `expanded:true` retains the complete
+      bounded in-memory tail. Malformed/plain fallback, missing-details default, outer/inner
+      status separation, no artifact access, model-visible `text` fence, 6,000-character
+      bounds, artifacts, delivery, and lifecycle remain unchanged. Behavioral tests
+      execute the registered renderer with the witnessed `child_payload_ok` payload,
+      nested array/boolean/number/Chinese string, injected/live theme refresh and
+      key/scalar styles, 40/80/120 visible widths, large omission, and expanded tail.
+
+
+      Independent final Gate `/tmp/larva-vectl-artifacts/pi-subagent-json-collapsed-rendering-followup-38f9368b/final-gate-verdict.json`
+      is CONFORMANT, file SHA-256 `045824c228bd2686acbf77f76bfe4bf59ea8b3054406dd6e18e76ecffc3d478e`,
+      clean candidate required/observed, no undeclared path, all claims checked, and
+      all six declared checks green: focused contract/UX pytest, collapsed JSON runtime
+      smoke, all Pi extension Node regressions, full repository pytest, `uvx invar-tools
+      guard --all`, and `git diff --check`. Package manifest hash `42c8861d2e7dcd327d5e091d52bc53769a241ea6469aac687e7bbe9ca5cd2279`
+      and lock hash `a32e6fb6f90c2a861f086337e19b011ea38f8a6ae0cb21974041c61d5087a1cc`
+      are byte-identical. No installed-package, credential, provider, user-config,
+      network-auth, or external-service effect. Residual risk: none.'
