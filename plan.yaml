@@ -143819,13 +143819,13 @@ phases:
       network-auth, or external-service effect. Residual risk: none.'
 - id: pi_subagent_callback_theme_frame_20260830
   name: Pi Subagent Callback Theme Frame 2026-08-30
-  status: pending
+  status: in_progress
   depends_on:
   - pi_subagent_json_collapsed_rendering_followup_20260830
   steps:
   - id: pi-subagent-callback-theme-frame.implement
     name: Frame callback output with a complete theme-aware background surface
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143987,3 +143987,5 @@ phases:
     - contrib/pi-extension/package-lock.json
     - pyproject.toml
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-08-30T15:19:02.711866Z'
