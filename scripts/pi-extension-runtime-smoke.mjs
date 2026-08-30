@@ -1716,15 +1716,45 @@ async function subagentJsonPresentationProof(evidence) {
   const smallJson = '{"status":"child_payload_ok","nested":{"items":[1,true],"count":1,"message":"测试"}}';
   const largeJson = JSON.stringify({ rows: Array.from({ length: 40 }, (_value, index) => ({ index, value: `row-${index}` })), tail: "COLLAPSED_JSON_EXPANDED_TAIL" });
   const malformed = '{"alphaKey":"betaValue",}';
+  const malformedArrayWithLink = '["[docs](https://example.test)",]';
   const markdownSource = "# Markdown Heading\n\n- bullet one";
+  const longMarkdown = ["# Long Markdown", "", ...Array.from({ length: 30 }, (_value, index) => `- item ${index}`), "MARKDOWN_EXPANDED_TAIL"].join("\n");
+  const fencedSource = "```yaml\napiVersion: v1\nkind: ConfigMap\n```";
+  const bareFenceSource = "```\nSELECT * FROM records;\n```";
+  const leadingLinkSource = "[the docs](https://example.test)";
+  const numericLinkSource = "[123](https://example.test)";
+  const plainSource = "plain <root> & literal braces {x}\nsecond line a_b with no Markdown intent";
   mod.resetSubagentPresentationStateForTests();
   mod.recordSubagentPresentationEntryForTests("/tmp/json.jsonl", "json-child", "success", { result_text: objectSource, phase: "success" });
+  mod.recordSubagentPresentationEntryForTests("/tmp/markdown.jsonl", "markdown-child", "success", { result_text: markdownSource, phase: "success" });
+  mod.recordSubagentPresentationEntryForTests("/tmp/fenced.jsonl", "fenced-child", "success", { result_text: fencedSource, phase: "success" });
+  mod.recordSubagentPresentationEntryForTests("/tmp/plain.jsonl", "plain-child", "success", { result_text: plainSource, phase: "success" });
+  mod.recordSubagentPresentationEntryForTests("/tmp/empty.jsonl", "empty-child", "success", { result_text: " \n\t", phase: "success" });
+  mod.recordSubagentPresentationEntryForTests("/tmp/malformed.jsonl", "malformed-child", "success", { result_text: malformed, phase: "success" });
+  mod.recordSubagentPresentationEntryForTests("/tmp/malformed-array.jsonl", "malformed-array-child", "success", { result_text: malformedArrayWithLink, phase: "success" });
   const overlay = new mod.SubagentPresentationLogOverlay({
     entry: mod.subagentPresentationLogForTests()[0],
     generation: 1,
     tui: { terminal: { rows: 50 } },
   });
   overlay.handleInput("3");
+  const consoleOutputText = (personaId) => {
+    const component = new mod.SubagentPresentationLogOverlay({
+      entry: mod.subagentPresentationLogForTests().find((entry) => entry.persona_id === personaId),
+      generation: 2,
+      tui: { terminal: { rows: 50 } },
+    });
+    component.handleInput("3");
+    return renderedPlainText(component.render(80));
+  };
+  const consoleFormats = {
+    markdown: consoleOutputText("markdown-child"),
+    fenced: consoleOutputText("fenced-child"),
+    plain: consoleOutputText("plain-child"),
+    empty: consoleOutputText("empty-child"),
+    malformed: consoleOutputText("malformed-child"),
+    malformedArray: consoleOutputText("malformed-array-child"),
+  };
   let collapsedThemeTag = "A";
   const collapsedTheme = () => ({
     heading: (text) => text,
@@ -1866,9 +1896,28 @@ async function subagentJsonPresentationProof(evidence) {
     content: "keep-model-visible",
     details: { result_text: "plain fallback", status: "success", execution_status: "success" },
   }, { expanded: false, outputPad: 1 }, frameTheme).render(80).map(stripAnsi);
+  const renderResult = (resultText, expanded, width = 80) => renderer(
+    { customType: "larva-subagent-result", content: "keep-model-visible", details: { result_text: resultText, status: "success", execution_status: "success" } },
+    { expanded, outputPad: 0 },
+    theme,
+  ).render(width);
   const largeDetails = { result_text: largeJson, status: "success", execution_status: "success" };
   const largeCollapsed = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: false, outputPad: 0 }, theme).render(80);
   const largeExpanded = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: true, outputPad: 0 }, theme).render(80);
+  const markdownCollapsed = renderResult(markdownSource, false);
+  const longMarkdownCollapsed = renderResult(longMarkdown, false);
+  const longMarkdownExpanded = renderResult(longMarkdown, true);
+  const fencedCollapsed = renderResult(fencedSource, false);
+  const bareFenceCollapsed = renderResult(bareFenceSource, false);
+  const leadingLinkCollapsed = renderResult(leadingLinkSource, false);
+  const numericLinkCollapsed = renderResult(numericLinkSource, false);
+  const plainCollapsed = renderResult(plainSource, false);
+  const malformedArrayCollapsed = renderResult(malformedArrayWithLink, false);
+  const emptyCollapsed = renderResult("", false);
+  const formatWidths = [1, 2, 3, 4, 40, 80, 120].flatMap((width) => [markdownSource, fencedSource, bareFenceSource, leadingLinkSource, numericLinkSource, plainSource, malformed, malformedArrayWithLink, ""].map((source) => {
+    const lines = renderResult(source, false, width);
+    return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
+  }));
   const collapsedByWidth = [40, 80, 120].map((width) => {
     const lines = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: callbackDetails }, { expanded: false, outputPad: 0 }, theme).render(width);
     return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width) };
@@ -1914,6 +1963,12 @@ async function subagentJsonPresentationProof(evidence) {
     helperTopLevelNumber: helper.number === "```json\n42\n```",
     overlayWidthSafe: overlayByWidth.every((item) => item.fit),
     overlayShowsPrettyJson: overlayByWidth.some((item) => item.stripped.includes('"alphaKey": "betaValue"') || item.stripped.includes("alphaKey")),
+    consoleFormatsSharePresentation: consoleFormats.markdown.includes("Markdown Heading")
+      && consoleFormats.fenced.includes("apiVersion: v1")
+      && consoleFormats.plain.includes("plain <root> & literal braces {x}")
+      && consoleFormats.empty.includes("No final subagent output is available.")
+      && consoleFormats.malformed.includes(malformed)
+      && consoleFormats.malformedArray.includes(malformedArrayWithLink),
     highlighterLoaded: highlighter.loaded,
     highlighterDifferentiated: highlighter.differentiated,
     missingDetailsDefault: missing === undefined,
@@ -1927,6 +1982,17 @@ async function subagentJsonPresentationProof(evidence) {
     collapsedNoArtifactAccess: artifactReads === 0,
     largeCollapsedBounded: largeCollapsed.length <= 17 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
     largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
+    markdownCollapsedRendered: renderedPlainText(markdownCollapsed).includes("Markdown Heading") && renderedPlainText(markdownCollapsed).includes("bullet one"),
+    markdownCollapsedBounded: longMarkdownCollapsed.length <= 17 && renderedPlainText(longMarkdownCollapsed).includes("[truncated]") && !renderedPlainText(longMarkdownCollapsed).includes("MARKDOWN_EXPANDED_TAIL"),
+    markdownExpandedComplete: renderedPlainText(longMarkdownExpanded).includes("MARKDOWN_EXPANDED_TAIL"),
+    fencedLanguageRendered: renderedPlainText(fencedCollapsed).includes("apiVersion: v1") && renderedPlainText(fencedCollapsed).includes("kind: ConfigMap"),
+    bareFenceRenderedAsGenericCode: renderedPlainText(bareFenceCollapsed).includes("SELECT * FROM records;"),
+    leadingLinkRenderedAsMarkdown: renderedPlainText(leadingLinkCollapsed).includes("the docs") && !renderedPlainText(leadingLinkCollapsed).includes("[the docs]"),
+    numericLinkRenderedAsMarkdown: renderedPlainText(numericLinkCollapsed).includes("123") && !renderedPlainText(numericLinkCollapsed).includes("[123]"),
+    plainMultilinePreserved: renderedPlainText(plainCollapsed).includes("plain <root> & literal braces {x}") && renderedPlainText(plainCollapsed).includes("second line a_b"),
+    malformedArrayWithLinkPlain: renderedPlainText(malformedArrayCollapsed).includes(malformedArrayWithLink),
+    emptyOutputStable: renderedPlainText(emptyCollapsed).includes("No final subagent output is available."),
+    allFormatsWidthSafeAndBounded: formatWidths.every((item) => item.fit && item.lineCount <= 17),
     surfaceHasNoBorder: framedPlain.every((line) => !/[┌┐└┘│─]/.test(line)),
     surfaceFullWidth: framedPlain.every((line) => piTui.visibleWidth(line) === 80),
     surfaceUsesOutputPadding: framedPlain.every((line) => line.startsWith(" ") && line.endsWith(" ")),
@@ -1947,6 +2013,7 @@ async function subagentJsonPresentationProof(evidence) {
     failed,
     helper,
     overlayByWidth,
+    consoleFormats,
     highlighter,
     expandedHeader: expanded[0] ?? null,
     collapsedText: renderedPlainText(collapsed),
@@ -1963,6 +2030,19 @@ async function subagentJsonPresentationProof(evidence) {
     largeCollapsedLineCount: largeCollapsed.length,
     largeCollapsedText: renderedPlainText(largeCollapsed),
     largeExpandedText: renderedPlainText(largeExpanded),
+    formats: {
+      markdownCollapsed: renderedPlainText(markdownCollapsed),
+      longMarkdownCollapsed: renderedPlainText(longMarkdownCollapsed),
+      longMarkdownExpanded: renderedPlainText(longMarkdownExpanded),
+      fencedCollapsed: renderedPlainText(fencedCollapsed),
+      bareFenceCollapsed: renderedPlainText(bareFenceCollapsed),
+      leadingLinkCollapsed: renderedPlainText(leadingLinkCollapsed),
+      numericLinkCollapsed: renderedPlainText(numericLinkCollapsed),
+      plainCollapsed: renderedPlainText(plainCollapsed),
+      malformedArrayCollapsed: renderedPlainText(malformedArrayCollapsed),
+      emptyCollapsed: renderedPlainText(emptyCollapsed),
+      widths: formatWidths,
+    },
     artifactReads,
     innerFailedHeader: innerFailed[0] ?? null,
     installedPiObservation: {

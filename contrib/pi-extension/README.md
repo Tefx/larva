@@ -1173,13 +1173,20 @@ it unless the parent task independently requires them.
 ```
 
 Model-visible callback content keeps the `child_output` body in a renderer-safe
-`text` fence. Display-only, a `larva-subagent-result` custom message renderer
-pretty-prints valid in-memory `details.result_text` through Pi Markdown using
-`getMarkdownTheme()` at render time. The default collapsed view shows a bounded,
-multiline pretty JSON preview with an omission marker when needed; the expanded
-view shows the complete bounded in-memory JSON. It never rewrites the stored
-message, never reads `full_output_artifact.path`, and returns Pi's default
-custom-message rendering when required callback details are absent or unusable.
+`text` fence. Display-only, the callback and Subagent Console Output pane share a
+deterministic result-presentation pipeline. It first applies strict `JSON.parse`
+to the complete bounded in-memory result and pretty-prints valid JSON with two-space
+indent in a `json` fence. Otherwise, explicit Markdown structures (including
+complete fenced code blocks, with or without a language tag) render through Pi
+Markdown; malformed JSON and all other output remain newline-preserving plain
+text. The pipeline does not infer YAML, XML, SQL, Shell, or other languages from
+raw content. Children should use an explicit language tag when language-specific
+code highlighting is intended. Whitespace-only output gets a stable empty-result
+message. Pi's live `getMarkdownTheme()` is resolved at render time. Every collapsed
+format is bounded to 16 rendered body lines with `… [truncated]`; expanded mode
+shows the complete bounded in-memory result. Presentation never rewrites the stored
+message, never reads `full_output_artifact.path`, and does not replace Pi's default custom-message
+rendering when required callback details are absent or unusable.
 The renderer uses the same borderless full-width background surface as Pi tool
 results. It resolves a Pi background token on every render from the outer callback
 `status` / `execution_status` (`toolSuccessBg`, `toolErrorBg`, `toolPendingBg`, or
@@ -1544,15 +1551,15 @@ selector visual language: accent-colored border, solid ANSI background, stable
 frame height, terminal-compatible drop shadow, 90% width, and 90% max-height. The
 Console is an event-driven view over adapter-local presentation state, with
 bounded panes for Summary, Prompt, Output, Timeline, and Metadata; the Prompt pane
-contains the full initial prompt. Output presentation preserves literal line
-breaks for evidence: Markdown-looking output may render as Markdown, while
-plain/YAML/log-like multiline output is fenced/raw so newlines, blank lines, and
-indentation are not collapsed. Valid terminal JSON is pretty-printed with
-two-space indent inside a `json` Markdown fence before that existing layout so
-Pi Markdown can syntax-highlight keys and scalars; malformed JSON, ordinary
-text, and existing multiline Markdown keep their current source and layout.
-Console rendering resolves the live Pi Markdown theme through `getMarkdownTheme()`
-at render time rather than caching a static theme. Timeline is the human-readable execution trace:
+contains the full initial prompt. Output uses the same deterministic presentation
+pipeline as result callbacks: strict complete-value JSON first, explicit Markdown
+second, and newline-preserving plain text otherwise. The Console does not infer
+YAML, XML, SQL, Shell, or similar languages from raw content; use an explicit
+fence language tag when language-specific highlighting is intended. Valid JSON is pretty-printed
+with two-space indent and syntax highlighting, malformed JSON remains plain text,
+and whitespace-only output gets a stable empty-result message. Console rendering
+resolves the live Pi Markdown theme through `getMarkdownTheme()` at render time
+rather than caching a static theme. Timeline is the human-readable execution trace:
 it keeps natural-language assistant excerpts and tool execution rows, but default
 rendering suppresses assistant deltas that are only tool-call argument JSON when
 the corresponding tool row already summarizes the call. Raw/bounded tool

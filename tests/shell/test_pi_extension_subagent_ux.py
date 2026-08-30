@@ -2124,7 +2124,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
     assert payload["requestRenderCount"] >= 2
 
 
-def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path) -> None:
+def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Path) -> None:
     """Execute overlay Console Output and registered callback rendering for JSON display."""
 
     payload = _run_node(
@@ -2150,27 +2150,48 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
         const smallJson = '{"status":"child_payload_ok","nested":{"items":[1,true],"count":1,"message":"测试"}}';
         const largeJson = JSON.stringify({ rows: Array.from({ length: 40 }, (_value, index) => ({ index, value: `row-${index}` })), tail: "COLLAPSED_JSON_EXPANDED_TAIL" });
         const markdownOutput = ["# Markdown Heading", "", "- bullet one"].join("\n");
+        const longMarkdown = ["# Long Markdown", "", ...Array.from({ length: 30 }, (_value, index) => `- item ${index}`), "MARKDOWN_EXPANDED_TAIL"].join("\n");
+        const fencedOutput = ["```yaml", "apiVersion: v1", "kind: ConfigMap", "```"].join("\n");
+        const bareFencedOutput = ["```", "SELECT * FROM records;", "```"].join("\n");
+        const plainOutput = ["plain <root> & literal braces {x}", "second line a_b with no Markdown intent"].join("\n");
         const malformed = '{"hello":"world",}';
+        const malformedArrayWithLink = '["[docs](https://example.test)",]';
         mod.resetSubagentPresentationStateForTests();
         mod.recordSubagentPresentationEntryForTests("/tmp/json.jsonl", "json-child", "success", { result_text: jsonOutput, phase: "success" });
         mod.recordSubagentPresentationEntryForTests("/tmp/md.jsonl", "md-child", "success", { result_text: markdownOutput, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/plain.jsonl", "plain-child", "success", { result_text: plainOutput, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/fenced.jsonl", "fenced-child", "success", { result_text: fencedOutput, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/empty.jsonl", "empty-child", "success", { result_text: " \n\t", phase: "success" });
         mod.recordSubagentPresentationEntryForTests("/tmp/bad.jsonl", "bad-child", "success", { result_text: malformed, phase: "success" });
+        mod.recordSubagentPresentationEntryForTests("/tmp/bad-array.jsonl", "bad-array-child", "success", { result_text: malformedArrayWithLink, phase: "success" });
         const jsonOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "json-child"), generation: 1, tui: { terminal: { rows: 50 } } });
         const mdOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "md-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        const plainOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "plain-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        const fencedOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "fenced-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        const emptyOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "empty-child"), generation: 1, tui: { terminal: { rows: 50 } } });
         const badOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "bad-child"), generation: 1, tui: { terminal: { rows: 50 } } });
+        const badArrayOverlay = new mod.SubagentPresentationLogOverlay({ entry: mod.subagentPresentationLogForTests().find((row) => row.persona_id === "bad-array-child"), generation: 1, tui: { terminal: { rows: 50 } } });
         jsonOverlay.handleInput("3");
         mdOverlay.handleInput("3");
+        plainOverlay.handleInput("3");
+        fencedOverlay.handleInput("3");
+        emptyOverlay.handleInput("3");
         badOverlay.handleInput("3");
+        badArrayOverlay.handleInput("3");
         const overlayByWidth = [40, 80, 120].map((width) => {
           const lines = jsonOverlay.render(width);
           return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width), stripped: lines.map(stripAnsi).join("\n") };
         });
         const mdStripped = mdOverlay.render(80).map(stripAnsi).join("\n");
+        const plainStripped = plainOverlay.render(80).map(stripAnsi).join("\n");
+        const fencedStripped = fencedOverlay.render(80).map(stripAnsi).join("\n");
+        const emptyStripped = emptyOverlay.render(80).map(stripAnsi).join("\n");
         const badStripped = badOverlay.render(80).map(stripAnsi).join("\n");
+        const badArrayStripped = badArrayOverlay.render(80).map(stripAnsi).join("\n");
         let themeTag = "A";
-        mod.setGetMarkdownThemeForTests(() => ({
-          heading: (text) => text,
-          link: (text) => text,
+        const fakeMarkdownTheme = () => ({
+          heading: (text) => `[${themeTag}:heading]${text}`,
+          link: (text) => `[${themeTag}:link]${text}`,
           linkUrl: (text) => text,
           code: (text) => text,
           codeBlock: (text) => text,
@@ -2184,13 +2205,18 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
           strikethrough: (text) => text,
           underline: (text) => text,
           codeBlockIndent: "  ",
-          highlightCode: (code, lang) => String(code).split(/\n/).map((line) => `[${themeTag}:${lang}]${line}`),
-        }));
+          highlightCode: (code, lang) => String(code).split(/\n/).map((line) => `[${themeTag}:${lang ?? ""}]${line}`),
+        });
+        mod.setGetMarkdownThemeForTests(fakeMarkdownTheme);
         const firstTheme = jsonOverlay.render(80).map(stripAnsi).join("\n");
         const collapsedThemeA = renderer({ customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
         themeTag = "B";
         const secondTheme = jsonOverlay.render(80).map(stripAnsi).join("\n");
         const collapsedThemeB = renderer({ customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
+        themeTag = "A";
+        const collapsedMarkdownThemeA = renderer({ customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: markdownOutput, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
+        themeTag = "B";
+        const collapsedMarkdownThemeB = renderer({ customType: "larva-subagent-result", content: "keep-text-fence", details: { result_text: markdownOutput, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
         let highlighter = { loaded: false, keyStyle: null, scalarStyle: null, differentiated: false };
         try {
           const codingAgent = await import("@earendil-works/pi-coding-agent");
@@ -2205,6 +2231,8 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
             };
           }
         } catch {}
+        themeTag = "B";
+        mod.setGetMarkdownThemeForTests(fakeMarkdownTheme);
         const theme = { fg: (token, text) => `[${token}]${text}`, bold: (text) => text };
         const message = {
           customType: "larva-subagent-result",
@@ -2218,10 +2246,30 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
         const smallCompact = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(80);
         const largeCompact = renderer(largeMessage, { expanded: false, outputPad: 0 }, theme).render(80);
         const largeExpanded = renderer(largeMessage, { expanded: true, outputPad: 0 }, theme).render(80);
+        const renderResult = (resultText, expanded, width = 80) => renderer(
+          { customType: "larva-subagent-result", content: "MODEL_VISIBLE_UNCHANGED", details: { result_text: resultText, status: "success", execution_status: "success" } },
+          { expanded, outputPad: 0 },
+          theme,
+        ).render(width);
+        const markdownCompact = renderResult(markdownOutput, false);
+        const markdownExpanded = renderResult(markdownOutput, true);
+        const longMarkdownCompact = renderResult(longMarkdown, false);
+        const longMarkdownExpanded = renderResult(longMarkdown, true);
+        const fencedCompact = renderResult(fencedOutput, false);
+        const bareFencedCompact = renderResult(bareFencedOutput, false);
+        const plainCompact = renderResult(plainOutput, false);
+        const malformedCompact = renderResult(malformed, false);
+        const malformedArrayCompact = renderResult(malformedArrayWithLink, false);
+        const numericLinkCompact = renderResult('[123](https://example.test)', false);
+        const emptyCompact = renderResult("", false);
         const compactByWidth = [40, 80, 120].map((width) => {
           const lines = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(width);
           return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width) };
         });
+        const formatsByWidth = [1, 2, 3, 4, 40, 80, 120].flatMap((width) => [markdownOutput, fencedOutput, bareFencedOutput, plainOutput, malformed, malformedArrayWithLink, ""].map((source) => {
+          const lines = renderResult(source, false, width);
+          return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
+        }));
         const compactHighlighted = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(120).join("\n");
         const missing = renderer({ customType: "larva-subagent-result", content: "x" }, { expanded: true, outputPad: 0 }, theme);
         const displayIgnoresContentFence = !expanded.some((line) => stripAnsi(line).includes("MODEL_VISIBLE_TEXT_FENCE_ONLY")) && expanded.some((line) => stripAnsi(line).includes("status"));
@@ -2229,9 +2277,14 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
           registered: renderers.has("larva-subagent-result"),
           overlayByWidth,
           mdKeepsHeading: mdStripped.includes("Markdown Heading"),
+          consolePlainKeepsLiteralText: plainStripped.includes("plain <root> & literal braces {x}") && plainStripped.includes("second line a_b"),
+          consoleFenceUsesDeclaredLanguage: fencedStripped.includes("apiVersion: v1") && fencedStripped.includes("kind: ConfigMap"),
+          consoleEmptyIsStable: emptyStripped.includes("No final subagent output is available."),
           malformedKeepsSource: badStripped.includes('{"hello":"world",}'),
+          malformedArrayKeepsSource: badArrayStripped.includes(malformedArrayWithLink),
           liveThemeChanged: firstTheme.includes("[A:json]") && secondTheme.includes("[B:json]"),
           collapsedThemeChanged: collapsedThemeA.includes("[A:json]") && collapsedThemeB.includes("[B:json]"),
+          collapsedMarkdownThemeChanged: collapsedMarkdownThemeA.includes("[A:heading]") && collapsedMarkdownThemeB.includes("[B:heading]"),
           highlighter,
           compactKeyStyle: lastAnsi(compactHighlighted, "status"),
           compactScalarStyle: lastAnsi(compactHighlighted, "child_payload_ok"),
@@ -2242,10 +2295,41 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
           largeCompactText: largeCompact.map(stripAnsi).join("\n"),
           largeCompactLineCount: largeCompact.length,
           largeExpandedText: largeExpanded.map(stripAnsi).join("\n"),
+          markdownCompactText: markdownCompact.map(stripAnsi).join("\n"),
+          markdownExpandedText: markdownExpanded.map(stripAnsi).join("\n"),
+          longMarkdownCompactText: longMarkdownCompact.map(stripAnsi).join("\n"),
+          longMarkdownCompactLineCount: longMarkdownCompact.length,
+          longMarkdownExpandedText: longMarkdownExpanded.map(stripAnsi).join("\n"),
+          fencedCompactText: fencedCompact.map(stripAnsi).join("\n"),
+          bareFencedCompactText: bareFencedCompact.map(stripAnsi).join("\n"),
+          plainCompactText: plainCompact.map(stripAnsi).join("\n"),
+          malformedCompactText: malformedCompact.map(stripAnsi).join("\n"),
+          malformedArrayCompactText: malformedArrayCompact.map(stripAnsi).join("\n"),
+          numericLinkCompactText: numericLinkCompact.map(stripAnsi).join("\n"),
+          emptyCompactText: emptyCompact.map(stripAnsi).join("\n"),
           compactByWidth,
+          formatsByWidth,
           missingIsUndefined: missing === undefined,
           displayIgnoresContentFence,
           helperObject: mod.presentSubagentJsonSourceForTests(jsonOutput).includes('"hello": "world"'),
+          classification: {
+            jsonBeforeMarkdown: mod.presentSubagentResultForTests('{"body":"# heading"}').kind,
+            markdown: mod.presentSubagentResultForTests(markdownOutput).kind,
+            fenced: mod.presentSubagentResultForTests(fencedOutput).kind,
+            inlineMarkdown: mod.presentSubagentResultForTests('Read [the docs](https://example.test) and `run` it.').kind,
+            leadingLink: mod.presentSubagentResultForTests('[the docs](https://example.test)').kind,
+            numericLink: mod.presentSubagentResultForTests('[123](https://example.test)').kind,
+            bareFence: mod.presentSubagentResultForTests('```\nSELECT * FROM records;\n```').kind,
+            plain: mod.presentSubagentResultForTests(plainOutput).kind,
+            rawYaml: mod.presentSubagentResultForTests('apiVersion: v1\nkind: ConfigMap').kind,
+            rawXml: mod.presentSubagentResultForTests('<root>\n  <child />\n</root>').kind,
+            rawSql: mod.presentSubagentResultForTests('SELECT *\nFROM records;').kind,
+            rawShell: mod.presentSubagentResultForTests('printf %s hello\nexit 0').kind,
+            malformed: mod.presentSubagentResultForTests(malformed).kind,
+            malformedArray: mod.presentSubagentResultForTests('[1,]').kind,
+            malformedArrayWithLink: mod.presentSubagentResultForTests(malformedArrayWithLink).kind,
+            empty: mod.presentSubagentResultForTests(' \n\t').kind,
+          },
         }));
         """,
         timeout=20.0,
@@ -2255,9 +2339,14 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
     assert all(item["fit"] is True for item in payload["overlayByWidth"])
     assert any('"hello": "world"' in item["stripped"] or "hello" in item["stripped"] for item in payload["overlayByWidth"])
     assert payload["mdKeepsHeading"] is True
+    assert payload["consolePlainKeepsLiteralText"] is True
+    assert payload["consoleFenceUsesDeclaredLanguage"] is True
+    assert payload["consoleEmptyIsStable"] is True
     assert payload["malformedKeepsSource"] is True
+    assert payload["malformedArrayKeepsSource"] is True
     assert payload["liveThemeChanged"] is True
     assert payload["collapsedThemeChanged"] is True
+    assert payload["collapsedMarkdownThemeChanged"] is True
     if payload["highlighter"]["loaded"]:
         assert payload["compactKeyStyle"] != payload["compactScalarStyle"]
     assert "[success]success" in payload["expandedHeader"]
@@ -2270,9 +2359,49 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
     assert payload["largeCompactLineCount"] <= 17
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
+    assert "Markdown Heading" in payload["markdownCompactText"]
+    assert "bullet one" in payload["markdownCompactText"]
+    assert "Markdown Heading" in payload["markdownExpandedText"]
+    assert payload["longMarkdownCompactLineCount"] <= 17
+    assert "[truncated]" in payload["longMarkdownCompactText"]
+    assert "MARKDOWN_EXPANDED_TAIL" not in payload["longMarkdownCompactText"]
+    assert "MARKDOWN_EXPANDED_TAIL" in payload["longMarkdownExpandedText"]
+    assert "apiVersion: v1" in payload["fencedCompactText"]
+    assert "kind: ConfigMap" in payload["fencedCompactText"]
+    assert "[B:yaml]" in payload["fencedCompactText"]
+    assert "SELECT * FROM records;" in payload["bareFencedCompactText"]
+    assert "[B:" in payload["bareFencedCompactText"]
+    assert "[B:yaml]" not in payload["bareFencedCompactText"]
+    assert "plain <root> & literal braces {x}" in payload["plainCompactText"]
+    assert "second line a_b with no Markdown intent" in payload["plainCompactText"]
+    assert '{"hello":"world",}' in payload["malformedCompactText"]
+    malformed_array_with_link = '["[docs](https://example.test)",]'
+    assert malformed_array_with_link in payload["malformedArrayCompactText"]
+    assert "[B:link]123" in payload["numericLinkCompactText"]
+    assert "No final subagent output is available." in payload["emptyCompactText"]
     assert all(item["fit"] is True for item in payload["compactByWidth"])
+    assert all(item["fit"] is True for item in payload["formatsByWidth"])
+    assert all(item["lineCount"] <= 17 for item in payload["formatsByWidth"])
     assert payload["missingIsUndefined"] is True
     assert payload["displayIgnoresContentFence"] is True
+    assert payload["classification"] == {
+        "jsonBeforeMarkdown": "json",
+        "markdown": "markdown",
+        "fenced": "markdown",
+        "inlineMarkdown": "markdown",
+        "leadingLink": "markdown",
+        "numericLink": "markdown",
+        "bareFence": "markdown",
+        "plain": "text",
+        "rawYaml": "text",
+        "rawXml": "text",
+        "rawSql": "text",
+        "rawShell": "text",
+        "malformed": "text",
+        "malformedArray": "text",
+        "malformedArrayWithLink": "text",
+        "empty": "empty",
+    }
 
 
 def test_larva_subagent_render_hooks_and_visible_preview_bounds(tmp_path: Path) -> None:

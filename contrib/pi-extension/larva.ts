@@ -735,7 +735,7 @@ const SUBAGENT_TIMELINE_TOOL_ROW_LIMIT = 180;
 const SUBAGENT_TOOL_OUTPUT_PREVIEW_LIMIT = 1_200;
 const SUBAGENT_TOOL_SNAPSHOT_LIMIT = 25;
 const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
-const SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT = 16;
+const SUBAGENT_COLLAPSED_RESULT_PREVIEW_LINE_LIMIT = 16;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
 const CHILD_RPC_FRAME_PRELOAD_FILENAME = "child-rpc-frame-preload.mjs";
@@ -1472,32 +1472,18 @@ function executionStatusHeaderColor(status: string): string {
   return "muted";
 }
 
-function compactSubagentResultPreview(source: string, limit: number): string {
-  try {
-    return boundedPresentationPreview(JSON.stringify(JSON.parse(source) as unknown), limit);
-  } catch {
-    return boundedPresentationPreview(source, limit);
-  }
-}
-
-function collapsedSubagentJsonPreviewLines(source: string, contentWidth: number): string[] | null {
-  const presentation = presentSubagentJsonSource(source);
-  if (presentation === source) return null;
-  const rendered = renderMarkdownLines(subagentOutputMarkdownSource(presentation), contentWidth, liveMarkdownTheme());
-  if (rendered.length <= SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT) return rendered;
-  const lines = presentation.split("\n");
-  const preview = [
-    lines[0],
-    ...lines.slice(1, Math.max(1, SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT - 2)),
-    SUBAGENT_TRUNCATION_MARKER,
-    lines.at(-1),
-  ].join("\n");
-  const bounded = renderMarkdownLines(subagentOutputMarkdownSource(preview), contentWidth, liveMarkdownTheme());
-  if (bounded.length <= SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT) return bounded;
-  return [
-    ...bounded.slice(0, SUBAGENT_COLLAPSED_JSON_PREVIEW_LINE_LIMIT - 1),
-    truncateToWidth(SUBAGENT_TRUNCATION_MARKER, contentWidth, ""),
-  ];
+function collapsedSubagentResultPreviewLines(
+  presentation: ResultPresentation,
+  contentWidth: number,
+  markdownTheme: MarkdownTheme = presentationMarkdownTheme(),
+): string[] {
+  const width = Math.max(1, Math.floor(contentWidth));
+  const rendered = renderSubagentResultPresentationLines(presentation, width, markdownTheme);
+  if (rendered.length <= SUBAGENT_COLLAPSED_RESULT_PREVIEW_LINE_LIMIT) return rendered;
+  const markerLines = renderRendererSafePlainLines(SUBAGENT_TRUNCATION_MARKER, width);
+  const markerBudget = Math.min(markerLines.length, SUBAGENT_COLLAPSED_RESULT_PREVIEW_LINE_LIMIT);
+  const contentBudget = Math.max(0, SUBAGENT_COLLAPSED_RESULT_PREVIEW_LINE_LIMIT - markerBudget);
+  return [...rendered.slice(0, contentBudget), ...markerLines.slice(0, markerBudget)];
 }
 
 type SubagentCallbackTheme = {
@@ -1571,13 +1557,11 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     const color = executionStatusHeaderColor(this.executionStatus);
     const statusLabel = subagentResultThemeFg(this.theme, color, this.executionStatus);
     const header = `${statusLabel} larva-subagent-result`;
-    let body: string[];
-    if (!this.expanded) {
-      const jsonPreview = collapsedSubagentJsonPreviewLines(this.resultText, bodyWidth);
-      body = jsonPreview === null ? [compactSubagentResultPreview(this.resultText, bodyWidth)] : jsonPreview;
-    } else {
-      body = renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(this.resultText)), bodyWidth, liveMarkdownTheme());
-    }
+    const presentation = presentSubagentResult(this.resultText);
+    const markdownTheme = liveMarkdownTheme();
+    const body = this.expanded
+      ? renderSubagentResultPresentationLines(presentation, bodyWidth, markdownTheme)
+      : collapsedSubagentResultPreviewLines(presentation, bodyWidth, markdownTheme);
     return [header, ...body].map((line) => subagentResultSurfaceLine(
       this.theme,
       this.executionStatus,
@@ -1630,13 +1614,25 @@ async function bindLiveMarkdownThemeGetter(): Promise<void> {
   }
 }
 
-function presentSubagentJsonSource(source: string): string {
+export type ResultPresentation =
+  | { kind: "json"; markdown: string }
+  | { kind: "markdown"; markdown: string }
+  | { kind: "text"; text: string }
+  | { kind: "empty" };
+
+const EMPTY_SUBAGENT_RESULT_MESSAGE = "No final subagent output is available.";
+
+function strictJsonMarkdownSource(source: string): string | null {
   try {
     const value: unknown = JSON.parse(source);
     return `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
   } catch {
-    return source;
+    return null;
   }
+}
+
+function presentSubagentJsonSource(source: string): string {
+  return strictJsonMarkdownSource(source) ?? source;
 }
 
 function markdownFence(value: string): string {
@@ -1656,15 +1652,72 @@ function indentedFenceLines(value: string, label: string): string[] {
   ];
 }
 
+function hasCompleteMarkdownFence(value: string): boolean {
+  let opening: { marker: string; length: number } | null = null;
+  for (const line of value.split(/\r?\n/)) {
+    if (opening === null) {
+      const match = /^[\t ]{0,3}(`{3,}|~{3,})[^\n]*$/u.exec(line);
+      if (match) opening = { marker: match[1][0], length: match[1].length };
+      continue;
+    }
+    const closing = /^[\t ]{0,3}(`{3,}|~{3,})[\t ]*$/u.exec(line)?.[1] ?? "";
+    const { marker, length } = opening;
+    if (closing.length >= length && Array.from(closing).every((char) => char === marker)) return true;
+  }
+  return false;
+}
+
 function markdownLooksIntentionallyFormatted(value: string): boolean {
-  const trimmed = rendererSafeMarkdownSource(value).trimStart();
-  return /^(#{1,6}\s|[-*+]\s|\d+\.\s|```|>|\|)/u.test(trimmed);
+  const safe = rendererSafeMarkdownSource(value);
+  if (hasCompleteMarkdownFence(safe)) return true;
+  if (/^[\t ]{0,3}#{1,6}[\t ]+\S/mu.test(safe)) return true;
+  if (/^[\t ]{0,3}(?:[-+*]|\d+[.)])[\t ]+\S/mu.test(safe)) return true;
+  if (/^[\t ]{0,3}>[\t ]?\S/mu.test(safe)) return true;
+  if (/^[\t ]*\|?.+\|.+\|?[\t ]*\r?\n[\t ]*\|?[\t ]*:?-{3,}:?[\t ]*(?:\|[\t ]*:?-{3,}:?[\t ]*)+\|?[\t ]*$/mu.test(safe)) return true;
+  if (/^\S[^\n]*\r?\n[\t ]*(?:={3,}|-{3,})[\t ]*$/mu.test(safe)) return true;
+  return /\[[^\]\n]+\]\([^\n)]+\)|\*\*[^\n]+?\*\*|__[^\n]+?__|~~[^\n]+?~~|`[^`\n]+`|(?:^|[\s(])\*[^*\n]+\*(?=$|[\s).,!?:;])/mu.test(safe);
+}
+
+function looksLikeJsonContainerSource(source: string): boolean {
+  const trimmed = source.trimStart();
+  if (trimmed.startsWith("{")) return true;
+  if (!trimmed.startsWith("[")) return false;
+  if (/^\[[^\[\]\n]+\]\([^\n)]+\)/u.test(trimmed)) return false;
+  const firstValue = trimmed.slice(1).trimStart();
+  return firstValue.length === 0 || /^(?:["{\[\]\d-]|true\b|false\b|null\b)/u.test(firstValue);
+}
+
+function presentSubagentResult(source: string): ResultPresentation {
+  const json = strictJsonMarkdownSource(source);
+  if (json !== null) return { kind: "json", markdown: json };
+  const safe = rendererSafeMarkdownSource(source);
+  if (safe.trim().length === 0) return { kind: "empty" };
+  if (looksLikeJsonContainerSource(safe)) return { kind: "text", text: safe };
+  if (markdownLooksIntentionallyFormatted(safe)) return { kind: "markdown", markdown: safe };
+  return { kind: "text", text: safe };
+}
+
+function renderSubagentResultPresentationLines(
+  presentation: ResultPresentation,
+  contentWidth: number,
+  markdownTheme: MarkdownTheme = presentationMarkdownTheme(),
+): string[] {
+  switch (presentation.kind) {
+    case "json":
+    case "markdown":
+      return renderMarkdownLines(presentation.markdown, contentWidth, markdownTheme);
+    case "text":
+      return renderRendererSafePlainLines(presentation.text, contentWidth);
+    case "empty":
+      return renderRendererSafePlainLines(EMPTY_SUBAGENT_RESULT_MESSAGE, contentWidth);
+  }
 }
 
 function subagentOutputMarkdownSource(value: string): string {
-  const safe = rendererSafeMarkdownSource(value);
-  if (!safe.includes("\n")) return safe;
-  return markdownLooksIntentionallyFormatted(safe) ? safe : markdownFence(safe);
+  const presentation = presentSubagentResult(value);
+  if (presentation.kind === "json" || presentation.kind === "markdown") return presentation.markdown;
+  if (presentation.kind === "empty") return EMPTY_SUBAGENT_RESULT_MESSAGE;
+  return presentation.text.includes("\n") ? markdownFence(presentation.text) : presentation.text;
 }
 
 function boundedPresentationPreview(value: string, limit: number): string {
@@ -2287,6 +2340,11 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
 
   private metadataPaneLines(contentWidth: number): string[] {
     const toolRefs = (this.entry.tool_snapshots ?? []).flatMap((snapshot, index) => this.fieldLines(`Tool ${index + 1} ID`, `${subagentToolDisplayName(snapshot)} ${snapshot.status} ${subagentToolDebugId(snapshot)}`, contentWidth));
+    const outputMode = !subagentEntryOutputIsPresent(this.entry)
+      ? "fallback"
+      : this.entry.status === "running"
+        ? "live preview"
+        : presentSubagentResult(subagentEntryOutput(this.entry)).kind;
     return [
       this.sectionLine("Metadata", contentWidth),
       ...this.fieldLines("Mode", this.entry.mode ?? "unknown", contentWidth),
@@ -2302,7 +2360,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Call ID", this.entry.call_id ?? "", contentWidth),
       ...this.fieldLines("Selected task", this.entry.task_id ?? "pending", contentWidth),
       ...this.fieldLines("Error object", this.entry.error ? JSON.stringify(this.entry.error) : "null", contentWidth),
-      ...this.fieldLines("Output mode", subagentEntryOutputIsPresent(this.entry) ? (this.entry.status === "running" ? "live preview" : "markdown") : "fallback", contentWidth),
+      ...this.fieldLines("Output mode", outputMode, contentWidth),
       ...this.fieldLines("Live stream", (this.entry.live_assistant_preview || (this.entry.timeline_events?.length ?? 0) > 0 || (this.entry.tool_snapshots?.length ?? 0) > 0) ? "process-local only; cache sanitizer drops live/timeline fields" : "not observed", contentWidth),
       ...this.fieldLines("View-only", "no persona/model/tool-policy/session/recent-index/resume-authority mutation", contentWidth),
       ...(toolRefs.length > 0 ? ["", this.sectionLine("Debug tool IDs", contentWidth), ...toolRefs] : []),
@@ -2314,10 +2372,12 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     if (tab === "output") {
       const output = subagentEntryOutput(this.entry);
       const thinkingLine = subagentThinkingHiddenLine(this.entry);
-      if (output.trim().length === 0) {
+      if (output.trim().length === 0 && this.entry.status === "running") {
         return renderRendererSafePlainLines(thinkingLine ?? "No final subagent output is available for this observed entry.", contentWidth);
       }
-      const rendered = this.entry.status === "running" ? renderRendererSafePlainLines(output, contentWidth) : renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(output)), contentWidth);
+      const rendered = this.entry.status === "running"
+        ? renderRendererSafePlainLines(output, contentWidth)
+        : renderSubagentResultPresentationLines(presentSubagentResult(output), contentWidth);
       return thinkingLine === null ? rendered : [...renderRendererSafePlainLines(thinkingLine, contentWidth), "", ...rendered];
     }
     if (tab === "prompt") return this.promptPaneLines(contentWidth);
@@ -8193,6 +8253,10 @@ export function setGetMarkdownThemeForTests(getter: (() => MarkdownTheme) | null
 
 export function presentSubagentJsonSourceForTests(source: string): string {
   return presentSubagentJsonSource(source);
+}
+
+export function presentSubagentResultForTests(source: string): ResultPresentation {
+  return presentSubagentResult(source);
 }
 
 export function renderSubagentPresentationOverlayForTests(input?: unknown): string {

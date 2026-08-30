@@ -388,13 +388,25 @@ output body is always fenced as a renderer-safe text code block so Markdown
 surfaces preserve literal newlines, indentation, blank lines, YAML, logs, and
 other non-Markdown evidence instead of collapsing them into one paragraph.
 That `text` fence is the model-visible callback content and stays unchanged.
-Display-only, a `larva-subagent-result` custom message renderer pretty-prints
-valid in-memory `details.result_text` through Pi Markdown using the live
-`getMarkdownTheme()` at render time. The default collapsed view shows a bounded,
-multiline pretty JSON preview with an explicit omission marker when needed; the
-expanded view shows the complete bounded in-memory JSON. It never rewrites the
-stored message, never reads `full_output_artifact.path`, and returns Pi's default
-custom-message rendering when required callback details are absent or unusable.
+Display-only, the `larva-subagent-result` custom message renderer and Subagent
+Console Output pane share one deterministic result-presentation pipeline over the
+bounded in-memory `result_text`. Classification order is strict complete-value
+`JSON.parse`, explicit Markdown, then plain text. Valid JSON is pretty-printed with
+two-space indent in a `json` fence. Markdown is considered explicit when it has a
+recognized structure such as a heading, list, quote, table, complete fenced code
+block, link, emphasis, or inline code. Malformed JSON and all remaining output
+stay newline-preserving plain text. The pipeline does not infer YAML, XML, SQL,
+Shell, or similar languages from raw content. A complete untagged fence still
+renders as generic code; children must add an explicit language tag when
+language-specific highlighting is intended. Whitespace-only output gets a stable
+empty-result message.
+
+The pipeline resolves live `getMarkdownTheme()` styling at render time. Collapsed
+mode applies one 16-rendered-body-line budget to every format and appends
+`… [truncated]` when content exceeds it. Expanded mode shows the complete bounded
+in-memory result. Presentation never rewrites the stored message, never reads
+`full_output_artifact.path`, and returns Pi's default custom-message rendering
+when required callback details are absent or unusable.
 The renderer uses the same borderless full-width background surface as Pi tool
 results. It resolves a Pi background token on every render from the outer callback
 `status` / `execution_status` (`toolSuccessBg`, `toolErrorBg`, `toolPendingBg`, or
@@ -1389,14 +1401,15 @@ Minimum panes:
 1. Summary: status, persona, phase, task id, cancellation state, error summary.
 2. Prompt: full bounded initial prompt/task prompt.
 3. Output: live bounded assistant preview and final assistant output. Final
-   output is shown with newline-preserving formatting: intentionally formatted
-   Markdown may render as Markdown, while plain/YAML/log-like multiline evidence
-   is fenced/raw so line breaks and indentation remain readable. Valid JSON is
-   pretty-printed with two-space indent inside a `json` Markdown fence before
-   that existing layout so Pi Markdown can syntax-highlight keys and scalars.
-   Malformed JSON, ordinary text, and existing multiline Markdown keep their
-   current source and layout. Console rendering resolves `getMarkdownTheme()` at
-   render time rather than caching a static theme.
+   output uses the same deterministic result-presentation classifier as callback
+   rendering: strict complete-value JSON, explicit Markdown, plain text, or empty.
+   Valid JSON gets two-space indentation and `json` syntax highlighting; explicit
+   Markdown, including language-tagged fences, renders as Markdown; all remaining
+   output preserves literal lines as plain text. The Console does not infer YAML,
+   XML, SQL, Shell, or similar languages from raw content; a fence language tag
+   requests language-specific highlighting. Malformed JSON stays plain text, and
+   whitespace-only output gets a stable empty-result message. Console rendering
+   resolves `getMarkdownTheme()` at render time rather than caching a static theme.
 4. Timeline: bounded chronological events; no hidden thinking content. Timeline
    is optimized for human readability: natural-language assistant excerpts remain
    visible, tool execution rows show bounded argument summaries and status, and
@@ -1688,6 +1701,13 @@ Implementation is not complete until these gates pass:
     operator README, top-level link, and brief integration-design cross-reference
     agree on all three timeout layers, bounded wait guidance, no live extension,
     and reconciliation-before-resume rules.
+
+27. Presentation test/runtime smoke: execute the registered callback renderer and
+    Console Output pane for valid JSON, explicit Markdown, language-tagged fences,
+    plain text, malformed JSON, and empty output. Prove the shared collapsed
+    16-body-line budget and omission marker, complete expanded bounded content,
+    live theme refresh, ANSI reset/background restoration, no artifact reads, and
+    width safety at 40/80/120 plus narrower positive widths.
 
 ## Non-goals
 
