@@ -493,12 +493,62 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const largeExpandedLines = largeExpanded.render(80);
         const widths = [40, 80, 120].map((width) => {{
           const lines = expanded.render(width);
-          return {{ width, fit: lines.every((line) => line.length <= width) }};
+          return {{ width, fit: lines.every((line) => line.replace(/\\x1b\\[[0-9;]*m/g, "").length <= width) }};
         }});
         const compactWidths = [40, 80, 120].map((width) => {{
           const lines = smallCompact.render(width);
-          return {{ width, fit: lines.every((line) => line.length <= width) }};
+          return {{ width, fit: lines.every((line) => line.replace(/\\x1b\\[[0-9;]*m/g, "").length <= width) }};
         }});
+        const ansi = String.fromCharCode(27);
+        const ansiRe = new RegExp(ansi + "\\\\[[0-9;]*m", "g");
+        const stripAnsi = (line) => line.replace(ansiRe, "");
+        let backgroundTag = 24;
+        const frameFgTokens = [];
+        const frameBgTokens = [];
+        const frameTheme = {{
+          fg: (token, text) => {{
+            frameFgTokens.push(token);
+            return ansi + "[38;5;45m" + text + ansi + "[0m";
+          }},
+          bg: (token, text) => {{
+            frameBgTokens.push(token);
+            return ansi + "[48;5;" + backgroundTag + "m" + text + ansi + "[0m";
+          }},
+          bold: (text) => text,
+        }};
+        const framedDetails = {{ result_text: '{{"status":"failed","nested":{{"items":[1,true],"message":"frame value"}}}}', status: "success", execution_status: "success" }};
+        const framedExpanded = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: true, outputPad: 0 }}, frameTheme);
+        const framedCollapsed = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: false, outputPad: 0 }}, frameTheme);
+        const framedLines = framedExpanded.render(80);
+        const framedPlain = framedLines.map(stripAnsi);
+        const framedWidths = [40, 80, 120].map((width) => {{
+          const lines = framedCollapsed.render(width);
+          return {{ width, widths: lines.map((line) => stripAnsi(line).length), lineCount: lines.length }};
+        }});
+        const narrowFrameWidths = [1, 2, 3, 4].map((width) => {{
+          const lines = framedCollapsed.render(width);
+          return {{ width, widths: lines.map((line) => stripAnsi(line).length), endsReset: lines.every((line) => line.endsWith(ansi + "[0m")) }};
+        }});
+        const rowHasBackgroundThroughResets = (line, expectedTag) => {{
+          const sgr = new RegExp(ansi + "\\\\[([0-9;]*)m", "g");
+          let background = false;
+          let index = 0;
+          for (const match of line.matchAll(sgr)) {{
+            if (line.slice(index, match.index).length > 0 && !background) return false;
+            const codes = match[1] === "" ? [0] : match[1].split(";").map((code) => Number(code));
+            if (codes.includes(0)) background = false;
+            for (let codeIndex = 0; codeIndex < codes.length - 2; codeIndex += 1) {{
+              if (codes[codeIndex] === 48 && codes[codeIndex + 1] === 5) background = codes[codeIndex + 2] === expectedTag;
+            }}
+            index = match.index + match[0].length;
+          }}
+          return line.slice(index).length === 0 || background;
+        }};
+        const firstThemeBackground = framedCollapsed.render(80).join("\\n");
+        backgroundTag = 25;
+        const secondThemeBackground = framedCollapsed.render(80).join("\\n");
+        const malformedFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: '{{"bad":true,}}', status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 0 }}, frameTheme).render(80).map(stripAnsi);
+        const plainFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: "plain fallback", status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 0 }}, frameTheme).render(80).map(stripAnsi);
         console.log(JSON.stringify({{
           registered: renderers.has("larva-subagent-result"),
           helper: {{
@@ -524,6 +574,17 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
           largeExpandedText: largeExpandedLines.join("\\n"),
           widths,
           compactWidths,
+          framedPlain,
+          framedRowsHaveBackground: framedLines.every((line) => rowHasBackgroundThroughResets(line, 24)),
+          framedRowsEndReset: framedLines.every((line) => line.endsWith(ansi + "[0m")),
+          framedWidths,
+          narrowFrameWidths,
+          frameFgTokens,
+          frameBgTokens,
+          firstThemeBackground,
+          secondThemeBackground,
+          malformedFrame,
+          plainFrame,
         }}));
         """,
         timeout=8.0,
@@ -548,17 +609,36 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
     assert '"status": "failed"' in expanded_text
     assert "[error]" not in expanded_text.split("\n", 1)[0]
     assert "```json" in expanded_text
-    assert payload["compactText"].startswith("[success]success larva-subagent-result")
+    assert "[success]success larva-subagent-result" in payload["compactText"]
     small_compact_text = payload["smallCompactText"]
     assert '"status": "child_payload_ok"' in small_compact_text
     assert '"items": [' in small_compact_text
     assert '"message": "测试"' in small_compact_text
     assert '{"status":"child_payload_ok"' not in small_compact_text
-    assert payload["largeCompactLineCount"] <= 17
+    assert payload["largeCompactLineCount"] <= 19
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert all(item["fit"] is True for item in payload["widths"])
     assert all(item["fit"] is True for item in payload["compactWidths"])
+    framed_plain = payload["framedPlain"]
+    assert framed_plain[0].startswith("┌") and framed_plain[0].endswith("┐")
+    assert framed_plain[-1].startswith("└") and framed_plain[-1].endswith("┘")
+    assert all(len(line) == 80 for line in framed_plain)
+    assert all(line.startswith("│ ") and line.endswith(" │") for line in framed_plain[1:-1])
+    assert "success larva-subagent-result" in framed_plain[1]
+    assert '"status": "failed"' in "\n".join(framed_plain)
+    assert payload["framedRowsHaveBackground"] is True
+    assert payload["framedRowsEndReset"] is True
+    assert all(all(item_width == item["width"] for item_width in item["widths"]) for item in payload["framedWidths"])
+    assert all(all(item_width <= item["width"] for item_width in item["widths"]) for item in payload["narrowFrameWidths"])
+    assert all(item["endsReset"] is True for item in payload["narrowFrameWidths"])
+    assert "success" in payload["frameFgTokens"]
+    assert "error" not in payload["frameFgTokens"]
+    assert "toolSuccessBg" in payload["frameBgTokens"]
+    assert "[48;5;24m" in payload["firstThemeBackground"]
+    assert "[48;5;25m" in payload["secondThemeBackground"]
+    assert payload["malformedFrame"][0].startswith("┌")
+    assert payload["plainFrame"][0].startswith("┌")
 
 
 def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:
@@ -4802,8 +4882,29 @@ def _write_pi_tui_runtime_mock(tmp_path: Path) -> None:
             }
             export class SelectList {}
             export function matchesKey() { return false; }
-            export function truncateToWidth(value, width) { return String(value).slice(0, Math.max(0, width)); }
-            export function visibleWidth(value) { return String(value).length; }
+            const ansi = String.fromCharCode(27);
+            const ansiSgr = new RegExp(ansi + "\\\\[[0-9;]*m", "g");
+            const stripAnsi = (value) => String(value).replace(ansiSgr, "");
+            export function truncateToWidth(value, width) {
+              const limit = Math.max(0, Number(width) || 0);
+              const raw = String(value);
+              let output = "";
+              let visible = 0;
+              let last = 0;
+              for (const match of raw.matchAll(ansiSgr)) {
+                if (visible < limit) {
+                  const before = raw.slice(last, match.index);
+                  const take = Math.max(0, limit - visible);
+                  output += before.slice(0, take);
+                  visible += Math.min(before.length, take);
+                  if (visible < limit) output += match[0];
+                }
+                last = match.index + match[0].length;
+              }
+              if (visible < limit) output += raw.slice(last, last + Math.max(0, limit - visible));
+              return output;
+            }
+            export function visibleWidth(value) { return stripAnsi(value).length; }
             export function wrapTextWithAnsi(value) { return [String(value)]; }
             """
         ),

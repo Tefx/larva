@@ -1500,19 +1500,70 @@ function collapsedSubagentJsonPreviewLines(source: string, contentWidth: number)
   ];
 }
 
+type SubagentCallbackTheme = {
+  fg?: (token: string, text: string) => string;
+  bg?: (token: string, text: string) => string;
+  bold?: (text: string) => string;
+};
+
+const SUBAGENT_RESULT_FRAME_SIDE_PADDING = 1;
+
+function subagentResultFrameBackgroundToken(status: string): string {
+  if (status === "success") return "toolSuccessBg";
+  if (status === "failed") return "toolErrorBg";
+  if (status === "cancelled") return "toolPendingBg";
+  return "customMessageBg";
+}
+
+function subagentResultThemeFg(theme: SubagentCallbackTheme, token: string, text: string): string {
+  try {
+    return theme.fg?.(token, text) ?? text;
+  } catch {
+    return text;
+  }
+}
+
+function subagentResultThemeBg(theme: SubagentCallbackTheme, status: string, text: string): string {
+  try {
+    return theme.bg?.(subagentResultFrameBackgroundToken(status), text) ?? `${SELECTOR_SURFACE_BG}${text}${ANSI_RESET}`;
+  } catch {
+    return `${SELECTOR_SURFACE_BG}${text}${ANSI_RESET}`;
+  }
+}
+
+function subagentResultFrameSurface(theme: SubagentCallbackTheme, status: string, text: string): string {
+  return `${text.split(ANSI_RESET_RE).map((segment) => subagentResultThemeBg(theme, status, segment)).join("")}${ANSI_RESET}`;
+}
+
+function subagentResultFrameBorder(width: number, left: string, right: string): string {
+  if (width <= 1) return left;
+  if (width === 2) return `${left}${right}`;
+  return `${left}${"─".repeat(Math.max(0, width - 2))}${right}`;
+}
+
+function subagentResultFrameContent(text: string, width: number): string {
+  if (width <= 1) return "│";
+  if (width === 2) return "││";
+  if (width === 3) return "│ │";
+  const contentWidth = Math.max(0, width - 2 - SUBAGENT_RESULT_FRAME_SIDE_PADDING * 2);
+  const clipped = contentWidth > 0 ? truncateToWidth(text, contentWidth, "") : "";
+  const trailing = " ".repeat(Math.max(0, contentWidth - visibleWidth(clipped)));
+  return `│${" ".repeat(SUBAGENT_RESULT_FRAME_SIDE_PADDING)}${clipped}${trailing}${" ".repeat(SUBAGENT_RESULT_FRAME_SIDE_PADDING)}│`;
+}
+
 class LarvaSubagentResultMessageView implements PiRenderableComponent {
   resultText: string;
   executionStatus: string;
   expanded: boolean;
   outputPad: number;
-  theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string };
+  theme: SubagentCallbackTheme;
 
   constructor(
     resultText: string,
     executionStatus: string,
     expanded: boolean,
     outputPad: number,
-    theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
+    theme: SubagentCallbackTheme,
   ) {
     this.resultText = resultText;
     this.executionStatus = executionStatus;
@@ -1525,27 +1576,34 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
 
   render(width: number): string[] {
     const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+    const frameOffset = Math.min(Math.max(0, this.outputPad), Math.max(0, contentWidth - 1));
+    const frameWidth = Math.max(1, contentWidth - frameOffset);
+    const bodyWidth = Math.max(1, frameWidth - 2 - SUBAGENT_RESULT_FRAME_SIDE_PADDING * 2);
     const color = executionStatusHeaderColor(this.executionStatus);
-    const statusLabel = this.theme.fg?.(color, this.executionStatus) ?? this.executionStatus;
-    const header = truncateToWidth(`${statusLabel} larva-subagent-result`, contentWidth, "");
-    const pad = Math.max(0, this.outputPad);
-    const bodyWidth = Math.max(1, contentWidth - pad * 2);
+    const statusLabel = subagentResultThemeFg(this.theme, color, this.executionStatus);
+    const header = `${statusLabel} larva-subagent-result`;
+    let body: string[];
     if (!this.expanded) {
       const jsonPreview = collapsedSubagentJsonPreviewLines(this.resultText, bodyWidth);
-      if (jsonPreview === null) return [header, truncateToWidth(compactSubagentResultPreview(this.resultText, contentWidth), contentWidth, "")];
-      const indent = " ".repeat(pad);
-      return [header, ...jsonPreview.map((line) => truncateToWidth(`${indent}${line}`, contentWidth, ""))];
+      body = jsonPreview === null ? [compactSubagentResultPreview(this.resultText, bodyWidth)] : jsonPreview;
+    } else {
+      body = renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(this.resultText)), bodyWidth, liveMarkdownTheme());
     }
-    const body = renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(this.resultText)), bodyWidth, liveMarkdownTheme());
-    const indent = " ".repeat(pad);
-    return [header, ...body.map((line) => truncateToWidth(`${indent}${line}`, contentWidth, ""))];
+    const frame = [
+      subagentResultFrameBorder(frameWidth, "┌", "┐"),
+      subagentResultFrameContent(header, frameWidth),
+      ...body.map((line) => subagentResultFrameContent(line, frameWidth)),
+      subagentResultFrameBorder(frameWidth, "└", "┘"),
+    ];
+    const prefix = " ".repeat(frameOffset);
+    return frame.map((line) => `${prefix}${subagentResultFrameSurface(this.theme, this.executionStatus, line)}`);
   }
 }
 
 function renderLarvaSubagentResultMessage(
   message: SubagentCallbackMessage,
   options: { expanded: boolean; outputPad: number },
-  theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
+  theme: SubagentCallbackTheme,
 ): PiRenderableComponent | undefined {
   const details = larvaSubagentCallbackDetailsForDisplay(message);
   if (details === null) return undefined;

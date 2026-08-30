@@ -2235,9 +2235,9 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
           highlighter,
           compactKeyStyle: lastAnsi(compactHighlighted, "status"),
           compactScalarStyle: lastAnsi(compactHighlighted, "child_payload_ok"),
-          expandedHeader: expanded[0],
+          expandedHeader: expanded.map(stripAnsi).find((line) => line.includes("larva-subagent-result")) ?? null,
           expandedHasJsonFence: expanded.some((line) => stripAnsi(line).includes("```json") || stripAnsi(line).includes("status")),
-          compactHeader: compact[0],
+          compactHeader: compact.map(stripAnsi).find((line) => line.includes("larva-subagent-result")) ?? null,
           smallCompactText: smallCompact.map(stripAnsi).join("\n"),
           largeCompactText: largeCompact.map(stripAnsi).join("\n"),
           largeCompactLineCount: largeCompact.length,
@@ -2260,14 +2260,14 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
     assert payload["collapsedThemeChanged"] is True
     if payload["highlighter"]["loaded"]:
         assert payload["compactKeyStyle"] != payload["compactScalarStyle"]
-    assert payload["expandedHeader"].startswith("[success]success")
-    assert payload["compactHeader"].startswith("[success]success")
+    assert "[success]success" in payload["expandedHeader"]
+    assert "[success]success" in payload["compactHeader"]
     small_compact_text = payload["smallCompactText"]
     assert '"status": "child_payload_ok"' in small_compact_text
     assert '"items": [' in small_compact_text
     assert '"message": "测试"' in small_compact_text
     assert '{"status":"child_payload_ok"' not in small_compact_text
-    assert payload["largeCompactLineCount"] <= 17
+    assert payload["largeCompactLineCount"] <= 19
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert all(item["fit"] is True for item in payload["compactByWidth"])

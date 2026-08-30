@@ -1803,6 +1803,69 @@ async function subagentJsonPresentationProof(evidence) {
     content: "```text\\nkeep-model-visible\\n```",
     details: callbackDetails,
   }, { expanded: false, outputPad: 0 }, theme).render(80);
+  const ansi = String.fromCharCode(27);
+  let frameBackgroundTag = 24;
+  const frameFgTokens = [];
+  const frameBgTokens = [];
+  const frameTheme = {
+    fg: (token, text) => {
+      frameFgTokens.push(token);
+      return `${ansi}[38;5;45m${text}${ansi}[0m`;
+    },
+    bg: (token, text) => {
+      frameBgTokens.push(token);
+      return `${ansi}[48;5;${frameBackgroundTag}m${text}${ansi}[0m`;
+    },
+    bold: (text) => text,
+  };
+  const framedExpandedView = renderer({
+    customType: "larva-subagent-result",
+    content: "```text\\nkeep-model-visible\\n```",
+    details: callbackDetails,
+  }, { expanded: true, outputPad: 0 }, frameTheme);
+  const framedCollapsedView = renderer({
+    customType: "larva-subagent-result",
+    content: "```text\\nkeep-model-visible\\n```",
+    details: callbackDetails,
+  }, { expanded: false, outputPad: 0 }, frameTheme);
+  const framedExpanded = framedExpandedView.render(80);
+  const framedPlain = framedExpanded.map(stripAnsi);
+  const rowHasFrameBackground = (line, expectedTag) => {
+    const sgr = new RegExp(`${ansi}\\[([0-9;]*)m`, "g");
+    let background = false;
+    let index = 0;
+    for (const match of line.matchAll(sgr)) {
+      if (line.slice(index, match.index).length > 0 && !background) return false;
+      const codes = match[1] === "" ? [0] : match[1].split(";").map((code) => Number(code));
+      if (codes.includes(0)) background = false;
+      for (let codeIndex = 0; codeIndex < codes.length - 2; codeIndex += 1) {
+        if (codes[codeIndex] === 48 && codes[codeIndex + 1] === 5) background = codes[codeIndex + 2] === expectedTag;
+      }
+      index = match.index + match[0].length;
+    }
+    return line.slice(index).length === 0 || background;
+  };
+  const framedByWidth = [40, 80, 120].map((width) => {
+    const lines = framedCollapsedView.render(width);
+    return { width, widths: lines.map((line) => piTui.visibleWidth(line)) };
+  });
+  const framedNarrowWidths = [1, 2, 3, 4].map((width) => {
+    const lines = framedCollapsedView.render(width);
+    return { width, widths: lines.map((line) => piTui.visibleWidth(line)), endsReset: lines.every((line) => line.endsWith(`${ansi}[0m`)) };
+  });
+  const frameThemeA = framedCollapsedView.render(80).join("\n");
+  frameBackgroundTag = 25;
+  const frameThemeB = framedCollapsedView.render(80).join("\n");
+  const malformedFrame = renderer({
+    customType: "larva-subagent-result",
+    content: "keep-model-visible",
+    details: { result_text: malformed, status: "success", execution_status: "success" },
+  }, { expanded: false, outputPad: 0 }, frameTheme).render(80).map(stripAnsi);
+  const plainFrame = renderer({
+    customType: "larva-subagent-result",
+    content: "keep-model-visible",
+    details: { result_text: "plain fallback", status: "success", execution_status: "success" },
+  }, { expanded: false, outputPad: 0 }, frameTheme).render(80).map(stripAnsi);
   const largeDetails = { result_text: largeJson, status: "success", execution_status: "success" };
   const largeCollapsed = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: false, outputPad: 0 }, theme).render(80);
   const largeExpanded = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: true, outputPad: 0 }, theme).render(80);
@@ -1854,7 +1917,7 @@ async function subagentJsonPresentationProof(evidence) {
     highlighterLoaded: highlighter.loaded,
     highlighterDifferentiated: highlighter.differentiated,
     missingDetailsDefault: missing === undefined,
-    outerSuccessNotInnerFailed: innerFailed[0].includes("[success]success") && !innerFailed[0].includes("[error]"),
+    outerSuccessNotInnerFailed: innerFailed.some((line) => line.includes("[success]success")) && !innerFailed.some((line) => line.includes("[error]")),
     expandedUsesLiveMarkdown: expanded.some((line) => stripAnsi(line).includes("nested") || stripAnsi(line).includes("child_payload_ok")),
     collapsedPrettyMultiline: collapsed.length > 3 && collapsed.some((line) => stripAnsi(line).includes('"items": [')) && collapsed.some((line) => stripAnsi(line).includes('"message": "测试"')),
     collapsedAvoidsMinifiedJson: !renderedPlainText(collapsed).includes('{"status":"child_payload_ok"'),
@@ -1862,8 +1925,19 @@ async function subagentJsonPresentationProof(evidence) {
     collapsedWidthSafe: collapsedByWidth.every((item) => item.fit),
     collapsedKeyScalarStyles: highlighter.loaded && lastAnsi(collapsedHighlighted, "status") !== lastAnsi(collapsedHighlighted, "child_payload_ok"),
     collapsedNoArtifactAccess: artifactReads === 0,
-    largeCollapsedBounded: largeCollapsed.length <= 17 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
+    largeCollapsedBounded: largeCollapsed.length <= 19 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
     largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
+    frameCorners: framedPlain[0]?.startsWith("┌") === true && framedPlain[0]?.endsWith("┐") === true && framedPlain.at(-1)?.startsWith("└") === true && framedPlain.at(-1)?.endsWith("┘") === true,
+    frameRectangular: framedPlain.every((line) => piTui.visibleWidth(line) === 80),
+    frameStablePadding: framedPlain.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │")),
+    frameBackgroundThroughResets: framedExpanded.every((line) => rowHasFrameBackground(line, 24)),
+    frameRowsEndReset: framedExpanded.every((line) => line.endsWith(`${ansi}[0m`)),
+    frameSentinelUnstyled: framedExpanded.every((line) => lastAnsi(`${line}SENTINEL`, "SENTINEL") === `${ansi}[0m`),
+    frameWidthsSafe: framedByWidth.every((item) => item.widths.every((itemWidth) => itemWidth === item.width)),
+    frameNarrowSafe: framedNarrowWidths.every((item) => item.widths.every((itemWidth) => itemWidth <= item.width) && item.endsReset),
+    frameThemeRefresh: frameThemeA.includes(`${ansi}[48;5;24m`) && frameThemeB.includes(`${ansi}[48;5;25m`),
+    frameOuterStatusStyling: frameFgTokens.includes("success") && !frameFgTokens.includes("error") && frameBgTokens.includes("toolSuccessBg"),
+    frameFallbacks: malformedFrame[0]?.startsWith("┌") === true && plainFrame[0]?.startsWith("┌") === true,
     installedObservationRecorded: installedRender.attempted === true || typeof version.stdout === "string",
   };
   const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);
@@ -1878,6 +1952,14 @@ async function subagentJsonPresentationProof(evidence) {
     collapsedText: renderedPlainText(collapsed),
     collapsedByWidth,
     collapsedTheme: { first: collapsedThemeA, second: collapsedThemeB },
+    frame: {
+      plain: framedPlain,
+      widths: framedByWidth,
+      narrowWidths: framedNarrowWidths,
+      fgTokens: frameFgTokens,
+      bgTokens: frameBgTokens,
+      theme: { first: frameThemeA, second: frameThemeB },
+    },
     largeCollapsedLineCount: largeCollapsed.length,
     largeCollapsedText: renderedPlainText(largeCollapsed),
     largeExpandedText: renderedPlainText(largeExpanded),
