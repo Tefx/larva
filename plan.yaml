@@ -143369,13 +143369,13 @@ phases:
       clean status. Zero repository/GitHub/PyPI/Pi/global-tool/unrelated-cache effect.'
 - id: pi_subagent_json_rendering_20260830
   name: Pi Subagent JSON Presentation 2026-08-30
-  status: in_progress
+  status: done
   depends_on:
   - release_0_6_1_runtime_20260809
   steps:
   - id: pi-subagent-json-rendering.implement
     name: Render subagent JSON with display-only Pi Markdown highlighting
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143567,3 +143567,50 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-08-30T11:42:33.799840Z'
+    done_at: '2026-08-30T13:03:17.055250+00:00'
+    evidence: 'PASS. Integrated candidate `d1e3fe33d8ed828d0d85616c25e68c9fc7afb496`
+      by fast-forward onto adapted immutable base `63ea27a750bb1489b737ea4fe3c73467ba185ec5`;
+      exact integrated tree `d70d9788d1da8139dfe29d95d8949422a856011b`. The initial
+      six-file candidate was preserved as admitted source bundle commit `71dff8f07172f5421f32b2779d6b90a3ecbeb493`,
+      parent `9592b16aeabe16bb4bfb9c738ade66be6937a6a5`, patch `sha256:0931be5f39ebd3f018065b0d22baf1eab2b177a7b76a800c03460be3d3305c03`;
+      the Plan was adapted in place after direct base evidence showed stale installed-Pi
+      0.84.1 assertions and a 0.84.4 AgentSession fixture mismatch. Adapted dispatch
+      `/tmp/larva-vectl-artifacts/pi-subagent-json-rendering-implement-63ea27a7/worker-dispatch.json`
+      was production-Gate admitted as canonical `sha256:0cc5364fc99fa7af218c7e002280be5238fbcd298450710aaaf7e46d5222d699`
+      for claim `claim:a77ad0069d5dda9aa558fb46a4233d582bf8976b10dc4d1f28a9f61f8ce9f419`.
+
+
+      Exact worker receipt `/tmp/larva-vectl-artifacts/pi-subagent-json-rendering-implement-63ea27a7/worker-receipt.json`
+      is `vectl.worker.execution.v2`, status PASS, claims JSON-DISPLAY-01..04, unresolved
+      `[]`, and no acceptance authorization; both child and parent structural lint
+      were CONFORMANT with canonical receipt SHA `sha256:164a095a0443bc4a393f593d9298faa0bc7001b8c46f0a8e2002e0ddf448ba72`.
+      Changed paths are exactly: `contrib/pi-extension/larva.ts`; `contrib/pi-extension/README.md`;
+      `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`; `scripts/pi-extension-runtime-smoke.mjs`;
+      `tests/shell/test_pi_extension_contract.py`; `tests/shell/test_pi_extension_real_runtime.py`;
+      `tests/shell/test_pi_extension_subagent_ux.py`.
+
+
+      The extension now uses one strict `JSON.parse`/two-space `JSON.stringify` presentation
+      helper for callback and Console display, registers a display-only `larva-subagent-result`
+      renderer, resolves live `getMarkdownTheme()` rendering, preserves malformed/plain/Markdown
+      fallback, keeps outer execution status separate from inner payload status, and
+      performs no artifact read. Existing callback content/details, model-visible
+      `text` fence, 6,000-character bounds, artifact manifests, lifecycle, and delivery
+      contracts remain covered unchanged. Behavioral runtime checks exercise 40/80/120-column
+      visible widths, theme refresh, real JSON key/scalar syntax styles, missing-details
+      fallback, Console reuse, callback immutability, and installed Pi 0.84.4 identity/callback
+      delivery.
+
+
+      Independent final Gate `/tmp/larva-vectl-artifacts/pi-subagent-json-rendering-implement-63ea27a7/final-gate-verdict.json`
+      is CONFORMANT, file SHA-256 `8b5322ae6161ecb9be79b99d4879909b67dde8779649781716bc4d3447494ee0`,
+      clean candidate required/observed, no undeclared path, all claims checked, and
+      all six declared checks green: focused contract/UX pytest; JSON presentation
+      runtime smoke; every Pi extension Node regression; full repository pytest; `uvx
+      invar-tools guard --all`; and `git diff --check`. Repository-pinned package
+      manifest hash `42c8861d2e7dcd327d5e091d52bc53769a241ea6469aac687e7bbe9ca5cd2279`
+      and package-lock hash `a32e6fb6f90c2a861f086337e19b011ea38f8a6ae0cb21974041c61d5087a1cc`
+      were byte-identical before/after. Installed Pi was observed read-only at `/opt/homebrew/bin/pi`,
+      package 0.84.4 with `dist/bundle/cli.js`; no installed package, dependency,
+      credential, provider, user configuration, or external service effect. Residual
+      risk: none.'
