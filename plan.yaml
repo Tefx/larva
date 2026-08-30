@@ -143428,6 +143428,13 @@ phases:
       values receive semantic ANSI styles; without a highlighter, the fenced content
       remains readable and width-safe.
 
+      - Reconcile the developer runtime harness with the witnessed installed Pi 0.84.4
+      surface. Replace stale exact 0.84.1 identity expectations with truthful 0.84.4
+      binary/package/CLI evidence and adapt the synthetic real `AgentSession.sendCustomMessage`
+      callback fixture only as required by 0.84.4 behavior. Preserve the callback-delivery
+      semantic assertions; do not skip, xfail, normalize, fake, or downgrade observed
+      identity or delivery evidence.
+
       - Add meaningful behavioral tests and synchronized operator/reference documentation.
       Tests must execute renderer registration and rendering rather than assert source
       tokens. Add no dependency and do not change the repository-pinned Pi 0.84.1
@@ -143436,14 +143443,14 @@ phases:
 
       Boundary:
 
-      - Owner: `frontend-engineer`, whose inspected roster description covers TypeScript/JavaScript
-      UI implementation and advertises Vectl Worker-v2 activation. The work is one
-      reversible Pi-extension presentation transaction with the same owner, target,
-      evidence consumer, and rollback unit; no independent verification node adds
-      distinct information.
+      - Owner: `frontend-engineer`, whose resolved persona definition covers TypeScript/JavaScript
+      UI implementation and contains the exact Worker-v2 activation protocol. The
+      work is one reversible Pi-extension presentation and developer-harness compatibility
+      transaction with the same owner, target, evidence consumer, and rollback unit;
+      no independent verification node adds distinct information.
 
-      - Repository mutation is limited to the Pi extension, the two named developer
-      test surfaces, the existing runtime-smoke harness when needed for component-level
+      - Repository mutation is limited to the Pi extension, the three named developer
+      test surfaces, the existing runtime-smoke harness when needed for component/installed-runtime
       proof, and the two named Pi operator/reference docs. `plan.yaml`, shared contracts,
       Python product source, package manifests/locks, and installed Pi/TUI packages
       are protected.
@@ -143458,11 +143465,20 @@ phases:
 
       - Witnessed compatibility basis: the repository pins `@earendil-works/pi-coding-agent`
       0.84.1 and direct `@earendil-works/pi-tui` 0.78.0, while the current installed
-      Pi runtime is 0.84.4. `registerMessageRenderer`, Pi `Markdown`, and `getMarkdownTheme()`
-      are available across the witnessed integration surfaces. Required clean-checkout
-      checks resolve only tracked manifests/locks; completion also records a supplemental
-      read-only rendering observation against the current installed Pi 0.84.4 without
-      making that ambient installation a dependency or mutation target.
+      Pi runtime is 0.84.4 at `/opt/homebrew/bin/pi` with package `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent`.
+      `registerMessageRenderer`, Pi `Markdown`, and `getMarkdownTheme()` are available
+      across the witnessed integration surfaces. Required clean-checkout checks resolve
+      tracked manifests/locks; the installed-runtime developer tests additionally
+      record the current read-only 0.84.4 observation without making that ambient
+      installation a mutation target.
+
+      - Plan-adaptation evidence: on immutable base `9592b16aeabe16bb4bfb9c738ade66be6937a6a5`,
+      the real `AgentSession.sendCustomMessage` fixture already returned `callbackDelivery:
+      null`, and the installed-runtime tests contained exact 0.84.1 assertions while
+      the observed binary/package were 0.84.4. The six-file JSON-presentation candidate
+      did not cause those failures. The same owner must repair this underdeclared
+      developer-harness baseline inside the current step; no new Plan node or installed-package
+      change is authorized.
 
       - Developer proof covers compact object/array/top-level JSON values; two-space
       indentation and `json` fencing; malformed/trailing-comma/comment/plain-text
@@ -143470,14 +143486,16 @@ phases:
       outer success/failure versus inner payload `status`; unchanged model-visible
       callback content/details, text fence, 6,000-character bounds, and artifact behavior;
       Console reuse; 40/80/120-column visible-width bounds; live theme refresh; highlighted
-      key/scalar style differentiation when the real Pi highlighter is loaded; and
-      absence of renderer I/O/artifact reads.
+      key/scalar style differentiation when the real Pi highlighter is loaded; real
+      0.84.4 callback delivery and identity evidence; and absence of renderer I/O/artifact
+      reads.
 
-      - Completion requires every declared check green, exact allowed changed paths,
-      JSON-DISPLAY-01 through JSON-DISPLAY-04 claimed, package manifest/lock byte
-      equality, a clean worker receipt, and empty unresolved items. Static source-token
-      assertions, prompt/prose checks, self-reported PASS strings, or changing callback
-      content to a `json` fence are insufficient.
+      - Completion requires every declared check green, changed paths contained by
+      the expanded expected scope, JSON-DISPLAY-01 through JSON-DISPLAY-04 claimed,
+      package manifest/lock byte equality, a clean worker receipt, and empty unresolved
+      items. Static source-token assertions, prompt/prose checks, self-reported PASS
+      strings, changing callback content to a `json` fence, test deselection, or identity
+      normalization are insufficient.
 
 
       Recovery:
@@ -143487,28 +143505,29 @@ phases:
       Do not repair malformed JSON, guess from prose, scan session JSONL, or dereference
       artifacts.
 
-      - Ordinary implementation, theme, width, or test failure stays on this step.
-      Preserve prior evidence, revert only the candidate repository commit if necessary,
-      and stop for reconciliation on package-lock drift, installed-runtime mutation,
-      callback contract drift, unknown external state, or changes outside the admitted
-      scope.
+      - Ordinary implementation, theme, width, callback-fixture, identity-parity,
+      or test failure stays on this step. Preserve prior evidence, revert only the
+      candidate repository commit if necessary, and stop for reconciliation on package-lock
+      drift, installed-runtime mutation, callback contract drift, unknown external
+      state, or changes outside the admitted scope.
 
 
       <vectl_step_policy>
 
       {"schema_version":"vectl.step.policy.v2","step_id":"pi-subagent-json-rendering.implement","risk_tier":"R1","risk_reasons":["The
-      change is a reversible adapter-local TypeScript presentation fix with no model-visible
-      contract, shared-contract, credential, external-service, package, or persistent-state
-      effect.","Focused component/runtime seams can directly observe strict fallback,
-      callback immutability, theme use, syntax styles, and width bounds; an independent
-      observer would not add distinct information."],"primary_outcome":"JSON-DISPLAY-01","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":["tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+      change is a reversible adapter-local TypeScript presentation and developer-harness
+      compatibility fix with no model-visible contract, shared-contract, credential,
+      external-service, package, or persistent-state effect.","Focused component and
+      real installed-runtime seams directly observe strict fallback, callback immutability/delivery,
+      theme use, syntax styles, width bounds, and exact runtime identity; an independent
+      observer would not add distinct information."],"primary_outcome":"JSON-DISPLAY-01","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":["tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","tests/shell/test_pi_extension_real_runtime.py","scripts/pi-extension-runtime-smoke.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
 
       </vectl_step_policy>
 
 
       <intent_closure_contract>
 
-      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"blocked_paths":["plan.yaml","contracts/**","src/**","pyproject.toml","uv.lock","package.json","package-lock.json","contrib/pi-extension/package.json","contrib/pi-extension/package-lock.json"]},"claims":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03","JSON-DISPLAY-04"],"checks":[{"id":"json_presentation_targeted","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03","JSON-DISPLAY-04"]},{"id":"json_presentation_runtime","run":{"command":["bash","-lc","npm
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","tests/shell/test_pi_extension_real_runtime.py","scripts/pi-extension-runtime-smoke.mjs"],"blocked_paths":["plan.yaml","contracts/**","src/**","pyproject.toml","uv.lock","package.json","package-lock.json","contrib/pi-extension/package.json","contrib/pi-extension/package-lock.json"]},"claims":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03","JSON-DISPLAY-04"],"checks":[{"id":"json_presentation_targeted","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03","JSON-DISPLAY-04"]},{"id":"json_presentation_runtime","run":{"command":["bash","-lc","npm
       --prefix contrib/pi-extension ci --ignore-scripts && node scripts/pi-extension-runtime-smoke.mjs
       --scenario subagent-json-presentation"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03"]},{"id":"pi_extension_node_regressions","run":{"command":["bash","-lc","npm
       --prefix contrib/pi-extension ci --ignore-scripts && for f in contrib/pi-extension/test-*.mjs;
@@ -143516,19 +143535,22 @@ phases:
 
       </intent_closure_contract>'
     verification: Require one admitted frontend-engineer worker-v2 receipt bound to
-      the exact dispatch, immutable clean main base, current Plan SHA, and exact scope.
-      It must prove strict valid/malformed JSON behavior, one shared helper across
-      callback and Console, real component rendering at widths 40/80/120, live-theme
-      JSON styles, outer/inner status separation, byte-identical callback transport
-      and package locks, the supplemental installed Pi 0.84.4 observation, every declared
-      check green, no external effects, and empty unresolved.
-    evidence_template: Record exact base/claim/dispatch/commit/changed paths; package.json
-      and package-lock.json before/after hashes; focused/runtime/Node/full-pytest/Invar/diff
-      command exits; rendered visible-width maxima at 40/80/120; valid JSON pretty
-      output and malformed byte-equality observations; outer-vs-inner status observation;
-      callback content/details before/after hashes including text fence, 6,000-character
-      and artifact cases; live-theme style differentiation; current installed Pi version/path
-      observation; no renderer I/O or artifact read; unresolved [].
+      the exact adapted dispatch, immutable clean main base, current Plan SHA, preserved
+      one-parent source bundle, and expanded expected scope. It must prove strict
+      valid/malformed JSON behavior, one shared helper across callback and Console,
+      real component rendering at widths 40/80/120, live-theme JSON styles, outer/inner
+      status separation, byte-identical callback transport and package locks, truthful
+      installed Pi 0.84.4 identity/callback delivery, every declared check green,
+      no external effects, and empty unresolved.
+    evidence_template: Record exact adapted base/claim/dispatch/source-bundle/candidate
+      commit/changed paths; package.json and package-lock.json before/after hashes;
+      focused/runtime/Node/full-pytest/Invar/diff command exits; rendered visible-width
+      maxima at 40/80/120; valid JSON pretty output and malformed byte-equality observations;
+      outer-vs-inner status observation; callback content/details before/after hashes
+      including text fence, 6,000-character and artifact cases; live-theme style differentiation;
+      exact installed Pi 0.84.4 binary/package/CLI and real callback-delivery observations;
+      baseline-vs-candidate reconciliation; no renderer I/O or artifact read; unresolved
+      [].
     refs:
     - AGENTS.md
     - contrib/pi-extension/larva.ts
@@ -143541,6 +143563,7 @@ phases:
     - contrib/pi-extension/package-lock.json
     - pyproject.toml
     - INVAR.md
+    - tests/shell/test_pi_extension_real_runtime.py
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-08-30T11:42:33.799840Z'
