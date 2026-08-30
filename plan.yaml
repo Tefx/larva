@@ -144077,7 +144077,7 @@ phases:
       clean uvx MCP smoke resolved larva 0.6.2, mcp 1.29.1, and exact 13-tool surface.'
   - id: release-0-6-2-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.2
-    status: pending
+    status: claimed
     description: Push current main, create immutable GitHub Release/tag v0.6.2 at
       the exact product commit, and observe the release-triggered Trusted Publishing
       workflow and public PyPI artifacts.
@@ -144092,6 +144092,8 @@ phases:
     depends_on:
     - package-version-0-6-2.bump
     agent: general
+    claimed_by: general
+    claimed_at: '2026-08-30T18:11:11.240737Z'
   - id: release-0-6-2-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.2
     status: pending
