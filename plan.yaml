@@ -144041,7 +144041,7 @@ phases:
       network-auth, external-service, or device effect. Residual risk: none.'
 - id: release_0_6_2_runtime_20260830
   name: Larva 0.6.2 Version, Release, and Local uvx Activation
-  status: in_progress
+  status: done
   gate: Close only after 0.6.2 metadata, tag/release, trusted PyPI publication, and
     public-PyPI uvx activation are independently evidenced.
   context: User-authorized patch release of the completed Pi subagent result-presentation
@@ -144108,7 +144108,7 @@ phases:
       Both match local preflight build and PyPI metadata.'
   - id: release-0-6-2-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.2
-    status: claimed
+    status: done
     description: Refresh only local public-PyPI uvx resolution for larva 0.6.2 and
       prove pinned, pinned cached, and unpinned CLI resolution.
     verification: /opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple
@@ -144123,3 +144123,16 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-08-30T18:13:28.524763Z'
+    done_at: '2026-08-30T18:14:04.966789+00:00'
+    evidence: Activated only local public-PyPI uvx resolution/cache. Executable /opt/homebrew/bin/uvx
+      (realpath /opt/homebrew/Cellar/uv/0.12.5/bin/uvx), version uvx 0.12.5. Public
+      index explicitly https://pypi.org/simple. Pinned before-state command resolved
+      larva 0.6.2; exact refresh command `/opt/homebrew/bin/uvx --refresh --index-url
+      https://pypi.org/simple --from larva==0.6.2 larva --version` output larva 0.6.2;
+      pinned cached rerun output larva 0.6.2; unpinned public-PyPI `uvx --index-url
+      https://pypi.org/simple larva --version` output larva 0.6.2. Provenance binds
+      to public PyPI wheel SHA-256 5029353542809062bf1459c3dbad0215ff7b7f17339cc5a01e71d64c1a5c5a80
+      and sdist SHA-256 32527f38431abec274d5fd9f75b0b8104a11fee52d85c52b3ea0e7016fde9284.
+      Git HEAD/tree before and after cache activation both f9a07eb612566ca4f17e93454dcf2644c7e268c2
+      / 1a4a4a2acba23f17a66ee44a64c8866cb47b99c5; git diff --check clean; repository
+      files unchanged by uvx.
