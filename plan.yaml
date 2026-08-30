@@ -144108,7 +144108,7 @@ phases:
       Both match local preflight build and PyPI metadata.'
   - id: release-0-6-2-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.2
-    status: pending
+    status: claimed
     description: Refresh only local public-PyPI uvx resolution for larva 0.6.2 and
       prove pinned, pinned cached, and unpinned CLI resolution.
     verification: /opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple
@@ -144121,3 +144121,5 @@ phases:
     depends_on:
     - release-0-6-2-runtime.github-pypi-release
     agent: general
+    claimed_by: general
+    claimed_at: '2026-08-30T18:13:28.524763Z'
