@@ -144039,3 +144039,13 @@ phases:
       lock SHA-256 `a32e6fb6f90c2a861f086337e19b011ea38f8a6ae0cb21974041c61d5087a1cc`
       are byte-identical. No installed-package, credential, provider, user-config,
       network-auth, external-service, or device effect. Residual risk: none.'
+- id: release_0_6_2_runtime_20260830
+  name: Larva 0.6.2 Version, Release, and Local uvx Activation
+  status: pending
+  gate: Close only after 0.6.2 metadata, tag/release, trusted PyPI publication, and
+    public-PyPI uvx activation are independently evidenced.
+  context: User-authorized patch release of the completed Pi subagent result-presentation
+    work. Steps are serial because GitHub Release triggers the existing trusted PyPI
+    workflow and uvx activation depends on public PyPI availability.
+  depends_on:
+  - pi_subagent_callback_theme_frame_20260830
