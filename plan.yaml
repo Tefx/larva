@@ -144077,7 +144077,7 @@ phases:
       clean uvx MCP smoke resolved larva 0.6.2, mcp 1.29.1, and exact 13-tool surface.'
   - id: release-0-6-2-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.2
-    status: claimed
+    status: done
     description: Push current main, create immutable GitHub Release/tag v0.6.2 at
       the exact product commit, and observe the release-triggered Trusted Publishing
       workflow and public PyPI artifacts.
@@ -144094,6 +144094,18 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-08-30T18:11:11.240737Z'
+    done_at: '2026-08-30T18:13:26.388210+00:00'
+    evidence: 'Preflight proved v0.6.2 absent locally/remotely/on GitHub/PyPI. Push
+      fast-forwarded origin/main ea5d8f3036df536486ce0227592eb3ce93f5792b to 58f607cb8d74ec85048310558ed97c6f32955d52.
+      Published GitHub Release https://github.com/Tefx/larva/releases/tag/v0.6.2,
+      non-draft/non-prerelease, at exact product commit 271a58d05a98027d8967da834e454c2acc3e3850;
+      remote tag resolves to the same commit. Release workflow https://github.com/Tefx/larva/actions/runs/33327359472
+      completed success: build job 99299766008 and Trusted Publishing publish job
+      99299812125 both success, including clean uvx MCP startup/tool-list. Public
+      PyPI JSON exposes larva 0.6.2 Requires-Python >=3.11. Downloaded public wheel
+      larva-0.6.2-py3-none-any.whl, 241185 bytes, SHA-256 5029353542809062bf1459c3dbad0215ff7b7f17339cc5a01e71d64c1a5c5a80;
+      downloaded public sdist larva-0.6.2.tar.gz, 2328804 bytes, SHA-256 32527f38431abec274d5fd9f75b0b8104a11fee52d85c52b3ea0e7016fde9284.
+      Both match local preflight build and PyPI metadata.'
   - id: release-0-6-2-runtime.local-uvx-activate
     name: Refresh local uvx resolution to Larva 0.6.2
     status: pending
