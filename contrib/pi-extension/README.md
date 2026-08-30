@@ -1180,15 +1180,17 @@ multiline pretty JSON preview with an omission marker when needed; the expanded
 view shows the complete bounded in-memory JSON. It never rewrites the stored
 message, never reads `full_output_artifact.path`, and returns Pi's default
 custom-message rendering when required callback details are absent or unusable.
-The renderer wraps its header and body in one rectangular frame with a visible
-border and fixed left/right inner padding. It resolves a Pi background token on
-every render from the outer callback `status` / `execution_status` (`toolSuccessBg`,
-`toolErrorBg`, `toolPendingBg`, or `customMessageBg`) and applies matching status
-color to the header. Nested Markdown/JSON ANSI resets restore the frame
-background before the next printable or padding cell, and every framed row ends
-with a reset. The frame uses the available renderer width, stays rectangular at
-40, 80, and 120 columns, and degrades without throwing at narrower positive
-widths. A JSON field such as payload `status` is rendered only as payload data.
+The renderer uses the same borderless full-width background surface as Pi tool
+results. It resolves a Pi background token on every render from the outer callback
+`status` / `execution_status` (`toolSuccessBg`, `toolErrorBg`, `toolPendingBg`, or
+`customMessageBg`) and applies matching status color to the header. Pi's
+`outputPad` becomes the surface's left/right internal padding, so the background
+starts at the available line origin and callback content aligns with tool-result
+content. Nested Markdown/JSON ANSI resets restore the surface background before
+the next printable or padding cell, and every row ends with a reset. The surface
+uses the available renderer width, stays full-width at 40, 80, and 120 columns,
+and degrades without throwing at narrower positive widths. A JSON field such as
+payload `status` is rendered only as payload data.
 
 The public `task_id` is the child Pi `.jsonl` session file path under the child
 session root. It is the only durable public resume/status/cancel handle. The child

@@ -1506,9 +1506,7 @@ type SubagentCallbackTheme = {
   bold?: (text: string) => string;
 };
 
-const SUBAGENT_RESULT_FRAME_SIDE_PADDING = 1;
-
-function subagentResultFrameBackgroundToken(status: string): string {
+function subagentResultSurfaceBackgroundToken(status: string): string {
   if (status === "success") return "toolSuccessBg";
   if (status === "failed") return "toolErrorBg";
   if (status === "cancelled") return "toolPendingBg";
@@ -1525,30 +1523,22 @@ function subagentResultThemeFg(theme: SubagentCallbackTheme, token: string, text
 
 function subagentResultThemeBg(theme: SubagentCallbackTheme, status: string, text: string): string {
   try {
-    return theme.bg?.(subagentResultFrameBackgroundToken(status), text) ?? `${SELECTOR_SURFACE_BG}${text}${ANSI_RESET}`;
+    return theme.bg?.(subagentResultSurfaceBackgroundToken(status), text) ?? `${SELECTOR_SURFACE_BG}${text}${ANSI_RESET}`;
   } catch {
     return `${SELECTOR_SURFACE_BG}${text}${ANSI_RESET}`;
   }
 }
 
-function subagentResultFrameSurface(theme: SubagentCallbackTheme, status: string, text: string): string {
+function subagentResultSurfaceLine(theme: SubagentCallbackTheme, status: string, text: string): string {
   return `${text.split(ANSI_RESET_RE).map((segment) => subagentResultThemeBg(theme, status, segment)).join("")}${ANSI_RESET}`;
 }
 
-function subagentResultFrameBorder(width: number, left: string, right: string): string {
-  if (width <= 1) return left;
-  if (width === 2) return `${left}${right}`;
-  return `${left}${"─".repeat(Math.max(0, width - 2))}${right}`;
-}
-
-function subagentResultFrameContent(text: string, width: number): string {
-  if (width <= 1) return "│";
-  if (width === 2) return "││";
-  if (width === 3) return "│ │";
-  const contentWidth = Math.max(0, width - 2 - SUBAGENT_RESULT_FRAME_SIDE_PADDING * 2);
-  const clipped = contentWidth > 0 ? truncateToWidth(text, contentWidth, "") : "";
+function subagentResultSurfaceContent(text: string, width: number, outputPad: number): string {
+  const padding = Math.min(outputPad, Math.max(0, Math.floor((width - 1) / 2)));
+  const contentWidth = Math.max(1, width - padding * 2);
+  const clipped = truncateToWidth(text, contentWidth, "");
   const trailing = " ".repeat(Math.max(0, contentWidth - visibleWidth(clipped)));
-  return `│${" ".repeat(SUBAGENT_RESULT_FRAME_SIDE_PADDING)}${clipped}${trailing}${" ".repeat(SUBAGENT_RESULT_FRAME_SIDE_PADDING)}│`;
+  return `${" ".repeat(padding)}${clipped}${trailing}${" ".repeat(padding)}`;
 }
 
 class LarvaSubagentResultMessageView implements PiRenderableComponent {
@@ -1575,10 +1565,9 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
   invalidate(): void {}
 
   render(width: number): string[] {
-    const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
-    const frameOffset = Math.min(Math.max(0, this.outputPad), Math.max(0, contentWidth - 1));
-    const frameWidth = Math.max(1, contentWidth - frameOffset);
-    const bodyWidth = Math.max(1, frameWidth - 2 - SUBAGENT_RESULT_FRAME_SIDE_PADDING * 2);
+    const surfaceWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+    const padding = Math.min(this.outputPad, Math.max(0, Math.floor((surfaceWidth - 1) / 2)));
+    const bodyWidth = Math.max(1, surfaceWidth - padding * 2);
     const color = executionStatusHeaderColor(this.executionStatus);
     const statusLabel = subagentResultThemeFg(this.theme, color, this.executionStatus);
     const header = `${statusLabel} larva-subagent-result`;
@@ -1589,14 +1578,11 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     } else {
       body = renderMarkdownLines(subagentOutputMarkdownSource(presentSubagentJsonSource(this.resultText)), bodyWidth, liveMarkdownTheme());
     }
-    const frame = [
-      subagentResultFrameBorder(frameWidth, "┌", "┐"),
-      subagentResultFrameContent(header, frameWidth),
-      ...body.map((line) => subagentResultFrameContent(line, frameWidth)),
-      subagentResultFrameBorder(frameWidth, "└", "┘"),
-    ];
-    const prefix = " ".repeat(frameOffset);
-    return frame.map((line) => `${prefix}${subagentResultFrameSurface(this.theme, this.executionStatus, line)}`);
+    return [header, ...body].map((line) => subagentResultSurfaceLine(
+      this.theme,
+      this.executionStatus,
+      subagentResultSurfaceContent(line, surfaceWidth, padding),
+    ));
   }
 }
 

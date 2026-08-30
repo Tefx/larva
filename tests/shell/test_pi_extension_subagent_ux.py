@@ -2267,7 +2267,7 @@ def test_subagent_json_presentation_console_and_callback_renderer(tmp_path: Path
     assert '"items": [' in small_compact_text
     assert '"message": "测试"' in small_compact_text
     assert '{"status":"child_payload_ok"' not in small_compact_text
-    assert payload["largeCompactLineCount"] <= 19
+    assert payload["largeCompactLineCount"] <= 17
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert all(item["fit"] is True for item in payload["compactByWidth"])

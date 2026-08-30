@@ -517,8 +517,8 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
           bold: (text) => text,
         }};
         const framedDetails = {{ result_text: '{{"status":"failed","nested":{{"items":[1,true],"message":"frame value"}}}}', status: "success", execution_status: "success" }};
-        const framedExpanded = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: true, outputPad: 0 }}, frameTheme);
-        const framedCollapsed = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: false, outputPad: 0 }}, frameTheme);
+        const framedExpanded = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: true, outputPad: 1 }}, frameTheme);
+        const framedCollapsed = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: false, outputPad: 1 }}, frameTheme);
         const framedLines = framedExpanded.render(80);
         const framedPlain = framedLines.map(stripAnsi);
         const framedWidths = [40, 80, 120].map((width) => {{
@@ -547,8 +547,8 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const firstThemeBackground = framedCollapsed.render(80).join("\\n");
         backgroundTag = 25;
         const secondThemeBackground = framedCollapsed.render(80).join("\\n");
-        const malformedFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: '{{"bad":true,}}', status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 0 }}, frameTheme).render(80).map(stripAnsi);
-        const plainFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: "plain fallback", status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 0 }}, frameTheme).render(80).map(stripAnsi);
+        const malformedFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: '{{"bad":true,}}', status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 1 }}, frameTheme).render(80).map(stripAnsi);
+        const plainFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: "plain fallback", status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 1 }}, frameTheme).render(80).map(stripAnsi);
         console.log(JSON.stringify({{
           registered: renderers.has("larva-subagent-result"),
           helper: {{
@@ -615,17 +615,16 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
     assert '"items": [' in small_compact_text
     assert '"message": "测试"' in small_compact_text
     assert '{"status":"child_payload_ok"' not in small_compact_text
-    assert payload["largeCompactLineCount"] <= 19
+    assert payload["largeCompactLineCount"] <= 17
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert all(item["fit"] is True for item in payload["widths"])
     assert all(item["fit"] is True for item in payload["compactWidths"])
     framed_plain = payload["framedPlain"]
-    assert framed_plain[0].startswith("┌") and framed_plain[0].endswith("┐")
-    assert framed_plain[-1].startswith("└") and framed_plain[-1].endswith("┘")
+    assert all(not any(border in line for border in "┌┐└┘│─") for line in framed_plain)
     assert all(len(line) == 80 for line in framed_plain)
-    assert all(line.startswith("│ ") and line.endswith(" │") for line in framed_plain[1:-1])
-    assert "success larva-subagent-result" in framed_plain[1]
+    assert all(line.startswith(" ") and line.endswith(" ") for line in framed_plain)
+    assert "success larva-subagent-result" in framed_plain[0]
     assert '"status": "failed"' in "\n".join(framed_plain)
     assert payload["framedRowsHaveBackground"] is True
     assert payload["framedRowsEndReset"] is True
@@ -637,8 +636,10 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
     assert "toolSuccessBg" in payload["frameBgTokens"]
     assert "[48;5;24m" in payload["firstThemeBackground"]
     assert "[48;5;25m" in payload["secondThemeBackground"]
-    assert payload["malformedFrame"][0].startswith("┌")
-    assert payload["plainFrame"][0].startswith("┌")
+    assert payload["malformedFrame"][0].startswith(" ")
+    assert payload["plainFrame"][0].startswith(" ")
+    assert not any(any(border in line for border in "┌┐└┘│─") for line in payload["malformedFrame"])
+    assert not any(any(border in line for border in "┌┐└┘│─") for line in payload["plainFrame"])
 
 
 def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:

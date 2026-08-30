@@ -1822,12 +1822,12 @@ async function subagentJsonPresentationProof(evidence) {
     customType: "larva-subagent-result",
     content: "```text\\nkeep-model-visible\\n```",
     details: callbackDetails,
-  }, { expanded: true, outputPad: 0 }, frameTheme);
+  }, { expanded: true, outputPad: 1 }, frameTheme);
   const framedCollapsedView = renderer({
     customType: "larva-subagent-result",
     content: "```text\\nkeep-model-visible\\n```",
     details: callbackDetails,
-  }, { expanded: false, outputPad: 0 }, frameTheme);
+  }, { expanded: false, outputPad: 1 }, frameTheme);
   const framedExpanded = framedExpandedView.render(80);
   const framedPlain = framedExpanded.map(stripAnsi);
   const rowHasFrameBackground = (line, expectedTag) => {
@@ -1860,12 +1860,12 @@ async function subagentJsonPresentationProof(evidence) {
     customType: "larva-subagent-result",
     content: "keep-model-visible",
     details: { result_text: malformed, status: "success", execution_status: "success" },
-  }, { expanded: false, outputPad: 0 }, frameTheme).render(80).map(stripAnsi);
+  }, { expanded: false, outputPad: 1 }, frameTheme).render(80).map(stripAnsi);
   const plainFrame = renderer({
     customType: "larva-subagent-result",
     content: "keep-model-visible",
     details: { result_text: "plain fallback", status: "success", execution_status: "success" },
-  }, { expanded: false, outputPad: 0 }, frameTheme).render(80).map(stripAnsi);
+  }, { expanded: false, outputPad: 1 }, frameTheme).render(80).map(stripAnsi);
   const largeDetails = { result_text: largeJson, status: "success", execution_status: "success" };
   const largeCollapsed = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: false, outputPad: 0 }, theme).render(80);
   const largeExpanded = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: true, outputPad: 0 }, theme).render(80);
@@ -1925,11 +1925,11 @@ async function subagentJsonPresentationProof(evidence) {
     collapsedWidthSafe: collapsedByWidth.every((item) => item.fit),
     collapsedKeyScalarStyles: highlighter.loaded && lastAnsi(collapsedHighlighted, "status") !== lastAnsi(collapsedHighlighted, "child_payload_ok"),
     collapsedNoArtifactAccess: artifactReads === 0,
-    largeCollapsedBounded: largeCollapsed.length <= 19 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
+    largeCollapsedBounded: largeCollapsed.length <= 17 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
     largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
-    frameCorners: framedPlain[0]?.startsWith("┌") === true && framedPlain[0]?.endsWith("┐") === true && framedPlain.at(-1)?.startsWith("└") === true && framedPlain.at(-1)?.endsWith("┘") === true,
-    frameRectangular: framedPlain.every((line) => piTui.visibleWidth(line) === 80),
-    frameStablePadding: framedPlain.slice(1, -1).every((line) => line.startsWith("│ ") && line.endsWith(" │")),
+    surfaceHasNoBorder: framedPlain.every((line) => !/[┌┐└┘│─]/.test(line)),
+    surfaceFullWidth: framedPlain.every((line) => piTui.visibleWidth(line) === 80),
+    surfaceUsesOutputPadding: framedPlain.every((line) => line.startsWith(" ") && line.endsWith(" ")),
     frameBackgroundThroughResets: framedExpanded.every((line) => rowHasFrameBackground(line, 24)),
     frameRowsEndReset: framedExpanded.every((line) => line.endsWith(`${ansi}[0m`)),
     frameSentinelUnstyled: framedExpanded.every((line) => lastAnsi(`${line}SENTINEL`, "SENTINEL") === `${ansi}[0m`),
@@ -1937,7 +1937,7 @@ async function subagentJsonPresentationProof(evidence) {
     frameNarrowSafe: framedNarrowWidths.every((item) => item.widths.every((itemWidth) => itemWidth <= item.width) && item.endsReset),
     frameThemeRefresh: frameThemeA.includes(`${ansi}[48;5;24m`) && frameThemeB.includes(`${ansi}[48;5;25m`),
     frameOuterStatusStyling: frameFgTokens.includes("success") && !frameFgTokens.includes("error") && frameBgTokens.includes("toolSuccessBg"),
-    frameFallbacks: malformedFrame[0]?.startsWith("┌") === true && plainFrame[0]?.startsWith("┌") === true,
+    surfaceFallbacks: malformedFrame[0]?.startsWith(" ") === true && plainFrame[0]?.startsWith(" ") === true && !malformedFrame.some((line) => /[┌┐└┘│─]/.test(line)) && !plainFrame.some((line) => /[┌┐└┘│─]/.test(line)),
     installedObservationRecorded: installedRender.attempted === true || typeof version.stdout === "string",
   };
   const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);
