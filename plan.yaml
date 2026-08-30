@@ -143369,13 +143369,13 @@ phases:
       clean status. Zero repository/GitHub/PyPI/Pi/global-tool/unrelated-cache effect.'
 - id: pi_subagent_json_rendering_20260830
   name: Pi Subagent JSON Presentation 2026-08-30
-  status: pending
+  status: in_progress
   depends_on:
   - release_0_6_1_runtime_20260809
   steps:
   - id: pi-subagent-json-rendering.implement
     name: Render subagent JSON with display-only Pi Markdown highlighting
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143542,3 +143542,5 @@ phases:
     - pyproject.toml
     - INVAR.md
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-08-30T11:42:33.799840Z'
