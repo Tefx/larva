@@ -144041,7 +144041,7 @@ phases:
       network-auth, external-service, or device effect. Residual risk: none.'
 - id: release_0_6_2_runtime_20260830
   name: Larva 0.6.2 Version, Release, and Local uvx Activation
-  status: pending
+  status: in_progress
   gate: Close only after 0.6.2 metadata, tag/release, trusted PyPI publication, and
     public-PyPI uvx activation are independently evidenced.
   context: User-authorized patch release of the completed Pi subagent result-presentation
@@ -144052,7 +144052,7 @@ phases:
   steps:
   - id: package-version-0-6-2.bump
     name: Bump Larva package version from 0.6.1 to 0.6.2
-    status: pending
+    status: claimed
     description: Synchronize canonical Python package metadata and lock metadata at
       0.6.2; commit only version and Vectl state after release checks.
     verification: uv lock --check && uv run --frozen larva --version && uv run pytest
@@ -144064,6 +144064,8 @@ phases:
     - src/larva/__init__.py
     - uv.lock
     agent: general
+    claimed_by: general
+    claimed_at: '2026-08-30T18:03:37.815830Z'
   - id: release-0-6-2-runtime.github-pypi-release
     name: Publish GitHub and PyPI release 0.6.2
     status: pending
