@@ -144049,3 +144049,18 @@ phases:
     workflow and uvx activation depends on public PyPI availability.
   depends_on:
   - pi_subagent_callback_theme_frame_20260830
+  steps:
+  - id: package-version-0-6-2.bump
+    name: Bump Larva package version from 0.6.1 to 0.6.2
+    status: pending
+    description: Synchronize canonical Python package metadata and lock metadata at
+      0.6.2; commit only version and Vectl state after release checks.
+    verification: uv lock --check && uv run --frozen larva --version && uv run pytest
+      -q && uvx invar-tools guard --all && git diff --check
+    evidence_template: Record changed version files, metadata/CLI proof, test and
+      Invar outputs, commit SHA, and clean-tree state.
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    agent: general
