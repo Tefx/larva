@@ -143614,3 +143614,168 @@ phases:
       package 0.84.4 with `dist/bundle/cli.js`; no installed package, dependency,
       credential, provider, user configuration, or external service effect. Residual
       risk: none.'
+- id: pi_subagent_json_collapsed_rendering_followup_20260830
+  name: Pi Subagent Collapsed JSON Rendering Follow-up 2026-08-30
+  status: pending
+  depends_on:
+  - pi_subagent_json_rendering_20260830
+  steps:
+  - id: pi-subagent-json-collapsed-rendering-followup.implement
+    name: Pretty-render JSON in the default collapsed callback view
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply exactly one admitted `vectl.worker.dispatch.v2`
+      envelope bound to the active claim, immutable clean-worktree base, current plan
+      SHA, exact allowed paths, checks, and test bindings. Completion requires the
+      unchanged `vectl.worker.execution.v2` receipt. This plan grants no claim, worktree,
+      integration, Git, provider, external-effect, or installed-package mutation authority.
+
+
+      Deliver:
+
+      - Correct the default `larva-subagent-result` callback view exposed by the completed
+      JSON-rendering phase. For a small valid JSON result and renderer option `expanded:false`,
+      the first visible body must use the existing strict shared JSON presentation
+      source and live Pi Markdown theme, showing multiple lines with two-space indentation
+      and JSON syntax styles immediately; it must not pass valid JSON through the
+      current single-line `compactSubagentResultPreview()` minification path.
+
+      - Keep the outer execution-status header as the first line and derive it only
+      from callback details. A payload field such as `status:"child_payload_ok"` remains
+      highlighted payload data and cannot relabel or recolor the outer header.
+
+      - Keep collapsed rendering bounded. A valid JSON value that exceeds the collapsed
+      display budget receives a deterministic width-safe multiline preview with an
+      explicit omission marker; the corresponding `expanded:true` view continues to
+      render the complete bounded in-memory result. Small JSON that fits the collapsed
+      budget is shown completely. Do not read an artifact to fill either view.
+
+      - Preserve existing malformed JSON, plain text, and intentionally formatted
+      Markdown fallback; preserve missing-details default renderer fallback. Preserve
+      callback content/details, model-visible `text` fence, 6,000-character result/preview
+      bounds, artifact manifests, at-most-once delivery, and terminal lifecycle bytes/behavior.
+
+      - Resolve `getMarkdownTheme()` at render time for both collapsed and expanded
+      JSON bodies. Every visible line remains within 40, 80, and 120 columns. Update
+      the existing runtime scenario and behavioral tests so they invoke the registered
+      renderer with `expanded:false` and prove a multiline pretty body, semantic key/scalar
+      styling, theme refresh, large-payload bounding/omission, small-payload completeness,
+      width safety, and full expanded tail visibility.
+
+      - Synchronize the two existing Pi operator/reference docs to state that default
+      collapsed callbacks show a bounded pretty JSON preview while expanded callbacks
+      show the complete bounded in-memory JSON. Add no dependency and do not change
+      package manifests/locks or installed Pi/TUI packages.
+
+
+      Boundary:
+
+      - Owner: `frontend-engineer`, whose resolved definition covers production TypeScript
+      UI behavior and contains Worker-v2 activation. This is one reversible adapter-local
+      callback-presentation repair with one owner, target, evidence consumer, and
+      rollback unit; no independent verification node adds distinct information.
+
+      - Expected repository changes are limited to `contrib/pi-extension/larva.ts`,
+      the two existing JSON-presentation developer test files, the existing runtime-smoke
+      scenario, and the two synchronized Pi docs. `plan.yaml`, shared contracts, Python
+      product source, package manifests/locks, installed runtime files, and unrelated
+      real-runtime version fixtures are protected.
+
+      - Effects are reversible local repository edits and disposable test artifacts
+      only. No credential, provider/model call, network authentication, user configuration
+      write, package installation/update outside the isolated worktree, or external
+      service/device effect is authorized. Rollback is one Git revert.
+
+
+      Admit:
+
+      - Direct user evidence after loading the completed implementation: the default
+      TUI displayed the custom renderer header `success larva-subagent-result`, proving
+      registration succeeded, while the valid payload `{"status":"child_payload_ok","nested":{"items":[1,true],"count":1,"message":"测试"}}`
+      remained one line. The witnessed code path is `expanded:false` -> `compactSubagentResultPreview()`
+      -> compact `JSON.stringify(JSON.parse(source))`. The screenshot is observation
+      only and must not become a repository dependency.
+
+      - Behavioral proof must call the registered renderer rather than inspect source
+      tokens. For the witnessed small payload, collapsed output after the header contains
+      separate indented lines for nested object, array, boolean, number, and Chinese
+      string; a live/injected Pi JSON highlighter differentiates key and scalar styles.
+      A generated large payload proves bounded collapsed line count plus omission
+      marker and proves its tail remains visible when expanded.
+
+      - Existing strict parse/fallback, Console reuse, callback transport immutability,
+      no artifact access, status separation, live-theme refresh, and 40/80/120 visible-width
+      coverage remain green. Completion requires every declared check green, exact
+      expected changed paths, COLLAPSED-JSON-01 through COLLAPSED-JSON-04 claimed,
+      package manifest/lock byte equality, clean worker receipt, no external effects,
+      and empty unresolved items.
+
+
+      Recovery:
+
+      - Parse failure or missing details preserves the existing fallback path. A collapsed
+      bounding failure must retain the full in-memory value for expanded rendering;
+      do not truncate stored callback data, scan session JSONL, dereference artifacts,
+      or alter model-visible content.
+
+      - Ordinary implementation or check failure stays on this step. Preserve prior
+      evidence and stop for reconciliation on callback-content drift, package-lock
+      drift, installed-runtime mutation, changed target/effect/rollback, unknown external
+      state, or protected-path change.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-subagent-json-collapsed-rendering-followup.implement","risk_tier":"R1","risk_reasons":["The
+      change is a reversible adapter-local callback presentation repair with no model-visible,
+      shared-contract, credential, external-service, package, or persistent-state
+      effect.","Focused registered-renderer and runtime-smoke seams directly observe
+      default collapsed formatting, styles, bounding, expanded completeness, and transport
+      invariants; an independent observer would not add distinct information."],"primary_outcome":"COLLAPSED-JSON-01","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":["tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"blocked_paths":["plan.yaml","contracts/**","src/**","pyproject.toml","uv.lock","package.json","package-lock.json","contrib/pi-extension/package.json","contrib/pi-extension/package-lock.json","tests/shell/test_pi_extension_real_runtime.py"]},"claims":["COLLAPSED-JSON-01","COLLAPSED-JSON-02","COLLAPSED-JSON-03","COLLAPSED-JSON-04"],"checks":[{"id":"collapsed_json_targeted","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["COLLAPSED-JSON-01","COLLAPSED-JSON-02","COLLAPSED-JSON-03","COLLAPSED-JSON-04"]},{"id":"collapsed_json_runtime","run":{"command":["bash","-lc","npm
+      --prefix contrib/pi-extension ci --ignore-scripts && node scripts/pi-extension-runtime-smoke.mjs
+      --scenario subagent-json-presentation"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["COLLAPSED-JSON-01","COLLAPSED-JSON-02","COLLAPSED-JSON-03"]},{"id":"pi_extension_node_regressions","run":{"command":["bash","-lc","npm
+      --prefix contrib/pi-extension ci --ignore-scripts && for f in contrib/pi-extension/test-*.mjs;
+      do node \"$f\"; done"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["COLLAPSED-JSON-04"]},{"id":"repo_pytest","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1800},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/README.md","access":"read","availability":"current"},{"path":"docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["COLLAPSED-JSON-04"]},{"id":"invar_guard_all","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"INVAR.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["COLLAPSED-JSON-04"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":60},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["COLLAPSED-JSON-04"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require one admitted frontend-engineer Worker-v2 receipt bound to
+      the exact dispatch, immutable clean base, current Plan SHA, and expected scope.
+      It must prove the registered renderer with `expanded:false` shows the witnessed
+      small JSON as a multiline two-space/highlighted body, bounds large collapsed
+      JSON with an omission marker, preserves the full expanded tail and all callback
+      transport/artifact/status invariants, and passes every declared check with empty
+      unresolved.
+    evidence_template: Record exact base/claim/dispatch/candidate/changed paths; focused/runtime/Node/full-pytest/Invar/diff
+      exits; default collapsed witnessed-payload lines and key/scalar styles; 40/80/120
+      visible-width maxima; large collapsed line budget/omission marker and expanded
+      tail observation; malformed/plain/missing-details fallback; callback content/details
+      and package manifest/lock before/after hashes; no artifact read, installed-package
+      mutation, or external effect; unresolved [].
+    refs:
+    - AGENTS.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - pyproject.toml
+    - INVAR.md
+    agent: frontend-engineer
