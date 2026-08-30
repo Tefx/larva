@@ -143367,3 +143367,178 @@ phases:
       identical: HEAD 239e3a9774cdf537a09f518c391453d52503cbdb, tree e0c4d4d831cb0eb264a741ed502385614c08147c,
       index SHA-256 f0dc09a87af79c31aa10a29117dac37f6902c155db25dbf932e076efcc963b47,
       clean status. Zero repository/GitHub/PyPI/Pi/global-tool/unrelated-cache effect.'
+- id: pi_subagent_json_rendering_20260830
+  name: Pi Subagent JSON Presentation 2026-08-30
+  status: pending
+  depends_on:
+  - release_0_6_1_runtime_20260809
+  steps:
+  - id: pi-subagent-json-rendering.implement
+    name: Render subagent JSON with display-only Pi Markdown highlighting
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply exactly one admitted `vectl.worker.dispatch.v2`
+      envelope bound to the active claim, immutable clean-worktree base, current plan
+      SHA, exact allowed paths, checks, and test bindings. Completion requires the
+      unchanged `vectl.worker.execution.v2` receipt. This plan grants no claim, worktree,
+      integration, Git, provider, external-effect, or installed-package mutation authority.
+
+
+      Deliver:
+
+      - Add one pure, synchronous JSON presentation helper in `contrib/pi-extension/larva.ts`
+      and reuse it for both `larva-subagent-result` callback display and `/larva-subagent`
+      Console Output. It must attempt strict `JSON.parse` on the supplied output;
+      on success produce `JSON.stringify(value, null, 2)` inside a `json` Markdown
+      fence; on any parse failure return the original source byte-for-byte. It performs
+      no file, artifact, network, environment, subprocess, time, or other I/O.
+
+      - Register one display-only custom message renderer for `larva-subagent-result`.
+      It uses the bounded in-memory result carried by the callback details, renders
+      valid JSON through Pi `Markdown` with the current `getMarkdownTheme()` resolved
+      at render time, and returns Pi''s default message rendering when required callback
+      details are absent or unusable. It never reads `artifact_path` and never rewrites
+      the message.
+
+      - Preserve callback transport and model-visible semantics exactly: `fencedCallbackContent()`
+      remains a `text` fence; callback content/details, 6,000-character result/preview
+      bounds, at-most-once delivery, artifact manifests, execution/delivery status,
+      and terminal lifecycle behavior remain unchanged. Outer callback execution status
+      controls the callback header/state; a JSON field such as payload `status` is
+      rendered only as payload data and cannot recolor or relabel the outer execution
+      result.
+
+      - Apply the same helper to Console Output before its existing Markdown layout.
+      Valid terminal JSON is pretty-printed and syntax-highlightable; malformed JSON,
+      ordinary text, and existing multiline Markdown retain their current source and
+      layout behavior. Resolve the live Pi Markdown theme rather than caching `DEFAULT_MARKDOWN_THEME`,
+      so theme changes invalidate the rendered styling.
+
+      - Keep every rendered line within the requested component width, including 40,
+      80, and 120 columns, while preserving compact/expanded message behavior and
+      existing overlay scrolling. With an active Pi JSON highlighter, keys and scalar
+      values receive semantic ANSI styles; without a highlighter, the fenced content
+      remains readable and width-safe.
+
+      - Add meaningful behavioral tests and synchronized operator/reference documentation.
+      Tests must execute renderer registration and rendering rather than assert source
+      tokens. Add no dependency and do not change the repository-pinned Pi 0.84.1
+      or TUI 0.78.0 package metadata.
+
+
+      Boundary:
+
+      - Owner: `frontend-engineer`, whose inspected roster description covers TypeScript/JavaScript
+      UI implementation and advertises Vectl Worker-v2 activation. The work is one
+      reversible Pi-extension presentation transaction with the same owner, target,
+      evidence consumer, and rollback unit; no independent verification node adds
+      distinct information.
+
+      - Repository mutation is limited to the Pi extension, the two named developer
+      test surfaces, the existing runtime-smoke harness when needed for component-level
+      proof, and the two named Pi operator/reference docs. `plan.yaml`, shared contracts,
+      Python product source, package manifests/locks, and installed Pi/TUI packages
+      are protected.
+
+      - Effects are reversible local repository edits and disposable test artifacts
+      only. No credential, provider/model call, network authentication, user configuration
+      write, package installation/update outside the isolated worktree, or external
+      service/device effect is authorized. Rollback is one Git revert.
+
+
+      Admit:
+
+      - Witnessed compatibility basis: the repository pins `@earendil-works/pi-coding-agent`
+      0.84.1 and direct `@earendil-works/pi-tui` 0.78.0, while the current installed
+      Pi runtime is 0.84.4. `registerMessageRenderer`, Pi `Markdown`, and `getMarkdownTheme()`
+      are available across the witnessed integration surfaces. Required clean-checkout
+      checks resolve only tracked manifests/locks; completion also records a supplemental
+      read-only rendering observation against the current installed Pi 0.84.4 without
+      making that ambient installation a dependency or mutation target.
+
+      - Developer proof covers compact object/array/top-level JSON values; two-space
+      indentation and `json` fencing; malformed/trailing-comma/comment/plain-text
+      byte-for-byte fallback; callback registration and missing-details default fallback;
+      outer success/failure versus inner payload `status`; unchanged model-visible
+      callback content/details, text fence, 6,000-character bounds, and artifact behavior;
+      Console reuse; 40/80/120-column visible-width bounds; live theme refresh; highlighted
+      key/scalar style differentiation when the real Pi highlighter is loaded; and
+      absence of renderer I/O/artifact reads.
+
+      - Completion requires every declared check green, exact allowed changed paths,
+      JSON-DISPLAY-01 through JSON-DISPLAY-04 claimed, package manifest/lock byte
+      equality, a clean worker receipt, and empty unresolved items. Static source-token
+      assertions, prompt/prose checks, self-reported PASS strings, or changing callback
+      content to a `json` fence are insufficient.
+
+
+      Recovery:
+
+      - Any strict parse failure returns the exact original output; missing details
+      or renderer incompatibility returns Pi''s default custom-message rendering.
+      Do not repair malformed JSON, guess from prose, scan session JSONL, or dereference
+      artifacts.
+
+      - Ordinary implementation, theme, width, or test failure stays on this step.
+      Preserve prior evidence, revert only the candidate repository commit if necessary,
+      and stop for reconciliation on package-lock drift, installed-runtime mutation,
+      callback contract drift, unknown external state, or changes outside the admitted
+      scope.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-subagent-json-rendering.implement","risk_tier":"R1","risk_reasons":["The
+      change is a reversible adapter-local TypeScript presentation fix with no model-visible
+      contract, shared-contract, credential, external-service, package, or persistent-state
+      effect.","Focused component/runtime seams can directly observe strict fallback,
+      callback immutability, theme use, syntax styles, and width bounds; an independent
+      observer would not add distinct information."],"primary_outcome":"JSON-DISPLAY-01","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":["tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"blocked_paths":["plan.yaml","contracts/**","src/**","pyproject.toml","uv.lock","package.json","package-lock.json","contrib/pi-extension/package.json","contrib/pi-extension/package-lock.json"]},"claims":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03","JSON-DISPLAY-04"],"checks":[{"id":"json_presentation_targeted","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03","JSON-DISPLAY-04"]},{"id":"json_presentation_runtime","run":{"command":["bash","-lc","npm
+      --prefix contrib/pi-extension ci --ignore-scripts && node scripts/pi-extension-runtime-smoke.mjs
+      --scenario subagent-json-presentation"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-01","JSON-DISPLAY-02","JSON-DISPLAY-03"]},{"id":"pi_extension_node_regressions","run":{"command":["bash","-lc","npm
+      --prefix contrib/pi-extension ci --ignore-scripts && for f in contrib/pi-extension/test-*.mjs;
+      do node \"$f\"; done"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-04"]},{"id":"repo_pytest","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1800},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/README.md","access":"read","availability":"current"},{"path":"docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-04"]},{"id":"invar_guard_all","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"INVAR.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-04"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":60},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["JSON-DISPLAY-04"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require one admitted frontend-engineer worker-v2 receipt bound to
+      the exact dispatch, immutable clean main base, current Plan SHA, and exact scope.
+      It must prove strict valid/malformed JSON behavior, one shared helper across
+      callback and Console, real component rendering at widths 40/80/120, live-theme
+      JSON styles, outer/inner status separation, byte-identical callback transport
+      and package locks, the supplemental installed Pi 0.84.4 observation, every declared
+      check green, no external effects, and empty unresolved.
+    evidence_template: Record exact base/claim/dispatch/commit/changed paths; package.json
+      and package-lock.json before/after hashes; focused/runtime/Node/full-pytest/Invar/diff
+      command exits; rendered visible-width maxima at 40/80/120; valid JSON pretty
+      output and malformed byte-equality observations; outer-vs-inner status observation;
+      callback content/details before/after hashes including text fence, 6,000-character
+      and artifact cases; live-theme style differentiation; current installed Pi version/path
+      observation; no renderer I/O or artifact read; unresolved [].
+    refs:
+    - AGENTS.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - pyproject.toml
+    - INVAR.md
+    agent: frontend-engineer
