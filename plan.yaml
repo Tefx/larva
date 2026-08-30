@@ -143819,13 +143819,13 @@ phases:
       network-auth, or external-service effect. Residual risk: none.'
 - id: pi_subagent_callback_theme_frame_20260830
   name: Pi Subagent Callback Theme Frame 2026-08-30
-  status: in_progress
+  status: done
   depends_on:
   - pi_subagent_json_collapsed_rendering_followup_20260830
   steps:
   - id: pi-subagent-callback-theme-frame.implement
     name: Frame callback output with a complete theme-aware background surface
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -143989,3 +143989,53 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-08-30T15:19:02.711866Z'
+    done_at: '2026-08-30T16:24:59.831239+00:00'
+    evidence: 'PASS. Integrated candidate `3216447ab6e41e18d601bd2d99f393cff7d88964`
+      by fast-forward onto immutable post-claim base `3a8ed84afd2955866595591e1b731bd961583113`;
+      integrated tree `a298dc1fbf9cbd357795b3c32168c0c2a7cf1579`. Changed exactly
+      `contrib/pi-extension/larva.ts`, `contrib/pi-extension/README.md`, `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`,
+      `scripts/pi-extension-runtime-smoke.mjs`, `tests/shell/test_pi_extension_contract.py`,
+      and `tests/shell/test_pi_extension_subagent_ux.py`.
+
+
+      The registered `larva-subagent-result` renderer now wraps the outer execution-status
+      header and collapsed/expanded body in one full-width theme-aware rectangular
+      frame. Each row has visible borders, stable left/right padding, background fill
+      over border/content/padding/blank cells, background restoration after nested
+      Markdown/JSON ANSI resets, and a final reset that prevents transcript bleed.
+      The frame resolves outer-status background/header styling at render time, keeps
+      payload `status` as payload data, is rectangular at 40/80/120 columns, and degrades
+      without throwing at widths 1-4. Collapsed 16-line JSON bounding/omission, full
+      expanded bounded in-memory JSON, strict parse/fallback behavior, live JSON highlighting,
+      missing-details default fallback, model-visible `text` fence, 6,000-character
+      bounds, no artifact reads, artifact manifests, at-most-once delivery, and terminal
+      lifecycle remain unchanged.
+
+
+      The initial Worker preserved source candidate `d776f3c6fbd024ba8fcfe6096a54da53c517f870`
+      but returned BLOCKED after its long run lost structural-lint command context.
+      The bytes were transferred without manual copying through Production-Gate-admitted
+      source bundle SHA `sha256:3a10341b5386b0fab7df6993e0d8d1d34517ce50b37b8b43e8430e0cabaaa149`,
+      source tree `a298dc1fbf9cbd357795b3c32168c0c2a7cf1579`, into a fresh pristine
+      retry worktree. Retry dispatch `/tmp/larva-vectl-artifacts/pi-subagent-callback-theme-frame-retry1-3a8ed84a/worker-dispatch.json`
+      is CONFORMANT with canonical dispatch SHA `sha256:1f2644f918939b14dd52b120644147915cb660d644144347b1dd466204b2449b`
+      and claim `claim:9573b5b407ce8f3f3e58bb9e9cf9583a1b4d5c9de23ee80f58c0aa1bc4da1d41`.
+      After all competing test processes reached terminal state, the exact full pytest
+      retry turned green. The unchanged Worker-v2 receipt is PASS, claims FRAME-01..04,
+      unresolved `[]`, no acceptance authorization, canonical receipt SHA `sha256:4370208f3d09b3ac339f9ffe04575e5240a50fb92855bc9b809c41b47b8610c9`;
+      child and parent structural lint are CONFORMANT.
+
+
+      Independent final Gate `/tmp/larva-vectl-artifacts/pi-subagent-callback-theme-frame-retry1-3a8ed84a/final-gate-verdict.json`
+      is CONFORMANT, file SHA-256 `9dad74c6ee022ad9272e3529eacee3e0863fa18bd53825690913a09951f87cd6`,
+      clean candidate required/observed, no undeclared path, all claims checked, and
+      all six checks green: focused registered-renderer pytest, runtime-smoke frame/ANSI/theme
+      proof, all Pi extension Node regressions, full repository pytest, `uvx invar-tools
+      guard --all`, and `git diff --check`. Behavioral proof covers corners/edges,
+      padding, rectangular widths, background continuity after resets, line-end reset
+      and unstyled sentinel, live theme change, outer-status styling, malformed/plain
+      fallback framing, collapsed/expanded JSON, and width 1-4 safety. Package manifest
+      SHA-256 `42c8861d2e7dcd327d5e091d52bc53769a241ea6469aac687e7bbe9ca5cd2279` and
+      lock SHA-256 `a32e6fb6f90c2a861f086337e19b011ea38f8a6ae0cb21974041c61d5087a1cc`
+      are byte-identical. No installed-package, credential, provider, user-config,
+      network-auth, external-service, or device effect. Residual risk: none.'
