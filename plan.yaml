@@ -143817,3 +143817,173 @@ phases:
       and lock hash `a32e6fb6f90c2a861f086337e19b011ea38f8a6ae0cb21974041c61d5087a1cc`
       are byte-identical. No installed-package, credential, provider, user-config,
       network-auth, or external-service effect. Residual risk: none.'
+- id: pi_subagent_callback_theme_frame_20260830
+  name: Pi Subagent Callback Theme Frame 2026-08-30
+  status: pending
+  depends_on:
+  - pi_subagent_json_collapsed_rendering_followup_20260830
+  steps:
+  - id: pi-subagent-callback-theme-frame.implement
+    name: Frame callback output with a complete theme-aware background surface
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: vectl-assurance-worker]
+
+      [VECTL_WORKER_PROTOCOL:v2]
+
+      The Orchestrator must supply exactly one admitted `vectl.worker.dispatch.v2`
+      envelope bound to the active claim, immutable clean-worktree base, current plan
+      SHA, exact allowed paths, checks, and test bindings. Completion requires the
+      unchanged `vectl.worker.execution.v2` receipt. This plan grants no claim, worktree,
+      integration, Git, provider, external-effect, or installed-package mutation authority.
+
+
+      Deliver:
+
+      - Wrap the complete registered `larva-subagent-result` custom message—outer
+      execution-status header plus collapsed or expanded body—in one theme-aware rectangular
+      surface. The surface has a visible border, stable left/right inner padding,
+      and background fill across every border, content, padding, and blank cell. It
+      occupies a deterministic width derived from the renderer width and never colors
+      adjacent transcript cells or rows.
+
+      - Resolve supported Pi theme styling at render time and reuse the repository''s
+      established Larva TUI width/ANSI primitives where suitable. Theme changes must
+      affect the next render without reconstructing the message. The border remains
+      legible against the background and may reflect the outer callback status; payload
+      fields such as `status:"child_payload_ok"` cannot select frame status styling.
+
+      - Preserve nested Markdown/JSON ANSI styles inside the surface. If a child style
+      emits an ANSI reset, the frame background must be restored before the next printable
+      or padding cell. Each framed row must terminate with a complete reset so background
+      and foreground styling cannot bleed into following transcript output.
+
+      - Compute inner body width after border and padding. At 40, 80, and 120 columns
+      every framed row stays within the supplied visible width and has consistent
+      rectangular visible width. Extremely narrow positive widths degrade without
+      throwing, negative repeat counts, broken ANSI, or width overflow; content may
+      be truncated to preserve the frame.
+
+      - Preserve the completed JSON presentation behavior: collapsed valid JSON remains
+      a maximum 16-line pretty/highlighted body with explicit omission for large values,
+      expanded mode retains the complete bounded in-memory result, and small JSON
+      is complete. Preserve malformed/plain/intentional Markdown fallback content,
+      missing-details default-renderer fallback, outer/inner status separation, live
+      JSON theme refresh, model-visible `text` fence, 6,000-character bounds, no artifact
+      reads, artifact manifests, at-most-once delivery, and terminal lifecycle bytes/behavior.
+
+      - Extend the existing registered-renderer and runtime-smoke behavioral coverage
+      to render framed collapsed and expanded messages. Prove border corners/edges,
+      stable padding, background coverage through nested syntax-highlight resets and
+      trailing fill, final reset/no bleed, exact visible-row widths at 40/80/120,
+      narrow-width graceful behavior, live theme change, retained collapsed/expanded
+      JSON contracts, status separation, and malformed/plain fallback framing. Token
+      or source-text assertions are insufficient.
+
+      - Synchronize the existing Pi operator/reference documentation with the callback''s
+      complete theme-aware frame. Add no dependency and do not change package manifests/locks
+      or installed Pi/TUI packages.
+
+
+      Boundary:
+
+      - Owner: `frontend-engineer`, whose live resolved definition covers production
+      TypeScript UI behavior and contains Worker-v2 activation. This is one reversible
+      callback-renderer presentation transaction with one owner, target, evidence
+      consumer, and rollback unit; no independent verification node adds distinct
+      information.
+
+      - Expected repository changes are limited to `contrib/pi-extension/larva.ts`,
+      the existing callback JSON behavioral tests and runtime-smoke scenario, and
+      the two synchronized Pi docs. `plan.yaml`, shared contracts, Python product
+      source, package manifests/locks, installed runtime files, credentials, user
+      configuration, and unrelated real-runtime fixtures are protected.
+
+      - Effects are reversible local repository edits and disposable worktree test
+      artifacts only. No provider/model call, credential, network authentication,
+      user configuration write, package installation/update outside the isolated worktree,
+      or external service/device effect is authorized. Rollback is one Git revert.
+
+
+      Admit:
+
+      - Direct user observation after restarting onto the completed collapsed-JSON
+      fix proves callback JSON formatting is correct and exposes the remaining product
+      gap: the `role: custom` message renderer returns header/body lines without an
+      outer surface, while Pi''s tool-result component supplies its own background
+      container. The user explicitly accepted a complete theme-aware background frame
+      as the follow-up outcome.
+
+      - Behavioral proof must invoke the registered message renderer and inspect rendered
+      ANSI state and visible widths. For a styled JSON payload, each printable frame/padding
+      cell remains under the selected background even after embedded resets, each
+      line ends reset, and an appended sentinel is unstyled. A second render under
+      changed theme instrumentation proves background/border tokens are resolved live.
+
+      - Completion requires every declared check green, exact expected changed paths,
+      FRAME-01 through FRAME-04 claimed, package manifest/lock byte equality, clean
+      Worker-v2 receipt, no external effects, and empty unresolved items.
+
+
+      Recovery:
+
+      - Theme-token lookup failure must fall back to a legible bounded frame without
+      altering content or throwing. Missing details retain the default renderer path.
+      Narrow widths retain a bounded non-throwing representation.
+
+      - Ordinary implementation or check failure stays on this step. Preserve prior
+      evidence and stop for reconciliation on callback-content drift, package-lock
+      drift, installed-runtime mutation, changed target/effect/rollback, unknown external
+      state, or protected-path change.
+
+
+      <vectl_step_policy>
+
+      {"schema_version":"vectl.step.policy.v2","step_id":"pi-subagent-callback-theme-frame.implement","risk_tier":"R1","risk_reasons":["The
+      change is a reversible adapter-local callback presentation improvement with
+      no model-visible, shared-contract, credential, external-service, package, or
+      persistent-state effect.","Registered-renderer behavioral tests can directly
+      observe frame geometry, background-state continuity, reset isolation, theme
+      refresh, width safety, and all retained JSON contracts; an independent observer
+      would not add distinct information."],"primary_outcome":"FRAME-01","rollback_class":"TRIVIAL","observation_ledger":[],"test_authority":{"developer_test_globs":["tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"acceptance_test_paths":[],"acceptance_check_ids":[],"acceptance_mutation":"FORBIDDEN","acceptance_authorizations":[]}}
+
+      </vectl_step_policy>
+
+
+      <intent_closure_contract>
+
+      {"schema_version":"intent_closure.contract.v2","matcher_semantics":"intent_closure.matchers.v2","profile":"generic","scope":{"allowed_paths":["contrib/pi-extension/larva.ts","contrib/pi-extension/README.md","docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py","scripts/pi-extension-runtime-smoke.mjs"],"blocked_paths":["plan.yaml","contracts/**","src/**","pyproject.toml","uv.lock","package.json","package-lock.json","contrib/pi-extension/package.json","contrib/pi-extension/package-lock.json","tests/shell/test_pi_extension_real_runtime.py"]},"claims":["FRAME-01","FRAME-02","FRAME-03","FRAME-04"],"checks":[{"id":"theme_frame_targeted","run":{"command":["uv","run","pytest","-q","tests/shell/test_pi_extension_contract.py","tests/shell/test_pi_extension_subagent_ux.py"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[{"path":"tests/shell/test_pi_extension_contract.py","classification":"developer","availability":"current"},{"path":"tests/shell/test_pi_extension_subagent_ux.py","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["FRAME-01","FRAME-02","FRAME-03","FRAME-04"]},{"id":"theme_frame_runtime","run":{"command":["bash","-lc","npm
+      --prefix contrib/pi-extension ci --ignore-scripts && node scripts/pi-extension-runtime-smoke.mjs
+      --scenario subagent-json-presentation"],"timeout_seconds":420},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"},{"path":"scripts/pi-extension-runtime-smoke.mjs","access":"execute","availability":"current"}],"test_bindings":[{"path":"scripts/pi-extension-runtime-smoke.mjs","classification":"developer","availability":"current"}]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["FRAME-01","FRAME-02","FRAME-03"]},{"id":"pi_extension_node_regressions","run":{"command":["bash","-lc","npm
+      --prefix contrib/pi-extension ci --ignore-scripts && for f in contrib/pi-extension/test-*.mjs;
+      do node \"$f\"; done"],"timeout_seconds":600},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"contrib/pi-extension/package.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/package-lock.json","access":"read","availability":"current"},{"path":"contrib/pi-extension/larva.ts","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["FRAME-04"]},{"id":"repo_pytest","run":{"command":["env","-u","LARVA_PI_AGENT_PERSONA_SWITCH","uv","run","pytest","-q"],"timeout_seconds":1800},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"pyproject.toml","access":"read","availability":"current"},{"path":"contrib/pi-extension/README.md","access":"read","availability":"current"},{"path":"docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["FRAME-04"]},{"id":"invar_guard_all","run":{"command":["uvx","invar-tools","guard","--all"],"timeout_seconds":900},"evidence":{"mode":"command_outcome","path_bindings":[{"path":"INVAR.md","access":"read","availability":"current"}],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["FRAME-04"]},{"id":"diff_whitespace","run":{"command":["git","diff","--check"],"timeout_seconds":60},"evidence":{"mode":"command_outcome","path_bindings":[],"test_bindings":[]},"expect":{"outcome":"green","exit_codes":[0],"stdout_or_stderr":{}},"proves":["FRAME-04"]}],"bindings":{"expected_red":{"items":[]},"closes_expected_red":[]}}
+
+      </intent_closure_contract>'
+    verification: Require one admitted frontend-engineer Worker-v2 receipt bound to
+      the exact dispatch, immutable clean base, current Plan SHA, and expected scope.
+      It must prove the registered callback renderer creates one complete theme-aware
+      frame whose background survives nested ANSI resets, whose rows are padded and
+      reset without bleed, whose geometry is safe at 40/80/120 and extreme narrow
+      widths, and whose collapsed/expanded JSON, fallback, status, transport, artifact,
+      and lifecycle contracts remain green under every declared check.
+    evidence_template: Report candidate/base/tree SHAs; exact changed paths; FRAME-01..04
+      evidence; registered-renderer geometry/background/reset/theme/width observations;
+      retained JSON/fallback/status/transport evidence; command outcomes; package
+      manifest/lock hashes; external effects; unresolved items.
+    refs:
+    - AGENTS.md
+    - INVAR.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - pyproject.toml
+    agent: frontend-engineer
