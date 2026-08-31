@@ -144212,7 +144212,7 @@ phases:
       no push/tag/release/PyPI/uvx-cache effect. Gaps: none.'
   - id: pi-prompt-preflight-timeout-release-0-6-3.github-pypi
     name: Publish GitHub and PyPI release 0.6.3
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: from the exact integrated 0.6.3 product commit, fast-forward origin/main,
       create non-draft non-prerelease GitHub Release and tag v0.6.3 at that commit,
@@ -144243,6 +144243,25 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-08-31T18:19:26.489449Z'
+    done_at: '2026-08-31T18:23:58.622481+00:00'
+    evidence: 'Pre-effect reconciliation proved: product commit 1d8cfc10bdc7f5a9510dbaa73154ef66741709e7
+      is an ancestor of clean main, all package version surfaces report 0.6.3, origin/main
+      was 5367c6f0362c106bb5ba7e987b2750f3602d9712 and fast-forwardable, and local/remote
+      v0.6.3 tag, GitHub Release v0.6.3, and public PyPI larva 0.6.3 were absent.
+      Existing GitHub keyring auth and Tefx/larva workflow authority were valid. Pushed
+      main once: origin/main 5367c6f0362c106bb5ba7e987b2750f3602d9712 -> 54c8755f1cf03c8d5f5c365c5576f0730e10c4eb.
+      Created non-draft/non-prerelease GitHub Release https://github.com/Tefx/larva/releases/tag/v0.6.3
+      at exact product commit; remote refs/tags/v0.6.3 resolves to 1d8cfc10bdc7f5a9510dbaa73154ef66741709e7.
+      Release-triggered workflow https://github.com/Tefx/larva/actions/runs/33424540672
+      completed success for head v0.6.3 / product SHA: build job 99594807202 success
+      including package build and clean uvx MCP smoke; OIDC Trusted Publishing job
+      99594928352 success. Public PyPI now exposes larva 0.6.3 with Requires-Python
+      >=3.11. Downloaded and verified public artifacts against PyPI metadata and local
+      preflight build: wheel larva-0.6.3-py3-none-any.whl 241316 bytes SHA-256 f01a3aa82c9b75bb95cea4d0d89a82878e93dc926a35fa7f7e4240f2a3af98de;
+      sdist larva-0.6.3.tar.gz 2331745 bytes SHA-256 d86e256041934426c7e86e74304cbdb9a13f3b66a439bb20932f21921ea065be.
+      Final release/tag/workflow/PyPI/remote-main state reconciled; Git worktree clean.
+      No direct PyPI upload, new credential, source mutation, duplicate effect, or
+      uvx activation. Gaps: none.'
   - id: pi-prompt-preflight-timeout-release-0-6-3.local-uvx
     name: Activate Larva 0.6.3 in local uvx resolution
     status: pending
