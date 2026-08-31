@@ -144212,7 +144212,7 @@ phases:
       no push/tag/release/PyPI/uvx-cache effect. Gaps: none.'
   - id: pi-prompt-preflight-timeout-release-0-6-3.github-pypi
     name: Publish GitHub and PyPI release 0.6.3
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: from the exact integrated 0.6.3 product commit, fast-forward origin/main,
       create non-draft non-prerelease GitHub Release and tag v0.6.3 at that commit,
@@ -144241,6 +144241,8 @@ phases:
     depends_on:
     - pi-prompt-preflight-timeout-release-0-6-3.integrate
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-08-31T18:19:26.489449Z'
   - id: pi-prompt-preflight-timeout-release-0-6-3.local-uvx
     name: Activate Larva 0.6.3 in local uvx resolution
     status: pending
