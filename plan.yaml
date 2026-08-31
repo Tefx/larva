@@ -144136,3 +144136,109 @@ phases:
       Git HEAD/tree before and after cache activation both f9a07eb612566ca4f17e93454dcf2644c7e268c2
       / 1a4a4a2acba23f17a66ee44a64c8866cb47b99c5; git diff --check clean; repository
       files unchanged by uvx.
+- id: pi_prompt_preflight_timeout_release_20260901
+  name: Pi Prompt Preflight Timeout Fix and Larva 0.6.3 Release
+  status: pending
+  gate: Close after the prompt-preflight timeout fix and 0.6.3 metadata are integrated
+    at one product commit, GitHub Release v0.6.3 targets that exact commit, the existing
+    Trusted Publishing workflow succeeds and public PyPI exposes matching 0.6.3 artifacts,
+    and pinned plus unpinned local public-PyPI uvx resolution report Larva 0.6.3.
+  context: User-authorized patch release for the reproduced Pi child prompt-preflight
+    timeout defect. Repository integration, immutable GitHub/PyPI publication, and
+    local uvx activation remain three serial rollback and reconciliation units. Existing
+    GitHub authentication and Trusted Publishing are the only release authorities;
+    no direct PyPI upload or new credential is admitted.
+  depends_on:
+  - release_0_6_2_runtime_20260830
+  steps:
+  - id: pi-prompt-preflight-timeout-release-0-6-3.integrate
+    name: Integrate prompt-preflight timeout fix and bump Larva to 0.6.3
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
+      finalize the already-reproduced child prompt-preflight repair so ordinary RPC
+      commands retain a 10-second bound, prompt acceptance alone has a bounded 60-second
+      preflight window, the 10.5-second delayed-ACK regression and operator/reference
+      documentation remain in parity, canonical package metadata moves from 0.6.2
+      to 0.6.3, and the exact repository outcome is integrated and committed. Boundary:
+      repository-only work in the referenced source, meaningful test, documentation,
+      version, and lock files; no push, tag, GitHub Release, PyPI, credential, or
+      local uvx-cache effect. Admit: preserve the observed pre-fix LARVA_CHILD_PROTOCOL_FAILED
+      timeout and exact post-fix SUBAGENT_TEST_OK runtime evidence; prove the clean-checkout
+      package and Pi-extension behavior before integration. Recovery: repair compatible
+      check failures in this step and stop before all external effects if clean repository
+      proof cannot be obtained.'
+    verification: bash -lc 'set -euo pipefail; npm --prefix contrib/pi-extension ci;
+      uv sync --group dev --frozen; uv lock --check; uv run --frozen larva --version;
+      for test_file in contrib/pi-extension/test-*.mjs; do node "$test_file"; done;
+      node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates; uv
+      run pytest -q; uvx invar-tools guard --all; git diff --check'
+    evidence_template: Record exact changed paths, 0.6.3 parity across pyproject/module/lock/distribution,
+      delayed prompt-ACK and full Pi-extension outputs, capability smoke, pytest and
+      Invar results, product commit SHA, and repository state; gaps must be none before
+      publication.
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    agent: general
+  - id: pi-prompt-preflight-timeout-release-0-6-3.github-pypi
+    name: Publish GitHub and PyPI release 0.6.3
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: runtime_state_only.
+      Deliver: from the exact integrated 0.6.3 product commit, fast-forward origin/main,
+      create non-draft non-prerelease GitHub Release and tag v0.6.3 at that commit,
+      observe the release-triggered existing Trusted Publishing workflow to success,
+      and prove public PyPI metadata plus wheel and sdist identity for Larva 0.6.3.
+      Boundary: external effects are limited to Tefx/larva origin/main, immutable
+      tag/release v0.6.3, the existing GitHub Actions publish workflow, and public
+      PyPI project larva; use existing approved GitHub access and OIDC Trusted Publishing
+      only, with no repository mutation, direct PyPI upload, new credential, or local
+      uvx activation. Admit: exact product commit and green dependency evidence, fast-forwardable
+      remote, and confirmed absence of conflicting local/remote tag, GitHub Release,
+      or PyPI 0.6.3 before effect. Recovery: after any uncertain push/release/workflow
+      outcome, reconcile remote branch, tag target, release state, workflow jobs,
+      and PyPI before retry; never duplicate or replace an immutable published artifact.'
+    verification: git push origin main && gh release create v0.6.3 --target <product-commit>
+      --generate-notes && gh run watch <release-run-id> --exit-status && gh release
+      view v0.6.3 --json tagName,targetCommitish,isDraft,isPrerelease,url && public
+      PyPI JSON exposes larva 0.6.3 with matching wheel and sdist hashes
+    evidence_template: Record pre-effect absence checks, before/after origin/main,
+      exact product commit, tag target and release URL/state, workflow run and job
+      conclusions, public PyPI version/Requires-Python/artifact filenames/sizes/hashes,
+      and reconciliation result.
+    refs:
+    - .github/workflows/publish.yml
+    - pyproject.toml
+    depends_on:
+    - pi-prompt-preflight-timeout-release-0-6-3.integrate
+    agent: vectl-orchestrator
+  - id: pi-prompt-preflight-timeout-release-0-6-3.local-uvx
+    name: Activate Larva 0.6.3 in local uvx resolution
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: runtime_state_only.
+      Deliver: after public PyPI publication is proved, refresh the local uvx cache
+      from https://pypi.org/simple for larva==0.6.3 and prove refreshed pinned, cached
+      pinned, and unpinned public-index CLI resolution all report Larva 0.6.3. Boundary:
+      local uv/uvx resolution and cache only; no Git content, remote GitHub/PyPI state,
+      configuration, credential, or other environment mutation. Admit: completed release
+      dependency, public artifact identity, exact uvx executable/version, and recorded
+      Git HEAD/tree before activation. Recovery: a cache-resolution failure may be
+      retried only after public index availability is rechecked; preserve the published
+      release and stop with repository bytes unchanged if activation cannot be proved.'
+    verification: /opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple
+      --from larva==0.6.3 larva --version && /opt/homebrew/bin/uvx --index-url https://pypi.org/simple
+      --from larva==0.6.3 larva --version && /opt/homebrew/bin/uvx --index-url https://pypi.org/simple
+      larva --version && git diff --check
+    evidence_template: Record uvx path/version, public index, refresh and cached pinned
+      outputs, unpinned output, bound PyPI artifact hashes, Git HEAD/tree before and
+      after, and unchanged repository files.
+    refs:
+    - pyproject.toml
+    - .github/workflows/publish.yml
+    depends_on:
+    - pi-prompt-preflight-timeout-release-0-6-3.github-pypi
+    agent: vectl-orchestrator
