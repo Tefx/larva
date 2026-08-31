@@ -144138,7 +144138,7 @@ phases:
       files unchanged by uvx.
 - id: pi_prompt_preflight_timeout_release_20260901
   name: Pi Prompt Preflight Timeout Fix and Larva 0.6.3 Release
-  status: pending
+  status: in_progress
   gate: Close after the prompt-preflight timeout fix and 0.6.3 metadata are integrated
     at one product commit, GitHub Release v0.6.3 targets that exact commit, the existing
     Trusted Publishing workflow succeeds and public PyPI exposes matching 0.6.3 artifacts,
@@ -144153,7 +144153,7 @@ phases:
   steps:
   - id: pi-prompt-preflight-timeout-release-0-6-3.integrate
     name: Integrate prompt-preflight timeout fix and bump Larva to 0.6.3
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
       finalize the already-reproduced child prompt-preflight repair so ordinary RPC
       commands retain a 10-second bound, prompt acceptance alone has a bounded 60-second
@@ -144185,6 +144185,8 @@ phases:
     - src/larva/__init__.py
     - uv.lock
     agent: general
+    claimed_by: general
+    claimed_at: '2026-08-31T17:55:23.352166Z'
   - id: pi-prompt-preflight-timeout-release-0-6-3.github-pypi
     name: Publish GitHub and PyPI release 0.6.3
     status: pending
