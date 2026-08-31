@@ -144264,7 +144264,7 @@ phases:
       uvx activation. Gaps: none.'
   - id: pi-prompt-preflight-timeout-release-0-6-3.local-uvx
     name: Activate Larva 0.6.3 in local uvx resolution
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: after public PyPI publication is proved, refresh the local uvx cache
       from https://pypi.org/simple for larva==0.6.3 and prove refreshed pinned, cached
@@ -144288,3 +144288,5 @@ phases:
     depends_on:
     - pi-prompt-preflight-timeout-release-0-6-3.github-pypi
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-08-31T18:24:07.508631Z'
