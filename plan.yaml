@@ -144138,7 +144138,7 @@ phases:
       files unchanged by uvx.
 - id: pi_prompt_preflight_timeout_release_20260901
   name: Pi Prompt Preflight Timeout Fix and Larva 0.6.3 Release
-  status: in_progress
+  status: done
   gate: Close after the prompt-preflight timeout fix and 0.6.3 metadata are integrated
     at one product commit, GitHub Release v0.6.3 targets that exact commit, the existing
     Trusted Publishing workflow succeeds and public PyPI exposes matching 0.6.3 artifacts,
@@ -144264,7 +144264,7 @@ phases:
       uvx activation. Gaps: none.'
   - id: pi-prompt-preflight-timeout-release-0-6-3.local-uvx
     name: Activate Larva 0.6.3 in local uvx resolution
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: after public PyPI publication is proved, refresh the local uvx cache
       from https://pypi.org/simple for larva==0.6.3 and prove refreshed pinned, cached
@@ -144290,3 +144290,19 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-08-31T18:24:07.508631Z'
+    done_at: '2026-08-31T18:26:14.081670+00:00'
+    evidence: 'Activated only local uv/uvx resolution from explicit public index https://pypi.org/simple
+      using /opt/homebrew/bin/uvx (realpath /opt/homebrew/Cellar/uv/0.12.5/bin/uvx),
+      uvx 0.12.5. Bound publication provenance: public wheel SHA-256 f01a3aa82c9b75bb95cea4d0d89a82878e93dc926a35fa7f7e4240f2a3af98de
+      and sdist SHA-256 d86e256041934426c7e86e74304cbdb9a13f3b66a439bb20932f21921ea065be.
+      Git before activation: HEAD dc4d49f7a3eaca981641e90afd2180d329b6faac, tree 7c8609d847e9920045c7ee4b3c402b0c6a20bfec,
+      clean. First exact refresh observed normal PyPI propagation lag (`no version
+      of larva==0.6.3`); no repository effect occurred. Rechecked the public PEP 691
+      simple index with a bounded read-only wait until it exposed exactly larva-0.6.3-py3-none-any.whl
+      and larva-0.6.3.tar.gz, then retried once. Exact refresh `/opt/homebrew/bin/uvx
+      --refresh --index-url https://pypi.org/simple --from larva==0.6.3 larva --version`
+      installed 36 packages and output `larva 0.6.3`; cached pinned rerun output `larva
+      0.6.3`; unpinned public-PyPI command output `larva 0.6.3`. Git after activation:
+      same HEAD dc4d49f7a3eaca981641e90afd2180d329b6faac, same tree 7c8609d847e9920045c7ee4b3c402b0c6a20bfec,
+      clean; git diff --check passed. No repository, config, credential, GitHub, or
+      PyPI mutation. Gaps: none.'
