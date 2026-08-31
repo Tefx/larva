@@ -149,6 +149,13 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   if (message.type === "get_state") return send({ id: message.id, type: "response", command: "get_state", success: true, data: { sessionFile, model: { provider: "loopback", id: "model" }, thinkingLevel: "medium" } });
   if (message.type === "prompt") {
     scenario = message.message;
+    if (scenario === "delayed-prompt-ack") {
+      return setTimeout(() => {
+        send({ id: message.id, type: "response", command: "prompt", success: true, data: {} });
+        settled = true;
+        send({ type: "agent_settled" });
+      }, 10_500);
+    }
     send({ id: message.id, type: "response", command: "prompt", success: true, data: {} });
     if (scenario === "inline") send({ type: "tool_execution_end", toolCallId: "huge-tool", toolName: "read", success: true, output: huge(${JSON.stringify(RAW_HISTORY)}) });
     if (scenario === "retry") send({ type: "agent_end", willRetry: true, messages: [{ role: "assistant", content: [{ type: "text", text: "retry" }], stopReason: "error", errorMessage: "retry failure", diagnostics: [{ type: "provider_transport_failure" }] }] });
@@ -274,7 +281,10 @@ async function runParentSurfaceProbe(runtimeDir) {
   assert.equal(anomaly.callbackSurface.execution_status, "success");
   assert.equal(anomaly.callbackSurface.delivery_status, "failed");
   assert.equal(anomaly.callbackSurface.error, null);
-  return { inline: terminalMetadata(inline.callbackSurface), artifact: terminalMetadata(artifact.callbackSurface), retry: terminalMetadata(retry.callbackSurface), failure: terminalMetadata(failure.callbackSurface), anomaly: terminalMetadata(anomaly.callbackSurface) };
+  const delayedPromptAck = await runPublicScenario(mod, base, "delayed-prompt-ack");
+  assert.equal(delayedPromptAck.callbackSurface.status, "success");
+  assert.equal(delayedPromptAck.callbackSurface.result_text, SHORT_FINAL);
+  return { inline: terminalMetadata(inline.callbackSurface), artifact: terminalMetadata(artifact.callbackSurface), retry: terminalMetadata(retry.callbackSurface), failure: terminalMetadata(failure.callbackSurface), anomaly: terminalMetadata(anomaly.callbackSurface), delayed_prompt_ack: terminalMetadata(delayedPromptAck.callbackSurface) };
 }
 
 function runDecoderProbe(mod) {

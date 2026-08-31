@@ -1525,6 +1525,16 @@ credentials or network model calls. It enumerates record bytes, checks the
 capability marker, verifies inline/artifact delivery and mode/hash/bytes, scans
 public surfaces for raw payload leakage, exercises retry/failure/anomaly state,
 and covers LF/CRLF/U+2028/U+2029/split-UTF-8/pre-parse bounds.
+
+Pi acknowledges `prompt` only after configured `input` and
+`before_agent_start` hooks finish preflight. Larva therefore keeps the ordinary
+child RPC command bound at 10 seconds and uses a separate 60-second bound for
+prompt acceptance. This covers lazy allowlisted-extension initialization without
+changing the post-acceptance no-progress watchdog; no acknowledgement within the
+bounded window still returns `LARVA_CHILD_PROTOCOL_FAILED`. The credential-free
+regression delays prompt acknowledgement beyond 10 seconds and verifies accepted
+then successful completion.
+
 ### `/larva-subagent` console
 
 The canonical user command is:
@@ -1589,6 +1599,7 @@ must not delete child Pi session files, consume orchestration events, change
 exact-`task_id` rules, or mutate persona/model/tool-policy state.
 
 ### Verification requirements
+
 The async subagent implementation is not complete unless tests or runtime smoke
 prove:
 
@@ -1622,6 +1633,9 @@ prove:
     root, and preserved child session evidence.
 16. The authoritative reference, model-facing schema/description, examples, and
     summary links remain in parity.
+17. A child whose prompt preflight acknowledgement arrives after the ordinary
+    10-second RPC bound but within the prompt-specific 60-second bound returns
+    `accepted` and then completes successfully.
 
 ## Extension-Facing Persona Invocation
 

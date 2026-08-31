@@ -239,6 +239,14 @@ extension runtime. The no-sleep guidance belongs in the accepted result because
 that is the exact decision point where a parent agent otherwise tends to retain
 control by calling `sleep` and polling status.
 
+Pi emits the `prompt` response only after prompt preflight, including configured
+`input` and `before_agent_start` extension hooks. Ordinary child RPC commands
+retain the 10-second bound; the prompt-acceptance command has a separate bounded
+60-second window so allowlisted extensions can finish lazy initialization before
+`larva_subagent` returns its accepted receipt. A missing prompt acknowledgement
+still fails with `LARVA_CHILD_PROTOCOL_FAILED`; this window does not start the
+post-acceptance no-progress watchdog.
+
 ### Consecutive no-progress watchdog
 
 The initial silence episode is armed after the child prompt succeeds and the run
@@ -1708,6 +1716,11 @@ Implementation is not complete until these gates pass:
     16-body-line budget and omission marker, complete expanded bounded content,
     live theme refresh, ANSI reset/background restoration, no artifact reads, and
     width safety at 40/80/120 plus narrower positive widths.
+
+28. Child-RPC preflight regression: a controlled Pi child that acknowledges
+    `prompt` after more than 10 seconds but before 60 seconds returns `accepted`,
+    completes normally, and leaves ordinary RPC commands on their 10-second
+    bound.
 
 ## Non-goals
 

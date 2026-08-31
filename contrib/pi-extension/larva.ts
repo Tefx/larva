@@ -738,6 +738,9 @@ const SUBAGENT_TIMELINE_EVENT_LIMIT = 80;
 const SUBAGENT_COLLAPSED_RESULT_PREVIEW_LINE_LIMIT = 16;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
+const CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000;
+// Pi acknowledges a prompt only after input and before_agent_start extension preflight.
+const CHILD_RPC_PROMPT_PREFLIGHT_TIMEOUT_MS = 60_000;
 const CHILD_RPC_FRAME_PRELOAD_FILENAME = "child-rpc-frame-preload.mjs";
 const CHILD_RPC_FRAME_PRELOAD_SYMBOL = Symbol.for("larva.pi.child-rpc-frame-preload.v1");
 const CHILD_RPC_FRAME_CAPABILITY = "larva-child-rpc-frame-preload-v1";
@@ -8943,6 +8946,10 @@ class RpcClient {
     return this.modernTerminalAuthority || this.allowLegacyTerminalFallback;
   }
 
+  hasModernFrameCapability(): boolean {
+    return this.modernTerminalAuthority;
+  }
+
   private failProtocol(larvaError: LarvaError): void {
     if (this.agentEnded) {
       void traceChildRpc(this.traceEnv, "rpc_rx_post_terminal_anomaly", { pid: this.child.pid ?? null, code: larvaError.code, message_preview: boundedTracePreview(larvaError.message) });
@@ -9017,7 +9024,7 @@ class RpcClient {
       : error("LARVA_CHILD_START_FAILED", "Child stdout closed before RPC readiness.");
   }
 
-  async command(id: string, body: Record<string, unknown>, timeoutMs = 10_000): Promise<unknown | LarvaError> {
+  async command(id: string, body: Record<string, unknown>, timeoutMs = CHILD_RPC_COMMAND_TIMEOUT_MS): Promise<unknown | LarvaError> {
     const frame = { id, ...body };
     const message = JSON.stringify(frame);
     void traceChildRpc(this.traceEnv, "rpc_tx", { pid: this.child.pid ?? null, ...childRpcFrameTraceFields(frame, Buffer.byteLength(message, "utf8")) });
@@ -9504,7 +9511,8 @@ async function runChildSequence(
     if (!rpc.hasFrameCapability()) {
       return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state omitted the Larva RPC frame capability marker before prompt.")));
     }
-    const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }); // resume sequence: switch_session -> route fence -> prompt -> get_last_assistant_text
+    const promptTimeoutMs = rpc.hasModernFrameCapability() ? CHILD_RPC_PROMPT_PREFLIGHT_TIMEOUT_MS : CHILD_RPC_COMMAND_TIMEOUT_MS;
+    const prompted = await rpc.command("prompt-1", { type: "prompt", message: task }, promptTimeoutMs); // resume sequence: switch_session -> route fence -> prompt -> get_last_assistant_text
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
     if (!isSuccessResponse(prompted)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")));
     if (activeRecord.stall_timer === null) activeRecord.last_progress_at_ms = performance.now();
