@@ -144153,7 +144153,7 @@ phases:
   steps:
   - id: pi-prompt-preflight-timeout-release-0-6-3.integrate
     name: Integrate prompt-preflight timeout fix and bump Larva to 0.6.3
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
       finalize the already-reproduced child prompt-preflight repair so ordinary RPC
       commands retain a 10-second bound, prompt acceptance alone has a bounded 60-second
@@ -144187,6 +144187,29 @@ phases:
     agent: general
     claimed_by: general
     claimed_at: '2026-08-31T17:55:23.352166Z'
+    done_at: '2026-08-31T18:19:15.466223+00:00'
+    evidence: 'Integrated product commit 1d8cfc10bdc7f5a9510dbaa73154ef66741709e7
+      from post-claim base b255b4e33dc9ff1e5cc2b7a6c12c0c19449ab9d5; fast-forwarded
+      main after byte-for-byte reconciliation of the preserved pre-claim patch, then
+      removed the isolated worktree/branch. Exact changed paths: contrib/pi-extension/README.md;
+      contrib/pi-extension/larva.ts; contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs;
+      docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md; pyproject.toml; src/larva/__init__.py;
+      uv.lock. Version parity: pyproject/module/uv.lock/CLI all 0.6.3. Implementation
+      keeps ordinary and explicitly controlled legacy-fallback RPC commands at 10
+      seconds and gives modern frame-capable prompt preflight 60 seconds; 10.5-second
+      delayed prompt ACK passed. Initial declared suite exposed a legacy controlled-child
+      harness exceeding its 25-second test bound; same-step repair scoped the long
+      preflight window to modern frame capability, targeted lifecycle proof passed
+      (1 passed in 12.25s), and the final declared command completed exit 0: npm ci,
+      frozen uv sync, uv lock --check, CLI version, all contrib/pi-extension/test-*.mjs,
+      capability-gates smoke, pytest (945 passed), uvx invar-tools guard --all (PASS,
+      8 existing warnings), and git diff --check. Local release build /tmp/larva-release-0.6.3-wmIgWC:
+      wheel larva-0.6.3-py3-none-any.whl 241316 bytes SHA-256 f01a3aa82c9b75bb95cea4d0d89a82878e93dc926a35fa7f7e4240f2a3af98de;
+      sdist larva-0.6.3.tar.gz 2331745 bytes SHA-256 d86e256041934426c7e86e74304cbdb9a13f3b66a439bb20932f21921ea065be;
+      both metadata Version 0.6.3. Wheel release smoke passed with larva 0.6.3, mcp
+      1.29.1, exact 13-tool surface. Reaped the one orphan from the intentionally
+      failed first legacy-timeout run. Final main worktree clean, one worktree only,
+      no push/tag/release/PyPI/uvx-cache effect. Gaps: none.'
   - id: pi-prompt-preflight-timeout-release-0-6-3.github-pypi
     name: Publish GitHub and PyPI release 0.6.3
     status: pending
