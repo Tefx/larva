@@ -1565,11 +1565,12 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     const body = this.expanded
       ? renderSubagentResultPresentationLines(presentation, bodyWidth, markdownTheme)
       : collapsedSubagentResultPreviewLines(presentation, bodyWidth, markdownTheme);
-    return [header, ...body].map((line) => subagentResultSurfaceLine(
+    const surface = [header, ...body].map((line) => subagentResultSurfaceLine(
       this.theme,
       this.executionStatus,
       subagentResultSurfaceContent(line, surfaceWidth, padding),
     ));
+    return ["", ...surface, ""];
   }
 }
 

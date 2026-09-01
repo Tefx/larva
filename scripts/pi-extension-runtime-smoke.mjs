@@ -1860,6 +1860,9 @@ async function subagentJsonPresentationProof(evidence) {
   }, { expanded: false, outputPad: 1 }, frameTheme);
   const framedExpanded = framedExpandedView.render(80);
   const framedPlain = framedExpanded.map(stripAnsi);
+  const framedSurface = framedExpanded.slice(1, -1);
+  const framedSurfacePlain = framedPlain.slice(1, -1);
+  const hasOuterBlankLines = (lines) => lines.length >= 3 && lines[0] === "" && lines[1] !== "" && lines.at(-2) !== "" && lines.at(-1) === "";
   const rowHasFrameBackground = (line, expectedTag) => {
     const sgr = new RegExp(`${ansi}\\[([0-9;]*)m`, "g");
     let background = false;
@@ -1877,11 +1880,12 @@ async function subagentJsonPresentationProof(evidence) {
   };
   const framedByWidth = [40, 80, 120].map((width) => {
     const lines = framedCollapsedView.render(width);
-    return { width, widths: lines.map((line) => piTui.visibleWidth(line)) };
+    return { width, outerBlankLines: hasOuterBlankLines(lines), widths: lines.slice(1, -1).map((line) => piTui.visibleWidth(line)) };
   });
   const framedNarrowWidths = [1, 2, 3, 4].map((width) => {
     const lines = framedCollapsedView.render(width);
-    return { width, widths: lines.map((line) => piTui.visibleWidth(line)), endsReset: lines.every((line) => line.endsWith(`${ansi}[0m`)) };
+    const surface = lines.slice(1, -1);
+    return { width, outerBlankLines: hasOuterBlankLines(lines), widths: surface.map((line) => piTui.visibleWidth(line)), endsReset: surface.every((line) => line.endsWith(`${ansi}[0m`)) };
   });
   const frameThemeA = framedCollapsedView.render(80).join("\n");
   frameBackgroundTag = 25;
@@ -1916,7 +1920,7 @@ async function subagentJsonPresentationProof(evidence) {
   const emptyCollapsed = renderResult("", false);
   const formatWidths = [1, 2, 3, 4, 40, 80, 120].flatMap((width) => [markdownSource, fencedSource, bareFenceSource, leadingLinkSource, numericLinkSource, plainSource, malformed, malformedArrayWithLink, ""].map((source) => {
     const lines = renderResult(source, false, width);
-    return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
+    return { width, outerBlankLines: hasOuterBlankLines(lines), fit: lines.slice(1, -1).every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
   }));
   const collapsedByWidth = [40, 80, 120].map((width) => {
     const lines = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: callbackDetails }, { expanded: false, outputPad: 0 }, theme).render(width);
@@ -1980,10 +1984,11 @@ async function subagentJsonPresentationProof(evidence) {
     collapsedWidthSafe: collapsedByWidth.every((item) => item.fit),
     collapsedKeyScalarStyles: highlighter.loaded && lastAnsi(collapsedHighlighted, "status") !== lastAnsi(collapsedHighlighted, "child_payload_ok"),
     collapsedNoArtifactAccess: artifactReads === 0,
-    largeCollapsedBounded: largeCollapsed.length <= 17 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
+    outerBlankLines: hasOuterBlankLines(expanded) && hasOuterBlankLines(collapsed) && hasOuterBlankLines(largeCollapsed) && hasOuterBlankLines(largeExpanded),
+    largeCollapsedBounded: largeCollapsed.length <= 19 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
     largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
     markdownCollapsedRendered: renderedPlainText(markdownCollapsed).includes("Markdown Heading") && renderedPlainText(markdownCollapsed).includes("bullet one"),
-    markdownCollapsedBounded: longMarkdownCollapsed.length <= 17 && renderedPlainText(longMarkdownCollapsed).includes("[truncated]") && !renderedPlainText(longMarkdownCollapsed).includes("MARKDOWN_EXPANDED_TAIL"),
+    markdownCollapsedBounded: longMarkdownCollapsed.length <= 19 && renderedPlainText(longMarkdownCollapsed).includes("[truncated]") && !renderedPlainText(longMarkdownCollapsed).includes("MARKDOWN_EXPANDED_TAIL"),
     markdownExpandedComplete: renderedPlainText(longMarkdownExpanded).includes("MARKDOWN_EXPANDED_TAIL"),
     fencedLanguageRendered: renderedPlainText(fencedCollapsed).includes("apiVersion: v1") && renderedPlainText(fencedCollapsed).includes("kind: ConfigMap"),
     bareFenceRenderedAsGenericCode: renderedPlainText(bareFenceCollapsed).includes("SELECT * FROM records;"),
@@ -1992,18 +1997,19 @@ async function subagentJsonPresentationProof(evidence) {
     plainMultilinePreserved: renderedPlainText(plainCollapsed).includes("plain <root> & literal braces {x}") && renderedPlainText(plainCollapsed).includes("second line a_b"),
     malformedArrayWithLinkPlain: renderedPlainText(malformedArrayCollapsed).includes(malformedArrayWithLink),
     emptyOutputStable: renderedPlainText(emptyCollapsed).includes("No final subagent output is available."),
-    allFormatsWidthSafeAndBounded: formatWidths.every((item) => item.fit && item.lineCount <= 17),
-    surfaceHasNoBorder: framedPlain.every((line) => !/[┌┐└┘│─]/.test(line)),
-    surfaceFullWidth: framedPlain.every((line) => piTui.visibleWidth(line) === 80),
-    surfaceUsesOutputPadding: framedPlain.every((line) => line.startsWith(" ") && line.endsWith(" ")),
-    frameBackgroundThroughResets: framedExpanded.every((line) => rowHasFrameBackground(line, 24)),
-    frameRowsEndReset: framedExpanded.every((line) => line.endsWith(`${ansi}[0m`)),
-    frameSentinelUnstyled: framedExpanded.every((line) => lastAnsi(`${line}SENTINEL`, "SENTINEL") === `${ansi}[0m`),
-    frameWidthsSafe: framedByWidth.every((item) => item.widths.every((itemWidth) => itemWidth === item.width)),
-    frameNarrowSafe: framedNarrowWidths.every((item) => item.widths.every((itemWidth) => itemWidth <= item.width) && item.endsReset),
+    allFormatsWidthSafeAndBounded: formatWidths.every((item) => item.outerBlankLines && item.fit && item.lineCount <= 19),
+    surfaceOuterBlankLines: hasOuterBlankLines(framedExpanded),
+    surfaceHasNoBorder: framedSurfacePlain.every((line) => !/[┌┐└┘│─]/.test(line)),
+    surfaceFullWidth: framedSurfacePlain.every((line) => piTui.visibleWidth(line) === 80),
+    surfaceUsesOutputPadding: framedSurfacePlain.every((line) => line.startsWith(" ") && line.endsWith(" ")),
+    frameBackgroundThroughResets: framedSurface.every((line) => rowHasFrameBackground(line, 24)),
+    frameRowsEndReset: framedSurface.every((line) => line.endsWith(`${ansi}[0m`)),
+    frameSentinelUnstyled: framedSurface.every((line) => lastAnsi(`${line}SENTINEL`, "SENTINEL") === `${ansi}[0m`),
+    frameWidthsSafe: framedByWidth.every((item) => item.outerBlankLines && item.widths.every((itemWidth) => itemWidth === item.width)),
+    frameNarrowSafe: framedNarrowWidths.every((item) => item.outerBlankLines && item.widths.every((itemWidth) => itemWidth <= item.width) && item.endsReset),
     frameThemeRefresh: frameThemeA.includes(`${ansi}[48;5;24m`) && frameThemeB.includes(`${ansi}[48;5;25m`),
     frameOuterStatusStyling: frameFgTokens.includes("success") && !frameFgTokens.includes("error") && frameBgTokens.includes("toolSuccessBg"),
-    surfaceFallbacks: malformedFrame[0]?.startsWith(" ") === true && plainFrame[0]?.startsWith(" ") === true && !malformedFrame.some((line) => /[┌┐└┘│─]/.test(line)) && !plainFrame.some((line) => /[┌┐└┘│─]/.test(line)),
+    surfaceFallbacks: hasOuterBlankLines(malformedFrame) && hasOuterBlankLines(plainFrame) && malformedFrame[1]?.startsWith(" ") === true && plainFrame[1]?.startsWith(" ") === true && !malformedFrame.slice(1, -1).some((line) => /[┌┐└┘│─]/.test(line)) && !plainFrame.slice(1, -1).some((line) => /[┌┐└┘│─]/.test(line)),
     installedObservationRecorded: installedRender.attempted === true || typeof version.stdout === "string",
   };
   const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);

@@ -616,7 +616,7 @@ wheels = [
 
 [[package]]
 name = "larva"
-version = "0.6.3"
+version = "0.6.4"
 source = { editable = "." }
 dependencies = [
     { name = "deal" },

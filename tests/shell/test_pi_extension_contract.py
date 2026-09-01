@@ -491,6 +491,7 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const smallCompactLines = smallCompact.render(80);
         const largeCompactLines = largeCompact.render(80);
         const largeExpandedLines = largeExpanded.render(80);
+        const hasOneUnstyledOuterBlankRow = (lines) => lines.length >= 3 && lines[0] === "" && lines[1] !== "" && lines.at(-2) !== "" && lines.at(-1) === "";
         const widths = [40, 80, 120].map((width) => {{
           const lines = expanded.render(width);
           return {{ width, fit: lines.every((line) => line.replace(/\\x1b\\[[0-9;]*m/g, "").length <= width) }};
@@ -521,13 +522,17 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const framedCollapsed = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: framedDetails }}, {{ expanded: false, outputPad: 1 }}, frameTheme);
         const framedLines = framedExpanded.render(80);
         const framedPlain = framedLines.map(stripAnsi);
+        const framedSurface = framedLines.slice(1, -1);
+        const framedSurfacePlain = framedPlain.slice(1, -1);
         const framedWidths = [40, 80, 120].map((width) => {{
           const lines = framedCollapsed.render(width);
-          return {{ width, widths: lines.map((line) => stripAnsi(line).length), lineCount: lines.length }};
+          const surface = lines.slice(1, -1);
+          return {{ width, outerBlankRows: hasOneUnstyledOuterBlankRow(lines), widths: surface.map((line) => stripAnsi(line).length), lineCount: lines.length }};
         }});
         const narrowFrameWidths = [1, 2, 3, 4].map((width) => {{
           const lines = framedCollapsed.render(width);
-          return {{ width, widths: lines.map((line) => stripAnsi(line).length), endsReset: lines.every((line) => line.endsWith(ansi + "[0m")) }};
+          const surface = lines.slice(1, -1);
+          return {{ width, outerBlankRows: hasOneUnstyledOuterBlankRow(lines), widths: surface.map((line) => stripAnsi(line).length), endsReset: surface.every((line) => line.endsWith(ansi + "[0m")) }};
         }});
         const rowHasBackgroundThroughResets = (line, expectedTag) => {{
           const sgr = new RegExp(ansi + "\\\\[([0-9;]*)m", "g");
@@ -547,8 +552,10 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
         const firstThemeBackground = framedCollapsed.render(80).join("\\n");
         backgroundTag = 25;
         const secondThemeBackground = framedCollapsed.render(80).join("\\n");
-        const malformedFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: '{{"bad":true,}}', status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 1 }}, frameTheme).render(80).map(stripAnsi);
-        const plainFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: "plain fallback", status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 1 }}, frameTheme).render(80).map(stripAnsi);
+        const malformedFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: '{{"bad":true,}}', status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 1 }}, frameTheme).render(80);
+        const plainFrame = renderer({{ customType: "larva-subagent-result", content: "keep-text-fence", details: {{ result_text: "plain fallback", status: "success", execution_status: "success" }} }}, {{ expanded: false, outputPad: 1 }}, frameTheme).render(80);
+        const malformedFramePlain = malformedFrame.map(stripAnsi);
+        const plainFramePlain = plainFrame.map(stripAnsi);
         console.log(JSON.stringify({{
           registered: renderers.has("larva-subagent-result"),
           helper: {{
@@ -567,24 +574,37 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
           unusableIsUndefined: unusable === undefined,
           artifactReads,
           expandedText: expandedLines.join("\\n"),
+          expandedHeader: expandedLines[1] ?? null,
           compactText: compactLines.join("\\n"),
+          compactHeader: compactLines[1] ?? null,
           smallCompactText: smallCompactLines.join("\\n"),
           largeCompactText: largeCompactLines.join("\\n"),
           largeCompactLineCount: largeCompactLines.length,
           largeExpandedText: largeExpandedLines.join("\\n"),
+          outerBlankRows: {{
+            expanded: hasOneUnstyledOuterBlankRow(expandedLines),
+            compact: hasOneUnstyledOuterBlankRow(compactLines),
+            smallCompact: hasOneUnstyledOuterBlankRow(smallCompactLines),
+            largeCompact: hasOneUnstyledOuterBlankRow(largeCompactLines),
+            largeExpanded: hasOneUnstyledOuterBlankRow(largeExpandedLines),
+          }},
           widths,
           compactWidths,
           framedPlain,
-          framedRowsHaveBackground: framedLines.every((line) => rowHasBackgroundThroughResets(line, 24)),
-          framedRowsEndReset: framedLines.every((line) => line.endsWith(ansi + "[0m")),
+          framedSurfacePlain,
+          framedOuterRows: [framedLines[0], framedLines.at(-1)],
+          framedRowsHaveBackground: framedSurface.every((line) => rowHasBackgroundThroughResets(line, 24)),
+          framedRowsEndReset: framedSurface.every((line) => line.endsWith(ansi + "[0m")),
           framedWidths,
           narrowFrameWidths,
           frameFgTokens,
           frameBgTokens,
           firstThemeBackground,
           secondThemeBackground,
-          malformedFrame,
-          plainFrame,
+          malformedFrame: malformedFramePlain,
+          plainFrame: plainFramePlain,
+          malformedFrameOuterRows: [malformedFrame[0], malformedFrame.at(-1)],
+          plainFrameOuterRows: [plainFrame[0], plainFrame.at(-1)],
         }}));
         """,
         timeout=8.0,
@@ -605,30 +625,35 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
     assert payload["unusableIsUndefined"] is True
     assert payload["artifactReads"] == 0
     expanded_text = payload["expandedText"]
-    assert "[success]success larva-subagent-result" in expanded_text
+    assert "[success]success larva-subagent-result" in payload["expandedHeader"]
     assert '"status": "failed"' in expanded_text
-    assert "[error]" not in expanded_text.split("\n", 1)[0]
+    assert "[error]" not in payload["expandedHeader"]
     assert "```json" in expanded_text
-    assert "[success]success larva-subagent-result" in payload["compactText"]
+    assert "[success]success larva-subagent-result" in payload["compactHeader"]
+    assert all(payload["outerBlankRows"].values())
     small_compact_text = payload["smallCompactText"]
     assert '"status": "child_payload_ok"' in small_compact_text
     assert '"items": [' in small_compact_text
     assert '"message": "测试"' in small_compact_text
     assert '{"status":"child_payload_ok"' not in small_compact_text
-    assert payload["largeCompactLineCount"] <= 17
+    assert payload["largeCompactLineCount"] <= 19
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert all(item["fit"] is True for item in payload["widths"])
     assert all(item["fit"] is True for item in payload["compactWidths"])
     framed_plain = payload["framedPlain"]
-    assert all(not any(border in line for border in "┌┐└┘│─") for line in framed_plain)
-    assert all(len(line) == 80 for line in framed_plain)
-    assert all(line.startswith(" ") and line.endswith(" ") for line in framed_plain)
-    assert "success larva-subagent-result" in framed_plain[0]
+    framed_surface_plain = payload["framedSurfacePlain"]
+    assert payload["framedOuterRows"] == ["", ""]
+    assert all(not any(border in line for border in "┌┐└┘│─") for line in framed_surface_plain)
+    assert all(len(line) == 80 for line in framed_surface_plain)
+    assert all(line.startswith(" ") and line.endswith(" ") for line in framed_surface_plain)
+    assert "success larva-subagent-result" in framed_surface_plain[0]
     assert '"status": "failed"' in "\n".join(framed_plain)
     assert payload["framedRowsHaveBackground"] is True
     assert payload["framedRowsEndReset"] is True
+    assert all(item["outerBlankRows"] is True for item in payload["framedWidths"])
     assert all(all(item_width == item["width"] for item_width in item["widths"]) for item in payload["framedWidths"])
+    assert all(item["outerBlankRows"] is True for item in payload["narrowFrameWidths"])
     assert all(all(item_width <= item["width"] for item_width in item["widths"]) for item in payload["narrowFrameWidths"])
     assert all(item["endsReset"] is True for item in payload["narrowFrameWidths"])
     assert "success" in payload["frameFgTokens"]
@@ -636,10 +661,14 @@ def test_subagent_json_presentation_helper_and_callback_renderer_registration(tm
     assert "toolSuccessBg" in payload["frameBgTokens"]
     assert "[48;5;24m" in payload["firstThemeBackground"]
     assert "[48;5;25m" in payload["secondThemeBackground"]
-    assert payload["malformedFrame"][0].startswith(" ")
-    assert payload["plainFrame"][0].startswith(" ")
-    assert not any(any(border in line for border in "┌┐└┘│─") for line in payload["malformedFrame"])
-    assert not any(any(border in line for border in "┌┐└┘│─") for line in payload["plainFrame"])
+    assert payload["malformedFrameOuterRows"] == ["", ""]
+    assert payload["plainFrameOuterRows"] == ["", ""]
+    malformed_frame_surface = payload["malformedFrame"][1:-1]
+    plain_frame_surface = payload["plainFrame"][1:-1]
+    assert malformed_frame_surface[0].startswith(" ")
+    assert plain_frame_surface[0].startswith(" ")
+    assert not any(any(border in line for border in "┌┐└┘│─") for line in malformed_frame_surface)
+    assert not any(any(border in line for border in "┌┐└┘│─") for line in plain_frame_surface)
 
 
 def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:

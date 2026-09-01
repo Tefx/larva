@@ -2146,6 +2146,7 @@ def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Pa
           { ...piBase, registerTool: () => undefined, registerMessageRenderer: (customType, renderer) => renderers.set(customType, renderer) },
         );
         const renderer = renderers.get("larva-subagent-result");
+        const hasOneUnstyledOuterBlankRow = (lines) => lines.length >= 3 && lines[0] === "" && lines[1] !== "" && lines.at(-2) !== "" && lines.at(-1) === "";
         const jsonOutput = '{"hello":"world","count":3,"nested":{"ok":true}}';
         const smallJson = '{"status":"child_payload_ok","nested":{"items":[1,true],"count":1,"message":"测试"}}';
         const largeJson = JSON.stringify({ rows: Array.from({ length: 40 }, (_value, index) => ({ index, value: `row-${index}` })), tail: "COLLAPSED_JSON_EXPANDED_TAIL" });
@@ -2264,11 +2265,11 @@ def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Pa
         const emptyCompact = renderResult("", false);
         const compactByWidth = [40, 80, 120].map((width) => {
           const lines = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(width);
-          return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width) };
+          return { width, outerBlankRows: hasOneUnstyledOuterBlankRow(lines), fit: lines.every((line) => piTui.visibleWidth(line) <= width) };
         });
         const formatsByWidth = [1, 2, 3, 4, 40, 80, 120].flatMap((width) => [markdownOutput, fencedOutput, bareFencedOutput, plainOutput, malformed, malformedArrayWithLink, ""].map((source) => {
           const lines = renderResult(source, false, width);
-          return { width, fit: lines.every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
+          return { width, outerBlankRows: hasOneUnstyledOuterBlankRow(lines), fit: lines.every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
         }));
         const compactHighlighted = renderer(smallMessage, { expanded: false, outputPad: 0 }, theme).render(120).join("\n");
         const missing = renderer({ customType: "larva-subagent-result", content: "x" }, { expanded: true, outputPad: 0 }, theme);
@@ -2295,6 +2296,24 @@ def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Pa
           largeCompactText: largeCompact.map(stripAnsi).join("\n"),
           largeCompactLineCount: largeCompact.length,
           largeExpandedText: largeExpanded.map(stripAnsi).join("\n"),
+          outerBlankRows: {
+            expanded: hasOneUnstyledOuterBlankRow(expanded),
+            compact: hasOneUnstyledOuterBlankRow(compact),
+            smallCompact: hasOneUnstyledOuterBlankRow(smallCompact),
+            largeCompact: hasOneUnstyledOuterBlankRow(largeCompact),
+            largeExpanded: hasOneUnstyledOuterBlankRow(largeExpanded),
+            markdownCompact: hasOneUnstyledOuterBlankRow(markdownCompact),
+            markdownExpanded: hasOneUnstyledOuterBlankRow(markdownExpanded),
+            longMarkdownCompact: hasOneUnstyledOuterBlankRow(longMarkdownCompact),
+            longMarkdownExpanded: hasOneUnstyledOuterBlankRow(longMarkdownExpanded),
+            fencedCompact: hasOneUnstyledOuterBlankRow(fencedCompact),
+            bareFencedCompact: hasOneUnstyledOuterBlankRow(bareFencedCompact),
+            plainCompact: hasOneUnstyledOuterBlankRow(plainCompact),
+            malformedCompact: hasOneUnstyledOuterBlankRow(malformedCompact),
+            malformedArrayCompact: hasOneUnstyledOuterBlankRow(malformedArrayCompact),
+            numericLinkCompact: hasOneUnstyledOuterBlankRow(numericLinkCompact),
+            emptyCompact: hasOneUnstyledOuterBlankRow(emptyCompact),
+          },
           markdownCompactText: markdownCompact.map(stripAnsi).join("\n"),
           markdownExpandedText: markdownExpanded.map(stripAnsi).join("\n"),
           longMarkdownCompactText: longMarkdownCompact.map(stripAnsi).join("\n"),
@@ -2356,13 +2375,13 @@ def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Pa
     assert '"items": [' in small_compact_text
     assert '"message": "测试"' in small_compact_text
     assert '{"status":"child_payload_ok"' not in small_compact_text
-    assert payload["largeCompactLineCount"] <= 17
+    assert payload["largeCompactLineCount"] <= 19
     assert "[truncated]" in payload["largeCompactText"]
     assert "COLLAPSED_JSON_EXPANDED_TAIL" in payload["largeExpandedText"]
     assert "Markdown Heading" in payload["markdownCompactText"]
     assert "bullet one" in payload["markdownCompactText"]
     assert "Markdown Heading" in payload["markdownExpandedText"]
-    assert payload["longMarkdownCompactLineCount"] <= 17
+    assert payload["longMarkdownCompactLineCount"] <= 19
     assert "[truncated]" in payload["longMarkdownCompactText"]
     assert "MARKDOWN_EXPANDED_TAIL" not in payload["longMarkdownCompactText"]
     assert "MARKDOWN_EXPANDED_TAIL" in payload["longMarkdownExpandedText"]
@@ -2379,9 +2398,10 @@ def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Pa
     assert malformed_array_with_link in payload["malformedArrayCompactText"]
     assert "[B:link]123" in payload["numericLinkCompactText"]
     assert "No final subagent output is available." in payload["emptyCompactText"]
-    assert all(item["fit"] is True for item in payload["compactByWidth"])
-    assert all(item["fit"] is True for item in payload["formatsByWidth"])
-    assert all(item["lineCount"] <= 17 for item in payload["formatsByWidth"])
+    assert all(payload["outerBlankRows"].values())
+    assert all(item["outerBlankRows"] is True and item["fit"] is True for item in payload["compactByWidth"])
+    assert all(item["outerBlankRows"] is True and item["fit"] is True for item in payload["formatsByWidth"])
+    assert all(item["lineCount"] <= 19 for item in payload["formatsByWidth"])
     assert payload["missingIsUndefined"] is True
     assert payload["displayIgnoresContentFence"] is True
     assert payload["classification"] == {

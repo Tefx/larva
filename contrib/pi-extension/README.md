@@ -1194,8 +1194,10 @@ results. It resolves a Pi background token on every render from the outer callba
 `outputPad` becomes the surface's left/right internal padding, so the background
 starts at the available line origin and callback content aligns with tool-result
 content. Nested Markdown/JSON ANSI resets restore the surface background before
-the next printable or padding cell, and every row ends with a reset. The surface
-uses the available renderer width, stays full-width at 40, 80, and 120 columns,
+the next printable or padding cell, and every row ends with a reset. Exactly one
+unstyled empty row precedes and follows the colored surface in both collapsed and
+expanded rendering; those outer rows do not consume the collapsed 16-body-line
+budget. The surface uses the available renderer width, stays full-width at 40, 80, and 120 columns,
 and degrades without throwing at narrower positive widths. A JSON field such as
 payload `status` is rendered only as payload data.
 
