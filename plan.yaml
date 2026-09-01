@@ -144306,3 +144306,105 @@ phases:
       same HEAD dc4d49f7a3eaca981641e90afd2180d329b6faac, same tree 7c8609d847e9920045c7ee4b3c402b0c6a20bfec,
       clean; git diff --check passed. No repository, config, credential, GitHub, or
       PyPI mutation. Gaps: none.'
+- id: pi_subagent_result_spacing_release_20260901
+  name: Pi Subagent Result Spacing and Larva 0.6.4 Release
+  status: pending
+  gate: Close after the larva-subagent-result renderer has one unstyled blank row
+    before and after its surface in collapsed and expanded modes, the presentation
+    regression and version 0.6.4 metadata are integrated at one product commit, GitHub
+    Release v0.6.4 targets that exact commit, the existing Trusted Publishing workflow
+    succeeds and public PyPI exposes the matching wheel and sdist, and pinned plus
+    unpinned local public-PyPI uvx resolution report Larva 0.6.4.
+  context: User-authorized patch release for the already-implemented larva-subagent-result
+    outer-spacing improvement. The repository transaction, immutable GitHub/PyPI publication,
+    and local uvx activation are serial rollback and reconciliation units. Current
+    package version and latest public release are 0.6.3, so the next patch is 0.6.4.
+    Existing GitHub authentication and OIDC Trusted Publishing are the only release
+    authorities; no direct PyPI upload or new credential is admitted.
+  depends_on:
+  - pi_prompt_preflight_timeout_release_20260901
+  steps:
+  - id: pi-subagent-result-spacing-release-0-6-4.integrate
+    name: Integrate subagent-result outer spacing and bump Larva to 0.6.4
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
+      finalize the current larva-subagent-result renderer change so exactly one unstyled
+      blank row precedes and follows the full-width colored surface in expanded and
+      collapsed rendering, preserve the 16-body-line collapsed budget and width/background
+      behavior, keep meaningful runtime assertions and the renderer documentation
+      in parity, move canonical package metadata from 0.6.3 to 0.6.4, and integrate
+      the exact repository outcome as one product commit. Boundary: repository-only
+      work in the referenced TypeScript source, runtime smoke, renderer documentation,
+      package version, and lock surfaces; no push, tag, GitHub Release, PyPI, credential,
+      or local uvx-cache effect. Admit: begin from the witnessed clean base plus the
+      two current user-authorized modifications, prove the callback rendering contract
+      and clean-checkout package behavior, and record the exact commit and artifact
+      identity. Recovery: repair compatible check failures within this step and stop
+      before every external release effect if clean repository proof cannot be obtained.'
+    verification: bash -lc 'set -euo pipefail; npm --prefix contrib/pi-extension ci;
+      uv sync --group dev --frozen; uv lock --check; uv run --frozen larva --version;
+      node --check contrib/pi-extension/larva.ts; node --check scripts/pi-extension-runtime-smoke.mjs;
+      for test_file in contrib/pi-extension/test-*.mjs; do node "$test_file"; done;
+      node scripts/pi-extension-runtime-smoke.mjs --scenario subagent-json-presentation;
+      node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates; uv
+      run pytest -q; uvx invar-tools guard --all; git diff --check'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - scripts/pi-extension-runtime-smoke.mjs
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    agent: frontend-engineer
+  - id: pi-subagent-result-spacing-release-0-6-4.github-pypi
+    name: Publish GitHub and PyPI release 0.6.4
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: runtime_state_only.
+      Deliver: from the exact integrated 0.6.4 product commit, fast-forward origin/main,
+      create non-draft non-prerelease GitHub Release and tag v0.6.4 at that commit,
+      observe the release-triggered existing Trusted Publishing workflow to success,
+      and prove public PyPI metadata plus wheel and sdist identity for Larva 0.6.4.
+      Boundary: external effects are limited to Tefx/larva origin/main, immutable
+      tag/release v0.6.4, the existing GitHub Actions publish workflow, and public
+      PyPI project larva; use existing approved GitHub access and OIDC Trusted Publishing
+      only, with no repository mutation, direct PyPI upload, new credential, or local
+      uvx activation. Admit: exact product commit and green dependency evidence, fast-forwardable
+      remote, and confirmed absence of conflicting local/remote tag, GitHub Release,
+      or PyPI 0.6.4 before effect. Recovery: after any uncertain push/release/workflow
+      outcome, reconcile remote branch, tag target, release state, workflow jobs,
+      and PyPI before retry; never duplicate or replace an immutable published artifact.'
+    verification: git push origin main && gh release create v0.6.4 --target <product-commit>
+      --title v0.6.4 --generate-notes && gh run watch <release-run-id> --exit-status
+      && gh release view v0.6.4 --json tagName,targetCommitish,isDraft,isPrerelease,url
+      && public PyPI JSON exposes larva 0.6.4 with matching wheel and sdist hashes
+    refs:
+    - .github/workflows/publish.yml
+    - pyproject.toml
+    depends_on:
+    - pi-subagent-result-spacing-release-0-6-4.integrate
+    agent: vectl-orchestrator
+  - id: pi-subagent-result-spacing-release-0-6-4.local-uvx
+    name: Activate Larva 0.6.4 in local uvx resolution
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: runtime_state_only.
+      Deliver: after public PyPI publication is proved, refresh the local uvx cache
+      from https://pypi.org/simple for larva==0.6.4 and prove refreshed pinned, cached
+      pinned, and unpinned public-index CLI resolution all report Larva 0.6.4. Boundary:
+      local uv/uvx resolution and cache only; no Git content, remote GitHub/PyPI state,
+      configuration, credential, or other environment mutation. Admit: completed release
+      dependency, public artifact identity, exact uvx executable/version, and recorded
+      Git HEAD/tree before activation. Recovery: a cache-resolution failure may be
+      retried only after public simple-index availability is rechecked; preserve the
+      published release and stop with repository bytes unchanged if activation cannot
+      be proved.'
+    verification: /opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple
+      --from larva==0.6.4 larva --version && /opt/homebrew/bin/uvx --index-url https://pypi.org/simple
+      --from larva==0.6.4 larva --version && /opt/homebrew/bin/uvx --index-url https://pypi.org/simple
+      larva --version && git diff --check
+    refs:
+    - pyproject.toml
+    - .github/workflows/publish.yml
+    depends_on:
+    - pi-subagent-result-spacing-release-0-6-4.github-pypi
+    agent: vectl-orchestrator
