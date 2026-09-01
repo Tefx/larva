@@ -144438,7 +144438,7 @@ phases:
       local uvx activation. Gaps: none.'
   - id: pi-subagent-result-spacing-release-0-6-4.local-uvx
     name: Activate Larva 0.6.4 in local uvx resolution
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: after public PyPI publication is proved, refresh the local uvx cache
       from https://pypi.org/simple for larva==0.6.4 and prove refreshed pinned, cached
@@ -144460,3 +144460,5 @@ phases:
     depends_on:
     - pi-subagent-result-spacing-release-0-6-4.github-pypi
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-09-01T19:44:50.798504Z'
