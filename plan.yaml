@@ -144390,7 +144390,7 @@ phases:
       leaked process, no push/tag/release/PyPI/local-uvx activation. Gaps: none.'
   - id: pi-subagent-result-spacing-release-0-6-4.github-pypi
     name: Publish GitHub and PyPI release 0.6.4
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: from the exact integrated 0.6.4 product commit, fast-forward origin/main,
       create non-draft non-prerelease GitHub Release and tag v0.6.4 at that commit,
@@ -144415,6 +144415,8 @@ phases:
     depends_on:
     - pi-subagent-result-spacing-release-0-6-4.integrate
     agent: vectl-orchestrator
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-09-01T19:42:03.831880Z'
   - id: pi-subagent-result-spacing-release-0-6-4.local-uvx
     name: Activate Larva 0.6.4 in local uvx resolution
     status: pending
