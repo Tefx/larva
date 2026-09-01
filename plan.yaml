@@ -144326,7 +144326,7 @@ phases:
   steps:
   - id: pi-subagent-result-spacing-release-0-6-4.integrate
     name: Integrate subagent-result outer spacing and bump Larva to 0.6.4
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
       finalize the current larva-subagent-result renderer change so exactly one unstyled
       blank row precedes and follows the full-width colored surface in expanded and
@@ -144359,6 +144359,35 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-09-01T19:05:40.024085Z'
+    done_at: '2026-09-01T19:41:51.574819+00:00'
+    evidence: 'Integrated product commit 0018348b3c3b5e1173d99edc7626aee5f1b666cf
+      (`fix: space subagent result callbacks`) from post-claim integration basis 743a5ae96fb01c404c6f098b590e88b97f1aacf5.
+      Original candidate retained at refs/vectl/candidates/pi-subagent-result-spacing-release-0-6-4-integrate;
+      rebase onto the unchanged integration basis was a no-op, then main fast-forwarded
+      to the exact candidate. Changed paths: contrib/pi-extension/README.md; contrib/pi-extension/larva.ts;
+      docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md; pyproject.toml; scripts/pi-extension-runtime-smoke.mjs;
+      src/larva/__init__.py; tests/shell/test_pi_extension_contract.py; tests/shell/test_pi_extension_subagent_ux.py;
+      uv.lock. The two Python renderer tests were admitted as same-step meaningful
+      parity after the first full run exposed their old 17-total-row assumptions;
+      focused proof passed (2 passed). Renderer proof now requires exactly one raw
+      unstyled empty first/last row, preserves the interior full-width/background/reset
+      behavior and the 16-body-line collapsed budget, and covers expanded/collapsed,
+      all result formats, fallback frames, and widths 1/2/3/4/40/80/120. Version parity
+      is 0.6.4 in pyproject/module/lock/CLI. Worker declared verification completed
+      exit 0 with 945 pytest tests and Invar 0 errors. Integration-tree exact verification
+      was rerun: the first attempt encountered the unrelated persona hot-path <200ms
+      timing test while a separate repository pytest process consumed 92% CPU; after
+      that competing process finished, the unchanged official timing test passed (134ms
+      cold path), and the exact declared command completed exit 0: npm ci, frozen
+      uv sync, lock check, CLI 0.6.4, Node syntax, every contrib/pi-extension/test-*.mjs,
+      subagent-json-presentation, capability-gates, pytest (945 passed in 300.55s),
+      uvx invar-tools guard --all (PASS, 0 errors, 8 existing warnings), git diff
+      --check. No timing threshold or unrelated test was weakened. Release build /tmp/larva-release-0.6.4-WfzA5P:
+      wheel larva-0.6.4-py3-none-any.whl 241331 bytes SHA-256 1afe58b3f62635e966ca40d151b3ed6ea41b44e72acd03586ea446c6f6efe088;
+      sdist larva-0.6.4.tar.gz 2334297 bytes SHA-256 7da087ceac071f76127a19bd48dcb82e379e1fa47dc8db6a85dbff1b4f3ad6d9;
+      both metadata Version 0.6.4. Wheel MCP smoke passed with resolved Larva 0.6.4
+      and exact 13-tool surface. Final main worktree clean, one worktree, no related
+      leaked process, no push/tag/release/PyPI/local-uvx activation. Gaps: none.'
   - id: pi-subagent-result-spacing-release-0-6-4.github-pypi
     name: Publish GitHub and PyPI release 0.6.4
     status: pending
