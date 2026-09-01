@@ -144308,7 +144308,7 @@ phases:
       PyPI mutation. Gaps: none.'
 - id: pi_subagent_result_spacing_release_20260901
   name: Pi Subagent Result Spacing and Larva 0.6.4 Release
-  status: pending
+  status: in_progress
   gate: Close after the larva-subagent-result renderer has one unstyled blank row
     before and after its surface in collapsed and expanded modes, the presentation
     regression and version 0.6.4 metadata are integrated at one product commit, GitHub
@@ -144326,7 +144326,7 @@ phases:
   steps:
   - id: pi-subagent-result-spacing-release-0-6-4.integrate
     name: Integrate subagent-result outer spacing and bump Larva to 0.6.4
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
       finalize the current larva-subagent-result renderer change so exactly one unstyled
       blank row precedes and follows the full-width colored surface in expanded and
@@ -144357,6 +144357,8 @@ phases:
     - src/larva/__init__.py
     - uv.lock
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-09-01T19:05:40.024085Z'
   - id: pi-subagent-result-spacing-release-0-6-4.github-pypi
     name: Publish GitHub and PyPI release 0.6.4
     status: pending
