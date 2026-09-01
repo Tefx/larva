@@ -144390,7 +144390,7 @@ phases:
       leaked process, no push/tag/release/PyPI/local-uvx activation. Gaps: none.'
   - id: pi-subagent-result-spacing-release-0-6-4.github-pypi
     name: Publish GitHub and PyPI release 0.6.4
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: from the exact integrated 0.6.4 product commit, fast-forward origin/main,
       create non-draft non-prerelease GitHub Release and tag v0.6.4 at that commit,
@@ -144417,6 +144417,25 @@ phases:
     agent: vectl-orchestrator
     claimed_by: vectl-orchestrator
     claimed_at: '2026-09-01T19:42:03.831880Z'
+    done_at: '2026-09-01T19:44:40.618299+00:00'
+    evidence: 'Pre-effect reconciliation proved product commit 0018348b3c3b5e1173d99edc7626aee5f1b666cf
+      is an ancestor of clean main, all package version surfaces report 0.6.4, origin/main
+      was 839ec2979c6f4f770a1dfff430e806ad80d725bb and fast-forwardable, and local/remote
+      v0.6.4 tag, GitHub Release v0.6.4, and public PyPI larva 0.6.4 were absent.
+      Existing GitHub auth and Tefx/larva release-triggered OIDC workflow were valid.
+      Pushed main once: origin/main 839ec2979c6f4f770a1dfff430e806ad80d725bb -> 435386dfdbc221375f9a0ccc663e984d15aa0e1e.
+      Created non-draft/non-prerelease GitHub Release https://github.com/Tefx/larva/releases/tag/v0.6.4
+      at exact product commit; remote refs/tags/v0.6.4 resolves to 0018348b3c3b5e1173d99edc7626aee5f1b666cf.
+      Release-triggered workflow https://github.com/Tefx/larva/actions/runs/33551103348
+      completed success for head v0.6.4/product SHA: build job 100000462740 success
+      including package build and clean uvx MCP smoke; OIDC Trusted Publishing job
+      100000596080 success. Public PyPI exposes larva 0.6.4 with Requires-Python >=3.11.
+      Downloaded and verified public artifacts against PyPI metadata and the preflight
+      build: wheel larva-0.6.4-py3-none-any.whl 241331 bytes SHA-256 1afe58b3f62635e966ca40d151b3ed6ea41b44e72acd03586ea446c6f6efe088;
+      sdist larva-0.6.4.tar.gz 2334297 bytes SHA-256 7da087ceac071f76127a19bd48dcb82e379e1fa47dc8db6a85dbff1b4f3ad6d9.
+      Final release/tag/workflow/PyPI/remote-main state reconciled; Git worktree clean.
+      No direct PyPI upload, new credential, source mutation, duplicate effect, or
+      local uvx activation. Gaps: none.'
   - id: pi-subagent-result-spacing-release-0-6-4.local-uvx
     name: Activate Larva 0.6.4 in local uvx resolution
     status: pending
