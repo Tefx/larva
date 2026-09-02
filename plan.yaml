@@ -144475,3 +144475,129 @@ phases:
       output `larva 0.6.4`. Git after activation: same HEAD c5522404cc7ab4a7e830f7a254021996014b77ee,
       same tree 79afd0e1e447acbe59337e9a75fcb2bcd8b3c327, clean; git diff --check
       passed. No repository, config, credential, GitHub, or PyPI mutation. Gaps: none.'
+- id: pi_subagent_inner_padding_release_20260902
+  name: Pi Subagent Inner Padding and Larva 0.6.5 Release
+  status: pending
+  gate: Close after the larva-subagent-result surface contains one background-colored
+    blank row above its header and below its body in collapsed and expanded modes,
+    the 16-body-line budget remains unchanged, version 0.6.5 is integrated at one
+    exact product commit, GitHub Release v0.6.5 targets that commit, the existing
+    OIDC Trusted Publishing workflow succeeds, public PyPI exposes the matching wheel
+    and sdist, and refreshed pinned, cached pinned, and unpinned public-PyPI uvx resolution
+    report Larva 0.6.5.
+  context: 'User corrected the completed 0.6.4 visual contract: the blank rows must
+    be background-colored padding inside the result panel. Completed 0.6.4 history
+    remains immutable. The main worktree contains the six user-authorized source,
+    test, smoke, and documentation edits; focused renderer proof, Pi CustomMessageComponent
+    composition, runtime smoke, two behavior tests, Invar Guard, and a live callback
+    passed before planning. This corrective public patch is 0.6.5. Repository integration,
+    GitHub/PyPI publication, and local uvx activation remain serial effect and reconciliation
+    units. Use only existing GitHub authentication and the repository''s OIDC Trusted
+    Publishing workflow; no direct PyPI upload or new credential is admitted.'
+  depends_on:
+  - pi_subagent_result_spacing_release_20260901
+  steps:
+  - id: pi-subagent-inner-padding-release-0-6-5.integrate
+    name: Integrate inner-panel padding and bump Larva to 0.6.5
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
+      finalize the current larva-subagent-result renderer so one full-width background-colored
+      blank row sits inside the surface above the header and below the body in expanded
+      and collapsed rendering; remove the renderer-owned unstyled outer rows; preserve
+      the 16-body-line collapsed budget, 19-total-row bound, width, status background,
+      ANSI reset, fallback, and model-visible callback behavior; keep meaningful runtime
+      tests and renderer documentation in parity; move canonical package metadata
+      from 0.6.4 to 0.6.5; build wheel and sdist; and integrate the exact outcome
+      as one product commit. Boundary: repository-only work in the referenced TypeScript,
+      smoke, test, documentation, version, and lock surfaces; no push, tag, GitHub
+      Release, PyPI, credential, or local uvx-cache effect. Admit: begin from the
+      witnessed main worktree candidate and clean base HEAD c16087ebd9e381482772b8476077c772353e7dcf,
+      retain the pre-fix red renderer proof and post-fix Pi CustomMessageComponent/live-callback
+      evidence, and prove clean-checkout package behavior plus exact artifact identity.
+      Recovery: repair compatible source, test, docs, lock, or build failures within
+      this step; stop before every external release effect if the repository outcome,
+      product commit, or package artifacts cannot be proved exactly.'
+    verification: bash -lc 'set -euo pipefail; npm --prefix contrib/pi-extension ci;
+      uv sync --group dev --frozen; uv lock --check; test "$(uv run --frozen larva
+      --version)" = "larva 0.6.5"; node --check contrib/pi-extension/larva.ts; node
+      --check scripts/pi-extension-runtime-smoke.mjs; for test_file in contrib/pi-extension/test-*.mjs;
+      do node "$test_file"; done; node scripts/pi-extension-runtime-smoke.mjs --scenario
+      subagent-json-presentation; node scripts/pi-extension-runtime-smoke.mjs --scenario
+      capability-gates; uv run --frozen python -m pytest -q; uvx invar-tools guard
+      --all; git diff --check'
+    evidence_template: Exact product commit and base; changed paths; red/green renderer
+      and Pi wrapper/live evidence; every verification command and outcome; 0.6.5
+      metadata/lock parity; wheel and sdist filenames, sizes, SHA-256, metadata; clean
+      repository state; gaps.
+    refs:
+    - contrib/pi-extension/larva.ts
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    agent: frontend-engineer
+  - id: pi-subagent-inner-padding-release-0-6-5.github-pypi
+    name: Publish GitHub and PyPI release 0.6.5
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: runtime_state_only.
+      Deliver: from the exact integrated 0.6.5 product commit, fast-forward origin/main,
+      create the non-draft non-prerelease GitHub Release and tag v0.6.5 at that exact
+      commit, observe the release-triggered existing Trusted Publishing workflow to
+      success, and prove public PyPI metadata plus wheel and sdist identity for Larva
+      0.6.5. Boundary: external effects are limited to Tefx/larva origin/main, immutable
+      tag/release v0.6.5, the existing GitHub Actions publish workflow, and public
+      PyPI project larva; use existing approved GitHub access and OIDC Trusted Publishing
+      only, with no repository mutation, direct PyPI upload, new credential, or local
+      uvx activation. Admit: exact product commit and artifact identities from the
+      dependency, clean and fast-forwardable remote state, and confirmed absence of
+      conflicting local/remote tag, GitHub Release, workflow publication, or PyPI
+      0.6.5 before effect. Recovery: after any uncertain push, release, workflow,
+      or publication outcome, reconcile remote branch, tag target, release state,
+      workflow jobs, and PyPI before retry; never duplicate or replace an immutable
+      published artifact.'
+    verification: git push origin main; gh release create v0.6.5 --target <exact-product-commit-from-dependency>
+      --title v0.6.5 --generate-notes; gh run watch <release-triggered-run-id> --exit-status;
+      gh release view v0.6.5 --json tagName,targetCommitish,isDraft,isPrerelease,url;
+      public https://pypi.org/pypi/larva/0.6.5/json exposes the expected wheel and
+      sdist with hashes matching the integrated artifact evidence
+    evidence_template: Remote main before/after; exact product commit and v0.6.5 tag
+      target; release URL/state; workflow run and job IDs/conclusions; public PyPI
+      metadata; wheel/sdist filenames, sizes, SHA-256 and match result; final reconciliation;
+      gaps.
+    refs:
+    - .github/workflows/publish.yml
+    - pyproject.toml
+    depends_on:
+    - pi-subagent-inner-padding-release-0-6-5.integrate
+    agent: devops-engineer
+  - id: pi-subagent-inner-padding-release-0-6-5.local-uvx
+    name: Activate Larva 0.6.5 in local uvx resolution
+    status: pending
+    description: 'step_type: implementation; repo_change_policy: runtime_state_only.
+      Deliver: only after public PyPI publication is proved, refresh the local uvx
+      cache from https://pypi.org/simple for larva==0.6.5 and prove refreshed pinned,
+      cached pinned, and refreshed unpinned public-index CLI resolution all report
+      Larva 0.6.5. Boundary: local uv/uvx resolution and cache only; no Git content,
+      remote GitHub/PyPI state, configuration, credential, or other environment mutation.
+      Admit: completed release dependency, public simple-index wheel and sdist identity,
+      exact uvx executable/version, and recorded Git HEAD/tree before activation.
+      Recovery: retry cache resolution only after public simple-index availability
+      is rechecked; preserve the published release and stop with repository bytes
+      unchanged if activation cannot be proved.'
+    verification: /opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple
+      --from larva==0.6.5 larva --version && /opt/homebrew/bin/uvx --index-url https://pypi.org/simple
+      --from larva==0.6.5 larva --version && /opt/homebrew/bin/uvx --refresh --index-url
+      https://pypi.org/simple larva --version && git diff --check
+    evidence_template: uvx executable realpath/version; public simple-index 0.6.5
+      artifact names and hashes; refreshed pinned, cached pinned, and refreshed unpinned
+      outputs; Git HEAD/tree and status before/after; gaps.
+    refs:
+    - pyproject.toml
+    - .github/workflows/publish.yml
+    depends_on:
+    - pi-subagent-inner-padding-release-0-6-5.github-pypi
+    agent: devops-engineer
