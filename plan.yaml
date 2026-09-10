@@ -145082,3 +145082,222 @@ phases:
     - pi-native.deliver-extension
     - pi-native.retire-python-launcher
     agent: gate-reviewer
+- id: pi_system_prompt_resolution
+  name: Request-scoped Larva system prompt resolution
+  status: locked
+  gate: 'Orchestrator completion on pi-system-prompt.deliver-resolver owns final acceptance
+    of this single Larva increment: all material design requirements, final integrated
+    applicable regression, actual synchronous Pi EventBus/reload evidence and focused
+    independent source/contract review. No separate gate or repeated native-cutover
+    decision. Nunc integration, user installation and CAPACITY/compaction-wide claims
+    are excluded.'
+  context: User authorized updating the design and creating this implementation plan
+    after existing tasks; planning does not claim or dispatch implementation. The
+    phase dependency waits for all pi_native_extension_cutover tasks including terminal
+    pi-native.accept-repository; Vectl represents cross-phase order with this phase
+    dependency. Existing claims/definitions/completed history remain unchanged. Authority
+    for this increment is design/pi-system-prompt-resolution.md and the Change Request
+    over the accepted native baseline. One cohesive TypeScript host-extension result
+    includes pure composition, synchronous interface, lifecycle readiness, tests and
+    docs. node-typescript-engineer owns it because readiness across async persona/lease/continuation
+    commits and reload requires host-lifecycle engineering; private choices stay local.
+    Orchestrator owns final acceptance in the same step. pi-nunc remains receive-only,
+    with no assigned work or future-integration condition on Larva-only completion.
+    No user/global install, installed Pi/private-state modification, credentials or
+    external-model calls.
+  depends_on:
+  - pi_native_extension_cutover
+  steps:
+  - id: pi-system-prompt.deliver-resolver
+    name: Deliver synchronous request system prompt resolution and fixed-point projection
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      Deliver:\n- Deliver every material requirement in design/pi-system-prompt-resolution.md\
+      \ as one Larva-only result: pure fixed-point composition shared by before_agent_start,\
+      \ provider projection and the synchronous main-request resolver, with behavior\
+      \ tests and consumer documentation. Nunc can obtain effective systemPrompt before\
+      \ admission; identical state then leaves provider payload unchanged. Do not\
+      \ promise receipt success or resolution of all CAPACITY/automatic-compaction\
+      \ issues.\n- Compose supplied base text with current loaded persona or explicit\
+      \ none, switch mode, lease and effective continuation. Require whole-string\
+      \ fixed points, single current identity/policy/continuation, cleanup after restore/manual\
+      \ switch/continuation end/no-persona, and retention of foreign content, relative\
+      \ order, intentional repetitions and internal whitespace. Recognize managed\
+      \ boundaries and owned separators, not prompt keywords; no global trim/normalization/deduplication.\
+      \ Preserve opaque persona content and complete recognized legacy formats. Ambiguous\
+      \ broken boundaries fail explicitly without swallowing foreign text or declaring\
+      \ stale text repaired. Private helper layout and recommended ordering are owner\
+      \ choices, not additional acceptance criteria.\n- Public event larva:resolve-system-prompt:v1\
+      \ uses only pi.events. Request fields: scope main, systemPrompt string (empty\
+      \ allowed), callable reply. Results: ok/systemPrompt or unavailable/nonempty\
+      \ reason. Active listener replies once before emit returns, without async deferral.\
+      \ Read already-loaded state only; no persona resolution, file/environment/network\
+      \ access, initialization, tool refresh, lease/continuation consumption, message/audit/history/global-prompt\
+      \ effects, or retained/mutated request/callback. Invalid input with usable reply\
+      \ gets unavailable; without reply do nothing. Isolate reply exceptions without\
+      \ replying again. Diagnostic reason exposes no full prompt/spec/path/stack;\
+      \ consumers branch on status, not its wording.\n- Distinguish ready none from\
+      \ not-ready/failed/stale. Read a complete current instruction state or return\
+      \ unavailable during incomplete identity transitions. Never expose mixed envelope/mode/lease/continuation;\
+      \ promise existence alone is not readiness. Readiness must cover the whole relevant\
+      \ outer commit/restore/continuation operation across awaits. Keep existing rollback\
+      \ and restore-failure meaning; valid completed rollback may expose old current\
+      \ state, unresolved restore failure may not masquerade as valid. Query cannot\
+      \ repair state. Only continuation_running with current persona/lease association\
+      \ is effective; free continuation may lack lease. No validity inference from\
+      \ Continue., input markers or time, and no redefinition of no-origin borrow\
+      \ restoration. Legal origin IDs in continuation data remain while stale instruction\
+      \ blocks are removed.\n- One synchronous listener/unsubscribe per instance,\
+      \ idempotent setup. Invalidate and unsubscribe in the synchronous part of session_shutdown\
+      \ before async cleanup. Reestablish current readiness through supported session_start/reload/new/resume/fork\
+      \ reasons. Late old initialization cannot revive a dead instance. Preserve other\
+      \ subscribers; no bus clear, multiple registration aliases or private loader\
+      \ access.\n- Retain existing hooks with existing stateful preparation outside\
+      \ composition. No-persona still cleans stale managed text. Provider projection\
+      \ reads current state every request: no bridgeCalled/cache/token bypass; actual\
+      \ state changes still project. Same text gives unchanged and hook undefined,\
+      \ not equal replacement payload. Preserve existing supported slots, other messages/tools/roles/cache\
+      \ metadata and input immutability. No empty-slot insertion when nothing needs\
+      \ injection. Retain known-slot insertion and necessary unknown/missing-slot\
+      \ cancellation behavior; ctx.abort alone does not prove transport stopped. Equality\
+      \ concerns Larva's target text and no payload rewrite, distinguishing provider-owned\
+      \ prefixes/defaults.\n- Implement all design section-eight behavioral proof:\
+      \ whole-string fixed points with/without continuation; actual A-to-B-to-A restore;\
+      \ pending/ended/manually-cleared continuation; ready none; base/Unicode/whitespace/repetition\
+      \ retention; resolver-to-real-serializer-to-provider unchanged; true post-resolution\
+      \ state changes; synchronous unavailable/invalid/reply-throw/nested queries;\
+      \ unchanged lease/continuation/counters/queues/session records and zero read-side\
+      \ I/O; initialization/restore interleaving; real reload and stale lifecycle\
+      \ suppression; existing provider slots; explicit damaged-boundary failure. Test\
+      \ real functions/handlers/transitions, not coached responses, source tokens\
+      \ or marker counts alone.\n- Update README and needed integration references\
+      \ with main-only synchronous v1, per-request result ownership, zero-reply absence\
+      \ versus unavailable, duplicate-reply errors, maintenance exclusion, lifecycle/current-state\
+      \ revalidation and unperformed Nunc validation. Do not dispatch Nunc or change\
+      \ persona content, callback storage or task scheduling.\n\nBoundary:\n- node-typescript-engineer\
+      \ owns this complete reversible repository result including fixtures/dependency\
+      \ resolution/tests/docs. Read readiness across asynchronous persona/lease/continuation\
+      \ commit and reload needs TypeScript host-lifecycle engineering; supporting\
+      \ routine work stays with this owner.\n- Use completed native predecessor's\
+      \ supported macOS Node 26.7.0 / Pi 0.85.1 and committed dependency locks. Effects\
+      \ are repository edits and disposable local roots/processes/owned loopback fixtures\
+      \ only. No Pi core/installed package/private runtime changes, Nunc source, user/global\
+      \ install/config, registry/persona/shared-schema mutation, callback-persistence/scheduler\
+      \ change, credentials, external-model calls or release. pi-nunc remains receive-only.\n\
+      \nAdmit:\n- The phase dependency waits for all existing native tasks including\
+      \ terminal pi-native.accept-repository. Do not edit earlier claims/definitions/worktrees.\
+      \ Read complete design, applicable retained persona/async contracts and supported\
+      \ public Pi APIs. Native evidence proves the baseline, not the new interface.\
+      \ This request queues implementation; planning must not start execution.\n-\
+      \ Capture continuation-induced whole-string change as red proof before correction,\
+      \ then green fixed-point/unchanged proof. Actual Pi EventBus must prove synchronous\
+      \ reply; actual Pi reload must prove old removal/new single reply. An awaited\
+      \ fake bus is insufficient. Expand the existing identity/runtime entrypoints\
+      \ and Python wrappers in refs so checks execute all new behavior; optional new\
+      \ files must be invoked by those entrypoints or all-node inventory. Missing\
+      \ tracked fixtures/dependencies stay with this producer. No mandatory skip/xfail\
+      \ or fixture self-reported PASS. Real-host identity tests use the explicit local\
+      \ package path in checks, with no silent fallback to ambient global installs.\n\
+      - Final integrated evidence covers complete applicable offline inventory: full\
+      \ repository pytest, all Pi Node regressions, capability smoke, existing canonical\
+      \ CI gate and full Invar. Use declared interpreters/committed locks. Disposable\
+      \ test isolation does not change product environment semantics.\n- Orchestrator\
+      \ makes the final integrated acceptance decision for this increment in this\
+      \ step's completion procedure after all material design requirements pass and\
+      \ focused independent source/contract review reconciles purity, state publication,\
+      \ cleanup, slot preservation and compatibility. Runtime observation and review\
+      \ support different claims but have no separate evidence consumer here; no separate\
+      \ gate or premature candidate completion. Reuse valid unaffected baseline observations\
+      \ after judging target/inputs/authority; refresh affected state/serialization/reload\
+      \ proof and obtain final integrated applicable regression. Necessary failed\
+      \ or unproven behavior prevents completion.\n- Nunc integration and actual capacity/receipt/long-loop/maintenance/auto-compaction\
+      \ verification are outside this Larva step. Report them not executed. They do\
+      \ not waive Larva proof, create a human-wait step or authorize end-to-end success\
+      \ claims.\n\nRecovery:\n- Repair compatible findings/missing proof within this\
+      \ unfinished step. Reconcile and stop owned test processes/servers; clean only\
+      \ owned disposable roots and preserve useful evidence. Keep ordinary sessions,\
+      \ global config and completed history intact. No weakened assertions, direct\
+      \ Plan edits, prohibited-target changes or external-effect retries. Refer material\
+      \ accepted-contract conflicts to Orchestrator without silently redesigning.\n\
+      \nscope:\n  allowed_paths:\n  - contrib/pi-extension/**\n  - tests/shell/test_pi_*.py\n\
+      \  - tests/fixtures/pi/**\n  - scripts/pi-*.mjs\n  - docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md\n\
+      \  - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n  - design/pi-system-prompt-resolution.md\n\
+      \  blocked_paths:\n  - plan.yaml\n  - contracts/**\n  - src/larva/core/**\n\
+      \  - .vectl/recovery/**\n  - ../pi-nunc/**\n  - ../opifex/**\nchecks:\n- id:\
+      \ supported-node\n  command:\n  - node\n  - --version\n  expected: Node v26.7.0\
+      \ on supported macOS; no automatic toolchain/global changes\n- id: locked-extension-dependencies\n\
+      \  command:\n  - npm\n  - --prefix\n  - contrib/pi-extension\n  - ci\n  expected:\
+      \ exit 0 from predecessor committed lock with Pi 0.85.1; no global install\n\
+      \    or package patch\n- id: locked-python-dependencies\n  command:\n  - env\n\
+      \  - -u\n  - VIRTUAL_ENV\n  - -u\n  - UV_PROJECT_ENVIRONMENT\n  - -u\n  - PYTHONPATH\n\
+      \  - UV_PYTHON_DOWNLOADS=never\n  - uv\n  - sync\n  - --locked\n  - --python\n\
+      \  - '3.12'\n  - --group\n  - dev\n  expected: exit 0 from tracked dependency\
+      \ state\n- id: resolver-and-real-pi-behavior\n  command:\n  - bash\n  - -c\n\
+      \  - set -euo pipefail; export LARVA_TEST_PI_CODING_AGENT=\"$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent\"\
+      ;\n    node contrib/pi-extension/test-idle-callback-identity-runtime.mjs; node\
+      \ contrib/pi-extension/test-agent-persona-switch-policy-runtime.mjs;\n    node\
+      \ contrib/pi-extension/test-idle-callback-identity-real-pi-0-85-1.mjs\n  expected:\
+      \ exit 0; expanded tracked entrypoints prove all resolver design behavior\n\
+      \    including actual synchronous bus and real reload; no mandatory unavailable/skip\n\
+      \    or fixture-only PASS\n- id: full-repository-regression\n  command:\n  -\
+      \ bash\n  - -c\n  - set -euo pipefail; unset VIRTUAL_ENV UV_PROJECT_ENVIRONMENT\
+      \ PYTHONPATH; export\n    UV_PYTHON_DOWNLOADS=never; export LARVA_TEST_PI_CODING_AGENT=\"\
+      $PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent\";\n\
+      \    uv run --locked --python 3.12 --group dev pytest -q\n  expected: exit 0\
+      \ for complete applicable final-candidate tests including native/identity\n\
+      \    wrappers; mandatory new behavior not skipped\n- id: all-node-pi-regressions\n\
+      \  command:\n  - bash\n  - -c\n  - set -euo pipefail; export LARVA_TEST_PI_CODING_AGENT=\"\
+      $PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent\";\n\
+      \    for f in contrib/pi-extension/test-*.mjs; do node \"$f\"; done\n  expected:\
+      \ exit 0 for all retained/new Pi entrypoints\n- id: capability-smoke\n  command:\n\
+      \  - node\n  - scripts/pi-extension-runtime-smoke.mjs\n  - --scenario\n  - capability-gates\n\
+      \  expected: exit 0 for retained native capabilities, not a substitute for resolver\n\
+      \    proof\n- id: frozen-authority-ci-gate\n  command:\n  - bash\n  - -c\n \
+      \ - set -euo pipefail; unset VIRTUAL_ENV UV_PROJECT_ENVIRONMENT PYTHONPATH;\
+      \ export\n    UV_PYTHON_DOWNLOADS=never; authority=$(mktemp -d); trap 'rm -rf\
+      \ -- \"$authority\"'\n    EXIT; ref=$(uv run --locked --python 3.12 --group\
+      \ dev python -c 'import json;\n    print(json.load(open(\"design/opifex-frozen-authority-packet.json\"\
+      ))[\"ref\"])');\n    git -C /Users/tefx/Projects/opifex archive \"$ref\" | tar\
+      \ -xf - -C \"$authority\";\n    uv run --locked --python 3.12 --group dev python\
+      \ scripts/ci/larva_repo_local_gate.py\n    verify --opifex-root \"$authority\"\
+      \n  expected: exit 0 for existing canonical gate; read-only local frozen authority\
+      \ export,\n    no live opifex changes or new authority fetch\n- id: full-invar\n\
+      \  command:\n  - env\n  - -u\n  - VIRTUAL_ENV\n  - -u\n  - UV_PROJECT_ENVIRONMENT\n\
+      \  - -u\n  - PYTHONPATH\n  - UV_PYTHON_DOWNLOADS=never\n  - uvx\n  - --python\n\
+      \  - '3.12'\n  - invar-tools==1.20.3\n  - guard\n  - --all\n  expected: exit\
+      \ 0 from full-scan CLI, no weakened rules\n- id: whitespace\n  command:\n  -\
+      \ git\n  - diff\n  - --check\n  expected: exit 0\n"
+    verification: All material requirements in design/pi-system-prompt-resolution.md
+      proven on the integrated candidate. Full-string fixed points and resolver-to-real-serializer-to-provider
+      unchanged under identical state; true changes still project. Actual synchronous
+      Pi event/reload, state/I-O noninterference, provider compatibility, docs, complete
+      applicable regression and Invar pass. Orchestrator records final Larva-only
+      increment acceptance after focused independent source/contract review, with
+      no necessary proof gap/blocker. Nunc combination verification remains not executed;
+      no end-to-end CAPACITY/automatic-compaction claim.
+    evidence_template: Integrated candidate/changed paths; v1 contract; continuation
+      red then full-string/unchanged green; executed argv/runtime versions/exits;
+      actual synchronous bus/reload observations; state/purity/provider preservation;
+      full integrated regression/Invar; independent focused review and Orchestrator
+      final increment decision; reused evidence/applicability; disposable cleanup;
+      Nunc verification not executed and exclusions preserved.
+    refs:
+    - design/pi-system-prompt-resolution.md
+    - design/pi-native-extension.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - contrib/pi-extension/test-idle-callback-identity-runtime.mjs
+    - contrib/pi-extension/test-idle-callback-identity-real-pi-0-85-1.mjs
+    - contrib/pi-extension/test-agent-persona-switch-policy-runtime.mjs
+    - tests/shell/test_pi_idle_callback_identity.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - scripts/ci/larva_repo_local_gate.py
+    - design/opifex-frozen-authority-packet.json
+    - docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - pyproject.toml
+    - uv.lock
+    agent: node-typescript-engineer
