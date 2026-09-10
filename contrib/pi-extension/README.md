@@ -111,15 +111,19 @@ When using Invar as the test runner, `scripts/pi-guard-checks.mjs` supplies a
 `pyproject.toml` and rules unchanged. Normal CI invokes the same pytest inventory
 directly, followed by the full pinned Invar check.
 ## Adapter-local thinking policy and Pi capsules
-
 Native main uses Pi's real agent directory. Larva does not create a parent
-settings capsule. Child RPC processes create separate capsules from the base agent directory
-(`LARVA_PI_BASE_AGENT_DIR` / Pi's effective agent dir). Each capsule has mode `0700`; its copied `settings.json` has mode `0600`; other Pi
-resources resolve to the base agent directory. Cleanup removes only a lexical
-capsule root under the runtime directory and never follows links or writes
-capsule settings back to the base. Normal exit, startup failure, child completion,
-and cancellation clean their capsules; later launches scan only a bounded set of
-stale roots.
+settings capsule. Each child creates a capsule from the base agent directory
+(`LARVA_PI_BASE_AGENT_DIR` / Pi's effective agent dir), with directory mode
+`0700` and copied `settings.json` mode `0600`. Other resources refer to base
+resources. Terminal cleanup removes only the known owned capsule root, never
+follows a root link, and never merges settings back into the base.
+
+Starting another child does **not** sweep the shared runtime directory: an old
+directory mtime cannot prove that its owner terminated. Filesystem removal
+failure emits a bounded `larva pi: capsule cleanup failed:` stderr diagnostic
+with the retained capsule path and reason. Optional RPC traces retain that path
+and actual process state. Reconcile the named process before manually removing
+an orphan; preserve base resources and durable sessions outside the capsule.
 
 Thinking policy defaults to `$HOME/.pi/larva/thinking-policy.json`. An absolute
 `LARVA_PI_THINKING_POLICY_FILE` overrides it. The exact shape is:

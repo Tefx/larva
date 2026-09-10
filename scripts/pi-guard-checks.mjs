@@ -27,9 +27,9 @@ try {
       for await (const file of glob(["tests/**/test_*.py", "tests/**/*_test.py"], { cwd: ROOT })) {
         if (!ignored.has(join(ROOT, file))) selection.push(join(ROOT, file));
       }
-    } else selection.push(item.startsWith("-") ? item : join(ROOT, item));
+    } else selection.push(item.startsWith("tests/") ? join(ROOT, item) : item);
   }
-  const env = { ...process.env, UV_PYTHON_DOWNLOADS: "never", PYTEST_ADDOPTS: ["--import-mode=importlib", `--deselect=${relative(ROOT, join(scratch, "src"))}/`, "--deselect=src/", ...selection].join(" ") };
+  const env = { ...process.env, UV_PYTHON_DOWNLOADS: "never", PYTEST_ADDOPTS: ["--import-mode=importlib", `--deselect=${relative(ROOT, join(scratch, "src"))}/`, "--deselect=src/", ...selection].map((arg) => JSON.stringify(arg)).join(" ") };
   delete env.VIRTUAL_ENV; delete env.UV_PROJECT_ENVIRONMENT; delete env.PYTHONPATH;
   // Copied-source doctest node names differ under importlib. Their authoritative
   // coverage is the separate, unchanged full Invar scan at ROOT; this invocation

@@ -1,0 +1,145 @@
+{
+  "scenario": "installed-loading",
+  "modality": "actual native CLI + normal package loader + loopback provider",
+  "node": "v26.7.0",
+  "cli": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+  "install": {
+    "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+    "args": [
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+      "install",
+      "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-gXV8Go/installed-package"
+    ],
+    "pid": 67385,
+    "code": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdout": "Installing /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-gXV8Go/installed-package...\nInstalled /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-gXV8Go/installed-package\n",
+    "stderr": ""
+  },
+  "control": {
+    "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+    "args": [
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+      "-p",
+      "--offline",
+      "--approve",
+      "--larva-persona",
+      "ok",
+      "Viable loopback prompt"
+    ],
+    "pid": 67386,
+    "code": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdout": "Deterministic protocol response.\n",
+    "stderr": "",
+    "requests": 1
+  },
+  "cases": [
+    {
+      "fault": "missing-entry",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "--larva-persona",
+        "ok",
+        "Viable loopback prompt"
+      ],
+      "pid": 67389,
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "Error: Unknown option: --larva-persona\n",
+      "requests": 0
+    },
+    {
+      "fault": "unusable-dependency",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "--larva-persona",
+        "ok",
+        "Viable loopback prompt"
+      ],
+      "pid": 67390,
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "Deterministic protocol response.\n",
+      "stderr": "",
+      "requests": 1
+    }
+  ],
+  "pass": false,
+  "error": "AssertionError [ERR_ASSERTION]: {\"command\":\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"args\":[\"/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js\",\"-p\",\"--offline\",\"--approve\",\"--larva-persona\",\"ok\",\"Viable loopback prompt\"],\"pid\":67390,\"code\":0,\"signal\":null,\"timedOut\":false,\"stdout\":\"Deterministic protocol response.\\n\",\"stderr\":\"\"}\n\n0 !== 1\n\n    at runInstalledLoading (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:510:47)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runJourney (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:628:48)\n    at async file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:645:20",
+  "observations": {
+    "events": []
+  },
+  "requests": [
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "Viable loopback prompt"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "Viable loopback prompt"
+        }
+      ]
+    }
+  ],
+  "stderr": [],
+  "cleanup": {
+    "traces": [],
+    "pids": [],
+    "liveChildren": [],
+    "capsules": [],
+    "sessions": [],
+    "settings": {
+      "defaultProjectTrust": "yes",
+      "theme": "dark",
+      "lastChangelogVersion": "0.85.1",
+      "packages": [
+        "../installed-package"
+      ],
+      "defaultProvider": "native-loopback",
+      "defaultModel": "origin",
+      "defaultThinkingLevel": "low",
+      "compaction": {
+        "enabled": false,
+        "reserveTokens": 512,
+        "keepRecentTokens": 512
+      },
+      "retry": {
+        "enabled": false
+      }
+    },
+    "parents": [],
+    "providerClosed": true,
+    "rootRemoved": true
+  },
+  "evidenceProjection": "Request model/identity markers and lifecycle metadata selected from actual observations; assertions ran against full live values. Reproduce with tracked native journey."
+}

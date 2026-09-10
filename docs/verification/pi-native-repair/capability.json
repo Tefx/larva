@@ -1,0 +1,505 @@
+{
+  "scenario": "capability-gates",
+  "pi": {
+    "binary": "/opt/homebrew/bin/pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [--] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi, extensions, or model catalogs\n  pi list                      List installed extensions from settings\n  pi config [-l]               Open TUI"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": false,
+    "supported": null,
+    "events": [],
+    "responses": [],
+    "stderr": ""
+  },
+  "runtime": {
+    "registeredCommandNames": [
+      "larva-subagent",
+      "larva-mode",
+      "larva-model-map",
+      "larva-persona"
+    ],
+    "registeredShortcuts": [
+      {
+        "shortcut": "ctrl+alt+p",
+        "description": "Open Larva persona selector"
+      }
+    ],
+    "statuses": [
+      [
+        "larva",
+        "larva: ok"
+      ]
+    ],
+    "notifications": [],
+    "registeredToolNames": [
+      "larva_subagent",
+      "larva_subagent_sessions",
+      "larva_subagent_status",
+      "larva_subagent_events",
+      "larva_subagent_wait",
+      "larva_subagent_select",
+      "larva_subagent_cancel",
+      "larva_persona_switch",
+      "larva_personas"
+    ],
+    "handlers": [
+      "larva:persona-invocation:request",
+      "larva:persona-invocation:cancel",
+      "cancel",
+      "agent_cancel",
+      "interrupt",
+      "session_start",
+      "session_before_compact",
+      "session_shutdown",
+      "shutdown",
+      "session_end",
+      "exit",
+      "reload",
+      "new_session",
+      "session_new",
+      "resume",
+      "fork",
+      "quit",
+      "before_agent_start",
+      "before_provider_request",
+      "agent_end",
+      "tool_call"
+    ],
+    "larvaSubagent": {
+      "name": "larva_subagent",
+      "label": "Larva Subagent",
+      "description": "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it. At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "persona_id": {
+            "type": "string",
+            "description": "Target Larva persona id."
+          },
+          "task": {
+            "type": "string",
+            "description": "Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Optional child session .jsonl path to resume. Omit this field to start a new child session."
+          },
+          "no_progress_timeout_ms": {
+            "type": "integer",
+            "minimum": 120000,
+            "maximum": 86400000,
+            "default": 3600000,
+            "description": "Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it."
+          }
+        },
+        "required": [
+          "persona_id",
+          "task"
+        ],
+        "additionalProperties": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "persona_id": {
+            "type": "string",
+            "description": "Target Larva persona id."
+          },
+          "task": {
+            "type": "string",
+            "description": "Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task."
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Optional child session .jsonl path to resume. Omit this field to start a new child session."
+          },
+          "no_progress_timeout_ms": {
+            "type": "integer",
+            "minimum": 120000,
+            "maximum": 86400000,
+            "default": 3600000,
+            "description": "Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it."
+          }
+        },
+        "required": [
+          "persona_id",
+          "task"
+        ],
+        "additionalProperties": false
+      },
+      "handler": "[function]",
+      "execute": "[function]",
+      "renderCall": "[function]",
+      "renderResult": "[function]"
+    },
+    "larvaSubagentStatus": {
+      "name": "larva_subagent_status",
+      "label": "Larva Subagent Status",
+      "description": "Inspect active/recent process-local Larva subagent runs and bounded pre-task startup failures. Exact task_id lookup never treats provisional startup_id as a task handle. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "description": "Maximum recent runs and startup failures to return per list (default 10, max 25)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "description": "Maximum recent runs and startup failures to return per list (default 10, max 25)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "handler": "[function]",
+      "execute": "[function]"
+    },
+    "larvaSubagentCancel": {
+      "name": "larva_subagent_cancel",
+      "label": "Larva Subagent Cancel",
+      "description": "Cancel one exact active Larva subagent task_id without using aliases or fuzzy selectors.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Exact public child .jsonl task_id to cancel."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Required renderer-safe cancellation reason, bounded to 500 normalized code points."
+          }
+        },
+        "required": [
+          "task_id",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "Exact public child .jsonl task_id to cancel."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Required renderer-safe cancellation reason, bounded to 500 normalized code points."
+          }
+        },
+        "required": [
+          "task_id",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "handler": "[function]",
+      "execute": "[function]"
+    },
+    "autocompleteProvider": {
+      "hookType": "function",
+      "source": "runtimeHarness.mock",
+      "installedProviderCount": 0,
+      "limitation": "Local smoke runtime injects a mock ctx.ui.addAutocompleteProvider fixture; this is not live Pi interactive TUI runtime proof."
+    },
+    "toolCallHandler": "[function]",
+    "hardGates": {
+      "extensionLoading": {
+        "supported": true,
+        "evidence": {
+          "binary": "/opt/homebrew/bin/pi",
+          "helpExitCode": 0,
+          "extensionFlag": "-e"
+        }
+      },
+      "rpcJsonl": {
+        "supported": true,
+        "evidence": {
+          "mode": "rpc",
+          "commands": [
+            "get_state",
+            "prompt",
+            "switch_session",
+            "get_last_assistant_text",
+            "abort"
+          ]
+        }
+      },
+      "uiAutocompleteProvider": {
+        "supported": false,
+        "status": "unsupported",
+        "provenance": "runtimeHarness.mock",
+        "evidence": {
+          "piBuild": {
+            "binary": "/opt/homebrew/bin/pi",
+            "helpExitCode": 0,
+            "versionCommand": "/opt/homebrew/bin/pi --version",
+            "versionExitCode": 0,
+            "versionText": "0.85.1",
+            "packageRoot": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+            "commit": "aebd6961060eebf38a03787c134661c94ae41992",
+            "commitExitCode": 0
+          },
+          "hook": {
+            "hookType": "function",
+            "source": "runtimeHarness.mock",
+            "installedProviderCount": 0,
+            "limitation": "Local smoke runtime injects a mock ctx.ui.addAutocompleteProvider fixture; this is not live Pi interactive TUI runtime proof."
+          }
+        },
+        "limitation": "Only the local runtimeHarness mock object exposed ctx.ui.addAutocompleteProvider; live Pi interactive TUI runtime hook proof is missing.",
+        "supportRule": "mock/local harness hook evidence is never sufficient for supported: true; true requires non-mock Pi interactive TUI runtime/build provenance."
+      },
+      "piTuiDependency": {
+        "supported": true,
+        "evidence": {
+          "expectedVersion": "0.85.1",
+          "packageJsonPath": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/package.json",
+          "lockfilePath": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/package-lock.json",
+          "packageJsonExists": true,
+          "lockfileExists": true,
+          "packageJsonVersion": "0.85.1",
+          "lockfileRootDependency": "0.85.1",
+          "lockfileVersion": "0.85.1",
+          "installedVersion": "0.85.1",
+          "resolvedPath": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-tui/dist/index.js",
+          "resolvedFromExtensionNodeModules": true,
+          "noHostGlobalFallback": true,
+          "importOk": true,
+          "exactPinned": true,
+          "requiredPrimitives": {
+            "visibleWidth": "function",
+            "truncateToWidth": "function",
+            "wrapTextWithAnsi": "function",
+            "matchesKey": "function",
+            "Markdown": "function"
+          },
+          "errors": [],
+          "hardGateStatus": "PASS"
+        }
+      },
+      "subagentToolRowProgress": {
+        "supported": true,
+        "evidence": {
+          "hasRenderCall": "function",
+          "hasRenderResult": "function",
+          "hasExecute": "function"
+        }
+      },
+      "subagentLogOverlayCommand": {
+        "supported": true,
+        "evidence": {
+          "requiredCommand": "larva-subagent",
+          "registeredCommandNames": [
+            "larva-subagent",
+            "larva-mode",
+            "larva-model-map",
+            "larva-persona"
+          ]
+        }
+      },
+      "personaSelectorShortcut": {
+        "supported": true,
+        "evidence": {
+          "requiredShortcut": "ctrl+alt+p",
+          "registeredShortcuts": [
+            {
+              "shortcut": "ctrl+alt+p",
+              "description": "Open Larva persona selector"
+            }
+          ]
+        }
+      }
+    },
+    "isolation": {
+      "status": "PASS",
+      "temp_root": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-neutral-runtime-o2BF2W",
+      "quarantined_inherited_keys": [
+        "HOME",
+        "LARVA_CLI_ARGV_JSON",
+        "LARVA_PI_AGENT_PERSONA_SWITCH",
+        "LARVA_PI_EXTENSION_ENTRY",
+        "LARVA_PI_EXTENSION_FLAG",
+        "LARVA_PI_INITIAL_PERSONA_ID",
+        "LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI",
+        "LARVA_PI_INTERACTIVE_TUI",
+        "LARVA_PI_LAUNCHED",
+        "LARVA_PI_PARENT_PERSONA_ID",
+        "LARVA_PI_REAL_BIN",
+        "PI_CODING_AGENT_DIR",
+        "PI_MODEL",
+        "PI_PROVIDER",
+        "PI_REASONING_LEVEL",
+        "PI_SESSION_FILE",
+        "PI_SESSION_ID",
+        "TMPDIR"
+      ],
+      "environment_observations": [
+        {
+          "owned_selector_keys": [
+            "HOME",
+            "LARVA_CLI_ARGV_JSON",
+            "LARVA_CONFIG_DIR",
+            "LARVA_HOME",
+            "LARVA_PI_CHILD_RPC_LEGACY_FALLBACK",
+            "LARVA_PI_CHILD_RPC_TRACE_FILE",
+            "LARVA_PI_CHILD_SESSION_DIR",
+            "LARVA_PI_EXTENSION_ENTRY",
+            "LARVA_PI_EXTENSION_FLAG",
+            "LARVA_PI_LAUNCHED",
+            "LARVA_PI_MODEL_MAP_FILE",
+            "LARVA_PI_REAL_BIN",
+            "LARVA_PI_SUBAGENT_ARTIFACT_DIR",
+            "LARVA_PI_SUBAGENT_CONFIG_FILE",
+            "LARVA_SESSION_DIR",
+            "PI_CODING_AGENT_DIR",
+            "PI_CODING_AGENT_SESSION_DIR",
+            "TMPDIR",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME"
+          ],
+          "unowned_selector_keys_present": [],
+          "owned_paths_outside_root": []
+        },
+        {
+          "owned_selector_keys": [
+            "HOME",
+            "LARVA_CLI_ARGV_JSON",
+            "LARVA_CONFIG_DIR",
+            "LARVA_HOME",
+            "LARVA_PI_CHILD_RPC_LEGACY_FALLBACK",
+            "LARVA_PI_CHILD_RPC_TRACE_FILE",
+            "LARVA_PI_CHILD_SESSION_DIR",
+            "LARVA_PI_EXTENSION_ENTRY",
+            "LARVA_PI_EXTENSION_FLAG",
+            "LARVA_PI_LAUNCHED",
+            "LARVA_PI_MODEL_MAP_FILE",
+            "LARVA_PI_REAL_BIN",
+            "LARVA_PI_SUBAGENT_ARTIFACT_DIR",
+            "LARVA_PI_SUBAGENT_CONFIG_FILE",
+            "LARVA_PI_TEST_CHILD_ARGV_JSON",
+            "LARVA_SESSION_DIR",
+            "PI_CODING_AGENT_DIR",
+            "PI_CODING_AGENT_SESSION_DIR",
+            "TMPDIR",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME"
+          ],
+          "unowned_selector_keys_present": [],
+          "owned_paths_outside_root": []
+        },
+        {
+          "owned_selector_keys": [
+            "HOME",
+            "LARVA_CLI_ARGV_JSON",
+            "LARVA_CONFIG_DIR",
+            "LARVA_HOME",
+            "LARVA_PI_CHILD_RPC_LEGACY_FALLBACK",
+            "LARVA_PI_CHILD_RPC_TRACE_FILE",
+            "LARVA_PI_CHILD_SESSION_DIR",
+            "LARVA_PI_EXTENSION_ENTRY",
+            "LARVA_PI_EXTENSION_FLAG",
+            "LARVA_PI_INITIAL_PERSONA_ID",
+            "LARVA_PI_LAUNCHED",
+            "LARVA_PI_MODEL_MAP_FILE",
+            "LARVA_PI_REAL_BIN",
+            "LARVA_PI_SUBAGENT_ARTIFACT_DIR",
+            "LARVA_PI_SUBAGENT_CONFIG_FILE",
+            "LARVA_PI_TEST_CHILD_ARGV_JSON",
+            "LARVA_SESSION_DIR",
+            "PI_CODING_AGENT_DIR",
+            "PI_CODING_AGENT_SESSION_DIR",
+            "TMPDIR",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME"
+          ],
+          "unowned_selector_keys_present": [],
+          "owned_paths_outside_root": []
+        }
+      ],
+      "unowned_selector_keys_present": [],
+      "owned_paths_outside_root": [],
+      "route": {
+        "source_model": "openai/gpt-5.5",
+        "provider_id": "larva-neutral-untimeo2bf2w",
+        "model_id": "neutral-untimeo2bf2w",
+        "provider_url": "http://127.0.0.1:50344/v1",
+        "provider_extension": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-neutral-runtime-o2BF2W/neutral-loopback-provider.ts",
+        "model_map_path": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-neutral-runtime-o2BF2W/larva-config/model-map.json",
+        "subagent_config_path": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-neutral-runtime-o2BF2W/subagent-runtime.json",
+        "resolver": "LARVA_PI_MODEL_MAP_FILE exact mapping followed by Pi modelRegistry.find"
+      },
+      "network": {
+        "request_count": 0,
+        "loopback_only": true,
+        "external_provider_requests": 0
+      },
+      "cleanup": {
+        "loopback_closed": true,
+        "temporary_root_removed": true,
+        "runtime_reset_error": null,
+        "root_removal_error": null
+      }
+    }
+  },
+  "package": {
+    "versionCommand": "/opt/homebrew/bin/pi --version",
+    "versionExitCode": 0,
+    "packageRoot": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+    "commit": "aebd6961060eebf38a03787c134661c94ae41992",
+    "commitExitCode": 0,
+    "piTuiDependency": {
+      "expectedVersion": "0.85.1",
+      "packageJsonPath": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/package.json",
+      "lockfilePath": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/package-lock.json",
+      "packageJsonExists": true,
+      "lockfileExists": true,
+      "packageJsonVersion": "0.85.1",
+      "lockfileRootDependency": "0.85.1",
+      "lockfileVersion": "0.85.1",
+      "installedVersion": "0.85.1",
+      "resolvedPath": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-tui/dist/index.js",
+      "resolvedFromExtensionNodeModules": true,
+      "noHostGlobalFallback": true,
+      "importOk": true,
+      "exactPinned": true,
+      "requiredPrimitives": {
+        "visibleWidth": "function",
+        "truncateToWidth": "function",
+        "wrapTextWithAnsi": "function",
+        "matchesKey": "function",
+        "Markdown": "function"
+      },
+      "errors": [],
+      "hardGateStatus": "PASS"
+    },
+    "versionText": "0.85.1"
+  }
+}

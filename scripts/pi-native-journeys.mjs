@@ -4,7 +4,7 @@
 // requires: locked local native Pi 0.85.1; environment/tui also Python 3.12
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
-import { mkdir, readFile, writeFile, stat, copyFile, symlink } from "node:fs/promises";
+import { mkdir, readFile, writeFile, stat, copyFile, symlink, utimes, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, CLI, CONTROL, createNativeFixture, NativeRpc, jsonLines, directory, alive, execute } from "./pi-native-support.mjs";
@@ -228,6 +228,82 @@ async function runChildren(f, evidence) {
   assert.ok((await readFile(held.receipt.task_id, "utf8")).includes("HOLD_NATIVE_CHILD"));
   evidence.shutdown = { receipt: held.receipt, inFlightProvider: true, liveBefore: during.liveChildren, capsulesBefore: during.capsules, exit, liveAfter: cleaned.liveChildren, capsulesAfter: cleaned.capsules, retainedSession: held.receipt.task_id };
 }
+async function runCapsuleAging(f, evidence) {
+  const p = new NativeRpc(f, ["--larva-persona", "ok"]);
+  await p.command("get_state");
+  const held = await startTask(f, p, "HOLD_AGED_NATIVE_CHILD");
+  await p.until((frames) => frames.slice(held.from).some((r) => r.type === "agent_settled"));
+  const before = await f.inspect();
+  assert.equal(before.liveChildren.length, 1); assert.equal(before.capsules.length, 1);
+  const runtime = join(f.home, ".pi/larva/runtime");
+  const owned = join(runtime, before.capsules[0]);
+  const unrelated = join(runtime, "unrelated-cooperative-entry");
+  await mkdir(unrelated); await writeFile(join(unrelated, "keep"), "unrelated data");
+  const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
+  await utimes(owned, old, old); await utimes(unrelated, old, old);
+  const q = new NativeRpc(f, ["--larva-persona", "ok"]);
+  await q.command("get_state");
+  const second = await startTask(f, q, "HOLD_OTHER_PARENT_CHILD");
+  await q.until((frames) => frames.slice(second.from).some((r) => r.type === "agent_settled"));
+  const after = await f.inspect();
+  evidence.aging = { held: held.receipt, second: second.receipt, before, after, owned, unrelated, ageHours: 25 };
+  assert.ok(after.liveChildren.includes(before.liveChildren[0]));
+  assert.ok(after.capsules.includes(before.capsules[0]), "starting another parent child deleted an aged live capsule");
+  assert.equal(await readFile(join(unrelated, "keep"), "utf8"), "unrelated data");
+  // Cancel both through native lifecycle, then verify only unrelated state remains.
+  await q.stop(); await p.stop();
+  const stopped = await f.inspect();
+  assert.deepEqual(stopped.liveChildren, []); assert.deepEqual(stopped.capsules, ["unrelated-cooperative-entry"]);
+  assert.ok((await readFile(held.receipt.task_id, "utf8")).includes("HOLD_AGED_NATIVE_CHILD"));
+  assert.deepEqual(stopped.settings, f.settings);
+  evidence.aging.stopped = stopped;
+  await rm(unrelated, { recursive: true }); // fixture-owned unrelated data, after preservation proof
+}
+
+async function runCapsuleRemoval(f, evidence) {
+  evidence.removal = [];
+  for (const [operation, code] of [["rmSync", "EACCES"], ["lstatSync", "EACCES"], ["rmSync", "ENOENT"]]) {
+    const fault = join(f.root, "cleanup-fault.json");
+    await rm(fault, { force: true });
+    const p = new NativeRpc(f, ["--larva-persona", "ok"], { ...f.env, NATIVE_CLEANUP_FAULT: fault, NODE_OPTIONS: `--import=${pathToFileURL(join(ROOT, "tests/fixtures/pi/native-cleanup-fault.mjs")).href}` });
+    await p.command("get_state");
+    const task = await startTask(f, p, "HOLD_REMOVAL_NATIVE_CHILD");
+    await p.until((frames) => frames.slice(task.from).some((r) => r.type === "agent_settled"));
+    const before = await f.inspect();
+    const capsule = join(f.home, ".pi/larva/runtime", before.capsules[0]);
+    await writeFile(fault, JSON.stringify({ operation, code, path: capsule }));
+    // Actual cancellation invokes Larva cleanup; inject only its OS operation.
+    let cancel = true;
+    f.respond = () => cancel ? (cancel = false, { tools: [{ name: "larva_subagent_cancel", args: { task_id: task.receipt.task_id, reason: "Exercise native cleanup filesystem failure" } }] }) : { text: "Cancellation observed." };
+    const cancelled = toolResults(await p.prompt("Cancel the held native child"), "larva_subagent_cancel")[0];
+    const terminal = cancelled.status === "cancelling" ? await waitCallback(p, task.from, task.receipt.task_id) : cancelled;
+    assert.equal(terminal.status, "cancelled");
+    let after;
+    const deadline = Date.now() + 3000;
+    do {
+      after = await f.inspect();
+      if (after.traces.some((r) => r.event === "cleanup_end" && r.pid === before.liveChildren[0])) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } while (Date.now() < deadline);
+    const exit = await p.stop();
+    const hits = await jsonLines(fault + ".hits");
+    const observation = { operation, code, capsule, before, after, cancelled, exit, stderr: p.stderr, hits };
+    evidence.removal.push(observation);
+    assert.ok(hits.some((r) => r.operation === operation && r.path === capsule));
+    assert.deepEqual(after.liveChildren, []);
+    assert.ok(after.capsules.includes(before.capsules[0]));
+    assert.deepEqual(after.settings, f.settings);
+    assert.ok((await readFile(task.receipt.task_id, "utf8")).includes("HOLD_REMOVAL_NATIVE_CHILD"));
+    assert.ok(await stat(join(f.agent, "models.json")), "linked base resource survives");
+    assert.match(p.stderr, /larva pi: capsule cleanup failed:/);
+    assert.ok(p.stderr.includes(capsule), "visible diagnostic retains the owned path");
+    assert.ok(p.stderr.length < 2048, "filesystem exception must remain bounded");
+    const end = after.traces.filter((r) => r.event === "cleanup_end").at(-1);
+    assert.equal(end.running, false); assert.equal(end.capsule_root, capsule);
+    await rm(fault); await rm(capsule, { recursive: true }); // scoped fixture recovery after child reaped
+  }
+}
+
 async function runFailures(f, evidence) {
   evidence.cases = [];
   let retainedTask;
@@ -404,6 +480,65 @@ async function runPrint(f, evidence) {
   evidence.print = run;
 }
 
+async function runStoredRestore(f, evidence) {
+  const p = new NativeRpc(f, ["--larva-persona", "ok"]);
+  await p.command("get_state");
+  await p.prompt("Persist native saved-session history");
+  const saved = await p.snapshot();
+  assert.equal(commits(saved).at(-1).data.persona_id, "ok");
+  await p.stop();
+  const log = join(f.root, "resolved.jsonl");
+  const q = new NativeRpc(f, ["--session", saved.value.session, "--larva-persona", "startup"], { ...f.env, FAKE_LARVA_RESOLVE_LOG: log, FAKE_LARVA_MODEL_ok: "unavailable/stored", FAKE_LARVA_MODEL_startup: "unavailable/unused" });
+  const state = await q.command("get_state");
+  const resolves = await jsonLines(log);
+  assert.deepEqual(resolves.slice(0, 2), [{ id: "startup", resolved: true }, { id: "ok", resolved: true }]);
+  const status = q.frames.filter((r) => r.type === "extension_ui_request" && r.method === "setStatus");
+  assert.ok(status.some((r) => /unavailable.*LARVA_MODEL_UNAVAILABLE|restore unavailable/.test(r.statusText)));
+  assert.ok(!status.some((r) => /^larva: (ok|startup)$/.test(r.statusText)));
+  const before = f.requests.length;
+  await q.prompt("Prove the reopened session is still usable");
+  assert.equal(f.requests.length, before + 1);
+  const system = f.requests.at(-1).payload.messages.filter((m) => m.role === "system" || m.role === "developer");
+  assert.ok(!JSON.stringify(system).includes("larva-spec:"), "failed stored restore must not activate explicit or stored persona");
+  const after = await q.snapshot();
+  assert.equal(commits(after).length, commits(saved).length);
+  const exit = await q.stop();
+  evidence.restore = { session: saved.value.session, resolves, state, status, exit, providerRequests: 1, system, commitsBefore: commits(saved).length, commitsAfter: commits(after).length };
+}
+
+async function runInstalledLoading(f, evidence) {
+  const source = join(ROOT, "contrib/pi-extension");
+  const copy = join(f.root, "installed-package");
+  await mkdir(copy);
+  for (const name of ["larva.ts", "child-rpc-frame-preload.mjs", "package.json"]) await copyFile(join(source, name), join(copy, name));
+  await symlink(join(source, "node_modules"), join(copy, "node_modules"));
+  await writeFile(join(f.agent, "settings.json"), JSON.stringify({ ...f.settings, packages: [] }));
+  const install = await execute(process.execPath, [CLI, "install", copy], { env: f.env, cwd: f.cwd });
+  assert.equal(install.code, 0, install.stderr);
+  const args = [CLI, "-p", "--offline", "--approve", "--larva-persona", "ok", "Viable loopback prompt"];
+  const control = await execute(process.execPath, args, { env: f.env, cwd: f.cwd });
+  assert.equal(control.code, 0, control.stderr); assert.equal(f.requests.length, 1);
+  evidence.install = install; evidence.control = { ...control, requests: f.requests.length };
+  evidence.cases = [];
+  for (const fault of ["missing-entry", "unusable-dependency"]) {
+    if (fault === "missing-entry") await rm(join(copy, "larva.ts"));
+    else {
+      await copyFile(join(source, "larva.ts"), join(copy, "larva.ts"));
+      await rm(join(copy, "node_modules"));
+      const dependency = join(copy, "node_modules/@earendil-works/pi-tui");
+      await mkdir(dependency, { recursive: true });
+      await writeFile(join(dependency, "package.json"), JSON.stringify({ name: "@earendil-works/pi-tui", version: "0.85.1", type: "module", exports: "./index.js" }));
+      await writeFile(join(dependency, "index.js"), 'throw new Error("Deliberately unusable installed runtime dependency");\n');
+    }
+    const before = f.requests.length;
+    const run = await execute(process.execPath, args, { env: f.env, cwd: f.cwd, timeout: 15000 });
+    evidence.cases.push({ fault, ...run, requests: f.requests.length - before });
+    assert.equal(run.timedOut, false); assert.equal(run.code, 1, JSON.stringify(run));
+    assert.match(run.stdout + run.stderr, /Unknown option|Failed to load|Error loading|extension/i);
+    assert.equal(f.requests.length, before, "damaged installed package issued a vanilla request");
+  }
+}
+
 async function runAdmission(f, evidence) {
   const badPolicy = join(f.root, "bad-policy.json");
   await writeFile(badPolicy, "{malformed");
@@ -513,7 +648,11 @@ export async function runJourney(scenario) {
     else if (scenario === "consumers") await runConsumers(f, evidence);
     else if (scenario === "watchdog") await runWatchdog(f, evidence);
     else if (scenario === "failures") await runFailures(f, evidence);
+    else if (scenario === "capsule-aging") await runCapsuleAging(f, evidence);
+    else if (scenario === "capsule-removal") await runCapsuleRemoval(f, evidence);
     else if (scenario === "admission") await runAdmission(f, evidence);
+    else if (scenario === "installed-loading") await runInstalledLoading(f, evidence);
+    else if (scenario === "stored-restore") await runStoredRestore(f, evidence);
     else if (scenario === "print") await runPrint(f, evidence);
     else throw new Error(`Unknown journey ${scenario}`);
     assert.deepEqual(f.errors, [], "loopback fixture failure");

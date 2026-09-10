@@ -1,0 +1,1224 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="69" time="195.643" timestamp="2026-09-11T03:07:29.474716+08:00" hostname="Zhaomengs-MacBook-Air.local"><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_substring_case_and_prefix_first_stable_order_runtime" time="0.516" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_cache_reuse_and_concurrent_inflight_dedupe_runtime" time="0.636" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_delegation_and_failure_fail_closed_runtime" time="0.624" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_fixture_uses_documented_list_json_shape_without_alias_fields" time="0.495" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_installed_provider_mentions_namespace_without_vectl_filter_runtime" time="0.545" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_registration_defers_to_session_context_and_dedupes_runtime" time="0.594" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_tui_provider_uses_argument_prefix_for_force_modes[tab-force-True]" time="0.604" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_tui_provider_uses_argument_prefix_for_force_modes[tab-regular-False]" time="0.713" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_delegates_non_larva_persona_input_to_base_provider" time="0.927" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_smoke_mentions_namespace_returns_all_eligible_personas" time="0.917" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_smoke_mentions_raw_query_merges_files_before_personas" time="0.659" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_autocomplete_list_failure_and_malformed_json_return_null_without_crash" time="0.739" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_async_subagent_push_uses_real_agent_session_send_custom_message_when_toolctx_lacks_send_surface" time="2.373" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_rpc_skip_xfail_policy_does_not_hide_plugin_load_failure" time="0.001" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_smoke_help_lists_all_required_scenarios" time="0.047" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_agent_persona_switch_policy_smoke_outputs_complete_offline_register" time="2.310" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime" time="0.804" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_agent_persona_switch_continue_task_defers_followup_and_restores_after_continuation" time="0.598" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_agent_persona_switch_continue_task_missing_send_user_message_restores_immediately" time="0.517" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_compaction_prompt_real_runtime_envelope_focus_uses_active_state" time="0.217" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_availability_records_binary_and_extension_flag" time="0.921" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_rpc_smoke_collects_extension_ui_evidence_or_explicit_xfail[get-commands]" time="3.774" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_rpc_smoke_collects_extension_ui_evidence_or_explicit_xfail[slash-status]" time="3.904" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_rpc_smoke_collects_extension_ui_evidence_or_explicit_xfail[startup-status]" time="3.672" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_rpc_smoke_collects_extension_ui_evidence_or_explicit_xfail[failure-path]" time="3.670" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_slash_status_commits_success_persona" time="3.863" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_startup_status_commits_startup_persona" time="3.664" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_initial_persona_invalid_model_fails_nonzero_before_prompt" time="1.462" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_failure_path_uses_slash_command_topology" time="3.634" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_capability_gate_rejects_mock_only_autocomplete_support" time="0.861" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_object_registers_larva_subagent_parameters_and_execute" time="0.475" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_registered_larva_subagent_results_are_renderer_safe_toolresults" time="2.201" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_larva_subagent_fresh_child_sessionfile_validation_split" time="1.217" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_tool_call_event_with_tool_name_blocks_with_reason" time="0.470" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_live_child_rpc_terminal_cancel_and_orphan_cleanup_proof_passes" time="5.474" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence" time="18.187" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_smoke_wait_select_pending_callback_handoff_expected_red_records_gap" time="1.322" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_real_pi_persona_invocation_bus_bad_input_result_via_shared_events" time="1.170" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc" time="11.460" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence" time="32.735" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprints" time="5.468" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[package-discovery]" time="1.447" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[disable-and-explicit-e]" time="1.937" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[duplicate-copies]" time="2.461" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[pi-owned-unknown-flag]" time="1.555" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[pi-owned-missing-value]" time="1.658" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[larva-bad-input-persona]" time="1.523" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[larva-bad-input-mode]" time="1.716" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[fresh-explicit-success]" time="1.769" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[fresh-explicit-model-fail]" time="1.719" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[missing-cli-binding]" time="2.044" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[missing-extension-explicit-persona]" time="0.315" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[print-mode]" time="1.321" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[rpc-mode]" time="1.359" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[resume-stored-wins-unused-explicit]" time="1.777" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[resume-unresolvable-explicit-fails]" time="1.582" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[resume-stored-restore-nonfatal]" time="1.826" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[parent-shutdown-active-child]" time="3.495" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-state]" time="2.048" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-children]" time="7.268" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-invocation]" time="3.290" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-consumers]" time="0.960" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-tui]" time="4.248" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-failures]" time="3.476" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-admission]" time="6.111" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-print]" time="1.577" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-capsule-aging]" time="5.444" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-capsule-removal]" time="4.984" /><testcase classname="tests.shell.test_pi_extension_real_runtime" name="test_native_pi_acceptance_matrix[native-installed-loading]" time="1.526"><failure message="AssertionError: native scenario native-installed-loading failed&#10;  stdout={&#10;    &quot;scenario&quot;: &quot;native-installed-loading&quot;,&#10;    &quot;modality&quot;: &quot;actual native CLI + normal package loader + loopback provider&quot;,&#10;    &quot;node&quot;: &quot;v26.7.0&quot;,&#10;    &quot;cli&quot;: &quot;/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js&quot;,&#10;    &quot;install&quot;: {&#10;      &quot;command&quot;: &quot;/opt/homebrew/Cellar/node/26.7.0/bin/node&quot;,&#10;      &quot;args&quot;: [&#10;        &quot;/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js&quot;,&#10;        &quot;install&quot;,&#10;        &quot;/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/installed-package&quot;&#10;      ],&#10;      &quot;pid&quot;: 72210,&#10;      &quot;code&quot;: 0,&#10;      &quot;signal&quot;: null,&#10;      &quot;timedOut&quot;: false,&#10;      &quot;stdout&quot;: &quot;Installing /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/installed-package...\nInstalled /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/installed-package\n&quot;,&#10;      &quot;stderr&quot;: &quot;&quot;&#10;    },&#10;    &quot;control&quot;: {&#10;      &quot;command&quot;: &quot;/opt/homebrew/Cellar/node/26.7.0/bin/node&quot;,&#10;      &quot;args&quot;: [&#10;        &quot;/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js&quot;,&#10;        &quot;-p&quot;,&#10;        &quot;--offline&quot;,&#10;        &quot;--approve&quot;,&#10;        &quot;--larva-persona&quot;,&#10;        &quot;ok&quot;,&#10;        &quot;Viable loopback prompt&quot;&#10;      ],&#10;      &quot;pid&quot;: 72211,&#10;      &quot;code&quot;: 0,&#10;      &quot;signal&quot;: null,&#10;      &quot;timedOut&quot;: false,&#10;      &quot;stdout&quot;: &quot;Deterministic protocol response.\n&quot;,&#10;      &quot;stderr&quot;: &quot;&quot;,&#10;      &quot;requests&quot;: 1&#10;    },&#10;    &quot;cases&quot;: [&#10;      {&#10;        &quot;fault&quot;: &quot;missing-entry&quot;,&#10;        &quot;command&quot;: &quot;/opt/homebrew/Cellar/node/26.7.0/bin/node&quot;,&#10;        &quot;args&quot;: [&#10;          &quot;/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js&quot;,&#10;          &quot;-p&quot;,&#10;          &quot;--offline&quot;,&#10;          &quot;--approve&quot;,&#10;          &quot;--larva-persona&quot;,&#10;          &quot;ok&quot;,&#10;          &quot;Viable loopback prompt&quot;&#10;        ],&#10;        &quot;pid&quot;: 72216,&#10;        &quot;code&quot;: 1,&#10;        &quot;signal&quot;: null,&#10;        &quot;timedOut&quot;: false,&#10;        &quot;stdout&quot;: &quot;&quot;,&#10;        &quot;stderr&quot;: &quot;Error: Unknown option: --larva-persona\n&quot;,&#10;        &quot;requests&quot;: 0&#10;      },&#10;      {&#10;        &quot;fault&quot;: &quot;unusable-dependency&quot;,&#10;        &quot;command&quot;: &quot;/opt/homebrew/Cellar/node/26.7.0/bin/node&quot;,&#10;        &quot;args&quot;: [&#10;          &quot;/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js&quot;,&#10;          &quot;-p&quot;,&#10;          &quot;--offline&quot;,&#10;          &quot;--approve&quot;,&#10;          &quot;--larva-persona&quot;,&#10;          &quot;ok&quot;,&#10;          &quot;Viable loopback prompt&quot;&#10;        ],&#10;        &quot;pid&quot;: 72218,&#10;        &quot;code&quot;: 0,&#10;        &quot;signal&quot;: null,&#10;        &quot;timedOut&quot;: false,&#10;        &quot;stdout&quot;: &quot;Deterministic protocol response.\n&quot;,&#10;        &quot;stderr&quot;: &quot;&quot;,&#10;        &quot;requests&quot;: 1&#10;      }&#10;    ],&#10;    &quot;pass&quot;: false,&#10;    &quot;error&quot;: &quot;AssertionError [ERR_ASSERTION]: {\&quot;command\&quot;:\&quot;/opt/homebrew/Cellar/node/26.7.0/bin/node\&quot;,\&quot;args\&quot;:[\&quot;/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js\&quot;,\&quot;-p\&quot;,\&quot;--offline\&quot;,\&quot;--approve\&quot;,\&quot;--larva-persona\&quot;,\&quot;ok\&quot;,\&quot;Viable loopback prompt\&quot;],\&quot;pid\&quot;:72218,\&quot;code\&quot;:0,\&quot;signal\&quot;:null,\&quot;timedOut\&quot;:false,\&quot;stdout\&quot;:\&quot;Deterministic protocol response.\\n\&quot;,\&quot;stderr\&quot;:\&quot;\&quot;}\n\n0 !== 1\n\n    at runInstalledLoading (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:536:47)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runJourney (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:654:48)\n    at async runScenario (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-acceptance.mjs:233:17)\n    at async file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-acceptance.mjs:584:18&quot;,&#10;    &quot;observations&quot;: [],&#10;    &quot;requests&quot;: [&#10;      {&#10;        &quot;url&quot;: &quot;/v1/chat/completions&quot;,&#10;        &quot;payload&quot;: {&#10;          &quot;model&quot;: &quot;persona&quot;,&#10;          &quot;messages&quot;: [&#10;            {&#10;              &quot;role&quot;: &quot;developer&quot;,&#10;              &quot;content&quot;: &quot;&lt;!-- larva:identity-policy:begin --&gt;\nActive Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.\n&lt;!-- larva:identity-policy:end --&gt;\n\nYou are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- powershell: Execute PowerShell commands\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n- grep: Search file contents for patterns (respects .gitignore)\n- find: Find files by glob pattern (respects .gitignore)\n- ls: List directory contents\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n- Use read to examine files instead of cat or sed.\n- You can inspect PI_* environment variables for current model and session details.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: /private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/project\n\n&lt;!-- larva:active-persona:begin --&gt;\n&lt;!-- larva-spec: ok@digest-ok --&gt;\nYou are fake persona ok.\nWhen the active Larva persona is materially unsuitable, choose the execution route before acting. Borrow/switch persona only when the next model call needs current conversation or runtime continuity: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Spawn a Larva subagent when the work benefits from clean context: fresh review, second opinion, adversarial critique, parallel exploration, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. If both apply, prefer larva_subagent for independent evidence, review, critique, or parallelizable work and prefer larva_persona_switch for single-owner execution that must preserve current context. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative. Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first. You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.\nUse Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.\n&lt;!-- larva:active-persona:end --&gt;&quot;&#10;            },&#10;            {&#10;              &quot;role&quot;: &quot;user&quot;,&#10;              &quot;content&quot;: [&#10;                {&#10;                  &quot;type&quot;: &quot;text&quot;,&#10;                  &quot;text&quot;: &quot;Viable loopback prompt&quot;&#10;                }&#10;              ]&#10;            }&#10;          ],&#10;          &quot;stream&quot;: true,&#10;          &quot;stream_options&quot;: {&#10;            &quot;include_usage&quot;: true&#10;          },&#10;          &quot;store&quot;: false,&#10;          &quot;max_completion_tokens&quot;: 2048,&#10;          &quot;tools&quot;: [&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;read&quot;,&#10;                &quot;description&quot;: &quot;Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;path&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Path to the file to read (relative or absolute)&quot;&#10;                    },&#10;                    &quot;offset&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Line number to start reading from (1-indexed)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of lines to read&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;bash&quot;,&#10;                &quot;description&quot;: &quot;Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;command&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;command&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Shell command to execute&quot;&#10;                    },&#10;                    &quot;timeout&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Timeout in seconds (optional, no default timeout)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;powershell&quot;,&#10;                &quot;description&quot;: &quot;Execute a PowerShell command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;command&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;command&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Shell command to execute&quot;&#10;                    },&#10;                    &quot;timeout&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Timeout in seconds (optional, no default timeout)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;edit&quot;,&#10;                &quot;description&quot;: &quot;Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;path&quot;,&#10;                    &quot;edits&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Path to the file to edit (relative or absolute)&quot;&#10;                    },&#10;                    &quot;edits&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;object&quot;,&#10;                        &quot;required&quot;: [&#10;                          &quot;oldText&quot;,&#10;                          &quot;newText&quot;&#10;                        ],&#10;                        &quot;properties&quot;: {&#10;                          &quot;oldText&quot;: {&#10;                            &quot;type&quot;: &quot;string&quot;,&#10;                            &quot;description&quot;: &quot;Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call.&quot;&#10;                          },&#10;                          &quot;newText&quot;: {&#10;                            &quot;type&quot;: &quot;string&quot;,&#10;                            &quot;description&quot;: &quot;Replacement text for this targeted edit.&quot;&#10;                          }&#10;                        }&#10;                      },&#10;                      &quot;description&quot;: &quot;One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead.&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;write&quot;,&#10;                &quot;description&quot;: &quot;Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;path&quot;,&#10;                    &quot;content&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Path to the file to write (relative or absolute)&quot;&#10;                    },&#10;                    &quot;content&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Content to write to the file&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;grep&quot;,&#10;                &quot;description&quot;: &quot;Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;pattern&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;pattern&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Search pattern (regex or literal string)&quot;&#10;                    },&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Directory or file to search (default: current directory)&quot;&#10;                    },&#10;                    &quot;glob&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'&quot;&#10;                    },&#10;                    &quot;ignoreCase&quot;: {&#10;                      &quot;type&quot;: &quot;boolean&quot;,&#10;                      &quot;description&quot;: &quot;Case-insensitive search (default: false)&quot;&#10;                    },&#10;                    &quot;literal&quot;: {&#10;                      &quot;type&quot;: &quot;boolean&quot;,&#10;                      &quot;description&quot;: &quot;Treat pattern as literal string instead of regex (default: false)&quot;&#10;                    },&#10;                    &quot;context&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Number of lines to show before and after each match (default: 0)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of matches to return (default: 100)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;find&quot;,&#10;                &quot;description&quot;: &quot;Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;pattern&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;pattern&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'&quot;&#10;                    },&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Directory to search in (default: current directory)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of results (default: 1000)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;ls&quot;,&#10;                &quot;description&quot;: &quot;List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Directory to list (default: current directory)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of entries to return (default: 500)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent&quot;,&#10;                &quot;description&quot;: &quot;Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it. At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;persona_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Target Larva persona id.&quot;&#10;                    },&#10;                    &quot;task&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task.&quot;&#10;                    },&#10;                    &quot;task_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional child session .jsonl path to resume. Omit this field to start a new child session.&quot;&#10;                    },&#10;                    &quot;no_progress_timeout_ms&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 120000,&#10;                      &quot;maximum&quot;: 86400000,&#10;                      &quot;default&quot;: 3600000,&#10;                      &quot;description&quot;: &quot;Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;persona_id&quot;,&#10;                    &quot;task&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_sessions&quot;,&#10;                &quot;description&quot;: &quot;List recent Larva subagent sessions observed by this parent Pi extension process.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 25,&#10;                      &quot;description&quot;: &quot;Maximum recent sessions to return (default 10, max 25).&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_status&quot;,&#10;                &quot;description&quot;: &quot;Inspect active/recent process-local Larva subagent runs and bounded pre-task startup failures. Exact task_id lookup never treats provisional startup_id as a task handle. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null.&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 25,&#10;                      &quot;description&quot;: &quot;Maximum recent runs and startup failures to return per list (default 10, max 25).&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_events&quot;,&#10;                &quot;description&quot;: &quot;Read the latest 1000 ordered process-local Larva subagent task events and bounded pre-task startup failures. Provisional startup_id records are diagnostic-only and never become task handles. Events are readiness/inspection records, not child-output retrieval; this tool never scans files, consumes results, or accepts fuzzy handles.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;since_sequence&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 0,&#10;                      &quot;description&quot;: &quot;Exclusive cursor; returns events with sequence &gt; since_sequence. Omit for 0. Cursor expiry is reported when older than the latest 1000 recent events.&quot;&#10;                    },&#10;                    &quot;task_ids&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;minItems&quot;: 1,&#10;                      &quot;maxItems&quot;: 25,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;string&quot;&#10;                      },&#10;                      &quot;description&quot;: &quot;Optional exact public task_id filters. Omit to include all task events and pre-task startup failures; filtered calls exclude provisional startup_id records. Do not pass null. Duplicates and fuzzy handles are rejected.&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 100,&#10;                      &quot;description&quot;: &quot;Maximum events to return (default 50, max 100).&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_wait&quot;,&#10;                &quot;description&quot;: &quot;Wait for exact observed Larva subagent task_ids to satisfy return_when: \&quot;all\&quot;, \&quot;any\&quot;, or \&quot;first_error\&quot; for deterministic automation. Returns snapshots and readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. Never consumes, spawns, resumes, cancels, or scans files.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_ids&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;minItems&quot;: 1,&#10;                      &quot;maxItems&quot;: 25,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;string&quot;&#10;                      },&#10;                      &quot;description&quot;: &quot;Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected.&quot;&#10;                    },&#10;                    &quot;return_when&quot;: {&#10;                      &quot;enum&quot;: [&#10;                        &quot;all&quot;,&#10;                        &quot;any&quot;,&#10;                        &quot;first_error&quot;&#10;                      ],&#10;                      &quot;description&quot;: &quot;Completion condition. Omit for all; do not pass null.&quot;&#10;                    },&#10;                    &quot;timeout_ms&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 0,&#10;                      &quot;maximum&quot;: 86400000,&#10;                      &quot;description&quot;: &quot;Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;task_ids&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_select&quot;,&#10;                &quot;description&quot;: &quot;Compact deterministic readiness helper with the same output model as wait(return_when: \&quot;any\&quot;) for exact observed Larva subagent task_ids. Returns readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. It never consumes results or accepts aliases.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_ids&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;minItems&quot;: 1,&#10;                      &quot;maxItems&quot;: 25,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;string&quot;&#10;                      },&#10;                      &quot;description&quot;: &quot;Exact observed public task_id handles to wait on; fuzzy handles are rejected.&quot;&#10;                    },&#10;                    &quot;timeout_ms&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 0,&#10;                      &quot;maximum&quot;: 86400000,&#10;                      &quot;description&quot;: &quot;Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;task_ids&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_cancel&quot;,&#10;                &quot;description&quot;: &quot;Cancel one exact active Larva subagent task_id without using aliases or fuzzy selectors.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Exact public child .jsonl task_id to cancel.&quot;&#10;                    },&#10;                    &quot;reason&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Required renderer-safe cancellation reason, bounded to 500 normalized code points.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;task_id&quot;,&#10;                    &quot;reason&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_persona_switch&quot;,&#10;                &quot;description&quot;: &quot;Request an autonomous Larva persona borrow/switch. Use this route when current conversation or runtime continuity is required: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \&quot;turn\&quot; PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -&gt; auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;persona_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Target Larva persona id. Exact id resolution identifies the persona but is not semantic suitability evidence; inspect description/definition before switching.&quot;&#10;                    },&#10;                    &quot;reason&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Required concise reason for borrowing or switching persona. Must be grounded in inspected persona description or resolved definition; exact persona id/name only proves target identity, not semantic suitability. Cite the inspected evidence in your own words and explain why it fits the current task better than the active persona.&quot;&#10;                    },&#10;                    &quot;handoff&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional bounded handoff for the next persona.&quot;&#10;                    },&#10;                    &quot;continue_task&quot;: {&#10;                      &quot;type&quot;: &quot;boolean&quot;,&#10;                      &quot;description&quot;: &quot;Queue a Larva-generated continuation after a successful switch.&quot;&#10;                    },&#10;                    &quot;max_switches_per_chain&quot;: {&#10;                      &quot;anyOf&quot;: [&#10;                        {&#10;                          &quot;type&quot;: &quot;integer&quot;,&#10;                          &quot;minimum&quot;: 0&#10;                        },&#10;                        {&#10;                          &quot;type&quot;: &quot;null&quot;&#10;                        }&#10;                      ],&#10;                      &quot;description&quot;: &quot;Optional request-chain switch budget. Omit for default 20; 0 means unlimited.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;persona_id&quot;,&#10;                    &quot;reason&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_personas&quot;,&#10;                &quot;description&quot;: &quot;Read-only bounded Larva persona discovery for choosing a better-suited persona by inspecting ids and descriptions before any borrow/switch. It does not include persona prompts.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;query&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional bounded filter over persona id and description.&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 25,&#10;                      &quot;description&quot;: &quot;Maximum personas to return; capped at 25.&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            }&#10;          ],&#10;          &quot;reasoning_effort&quot;: &quot;medium&quot;&#10;        }&#10;      },&#10;      {&#10;        &quot;url&quot;: &quot;/v1/chat/completions&quot;,&#10;        &quot;payload&quot;: {&#10;          &quot;model&quot;: &quot;persona&quot;,&#10;          &quot;messages&quot;: [&#10;            {&#10;              &quot;role&quot;: &quot;developer&quot;,&#10;              &quot;content&quot;: &quot;&lt;!-- larva:identity-policy:begin --&gt;\nActive Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.\n&lt;!-- larva:identity-policy:end --&gt;\n\nYou are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- powershell: Execute PowerShell commands\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n- grep: Search file contents for patterns (respects .gitignore)\n- find: Find files by glob pattern (respects .gitignore)\n- ls: List directory contents\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n- Use read to examine files instead of cat or sed.\n- You can inspect PI_* environment variables for current model and session details.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: /private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/project\n\n&lt;!-- larva:active-persona:begin --&gt;\n&lt;!-- larva-spec: ok@digest-ok --&gt;\nYou are fake persona ok.\nWhen the active Larva persona is materially unsuitable, choose the execution route before acting. Borrow/switch persona only when the next model call needs current conversation or runtime continuity: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Spawn a Larva subagent when the work benefits from clean context: fresh review, second opinion, adversarial critique, parallel exploration, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. If both apply, prefer larva_subagent for independent evidence, review, critique, or parallelizable work and prefer larva_persona_switch for single-owner execution that must preserve current context. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative. Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first. You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.\nUse Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.\n&lt;!-- larva:active-persona:end --&gt;&quot;&#10;            },&#10;            {&#10;              &quot;role&quot;: &quot;user&quot;,&#10;              &quot;content&quot;: [&#10;                {&#10;                  &quot;type&quot;: &quot;text&quot;,&#10;                  &quot;text&quot;: &quot;Viable loopback prompt&quot;&#10;                }&#10;              ]&#10;            }&#10;          ],&#10;          &quot;stream&quot;: true,&#10;          &quot;stream_options&quot;: {&#10;            &quot;include_usage&quot;: true&#10;          },&#10;          &quot;store&quot;: false,&#10;          &quot;max_completion_tokens&quot;: 2048,&#10;          &quot;tools&quot;: [&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;read&quot;,&#10;                &quot;description&quot;: &quot;Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;path&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Path to the file to read (relative or absolute)&quot;&#10;                    },&#10;                    &quot;offset&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Line number to start reading from (1-indexed)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of lines to read&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;bash&quot;,&#10;                &quot;description&quot;: &quot;Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;command&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;command&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Shell command to execute&quot;&#10;                    },&#10;                    &quot;timeout&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Timeout in seconds (optional, no default timeout)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;powershell&quot;,&#10;                &quot;description&quot;: &quot;Execute a PowerShell command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;command&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;command&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Shell command to execute&quot;&#10;                    },&#10;                    &quot;timeout&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Timeout in seconds (optional, no default timeout)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;edit&quot;,&#10;                &quot;description&quot;: &quot;Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;path&quot;,&#10;                    &quot;edits&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Path to the file to edit (relative or absolute)&quot;&#10;                    },&#10;                    &quot;edits&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;object&quot;,&#10;                        &quot;required&quot;: [&#10;                          &quot;oldText&quot;,&#10;                          &quot;newText&quot;&#10;                        ],&#10;                        &quot;properties&quot;: {&#10;                          &quot;oldText&quot;: {&#10;                            &quot;type&quot;: &quot;string&quot;,&#10;                            &quot;description&quot;: &quot;Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call.&quot;&#10;                          },&#10;                          &quot;newText&quot;: {&#10;                            &quot;type&quot;: &quot;string&quot;,&#10;                            &quot;description&quot;: &quot;Replacement text for this targeted edit.&quot;&#10;                          }&#10;                        }&#10;                      },&#10;                      &quot;description&quot;: &quot;One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead.&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;write&quot;,&#10;                &quot;description&quot;: &quot;Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;path&quot;,&#10;                    &quot;content&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Path to the file to write (relative or absolute)&quot;&#10;                    },&#10;                    &quot;content&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Content to write to the file&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;grep&quot;,&#10;                &quot;description&quot;: &quot;Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;pattern&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;pattern&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Search pattern (regex or literal string)&quot;&#10;                    },&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Directory or file to search (default: current directory)&quot;&#10;                    },&#10;                    &quot;glob&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'&quot;&#10;                    },&#10;                    &quot;ignoreCase&quot;: {&#10;                      &quot;type&quot;: &quot;boolean&quot;,&#10;                      &quot;description&quot;: &quot;Case-insensitive search (default: false)&quot;&#10;                    },&#10;                    &quot;literal&quot;: {&#10;                      &quot;type&quot;: &quot;boolean&quot;,&#10;                      &quot;description&quot;: &quot;Treat pattern as literal string instead of regex (default: false)&quot;&#10;                    },&#10;                    &quot;context&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Number of lines to show before and after each match (default: 0)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of matches to return (default: 100)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;find&quot;,&#10;                &quot;description&quot;: &quot;Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;required&quot;: [&#10;                    &quot;pattern&quot;&#10;                  ],&#10;                  &quot;properties&quot;: {&#10;                    &quot;pattern&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'&quot;&#10;                    },&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Directory to search in (default: current directory)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of results (default: 1000)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;ls&quot;,&#10;                &quot;description&quot;: &quot;List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;path&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Directory to list (default: current directory)&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;number&quot;,&#10;                      &quot;description&quot;: &quot;Maximum number of entries to return (default: 500)&quot;&#10;                    }&#10;                  }&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent&quot;,&#10;                &quot;description&quot;: &quot;Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it. At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;persona_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Target Larva persona id.&quot;&#10;                    },&#10;                    &quot;task&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task.&quot;&#10;                    },&#10;                    &quot;task_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional child session .jsonl path to resume. Omit this field to start a new child session.&quot;&#10;                    },&#10;                    &quot;no_progress_timeout_ms&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 120000,&#10;                      &quot;maximum&quot;: 86400000,&#10;                      &quot;default&quot;: 3600000,&#10;                      &quot;description&quot;: &quot;Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;persona_id&quot;,&#10;                    &quot;task&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_sessions&quot;,&#10;                &quot;description&quot;: &quot;List recent Larva subagent sessions observed by this parent Pi extension process.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 25,&#10;                      &quot;description&quot;: &quot;Maximum recent sessions to return (default 10, max 25).&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_status&quot;,&#10;                &quot;description&quot;: &quot;Inspect active/recent process-local Larva subagent runs and bounded pre-task startup failures. Exact task_id lookup never treats provisional startup_id as a task handle. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null.&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 25,&#10;                      &quot;description&quot;: &quot;Maximum recent runs and startup failures to return per list (default 10, max 25).&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_events&quot;,&#10;                &quot;description&quot;: &quot;Read the latest 1000 ordered process-local Larva subagent task events and bounded pre-task startup failures. Provisional startup_id records are diagnostic-only and never become task handles. Events are readiness/inspection records, not child-output retrieval; this tool never scans files, consumes results, or accepts fuzzy handles.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;since_sequence&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 0,&#10;                      &quot;description&quot;: &quot;Exclusive cursor; returns events with sequence &gt; since_sequence. Omit for 0. Cursor expiry is reported when older than the latest 1000 recent events.&quot;&#10;                    },&#10;                    &quot;task_ids&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;minItems&quot;: 1,&#10;                      &quot;maxItems&quot;: 25,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;string&quot;&#10;                      },&#10;                      &quot;description&quot;: &quot;Optional exact public task_id filters. Omit to include all task events and pre-task startup failures; filtered calls exclude provisional startup_id records. Do not pass null. Duplicates and fuzzy handles are rejected.&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 100,&#10;                      &quot;description&quot;: &quot;Maximum events to return (default 50, max 100).&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_wait&quot;,&#10;                &quot;description&quot;: &quot;Wait for exact observed Larva subagent task_ids to satisfy return_when: \&quot;all\&quot;, \&quot;any\&quot;, or \&quot;first_error\&quot; for deterministic automation. Returns snapshots and readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. Never consumes, spawns, resumes, cancels, or scans files.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_ids&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;minItems&quot;: 1,&#10;                      &quot;maxItems&quot;: 25,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;string&quot;&#10;                      },&#10;                      &quot;description&quot;: &quot;Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected.&quot;&#10;                    },&#10;                    &quot;return_when&quot;: {&#10;                      &quot;enum&quot;: [&#10;                        &quot;all&quot;,&#10;                        &quot;any&quot;,&#10;                        &quot;first_error&quot;&#10;                      ],&#10;                      &quot;description&quot;: &quot;Completion condition. Omit for all; do not pass null.&quot;&#10;                    },&#10;                    &quot;timeout_ms&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 0,&#10;                      &quot;maximum&quot;: 86400000,&#10;                      &quot;description&quot;: &quot;Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;task_ids&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_select&quot;,&#10;                &quot;description&quot;: &quot;Compact deterministic readiness helper with the same output model as wait(return_when: \&quot;any\&quot;) for exact observed Larva subagent task_ids. Returns readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. It never consumes results or accepts aliases.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_ids&quot;: {&#10;                      &quot;type&quot;: &quot;array&quot;,&#10;                      &quot;minItems&quot;: 1,&#10;                      &quot;maxItems&quot;: 25,&#10;                      &quot;items&quot;: {&#10;                        &quot;type&quot;: &quot;string&quot;&#10;                      },&#10;                      &quot;description&quot;: &quot;Exact observed public task_id handles to wait on; fuzzy handles are rejected.&quot;&#10;                    },&#10;                    &quot;timeout_ms&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 0,&#10;                      &quot;maximum&quot;: 86400000,&#10;                      &quot;description&quot;: &quot;Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;task_ids&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_subagent_cancel&quot;,&#10;                &quot;description&quot;: &quot;Cancel one exact active Larva subagent task_id without using aliases or fuzzy selectors.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;task_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Exact public child .jsonl task_id to cancel.&quot;&#10;                    },&#10;                    &quot;reason&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Required renderer-safe cancellation reason, bounded to 500 normalized code points.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;task_id&quot;,&#10;                    &quot;reason&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_persona_switch&quot;,&#10;                &quot;description&quot;: &quot;Request an autonomous Larva persona borrow/switch. Use this route when current conversation or runtime continuity is required: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \&quot;turn\&quot; PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -&gt; auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;persona_id&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Target Larva persona id. Exact id resolution identifies the persona but is not semantic suitability evidence; inspect description/definition before switching.&quot;&#10;                    },&#10;                    &quot;reason&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Required concise reason for borrowing or switching persona. Must be grounded in inspected persona description or resolved definition; exact persona id/name only proves target identity, not semantic suitability. Cite the inspected evidence in your own words and explain why it fits the current task better than the active persona.&quot;&#10;                    },&#10;                    &quot;handoff&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional bounded handoff for the next persona.&quot;&#10;                    },&#10;                    &quot;continue_task&quot;: {&#10;                      &quot;type&quot;: &quot;boolean&quot;,&#10;                      &quot;description&quot;: &quot;Queue a Larva-generated continuation after a successful switch.&quot;&#10;                    },&#10;                    &quot;max_switches_per_chain&quot;: {&#10;                      &quot;anyOf&quot;: [&#10;                        {&#10;                          &quot;type&quot;: &quot;integer&quot;,&#10;                          &quot;minimum&quot;: 0&#10;                        },&#10;                        {&#10;                          &quot;type&quot;: &quot;null&quot;&#10;                        }&#10;                      ],&#10;                      &quot;description&quot;: &quot;Optional request-chain switch budget. Omit for default 20; 0 means unlimited.&quot;&#10;                    }&#10;                  },&#10;                  &quot;required&quot;: [&#10;                    &quot;persona_id&quot;,&#10;                    &quot;reason&quot;&#10;                  ],&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            },&#10;            {&#10;              &quot;type&quot;: &quot;function&quot;,&#10;              &quot;function&quot;: {&#10;                &quot;name&quot;: &quot;larva_personas&quot;,&#10;                &quot;description&quot;: &quot;Read-only bounded Larva persona discovery for choosing a better-suited persona by inspecting ids and descriptions before any borrow/switch. It does not include persona prompts.&quot;,&#10;                &quot;parameters&quot;: {&#10;                  &quot;type&quot;: &quot;object&quot;,&#10;                  &quot;properties&quot;: {&#10;                    &quot;query&quot;: {&#10;                      &quot;type&quot;: &quot;string&quot;,&#10;                      &quot;description&quot;: &quot;Optional bounded filter over persona id and description.&quot;&#10;                    },&#10;                    &quot;limit&quot;: {&#10;                      &quot;type&quot;: &quot;integer&quot;,&#10;                      &quot;minimum&quot;: 1,&#10;                      &quot;maximum&quot;: 25,&#10;                      &quot;description&quot;: &quot;Maximum personas to return; capped at 25.&quot;&#10;                    }&#10;                  },&#10;                  &quot;additionalProperties&quot;: false&#10;                },&#10;                &quot;strict&quot;: false&#10;              }&#10;            }&#10;          ],&#10;          &quot;reasoning_effort&quot;: &quot;medium&quot;&#10;        }&#10;      }&#10;    ],&#10;    &quot;stderr&quot;: [],&#10;    &quot;cleanup&quot;: {&#10;      &quot;traces&quot;: [],&#10;      &quot;pids&quot;: [],&#10;      &quot;liveChildren&quot;: [],&#10;      &quot;capsules&quot;: [],&#10;      &quot;sessions&quot;: [],&#10;      &quot;settings&quot;: {&#10;        &quot;defaultProjectTrust&quot;: &quot;yes&quot;,&#10;        &quot;theme&quot;: &quot;dark&quot;,&#10;        &quot;lastChangelogVersion&quot;: &quot;0.85.1&quot;,&#10;        &quot;packages&quot;: [&#10;          &quot;../installed-package&quot;&#10;        ],&#10;        &quot;defaultProvider&quot;: &quot;native-loopback&quot;,&#10;        &quot;defaultModel&quot;: &quot;origin&quot;,&#10;        &quot;defaultThinkingLevel&quot;: &quot;low&quot;,&#10;        &quot;compaction&quot;: {&#10;          &quot;enabled&quot;: false,&#10;          &quot;reserveTokens&quot;: 512,&#10;          &quot;keepRecentTokens&quot;: 512&#10;        },&#10;        &quot;retry&quot;: {&#10;          &quot;enabled&quot;: false&#10;        }&#10;      },&#10;      &quot;parents&quot;: [],&#10;      &quot;providerClosed&quot;: true,&#10;      &quot;rootRemoved&quot;: true&#10;    }&#10;  }&#10;  &#10;  stderr=&#10;assert 1 == 0&#10; +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule...false\n      }\n    },\n    &quot;parents&quot;: [],\n    &quot;providerClosed&quot;: true,\n    &quot;rootRemoved&quot;: true\n  }\n}\n', stderr='').returncode">../../../shell/test_pi_extension_real_runtime.py:2091: in test_native_pi_acceptance_matrix
+    payload = _run_native_acceptance(scenario)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../shell/test_pi_extension_real_runtime.py:2059: in _run_native_acceptance
+    assert completed.returncode == 0, (
+E   AssertionError: native scenario native-installed-loading failed
+E     stdout={
+E       "scenario": "native-installed-loading",
+E       "modality": "actual native CLI + normal package loader + loopback provider",
+E       "node": "v26.7.0",
+E       "cli": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+E       "install": {
+E         "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+E         "args": [
+E           "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+E           "install",
+E           "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/installed-package"
+E         ],
+E         "pid": 72210,
+E         "code": 0,
+E         "signal": null,
+E         "timedOut": false,
+E         "stdout": "Installing /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/installed-package...\nInstalled /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/installed-package\n",
+E         "stderr": ""
+E       },
+E       "control": {
+E         "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+E         "args": [
+E           "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+E           "-p",
+E           "--offline",
+E           "--approve",
+E           "--larva-persona",
+E           "ok",
+E           "Viable loopback prompt"
+E         ],
+E         "pid": 72211,
+E         "code": 0,
+E         "signal": null,
+E         "timedOut": false,
+E         "stdout": "Deterministic protocol response.\n",
+E         "stderr": "",
+E         "requests": 1
+E       },
+E       "cases": [
+E         {
+E           "fault": "missing-entry",
+E           "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+E           "args": [
+E             "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+E             "-p",
+E             "--offline",
+E             "--approve",
+E             "--larva-persona",
+E             "ok",
+E             "Viable loopback prompt"
+E           ],
+E           "pid": 72216,
+E           "code": 1,
+E           "signal": null,
+E           "timedOut": false,
+E           "stdout": "",
+E           "stderr": "Error: Unknown option: --larva-persona\n",
+E           "requests": 0
+E         },
+E         {
+E           "fault": "unusable-dependency",
+E           "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+E           "args": [
+E             "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+E             "-p",
+E             "--offline",
+E             "--approve",
+E             "--larva-persona",
+E             "ok",
+E             "Viable loopback prompt"
+E           ],
+E           "pid": 72218,
+E           "code": 0,
+E           "signal": null,
+E           "timedOut": false,
+E           "stdout": "Deterministic protocol response.\n",
+E           "stderr": "",
+E           "requests": 1
+E         }
+E       ],
+E       "pass": false,
+E       "error": "AssertionError [ERR_ASSERTION]: {\"command\":\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"args\":[\"/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js\",\"-p\",\"--offline\",\"--approve\",\"--larva-persona\",\"ok\",\"Viable loopback prompt\"],\"pid\":72218,\"code\":0,\"signal\":null,\"timedOut\":false,\"stdout\":\"Deterministic protocol response.\\n\",\"stderr\":\"\"}\n\n0 !== 1\n\n    at runInstalledLoading (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:536:47)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runJourney (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:654:48)\n    at async runScenario (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-acceptance.mjs:233:17)\n    at async file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-acceptance.mjs:584:18",
+E       "observations": [],
+E       "requests": [
+E         {
+E           "url": "/v1/chat/completions",
+E           "payload": {
+E             "model": "persona",
+E             "messages": [
+E               {
+E                 "role": "developer",
+E                 "content": "&lt;!-- larva:identity-policy:begin --&gt;\nActive Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.\n&lt;!-- larva:identity-policy:end --&gt;\n\nYou are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- powershell: Execute PowerShell commands\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n- grep: Search file contents for patterns (respects .gitignore)\n- find: Find files by glob pattern (respects .gitignore)\n- ls: List directory contents\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n- Use read to examine files instead of cat or sed.\n- You can inspect PI_* environment variables for current model and session details.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: /private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/project\n\n&lt;!-- larva:active-persona:begin --&gt;\n&lt;!-- larva-spec: ok@digest-ok --&gt;\nYou are fake persona ok.\nWhen the active Larva persona is materially unsuitable, choose the execution route before acting. Borrow/switch persona only when the next model call needs current conversation or runtime continuity: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Spawn a Larva subagent when the work benefits from clean context: fresh review, second opinion, adversarial critique, parallel exploration, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. If both apply, prefer larva_subagent for independent evidence, review, critique, or parallelizable work and prefer larva_persona_switch for single-owner execution that must preserve current context. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative. Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first. You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.\nUse Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.\n&lt;!-- larva:active-persona:end --&gt;"
+E               },
+E               {
+E                 "role": "user",
+E                 "content": [
+E                   {
+E                     "type": "text",
+E                     "text": "Viable loopback prompt"
+E                   }
+E                 ]
+E               }
+E             ],
+E             "stream": true,
+E             "stream_options": {
+E               "include_usage": true
+E             },
+E             "store": false,
+E             "max_completion_tokens": 2048,
+E             "tools": [
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "read",
+E                   "description": "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "path"
+E                     ],
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Path to the file to read (relative or absolute)"
+E                       },
+E                       "offset": {
+E                         "type": "number",
+E                         "description": "Line number to start reading from (1-indexed)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of lines to read"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "bash",
+E                   "description": "Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "command"
+E                     ],
+E                     "properties": {
+E                       "command": {
+E                         "type": "string",
+E                         "description": "Shell command to execute"
+E                       },
+E                       "timeout": {
+E                         "type": "number",
+E                         "description": "Timeout in seconds (optional, no default timeout)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "powershell",
+E                   "description": "Execute a PowerShell command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "command"
+E                     ],
+E                     "properties": {
+E                       "command": {
+E                         "type": "string",
+E                         "description": "Shell command to execute"
+E                       },
+E                       "timeout": {
+E                         "type": "number",
+E                         "description": "Timeout in seconds (optional, no default timeout)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "edit",
+E                   "description": "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "path",
+E                       "edits"
+E                     ],
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Path to the file to edit (relative or absolute)"
+E                       },
+E                       "edits": {
+E                         "type": "array",
+E                         "items": {
+E                           "type": "object",
+E                           "required": [
+E                             "oldText",
+E                             "newText"
+E                           ],
+E                           "properties": {
+E                             "oldText": {
+E                               "type": "string",
+E                               "description": "Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."
+E                             },
+E                             "newText": {
+E                               "type": "string",
+E                               "description": "Replacement text for this targeted edit."
+E                             }
+E                           }
+E                         },
+E                         "description": "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead."
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "write",
+E                   "description": "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "path",
+E                       "content"
+E                     ],
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Path to the file to write (relative or absolute)"
+E                       },
+E                       "content": {
+E                         "type": "string",
+E                         "description": "Content to write to the file"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "grep",
+E                   "description": "Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "pattern"
+E                     ],
+E                     "properties": {
+E                       "pattern": {
+E                         "type": "string",
+E                         "description": "Search pattern (regex or literal string)"
+E                       },
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Directory or file to search (default: current directory)"
+E                       },
+E                       "glob": {
+E                         "type": "string",
+E                         "description": "Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'"
+E                       },
+E                       "ignoreCase": {
+E                         "type": "boolean",
+E                         "description": "Case-insensitive search (default: false)"
+E                       },
+E                       "literal": {
+E                         "type": "boolean",
+E                         "description": "Treat pattern as literal string instead of regex (default: false)"
+E                       },
+E                       "context": {
+E                         "type": "number",
+E                         "description": "Number of lines to show before and after each match (default: 0)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of matches to return (default: 100)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "find",
+E                   "description": "Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "pattern"
+E                     ],
+E                     "properties": {
+E                       "pattern": {
+E                         "type": "string",
+E                         "description": "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'"
+E                       },
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Directory to search in (default: current directory)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of results (default: 1000)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "ls",
+E                   "description": "List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Directory to list (default: current directory)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of entries to return (default: 500)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent",
+E                   "description": "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it. At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "persona_id": {
+E                         "type": "string",
+E                         "description": "Target Larva persona id."
+E                       },
+E                       "task": {
+E                         "type": "string",
+E                         "description": "Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task."
+E                       },
+E                       "task_id": {
+E                         "type": "string",
+E                         "description": "Optional child session .jsonl path to resume. Omit this field to start a new child session."
+E                       },
+E                       "no_progress_timeout_ms": {
+E                         "type": "integer",
+E                         "minimum": 120000,
+E                         "maximum": 86400000,
+E                         "default": 3600000,
+E                         "description": "Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it."
+E                       }
+E                     },
+E                     "required": [
+E                       "persona_id",
+E                       "task"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_sessions",
+E                   "description": "List recent Larva subagent sessions observed by this parent Pi extension process.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 25,
+E                         "description": "Maximum recent sessions to return (default 10, max 25)."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_status",
+E                   "description": "Inspect active/recent process-local Larva subagent runs and bounded pre-task startup failures. Exact task_id lookup never treats provisional startup_id as a task handle. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_id": {
+E                         "type": "string",
+E                         "description": "Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null."
+E                       },
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 25,
+E                         "description": "Maximum recent runs and startup failures to return per list (default 10, max 25)."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_events",
+E                   "description": "Read the latest 1000 ordered process-local Larva subagent task events and bounded pre-task startup failures. Provisional startup_id records are diagnostic-only and never become task handles. Events are readiness/inspection records, not child-output retrieval; this tool never scans files, consumes results, or accepts fuzzy handles.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "since_sequence": {
+E                         "type": "integer",
+E                         "minimum": 0,
+E                         "description": "Exclusive cursor; returns events with sequence &gt; since_sequence. Omit for 0. Cursor expiry is reported when older than the latest 1000 recent events."
+E                       },
+E                       "task_ids": {
+E                         "type": "array",
+E                         "minItems": 1,
+E                         "maxItems": 25,
+E                         "items": {
+E                           "type": "string"
+E                         },
+E                         "description": "Optional exact public task_id filters. Omit to include all task events and pre-task startup failures; filtered calls exclude provisional startup_id records. Do not pass null. Duplicates and fuzzy handles are rejected."
+E                       },
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 100,
+E                         "description": "Maximum events to return (default 50, max 100)."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_wait",
+E                   "description": "Wait for exact observed Larva subagent task_ids to satisfy return_when: \"all\", \"any\", or \"first_error\" for deterministic automation. Returns snapshots and readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. Never consumes, spawns, resumes, cancels, or scans files.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_ids": {
+E                         "type": "array",
+E                         "minItems": 1,
+E                         "maxItems": 25,
+E                         "items": {
+E                           "type": "string"
+E                         },
+E                         "description": "Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected."
+E                       },
+E                       "return_when": {
+E                         "enum": [
+E                           "all",
+E                           "any",
+E                           "first_error"
+E                         ],
+E                         "description": "Completion condition. Omit for all; do not pass null."
+E                       },
+E                       "timeout_ms": {
+E                         "type": "integer",
+E                         "minimum": 0,
+E                         "maximum": 86400000,
+E                         "description": "Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling."
+E                       }
+E                     },
+E                     "required": [
+E                       "task_ids"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_select",
+E                   "description": "Compact deterministic readiness helper with the same output model as wait(return_when: \"any\") for exact observed Larva subagent task_ids. Returns readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. It never consumes results or accepts aliases.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_ids": {
+E                         "type": "array",
+E                         "minItems": 1,
+E                         "maxItems": 25,
+E                         "items": {
+E                           "type": "string"
+E                         },
+E                         "description": "Exact observed public task_id handles to wait on; fuzzy handles are rejected."
+E                       },
+E                       "timeout_ms": {
+E                         "type": "integer",
+E                         "minimum": 0,
+E                         "maximum": 86400000,
+E                         "description": "Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling."
+E                       }
+E                     },
+E                     "required": [
+E                       "task_ids"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_cancel",
+E                   "description": "Cancel one exact active Larva subagent task_id without using aliases or fuzzy selectors.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_id": {
+E                         "type": "string",
+E                         "description": "Exact public child .jsonl task_id to cancel."
+E                       },
+E                       "reason": {
+E                         "type": "string",
+E                         "description": "Required renderer-safe cancellation reason, bounded to 500 normalized code points."
+E                       }
+E                     },
+E                     "required": [
+E                       "task_id",
+E                       "reason"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_persona_switch",
+E                   "description": "Request an autonomous Larva persona borrow/switch. Use this route when current conversation or runtime continuity is required: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -&gt; auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "persona_id": {
+E                         "type": "string",
+E                         "description": "Target Larva persona id. Exact id resolution identifies the persona but is not semantic suitability evidence; inspect description/definition before switching."
+E                       },
+E                       "reason": {
+E                         "type": "string",
+E                         "description": "Required concise reason for borrowing or switching persona. Must be grounded in inspected persona description or resolved definition; exact persona id/name only proves target identity, not semantic suitability. Cite the inspected evidence in your own words and explain why it fits the current task better than the active persona."
+E                       },
+E                       "handoff": {
+E                         "type": "string",
+E                         "description": "Optional bounded handoff for the next persona."
+E                       },
+E                       "continue_task": {
+E                         "type": "boolean",
+E                         "description": "Queue a Larva-generated continuation after a successful switch."
+E                       },
+E                       "max_switches_per_chain": {
+E                         "anyOf": [
+E                           {
+E                             "type": "integer",
+E                             "minimum": 0
+E                           },
+E                           {
+E                             "type": "null"
+E                           }
+E                         ],
+E                         "description": "Optional request-chain switch budget. Omit for default 20; 0 means unlimited."
+E                       }
+E                     },
+E                     "required": [
+E                       "persona_id",
+E                       "reason"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_personas",
+E                   "description": "Read-only bounded Larva persona discovery for choosing a better-suited persona by inspecting ids and descriptions before any borrow/switch. It does not include persona prompts.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "query": {
+E                         "type": "string",
+E                         "description": "Optional bounded filter over persona id and description."
+E                       },
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 25,
+E                         "description": "Maximum personas to return; capped at 25."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               }
+E             ],
+E             "reasoning_effort": "medium"
+E           }
+E         },
+E         {
+E           "url": "/v1/chat/completions",
+E           "payload": {
+E             "model": "persona",
+E             "messages": [
+E               {
+E                 "role": "developer",
+E                 "content": "&lt;!-- larva:identity-policy:begin --&gt;\nActive Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.\n&lt;!-- larva:identity-policy:end --&gt;\n\nYou are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- powershell: Execute PowerShell commands\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n- grep: Search file contents for patterns (respects .gitignore)\n- find: Find files by glob pattern (respects .gitignore)\n- ls: List directory contents\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n- Use read to examine files instead of cat or sed.\n- You can inspect PI_* environment variables for current model and session details.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: /private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-yoYzgD/project\n\n&lt;!-- larva:active-persona:begin --&gt;\n&lt;!-- larva-spec: ok@digest-ok --&gt;\nYou are fake persona ok.\nWhen the active Larva persona is materially unsuitable, choose the execution route before acting. Borrow/switch persona only when the next model call needs current conversation or runtime continuity: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Spawn a Larva subagent when the work benefits from clean context: fresh review, second opinion, adversarial critique, parallel exploration, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. If both apply, prefer larva_subagent for independent evidence, review, critique, or parallelizable work and prefer larva_persona_switch for single-owner execution that must preserve current context. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative. Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first. You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.\nUse Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.\n&lt;!-- larva:active-persona:end --&gt;"
+E               },
+E               {
+E                 "role": "user",
+E                 "content": [
+E                   {
+E                     "type": "text",
+E                     "text": "Viable loopback prompt"
+E                   }
+E                 ]
+E               }
+E             ],
+E             "stream": true,
+E             "stream_options": {
+E               "include_usage": true
+E             },
+E             "store": false,
+E             "max_completion_tokens": 2048,
+E             "tools": [
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "read",
+E                   "description": "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "path"
+E                     ],
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Path to the file to read (relative or absolute)"
+E                       },
+E                       "offset": {
+E                         "type": "number",
+E                         "description": "Line number to start reading from (1-indexed)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of lines to read"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "bash",
+E                   "description": "Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "command"
+E                     ],
+E                     "properties": {
+E                       "command": {
+E                         "type": "string",
+E                         "description": "Shell command to execute"
+E                       },
+E                       "timeout": {
+E                         "type": "number",
+E                         "description": "Timeout in seconds (optional, no default timeout)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "powershell",
+E                   "description": "Execute a PowerShell command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "command"
+E                     ],
+E                     "properties": {
+E                       "command": {
+E                         "type": "string",
+E                         "description": "Shell command to execute"
+E                       },
+E                       "timeout": {
+E                         "type": "number",
+E                         "description": "Timeout in seconds (optional, no default timeout)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "edit",
+E                   "description": "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "path",
+E                       "edits"
+E                     ],
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Path to the file to edit (relative or absolute)"
+E                       },
+E                       "edits": {
+E                         "type": "array",
+E                         "items": {
+E                           "type": "object",
+E                           "required": [
+E                             "oldText",
+E                             "newText"
+E                           ],
+E                           "properties": {
+E                             "oldText": {
+E                               "type": "string",
+E                               "description": "Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."
+E                             },
+E                             "newText": {
+E                               "type": "string",
+E                               "description": "Replacement text for this targeted edit."
+E                             }
+E                           }
+E                         },
+E                         "description": "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead."
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "write",
+E                   "description": "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "path",
+E                       "content"
+E                     ],
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Path to the file to write (relative or absolute)"
+E                       },
+E                       "content": {
+E                         "type": "string",
+E                         "description": "Content to write to the file"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "grep",
+E                   "description": "Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "pattern"
+E                     ],
+E                     "properties": {
+E                       "pattern": {
+E                         "type": "string",
+E                         "description": "Search pattern (regex or literal string)"
+E                       },
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Directory or file to search (default: current directory)"
+E                       },
+E                       "glob": {
+E                         "type": "string",
+E                         "description": "Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'"
+E                       },
+E                       "ignoreCase": {
+E                         "type": "boolean",
+E                         "description": "Case-insensitive search (default: false)"
+E                       },
+E                       "literal": {
+E                         "type": "boolean",
+E                         "description": "Treat pattern as literal string instead of regex (default: false)"
+E                       },
+E                       "context": {
+E                         "type": "number",
+E                         "description": "Number of lines to show before and after each match (default: 0)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of matches to return (default: 100)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "find",
+E                   "description": "Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).",
+E                   "parameters": {
+E                     "type": "object",
+E                     "required": [
+E                       "pattern"
+E                     ],
+E                     "properties": {
+E                       "pattern": {
+E                         "type": "string",
+E                         "description": "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'"
+E                       },
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Directory to search in (default: current directory)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of results (default: 1000)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "ls",
+E                   "description": "List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "path": {
+E                         "type": "string",
+E                         "description": "Directory to list (default: current directory)"
+E                       },
+E                       "limit": {
+E                         "type": "number",
+E                         "description": "Maximum number of entries to return (default: 500)"
+E                       }
+E                     }
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent",
+E                   "description": "Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it. At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "persona_id": {
+E                         "type": "string",
+E                         "description": "Target Larva persona id."
+E                       },
+E                       "task": {
+E                         "type": "string",
+E                         "description": "Instruction to send to the child session. For clean-context subagent routing, put the route rationale at the top of larva_subagent.task before the actual task."
+E                       },
+E                       "task_id": {
+E                         "type": "string",
+E                         "description": "Optional child session .jsonl path to resume. Omit this field to start a new child session."
+E                       },
+E                       "no_progress_timeout_ms": {
+E                         "type": "integer",
+E                         "minimum": 120000,
+E                         "maximum": 86400000,
+E                         "default": 3600000,
+E                         "description": "Optional hard child consecutive recognized-progress silence deadline; defaults to 3600000 ms and accepts integers from 120000 through 86400000 inclusive. At half of the deadline, the run stays running with result_pending=true and phase=stall_suspected; recognized progress restores waiting_for_child and resets a full deadline. Only nonempty normalized assistant deltas, thinking activity, tool execution start/update/end, and agent end count. For known long-silent work, choose a larger value before spawning; it cannot be extended after spawn in this version. This child watchdog is separate from command/tool timeout and observer wait timeout; status/events/wait/select reads never extend it."
+E                       }
+E                     },
+E                     "required": [
+E                       "persona_id",
+E                       "task"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_sessions",
+E                   "description": "List recent Larva subagent sessions observed by this parent Pi extension process.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 25,
+E                         "description": "Maximum recent sessions to return (default 10, max 25)."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_status",
+E                   "description": "Inspect active/recent process-local Larva subagent runs and bounded pre-task startup failures. Exact task_id lookup never treats provisional startup_id as a task handle. Inspection/debugging only; not child-output retrieval. Use wait/select/events for orchestration, not repeated status polling.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_id": {
+E                         "type": "string",
+E                         "description": "Optional exact public child .jsonl task_id. Omit for recent runs; do not pass null."
+E                       },
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 25,
+E                         "description": "Maximum recent runs and startup failures to return per list (default 10, max 25)."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_events",
+E                   "description": "Read the latest 1000 ordered process-local Larva subagent task events and bounded pre-task startup failures. Provisional startup_id records are diagnostic-only and never become task handles. Events are readiness/inspection records, not child-output retrieval; this tool never scans files, consumes results, or accepts fuzzy handles.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "since_sequence": {
+E                         "type": "integer",
+E                         "minimum": 0,
+E                         "description": "Exclusive cursor; returns events with sequence &gt; since_sequence. Omit for 0. Cursor expiry is reported when older than the latest 1000 recent events."
+E                       },
+E                       "task_ids": {
+E                         "type": "array",
+E                         "minItems": 1,
+E                         "maxItems": 25,
+E                         "items": {
+E                           "type": "string"
+E                         },
+E                         "description": "Optional exact public task_id filters. Omit to include all task events and pre-task startup failures; filtered calls exclude provisional startup_id records. Do not pass null. Duplicates and fuzzy handles are rejected."
+E                       },
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 100,
+E                         "description": "Maximum events to return (default 50, max 100)."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_wait",
+E                   "description": "Wait for exact observed Larva subagent task_ids to satisfy return_when: \"all\", \"any\", or \"first_error\" for deterministic automation. Returns snapshots and readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. Never consumes, spawns, resumes, cancels, or scans files.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_ids": {
+E                         "type": "array",
+E                         "minItems": 1,
+E                         "maxItems": 25,
+E                         "items": {
+E                           "type": "string"
+E                         },
+E                         "description": "Exact observed public task_id handles to wait on; aliases such as last/latest/persona id are rejected."
+E                       },
+E                       "return_when": {
+E                         "enum": [
+E                           "all",
+E                           "any",
+E                           "first_error"
+E                         ],
+E                         "description": "Completion condition. Omit for all; do not pass null."
+E                       },
+E                       "timeout_ms": {
+E                         "type": "integer",
+E                         "minimum": 0,
+E                         "maximum": 86400000,
+E                         "description": "Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling."
+E                       }
+E                     },
+E                     "required": [
+E                       "task_ids"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_select",
+E                   "description": "Compact deterministic readiness helper with the same output model as wait(return_when: \"any\") for exact observed Larva subagent task_ids. Returns readiness only, not child output; if callback_delivery is pending, yield for larva-subagent-result instead of status output lookup. It never consumes results or accepts aliases.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_ids": {
+E                         "type": "array",
+E                         "minItems": 1,
+E                         "maxItems": 25,
+E                         "items": {
+E                           "type": "string"
+E                         },
+E                         "description": "Exact observed public task_id handles to wait on; fuzzy handles are rejected."
+E                       },
+E                       "timeout_ms": {
+E                         "type": "integer",
+E                         "minimum": 0,
+E                         "maximum": 86400000,
+E                         "description": "Maximum observer wait time, up to 24h. 0 returns an immediate snapshot and is preferred for checkpoint/status probes in large interactive parent Pi sessions. Long waits remain supported, but can increase parent TUI/Node heap pressure in large transcripts; reserve them for fresh/small sessions or unattended orchestration. Observer reads never reset or extend a child no-progress deadline. Do not use shell sleep polling."
+E                       }
+E                     },
+E                     "required": [
+E                       "task_ids"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_subagent_cancel",
+E                   "description": "Cancel one exact active Larva subagent task_id without using aliases or fuzzy selectors.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "task_id": {
+E                         "type": "string",
+E                         "description": "Exact public child .jsonl task_id to cancel."
+E                       },
+E                       "reason": {
+E                         "type": "string",
+E                         "description": "Required renderer-safe cancellation reason, bounded to 500 normalized code points."
+E                       }
+E                     },
+E                     "required": [
+E                       "task_id",
+E                       "reason"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_persona_switch",
+E                   "description": "Request an autonomous Larva persona borrow/switch. Use this route when current conversation or runtime continuity is required: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -&gt; auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "persona_id": {
+E                         "type": "string",
+E                         "description": "Target Larva persona id. Exact id resolution identifies the persona but is not semantic suitability evidence; inspect description/definition before switching."
+E                       },
+E                       "reason": {
+E                         "type": "string",
+E                         "description": "Required concise reason for borrowing or switching persona. Must be grounded in inspected persona description or resolved definition; exact persona id/name only proves target identity, not semantic suitability. Cite the inspected evidence in your own words and explain why it fits the current task better than the active persona."
+E                       },
+E                       "handoff": {
+E                         "type": "string",
+E                         "description": "Optional bounded handoff for the next persona."
+E                       },
+E                       "continue_task": {
+E                         "type": "boolean",
+E                         "description": "Queue a Larva-generated continuation after a successful switch."
+E                       },
+E                       "max_switches_per_chain": {
+E                         "anyOf": [
+E                           {
+E                             "type": "integer",
+E                             "minimum": 0
+E                           },
+E                           {
+E                             "type": "null"
+E                           }
+E                         ],
+E                         "description": "Optional request-chain switch budget. Omit for default 20; 0 means unlimited."
+E                       }
+E                     },
+E                     "required": [
+E                       "persona_id",
+E                       "reason"
+E                     ],
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               },
+E               {
+E                 "type": "function",
+E                 "function": {
+E                   "name": "larva_personas",
+E                   "description": "Read-only bounded Larva persona discovery for choosing a better-suited persona by inspecting ids and descriptions before any borrow/switch. It does not include persona prompts.",
+E                   "parameters": {
+E                     "type": "object",
+E                     "properties": {
+E                       "query": {
+E                         "type": "string",
+E                         "description": "Optional bounded filter over persona id and description."
+E                       },
+E                       "limit": {
+E                         "type": "integer",
+E                         "minimum": 1,
+E                         "maximum": 25,
+E                         "description": "Maximum personas to return; capped at 25."
+E                       }
+E                     },
+E                     "additionalProperties": false
+E                   },
+E                   "strict": false
+E                 }
+E               }
+E             ],
+E             "reasoning_effort": "medium"
+E           }
+E         }
+E       ],
+E       "stderr": [],
+E       "cleanup": {
+E         "traces": [],
+E         "pids": [],
+E         "liveChildren": [],
+E         "capsules": [],
+E         "sessions": [],
+E         "settings": {
+E           "defaultProjectTrust": "yes",
+E           "theme": "dark",
+E           "lastChangelogVersion": "0.85.1",
+E           "packages": [
+E             "../installed-package"
+E           ],
+E           "defaultProvider": "native-loopback",
+E           "defaultModel": "origin",
+E           "defaultThinkingLevel": "low",
+E           "compaction": {
+E             "enabled": false,
+E             "reserveTokens": 512,
+E             "keepRecentTokens": 512
+E           },
+E           "retry": {
+E             "enabled": false
+E           }
+E         },
+E         "parents": [],
+E         "providerClosed": true,
+E         "rootRemoved": true
+E       }
+E     }
+E     
+E     stderr=
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule...false\n      }\n    },\n    "parents": [],\n    "providerClosed": true,\n    "rootRemoved": true\n  }\n}\n', stderr='').returncode</failure></testcase></testsuite></testsuites>

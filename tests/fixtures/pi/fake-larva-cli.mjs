@@ -56,6 +56,10 @@ if (command === "resolve" && maybeFlag === "--json") {
     process.exit(0);
   }
   if (!personas.some((persona) => persona.id === idOrFlag)) process.exit(20);
+  if (process.env.FAKE_LARVA_RESOLVE_LOG) {
+    const { appendFile } = await import("node:fs/promises");
+    await appendFile(process.env.FAKE_LARVA_RESOLVE_LOG, JSON.stringify({ id: idOrFlag, resolved: true }) + "\n");
+  }
   writeJson({
     data: {
       id: idOrFlag,

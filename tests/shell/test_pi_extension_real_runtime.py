@@ -2084,6 +2084,7 @@ def _run_native_acceptance(scenario: str, timeout: float = 300.0) -> dict[str, A
         "resume-stored-restore-nonfatal",
         "parent-shutdown-active-child",
         "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print",
+        "native-capsule-aging", "native-capsule-removal", "native-installed-loading",
     ],
 )
 def test_native_pi_acceptance_matrix(scenario: str) -> None:

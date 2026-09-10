@@ -1,0 +1,162 @@
+{
+  "scenario": "stored-restore",
+  "modality": "actual native CLI + normal package loader + loopback provider",
+  "node": "v26.7.0",
+  "cli": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+  "restore": {
+    "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BdFU69/sessions/2026-09-10T19-03-56-926Z_01a08cb4-88fe-766e-ab01-8616c31f24e4.jsonl",
+    "resolves": [
+      {
+        "id": "startup",
+        "resolved": true
+      },
+      {
+        "id": "ok",
+        "resolved": true
+      }
+    ],
+    "state": {
+      "model": {
+        "id": "persona",
+        "name": "persona",
+        "api": "openai-completions",
+        "provider": "native-loopback",
+        "baseUrl": "http://127.0.0.1:49566/v1",
+        "reasoning": true,
+        "input": [
+          "text"
+        ],
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0
+        },
+        "contextWindow": 32768,
+        "maxTokens": 2048
+      },
+      "thinkingLevel": "medium",
+      "isStreaming": false,
+      "isCompacting": false,
+      "steeringMode": "one-at-a-time",
+      "followUpMode": "one-at-a-time",
+      "sessionFile": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BdFU69/sessions/2026-09-10T19-03-56-926Z_01a08cb4-88fe-766e-ab01-8616c31f24e4.jsonl",
+      "sessionId": "01a08cb4-88fe-766e-ab01-8616c31f24e4",
+      "autoCompactionEnabled": false,
+      "messageCount": 2,
+      "pendingMessageCount": 0
+    },
+    "status": [
+      {
+        "type": "extension_ui_request",
+        "id": "1be32dec-92b2-470a-8117-9276f5a1843f",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: ok unavailable (LARVA_MODEL_UNAVAILABLE)"
+      }
+    ],
+    "exit": {
+      "code": 0,
+      "signal": null
+    },
+    "providerRequests": 1,
+    "system": [
+      {
+        "role": "developer",
+        "content": "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n\nGuidelines:\n- Use bash for file operations like ls, rg, find\n- Use read to examine files instead of cat or sed.\n- You can inspect PI_* environment variables for current model and session details.\n- Use edit for precise changes (edits[].oldText must match exactly)\n- When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls\n- Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.\n- Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.\n- Use write only for new files or complete rewrites.\n- Be concise in your responses\n- Show file paths clearly when working with files\n\nPi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/README.md\n- Additional docs: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/docs\n- Examples: /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)\n- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing\n- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)\nCurrent working directory: /private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BdFU69/project\nCOLOADED_NON_LARVA_CONTENT"
+      }
+    ],
+    "commitsBefore": 1,
+    "commitsAfter": 1
+  },
+  "pass": true,
+  "observations": {
+    "events": [
+      "session_start",
+      "settled",
+      "snapshot",
+      "session_shutdown",
+      "session_start",
+      "settled",
+      "snapshot",
+      "session_shutdown"
+    ]
+  },
+  "requests": [
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "Persist native saved-session history"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "Prove the reopened session is still usable"
+        }
+      ]
+    }
+  ],
+  "stderr": [
+    "",
+    ""
+  ],
+  "cleanup": {
+    "traces": [],
+    "pids": [],
+    "liveChildren": [],
+    "capsules": [],
+    "sessions": [],
+    "settings": {
+      "defaultProjectTrust": "yes",
+      "theme": "dark",
+      "lastChangelogVersion": "0.85.1",
+      "packages": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension"
+      ],
+      "defaultProvider": "native-loopback",
+      "defaultModel": "origin",
+      "defaultThinkingLevel": "low",
+      "compaction": {
+        "enabled": false,
+        "reserveTokens": 512,
+        "keepRecentTokens": 512
+      },
+      "retry": {
+        "enabled": false
+      }
+    },
+    "parents": [
+      {
+        "pid": 67580,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "alive": false
+      },
+      {
+        "pid": 67583,
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "alive": false
+      }
+    ],
+    "providerClosed": true,
+    "rootRemoved": true
+  },
+  "evidenceProjection": "Request model/identity markers and lifecycle metadata selected from actual observations; assertions ran against full live values. Reproduce with tracked native journey."
+}

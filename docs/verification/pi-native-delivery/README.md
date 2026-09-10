@@ -1,6 +1,12 @@
 # Native Pi delivery evidence
 
 ## Result and ownership
+This is the **historical native-producer report**. The Python launcher was later
+removed. Its final repository scan and new capsule/loading/restore observations
+are recorded in [native repair evidence](../pi-native-repair/README.md). That
+repair remains blocked on the installed-dependency expectation described there;
+this predecessor report does not establish final project acceptance.
+
 
 The native extension candidate preserves the package, admission, capsule and
 runtime work retained at `513f7928`. `node-typescript-engineer` remains the
@@ -66,7 +72,6 @@ also needed project-interpreter execution for MCP subprocess imports and separat
 original-source doctest verification. These failures are not green evidence.
 
 ## Native acceptance and applicability matrix
-
 Direct journey command:
 
 ```bash
@@ -74,28 +79,28 @@ node scripts/pi-native-journeys.mjs --scenario SCENARIO \
   --output docs/verification/pi-native-delivery/SCENARIO.json
 ```
 
-`SCENARIO` is `state`, `children`, `invocation`, `environment`, `tui`, `consumers`,
-`watchdog`, `failures`, `admission`, or `print`. The existing
-`pi-native-acceptance.mjs` entrypoint invokes these via the `native-*` cases;
-`backend-a-project-b` invokes `environment`. The Python native inventory invokes
-the complete entrypoint list and fails on missing required host proof.
+Historical `SCENARIO` values are `state`, `children`, `invocation`, `environment`,
+`tui`, `consumers`, `watchdog`, `failures`, `admission`, and `print`.
+`pi-native-acceptance.mjs` invokes these through `native-*` cases;
+`backend-a-project-b` invokes `environment`. New repair cases and their current
+results are in [native repair evidence](../pi-native-repair/README.md).
 
 | Acceptance row | Actual observation and evidence | Modality / applicability |
 |---|---|---|
-| Package/setup | Normal disposable package discovery, exact one registration, explicit `-e`, disable, duplicate copies, absent entry/dependencies and unusable CLI binding | Native CLI/loader cases in `native-runtime.xml`; npm/package structure tests support only their mechanical contract |
-| Admission | Fresh explicit success; missing ID/model/policy/binding, invalid mode, unknown flag and missing value. Queued RPC/print/TTY first inputs produce zero provider requests. Larva exits 2; Pi syntax failures exit 1 | `admission.json`: 21 launched cases across RPC/print/PTY. SDK enumeration/setter failure branches remain controlled API tests; native tool-policy enforcement is independently observed. |
-| Restore | Actual saved-session reopen; stored vs explicit preflight (including unused unavailable explicit route), nonfatal stored restore failure, digest drift, manual model/thinking, restored auto mode, fork/new/reload and commit idempotence | `state.json` plus native saved-session inventory. The unused-explicit and stored-failure scenarios remain separately asserted by the original entrypoint. |
-| Persona policy | Manual tool unavailability; RPC/print confirmation denial; native TUI confirmation; auto temporary borrow, terminating continuation, and free persistence | `state.json`, `tui.json`, `print.json`. Detailed rollback, restore-failure, manual-switch precedence and continuation-race branches retain meaningful controlled API tests in the retained and Node suites. |
-| Main settings | Native theme API writes light; a separately launched native TUI sees it. Persona/profile/borrow operations preserve actual global defaultProvider/defaultModel/defaultThinkingLevel; main has no capsule | `tui.json`, `state.json`. The theme action uses a co-loaded command calling Pi's public settings/UI API; it does not patch settings behind Pi or replace a Larva handler. |
-| UI | Actual filtered selector, Ctrl+Alt+P, Escape, Tab persona completion, canonical mention insertion, four-row confirmation, console selection/metadata and confirmed cancellation | PTY key/terminal evidence in `tui.json`; actual RPC/print paths in the other journeys. The older ctx.mode-only PTY probe is not counted as interaction parity. |
-| Child route | Native new/resume, parent isolation, explicit route arguments, effective model/thinking and xhigh→high clamping; profile generations, starting/resumed fences and bounded fanout | `children.json`, native inventory's installed-child profile test. `profile-child.json` records controlled transport with actual Pi children; it is not native launch-identity proof. |
-| Child transport | Captured native Node/CLI, explicit allowlist, base-derived 0700/0600 capsules, configured pre-start frame marker, no parent control extension leakage, oversized output manifest validated after cleanup | `children.json`; memory/frame regressions in `all-node.log` remain supporting controlled/integration evidence |
-| Async lifecycle | Real accepted receipt while child is held; terminal callbacks and continuation; actual status/events/wait/select exact handles; concurrent children and targeted cancellation; actual 120-second no-progress cancellation | `children.json`, `watchdog.json`, `tui.json`. Callback dedup/stale suppression, progress-clock edge cases and first-owner races retain controlled lifecycle tests. |
-| Cleanup | Normal success, actual typed startup failure, native runtime 400, deliberate native-stdout corruption, missing preload before spawn, real asynchronous EACCES, capsule creation failure, cancellation, invocation timeout, watchdog and live-child parent shutdown | `children.json`, `failures.json`, `invocation.json`, `watchdog.json`, `tui.json`, `capsule-failures.json`. Malformed transport is explicit fixture fault injection; native happy paths use no launch override. |
-| Persistence | New/resumed history survives successful cleanup; later native parent resumes an existing canonical receipt; malformed-resume failure retains prior history; oversized artifact survives capsule cleanup | `children.json`, `failures.json`; cache-vs-authority regressions remain controlled tests |
-| Environment/backend | Actual Larva in A serves list/resolve with A interpreter and inherited caller environment. Actual native main/child bash tools invoke B Python and compile/install binaries only into B. No VIRTUAL_ENV remains absent in main/backend/child and maturin does not install into A or B | `environment.json`. Inherited-A negative control intentionally installs into A. No product environment sanitizer, PATH reconstruction or backend activation was added. |
-| Extension consumers | Actual event-bus invocation success/timeout; native compaction with persona focus, caller focus and carry-forward rule; disabled-focus native fallback; one primary overlay preserving co-loaded system content; allowed tool side effect and denied tool blocked | `invocation.json`, `consumers.json`; co-loaded fixture commands observe/use public SDK surfaces |
-| Repo/cutover | 977 repository tests and full Invar; unchanged Python CLI/API and still-present wheel resources also pass remaining tests; supported-host CI is defined | Current producer complete at repository-candidate scope. Python command/wheel retirement, operator installation, publication, main integration and terminal gate remain outside this producer. |
+| Package/setup | Disposable package discovery, explicit `-e`, disable, duplicate copies and unusable CLI binding | Historical native inventory. **Correction:** `--no-extensions` and child missing-preload did not exercise a damaged installed main entry or unusable runtime dependency. See the repair's actual missing-entry and host-supplied dependency observations. |
+| Admission | Fresh explicit success; missing ID/model/policy/binding, invalid mode, unknown flag and missing value. Queued RPC/print/TTY inputs produce zero provider requests. Larva exits 2; Pi syntax errors exit 1 | `admission.json`: 21 launched cases. SDK enumeration/setter failures retain controlled API tests; native tool-policy enforcement is independently observed. |
+| Restore | Saved-session reopen, stored/explicit precedence, unused unavailable explicit route, digest drift, manual model/thinking, restored auto mode, fork/new/reload and commit idempotence | `state.json` and historical inventory. **Correction:** the old stored-failure case omitted explicit input. The repair now observes successful explicit-ID preflight followed by nonfatal failed stored restoration and an actual usable request without active identity. |
+| Persona policy | Manual tool denial; RPC/print confirmation denial; native TUI confirmation; automatic temporary borrow, continuation and free persistence | `state.json`, `tui.json`, `print.json`; detailed rollback, manual precedence and race branches retain controlled tests. |
+| Main settings | Native theme save survives restart; persona/profile/borrow preserve global model/thinking defaults; main has no capsule | `tui.json`, `state.json`; public Pi settings/UI APIs, with no patching behind Pi. |
+| UI | Filtered selector, Ctrl+Alt+P, Escape, Tab completion, canonical mention, four-choice confirmation, console metadata and confirmed cancellation | PTY evidence in `tui.json`; RPC/print in other journeys. The older ctx.mode-only observer is not interaction parity. |
+| Child route | Native new/resume, parent isolation, explicit route and thinking, xhigh→high clamping, profile generations/fences/fanout | `children.json` and installed-child profile test. `profile-child.json` uses controlled transport with actual Pi children; it is not launch-identity proof. |
+| Child transport | Captured native Node/CLI, explicit allowlist, base-derived 0700/0600 capsules, pre-start frame marker, no control-extension leakage, oversized manifest | `children.json`; frame/memory tests in `all-node.log` remain supporting evidence. |
+| Async lifecycle | Accepted held child, callbacks/continuation, exact status/events/wait/select, concurrent targeted cancellation, actual 120-second watchdog | `children.json`, `watchdog.json`, `tui.json`; controlled tests cover deduplication, stale suppression and progress-clock edges. |
+| Cleanup | Success, typed startup failure, native provider error, stdout corruption, missing preload, asynchronous EACCES at spawn, capsule creation failure, cancellation, timeout, watchdog and live-child parent shutdown | Historical `children.json`, `failures.json`, `invocation.json`, `watchdog.json`, `tui.json`, `capsule-failures.json`. **Correction:** these did not prove aged active/unrelated capsule preservation or removal-failure diagnostics. Both source defects are repaired with new red/green proof. |
+| Persistence | New/resumed history, canonical receipt resumed in a later parent, failure retains history, output artifact survives cleanup | `children.json`, `failures.json`; cache/authority tests remain controlled evidence. |
+| Environment/backend | Actual backend A serves list/resolve with A interpreter; native main/child bash tools compile/install into activated B; absent VIRTUAL_ENV stays absent | `environment.json`; inherited-A is a negative control. No product sanitizer, PATH reconstruction or backend activation. |
+| Extension consumers | Actual invocation success/timeout, focused compaction/native fallback, single identity overlay preserving co-loaded content, effective tool policy | `invocation.json`, `consumers.json`; co-loaded fixtures use public SDK surfaces. |
+| Repo/cutover | Historical 977-test inventory and full Invar preceded Python launcher/wheel retirement | The repair report accounts for the later 936-test Python-stage inventory, fresh affected regressions and exact post-removal CLI full scan. Historical `full-invar.json` cannot establish that later scan. |
 
 ## Cleanup, evidence reuse, and self-review
 

@@ -8887,9 +8887,6 @@ async function validateFreshChildSessionFile(sessionFile: string, root: string):
   return sessionPath;
 }
 
-const CHILD_CAPSULE_STALE_MS = 24 * 60 * 60 * 1_000;
-const CHILD_CAPSULE_STALE_SCAN_LIMIT = 8;
-
 function childCapsuleRuntimeRoot(env: RuntimeEnv): string {
   return join(homeDir(env), ".pi", "larva", "runtime");
 }
@@ -8898,29 +8895,38 @@ function childCapsuleBaseAgentDir(env: RuntimeEnv): string {
   return resolve(env.LARVA_PI_BASE_AGENT_DIR || env.PI_CODING_AGENT_DIR || join(homeDir(env), ".pi", "agent"));
 }
 
+function reportChildCapsuleCleanupFailure(env: RuntimeEnv, reason: string): void {
+  const fields = { capsule_root: env.LARVA_PI_CAPSULE_ROOT, reason };
+  // stderr is always visible; the optional trace alone cannot satisfy diagnostics.
+  process.stderr.write(`larva pi: capsule cleanup failed: ${boundedNormalizedCodePoints(JSON.stringify(fields), 1024)}\n`);
+  void traceChildRpc(env, "capsule_cleanup_failed", fields);
+}
+
 function removeChildCapsuleRoot(env: RuntimeEnv): void {
   const capsuleRoot = env.LARVA_PI_CAPSULE_ROOT;
   if (!capsuleRoot) return;
-  const runtimeRoot = childCapsuleRuntimeRoot(env);
   try {
-    if (dirname(capsuleRoot) !== runtimeRoot || lstatSync(capsuleRoot).isSymbolicLink()) return;
+    if (dirname(capsuleRoot) !== childCapsuleRuntimeRoot(env)) {
+      reportChildCapsuleCleanupFailure(env, "refusing removal outside the owned root");
+      return;
+    }
+    let info;
+    try { info = lstatSync(capsuleRoot); }
+    catch (caught) {
+      if (!isRecord(caught) || caught.code !== "ENOENT") throw caught;
+      delete env.LARVA_PI_CAPSULE_ROOT; // The root itself is already absent.
+      return;
+    }
+    if (info.isSymbolicLink()) {
+      reportChildCapsuleCleanupFailure(env, "refusing removal through a root link");
+      return;
+    }
     rmSync(capsuleRoot, { recursive: true, force: true });
     delete env.LARVA_PI_CAPSULE_ROOT;
-  } catch { /* bounded cleanup diagnostic remains in child RPC trace */ }
-}
-
-function cleanupStaleChildCapsules(env: RuntimeEnv): void {
-  const runtimeRoot = childCapsuleRuntimeRoot(env);
-  let entries: string[];
-  try { entries = readdirSync(runtimeRoot).slice(0, CHILD_CAPSULE_STALE_SCAN_LIMIT); } catch { return; }
-  const cutoff = Date.now() - CHILD_CAPSULE_STALE_MS;
-  for (const name of entries) {
-    const candidate = join(runtimeRoot, name);
-    try {
-      const info = lstatSync(candidate);
-      if (info.isSymbolicLink() || !info.isDirectory() || info.mtimeMs >= cutoff) continue;
-      rmSync(candidate, { recursive: true, force: true });
-    } catch { /* stale cleanup is best effort and never follows links */ }
+  } catch (caught) {
+    // Keep identity for reconciliation. Do not expose arbitrary filesystem messages.
+    const code = isRecord(caught) && typeof caught.code === "string" ? boundedNormalizedCodePoints(caught.code, 32) : "filesystem error";
+    reportChildCapsuleCleanupFailure(env, code);
   }
 }
 
@@ -8932,7 +8938,6 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
   try {
     mkdirSync(runtimeRoot, { recursive: true, mode: 0o700 });
     chmodSync(runtimeRoot, 0o700);
-    cleanupStaleChildCapsules(env);
     mkdirSync(capsuleAgent, { recursive: true, mode: 0o700 });
     chmodSync(capsuleRoot, 0o700);
     chmodSync(capsuleAgent, 0o700);
@@ -8953,7 +8958,8 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
     env.PI_CODING_AGENT_DIR = capsuleAgent;
     return capsuleAgent;
   } catch {
-    try { rmSync(capsuleRoot, { recursive: true, force: true }); } catch { /* no base target removal */ }
+    env.LARVA_PI_CAPSULE_ROOT = capsuleRoot;
+    removeChildCapsuleRoot(env);
     return error("LARVA_CHILD_START_FAILED", "Private child Pi agent-directory capsule could not be created.");
   }
 }
@@ -9602,8 +9608,9 @@ async function cleanupChild(child: ChildProcessWithoutNullStreams, env: RuntimeE
   try { child.stdin.destroy(); } catch { /* ignore stream cleanup errors */ }
   try { child.stdout.destroy(); } catch { /* ignore stream cleanup errors */ }
   try { child.stderr.destroy(); } catch { /* ignore stream cleanup errors */ }
-  removeChildCapsuleRoot(env);
-  void traceChildRpc(env, "cleanup_end", { pid: child.pid ?? null, running: childStillRunning(child), exitCode: child.exitCode, signalCode: child.signalCode });
+  if (childStillRunning(child)) reportChildCapsuleCleanupFailure(env, `child pid ${child.pid ?? "unknown"} is still running after bounded shutdown`);
+  else removeChildCapsuleRoot(env);
+  void traceChildRpc(env, "cleanup_end", { pid: child.pid ?? null, running: childStillRunning(child), exitCode: child.exitCode, signalCode: child.signalCode, capsule_root: env.LARVA_PI_CAPSULE_ROOT ?? null });
 }
 
 async function cleanupSubagentRunChild(record: ActiveSubagentRun): Promise<void> {

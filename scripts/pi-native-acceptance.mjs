@@ -40,7 +40,7 @@ const SCENARIOS = [
   "resume-unresolvable-explicit-fails",
   "resume-stored-restore-nonfatal",
   "parent-shutdown-active-child",
-  "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print",
+  "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print", "native-capsule-aging", "native-capsule-removal", "native-installed-loading",
 ];
 
 function usage() {
@@ -228,9 +228,9 @@ async function withScratch(fn) {
 
 async function runScenario(scenario) {
   const evidence = { scenario, pi: PI_BIN, extensionDir: EXTENSION_DIR, pass: false };
-  if (scenario.startsWith("native-") || scenario === "backend-a-project-b") {
+  if (scenario.startsWith("native-") || scenario === "backend-a-project-b" || scenario === "resume-stored-restore-nonfatal") {
     const { runJourney } = await import("./pi-native-journeys.mjs");
-    return { ...await runJourney(scenario === "backend-a-project-b" ? "environment" : scenario.slice(7)), scenario };
+    return { ...await runJourney(scenario === "backend-a-project-b" ? "environment" : scenario === "resume-stored-restore-nonfatal" ? "stored-restore" : scenario.slice(7)), scenario };
   }
   if (scenario === "package-discovery") {
     await withScratch(async (scratch, loopback) => {
@@ -429,7 +429,7 @@ async function runScenario(scenario) {
       const expected = scenario === "tui-mode" ? "tui" : scenario === "rpc-mode" ? "rpc" : "print";
       evidence.pass = result.exitCode === 0 && evidence.observation?.mode === expected && (expected !== "rpc" || evidence.observation?.hasUI === true);
     });
-  } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails" || scenario === "resume-stored-restore-nonfatal") {
+  } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails") {
     await withScratch(async (scratch, loopback) => {
       await piInstall(scratch);
       const { SessionManager } = await import("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js");
@@ -475,17 +475,6 @@ async function runScenario(scenario) {
         evidence.resumedExit = resumed.exitCode;
         evidence.resumedStderr = resumed.stderr.slice(0, 800);
         evidence.pass = resumed.exitCode === 2 && /LARVA_PERSONA_NOT_FOUND/.test(resumed.stderr);
-      } else {
-        const resumed = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--approve", "-e", loopback.providerPath, "--session", session], {
-          env: baseEnv(scratch, { FAKE_LARVA_MODEL: "missing-provider/missing-model" }),
-          cwd: scratch.cwd,
-          timeoutMs: 10_000,
-          stdinText: `${JSON.stringify({ id: "s1", type: "get_state" })}\n`,
-        });
-        evidence.resumedExit = resumed.exitCode;
-        evidence.resumedStdout = resumed.stdout.slice(0, 1500);
-        evidence.resumedStderr = resumed.stderr.slice(0, 800);
-        evidence.pass = resumed.exitCode === 0 && /unavailable \(LARVA_MODEL_UNAVAILABLE\)|restore unavailable/.test(`${resumed.stdout}${resumed.stderr}`);
       }
     });
   } else if (scenario === "parent-shutdown-active-child") {

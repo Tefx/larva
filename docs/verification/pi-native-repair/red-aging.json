@@ -1,0 +1,380 @@
+{
+  "scenario": "capsule-aging",
+  "modality": "actual native CLI + normal package loader + loopback provider",
+  "node": "v26.7.0",
+  "cli": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+  "aging": {
+    "held": {
+      "task_id": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children/2026-09-10T18-58-51-262Z_01a08caf-defe-74fd-be0b-0de7e719dd27.jsonl",
+      "persona_id": "child",
+      "status": "accepted",
+      "result_pending": true,
+      "error": null
+    },
+    "second": {
+      "task_id": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children/2026-09-10T18-58-51-870Z_01a08caf-e15e-76b2-aca2-d55ccf556301.jsonl",
+      "persona_id": "child",
+      "status": "accepted",
+      "result_pending": true,
+      "error": null
+    },
+    "before": {
+      "traces": [
+        {
+          "ts": "2026-09-10T18:58:51.114Z",
+          "event": "child_spawn",
+          "pid": 66442,
+          "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+          "args": [
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+            "-e",
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/tests/fixtures/pi/native-child-observer.ts",
+            "-e",
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/larva.ts",
+            "--no-extensions",
+            "--mode",
+            "rpc",
+            "--larva-persona",
+            "child",
+            "--larva-agent-persona-switch",
+            "manual",
+            "--model",
+            "native-loopback/persona",
+            "--thinking",
+            "xhigh",
+            "--session-dir",
+            "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children"
+          ],
+          "root": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children",
+          "persona_id": "child"
+        }
+      ],
+      "pids": [
+        66442
+      ],
+      "liveChildren": [
+        66442
+      ],
+      "capsules": [
+        "child-66438-849c6516a9217bae"
+      ],
+      "sessions": [],
+      "settings": {
+        "defaultProjectTrust": "yes",
+        "theme": "dark",
+        "lastChangelogVersion": "0.85.1",
+        "packages": [
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension"
+        ],
+        "defaultProvider": "native-loopback",
+        "defaultModel": "origin",
+        "defaultThinkingLevel": "low",
+        "compaction": {
+          "enabled": false,
+          "reserveTokens": 512,
+          "keepRecentTokens": 512
+        },
+        "retry": {
+          "enabled": false
+        }
+      }
+    },
+    "after": {
+      "traces": [
+        {
+          "ts": "2026-09-10T18:58:51.114Z",
+          "event": "child_spawn",
+          "pid": 66442,
+          "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+          "args": [
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+            "-e",
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/tests/fixtures/pi/native-child-observer.ts",
+            "-e",
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/larva.ts",
+            "--no-extensions",
+            "--mode",
+            "rpc",
+            "--larva-persona",
+            "child",
+            "--larva-agent-persona-switch",
+            "manual",
+            "--model",
+            "native-loopback/persona",
+            "--thinking",
+            "xhigh",
+            "--session-dir",
+            "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children"
+          ],
+          "root": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children",
+          "persona_id": "child"
+        },
+        {
+          "ts": "2026-09-10T18:58:51.727Z",
+          "event": "child_spawn",
+          "pid": 66450,
+          "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+          "args": [
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+            "-e",
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/tests/fixtures/pi/native-child-observer.ts",
+            "-e",
+            "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/larva.ts",
+            "--no-extensions",
+            "--mode",
+            "rpc",
+            "--larva-persona",
+            "child",
+            "--larva-agent-persona-switch",
+            "manual",
+            "--model",
+            "native-loopback/persona",
+            "--thinking",
+            "xhigh",
+            "--session-dir",
+            "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children"
+          ],
+          "root": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children",
+          "persona_id": "child"
+        }
+      ],
+      "pids": [
+        66442,
+        66450
+      ],
+      "liveChildren": [
+        66442,
+        66450
+      ],
+      "capsules": [
+        "child-66446-c41b14bd3686d94c"
+      ],
+      "sessions": [],
+      "settings": {
+        "defaultProjectTrust": "yes",
+        "theme": "dark",
+        "lastChangelogVersion": "0.85.1",
+        "packages": [
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension"
+        ],
+        "defaultProvider": "native-loopback",
+        "defaultModel": "origin",
+        "defaultThinkingLevel": "low",
+        "compaction": {
+          "enabled": false,
+          "reserveTokens": 512,
+          "keepRecentTokens": 512
+        },
+        "retry": {
+          "enabled": false
+        }
+      }
+    },
+    "owned": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/home/.pi/larva/runtime/child-66438-849c6516a9217bae",
+    "unrelated": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/home/.pi/larva/runtime/unrelated-cooperative-entry",
+    "ageHours": 25
+  },
+  "pass": false,
+  "error": "AssertionError [ERR_ASSERTION]: starting another parent child deleted an aged live capsule\n    at runCapsuleAging (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:251:10)\n    at async runJourney (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:581:44)\n    at async file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:600:20",
+  "observations": {
+    "events": [
+      "session_start",
+      "tool_end",
+      "settled",
+      "session_start",
+      "tool_end",
+      "settled"
+    ]
+  },
+  "requests": [
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "native-driver-start"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "native-driver-start"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: child@sha256:child -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "HOLD_AGED_NATIVE_CHILD"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "native-driver-start"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: ok@digest-ok -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "native-driver-start"
+        }
+      ]
+    },
+    {
+      "url": "/v1/chat/completions",
+      "model": "persona",
+      "instructionOverlays": [
+        "<!-- larva-spec: child@sha256:child -->"
+      ],
+      "lastUser": [
+        {
+          "type": "text",
+          "text": "HOLD_OTHER_PARENT_CHILD"
+        }
+      ]
+    }
+  ],
+  "stderr": [
+    "",
+    ""
+  ],
+  "cleanup": {
+    "traces": [
+      {
+        "ts": "2026-09-10T18:58:51.114Z",
+        "event": "child_spawn",
+        "pid": 66442,
+        "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+        "args": [
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+          "-e",
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/tests/fixtures/pi/native-child-observer.ts",
+          "-e",
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/larva.ts",
+          "--no-extensions",
+          "--mode",
+          "rpc",
+          "--larva-persona",
+          "child",
+          "--larva-agent-persona-switch",
+          "manual",
+          "--model",
+          "native-loopback/persona",
+          "--thinking",
+          "xhigh",
+          "--session-dir",
+          "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children"
+        ],
+        "root": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children",
+        "persona_id": "child"
+      },
+      {
+        "ts": "2026-09-10T18:58:51.727Z",
+        "event": "child_spawn",
+        "pid": 66450,
+        "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+        "args": [
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+          "-e",
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/tests/fixtures/pi/native-child-observer.ts",
+          "-e",
+          "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/larva.ts",
+          "--no-extensions",
+          "--mode",
+          "rpc",
+          "--larva-persona",
+          "child",
+          "--larva-agent-persona-switch",
+          "manual",
+          "--model",
+          "native-loopback/persona",
+          "--thinking",
+          "xhigh",
+          "--session-dir",
+          "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children"
+        ],
+        "root": "/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-BM4PG6/children",
+        "persona_id": "child"
+      }
+    ],
+    "pids": [
+      66442,
+      66450
+    ],
+    "liveChildren": [],
+    "capsules": [],
+    "sessions": [],
+    "settings": {
+      "defaultProjectTrust": "yes",
+      "theme": "dark",
+      "lastChangelogVersion": "0.85.1",
+      "packages": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension"
+      ],
+      "defaultProvider": "native-loopback",
+      "defaultModel": "origin",
+      "defaultThinkingLevel": "low",
+      "compaction": {
+        "enabled": false,
+        "reserveTokens": 512,
+        "keepRecentTokens": 512
+      },
+      "retry": {
+        "enabled": false
+      }
+    },
+    "parents": [
+      {
+        "pid": 66438,
+        "exit": {
+          "code": 143,
+          "signal": null
+        },
+        "alive": false
+      },
+      {
+        "pid": 66446,
+        "exit": {
+          "code": 143,
+          "signal": null
+        },
+        "alive": false
+      }
+    ],
+    "providerClosed": true,
+    "rootRemoved": true
+  },
+  "evidenceProjection": "Request model/identity markers and lifecycle metadata selected from actual observations; assertions ran against full live values. Reproduce with tracked native journey."
+}

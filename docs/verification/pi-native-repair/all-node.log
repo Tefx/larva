@@ -1,0 +1,1043 @@
+RUN contrib/pi-extension/test-agent-persona-switch-policy-runtime.mjs
+{
+  "status": "PASS",
+  "results": [
+    {
+      "name": "modes are exactly manual/confirm/auto/free with default confirm and no aliases",
+      "status": "PASS"
+    },
+    {
+      "name": "manual mode rejects autonomous switch tools while /larva-persona still works and creates no lease",
+      "status": "PASS"
+    },
+    {
+      "name": "confirm mode has four outcomes and all non-approval paths fail safely",
+      "status": "PASS"
+    },
+    {
+      "name": "runtime prompt and tool descriptions include deterministic borrow-vs-subagent routing",
+      "status": "PASS"
+    },
+    {
+      "name": "auto mode borrows temporarily and restores at assistant turn end",
+      "status": "PASS"
+    },
+    {
+      "name": "continue_task uses hidden custom runtime message plus minimal trigger and one-turn prompt addon",
+      "status": "PASS"
+    },
+    {
+      "name": "free mode switches persistently without lease or restore",
+      "status": "PASS"
+    },
+    {
+      "name": "manual user switch during active lease clears lease and blocks old-origin restore",
+      "status": "PASS"
+    },
+    {
+      "name": "restore notices are status/event/audit only and never assistant chat body",
+      "status": "PASS"
+    },
+    {
+      "name": "generic deterministic subagent orchestration tasks do not own persona leases",
+      "status": "PASS"
+    }
+  ]
+}
+RUN contrib/pi-extension/test-autocomplete-runtime.mjs
+{
+  "mode": "all",
+  "passed": 6,
+  "cases": [
+    "substring-case-ordering",
+    "cache-inflight",
+    "delegation-failure",
+    "fixture-shape",
+    "mention-namespace",
+    "registration-lifecycle"
+  ],
+  "results": [
+    {
+      "case": "substring-case-ordering",
+      "query": "DEV",
+      "providerResultIsObject": true,
+      "resultItemsIsArray": true,
+      "prefixFromProvider": "DEV",
+      "providerValues": [
+        "DevOps",
+        "devrel",
+        "qa-dev",
+        "backend-dev"
+      ],
+      "commandValues": [
+        "DevOps",
+        "devrel",
+        "qa-dev",
+        "backend-dev"
+      ],
+      "substringCaseInsensitive": true,
+      "prefixFirstStableOrder": true,
+      "expectedOrder": [
+        "DevOps",
+        "devrel",
+        "qa-dev",
+        "backend-dev"
+      ],
+      "forcedAndCommandSharePath": true
+    },
+    {
+      "case": "cache-inflight",
+      "coldResultsAreNullOrObjects": true,
+      "cachedResultIsObject": true,
+      "resultItemsAreArrays": true,
+      "prefixesFromProvider": [
+        "vectl",
+        "vectl",
+        "vectl"
+      ],
+      "concurrentValues": [
+        [
+          "vectl-planner",
+          "vectl-reviewer"
+        ],
+        [
+          "vectl-planner",
+          "vectl-reviewer"
+        ]
+      ],
+      "cacheValues": [
+        "vectl-planner",
+        "vectl-reviewer"
+      ],
+      "listInvocationCountDuringOverlap": 1,
+      "listInvocationCountAfterCacheReuse": 1,
+      "inFlightDedupeProven": true,
+      "cacheReuseProven": true
+    },
+    {
+      "case": "delegation-failure",
+      "delegated": true,
+      "calls": [
+        [
+          "/not-larva vectl",
+          "object"
+        ]
+      ],
+      "delegatedItems": [
+        {
+          "value": "file.txt",
+          "label": "file.txt",
+          "description": "base file completion"
+        }
+      ],
+      "failed": null,
+      "malformed": null,
+      "failClosedNoCrash": true
+    },
+    {
+      "case": "fixture-shape",
+      "providerResultIsObject": true,
+      "resultItemsIsArray": true,
+      "prefixFromProvider": "vectl",
+      "exactDocumentedShape": {
+        "data": [
+          {
+            "id": "vectl-planner",
+            "description": "Plan with vectl",
+            "spec_digest": "sha256:vectl-planner",
+            "model": "openai/gpt-5.5"
+          },
+          {
+            "id": "vectl-reviewer",
+            "description": "Review with vectl",
+            "spec_digest": "sha256:vectl-reviewer",
+            "model": "openai/gpt-5.5"
+          }
+        ]
+      },
+      "candidateKeys": [
+        [
+          "description",
+          "label",
+          "value"
+        ],
+        [
+          "description",
+          "label",
+          "value"
+        ]
+      ],
+      "noAliasFuzzyRegexWildcardFields": true
+    },
+    {
+      "case": "mention-namespace",
+      "namespacePartialResultIsObject": true,
+      "bareNamespaceResultIsObject": true,
+      "queryResultIsObject": true,
+      "namespacePartialItemsIsArray": true,
+      "bareNamespaceItemsIsArray": true,
+      "queryItemsIsArray": true,
+      "namespacePartialPrefix": "@p",
+      "bareNamespacePrefix": "@persona:",
+      "queryPrefix": "@persona:DEV",
+      "namespacePartialValues": [
+        "@persona:ok",
+        "@persona:startup",
+        "@persona:child",
+        "@persona:vectl-planner",
+        "@persona:vectl-reviewer",
+        "@persona:qa-dev",
+        "@persona:DevOps",
+        "@persona:devrel",
+        "@persona:backend-dev"
+      ],
+      "bareNamespaceValues": [
+        "@persona:ok",
+        "@persona:startup",
+        "@persona:child",
+        "@persona:vectl-planner",
+        "@persona:vectl-reviewer",
+        "@persona:qa-dev",
+        "@persona:DevOps",
+        "@persona:devrel",
+        "@persona:backend-dev"
+      ],
+      "queryValues": [
+        "@persona:DevOps",
+        "@persona:devrel",
+        "@persona:qa-dev",
+        "@persona:backend-dev"
+      ],
+      "rawQueryPrefix": "@vectl",
+      "rawQueryValues": [
+        "./docs/vectl.md",
+        "@persona:vectl-planner",
+        "@persona:vectl-reviewer"
+      ],
+      "rawQueryLabels": [
+        "./docs/vectl.md",
+        "Pi duplicate wins",
+        "@persona:vectl-reviewer"
+      ],
+      "baseCalls": [
+        "@p",
+        "@persona:",
+        "@vectl"
+      ],
+      "applied": {
+        "lines": [
+          "please ask @persona:ok"
+        ],
+        "cursorLine": 0,
+        "cursorCol": 22
+      },
+      "rawApplied": {
+        "lines": [
+          "@persona:vectl-planner"
+        ],
+        "cursorLine": 0,
+        "cursorCol": 22
+      },
+      "expected": [
+        "@persona:ok",
+        "@persona:startup",
+        "@persona:child",
+        "@persona:vectl-planner",
+        "@persona:vectl-reviewer",
+        "@persona:qa-dev",
+        "@persona:DevOps",
+        "@persona:devrel",
+        "@persona:backend-dev"
+      ],
+      "namespacePartialReturnsAllEligible": true,
+      "bareNamespaceReturnsAllEligible": true,
+      "queryUsesSuffixOnly": true,
+      "rawQueryMergesFileFirst": true,
+      "rawQueryKeepsBaseDuplicateFirst": true,
+      "personaNamespaceQueryIsPersonaOnly": true,
+      "applyCompletionInsertedMention": true,
+      "rawApplyCompletionInsertedCanonicalMention": true
+    },
+    {
+      "case": "registration-lifecycle",
+      "afterFactory": 0,
+      "afterFirstSession": 1,
+      "afterSecondSession": 1,
+      "hasSessionStart": true,
+      "registeredName": "larva-persona"
+    }
+  ]
+}
+RUN contrib/pi-extension/test-compaction-focus-runtime.mjs
+✔ compaction_focus registered hook uses runtime model/auth/signal/preparation and preserves Pi result shape (104.372583ms)
+✔ compaction_focus abort and fallback do not start duplicate native compaction (28.625583ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 135.034708
+RUN contrib/pi-extension/test-idle-callback-identity-real-pi-0-85-1.mjs
+PASS idle custom callback identity on three real-read hops and admitted empty-system repair
+RUN contrib/pi-extension/test-idle-callback-identity-runtime.mjs
+PASS openai-completions wraps the leading system string once and leaves user content untouched
+PASS second leading system message is not wrapped
+PASS already-current identity is idempotent
+PASS stale larva-spec and tampered prompt are replaced
+PASS truncated active-persona block is repaired without dropping Pi text
+PASS unpaired larva-spec comment is unique after repair and surrounding base is kept
+PASS dangling end marker and duplicate managed blocks collapse to one current envelope
+PASS continuation block is kept once and not duplicated
+PASS anthropic keeps Claude Code identity and cache_control and wraps one Pi block
+PASS google, bedrock, codex, responses, and pi-messages project the known slot
+PASS known APIs insert an instruction slot when the container admits one
+PASS unsupported api, unadmitted slot, and missing envelope do not rewrite payload
+PASS before_provider_request uses ctx.model.api and current envelope
+PASS idle callback delivery stays custom triggerTurn steer and is not Continue.
+PASS continuation_running projects once through switch hooks without a test mutator
+RUN contrib/pi-extension/test-model-map-runtime.mjs
+exact-hit PASS openai-codex/gpt-5.5 modelRegistry.find [["openai-codex","gpt-5.5"]]
+prefix-hit PASS openrouter/google/gemini-3.1-pro-preview [["openrouter","google/gemini-3.1-pro-preview"]]
+prefix-hit-gemini-flash PASS openrouter/google/gemini-3.5-flash [["openrouter","google/gemini-3.5-flash"]]
+conflict-invalid PASS LARVA_MODEL_MAP_INVALID {"code":"LARVA_MODEL_MAP_INVALID","message":"Invalid Larva Pi model map"}
+missing-config PASS first-slash fallback provider/model/with/slash [["provider","model/with/slash"]]
+invalid-config PASS existing invalid file LARVA_MODEL_MAP_INVALID {"mapFile":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-model-runtime-invalid-config-5TH5m0/model-map.json","error":{"code":"LARVA_MODEL_MAP_INVALID","message":"Invalid Larva Pi model map"}}
+relative-override-invalid PASS LARVA_MODEL_MAP_INVALID {"code":"LARVA_MODEL_MAP_INVALID","message":"LARVA_PI_MODEL_MAP_FILE must be an absolute path."}
+mapped-unavailable PASS LARVA_MODEL_UNAVAILABLE valid-map registry-miss {"calls":[["openai-codex","gpt-5.5"]],"error":{"code":"LARVA_MODEL_UNAVAILABLE","message":"Model unavailable openai/gpt-5.5"}}
+startup-persona PASS shared resolver use openai-codex/gpt-5.5 [["openai-codex","gpt-5.5"]]
+slash-switch PASS shared resolver use openrouter/google/gemini-3.1-pro-preview [["openrouter","google/gemini-3.1-pro-preview"]]
+slash-switch-after-startup PASS no resolver divergence [["openai-codex","gpt-5.5"],["openrouter","google/gemini-3.1-pro-preview"]]
+profile runtime model/thinking switch/lexical-status/paired rollback PASS {"blue":{"status":"success","profile":"blue","generation":1,"parent":{"state":"switched","persona_id":"parent","provider":"neutral","model_id":"parent-v1"},"children":[],"counts":{"switched":0,"will_use_new_route":0,"ended_during_switch":0,"failed":0}},"rejected":{"status":"failed","profile":"green","generation":1,"parent":{"state":"failed","persona_id":"parent","error":{"code":"LARVA_MODEL_MAP_PARENT_SWITCH_FAILED","message":"Parent rejected the model-map profile switch; prior route restored."}},"children":[],"counts":{"switched":0,"will_use_new_route":0,"ended_during_switch":0,"failed":0}},"restored":{"source":"profile","profile":"blue","path":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-model-map-profile-runtime-AJ6O54/.pi/larva/model-map.blue.json","generation":1,"parent":{"persona_id":"parent","provider":"neutral","model_id":"parent-v1"},"children":{"ready":0,"starting":0,"terminal":0}},"switched":{"status":"success","profile":"green","generation":2,"parent":{"state":"switched","persona_id":"parent","provider":"neutral","model_id":"parent-v2"},"children":[],"counts":{"switched":0,"will_use_new_route":0,"ended_during_switch":0,"failed":0}},"status":{"source":"profile","profile":"green","path":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-model-map-profile-runtime-AJ6O54/.pi/larva/model-map.green.json","generation":2,"parent":{"persona_id":"parent","provider":"neutral","model_id":"parent-v2"},"children":{"ready":0,"starting":0,"terminal":0}},"lexicalGreenMap":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-model-map-profile-runtime-AJ6O54/.pi/larva/model-map.green.json","setThinkings":["low","low","low","high"]}
+model-map runtime: PASS
+RUN contrib/pi-extension/test-model-map-unit.mjs
+exact hit: PASS ["openai-codex","gpt-5.5"]
+prefix hit: PASS ["openrouter","google/gemini-3.1-pro-preview"]
+prefix hit gemini flash: PASS ["openrouter","google/gemini-3.5-flash"]
+same-length prefix conflict invalid: PASS LARVA_MODEL_MAP_INVALID
+missing config fallback: PASS ["provider","model/with/slash"]
+invalid config: PASS LARVA_MODEL_MAP_INVALID
+mapped unavailable: PASS LARVA_MODEL_UNAVAILABLE
+startup persona: PASS ["openai-codex","gpt-5.5"]
+slash switch: PASS ["openrouter","google/gemini-3.1-pro-preview"]
+slash-switch-after-startup behavior: PASS [["openai-codex","gpt-5.5"],["openrouter","google/gemini-3.1-pro-preview"]]
+profile invalid/traversal names: PASS LARVA_MODEL_MAP_PROFILE_BAD_NAME
+profile external regular-file symlink activation: PASS {"lexical":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-profile-external-regular-ktVqaP/.pi/larva/model-map.escape.json","target":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-profile-external-regular-ktVqaP/outside.json"}
+profile bounded fail-closed objects: PASS {"dangling":"LARVA_MODEL_MAP_PROFILE_NOT_FOUND","directoryFailure":{"elapsedMs":1,"code":"LARVA_MODEL_MAP_PROFILE_INVALID"},"oversizedFailure":{"elapsedMs":3,"code":"LARVA_MODEL_MAP_PROFILE_INVALID"},"malformedFailure":{"elapsedMs":1,"code":"LARVA_MODEL_MAP_PROFILE_INVALID"},"unknownSchemaFailure":{"elapsedMs":1,"code":"LARVA_MODEL_MAP_PROFILE_INVALID"},"deviceFailure":{"elapsedMs":0,"code":"LARVA_MODEL_MAP_PROFILE_INVALID"}}
+profile FIFO nonblocking rejection: PASS {"status":"failed","code":"LARVA_MODEL_MAP_PROFILE_INVALID"}
+profile descriptor closure: PASS {"descriptorCountBefore":15,"descriptorCountAfter":15}
+profile lexical-retarget/target-mutation stability detection: PASS {"retargets":111,"retargetSuccesses":0,"retargetFailures":60,"mutations":132,"mutationSuccesses":1,"mutationFailures":39}
+profile no-parent activation: PASS {"status":"success","profile":"safe_1","generation":1,"parent":{"state":"not_applicable","persona_id":null},"children":[],"counts":{"switched":0,"will_use_new_route":0,"ended_during_switch":0,"failed":0}}
+model-map unit: PASS
+RUN contrib/pi-extension/test-native-capsule-spawn-error.mjs
+larva pi: capsule cleanup failed: {"capsule_root":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-spawn-error-rPLMVn/.pi/larva/runtime/child-67912-5c4a5aa6bd0e37fa","reason":"ENOTDIR"}
+{"checks":["actual-asynchronous-EACCES","typed-startup-error","capsule-removed","base-settings-preserved","capsule-creation-failure-before-spawn","no-base-fallback"],"passed":6}
+RUN contrib/pi-extension/test-native-launch-context.mjs
+{"checks":["captured-native-bin","no-ambient-launch-override","unsupported-basename-rejected"],"passed":3}
+RUN contrib/pi-extension/test-persona-candidate-hotpath-runtime.mjs
+{
+  "smoke": "persona-candidate-hotpath-runtime",
+  "source": "larva list --json",
+  "staleBeforeRefresh": {
+    "slash": [
+      {
+        "value": "disk-cached",
+        "label": "disk-cached",
+        "description": "Disk cached description"
+      }
+    ],
+    "slashElapsedMs": 106,
+    "selector": {
+      "selected": "disk-cached",
+      "options": [
+        {
+          "id": "disk-cached",
+          "label": "disk-cached",
+          "description": "Disk cached description"
+        }
+      ],
+      "elapsedMs": 1
+    },
+    "mention": {
+      "items": [
+        {
+          "value": "@persona:disk-cached",
+          "label": "@persona:disk-cached",
+          "description": "Disk cached description"
+        }
+      ],
+      "prefix": "@persona:",
+      "elapsedMs": 0
+    },
+    "personasTool": {
+      "status": "success",
+      "firstPersonaShape": {
+        "keys": [
+          "id",
+          "description",
+          "model",
+          "spec_digest",
+          "capabilities"
+        ],
+        "hasOwnPrompt": false,
+        "allowlistedKeysOnly": true
+      }
+    }
+  },
+  "freshAfterRefresh": {
+    "slash": [
+      {
+        "value": "fresh-public",
+        "label": "fresh-public",
+        "description": "Fresh public description"
+      }
+    ],
+    "slashElapsedMs": 0,
+    "selector": {
+      "selected": "fresh-public",
+      "options": [
+        {
+          "id": "fresh-public",
+          "label": "fresh-public",
+          "description": "Fresh public description"
+        }
+      ],
+      "elapsedMs": 1
+    },
+    "mention": {
+      "items": [
+        {
+          "value": "@persona:fresh-public",
+          "label": "@persona:fresh-public",
+          "description": "Fresh public description"
+        }
+      ],
+      "prefix": "@persona:",
+      "elapsedMs": 0
+    },
+    "personasTool": {
+      "status": "success",
+      "firstPersonaShape": {
+        "keys": [
+          "id",
+          "description",
+          "model",
+          "spec_digest",
+          "capabilities"
+        ],
+        "hasOwnPrompt": false,
+        "allowlistedKeysOnly": true
+      }
+    }
+  },
+  "failureStale": {
+    "slash": [
+      {
+        "value": "fresh-public",
+        "label": "fresh-public",
+        "description": "Fresh public description"
+      }
+    ],
+    "slashElapsedMs": 1,
+    "selector": {
+      "selected": "fresh-public",
+      "options": [
+        {
+          "id": "fresh-public",
+          "label": "fresh-public",
+          "description": "Fresh public description"
+        }
+      ],
+      "elapsedMs": 0
+    },
+    "mention": {
+      "items": [
+        {
+          "value": "@persona:fresh-public",
+          "label": "@persona:fresh-public",
+          "description": "Fresh public description"
+        }
+      ],
+      "prefix": "@persona:",
+      "elapsedMs": 1
+    },
+    "personasTool": {
+      "status": "success",
+      "firstPersonaShape": {
+        "keys": [
+          "id",
+          "description",
+          "model",
+          "spec_digest",
+          "capabilities"
+        ],
+        "hasOwnPrompt": false,
+        "allowlistedKeysOnly": true
+      }
+    }
+  },
+  "afterFailedRefresh": {
+    "slash": [
+      {
+        "value": "fresh-public",
+        "label": "fresh-public",
+        "description": "Fresh public description"
+      }
+    ],
+    "slashElapsedMs": 3,
+    "selector": {
+      "selected": "fresh-public",
+      "options": [
+        {
+          "id": "fresh-public",
+          "label": "fresh-public",
+          "description": "Fresh public description"
+        }
+      ],
+      "elapsedMs": 1
+    },
+    "mention": {
+      "items": [
+        {
+          "value": "@persona:fresh-public",
+          "label": "@persona:fresh-public",
+          "description": "Fresh public description"
+        }
+      ],
+      "prefix": "@persona:",
+      "elapsedMs": 0
+    },
+    "personasTool": {
+      "status": "success",
+      "firstPersonaShape": {
+        "keys": [
+          "id",
+          "description",
+          "model",
+          "spec_digest",
+          "capabilities"
+        ],
+        "hasOwnPrompt": false,
+        "allowlistedKeysOnly": true
+      }
+    }
+  },
+  "cacheAfterRefresh": {
+    "version": 1,
+    "source": "larva list --json",
+    "source_key": "[\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-persona-hotpath-dcPVRx/fake-larva-list-cli.mjs\"]",
+    "fetched_at_ms": 6000,
+    "candidates": [
+      {
+        "id": "fresh-public",
+        "description": "Fresh public description",
+        "model": "provider/fresh",
+        "spec_digest": "sha256:fresh-public",
+        "capabilities": {
+          "shell": "read_only"
+        }
+      }
+    ]
+  },
+  "cacheAfterFailure": {
+    "version": 1,
+    "source": "larva list --json",
+    "source_key": "[\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-persona-hotpath-dcPVRx/fake-larva-list-cli.mjs\"]",
+    "fetched_at_ms": 6000,
+    "candidates": [
+      {
+        "id": "fresh-public",
+        "description": "Fresh public description",
+        "model": "provider/fresh",
+        "spec_digest": "sha256:fresh-public",
+        "capabilities": {
+          "shell": "read_only"
+        }
+      }
+    ]
+  },
+  "invocations": [
+    "list --json ok",
+    "list --json fail"
+  ],
+  "noPromptInUiOrCache": true,
+  "personasToolOwnPromptAbsent": true,
+  "hotPathUnder200ms": true,
+  "stateBefore": {
+    "activeEnvelope": null,
+    "setModelCalls": 0,
+    "setActiveToolsCalls": 0,
+    "appendEntryCalls": 0
+  },
+  "stateAfter": {
+    "activeEnvelope": null,
+    "setModelCalls": 0,
+    "setActiveToolsCalls": 0,
+    "appendEntryCalls": 0
+  },
+  "refreshDidNotAlterActivePersonaModelToolsOrSession": true
+}
+RUN contrib/pi-extension/test-persona-refresh-command-runtime.mjs
+{
+  "smoke": "persona-refresh-command-runtime",
+  "source": "larva list --json",
+  "commandNamesBefore": [
+    "larva-subagent",
+    "larva-mode",
+    "larva-model-map",
+    "larva-persona"
+  ],
+  "commandNamesAfter": [
+    "larva-subagent",
+    "larva-mode",
+    "larva-model-map",
+    "larva-persona"
+  ],
+  "personaCommandNames": [
+    "larva-persona"
+  ],
+  "refreshCommandNames": [],
+  "toolNamesBefore": [
+    "larva_subagent",
+    "larva_subagent_sessions",
+    "larva_subagent_status",
+    "larva_subagent_events",
+    "larva_subagent_wait",
+    "larva_subagent_select",
+    "larva_subagent_cancel",
+    "larva_persona_switch",
+    "larva_personas"
+  ],
+  "toolNamesAfter": [
+    "larva_subagent",
+    "larva_subagent_sessions",
+    "larva_subagent_status",
+    "larva_subagent_events",
+    "larva_subagent_wait",
+    "larva_subagent_select",
+    "larva_subagent_cancel",
+    "larva_persona_switch",
+    "larva_personas"
+  ],
+  "refreshToolNames": [],
+  "staleBefore": [
+    {
+      "value": "disk-stale",
+      "label": "disk-stale",
+      "description": "Disk stale description"
+    }
+  ],
+  "refreshSuccess": {
+    "ok": true,
+    "refreshed": true,
+    "source": "larva list --json",
+    "candidates": 1,
+    "stale_before": 1,
+    "cache_path": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-persona-refresh-command-zcmRpa/persona-candidates-cache.json"
+  },
+  "afterSuccess": [
+    {
+      "value": "fresh-public",
+      "label": "fresh-public",
+      "description": "Fresh public description"
+    }
+  ],
+  "refreshFailure": {
+    "ok": false,
+    "refreshed": true,
+    "source": "larva list --json",
+    "error": {
+      "code": "LARVA_PERSONA_CANDIDATE_CACHE_REFRESH_FAILED",
+      "message": "Unable to refresh persona candidates from public larva list --json; stale cache retained."
+    },
+    "stale_available": true,
+    "stale_count": 1,
+    "cache_path": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-persona-refresh-command-zcmRpa/persona-candidates-cache.json"
+  },
+  "afterFailure": [
+    {
+      "value": "fresh-public",
+      "label": "fresh-public",
+      "description": "Fresh public description"
+    }
+  ],
+  "cacheAfterSuccess": {
+    "version": 1,
+    "source": "larva list --json",
+    "source_key": "[\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-persona-refresh-command-zcmRpa/fake-larva-list-cli.mjs\"]",
+    "fetched_at_ms": 1,
+    "candidates": [
+      {
+        "id": "fresh-public",
+        "description": "Fresh public description",
+        "model": "provider/fresh",
+        "spec_digest": "sha256:fresh-public",
+        "capabilities": {
+          "shell": "read_only"
+        }
+      }
+    ]
+  },
+  "cacheAfterFailure": {
+    "version": 1,
+    "source": "larva list --json",
+    "source_key": "[\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-pi-persona-refresh-command-zcmRpa/fake-larva-list-cli.mjs\"]",
+    "fetched_at_ms": 1,
+    "candidates": [
+      {
+        "id": "fresh-public",
+        "description": "Fresh public description",
+        "model": "provider/fresh",
+        "spec_digest": "sha256:fresh-public",
+        "capabilities": {
+          "shell": "read_only"
+        }
+      }
+    ]
+  },
+  "notifications": [
+    {
+      "message": "unknown agent persona switch mode from environment; using confirm",
+      "type": "warning"
+    },
+    {
+      "message": "Larva persona candidate cache refreshed: 1 candidates",
+      "type": "info"
+    },
+    {
+      "message": "Larva persona candidate cache refresh failed: LARVA_PERSONA_CANDIDATE_CACHE_REFRESH_FAILED: Unable to refresh persona candidates from public larva list --json; stale cache retained. Stale cache retained: 1 candidates.",
+      "type": "error"
+    }
+  ],
+  "statuses": [],
+  "invocations": [
+    "list --json ok",
+    "list --json fail"
+  ],
+  "noPromptInUiOrCache": true,
+  "noNewRefreshCommand": true,
+  "noNewRefreshTool": true,
+  "refreshDidNotAlterActivePersonaModelToolsOrSession": true
+}
+RUN contrib/pi-extension/test-persona-selector-ui.mjs
+{
+  "detail": {
+    "className": "LarvaPersonaSelector",
+    "initialUsesFilterInput": true,
+    "initialUsesDetailPanel": true,
+    "filteredOrder": [
+      "DevOps",
+      "devrel",
+      "qa-dev",
+      "backend-dev"
+    ],
+    "afterFilterDetail": [
+      "ID: DevOps",
+      "Model: openrouter/devops",
+      "Description: Operations developer prefix match",
+      "Capabilities: deploy:read_write, shell:read_only",
+      "Digest: sha256:DevOps"
+    ],
+    "afterDownDetail": [
+      "ID: devrel",
+      "Model: openrouter/devrel",
+      "Description: Developer relations prefix match",
+      "Capabilities: browser:read_only, docs:read_write",
+      "Digest: sha256:devrel"
+    ],
+    "clickNoOp": true,
+    "enterResult": "devrel",
+    "renderRequests": 4,
+    "allLinesFit": true,
+    "selectorBoxed": true,
+    "selectorSurfaceDistinct": true,
+    "selectorDropShadow": true,
+    "selectorFrameStable": true,
+    "renderedLineCounts": [
+      35,
+      35,
+      35,
+      35,
+      35
+    ],
+    "narrowRenderedLineCounts": [
+      35,
+      35,
+      35
+    ],
+    "capabilitySummaryShown": true,
+    "digestShown": true
+  },
+  "adaptive": {
+    "smallLineCount": 26,
+    "tallLineCount": 37,
+    "smallSurfaceLineCount": 25,
+    "tallSurfaceLineCount": 36,
+    "smallListViewportRows": 10,
+    "tallListViewportRows": 21,
+    "tallCandidateRows": 19,
+    "frameStableSmall": true,
+    "frameStableTall": true,
+    "surfaceDistinct": true,
+    "dropShadow": true,
+    "widthSafe": true
+  },
+  "subagentLogExpectedRed": {
+    "renderedLineCounts": {
+      "small": 20,
+      "tall": 89,
+      "detail": 89,
+      "selector": 89,
+      "fourthTab": 89,
+      "fifthTab": 89,
+      "directSelector": 89
+    },
+    "assertions": {
+      "selectorModeViaS": true,
+      "selectFlagOpensSelectorDirectly": true,
+      "selectorEnterSelectsWithoutClosing": false,
+      "selectorRefreshPreservesTransientCursor": true,
+      "selectorNavigationKeysWork": true,
+      "runningFirstOrdering": true,
+      "tabOrderIncludesEvents": false,
+      "fourthTabIsEvents": false,
+      "fifthTabIsMetadata": true,
+      "tallTerminalUsesNinetyPercent": true,
+      "stableFrameAcrossSelectorAndTabs": true,
+      "mouseClickNoop": true,
+      "allLinesFit": true
+    }
+  },
+  "commit": {
+    "ok": true,
+    "envelopePersona": "vectl-planner",
+    "selectedByCustom": "vectl-planner",
+    "componentName": "LarvaPersonaSelector",
+    "beforeFilterHasInput": true,
+    "afterFilterShowsVectlPlanner": true,
+    "afterFilterShowsDigest": true,
+    "customCalls": 1,
+    "modelFinds": [
+      [
+        "openai",
+        "gpt-5.5"
+      ]
+    ],
+    "modelSetCount": 1,
+    "activeToolsSetCount": 1,
+    "statuses": [
+      [
+        "larva",
+        "larva: vectl-planner"
+      ]
+    ]
+  },
+  "shortcut": {
+    "registeredShortcut": "ctrl+alt+p",
+    "description": "Open Larva persona selector",
+    "commandRegistered": true,
+    "componentName": "LarvaPersonaSelector",
+    "selectedByCustom": "vectl-planner",
+    "activePersona": "vectl-planner",
+    "customCalls": 1,
+    "modelSetCount": 1,
+    "activeToolsSetCount": 1,
+    "statusUpdated": true
+  },
+  "shortcutNonIdle": {
+    "initialOk": true,
+    "registeredShortcut": "ctrl+alt+p",
+    "activePersonaAfterShortcut": "ok",
+    "customCalls": 0,
+    "noAdditionalModelSet": true,
+    "noAdditionalToolSet": true,
+    "warningShown": true
+  },
+  "cancel": {
+    "initialOk": true,
+    "cancelledOk": false,
+    "cancelCode": "LARVA_BAD_INPUT",
+    "activePersonaAfterCancel": "ok",
+    "noAdditionalModelSet": true,
+    "noAdditionalToolSet": true,
+    "customCalls": 1
+  },
+  "fallback": {
+    "uiSelectResult": "ok",
+    "customThrowFallsBackToSelect": "startup",
+    "openSelectorResult": "child",
+    "selectCalls": {
+      "select": 2,
+      "openSelector": 1,
+      "custom": 1
+    },
+    "nonInteractiveOk": false,
+    "nonInteractiveCode": "LARVA_BAD_INPUT",
+    "nonInteractiveCalls": {
+      "custom": 0,
+      "select": 0,
+      "openSelector": 0
+    },
+    "missingUiOk": false,
+    "missingUiCode": "LARVA_BAD_INPUT"
+  },
+  "assertions": {
+    "enhancedComponentUsesInputSelectListDetail": true,
+    "detailPanelHasCapabilitiesAndDigest": true,
+    "filteringRankingDeterministic": true,
+    "enterCommitsThroughCommand": true,
+    "ctrlAltPShortcutRegistered": true,
+    "ctrlAltPShortcutOpensSelectorAndCommits": true,
+    "ctrlAltPShortcutNonIdlePreservesState": true,
+    "escCancelPreservesActiveState": true,
+    "fallbackPreserved": true,
+    "mouseClickUnsupportedNoOp": true,
+    "renderLinesWithinWidth": true,
+    "selectorOverlayBordered": true,
+    "selectorSurfaceDistinct": true,
+    "selectorAdaptiveHeightUtilization": true,
+    "selectorDropShadow": true,
+    "selectorFrameStableDuringNavigation": true
+  }
+}
+RUN contrib/pi-extension/test-personaspec-fail-closed.mjs
+{
+  "positive": {
+    "ok": true,
+    "persona_id": "ok",
+    "spec_digest": "",
+    "model": "provider/model",
+    "prompt": "Prompt for ok",
+    "calls": [
+      "find",
+      "getAllTools",
+      "setModel",
+      "setActiveTools"
+    ]
+  },
+  "negatives": [
+    {
+      "id": "missing-description",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "bad-spec-version",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "bad-posture",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "legacy-tools",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "legacy-side-effect-policy",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "legacy-variables",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "legacy-variant",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "legacy-registry",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "legacy-active",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    },
+    {
+      "id": "extra-key",
+      "ok": false,
+      "code": "LARVA_PERSONA_NOT_FOUND",
+      "before": "ok",
+      "after": "ok",
+      "sideEffects": [],
+      "statuses": []
+    }
+  ],
+  "finalEnvelope": {
+    "persona_id": "ok",
+    "spec_digest": "",
+    "model": "provider/model",
+    "prompt": "Prompt for ok",
+    "tool_policy": {}
+  }
+}
+RUN contrib/pi-extension/test-subagent-rpc-memory-bound.mjs
+subagent child RPC memory bound regression: PASS
+RUN contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs
+{"pi_version":"0.85.1","actual_writer":{"module":"/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/core/output-guard.js","record_count":6,"max_utf8_bytes":532,"marker":{"capability":"larva-child-rpc-frame-preload-v1","max_record_bytes":1048576,"framing":"lf-only","terminal":"agent_settled"},"artifact":{"path":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/writer-artifacts/2026-09-10T19-06-15-038Z-unallocated-25335dd397d3bee2.txt","sha256":"25335dd397d3bee21de845846a77646d194d5103cc1eca36abaa643475899e01","bytes":1220082,"lines":3}},"decoder":{"lf_only_unicode_separators":true,"crlf":true,"split_utf8":true,"malformed_bounded":true,"oversized_preparse":true},"public_surfaces":{"inline":{"task_id":"/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/inline/sessions/loopback.jsonl","persona_id":"child","status":"success","execution_status":"success","delivery_status":"inline","phase":"success","result_pending":false,"error":null,"child_output_truncated":false,"full_output_artifact":null},"artifact":{"task_id":"/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/artifact/sessions/loopback.jsonl","persona_id":"child","status":"success","execution_status":"success","delivery_status":"artifactized","phase":"success","result_pending":false,"error":null,"child_output_truncated":true,"full_output_artifact":{"path":"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/artifact/artifacts/2026-09-10T19-06-16-004Z-unallocated-eb04d248cdc450ca.txt","sha256":"eb04d248cdc450cabccbb22f322c6a5dd8e99494811a9e826aa2b65f22fa199b","bytes":1220046,"lines":1}},"retry":{"task_id":"/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/retry/sessions/loopback.jsonl","persona_id":"child","status":"success","execution_status":"success","delivery_status":"inline","phase":"success","result_pending":false,"error":null,"child_output_truncated":false,"full_output_artifact":null},"failure":{"task_id":"/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/failure/sessions/loopback.jsonl","persona_id":"child","status":"failed","execution_status":"failed","delivery_status":"inline","phase":"failed","result_pending":false,"error":{"code":"LARVA_CHILD_RUNTIME_FAILED","message":"Child agent failed (provider_transport_failure): bounded provider failure"},"child_output_truncated":false,"full_output_artifact":null},"anomaly":{"task_id":"/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/post-success-anomaly/sessions/loopback.jsonl","persona_id":"child","status":"success","execution_status":"success","delivery_status":"failed","phase":"success","result_pending":false,"error":null,"child_output_truncated":false,"full_output_artifact":null},"delayed_prompt_ack":{"task_id":"/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-real-pi-0841-8GoPiw/delayed-prompt-ack/sessions/loopback.jsonl","persona_id":"child","status":"success","execution_status":"success","delivery_status":"inline","phase":"success","result_pending":false,"error":null,"child_output_truncated":false,"full_output_artifact":null}}}
+subagent real Pi 0.85.1 writeRawStdout regression: PASS
+RUN contrib/pi-extension/test-subagent-sessions-helper.mjs
+limit validation: PASS
+newest-first unique summaries: PASS
+retention eviction and reset: PASS
+view-only overlay rows expanded details and reset cleanup: PASS
+running allocation and busy resume: PASS
+safe onUpdate ordering and call_id mapping: PASS
+exact task_id canonical command and headless exact summary: PASS
+resetExtensionUI active child reap and presentation cleanup: PASS
+no filesystem scan or raw JSONL helper dependency: PASS
+subagent sessions helper: PASS
+RUN contrib/pi-extension/test-tool-policy-paths.mjs
+env-override PASS override only activeTools ["read"]
+new-path-exists PASS canonical activeTools ["bash"]
+both-present-conflict PASS runtime uses canonical only without legacy probing ["bash"]
+old-only-no-env-is-empty PASS legacy ignored activeTools ["read","bash"]
+explicit-env-old-path PASS explicit legacy activeTools ["bash"]
+relative-env-rejected PASS LARVA_POLICY_INVALID
+no-file-empty PASS canonical missing empty policy ["read","bash"]
+tool-policy paths: PASS
