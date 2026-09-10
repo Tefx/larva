@@ -144641,7 +144641,7 @@ phases:
       Repository product bytes unchanged by uvx. Gaps: none.'
 - id: pi_native_extension_cutover
   name: Native-only Pi extension repository delivery
-  status: pending
+  status: in_progress
   gate: One final integrated repository acceptance by pi-native.accept-repository
     covers both producers and every material requirement in design/pi-native-extension.md,
     including its complete acceptance matrix and retained persona/subagent/invocation/compaction
@@ -144671,7 +144671,7 @@ phases:
   steps:
   - id: pi-native.deliver-extension
     name: Deliver native Pi package, admission and retained runtime behavior
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Make contrib/pi-extension the single native extension distribution\
       \ owner with explicit pi.extensions metadata, adjacent frame preload and usable\
@@ -144839,6 +144839,8 @@ phases:
     - pyproject.toml
     - uv.lock
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-09-10T12:56:16.026842Z'
   - id: pi-native.retire-python-launcher
     name: Remove Python Pi launcher and prove independent backend distribution
     status: pending
