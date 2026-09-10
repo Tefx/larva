@@ -95,6 +95,7 @@ def installed_wheel(tmp_path_factory: pytest.TempPathFactory) -> InstalledWheel:
         "-m",
         "build",
         "--wheel",
+        "--no-isolation",
         "--outdir",
         str(wheel_dir),
     ]
