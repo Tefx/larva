@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import textwrap
@@ -1209,10 +1210,10 @@ def test_runtime_capability_gate_rejects_mock_only_autocomplete_support() -> Non
     gate = payload["runtime"]["hardGates"]["uiAutocompleteProvider"]
 
     assert pi_tui_gate["supported"] is True
-    assert pi_tui_dependency["packageJsonVersion"] == "0.78.0"
-    assert pi_tui_dependency["lockfileRootDependency"] == "0.78.0"
-    assert pi_tui_dependency["lockfileVersion"] == "0.78.0"
-    assert pi_tui_dependency["installedVersion"] == "0.78.0"
+    assert pi_tui_dependency["packageJsonVersion"] == "0.85.1"
+    assert pi_tui_dependency["lockfileRootDependency"] == "0.85.1"
+    assert pi_tui_dependency["lockfileVersion"] == "0.85.1"
+    assert pi_tui_dependency["installedVersion"] == "0.85.1"
     assert pi_tui_dependency["noHostGlobalFallback"] is True
     assert pi_tui_dependency["importOk"] is True
     assert gate["supported"] is False
@@ -2037,3 +2038,141 @@ def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprin
     assert real_pi["status"] == "PASS", json.dumps(real_pi, indent=2, sort_keys=True)
     assert real_pi["initialPersonaOwned"] is False
     assert real_pi["stderr"] == ""
+
+
+NATIVE_ACCEPTANCE = ROOT / "scripts" / "pi-native-acceptance.mjs"
+
+
+def _run_native_acceptance(scenario: str, timeout: float = 45.0) -> dict[str, Any]:
+    node = shutil.which("node")
+    assert node is not None, "node is required for native Pi acceptance"
+    completed = subprocess.run(
+        [node, str(NATIVE_ACCEPTANCE), "--scenario", scenario],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        cwd=ROOT,
+        env={k: v for k, v in os.environ.items() if k not in {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"}},
+    )
+    assert completed.returncode == 0, (
+        f"native scenario {scenario} failed\nstdout={completed.stdout}\nstderr={completed.stderr}"
+    )
+    return json.loads(completed.stdout)
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "package-discovery",
+        "disable-and-explicit-e",
+        "duplicate-copies",
+        "pi-owned-unknown-flag",
+        "pi-owned-missing-value",
+        "larva-bad-input-persona",
+        "larva-bad-input-mode",
+        "fresh-explicit-success",
+        "fresh-explicit-model-fail",
+        "missing-cli-binding",
+        "print-mode",
+        "rpc-mode",
+        "backend-a-project-b",
+        "resume-stored-wins-unused-explicit",
+        "resume-unresolvable-explicit-fails",
+        "resume-stored-restore-nonfatal",
+        "parent-shutdown-active-child",
+    ],
+)
+def test_native_pi_acceptance_matrix(scenario: str) -> None:
+    payload = _run_native_acceptance(scenario)
+    assert payload["scenario"] == scenario
+    assert payload["pass"] is True
+
+
+def test_native_tui_mode_observer_records_ctx_mode() -> None:
+    import pty
+    import select
+    import time
+
+    node = shutil.which("node")
+    assert node is not None
+    tmp = Path(os.environ.get("TMPDIR", "/tmp")) / f"larva-native-tui-{os.getpid()}"
+    home = tmp / "home"
+    agent = tmp / "agent"
+    sessions = tmp / "sessions"
+    observe = tmp / "observe.json"
+    for path in (home, agent, sessions):
+        path.mkdir(parents=True, exist_ok=True)
+    (agent / "settings.json").write_text(
+        json.dumps({"defaultProjectTrust": "yes", "packages": [], "extensions": []}),
+        encoding="utf-8",
+    )
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"}
+        and not k.startswith("LARVA_")
+        and not k.startswith("PI_CODING_AGENT")
+    }
+    env.update({
+        "HOME": str(home),
+        "PI_CODING_AGENT_DIR": str(agent),
+        "PI_CODING_AGENT_SESSION_DIR": str(sessions),
+        "PI_OFFLINE": "1",
+        "PI_SKIP_VERSION_CHECK": "1",
+        "PI_TELEMETRY": "0",
+        "TERM": "xterm-256color",
+        "LARVA_CLI_ARGV_JSON": json.dumps([node, str(FAKE_LARVA_CLI)]),
+        "LARVA_NATIVE_OBSERVE": str(observe),
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+    })
+    argv = [
+        "/opt/homebrew/bin/pi",
+        "--offline",
+        "--no-session",
+        "--approve",
+        "--no-extensions",
+        "-e",
+        str(EXTENSION),
+        "-e",
+        str(ROOT / "tests" / "fixtures" / "pi" / "mode-observer.ts"),
+    ]
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        argv,
+        env=env,
+        cwd=str(tmp),
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        start_new_session=True,
+    )
+    os.close(slave)
+    deadline = time.monotonic() + 12
+    output: list[str] = []
+    payload: dict[str, Any] | None = None
+    try:
+        while time.monotonic() < deadline and proc.poll() is None and payload is None:
+            if observe.exists():
+                payload = json.loads(observe.read_text(encoding="utf-8"))
+                break
+            if select.select([master], [], [], 0.2)[0]:
+                try:
+                    output.append(os.read(master, 65536).decode("utf-8", errors="replace"))
+                except OSError:
+                    break
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=3)
+        if payload is None and observe.exists():
+            payload = json.loads(observe.read_text(encoding="utf-8"))
+    finally:
+        os.close(master)
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert payload is not None, "".join(output)[-800:]
+    assert payload["mode"] == "tui"
+    assert payload["hasUI"] is True

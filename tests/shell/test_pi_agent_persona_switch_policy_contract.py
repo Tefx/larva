@@ -190,7 +190,7 @@ def test_extension_source_declares_exact_canonical_modes_default_confirm_and_no_
     assert 'export type AgentPersonaSwitchMode = "manual" | "confirm" | "auto" | "free"' in source
     assert 'let agentPersonaSwitchMode: AgentPersonaSwitchMode = "confirm"' in source
     assert 'value === "manual" || value === "confirm" || value === "auto" || value === "free"' in source
-    assert 'return isAgentPersonaSwitchMode(envMode) ? envMode : "confirm"' in source
+    assert 'return "confirm"' in source
     assert "unknown agent persona switch mode" in source.lower()
     assert "warn" in source.lower() or "warning" in source.lower()
     assert '"off"' not in source

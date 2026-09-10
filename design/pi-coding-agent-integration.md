@@ -490,7 +490,7 @@ continues to mean the active parent persona.
 ### Pi TUI dependency and reusable UI components
 
 The bundled Pi extension is a Node/TypeScript runtime surface and formally
-depends on exact `@earendil-works/pi-tui@0.78.0` for terminal UI correctness.
+depends on exact `@earendil-works/pi-tui@0.85.1` for terminal UI correctness.
 This is an adapter-local runtime dependency, not a Larva/opifex shared-surface
 dependency. The exact version is declared under `contrib/pi-extension` in both
 `package.json` and `package-lock.json`, and installed with:
@@ -499,7 +499,7 @@ dependency. The exact version is declared under `contrib/pi-extension` in both
 npm --prefix contrib/pi-extension ci
 ```
 
-Version governance: keep `@earendil-works/pi-tui` pinned to exactly `0.78.0` for
+Version governance: keep `@earendil-works/pi-tui` pinned to exactly `0.85.1` for
 this integration target. Do not switch to a semver range until live Pi runtime
 compatibility is proven; Pi upgrades must update both package and lock files in
 the same pass and rerun the Pi-extension UI/runtime gates.
@@ -2582,7 +2582,7 @@ architecture_basis:
 Pi TUI formal dependency and enhanced UI delta:
 
 - `contrib/pi-extension` is a Node/TypeScript runtime surface with a formal
-  dependency on exact `@earendil-works/pi-tui@0.78.0`; local development and CI
+  dependency on exact `@earendil-works/pi-tui@0.85.1`; local development and CI
   must install it with `npm --prefix contrib/pi-extension ci` before Pi-extension
   UI work.
 - Pi TUI owns display width, wrapping, truncation, keyboard matching, Markdown
@@ -2740,7 +2740,7 @@ link here rather than redefining the contracts.
 | Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw `@<query>` autocomplete preserves Pi file-reference suggestions first, then appends matching canonical `@persona:<id>` candidates; submitted raw `@<id>` text is not a persona semantic form. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
 | `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
 | `/larva-subagent` overlay | The canonical authorized slash command is view-only, user-visible, adapter-local, and backed by the parent extension's presentation log plus adapter-local persistent cache; `/larva-log` is a deprecated view-mode alias only. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, persistent cache load/clear, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario async-subagent-contract`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k async_subagent -v` |
-| Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.78.0`; custom components satisfy visible-width rendering; canonical `/larva-subagent` has the concise `Larva subagent log` chrome title, Summary/Prompt/Output/Metadata tabs, event-driven in-memory refresh, and Markdown output; `/larva-log` is a deprecated view-mode alias; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
+| Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.85.1`; custom components satisfy visible-width rendering; canonical `/larva-subagent` has the concise `Larva subagent log` chrome title, Summary/Prompt/Output/Metadata tabs, event-driven in-memory refresh, and Markdown output; `/larva-log` is a deprecated view-mode alias; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
 | Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry with Pi `--no-extensions`, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
 | Subagent row/progress rendering | `larva_subagent` exposes `renderCall`, `execute` progress updates, and `renderResult` with bounded visible text; this is row-local and does not replace the parent `larva:` footer. | Harness proof is sufficient for renderer contract shape and deterministic bounds; live Pi rendering remains a UI runtime concern. | `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'render_hooks or vt46' -v` |
 | Runtime hard gates | Extension loading, Pi RPC command inventory, autocomplete hook provenance, subagent row progress, and subagent log overlay command are reported together. | The matrix is data/provenance, not a fallback authority for behavior. Unsupported or mock-only items must be shown as unsupported/unknown rather than claimed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
@@ -3008,7 +3008,7 @@ Implementation gates must prove these observable behaviors:
 Additional gates for the formal Pi TUI dependency and enhanced UI target:
 
 1. `npm --prefix contrib/pi-extension ci` succeeds and installs exact
-   `@earendil-works/pi-tui@0.78.0` from the `contrib/pi-extension` package and
+   `@earendil-works/pi-tui@0.85.1` from the `contrib/pi-extension` package and
    lock files.
 2. The Pi extension can import Pi TUI primitives from the formal dependency path
    without relying on host-global module resolution.

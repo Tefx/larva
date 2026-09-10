@@ -4,11 +4,22 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
 import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
+
+function resolvePiBin() {
+  const override = process.env.PI_BIN;
+  if (typeof override === "string" && override.length > 0 && isAbsolute(override) && existsSync(override)) return override;
+  for (const candidate of ["/opt/homebrew/bin/pi", "/usr/local/bin/pi"]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return override && isAbsolute(override) ? override : "/opt/homebrew/bin/pi";
+}
+const PI_BIN = resolvePiBin();
 
 const SCENARIOS = [
   "availability",
@@ -97,7 +108,7 @@ const piExtensionRoot = join(root, "contrib", "pi-extension");
 const piExtensionPackageJson = join(piExtensionRoot, "package.json");
 const piExtensionLockfile = join(piExtensionRoot, "package-lock.json");
 const piExtensionNodeModules = join(piExtensionRoot, "node_modules");
-const pinnedPiTuiVersion = "0.78.0";
+const pinnedPiTuiVersion = "0.85.1";
 const inheritedHostSettingsPath = typeof process.env.HOME === "string" && process.env.HOME.length > 0
   ? join(process.env.HOME, ".pi", "agent", "settings.json")
   : null;
@@ -115,7 +126,7 @@ async function fileFingerprint(path) {
 function baseEvidence(scenario) {
   return {
     scenario,
-    pi: { binary: process.env.PI_BIN || "pi", available: false, helpExitCode: null, extensionFlag: null },
+    pi: { binary: PI_BIN, available: false, helpExitCode: null, extensionFlag: null },
     extension: { path: extensionPath },
     rpc: { attempted: false, supported: null, events: [], responses: [], stderr: "" },
     runtime: {},
@@ -399,7 +410,7 @@ export default function (pi) {
     LARVA_HOME: tempRoot,
     LARVA_SESSION_DIR: join(tempRoot, "larva-sessions"),
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
-    LARVA_PI_REAL_BIN: process.env.PI_BIN || "pi",
+    LARVA_PI_REAL_BIN: PI_BIN,
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,
     LARVA_PI_LAUNCHED: "1",
@@ -445,7 +456,7 @@ function runtimeEnv(overrides = {}) {
   const defaults = runtimeIsolation?.envDefaults ?? {
     PI_OFFLINE: "1",
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
-    LARVA_PI_REAL_BIN: process.env.PI_BIN || "pi",
+    LARVA_PI_REAL_BIN: PI_BIN,
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,
     LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",

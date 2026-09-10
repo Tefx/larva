@@ -170,7 +170,7 @@ larva variant activate <id> <variant> [--json]
 larva variant delete <id> <variant> [--json]
 larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
-larva pi [--persona <id>] [--] <pi args...>
+larva pi [--persona <id>] [--] <pi args...>  # present until Python launcher retirement
 ```
 
 Update rules: without `--variant`, contract-only patches update the shared
@@ -237,23 +237,29 @@ behavior, target refresh semantics, and failure handling.
 
 ## Pi Coding Agent integration
 
-### Native extension target — implementation pending
+### Native Pi extension
 
-The accepted [native Pi extension design](design/pi-native-extension.md) replaces
-`larva pi` with a normally installed extension and an independent Larva CLI
-backend. It permits ordinary main settings to persist, keeps persona model/thinking
-changes session-local, and retains private child settings capsules. It does not
-require old-Pi or launcher compatibility.
+Install `contrib/pi-extension` as a normal Pi 0.85.1 package and bind the Larva
+CLI with `LARVA_CLI_ARGV_JSON`. Native flags are `--larva-persona` and
+`--larva-agent-persona-switch`. Main preferences persist in Pi's real agent
+directory; child processes still use private settings capsules. The Python
+`larva pi` command remains until the next producer removes it.
 
-The launcher instructions below describe the current pre-cutover implementation.
-Native flags and automatic discovery in the design are not implemented yet; use
-the design's acceptance matrix before changing an installation.
+```bash
+npm --prefix contrib/pi-extension ci
+export LARVA_CLI_ARGV_JSON='["/absolute/path/to/larva"]'
+pi install /absolute/path/to/larva/contrib/pi-extension
+pi --larva-persona python-senior --larva-agent-persona-switch confirm
+```
 
-### Pi 0.84.1 child RPC bound
+See [design/pi-native-extension.md](design/pi-native-extension.md) and
+[`contrib/pi-extension/README.md`](contrib/pi-extension/README.md).
+
+### Pi 0.85.1 child RPC bound
 
 Spawned child Pi processes preload Larva's packaged frame bridge before Pi
 captures stdout. A capability marker is verified before prompt; every actual Pi
-0.84.1 `writeRawStdout()` JSONL record is limited to 1,048,576 UTF-8 bytes.
+0.85.1 `writeRawStdout()` JSONL record is limited to 1,048,576 UTF-8 bytes.
 `agent_settled` owns modern terminal state, oversized final output uses exact
 0600 artifacts, and the parent enforces LF/UTF-8/size bounds before JSON parsing.
 Run `node contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs` after
@@ -265,14 +271,13 @@ and [`contrib/pi-extension/README.md`](contrib/pi-extension/README.md#pi-0841-ch
 Child route verification requires RPC `get_state.model` plus a valid `get_state.thinkingLevel` before the prompt.
 
 
-`larva pi` gives the parent Pi process a private
-`$HOME/.pi/larva/runtime/<run-id>/agent` capsule. Each child Pi receives a
-separate capsule. Capsules copy `settings.json` with mode `0600`, keep the agent
-and capsule directories at `0700`, and link other Pi resources back to the base
-agent directory recorded in `LARVA_PI_BASE_AGENT_DIR`. Normal return, startup
-failure, child completion, and cancellation remove only the capsule root; bounded
-stale cleanup never follows links. Capsule settings are never merged into the
-base Pi settings.
+Native main uses Pi's real agent directory with no parent capsule. Each child Pi
+receives a private capsule. Capsules copy `settings.json` with mode `0600`, keep
+the agent and capsule directories at `0700`, and link other Pi resources back to
+the base agent directory recorded in `LARVA_PI_BASE_AGENT_DIR`. Normal return,
+startup failure, child completion, and cancellation remove only the capsule
+root; bounded stale cleanup never follows links. Capsule settings are never
+merged into the base Pi settings.
 
 Persona thinking policy is adapter-local at
 `$HOME/.pi/larva/thinking-policy.json`, or at the absolute path in
@@ -300,21 +305,14 @@ records without fabricating a task ID.
 
 
 ```bash
-larva pi --persona python-senior --agent-persona-switch confirm -- <pi args...>
+pi --larva-persona python-senior --larva-agent-persona-switch confirm
 ```
 
-`larva pi` launches the real Pi CLI with the bundled Larva Pi extension loaded
-through Pi's modern `-e` extension flag and forwards user Pi arguments after
-Larva-owned flags. It does not probe `pi --help` on startup and does not write
-`.pi/settings.json` or any other Pi settings file as a fallback. The
-launcher-owned environment includes the resolved real Pi binary, selected
-extension flag, bundled extension entry, Larva
-CLI argv prefix, optional initial persona id, explicit adapter-config overrides,
-interactive-mode classification, the agent self-switch default from
-`--agent-persona-switch manual|confirm|auto|free` /
-`LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`, and
-`LARVA_PI_LAUNCHED=1`. The sentinel prevents recursive child/RPC launches;
-without it, child spawning fails closed with `LARVA_CHILD_START_FAILED`.
+Native Pi loads the installed Larva package. `LARVA_CLI_ARGV_JSON` is the only
+backend command. Child spawn uses the current Node/Pi identity and installed
+extension/preload pair; missing identity fails with `LARVA_CHILD_START_FAILED`.
+`--larva-agent-persona-switch manual|confirm|auto|free` precedes
+`LARVA_PI_AGENT_PERSONA_SWITCH`. UI uses `ctx.mode`.
 
 PersonaSpec `model` remains the active variant's runtime routing label. Larva
 validates only that it is a non-empty string; it does not keep a static list of
@@ -353,7 +351,7 @@ policy defines four exact modes: `manual`, `confirm`, `auto`, and `free`; the
 full policy is documented in
 [`docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 The default is `confirm`. It can be set at launch with
-`--agent-persona-switch manual|confirm|auto|free`, by setting
+`--larva-agent-persona-switch manual|confirm|auto|free`, by setting
 `LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`, or during the session
 with `/larva-mode [manual|confirm|auto|free]`. In `manual`, model-facing
 autonomous switch tools are hidden from the active tool set and stale or forged
@@ -378,11 +376,12 @@ Unknown mode values fail safe to `confirm` with a warning rather than being
 interpreted as compatibility aliases. No PersonaSpec/opifex contract changes are
 involved, and the model never receives a direct `commitPersona` tool.
 
-Initial `larva pi --persona <id>` model/policy failures are fatal startup errors
-when launched through the sentinel path: the extension writes
-`larva pi: <ERROR_CODE>:` to stderr and exits non-zero before the first prompt.
-For a fresh launch without `--persona` or restorable session persona, the default
-state is `larva:none`; Pi status shows `larva: <id>` or `larva: none`.
+Initial `pi --larva-persona <id>` model/policy/tool failures are fatal startup
+errors: the extension writes `larva pi: <ERROR_CODE>:` to stderr and exits `2`
+before the first prompt. Stored restore failures stay nonfatal after successful
+explicit-ID preflight. For a fresh launch without `--larva-persona` or restorable
+session persona, the default state is `larva:none`; Pi status shows `larva: <id>`
+or `larva: none`.
 
 For Tab completion, the bundled extension preserves Pi's command-level
 `/larva-persona` argument completer and, when the Pi TUI exposes

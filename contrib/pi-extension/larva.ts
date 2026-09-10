@@ -490,6 +490,8 @@ type PiApi = {
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
   registerShortcut?: (shortcut: string, options: { description?: string; handler: (ctx: PiShortcutContext) => void | Promise<void> }) => void;
   registerTool?: <Input, Output>(tool: ToolDefinition<Input, Output>) => void;
+  registerFlag?: (name: string, options: { description?: string; type: "boolean" | "string"; default?: boolean | string }) => void;
+  getFlag?: (name: string) => boolean | string | undefined;
   registerMessageRenderer?: (
     customType: string,
     renderer: (
@@ -519,12 +521,14 @@ type PiContext = PiApi & {
   sendCustomMessage?: (customType: string, data: Record<string, unknown>, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   hasUI?: boolean;
+  mode?: "tui" | "rpc" | "json" | "print";
   openSelector?: (options: SelectorOption[]) => Promise<string | null>;
   model?: unknown;
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
   /** Abort the current agent operation. Public on Pi 0.85 ExtensionContext. */
   abort?: () => void;
+  shutdown?: () => void;
   streamFn?: unknown;
 };
 type SubagentCallbackSurface = {
@@ -747,6 +751,11 @@ const CHILD_RPC_PROMPT_PREFLIGHT_TIMEOUT_MS = 60_000;
 const CHILD_RPC_FRAME_PRELOAD_FILENAME = "child-rpc-frame-preload.mjs";
 const CHILD_RPC_FRAME_PRELOAD_SYMBOL = Symbol.for("larva.pi.child-rpc-frame-preload.v1");
 const CHILD_RPC_FRAME_CAPABILITY = "larva-child-rpc-frame-preload-v1";
+const LARVA_PERSONA_FLAG = "larva-persona";
+const LARVA_AGENT_PERSONA_SWITCH_FLAG = "larva-agent-persona-switch";
+const LARVA_STATEFUL_REGISTRATION = Symbol.for("larva.pi.extension.stateful-registration");
+const LARVA_EXTENSION_ENTRY_PATH = fileURLToPath(import.meta.url);
+const LARVA_FRAME_PRELOAD_PATH = join(dirname(LARVA_EXTENSION_ENTRY_PATH), CHILD_RPC_FRAME_PRELOAD_FILENAME);
 const CHILD_RPC_FRAME_CAPABILITY_FIELD = "larvaChildRpcFrame";
 const MODEL_MAP_PROFILE_MAX_BYTES = 1_048_576;
 const MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000;
@@ -774,6 +783,8 @@ let agentPersonaSwitchMaxPerChain = DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN;
 let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 let sessionInitializationPromise: Promise<void> | null = null;
+let admissionBlocked = false;
+let nativeStartupFlags: { personaId: string | null; mode: AgentPersonaSwitchMode | null; invalid: LarvaError | null } = { personaId: null, mode: null, invalid: null };
 const initializedPiSessionRestoreKeys = new WeakMap<object, string>();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
@@ -829,7 +840,16 @@ function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
   const nodeEnv = typeof process === "undefined" ? {} : process.env;
   if (ctx?.env === undefined) return { ...nodeEnv } as RuntimeEnv;
   const inherited = { ...nodeEnv } as RuntimeEnv;
-  for (const childOnlyKey of ["LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI", "LARVA_PI_LAUNCHED", "LARVA_PI_AGENT_PERSONA_SWITCH"] as const) {
+  for (const childOnlyKey of [
+    "LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI",
+    "LARVA_PI_LAUNCHED",
+    "LARVA_PI_AGENT_PERSONA_SWITCH",
+    "LARVA_PI_CAPSULE_ROOT",
+    "LARVA_PI_REAL_BIN",
+    "LARVA_PI_EXTENSION_FLAG",
+    "LARVA_PI_EXTENSION_ENTRY",
+    "LARVA_PI_INITIAL_PERSONA_ID",
+  ] as const) {
     if (!Object.prototype.hasOwnProperty.call(ctx.env, childOnlyKey)) delete inherited[childOnlyKey];
   }
   return { ...inherited, ...ctx.env } as RuntimeEnv;
@@ -3525,26 +3545,28 @@ async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<Parse
 }
 
 async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok: true; stdout: string } | { ok: false }> {
-  const candidates = buildLarvaArgvCandidates(env, suffix);
-  for (const argv of candidates) {
-    const result = await spawnJsonCommand(argv, env);
-    if (result.ok) return result;
-  }
-  return { ok: false };
+  const argv = buildLarvaArgv(env, suffix);
+  if (argv === null) return { ok: false };
+  return await spawnJsonCommand(argv, env);
 }
 
-function buildLarvaArgvCandidates(env: RuntimeEnv, suffix: string[]): string[][] {
+function parseLarvaCliArgvPrefix(env: RuntimeEnv): string[] | null {
   const encoded = env.LARVA_CLI_ARGV_JSON;
-  if (encoded !== undefined) {
-    try {
-      const prefix = JSON.parse(encoded) as unknown;
-      if (!Array.isArray(prefix) || !prefix.every((part) => typeof part === "string")) return [];
-      return [[...prefix, ...suffix]];
-    } catch {
-      return [];
-    }
+  if (typeof encoded !== "string" || encoded.length === 0) return null;
+  try {
+    const prefix = JSON.parse(encoded) as unknown;
+    if (!Array.isArray(prefix) || prefix.length === 0 || !prefix.every((part) => typeof part === "string" && part.length > 0)) return null;
+    if (!isAbsolute(prefix[0])) return null;
+    return prefix;
+  } catch {
+    return null;
   }
-  return [["larva", ...suffix], ["uvx", "larva", ...suffix]];
+}
+
+function buildLarvaArgv(env: RuntimeEnv, suffix: string[]): string[] | null {
+  const prefix = parseLarvaCliArgvPrefix(env);
+  if (prefix === null) return null;
+  return [...prefix, ...suffix];
 }
 
 async function spawnJsonCommand(argv: string[], env: RuntimeEnv): Promise<{ ok: true; stdout: string } | { ok: false }> {
@@ -3552,9 +3574,9 @@ async function spawnJsonCommand(argv: string[], env: RuntimeEnv): Promise<{ ok: 
   const timeout = setTimeout(() => controller.abort(), CLI_TIMEOUT_MS);
   try {
     const [command, ...args] = argv;
-    if (!command) return { ok: false };
+    if (!command || !isAbsolute(command)) return { ok: false };
     const stdout = await new Promise<string>((resolveStdout, reject) => {
-      const child = spawn(command, args, { env: { ...process.env, ...env }, signal: controller.signal });
+      const child = spawn(command, args, { env: { ...process.env, ...env }, signal: controller.signal, shell: false });
       const chunks: Buffer[] = [];
       child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
       child.on("error", reject);
@@ -4230,11 +4252,12 @@ function resolveAgentPersonaSwitchMode(ctx: PiContext): AgentPersonaSwitchMode {
   const stored = latestStoredAgentPersonaSwitchMode(ctx);
   if (stored === "unknown") return "confirm";
   if (stored !== null) return stored;
+  if (nativeStartupFlags.mode !== null) return nativeStartupFlags.mode;
   const envMode = currentEnv(ctx).LARVA_PI_AGENT_PERSONA_SWITCH;
   if (envMode === undefined) return "confirm";
   if (isAgentPersonaSwitchMode(envMode)) return envMode;
   agentPersonaSwitchModeWarnings.push(`unknown agent persona switch mode from environment; using confirm`);
-  return isAgentPersonaSwitchMode(envMode) ? envMode : "confirm";
+  return "confirm";
 }
 
 const emittedAgentPersonaSwitchModeWarnings = new Set<string>();
@@ -4726,12 +4749,19 @@ function canonicalizeSubagentOverlayResult(overlay: LarvaSubagentOverlayResult):
 
 type SubagentCommandMode = "tui" | "rpc" | "headless";
 
-function subagentCommandMode(runtimeCtx: PiContext): SubagentCommandMode {
+function larvaHostMode(runtimeCtx: PiContext): SubagentCommandMode {
+  if (runtimeCtx.mode === "tui") return "tui";
+  if (runtimeCtx.mode === "rpc") return "rpc";
+  if (runtimeCtx.mode === "json" || runtimeCtx.mode === "print") return "headless";
   if (runtimeCtx.hasUI === false || runtimeCtx.ui === undefined) return "headless";
   const envMode = currentEnv(runtimeCtx).LARVA_PI_INTERACTIVE_TUI;
   if (envMode === "0") return "rpc";
-  if (typeof runtimeCtx.ui.custom === "function") return "tui";
+  if (envMode === "1" || typeof runtimeCtx.ui.custom === "function") return "tui";
   return "rpc";
+}
+
+function subagentCommandMode(runtimeCtx: PiContext): SubagentCommandMode {
+  return larvaHostMode(runtimeCtx);
 }
 
 function subagentCommandUiUnavailable(message: string): LarvaSubagentOverlayResult {
@@ -4809,24 +4839,70 @@ function startupFailureStderr(personaId: string, larvaError: LarvaError): string
   return `larva pi: ${larvaError.code}: initial persona '${personaId}' failed before first prompt/model turn: ${larvaError.message}\n`;
 }
 
-function shouldFatalInitialPersonaStartup(env: RuntimeEnv): boolean {
-  return env.LARVA_PI_LAUNCHED === "1" && typeof env.LARVA_PI_INITIAL_PERSONA_ID === "string" && env.LARVA_PI_INITIAL_PERSONA_ID.length > 0;
+function isSupportedPiCliScript(script: string): boolean {
+  if (!isAbsolute(script) || !existsSync(script)) return false;
+  const normalized = script.replaceAll("\\", "/");
+  const base = normalized.split("/").pop() ?? "";
+  if (base === "pi") return true;
+  return normalized.includes("/@earendil-works/pi-coding-agent/") && (normalized.endsWith("/cli.js") || normalized.endsWith("/bundle/cli.js") || normalized.endsWith("/rpc-entry.js"));
+}
+
+function currentPiCliScript(): string {
+  return typeof process.argv[1] === "string" && process.argv[1].length > 0 ? resolve(process.argv[1]) : "";
+}
+
+function larvaOwnsFatalAdmission(env: RuntimeEnv, explicitPersonaId: string): boolean {
+  if (nativeStartupFlags.personaId !== null || nativeStartupFlags.invalid !== null) return true;
+  if (env.LARVA_PI_LAUNCHED === "1" && explicitPersonaId.length > 0) return true;
+  return isSupportedPiCliScript(currentPiCliScript());
 }
 
 function isFatalInitialPersonaStartupError(larvaError: LarvaError): boolean {
   return [
+    "LARVA_BAD_INPUT",
     "LARVA_PERSONA_NOT_FOUND",
     "LARVA_MODEL_MAP_INVALID",
     "LARVA_MODEL_UNAVAILABLE",
     "LARVA_POLICY_INVALID",
+    "LARVA_TOOL_ENUMERATION_FAILED",
   ].includes(larvaError.code);
 }
 
-function fatalInitialPersonaStartup(env: RuntimeEnv, personaId: string, larvaError: LarvaError): never | null {
-  if (!shouldFatalInitialPersonaStartup(env) || !isFatalInitialPersonaStartupError(larvaError)) return null;
-  process.stderr.write(startupFailureStderr(personaId, larvaError));
-  process.exit(1);
+function fatalLarvaAdmission(ctx: PiContext | undefined, larvaError: LarvaError, stderrText: string): never {
+  admissionBlocked = true;
+  process.stderr.write(stderrText.endsWith("\n") ? stderrText : `${stderrText}\n`);
+  try { ctx?.shutdown?.(); } catch { /* process.exit remains the admission boundary */ }
+  process.exit(2);
   throw larvaError;
+}
+
+function fatalInitialPersonaStartup(ctx: PiContext, env: RuntimeEnv, personaId: string, larvaError: LarvaError): never | null {
+  if (!larvaOwnsFatalAdmission(env, personaId) || !isFatalInitialPersonaStartupError(larvaError)) return null;
+  fatalLarvaAdmission(ctx, larvaError, startupFailureStderr(personaId, larvaError));
+}
+
+function readNativeStartupFlags(pi: PiApi): { personaId: string | null; mode: AgentPersonaSwitchMode | null; invalid: LarvaError | null } {
+  const personaRaw = pi.getFlag?.(LARVA_PERSONA_FLAG);
+  const modeRaw = pi.getFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG);
+  let personaId: string | null = null;
+  let mode: AgentPersonaSwitchMode | null = null;
+  if (personaRaw === true) return { personaId: null, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-persona value") };
+  if (typeof personaRaw === "string") {
+    const trimmed = personaRaw.trim();
+    if (trimmed.length === 0 || !PERSONA_ID_RE.test(trimmed)) return { personaId: null, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-persona value") };
+    personaId = trimmed;
+  }
+  if (modeRaw === true) return { personaId, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch value") };
+  if (typeof modeRaw === "string") {
+    if (!isAgentPersonaSwitchMode(modeRaw)) return { personaId, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch value") };
+    mode = modeRaw;
+  }
+  return { personaId, mode, invalid: null };
+}
+
+function explicitStartupPersonaId(env: RuntimeEnv): string {
+  if (nativeStartupFlags.personaId !== null) return nativeStartupFlags.personaId;
+  return env.LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
 }
 
 function isPersonaCandidateCacheRefreshResult(result: PersonaCommandResult): result is PersonaCandidateCacheRefreshResult {
@@ -5142,7 +5218,7 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
     if (result.ok) clearActivePersonaLease("manual switch via /larva-persona: do not later restore old origin", ctx, pi);
     return result;
   }
-  if (currentEnv(ctx).LARVA_PI_INTERACTIVE_TUI !== "1") {
+  if (larvaHostMode(ctx) !== "tui") {
     return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selector is interactive TUI only; preserve previousEnvelope") };
   }
   let selected: string | null;
@@ -5762,6 +5838,10 @@ async function warnIdentityProjection(ctx: PiContext | undefined, status: string
 }
 
 export async function before_provider_request(event: unknown, ctx?: PiContext): Promise<unknown | undefined> {
+  if (admissionBlocked) {
+    ctx?.abort?.();
+    return undefined;
+  }
   if (!state.envelope || !isRecord(event)) return undefined;
   const result = projectLarvaIdentityIntoProviderPayload(event.payload, state.envelope, providerApiFromModel(ctx?.model));
   if (result.status === "projected") {
@@ -5883,6 +5963,10 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
 }
 
 export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = ctx ?? {}): { systemPrompt: string } | null | Promise<{ systemPrompt: string } | null> {
+  if (admissionBlocked) {
+    ctx?.abort?.();
+    return null;
+  }
   noteAgentPersonaSwitchRequestChainBoundary(event);
   const runtimeCtx = ctx ?? (isRecord(event) && isRecord(event.ctx) ? event.ctx as PiContext : lastPersonaLeaseRuntimeCtx ?? {});
   const terminal = terminalRestorePath(event);
@@ -8848,18 +8932,33 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
   }
 }
 
-function isLarvaPiLaunched(env: RuntimeEnv): boolean {
-  return env.LARVA_PI_LAUNCHED === "1";
+function resolvePiCommandPrefix(env: RuntimeEnv): string[] | LarvaError {
+  const overrideBin = normalizeString(env.LARVA_PI_REAL_BIN);
+  if (overrideBin !== null) {
+    if (!isAbsolute(overrideBin) || !existsSync(overrideBin)) {
+      return error("LARVA_CHILD_START_FAILED", "Child Pi launch override is not an absolute existing command.");
+    }
+    return [overrideBin];
+  }
+  const node = process.execPath;
+  const script = currentPiCliScript();
+  if (!isAbsolute(node) || !existsSync(node) || !isSupportedPiCliScript(script) || !existsSync(script)) {
+    return error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup.");
+  }
+  return [node, script];
 }
 
 function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[] | LarvaError {
-  const launched = isLarvaPiLaunched(env);
-  const realBin = normalizeString(env.LARVA_PI_REAL_BIN);
-  const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG);
-  const entry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
-  if (!launched || !realBin || !flag || !entry) return error("LARVA_CHILD_START_FAILED", "Launcher Pi child environment is incomplete.");
+  const prefix = resolvePiCommandPrefix(env);
+  if (!Array.isArray(prefix)) return prefix;
+  const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG) ?? "-e";
+  const overrideEntry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
+  const entry = overrideEntry ?? LARVA_EXTENSION_ENTRY_PATH;
+  if (overrideEntry === null && (!isAbsolute(entry) || !existsSync(entry))) {
+    return error("LARVA_CHILD_START_FAILED", "Larva Pi extension entry is missing.");
+  }
   const explicitExtensions = extensionSources.flatMap((source) => [flag, source]);
-  return [realBin, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc"];
+  return [...prefix, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc"];
 }
 
 async function childModelArgument(env: RuntimeEnv, personaId: string): Promise<ChildRouteSnapshot | LarvaError> {
@@ -8883,7 +8982,12 @@ function childThinkingArgument(route: RuntimeRoute): PiThinkingLevel {
   return route.requested_thinking;
 }
 
-async function startChild(env: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = [], record?: ActiveSubagentRun): Promise<ChildProcessWithoutNullStreams | LarvaError> {
+async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = [], record?: ActiveSubagentRun): Promise<ChildProcessWithoutNullStreams | LarvaError> {
+  const env: RuntimeEnv = { ...parentEnv };
+  delete env.LARVA_PI_CAPSULE_ROOT;
+  if (typeof env.LARVA_PI_BASE_AGENT_DIR !== "string" || env.LARVA_PI_BASE_AGENT_DIR.length === 0) {
+    env.LARVA_PI_BASE_AGENT_DIR = childCapsuleBaseAgentDir(parentEnv);
+  }
   const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;
   const route = await childModelArgument(env, personaId);
@@ -8894,9 +8998,10 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
   const modelArgument = formatPiModel(route);
   const thinkingArgument = childThinkingArgument(route);
   env.LARVA_PI_CHILD_REQUESTED_THINKING = thinkingArgument;
+  parentEnv.LARVA_PI_CHILD_REQUESTED_THINKING = thinkingArgument;
   const [realBin, ...tail] = prefix;
-  const args = [...tail, "--model", modelArgument, "--thinking", thinkingArgument, "--session-dir", root];
-  const preloadPath = join(dirname(fileURLToPath(import.meta.url)), CHILD_RPC_FRAME_PRELOAD_FILENAME);
+  const args = [...tail, `--${LARVA_PERSONA_FLAG}`, personaId, `--${LARVA_AGENT_PERSONA_SWITCH_FLAG}`, "manual", "--model", modelArgument, "--thinking", thinkingArgument, "--session-dir", root];
+  const preloadPath = LARVA_FRAME_PRELOAD_PATH;
   if (!existsSync(preloadPath) && env.LARVA_PI_CHILD_RPC_LEGACY_FALLBACK !== "1") {
     removeChildCapsuleRoot(env);
     return error("LARVA_CHILD_START_FAILED", "Child RPC frame preload is missing beside the Larva Pi extension.");
@@ -8921,6 +9026,7 @@ async function startChild(env: RuntimeEnv, root: string, personaId: string, exte
         ...(childNodeOptions.length > 0 ? { NODE_OPTIONS: childNodeOptions } : {}),
       },
       stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
     });
     void traceChildRpc(env, "child_spawn", { pid: child.pid ?? null, command: realBin, args, root, persona_id: personaId });
     return child;
@@ -8947,6 +9053,7 @@ function parseStartupError(stderr: string): LarvaError {
   const stripped = stderr.normalize("NFC").replace(ANSI_ESCAPE_RE, "").replace(/\r\n?/g, "\n");
   const match = /larva pi: (LARVA_[A-Z_]+):\s*([^\n]*)/u.exec(stripped);
   const whitelist: LarvaErrorCode[] = [
+    "LARVA_BAD_INPUT",
     "LARVA_PERSONA_NOT_FOUND",
     "LARVA_MODEL_UNAVAILABLE",
     "LARVA_POLICY_INVALID",
@@ -9853,6 +9960,10 @@ async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
+  nativeStartupFlags = readNativeStartupFlags(pi);
+  if (nativeStartupFlags.invalid !== null) {
+    fatalLarvaAdmission(ctx, nativeStartupFlags.invalid, `larva pi: ${nativeStartupFlags.invalid.code}: ${nativeStartupFlags.invalid.message}\n`);
+  }
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   await emitAgentPersonaSwitchModeWarnings(ctx);
   registerAgentPersonaSwitchTools(ctx, pi);
@@ -9863,6 +9974,18 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const cliSelectedModel = requestedCliModel !== null && activeModelLabel === formatPiModel(requestedCliModel)
     ? requestedCliModel
     : null;
+  const explicitPersonaId = explicitStartupPersonaId(env);
+  if (explicitPersonaId.length > 0) {
+    try {
+      await resolvePersona(explicitPersonaId, ctx);
+    } catch (caught) {
+      const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve persona ${explicitPersonaId}`);
+      fatalInitialPersonaStartup(ctx, env, explicitPersonaId, larvaError);
+      await setStartupUnavailableStatus(ctx, explicitPersonaId, larvaError);
+      await notify(ctx, `Larva startup persona unavailable: ${larvaError.code}: ${larvaError.message}`, "error");
+      if (latestStoredActivePersonaCommit(ctx) === null) return;
+    }
+  }
   const stored = latestStoredActivePersonaCommit(ctx);
   if (stored !== null) {
     const modelChangedAfterPersona = sessionHasModelChangeAfter(ctx, stored.entryIndex);
@@ -9881,7 +10004,6 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
     }
     return;
   }
-  const explicitPersonaId = env.LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
   if (explicitPersonaId.length > 0) {
     const committed = await commitPersonaWithOptions(explicitPersonaId, ctx, pi, {
       toolBaseline: startupToolBaseline,
@@ -9890,7 +10012,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
     });
     if (!committed.ok) {
-      fatalInitialPersonaStartup(env, explicitPersonaId, committed.error);
+      fatalInitialPersonaStartup(ctx, env, explicitPersonaId, committed.error);
       await setStartupUnavailableStatus(ctx, explicitPersonaId, committed.error);
       await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
     }
@@ -9944,6 +10066,14 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
 }
 
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
+  const existingRegistration = (globalThis as Record<symbol, { entry: string } | undefined>)[LARVA_STATEFUL_REGISTRATION];
+  if (existingRegistration !== undefined && existingRegistration.entry !== LARVA_EXTENSION_ENTRY_PATH) {
+    process.stderr.write(`larva pi: LARVA_BAD_INPUT: A second Larva Pi extension copy at ${LARVA_EXTENSION_ENTRY_PATH} cannot register; keeping ${existingRegistration.entry}.\n`);
+    return;
+  }
+  (globalThis as Record<symbol, { entry: string }>)[LARVA_STATEFUL_REGISTRATION] = { entry: LARVA_EXTENSION_ENTRY_PATH };
+  pi.registerFlag?.(LARVA_PERSONA_FLAG, { type: "string", description: "Optional Larva persona ID for this session" });
+  pi.registerFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG, { type: "string", description: "Larva agent persona switch mode: manual, confirm, auto, or free" });
   const env = currentEnv(ctx);
   installChildRpcFrameWriter(env);
   registerSubagentBackgroundIndicatorContext(ctx);
@@ -10139,7 +10269,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
   });
-  for (const lifecycleEvent of ["shutdown", "session_end", "exit", "reload", "new_session", "session_new", "resume", "fork", "quit"]) {
+  for (const lifecycleEvent of ["session_shutdown", "shutdown", "session_end", "exit", "reload", "new_session", "session_new", "resume", "fork", "quit"]) {
     pi.on?.(lifecycleEvent, async () => resetExtensionUI(lifecycleEvent));
   }
   pi.on?.("before_agent_start", async (payload: unknown, eventCtx?: PiContext) => {

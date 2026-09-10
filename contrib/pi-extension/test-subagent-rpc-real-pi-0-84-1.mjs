@@ -309,7 +309,7 @@ async function main() {
   const runtimeDir = await mkdtemp(join(tmpdir(), "larva-real-pi-0841-"));
   try {
     const packageJson = JSON.parse(await readFile(join(piPackageRoot, "package.json"), "utf8"));
-    assert.equal(packageJson.version, "0.84.1", "real seam proof requires exact Pi 0.84.1");
+    assert.equal(packageJson.version, "0.85.1", "real seam proof requires exact Pi 0.85.1");
     const guardSource = await readFile(outputGuardPath, "utf8");
     assert.match(guardSource, /function takeOverStdout/);
     assert.match(guardSource, /function writeRawStdout/);
@@ -318,7 +318,7 @@ async function main() {
     const decoder = runDecoderProbe(mod);
     const publicSurfaces = await runParentSurfaceProbe(runtimeDir);
     console.error(JSON.stringify({ pi_version: packageJson.version, actual_writer: { module: outputGuardPath, ...writer }, decoder, public_surfaces: publicSurfaces }));
-    console.log("subagent real Pi 0.84.1 writeRawStdout regression: PASS");
+    console.log("subagent real Pi 0.85.1 writeRawStdout regression: PASS");
   } finally {
     await rm(runtimeDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
   }

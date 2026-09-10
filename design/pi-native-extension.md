@@ -2,12 +2,11 @@
 
 ## Status and authority
 
-Accepted direction, implementation pending. The user approved native Pi as the
-sole session entry point, no old-Pi compatibility requirement, normal persistence
-of main-session preferences, and removal of the `larva pi` runtime mechanism.
-This document specifies that target. The current request authorizes design and
-documentation changes only; it does not authorize implementation, installation,
-release, or Plan mutation.
+Accepted direction. Native Pi 0.85.1 is the session entry point; this package
+implements normal discovery, CLI binding, admission, main preference persistence,
+and retained child capsules. Operator installation onto a user agent directory
+remains a separate persistent-config action. Python `larva pi` retirement is the
+next producer.
 
 This document supersedes launcher ownership, parent settings capsules,
 launcher-marker admission, old-Pi compatibility, and launcher maintenance work in
@@ -115,9 +114,10 @@ Do not maintain a second installed Larva extension copy inside the wheel as a
 parallel native entry point.
 
 Use the supported host in the extension development dependency and runtime gates.
-The current coding-agent dev dependency is 0.84.1 and TUI pin is 0.78.0. Update
-host-facing dependency decisions with the live UI/runtime checks; the user has
-not requested an unverified TUI upgrade or permissive version range.
+The extension development dependency is Pi 0.85.1. Direct `@earendil-works/pi-tui`
+is pinned to exact `0.85.1` from that host's installed UI package and the imported
+custom-component primitives (`Input`, `Key`, `Markdown`, `SelectList`, `matchesKey`,
+`truncateToWidth`, `visibleWidth`, `wrapTextWithAnsi`).
 
 Exactly one intended Larva instance may register tools and own session state.
 Pi's canonical-path deduplication is insufficient for two different copies.

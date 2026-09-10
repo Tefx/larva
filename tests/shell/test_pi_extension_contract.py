@@ -28,7 +28,7 @@ PI_EXTENSION_SELECTOR_UI: Final = ROOT / "contrib" / "pi-extension" / "test-pers
 PI_EXTENSION_PACKAGE_JSON: Final = ROOT / "contrib" / "pi-extension" / "package.json"
 PI_EXTENSION_PACKAGE_LOCK: Final = ROOT / "contrib" / "pi-extension" / "package-lock.json"
 PYPROJECT: Final = ROOT / "pyproject.toml"
-PI_TUI_PINNED_VERSION: Final = "0.78.0"
+PI_TUI_PINNED_VERSION: Final = "0.85.1"
 PI_EXTENSION_NPM_CI_COMMAND: Final = "npm --prefix contrib/pi-extension ci"
 PI_EXTENSION_RUNTIME_GATE_COMMAND: Final = (
     "uv run pytest tests/shell/test_pi_extension_contract.py "
@@ -317,6 +317,8 @@ def test_pi_tui_dependency_is_exact_lockfile_backed_and_ci_installable() -> None
     package_json = json.loads(PI_EXTENSION_PACKAGE_JSON.read_text(encoding="utf-8"))
     package_lock = json.loads(PI_EXTENSION_PACKAGE_LOCK.read_text(encoding="utf-8"))
 
+    assert package_json["pi"]["extensions"] == ["./larva.ts"]
+    assert package_json["devDependencies"]["@earendil-works/pi-coding-agent"] == "0.85.1"
     assert package_json["dependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
     assert package_lock["packages"][""]["dependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
     locked_pi_tui = package_lock["packages"]["node_modules/@earendil-works/pi-tui"]
@@ -338,7 +340,7 @@ def test_initial_persona_commit_is_before_user_visible_none_state() -> None:
     )
     _assert_regex(
         source,
-        r"async function initializeSession[\s\S]+LARVA_PI_INITIAL_PERSONA_ID[\s\S]+commitPersona[\s\S]+setStatus",
+        r"async function initializeSession[\s\S]+explicitStartupPersonaId[\s\S]+commitPersonaWithOptions[\s\S]+setStatus",
         "initial persona must be committed by the session-start runtime before status/selector paths",
     )
 
@@ -1411,7 +1413,7 @@ def test_launched_initial_persona_invalid_model_exits_before_prompt(tmp_path: Pa
         """,
     )
 
-    assert result["exitCode"] == 1
+    assert result["exitCode"] == 2
     assert "larva pi: LARVA_MODEL_UNAVAILABLE: initial persona 'startup' failed before first prompt/model turn" in result["stderr"]
     assert result["envelope"] is None
     assert result["beforeAgent"] is None
@@ -1532,7 +1534,7 @@ def test_enhanced_persona_selector_uses_pi_tui_input_selectlist_detail_without_m
     assert "registerShortcut?.(Key.ctrlAlt(\"p\")" in persona_command_body
     assert "isIdle" in persona_command_body
     handle_body = _function_body(source, "export async function handlePersonaCommand")
-    assert handle_body.index("LARVA_PI_INTERACTIVE_TUI") < handle_body.index("openPersonaSelector")
+    assert handle_body.index("larvaHostMode") < handle_body.index("openPersonaSelector")
 
 
 def test_enhanced_persona_selector_runtime_harness() -> None:
@@ -1747,10 +1749,10 @@ def test_async_subagent_docs_parity_against_reference() -> None:
 
 def test_no_argument_non_interactive_returns_bad_input_without_state_change() -> None:
     source = _source()
-    _assert_tokens(source, "LARVA_PI_INTERACTIVE_TUI", "ok: false", "LARVA_BAD_INPUT")
+    _assert_tokens(source, "larvaHostMode", "ok: false", "LARVA_BAD_INPUT")
     _assert_regex(
         source,
-        r"LARVA_PI_INTERACTIVE_TUI[\s\S]+preserve|previousEnvelope|rollback",
+        r"larvaHostMode[\s\S]+preserve previousEnvelope",
         "non-interactive no-argument command must leave active state unchanged",
     )
 
@@ -2086,42 +2088,27 @@ def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_sw
 
         try {{
           await mod.initializeExtension(ctx, pi);
+        }} catch (error) {{
+          if (error.message !== "PROCESS_EXIT") throw error;
         }} finally {{
           process.exit = originalExit;
           process.stderr.write = originalWrite;
         }}
-        const degradedEnvelope = mod.getActiveEnvelope();
-        const degradedPrompt = mod.before_agent_start({{ systemPrompt: "base" }});
-        const switched = await commandHandler("ok");
-        const denied = mod.decideToolCall("bash");
-        const allowed = mod.decideToolCall("read");
         console.log(JSON.stringify({{
           statuses,
           activeToolCalls,
           exitCode,
           stderr,
-          degradedEnvelope,
-          degradedPrompt: degradedPrompt ?? null,
-          switched,
-          denied,
-          allowed,
-          finalEnvelope: mod.getActiveEnvelope(),
+          envelope: mod.getActiveEnvelope(),
+          beforeAgent: mod.before_agent_start({{ systemPrompt: "base" }}) ?? null,
         }}));
         """,
     )
 
-    assert result["exitCode"] is None
-    assert result["stderr"] == ""
-    assert result["degradedEnvelope"] is None
-    assert result["degradedPrompt"] is None
-    assert result["statuses"][0] == "larva: startup unavailable (LARVA_TOOL_ENUMERATION_FAILED)"
-    assert result["switched"]["ok"] is True
-    assert result["statuses"][-1] == "larva: ok"
-    assert result["activeToolCalls"] == [["read", "larva_subagent"], ["read", "larva_subagent"]]
-    assert result["denied"]["action"] == "deny"
-    assert result["denied"]["error"]["code"] == "LARVA_TOOL_DENIED"
-    assert result["allowed"] == {"action": "allow"}
-    assert result["finalEnvelope"]["persona_id"] == "ok"
+    assert result["exitCode"] == 2
+    assert "LARVA_TOOL_ENUMERATION_FAILED" in result["stderr"]
+    assert result["envelope"] is None
+    assert result["beforeAgent"] is None
 
 
 def test_initial_unsupported_tool_enumerator_uses_empty_baseline_but_switch_failures_remain_atomic(tmp_path: Path) -> None:
@@ -2434,7 +2421,7 @@ def test_child_process_uses_launcher_env_and_rpc_sequence() -> None:
     source = _source()
     _assert_tokens(
         source,
-        "LARVA_PI_REAL_BIN",
+        "resolvePiCommandPrefix",
         "LARVA_PI_EXTENSION_FLAG",
         "LARVA_PI_EXTENSION_ENTRY",
         "--no-extensions",
@@ -2448,6 +2435,7 @@ def test_child_process_uses_launcher_env_and_rpc_sequence() -> None:
     launcher_body = _function_body(source, "function launcherArgs")
     assert launcher_body.index('"--no-extensions"') < launcher_body.index('"--mode"')
     assert "bare pi" not in source.lower()
+    assert "isLarvaPiLaunched" not in source
 
 
 def test_subagent_runtime_config_resolves_allowlisted_extension_sources_and_rejects_invalid_config(
@@ -2628,6 +2616,10 @@ def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_ke
         "--no-extensions",
         "--mode",
         "rpc",
+        "--larva-persona",
+        "child",
+        "--larva-agent-persona-switch",
+        "manual",
         "--model",
         "provider/model",
         "--thinking",
@@ -2732,12 +2724,12 @@ def test_before_agent_start_refreshes_tools_registered_lazily_by_allowlisted_ext
 
 
 def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_path: Path) -> None:
-    """The extension consumes ``LARVA_PI_LAUNCHED`` as a child-spawn recursion guard."""
+    """Child spawn requires captured Node/Pi identity or an absolute override; no PATH fallback."""
     source = _source()
-    launcher_body = _function_body(source, "function launcherArgs")
-    _assert_tokens(source, "isLarvaPiLaunched", "LARVA_PI_LAUNCHED")
-    assert launcher_body.index("isLarvaPiLaunched(env)") < launcher_body.index("LARVA_PI_REAL_BIN")
-    assert "!launched" in launcher_body
+    prefix_body = _function_body(source, "function resolvePiCommandPrefix")
+    _assert_tokens(source, "resolvePiCommandPrefix", "isSupportedPiCliScript")
+    assert "isLarvaPiLaunched" not in source
+    assert "which(" not in prefix_body
     start_child_body = _function_body(source, "function startChild")
     assert 'LARVA_PI_LAUNCHED: "1"' in start_child_body
 
@@ -2782,11 +2774,8 @@ def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_
         const mod = await import({json.dumps(EXTENSION.as_uri())});
         const env = {{
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
-          LARVA_PI_REAL_BIN: process.execPath,
           LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
-          LARVA_PI_EXTENSION_ENTRY: "would-be-extension.ts",
           LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(tmp_path))},
-          LARVA_PI_LAUNCHED: "0",
           HOME: {json.dumps(str(tmp_path))},
         }};
         const ctx = {{
@@ -3032,9 +3021,12 @@ def test_persona_resolve_bridge_uses_larva_cli_argv_json_and_fallback_rules() ->
         "resolve",
         "--json",
         "LARVA_PERSONA_NOT_FOUND",
-        "uvx",
+        "isAbsolute",
         "larva",
     )
+    argv_body = _function_body(source, "function parseLarvaCliArgvPrefix")
+    assert "uvx" not in argv_body
+    assert '["larva", ...suffix]' not in source
     _assert_regex(
         source,
         r"LARVA_CLI_ARGV_JSON[\s\S]+resolve[\s\S]+--json",
@@ -3241,6 +3233,8 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
               else commands[nameOrCommand.name] = nameOrCommand;
             }},
             registerTool: (tool) => {{ tools[tool.name] = tool; }},
+            registerFlag: () => undefined,
+            getFlag: (name) => options.flags?.[name],
             on: (event, handler) => {{ handlers[event] = handler; }},
             sendMessage: async (message, options) => {{ sentRuntimeMessages.push({{ message, options }}); return true; }},
             sendUserMessage: async (message, options) => {{ sentUserMessages.push({{ message, options }}); return true; }},
@@ -3793,6 +3787,35 @@ def test_active_persona_session_restore_session_commit_wins_over_explicit_startu
     assert active_entries[0]["data"]["persona_id"] == "python"
     assert active_entries[0]["data"]["source"] == "slash-command"
     assert any(status == ["larva: python"] for status in payload["statuses"])
+
+
+def test_resume_preflight_resolves_unused_explicit_persona_without_validating_its_model(tmp_path: Path) -> None:
+    payload = _run_agent_persona_switch_harness(
+        tmp_path,
+        """
+        const restoreEntry = {
+          type: "custom",
+          customType: "larva-active-persona-commit",
+          data: { schema_version: 1, persona_id: "python", spec_digest: "sha256:python", source: "slash-command", committed_at: "2026-06-04T00:00:00.000Z" },
+        };
+        const harness = await buildHarness(
+          { LARVA_PI_LAUNCHED: "0" },
+          {
+            sessionEntries: [restoreEntry],
+            flags: { "larva-persona": "architect" },
+          },
+        );
+        console.log(JSON.stringify({
+          envelope: harness.mod.getActiveEnvelope(),
+          modelCalls: harness.modelCalls,
+          statuses: harness.statuses,
+        }));
+        """,
+    )
+
+    assert payload["envelope"]["persona_id"] == "python"
+    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert [call for call in payload["modelCalls"] if call and call[0] == "find"] == [["find", "provider", "model"]]
 
 
 def test_active_persona_restore_preserves_session_model_change_after_persona_commit_behavior(tmp_path: Path) -> None:

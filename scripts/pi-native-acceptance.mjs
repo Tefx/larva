@@ -1,0 +1,559 @@
+#!/usr/bin/env node
+// purpose: native Pi 0.85.1 package/admission/runtime acceptance for contrib/pi-extension
+// usage: node scripts/pi-native-acceptance.mjs --scenario <name>
+// effects: disposable scratch HOME/agent/session/provider only; no user/global install
+// requires: /opt/homebrew/bin/pi 0.85.1, local contrib/pi-extension after npm ci
+
+import { spawn } from "node:child_process";
+import { createServer } from "node:http";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const EXTENSION_DIR = join(ROOT, "contrib", "pi-extension");
+const EXTENSION_ENTRY = join(EXTENSION_DIR, "larva.ts");
+const FAKE_CLI = join(ROOT, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
+const MODE_OBSERVER = join(ROOT, "tests", "fixtures", "pi", "mode-observer.ts");
+const PI_BIN = process.env.PI_BIN || "/opt/homebrew/bin/pi";
+const NODE_BIN = process.execPath;
+
+const SCENARIOS = [
+  "package-discovery",
+  "disable-and-explicit-e",
+  "duplicate-copies",
+  "pi-owned-unknown-flag",
+  "pi-owned-missing-value",
+  "larva-bad-input-persona",
+  "larva-bad-input-mode",
+  "fresh-explicit-success",
+  "fresh-explicit-model-fail",
+  "missing-cli-binding",
+  "print-mode",
+  "rpc-mode",
+  "tui-mode",
+  "backend-a-project-b",
+  "resume-stored-wins-unused-explicit",
+  "resume-unresolvable-explicit-fails",
+  "resume-stored-restore-nonfatal",
+  "parent-shutdown-active-child",
+];
+
+function usage() {
+  return `Usage: node scripts/pi-native-acceptance.mjs --scenario <name>\n\nScenarios:\n${SCENARIOS.map((name) => `  - ${name}`).join("\n")}\n`;
+}
+
+function parseArgs(argv) {
+  const args = new Map();
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--scenario") args.set("scenario", argv[++i]);
+    else if (arg === "--help" || arg === "-h") args.set("help", true);
+  }
+  return args;
+}
+
+function sanitizedEnv(overrides = {}) {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (
+      key === "VIRTUAL_ENV"
+      || key === "UV_PROJECT_ENVIRONMENT"
+      || key === "PYTHONPATH"
+      || key.startsWith("LARVA_")
+      || key.startsWith("PI_CODING_AGENT")
+      || key.startsWith("PI_SESSION")
+      || key === "PI_MODEL"
+      || key === "PI_PROVIDER"
+      || /API[_-]?KEY|TOKEN|SECRET|PASSWORD/i.test(key)
+    ) {
+      delete env[key];
+    }
+  }
+  return { ...env, ...overrides };
+}
+
+function runRpcUntil(command, args, options = {}) {
+  return new Promise((resolveRun) => {
+    const child = spawn(command, args, { ...options, stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => child.kill("SIGTERM"), options.timeoutMs ?? 12_000);
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString("utf8");
+      if (typeof options.onStdout === "function") options.onStdout(stdout, child);
+    });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      resolveRun({ exitCode: null, error: error.message, stdout, stderr, pid: child.pid ?? null });
+    });
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      resolveRun({ exitCode: code, signal, stdout, stderr, pid: child.pid ?? null });
+    });
+    if (options.stdinText) child.stdin.write(options.stdinText);
+  });
+}
+
+function runProcess(command, args, options = {}) {
+  return new Promise((resolveRun) => {
+    const child = spawn(command, args, { ...options, stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => child.kill("SIGTERM"), options.timeoutMs ?? 12_000);
+    if (options.stdinText) {
+      child.stdin.write(options.stdinText);
+      child.stdin.end();
+    } else {
+      child.stdin.end();
+    }
+    child.stdout.on("data", (chunk) => { stdout += chunk.toString("utf8"); });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      resolveRun({ exitCode: null, error: error.message, stdout, stderr, pid: child.pid ?? null });
+    });
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      resolveRun({ exitCode: code, signal, stdout, stderr, pid: child.pid ?? null });
+    });
+  });
+}
+
+async function createScratch() {
+  const tempRoot = await mkdtemp(join(tmpdir(), "larva-native-accept-"));
+  const home = join(tempRoot, "home");
+  const agent = join(tempRoot, "agent");
+  const sessions = join(tempRoot, "sessions");
+  const tmp = join(tempRoot, "tmp");
+  const cwd = join(tempRoot, "cwd");
+  const config = join(tempRoot, "larva-config");
+  await Promise.all([home, agent, sessions, tmp, cwd, config].map((path) => mkdir(path, { recursive: true })));
+  await writeFile(join(agent, "settings.json"), JSON.stringify({
+    defaultProjectTrust: "yes",
+    packages: [],
+    extensions: [],
+    defaultProvider: "larva-neutral",
+    defaultModel: "neutral",
+    defaultThinkingLevel: "low",
+  }, null, 2), "utf8");
+  return { tempRoot, home, agent, sessions, tmp, cwd, config };
+}
+
+async function startLoopback(scratch) {
+  const requests = [];
+  const sockets = new Set();
+  const server = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk.toString("utf8");
+    requests.push({ method: request.method, url: request.url, body: body.slice(0, 2000) });
+    response.writeHead(200, { "content-type": "text/event-stream", connection: "close" });
+    response.write(`data: ${JSON.stringify({ id: "n", object: "chat.completion.chunk", created: 0, model: "neutral", choices: [{ index: 0, delta: { role: "assistant", content: "NEUTRAL_LOOPBACK_OK" }, finish_reason: "stop" }] })}\n\n`);
+    response.end("data: [DONE]\n\n");
+  });
+  server.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
+  await new Promise((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+  const providerPath = join(scratch.tempRoot, "loopback-provider.ts");
+  await writeFile(providerPath, `export default function (pi) {
+  pi.registerProvider("larva-neutral", {
+    name: "Larva native loopback",
+    baseUrl: "http://127.0.0.1:${port}/v1",
+    apiKey: "loopback-only",
+    api: "openai-completions",
+    models: [{ id: "neutral", name: "neutral", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 256 }],
+  });
+}
+`, "utf8");
+  await writeFile(join(scratch.config, "model-map.json"), JSON.stringify({
+    models: { "openai/gpt-5.5": { provider: "larva-neutral", model_id: "neutral" } },
+    prefix_rules: [],
+  }), "utf8");
+  return {
+    requests,
+    providerPath,
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolveClose) => server.close(resolveClose));
+    },
+  };
+}
+
+function baseEnv(scratch, extra = {}) {
+  return sanitizedEnv({
+    HOME: scratch.home,
+    TMPDIR: scratch.tmp,
+    PI_CODING_AGENT_DIR: scratch.agent,
+    PI_CODING_AGENT_SESSION_DIR: scratch.sessions,
+    PI_OFFLINE: "1",
+    PI_SKIP_VERSION_CHECK: "1",
+    PI_TELEMETRY: "0",
+    TERM: "xterm-256color",
+    LARVA_CLI_ARGV_JSON: JSON.stringify([NODE_BIN, FAKE_CLI]),
+    LARVA_PI_MODEL_MAP_FILE: join(scratch.config, "model-map.json"),
+    PATH: `/opt/homebrew/bin:/usr/bin:/bin:${dirname(NODE_BIN)}`,
+    ...extra,
+  });
+}
+
+async function piInstall(scratch) {
+  return runProcess(PI_BIN, ["install", EXTENSION_DIR], { env: baseEnv(scratch), cwd: scratch.cwd, timeoutMs: 20_000 });
+}
+
+function larvaLoaded(text) {
+  return /larva-persona|Larva persona|larva: /.test(text);
+}
+
+async function withScratch(fn) {
+  const scratch = await createScratch();
+  const loopback = await startLoopback(scratch);
+  try {
+    return await fn(scratch, loopback);
+  } finally {
+    await loopback.close();
+    await rm(scratch.tempRoot, { recursive: true, force: true });
+  }
+}
+
+async function runScenario(scenario) {
+  const evidence = { scenario, pi: PI_BIN, extensionDir: EXTENSION_DIR, pass: false };
+  if (scenario === "package-discovery") {
+    await withScratch(async (scratch, loopback) => {
+      const install = await piInstall(scratch);
+      evidence.install = { exitCode: install.exitCode, stderr: install.stderr.slice(0, 800), stdout: install.stdout.slice(0, 800) };
+      const settings = JSON.parse(await readFile(join(scratch.agent, "settings.json"), "utf8"));
+      evidence.settingsPackages = settings.packages ?? settings.extensions ?? [];
+      const help = await runProcess(PI_BIN, ["--help"], { env: baseEnv(scratch), cwd: scratch.cwd, timeoutMs: 8_000 });
+      evidence.help = { exitCode: help.exitCode, hasLarvaPersonaFlag: /--larva-persona/.test(`${help.stdout}${help.stderr}`) };
+      const rpc = await runProcess(PI_BIN, ["--mode", "rpc", "--no-session", "--offline", "--approve", "-e", loopback.providerPath], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "c1", type: "get_commands" })}\n`,
+      });
+      evidence.rpc = { exitCode: rpc.exitCode, stdout: rpc.stdout.slice(0, 2000), stderr: rpc.stderr.slice(0, 800) };
+      evidence.loadedWithoutExplicitE = /larva-persona/.test(rpc.stdout) || /larva-persona/.test(rpc.stderr);
+      evidence.pass = install.exitCode === 0 && evidence.help.hasLarvaPersonaFlag === true && evidence.loadedWithoutExplicitE === true;
+    });
+  } else if (scenario === "disable-and-explicit-e") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const disabled = await runProcess(PI_BIN, ["--mode", "rpc", "--no-session", "--offline", "--approve", "--no-extensions", "-e", loopback.providerPath], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "c1", type: "get_commands" })}\n`,
+      });
+      const explicit = await runProcess(PI_BIN, ["--mode", "rpc", "--no-session", "--offline", "--approve", "--no-extensions", "-e", loopback.providerPath, "-e", EXTENSION_ENTRY], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "c1", type: "get_commands" })}\n`,
+      });
+      evidence.disabledHasLarva = larvaLoaded(`${disabled.stdout}${disabled.stderr}`);
+      evidence.explicitHasLarva = larvaLoaded(`${explicit.stdout}${explicit.stderr}`);
+      evidence.disabled = { exitCode: disabled.exitCode, stderr: disabled.stderr.slice(0, 400) };
+      evidence.explicit = { exitCode: explicit.exitCode, stderr: explicit.stderr.slice(0, 400) };
+      evidence.pass = evidence.disabledHasLarva === false && evidence.explicitHasLarva === true;
+    });
+  } else if (scenario === "duplicate-copies") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const copyDir = join(scratch.tempRoot, "larva-copy");
+      await mkdir(copyDir, { recursive: true });
+      const { cp } = await import("node:fs/promises");
+      await cp(EXTENSION_ENTRY, join(copyDir, "larva.ts"));
+      await cp(join(EXTENSION_DIR, "child-rpc-frame-preload.mjs"), join(copyDir, "child-rpc-frame-preload.mjs"));
+      await cp(join(EXTENSION_DIR, "package.json"), join(copyDir, "package.json"));
+      const { symlink } = await import("node:fs/promises");
+      await symlink(join(EXTENSION_DIR, "node_modules"), join(copyDir, "node_modules"));
+      const result = await runProcess(PI_BIN, ["--mode", "rpc", "--no-session", "--offline", "--approve", "-e", loopback.providerPath, "-e", join(copyDir, "larva.ts")], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "c1", type: "get_commands" })}\n`,
+      });
+      evidence.stderr = result.stderr.slice(0, 1500);
+      evidence.duplicateDiagnosed = /second Larva Pi extension copy/.test(result.stderr);
+      evidence.pass = evidence.duplicateDiagnosed === true;
+    });
+  } else if (scenario === "pi-owned-unknown-flag") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const result = await runProcess(PI_BIN, ["--mode", "print", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--not-a-larva-flag", "x"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 800);
+      evidence.piOwned = /Unknown option/.test(result.stderr) && !/LARVA_BAD_INPUT/.test(result.stderr);
+      evidence.pass = result.exitCode === 1 && evidence.piOwned === true;
+    });
+  } else if (scenario === "pi-owned-missing-value") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const result = await runProcess(PI_BIN, ["--mode", "print", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--larva-persona"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 800);
+      evidence.piOwned = /requires a value|Unknown option/.test(result.stderr) && !/LARVA_BAD_INPUT/.test(result.stderr);
+      evidence.pass = result.exitCode !== 0 && evidence.piOwned === true && result.exitCode !== 2;
+    });
+  } else if (scenario === "larva-bad-input-persona") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const result = await runProcess(PI_BIN, ["--mode", "print", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--larva-persona", "Not A Valid Id"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 800);
+      evidence.requests = loopback.requests.length;
+      evidence.pass = result.exitCode === 2 && /LARVA_BAD_INPUT/.test(result.stderr) && loopback.requests.length === 0;
+    });
+  } else if (scenario === "larva-bad-input-mode") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const result = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--larva-agent-persona-switch", "bogus"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 800);
+      evidence.requests = loopback.requests.length;
+      evidence.pass = result.exitCode === 2 && /LARVA_BAD_INPUT/.test(result.stderr) && loopback.requests.length === 0;
+    });
+  } else if (scenario === "fresh-explicit-success") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const result = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--larva-persona", "ok"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "s1", type: "get_state" })}\n`,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stdout = result.stdout.slice(0, 2000);
+      evidence.stderr = result.stderr.slice(0, 800);
+      evidence.pass = /larva: ok|larva-persona/.test(`${result.stdout}${result.stderr}`) && !/LARVA_/.test(result.stderr);
+    });
+  } else if (scenario === "fresh-explicit-model-fail") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const result = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--larva-persona", "ok"], {
+        env: baseEnv(scratch, { FAKE_LARVA_MODEL: "missing-provider/missing-model" }),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 1200);
+      evidence.requests = loopback.requests.length;
+      evidence.pass = result.exitCode === 2 && /LARVA_MODEL_UNAVAILABLE/.test(result.stderr) && /larva pi:/.test(result.stderr) && loopback.requests.length === 0;
+    });
+  } else if (scenario === "missing-cli-binding") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const env = baseEnv(scratch);
+      delete env.LARVA_CLI_ARGV_JSON;
+      const unselected = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--no-session", "--approve", "-e", loopback.providerPath], {
+        env,
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "s1", type: "get_state" })}\n`,
+      });
+      const explicit = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--no-session", "--approve", "-e", loopback.providerPath, "--larva-persona", "ok"], {
+        env,
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.unselectedExit = unselected.exitCode;
+      evidence.unselectedStderr = unselected.stderr.slice(0, 400);
+      evidence.explicitExit = explicit.exitCode;
+      evidence.explicitStderr = explicit.stderr.slice(0, 800);
+      evidence.pass = explicit.exitCode === 2 && /LARVA_PERSONA_NOT_FOUND/.test(explicit.stderr) && loopback.requests.length === 0;
+    });
+  } else if (scenario === "print-mode" || scenario === "rpc-mode" || scenario === "tui-mode") {
+    await withScratch(async (scratch, loopback) => {
+      const observe = join(scratch.tempRoot, "observe.json");
+      const args = ["--offline", "--no-session", "--approve", "--no-extensions", "-e", loopback.providerPath, "-e", EXTENSION_ENTRY, "-e", MODE_OBSERVER];
+      if (scenario === "print-mode") args.unshift("--mode", "print");
+      if (scenario === "rpc-mode") args.unshift("--mode", "rpc");
+      const env = baseEnv(scratch, { LARVA_NATIVE_OBSERVE: observe });
+      const result = await runProcess(PI_BIN, args, {
+        env,
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+        stdinText: scenario === "rpc-mode" ? `${JSON.stringify({ id: "c1", type: "get_commands" })}\n` : undefined,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 600);
+      if (existsSync(observe)) evidence.observation = JSON.parse(await readFile(observe, "utf8"));
+      const expected = scenario === "tui-mode" ? "tui" : scenario === "rpc-mode" ? "rpc" : "print";
+      evidence.pass = evidence.observation?.mode === expected;
+    });
+  } else if (scenario === "backend-a-project-b") {
+    await withScratch(async (scratch, loopback) => {
+      const projectB = join(scratch.tempRoot, "project-b");
+      const agentB = join(projectB, "agent");
+      await mkdir(agentB, { recursive: true });
+      await writeFile(join(agentB, "settings.json"), JSON.stringify({ defaultProjectTrust: "yes", packages: [], extensions: [] }), "utf8");
+      const installB = await runProcess(PI_BIN, ["install", EXTENSION_DIR], {
+        env: baseEnv(scratch, { PI_CODING_AGENT_DIR: agentB, HOME: join(projectB, "home") }),
+        cwd: projectB,
+        timeoutMs: 20_000,
+      });
+      await mkdir(join(projectB, "home"), { recursive: true });
+      const settingsB = JSON.parse(await readFile(join(agentB, "settings.json"), "utf8"));
+      const settingsA = JSON.parse(await readFile(join(scratch.agent, "settings.json"), "utf8"));
+      const list = await runProcess(NODE_BIN, [FAKE_CLI, "list", "--json"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 5_000,
+      });
+      evidence.installB = { exitCode: installB.exitCode, stderr: installB.stderr.slice(0, 400) };
+      evidence.projectBHasPackage = JSON.stringify(settingsB).includes("pi-extension") || JSON.stringify(settingsB).includes(EXTENSION_DIR);
+      evidence.projectAUnchanged = JSON.stringify(settingsA) === JSON.stringify({
+        defaultProjectTrust: "yes",
+        packages: [],
+        extensions: [],
+        defaultProvider: "larva-neutral",
+        defaultModel: "neutral",
+        defaultThinkingLevel: "low",
+      });
+      evidence.cliListWorks = list.exitCode === 0 && /"id":"ok"/.test(list.stdout);
+      evidence.pass = installB.exitCode === 0 && evidence.projectBHasPackage === true && evidence.projectAUnchanged === true && evidence.cliListWorks === true;
+    });
+  } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails" || scenario === "resume-stored-restore-nonfatal") {
+    await withScratch(async (scratch, loopback) => {
+      await piInstall(scratch);
+      const { SessionManager } = await import("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js");
+      const manager = SessionManager.create(scratch.cwd, scratch.sessions);
+      manager.appendMessage({ role: "user", content: "seed", timestamp: Date.now() });
+      manager.appendMessage({
+        role: "assistant",
+        content: [{ type: "text", text: "ok" }],
+        api: "test",
+        provider: "test",
+        model: "test",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+      manager.appendCustomEntry("larva-active-persona-commit", {
+        schema_version: 1,
+        persona_id: "ok",
+        spec_digest: "digest-ok",
+        source: "startup",
+        committed_at: "2026-09-10T00:00:00.000Z",
+      });
+      const session = manager.getSessionFile();
+      evidence.sessionFiles = [session];
+      evidence.sessionExists = existsSync(session);
+      if (scenario === "resume-stored-wins-unused-explicit") {
+        const resumed = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--approve", "-e", loopback.providerPath, "--session", session, "--larva-persona", "startup"], {
+          env: baseEnv(scratch, { FAKE_LARVA_MODEL_startup: "missing-provider/missing-model" }),
+          cwd: scratch.cwd,
+          timeoutMs: 10_000,
+          stdinText: `${JSON.stringify({ id: "s1", type: "get_state" })}\n`,
+        });
+        evidence.resumedExit = resumed.exitCode;
+        evidence.resumedStdout = resumed.stdout.slice(0, 1500);
+        evidence.resumedStderr = resumed.stderr.slice(0, 800);
+        evidence.pass = resumed.exitCode === 0 && /larva: ok/.test(resumed.stdout) && !/LARVA_MODEL_UNAVAILABLE/.test(resumed.stderr);
+      } else if (scenario === "resume-unresolvable-explicit-fails") {
+        const resumed = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--approve", "-e", loopback.providerPath, "--session", session, "--larva-persona", "missing"], {
+          env: baseEnv(scratch),
+          cwd: scratch.cwd,
+          timeoutMs: 10_000,
+        });
+        evidence.resumedExit = resumed.exitCode;
+        evidence.resumedStderr = resumed.stderr.slice(0, 800);
+        evidence.pass = resumed.exitCode === 2 && /LARVA_PERSONA_NOT_FOUND/.test(resumed.stderr);
+      } else {
+        const resumed = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--approve", "-e", loopback.providerPath, "--session", session], {
+          env: baseEnv(scratch, { FAKE_LARVA_MODEL: "missing-provider/missing-model" }),
+          cwd: scratch.cwd,
+          timeoutMs: 10_000,
+          stdinText: `${JSON.stringify({ id: "s1", type: "get_state" })}\n`,
+        });
+        evidence.resumedExit = resumed.exitCode;
+        evidence.resumedStdout = resumed.stdout.slice(0, 1500);
+        evidence.resumedStderr = resumed.stderr.slice(0, 800);
+        evidence.pass = resumed.exitCode === 0 && /unavailable \(LARVA_MODEL_UNAVAILABLE\)|restore unavailable/.test(`${resumed.stdout}${resumed.stderr}`);
+      }
+    });
+  } else if (scenario === "parent-shutdown-active-child") {
+    const { mkdtemp: mk } = await import("node:fs/promises");
+    const root = await mk(join(tmpdir(), "larva-native-child-shutdown-"));
+    const fakeChild = join(ROOT, "tests", "fixtures", "pi", "blocking-rpc-child.mjs");
+    const marker = join(root, "started.txt");
+    await writeFile(join(root, "child.jsonl"), "", "utf8");
+    const fakeCli = FAKE_CLI;
+    const code = `
+      import { existsSync, readFileSync } from "node:fs";
+      const mod = await import(${JSON.stringify(new URL("../contrib/pi-extension/larva.ts", import.meta.url).href)});
+      const env = {
+        HOME: ${JSON.stringify(root)},
+        LARVA_CLI_ARGV_JSON: JSON.stringify([${JSON.stringify(NODE_BIN)}, ${JSON.stringify(fakeCli)}]),
+        LARVA_PI_REAL_BIN: ${JSON.stringify(NODE_BIN)},
+        LARVA_PI_EXTENSION_FLAG: ${JSON.stringify(fakeChild)},
+        LARVA_PI_EXTENSION_ENTRY: ${JSON.stringify(EXTENSION_ENTRY)},
+        LARVA_PI_CHILD_SESSION_DIR: ${JSON.stringify(root)},
+        LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
+        LARVA_PI_LAUNCHED: "1",
+        LARVA_BLOCKING_CHILD_PID_FILE: ${JSON.stringify(marker)},
+        LARVA_BLOCKING_CHILD_SESSION_FILE: ${JSON.stringify(join(root, "child.jsonl"))},
+      };
+      const handlers = {};
+      const ctx = { env, ui: { setStatus: async () => undefined, notify: async () => undefined }, modelRegistry: { find: async () => ({ id: "model", provider: "openai", api: "openai-completions" }) } };
+      const pi = { getAllTools: async () => ["larva_subagent"], setActiveTools: async () => true, setModel: async () => true, setThinkingLevel: () => undefined, registerTool: () => undefined, registerCommand: () => undefined, registerFlag: () => undefined, on: (event, handler) => { handlers[event] = handler; } };
+      await mod.initializeExtension(ctx, pi);
+      await mod.commitPersona("ok", ctx, pi);
+      const accepted = await mod.larva_subagent({ persona_id: "child", task: "stay running" }, { env });
+      const started = existsSync(${JSON.stringify(marker)}) ? readFileSync(${JSON.stringify(marker)}, "utf8").trim() : "";
+      await (handlers.session_shutdown ?? handlers.shutdown)?.({}, ctx);
+      let alive = false;
+      if (started) {
+        try { process.kill(Number(started), 0); alive = true; } catch { alive = false; }
+      }
+      console.log(JSON.stringify({ acceptedStatus: accepted.status, acceptedError: accepted.error ?? null, startedPid: started, aliveAfterShutdown: alive }));
+    `;
+    const result = await runProcess(NODE_BIN, ["--input-type=module", "-e", code], { env: sanitizedEnv(), cwd: ROOT, timeoutMs: 15_000 });
+    evidence.stdout = result.stdout.slice(0, 800);
+    evidence.stderr = result.stderr.slice(0, 800);
+    let parsed = {};
+    try { parsed = JSON.parse(result.stdout); } catch { parsed = { raw: result.stdout }; }
+    evidence.parsed = parsed;
+    evidence.pass = parsed.acceptedStatus === "accepted" && parsed.startedPid && parsed.aliveAfterShutdown === false;
+    await rm(root, { recursive: true, force: true });
+  } else {
+    evidence.error = `unknown scenario ${scenario}`;
+  }
+  return evidence;
+}
+
+const args = parseArgs(process.argv.slice(2));
+if (args.get("help") || !args.get("scenario")) {
+  process.stdout.write(usage());
+  process.exit(args.get("help") ? 0 : 2);
+}
+if (!existsSync(PI_BIN) || !existsSync(EXTENSION_ENTRY) || !existsSync(FAKE_CLI)) {
+  process.stderr.write("native acceptance prerequisites missing\n");
+  process.exit(2);
+}
+const evidence = await runScenario(args.get("scenario"));
+process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
+process.exit(evidence.pass ? 0 : 1);

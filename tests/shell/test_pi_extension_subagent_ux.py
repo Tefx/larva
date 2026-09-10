@@ -2104,7 +2104,7 @@ def test_pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop(tmp_pa
             / "dist"
             / "index.js"
         ),
-        "packageVersion": "0.78.0",
+        "packageVersion": "0.85.1",
         "resolvedFromExtensionNodeModules": True,
         "visibleWidth": "function",
         "truncateToWidth": "function",
@@ -2656,9 +2656,9 @@ def test_runtime_probe_records_pi_package_and_hard_gate_statuses() -> None:
     assert "commitExitCode" in payload["package"]
     pi_tui_dependency = payload["package"]["piTuiDependency"]
     assert pi_tui_dependency["hardGateStatus"] == "PASS"
-    assert pi_tui_dependency["packageJsonVersion"] == "0.78.0"
-    assert pi_tui_dependency["lockfileVersion"] == "0.78.0"
-    assert pi_tui_dependency["installedVersion"] == "0.78.0"
+    assert pi_tui_dependency["packageJsonVersion"] == "0.85.1"
+    assert pi_tui_dependency["lockfileVersion"] == "0.85.1"
+    assert pi_tui_dependency["installedVersion"] == "0.85.1"
     assert pi_tui_dependency["lockfileExists"] is True
     assert pi_tui_dependency["noHostGlobalFallback"] is True
     assert pi_tui_dependency["importOk"] is True
@@ -2756,12 +2756,9 @@ def test_documented_external_format_fixtures_and_negative_non_goals() -> None:
 
     documented_launcher_env = {
         "LARVA_PI_INITIAL_PERSONA_ID": "child",
-        "LARVA_PI_REAL_BIN": "/abs/bin/pi",
         "LARVA_PI_EXTENSION_FLAG": "-e",
         "LARVA_PI_EXTENSION_ENTRY": "/abs/contrib/pi-extension/larva.ts",
-        "LARVA_PI_LAUNCHED": "1",
         "LARVA_CLI_ARGV_JSON": ["/abs/bin/larva"],
-        "LARVA_PI_INTERACTIVE_TUI": "0",
     }
     documented_rpc_commands = [
         {"id": "state-1", "type": "get_state"},
@@ -2790,12 +2787,9 @@ def test_documented_external_format_fixtures_and_negative_non_goals() -> None:
 
     assert set(documented_launcher_env) == {
         "LARVA_PI_INITIAL_PERSONA_ID",
-        "LARVA_PI_REAL_BIN",
         "LARVA_PI_EXTENSION_FLAG",
         "LARVA_PI_EXTENSION_ENTRY",
-        "LARVA_PI_LAUNCHED",
         "LARVA_CLI_ARGV_JSON",
-        "LARVA_PI_INTERACTIVE_TUI",
     }
     assert [command["type"] for command in documented_rpc_commands] == [
         "get_state",
