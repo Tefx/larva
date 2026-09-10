@@ -2,9 +2,7 @@
 
 ## Status
 
-Proposed helper design; the independent `larva pi-model-map` backend remains a
-supported top-level CLI surface after the historical `larva pi` launcher was
-retired.
+Proposed.
 
 ## Original request
 
@@ -21,18 +19,19 @@ Add a Larva CLI helper command:
 larva pi-model-map draft
 ```
 
-Keep this as a top-level command independent of the native `pi` session. The
-historical `larva pi` pass-through launcher was retired, so the draft helper
-must remain directly reachable from the Python CLI without a forwarding
-namespace.
+Do not place this under `larva pi ...` because `larva pi` is already a
+pass-through launcher. `src/larva/shell/cli.py` intercepts `argv[0] == "pi"`
+before normal argparse dispatch and forwards non-launcher arguments to the real
+Pi process. Keeping the draft helper as a separate top-level command preserves
+that boundary.
 
 The helper is a setup-time Shell command. The Pi extension remains the runtime
 consumer of the finished `model-map.json`; it must not become responsible for
 inventory discovery, prompting, or file drafting.
 
-Certainty: Proven for the independent top-level command shape and parser
-reachability. The former pass-through boundary is historical and no longer
-provides a compatibility namespace.
+Certainty: Proven for the `larva pi` pass-through boundary, because the launcher
+intercept exists in `src/larva/shell/cli.py`. Likely for the top-level command
+name, because it is the least disruptive CLI shape.
 
 ## Non-goals
 
@@ -57,8 +56,8 @@ provides a compatibility namespace.
 - `src/larva/app/facade_types.py` exposes `PersonaSummary.model`, so the helper
   can collect current registry model usage through `facade.list()` without
   resolving every persona.
-- The Python CLI dispatches `pi-model-map` independently; the retired `larva pi`
-  launcher provides no namespace or forwarding path for this helper.
+- `src/larva/shell/cli.py` intercepts `argv[0] == "pi"` before argparse dispatch,
+  so the helper should not live under the `larva pi ...` pass-through namespace.
 - `pi --list-models --offline` is the Pi inventory source. The helper should
   treat the first two columns as `provider` and `model_id` and should fail closed
   if the output is not parseable.
@@ -480,13 +479,13 @@ Suggested order:
 1. Add pure planning types/helpers if needed, with contracts and doctests if
    placed under `core`.
 2. Add Shell inventory parsing and existing model-map reading/writing.
-3. Add or retain CLI parser and dispatch wiring for `larva pi-model-map draft`.
+3. Add CLI parser and dispatch wiring for `larva pi-model-map draft`.
 4. Add interactive prompt behavior for ambiguous choices.
 5. Add fixture-based unit tests and a real-Pi smoke/integration proof.
 
 Watch for:
 
-- Do not add a `larva pi` forwarding namespace for the native session.
+- Do not reuse the `larva pi` pass-through command namespace.
 - Do not read personal dotfiles.
 - Do not write hidden provider preference rules.
 - Do not store report metadata inside `model-map.json`.
