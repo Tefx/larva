@@ -145361,7 +145361,7 @@ phases:
       acceptance; completed producer history preserved.'
 - id: pi_system_prompt_resolution
   name: Request-scoped Larva system prompt resolution
-  status: pending
+  status: in_progress
   gate: 'Orchestrator completion on pi-system-prompt.deliver-resolver owns final acceptance
     of this single Larva increment: all material design requirements, final integrated
     applicable regression, actual synchronous Pi EventBus/reload evidence and focused
@@ -145387,7 +145387,7 @@ phases:
   steps:
   - id: pi-system-prompt.deliver-resolver
     name: Deliver synchronous request system prompt resolution and fixed-point projection
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Deliver every material requirement in design/pi-system-prompt-resolution.md\
       \ as one Larva-only result: pure fixed-point composition shared by before_agent_start,\
@@ -145578,3 +145578,5 @@ phases:
     - pyproject.toml
     - uv.lock
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-09-10T19:42:10.278463Z'
