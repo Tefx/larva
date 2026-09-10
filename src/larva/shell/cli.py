@@ -278,26 +278,6 @@ def run_cli(
             stderr=stderr,
         )
 
-    if argv_list[0] == "pi":
-        from larva.shell.pi import pi_command
-
-        if argv_list[1:] in (["--help"], ["-h"]):
-            stdout.write(
-                "usage: larva pi [--persona PERSONA_ID] [--] [PI_ARG ...]\n\n"
-                "Launch Pi with the bundled larva extension.\n"
-            )
-            return EXIT_OK
-
-        return _emit_result(
-            pi_command(
-                argv_list[1:],
-                facade=facade,
-            ),
-            as_json=False,
-            stdout=stdout,
-            stderr=stderr,
-        )
-
     try:
         args = parser.parse_args(argv_list)
     except _CliParseError as error:

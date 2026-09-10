@@ -43,8 +43,8 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v4
 
-      - name: Sync dependencies
-        run: uv sync --group dev
+      - name: Sync locked dependencies
+        run: uv sync --locked --group dev
 
       - name: Seed expected-red drift
         run: uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root opifex
@@ -86,8 +86,8 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v4
 
-      - name: Sync dependencies
-        run: uv sync --group dev
+      - name: Sync locked dependencies
+        run: uv sync --locked --group dev
 
       - name: Setup supported Node
         uses: actions/setup-node@v4
@@ -131,6 +131,11 @@ jobs:
           # This affects only the ephemeral CI runner, never an operator machine.
           sudo env PATH="$PATH" npm install --global --prefix /opt/homebrew @earendil-works/pi-coding-agent@0.85.1
           /opt/homebrew/bin/pi --version
+      - name: Verify native-owned Python wheel and backend seam
+        run: |
+          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
+            uv run --locked --python 3.12 --group dev pytest -q \
+            tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_model_map_draft_contract.py
       - name: Verify complete native runtime inventory
         run: |
           env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \

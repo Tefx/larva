@@ -284,25 +284,6 @@ def _add_opencode_command(subparsers: argparse._SubParsersAction[_CliParser]) ->
     )
 
 
-# @shell_orchestration: parser wiring for the Pi pass-through launcher
-def _add_pi_command(subparsers: argparse._SubParsersAction[_CliParser]) -> None:
-    pi_parser = subparsers.add_parser(
-        "pi",
-        help="Launch Pi with the bundled larva extension",
-        description=(
-            "Discover the real Pi executable, load the bundled larva extension, "
-            "and forward remaining arguments to Pi. Use '--' before Pi arguments "
-            "when they may look like larva launcher flags."
-        ),
-    )
-    pi_parser.add_argument(
-        "pi_args",
-        nargs=argparse.REMAINDER,
-        metavar="PI_ARG",
-        help="arguments forwarded verbatim to pi",
-    )
-
-
 # @shell_orchestration: parser wiring for Pi model map tools
 def _add_pi_model_map_command(subparsers: argparse._SubParsersAction[_CliParser]) -> None:
     pmm_parser = subparsers.add_parser(
@@ -373,7 +354,6 @@ def build_cli_parser() -> Result[_CliParser, object]:
     _add_registry_commands(subparsers)
     _add_server_commands(subparsers)
     _add_opencode_command(subparsers)
-    _add_pi_command(subparsers)
     _add_pi_model_map_command(subparsers)
     return Success(parser)
 

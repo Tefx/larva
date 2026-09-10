@@ -480,19 +480,23 @@ Plugin path resolution order:
 2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
 3. source-tree fallback at `contrib/opencode-plugin/larva.ts`
 
-## 16. Pi Coding Agent wrapper
+## 16. Native Pi Coding Agent extension
 
-Launch Pi through Larva when you want the bundled Pi extension to project the
-active Larva persona into Pi:
+Install the native extension package and bind it to the Python `larva` CLI when
+you want Pi to project the active Larva persona:
 
 ```bash
-larva pi --persona python-senior --agent-persona-switch confirm -- <pi args...>
+npm --prefix contrib/pi-extension ci
+export LARVA_CLI_ARGV_JSON='["/absolute/path/to/larva"]'
+pi install /absolute/path/to/larva/contrib/pi-extension
+pi --larva-persona python-senior --larva-agent-persona-switch confirm
 ```
 
-`--agent-persona-switch manual|confirm|auto|free` controls whether the model or
-runtime may initiate a session-local persona switch. The same launch default can
-be supplied with `LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`, and the
-current session can be changed with `/larva-mode [manual|confirm|auto|free]`.
+`--larva-agent-persona-switch manual|confirm|auto|free` controls whether the
+model or runtime may initiate a session-local persona switch. The same launch
+default can be supplied with
+`LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free`, and the current session
+can be changed with `/larva-mode [manual|confirm|auto|free]`.
 
 - `manual` hides autonomous model-facing switch tools and rejects stale calls, but
   the user can still run `/larva-persona <id>` manually.

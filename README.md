@@ -35,8 +35,8 @@ pip install larva
 Development checkout:
 
 ```bash
-uv sync
-uv run larva --help
+uv sync --locked --group dev
+uv run --locked larva --help
 ```
 
 ## Quick start
@@ -170,7 +170,6 @@ larva variant activate <id> <variant> [--json]
 larva variant delete <id> <variant> [--json]
 larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
-larva pi [--persona <id>] [--] <pi args...>  # present until Python launcher retirement
 ```
 
 Update rules: without `--variant`, contract-only patches update the shared
@@ -242,8 +241,9 @@ behavior, target refresh semantics, and failure handling.
 Install `contrib/pi-extension` as a normal Pi 0.85.1 package and bind the Larva
 CLI with `LARVA_CLI_ARGV_JSON`. Native flags are `--larva-persona` and
 `--larva-agent-persona-switch`. Main preferences persist in Pi's real agent
-directory; child processes still use private settings capsules. The Python
-`larva pi` command remains until the next producer removes it.
+directory; child processes still use private settings capsules. Native `pi` is
+the only Pi session entry point; the Python package supplies the bound data
+backend through `LARVA_CLI_ARGV_JSON`.
 
 ```bash
 npm --prefix contrib/pi-extension ci

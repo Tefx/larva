@@ -1,7 +1,14 @@
 # Pi Coding Agent Integration
 
-Status: pre-cutover implementation reference. The accepted [native extension target](pi-native-extension.md) supersedes launcher, parent-capsule, startup-input, restore-precedence, and old-Pi requirements below; implementation of that target is pending. Agent persona switch semantics remain owned by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
-Scope: existing launcher/bundled-extension behavior and retained persona, tool-policy, and subagent contracts; use the native design for the replacement entry point.
+Status: historical pre-cutover implementation reference. The accepted [native
+extension target](pi-native-extension.md) is delivered and the Python `larva pi`
+launcher is retired. Its launcher, parent-capsule, startup-input,
+restore-precedence, and old-Pi requirements below are historical; retained
+persona, tool-policy, and subagent contracts remain applicable. Use the native
+design for the current entry point. Agent persona switch semantics remain owned
+by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
+Scope: historical launcher/bundled-extension behavior and retained persona,
+tool-policy, and subagent contracts.
 Canonical contract authority: opifex-owned PersonaSpec schema
 
 > Supersession note: the current target policy for `/larva-mode` and
@@ -14,8 +21,9 @@ Canonical contract authority: opifex-owned PersonaSpec schema
 ## Native target precedence
 
 [Native Pi extension cutover](pi-native-extension.md) is the accepted replacement
-design. It is documentation of the target, not evidence that native installation
-or startup is already implemented.
+design and current implementation boundary. The native package/runtime delivery
+is complete; this document preserves the superseded launcher behavior as a
+historical reference.
 
 | Material in this reference | Native interpretation |
 |---|---|
@@ -32,11 +40,11 @@ or replacement launcher belongs to that target.
 
 ## Decision
 
-`larva` will support the accepted native target through a normally installed Pi
-extension and an independent CLI backend. The `larva pi` launcher remains in the
-current implementation until cutover; it is removed from the target architecture.
-See [Native Pi extension cutover](pi-native-extension.md) for the replacement
-interfaces, settings ownership, error behavior and acceptance criteria.
+`larva` supports the accepted native target through a normally installed Pi
+extension and an independent CLI backend. The Python `larva pi` launcher has
+been removed from the implementation and target architecture. See [Native Pi
+extension cutover](pi-native-extension.md) for the current interfaces, settings
+ownership, error behavior and acceptance criteria.
 
 The integration projects Larva personas into Pi at runtime. It does not change
 the canonical `PersonaSpec` shape or add workspace sandboxing, task scheduling,
@@ -121,14 +129,28 @@ management.
 
 ## Runtime UX
 
-### Launch
+### Retired launcher reference
 
-> Historical launcher contract. The accepted [native launch interface](pi-native-extension.md#native-startup-interface-and-admission) supersedes this subsection's entrypoint, pre-Pi error timing, parent capsule and launcher-marker requirements. The source implementation has not yet been cut over.
+> Retired launcher contract. The accepted [native launch interface](pi-native-extension.md#native-startup-interface-and-admission) supersedes this subsection's entrypoint, pre-Pi error timing, parent capsule and launcher-marker requirements. The source implementation has completed the cutover.
 
-Supported `larva pi` launches isolate Pi settings before process start. The launcher records the effective base agent directory in `LARVA_PI_BASE_AGENT_DIR`, creates an owner-only private agent-directory capsule, copies `settings.json` with mode `0600`, links other agent resources to the base directory, and points `PI_CODING_AGENT_DIR` at the capsule. Parent cleanup removes only that capsule root and never merges settings into the base. An absolute `LARVA_PI_THINKING_POLICY_FILE` selects adapter-local persona thinking policy; a missing default file uses `medium`, while an existing invalid file fails the affected explicit activation before prompt.
+The current entry point is native Pi with the separately installed extension:
+
+```bash
+pi --larva-persona python-senior --larva-agent-persona-switch confirm
+```
+
+Historical `larva pi` launches isolated Pi settings before process start. The
+launcher recorded the effective base agent directory in
+`LARVA_PI_BASE_AGENT_DIR`, created an owner-only private agent-directory capsule,
+copied `settings.json` with mode `0600`, linked other agent resources to the base
+directory, and pointed `PI_CODING_AGENT_DIR` at the capsule. Parent cleanup
+removed only that capsule root and never merged settings into the base. An
+absolute `LARVA_PI_THINKING_POLICY_FILE` selected adapter-local persona thinking
+policy; a missing default file used `medium`, while an existing invalid file
+failed the affected explicit activation before prompt.
 
 
-Preferred entry point:
+Preferred historical entry point:
 
 ```bash
 larva pi --persona python-senior -- <pi args...>
@@ -373,10 +395,10 @@ Agent self-switch policy is a Pi session mode, not a PersonaSpec field or opifex
 shared-contract change. Current target mode semantics are owned by
 [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
-Launch-time configuration accepts:
+Native launch-time configuration accepts:
 
 ```text
-larva pi --agent-persona-switch manual|confirm|auto|free ...
+pi --larva-agent-persona-switch manual|confirm|auto|free ...
 LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free
 ```
 
@@ -545,7 +567,7 @@ turn.
 The extension resolves a persona and builds a runtime envelope only at these
 commit points:
 
-- initial `larva pi --persona <id>` startup;
+- initial native `pi --larva-persona <id>` startup;
 - successful `/larva-persona <id>` switch;
 - new `larva_subagent` child startup;
 - resumed `larva_subagent` child startup.
@@ -769,7 +791,7 @@ Changed requirement traceability:
 | --- | --- | --- | --- | --- | --- | --- |
 | R1 | user requirement: no legacy fallback | Runtime MUST NOT read `~/.pi/tool-policy.json` unless explicitly set via `LARVA_PI_TOOL_POLICY_FILE`. | `pi_tool_policy_no_fallback_python_impl_20260601`, `pi_tool_policy_no_fallback_extension_impl_20260601` | `runtime_path_matrix` | OWNED | n/a |
 | R2 | user requirement: canonical default | Env absent defaults to `~/.pi/larva/tool-policy.json` only. | `pi_tool_policy_no_fallback_extension_impl_20260601` | `extension_path_matrix` | OWNED | n/a |
-| R3 | user requirement: launcher env behavior | Launcher must preserve explicit env override and otherwise not force old path; acceptable choices: do not set env by default or set canonical only. | `pi_tool_policy_no_fallback_python_impl_20260601` | `launcher_env_matrix` | OWNED | n/a |
+| R3 | user requirement: historical launcher env behavior | The retired launcher preserved explicit env override and otherwise did not force the old path; native startup does not add a compatibility fallback. | `pi_tool_policy_no_fallback_python_impl_20260601` | `launcher_env_matrix` | HISTORICAL | n/a |
 | R4 | user requirement: direct migration/operator proof | Old-only local state moves to canonical and removes old; both-files conflict fails/reports without merge/overwrite. | `pi_tool_policy_operator_migration_proof_20260601` | `migration_report` | OWNED | n/a |
 | R5 | user requirement: docs | Docs state old path unsupported after migration, not fallback. | `pi_tool_policy_no_legacy_docs_20260601` | `docs_diff_summary` | OWNED | n/a |
 | R6 | user requirement: tests | Tests prove old-only absent env does NOT apply old policy; canonical applies; explicit env old applies. | `pi_tool_policy_no_legacy_tests_20260601`, `pi_tool_policy_no_legacy_runtime_guard_20260601` | `test_matrix` | OWNED | n/a |
@@ -811,8 +833,9 @@ Policy contract:
   after the first occurrence. This keeps duplicate entries harmless without adding
   another error.
 - Non-target persona entries are not inspected during the current commit.
-- The Pi extension validates JSON readability and structural shape. The launcher
-  does not parse the policy file.
+- The Pi extension validates JSON readability and structural shape. The retired
+  launcher did not parse the policy file; native startup leaves this validation to
+  the extension.
 - Policy tool names are applied as exact string filters over Pi's currently
   registered model-facing tools. Names not present in the current Pi registry are
   ignored.
@@ -830,10 +853,11 @@ of scope.
 
 ### Validation boundary
 
-The launcher does not parse the tool-policy file. It only passes the selected
-policy file path to the bundled Pi extension through `LARVA_PI_TOOL_POLICY_FILE`
-when an override is needed. The Pi extension owns path resolution, parsing, and
-validation for initial startup, in-session persona switches, and child startup.
+The retired launcher did not parse the tool-policy file; it passed a selected
+path to the bundled Pi extension through `LARVA_PI_TOOL_POLICY_FILE` when an
+override was needed. Native Pi startup leaves path resolution, parsing, and
+validation to the extension for initial startup, in-session persona switches,
+and child startup.
 
 | Validation item | Launcher preflight | Extension commit |
 | --- | --- | --- |
@@ -1352,7 +1376,7 @@ the shared `PI_CODING_AGENT_DIR/settings.json` and races across parent/sibling
 processes. No snapshot/restore fallback is allowed.
 
 The child must use the `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
-`LARVA_PI_EXTENSION_ENTRY` values provided by the launcher. It must not invoke bare
+`LARVA_PI_EXTENSION_ENTRY` values captured by the native extension's startup identity; former launcher-provided values are historical. It must not invoke bare
 `pi`, rediscover Pi through `PATH`, or derive the extension entry from module
 metadata or argv inspection. It must pass Pi `--no-extensions` while still loading
 the explicit bundled Larva extension. Additional sources come only from
@@ -1410,7 +1434,7 @@ Environment:
 - `LARVA_PI_INTERACTIVE_TUI=0`
 
 Child extension initialization resolves the child persona and shared model mapping,
-verifies the launcher-selected Pi model, loads policy, enumerates available Pi
+verifies the native-startup-selected Pi model, loads policy, enumerates available Pi
 tools, and commits the child persona envelope without calling `pi.setModel()`
 before replying to the first `get_state` request. Policy names for tools not
 present in the child Pi runtime are ignored. If initialization fails before RPC
@@ -2207,7 +2231,7 @@ Command and hook contracts:
   `LARVA_PI_SUBAGENT_CONFIG_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
   `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
   `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
-  `LARVA_PI_INTERACTIVE_TUI`, and `LARVA_PI_LAUNCHED` from the launcher
+  `LARVA_PI_INTERACTIVE_TUI`, and `LARVA_PI_LAUNCHED` from the native startup
   environment. `LARVA_PI_LAUNCHED` is consumed as the recursion-prevention
   sentinel for child Pi launches before the extension trusts `LARVA_PI_REAL_BIN`,
   `LARVA_PI_EXTENSION_FLAG`, or `LARVA_PI_EXTENSION_ENTRY`.
@@ -2228,9 +2252,10 @@ Primary invocation source:
 LARVA_CLI_ARGV_JSON
 ```
 
-`LARVA_CLI_ARGV_JSON` is a JSON array argv prefix supplied by the launcher for the
-same Larva CLI context that started `larva pi`. The extension appends the command
-arguments below to that prefix and inherits the launcher-provided environment.
+`LARVA_CLI_ARGV_JSON` is a JSON array argv prefix supplied by native Pi startup
+for the selected Larva CLI backend. The extension appends the command arguments
+below to that prefix. Historical launcher production of this value is retained
+only in the retired-launcher section above.
 
 Resolution command suffix:
 
@@ -2383,6 +2408,10 @@ Callbacks and wait/select metadata expose both fields while compatibility
 `status`/`phase` remain execution-owned. Diagnostics are metadata-only and do
 not include raw oversized content.
 ## Architecture basis
+
+> Historical ownership snapshot. Rows assigning launch, environment, or process
+> discovery to a Larva launcher describe the retired pre-cutover implementation;
+> the native extension and independent CLI backend own the current boundary.
 
 ```yaml
 architecture_basis:
@@ -2735,17 +2764,22 @@ link here rather than redefining the contracts.
 
 | capability | implemented behavior | provenance rule | proof command or test |
 | --- | --- | --- | --- |
-| Fatal initial persona startup | `larva pi --persona <id>` failures in model selection or policy parsing write `larva pi: <ERROR_CODE>:` and exit non-zero before any prompt/model turn. Manual extension loads without `LARVA_PI_LAUNCHED=1` may degrade instead of exiting. | PASS requires non-zero process exit plus Larva startup stderr before the first prompt. | `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k startup_fatal -v` |
-| Launcher sentinel | `LARVA_PI_LAUNCHED=1` is required before the extension trusts `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY` for child/RPC spawning. Missing or false sentinel fails closed with `LARVA_CHILD_START_FAILED`. | Source/harness proof is sufficient for the recursion guard because it proves no child process is spawned without the sentinel. | `uv run pytest tests/shell/test_pi_extension_contract.py -k launched_sentinel -v` |
+| Fatal initial persona startup | Native `pi --larva-persona <id>` failures in model selection or policy parsing write `larva pi: <ERROR_CODE>:` and exit non-zero before any prompt/model turn. Manual extension loads without `LARVA_PI_LAUNCHED=1` may degrade instead of exiting. | PASS requires non-zero process exit plus Larva startup stderr before the first prompt. | `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-fatal`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k startup_fatal -v` |
+| Child startup identity sentinel | `LARVA_PI_LAUNCHED=1` is required before the extension trusts `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY` for child/RPC spawning. Missing or false sentinel fails closed with `LARVA_CHILD_START_FAILED`. | Source/harness proof is sufficient for the recursion guard because it proves no child process is spawned without the sentinel. | `uv run pytest tests/shell/test_pi_extension_contract.py -k launched_sentinel -v` |
 | Persona mentions | Mention autocomplete inserts id-only canonical values exactly shaped as `@persona:<id>`; the mention has no automatic switch, subagent call, prompt injection, or PersonaSpec injection side effect. Raw `@<query>` autocomplete preserves Pi file-reference suggestions first, then appends matching canonical `@persona:<id>` candidates; submitted raw `@<id>` text is not a persona semantic form. | Candidate behavior can be proven by the extension harness; claiming live editor support additionally requires live TUI `ctx.ui.addAutocompleteProvider` provenance. | `node contrib/pi-extension/test-autocomplete-runtime.mjs`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v` |
 | `ctx.ui.addAutocompleteProvider` editor support | The extension installs a narrow provider only when Pi exposes the hook. If the hook is missing, completion degrades to command-level `/larva-persona` completion and base-provider delegation/`null` for editor autocomplete. | Mock/local harness hook evidence is never sufficient for `supported: true`; support requires non-mock Pi interactive TUI runtime/build provenance. Current local smoke reports `runtimeHarness.mock` as degraded/unsupported provenance. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates`; `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k capability_gate -v` |
 | `/larva-subagent` overlay | The canonical authorized slash command is view-only, user-visible, adapter-local, and backed by the parent extension's presentation log plus adapter-local persistent cache; `/larva-log` is a deprecated view-mode alias only. It must not expose top-level `task_id`/`result_text` mirrors or mutate persona/model/tool-policy/session state. | Runtime/harness proof must show command registration, view-only shape, newest/exact selection, persistent cache load/clear, reset/not-observed behavior, and no mutation of resume authority. | `node scripts/pi-extension-runtime-smoke.mjs --scenario async-subagent-contract`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k async_subagent -v` |
 | Pi TUI enhanced UI | The adapter imports directly from exact `@earendil-works/pi-tui@0.85.1`; custom components satisfy visible-width rendering; canonical `/larva-subagent` has the concise `Larva subagent log` chrome title, Summary/Prompt/Output/Metadata tabs, event-driven in-memory refresh, and Markdown output; `/larva-log` is a deprecated view-mode alias; expanded `larva_subagent` results render Markdown Summary/Task/Output/Error/Resume sections; `/larva-persona` uses `Input`/`SelectList` plus detail when custom UI is available; mouse clicks are unsupported no-ops. | Package/install and harness proof establish implemented component behavior. Live Pi support claims remain bounded by `capability-gates`; mock-only or unavailable runtime evidence must be reported as unsupported or blocked. | `npm --prefix contrib/pi-extension ls @earendil-works/pi-tui --depth=0`; `node contrib/pi-extension/test-persona-selector-ui.mjs`; `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'pi_tui_direct_imports_bordered_scroll_width_and_mouse_click_noop or presentation_log_overlay or vt46' -v`; `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
-| Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using launcher-provided real Pi binary, extension flag, and extension entry with Pi `--no-extensions`, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
+| Child RPC live proof | `larva_subagent` starts child Pi through the registered execute path using the native extension's captured real Pi binary, extension flag, and extension entry with Pi `--no-extensions`, then performs fresh `get_state`/`prompt`/`agent_end`/`get_last_assistant_text`, resume `switch_session`/`prompt`, abort, and cleanup. | PASS requires controlled live Pi evidence for B1 fresh startup, B2 resume, B3 abort propagation, and B4 orphan-free cleanup. If Pi or extension loading is unavailable, the proof is blocked, not silently passed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario live-child-rpc-proof`; inspect `runtime.controlledLive` |
 | Subagent row/progress rendering | `larva_subagent` exposes `renderCall`, `execute` progress updates, and `renderResult` with bounded visible text; this is row-local and does not replace the parent `larva:` footer. | Harness proof is sufficient for renderer contract shape and deterministic bounds; live Pi rendering remains a UI runtime concern. | `uv run pytest tests/shell/test_pi_extension_subagent_ux.py -k 'render_hooks or vt46' -v` |
 | Runtime hard gates | Extension loading, Pi RPC command inventory, autocomplete hook provenance, subagent row progress, and subagent log overlay command are reported together. | The matrix is data/provenance, not a fallback authority for behavior. Unsupported or mock-only items must be shown as unsupported/unknown rather than claimed. | `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates` |
 
 ## Verification targets
+
+> Historical launcher targets are retained below for auditability. Any numbered
+> item that names `larva pi`, launcher preflight, launcher environment, or
+> launcher discovery describes removed behavior; retained extension, child, and
+> backend assertions remain current and are verified through native Pi.
 
 Implementation gates must prove these observable behaviors:
 

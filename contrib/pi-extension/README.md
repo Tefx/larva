@@ -8,8 +8,8 @@ project shell. [The accepted native design](../../design/pi-native-extension.md)
 owns setup, admission, settings, and child-capsule rules. PersonaSpec meaning
 remains owned by opifex.
 
-The Python `larva pi` command still exists in this repository until the next
-producer removes it. Do not use it as the native entry point.
+Native `pi` is the only Pi session entry point. The Python `larva` package is
+used only as the explicitly bound persona data backend.
 
 ```bash
 npm --prefix contrib/pi-extension ci
@@ -85,8 +85,8 @@ nonfatal after successful explicit-ID preflight.
 
 The supported native host is Node 26.7.0 / Pi 0.85.1 on macOS. References below
 to earlier Pi versions explain historical constraints; they do not expand the
-supported host. The still-present Python launcher is a downstream retirement
-item, not the native startup path.
+supported host. The Python package is a downstream data backend, not the
+native startup path.
 
 Child launch identity is captured once from the actual Node executable, Pi
 package manifest, and declared `bin.pi` entry. Parent argv changes and ambient
@@ -535,7 +535,7 @@ the model direct access to the internal `commitPersona` primitive.
 Configure the launch default with either surface:
 
 ```text
-larva pi --agent-persona-switch manual|confirm|auto|free ...
+pi --larva-agent-persona-switch manual|confirm|auto|free ...
 LARVA_PI_AGENT_PERSONA_SWITCH=manual|confirm|auto|free
 ```
 
@@ -1150,7 +1150,7 @@ cancellation, result callback semantics, and the unified canonical
 `/larva-subagent` UX. This README is the operator-facing summary of that accepted
 design and the current implementation.
 
-`larva pi` has a `larva:none` default for fresh sessions unless an explicit
+Native Pi has a `larva:none` default for fresh sessions unless an explicit
 startup persona or restorable session persona is present. Loading the extension is
 capability, not identity; it does not imply a hidden `general` persona.
 
@@ -1744,7 +1744,7 @@ machine, and boundaries:
 [`../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`](../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md).
 
 ## Explicit non-goals and unsupported guarantees
-Do not infer these guarantees from `larva pi` or this extension:
+Do not infer these guarantees from this extension:
 
 - No PersonaSpec schema changes, Pi-specific PersonaSpec fields, Pi-specific
   policy fields in PersonaSpec, shared-schema changes, or opifex shared-contract

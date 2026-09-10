@@ -2,10 +2,11 @@
 
 ## Status
 
-The accepted [native extension target](pi-native-extension.md) now owns startup
-and settings isolation. Its implementation is pending. Main Pi uses normal
-settings persistence and session-local persona setters; only children retain
-private settings capsules.
+The accepted [native extension target](pi-native-extension.md) owns startup
+and settings isolation. The native implementation is delivered, and the
+Python `larva pi` compatibility layer is retired. Main Pi uses normal settings
+persistence and session-local persona setters; only children retain private
+settings capsules.
 
 Thinking policy, route verification, profile switching and console behavior in
 this reference remain applicable unless explicitly superseded there. The older
@@ -334,11 +335,16 @@ Required runtime evidence:
 9. Full repository tests and `invar guard` pass, followed by independent runtime
    and conformance review.
 
-## Expected code and documentation scope
+## Historical expected code and documentation scope
 
-- `src/larva/shell/pi.py`
+The list below is a historical implementation-phase snapshot. The Python
+launcher path was removed during the native cutover; retained runtime,
+subagent, model-map, and overlay behavior now belongs to native Pi and its
+independent backend.
+
+- historical `src/larva/shell/pi.py` launcher (removed)
 - `contrib/pi-extension/larva.ts`
-- existing Pi launcher, runtime, subagent, model-map, and overlay tests
+- existing runtime, subagent, model-map, and overlay tests
 - `README.md`
 - `contrib/pi-extension/README.md`
 - `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`

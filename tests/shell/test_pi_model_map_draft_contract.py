@@ -1,4 +1,4 @@
-"""Expected-red contract tests for pi-model-map draft helper."""
+"""Behavioral contract tests for the independent pi-model-map draft helper."""
 from __future__ import annotations
 
 import json
@@ -12,6 +12,7 @@ import pytest
 from returns.result import Success, Failure
 
 from larva.shell.cli import run_cli
+from larva.shell.cli_parser import build_cli_parser
 from larva.app.facade_types import PersonaSummary
 
 
@@ -532,3 +533,37 @@ def test_invalid_existing_model_map_fail_closed(fake_pi_bin, mock_subprocess_run
     code = run_cli(["pi-model-map", "draft", "--non-interactive", "--model-map", str(map_file)], facade=facade, stdout=stdout, stderr=stderr)
     assert code != 0
     assert "LARVA_PI_MODEL_MAP_INVALID" in stderr.getvalue()
+
+
+def test_pi_model_map_draft_remains_a_top_level_command() -> None:
+    """Model-map drafting remains independent of the retired Pi launcher."""
+    parser = build_cli_parser().unwrap()
+
+    args = parser.parse_args(["pi-model-map", "draft", "--non-interactive"])
+
+    assert args.command == "pi-model-map"
+    assert args.pi_model_map_command == "draft"
+    assert args.non_interactive is True
+
+
+def test_pi_model_map_draft_accepts_output_and_write_options() -> None:
+    """The retained helper still exposes its filesystem output controls."""
+    parser = build_cli_parser().unwrap()
+
+    args = parser.parse_args(
+        [
+            "pi-model-map",
+            "draft",
+            "--output",
+            "/tmp/model-map.json",
+            "--model-map",
+            "/tmp/existing-map.json",
+            "--write",
+            "--json",
+        ]
+    )
+
+    assert args.output == "/tmp/model-map.json"
+    assert args.model_map == "/tmp/existing-map.json"
+    assert args.write is True
+    assert args.as_json is True

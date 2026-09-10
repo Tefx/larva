@@ -5,8 +5,9 @@
 Accepted direction. Native Pi 0.85.1 is the session entry point; this package
 implements normal discovery, CLI binding, admission, main preference persistence,
 and retained child capsules. Operator installation onto a user agent directory
-remains a separate persistent-config action. Python `larva pi` retirement is the
-next producer.
+remains a separate persistent-config action. The Python `larva pi` command was
+retired after native acceptance; the Python CLI remains an on-demand backend for
+the native extension.
 
 This document supersedes launcher ownership, parent settings capsules,
 launcher-marker admission, old-Pi compatibility, and launcher maintenance work in
@@ -28,10 +29,10 @@ class layout, helper module, or serialization format.
 ## Decision and scope
 
 Use native `pi` with one normally installed Larva extension. Retain the Python
-Larva CLI as an on-demand data backend. Remove the Python `larva pi` command and
-its launcher-specific implementation once the native target passes acceptance.
-Do not maintain two runtime entry points, add a replacement Node launcher, patch
-Pi, or install a shell alias that disguises another wrapper as `pi`.
+Larva CLI as an on-demand data backend. The accepted cutover removed the Python
+`larva pi` command and its launcher-specific implementation. Do not maintain two
+runtime entry points, add a replacement Node launcher, patch Pi, or install a
+shell alias that disguises another wrapper as `pi`.
 
 The first acceptance target is the standard Node-installed Pi 0.85.1 CLI, tested
 on macOS with Node v26.7.0. The implementation uses that host's public extension
@@ -435,7 +436,9 @@ not a fresh runtime result. Keep the launched acceptance cases for these paths.
 
 ## Implementation and cutover sequence
 
-This is a dependency outline for implementation owners, not an execution Plan.
+This is a historical dependency outline for implementation owners, not an
+execution Plan. The repository cutover steps below are complete; persistent
+operator installation remains a separate authorized operation.
 
 1. Establish expected-red native startup, UI and child-bootstrap tests against the
    supported host. Freeze the retained behavior matrix below and the accepted
@@ -445,23 +448,25 @@ This is a dependency outline for implementation owners, not an execution Plan.
 3. Remove launcher-marker gates, parent capsule setup, old-host fallbacks with no
    remaining consumer, and implicit CLI-install fallbacks. Keep current child
    framing and capsule mechanisms.
-4. Once native behavior passes, remove `larva pi`, its CLI registration and shell
+4. The completed cutover removed `larva pi`, its CLI registration and shell
    implementation, wheel-owned Pi resources, and launcher-only tests/helpers.
-   Retarget meaningful behavior tests to native entry; do not delete retained
-   policy/session/child assertions just because their old harness used a launcher.
+   Meaningful behavior tests were retargeted to native entry; retained
+   policy/session/child assertions remain required even when their old harness
+   used a launcher.
 5. Update user guides, reference entrypoint examples, package/dependency metadata,
-   and affected CI/runtime harnesses. Then perform the explicitly authorized
-   installation and cutover on the intended base agent directory.
+   and affected CI/runtime harnesses. Persistent installation and cutover on a
+   user's base agent directory remain separate authorized operations.
 
-Implementation scope includes `contrib/pi-extension/larva.ts`, its package and
-lock metadata, the paired preload when necessary, `src/larva/shell/pi.py`, the
-`pi` registration in `src/larva/shell/cli.py`, Python wheel inclusion in
-`pyproject.toml`, relevant tests/scripts, and Pi-facing documentation. This is a
-removal/adapter change; it does not require broad private-module reorganization.
+Implementation scope included `contrib/pi-extension/larva.ts`, its package and
+lock metadata, the paired preload when necessary, removal of the historical
+`src/larva/shell/pi.py` implementation and its `pi` registration in
+`src/larva/shell/cli.py`, Python wheel inclusion in `pyproject.toml`, relevant
+tests/scripts, and Pi-facing documentation. This is a removal/adapter change; it
+does not require broad private-module reorganization.
 
-No separately maintained compatible launcher release is required. Until native
-acceptance, the repository still contains the old implementation; documentation
-must distinguish target commands from currently usable commands.
+No separately maintained compatible launcher release is required. The historical
+implementation has been removed after native acceptance; current documentation
+must distinguish native `pi` commands from the independent Python backend.
 
 ### Installation, upgrade and rollback
 
@@ -520,8 +525,10 @@ launcher-only and phrase-presence assertions are not native acceptance criteria.
 
 ## Observed evidence and remaining verification
 
-Inspection baseline: Larva commit `bfe62119426111da232253d97f942e2cf42a1e59`, Pi
-0.85.1 and Node v26.7.0. No implementation change is included in this document.
+Historical inspection baseline: Larva commit
+`bfe62119426111da232253d97f942e2cf42a1e59`, Pi 0.85.1 and Node v26.7.0. The
+current cutover implementation and verification live in the repository; this
+design preserves the predecessor observations for context.
 
 ### Environment counterexample
 
@@ -532,6 +539,10 @@ installed into B. Actual launcher environment construction preserved A activatio
 Absolute Larva CLI invocation worked without activating A or exposing its bin.
 
 ### Main settings distinction
+
+The table below records a historical native-versus-launcher comparison; the
+`Actual larva pi` row describes the retired implementation and is not a current
+entry point.
 
 Actual native TUI/RPC extension setters changed model/thinking without modifying
 `defaultProvider`, `defaultModel`, or `defaultThinkingLevel`. This is a scoped

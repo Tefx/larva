@@ -270,19 +270,13 @@ def test_requirement_traceability_covers_verification_targets_6_through_41() -> 
     assert sorted(REQUIREMENT_TRACEABILITY) == list(range(6, 42))
 
 
-def test_pi_extension_packaged_path_force_includes_source_extension() -> None:
-    """Wheel packaging must include the bundled Pi extension runtime path."""
+def test_pi_extension_is_distributed_only_by_its_native_package() -> None:
+    """Python wheel metadata must not install a second native Pi extension copy."""
     pyproject = PYPROJECT.read_text(encoding="utf-8")
 
-    assert (
-        '"contrib/pi-extension/larva.ts" = "larva/shell/pi_extension/larva.ts"'
-        in pyproject
-    )
-    assert (
-        '"contrib/pi-extension/child-rpc-frame-preload.mjs" = '
-        '"larva/shell/pi_extension/child-rpc-frame-preload.mjs"'
-        in pyproject
-    )
+    assert '"contrib/pi-extension/larva.ts"' not in pyproject
+    assert '"contrib/pi-extension/child-rpc-frame-preload.mjs"' not in pyproject
+    assert '"contrib/opencode-plugin/larva.ts" = "larva/shell/opencode_plugin/larva.ts"' in pyproject
 
 
 def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
@@ -1350,7 +1344,7 @@ def test_current_pi_factory_defers_process_env_initial_persona_until_session_con
 
 
 def test_launched_initial_persona_invalid_model_exits_before_prompt(tmp_path: Path) -> None:
-    """`larva pi --persona` startup failures must be process-fatal before a prompt."""
+    """Native `pi --larva-persona` startup failures are fatal before a prompt."""
 
     fake_cli = tmp_path / "fake-larva-resolve.mjs"
     fake_cli.write_text(

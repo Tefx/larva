@@ -1,620 +1,256 @@
+"""Installed-wheel and removed-launcher boundary tests.
+
+The native Pi package owns Pi startup.  These tests keep the Python distribution
+focused on the CLI/API data backend and prove that a built wheel does not carry
+a second Pi extension copy or a forwarding ``larva pi`` entry point.
+"""
+
+from __future__ import annotations
+
+import io
 import json
 import os
-import shutil
 import subprocess
-import sys
+import zipfile
+from dataclasses import dataclass
 from pathlib import Path
+from shutil import which
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-from larva.app.facade import DefaultLarvaFacade
-from larva.shell.cli import run_cli
+from larva.shell.cli import EXIT_CRITICAL, run_cli
+from tests.shell.fixture_taxonomy import canonical_persona_spec
+
+ROOT = Path(__file__).resolve().parents[2]
+PI_EXTENSION = ROOT / "contrib" / "pi-extension" / "larva.ts"
 
 
-# Mock facade
-def _make_facade():
-    return MagicMock(spec=DefaultLarvaFacade)
+@dataclass(frozen=True)
+class InstalledWheel:
+    """Paths for one isolated, wheel-installed Python runtime."""
 
-@pytest.fixture
-def fake_pi_executable(tmp_path):
-    pi_bin = tmp_path / "fake_pi"
-    pi_bin.write_text("#!/bin/sh\nexit 0\n")
-    pi_bin.chmod(0o755)
-    return pi_bin
-
-@pytest.fixture
-def mock_shutil_which(monkeypatch, fake_pi_executable):
-    def fake_which(cmd, *args, **kwargs):
-        if cmd == "pi":
-            return str(fake_pi_executable)
-        return None
-    monkeypatch.setattr(shutil, "which", fake_which)
-    return fake_which
-
-@pytest.fixture
-def mock_subprocess_run(monkeypatch):
-    mock_run = MagicMock()
-    mock_run.return_value.stdout = b""
-    mock_run.return_value.returncode = 0
-    monkeypatch.setattr(subprocess, "run", mock_run)
-    return mock_run
-
-def test_launcher_invokes_real_pi_with_expected_args_and_env(
-    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
-):
-    """
-    Verification target 1:
-    `larva pi --persona known -- --version` invokes real Pi as
-    `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`,
-    sets `LARVA_PI_INITIAL_PERSONA_ID=known`, `LARVA_PI_REAL_BIN`,
-    `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`,
-    `LARVA_PI_LAUNCHED`, and `LARVA_CLI_ARGV_JSON`
-    for the extension process.
-    """
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    # We expect this to fail (expected red) because 'pi' command is not implemented.
-    code = run_cli(["pi", "--persona", "known", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-    
-    mock_subprocess_run.assert_called()
-    assert all(call.args[0][1:] != ["--help"] for call in mock_subprocess_run.call_args_list)
-    # Check that it called the fake pi with the extension flag and the rest of the arguments
-    call_args, call_kwargs = mock_subprocess_run.call_args
-    cmd = call_args[0]
-    
-    assert cmd[0] == str(fake_pi_executable)
-    assert cmd[1] == "-e"
-    # bundled extension path should end with larva.js or similar
-    assert "extension" in cmd[2]
-    assert cmd[3] == "--version"
-    
-    env = call_kwargs.get("env", os.environ)
-    assert env.get("LARVA_PI_INITIAL_PERSONA_ID") == "known"
-    assert env.get("LARVA_PI_REAL_BIN") == str(fake_pi_executable)
-    assert env.get("LARVA_PI_EXTENSION_FLAG") == "-e"
-    assert env.get("LARVA_PI_EXTENSION_ENTRY") == cmd[2]
-    assert env.get("LARVA_PI_LAUNCHED") == "1"
-    assert "LARVA_PI_TOOL_POLICY_FILE" not in env
-    assert "LARVA_CLI_ARGV_JSON" in env
+    wheel: Path
+    python: Path
+    larva: Path
+    home: Path
 
 
-def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
-    """
-    Launcher env contract is exercised by a real fixture child process, not only
-    by inspecting source or mocked call arguments.
-    """
-    artifact = tmp_path / "child-env.json"
-    pi_bin = tmp_path / "fake_pi_runtime.py"
-    pi_bin.write_text(
-        f"#!{sys.executable}\n"
-        "import json\n"
-        "import os\n"
-        "import sys\n"
-        "from pathlib import Path\n"
-        "if '--help' in sys.argv[1:]:\n"
-        "    raise SystemExit('unexpected pi --help probe')\n"
-        "keys = [\n"
-        "    'LARVA_PI_INITIAL_PERSONA_ID',\n"
-        "    'LARVA_PI_REAL_BIN',\n"
-        "    'LARVA_PI_EXTENSION_FLAG',\n"
-        "    'LARVA_PI_EXTENSION_ENTRY',\n"
-        "    'LARVA_CLI_ARGV_JSON',\n"
-        "    'LARVA_PI_INTERACTIVE_TUI',\n"
-        "    'LARVA_PI_LAUNCHED',\n"
-        "]\n"
-        "Path(os.environ['FAKE_PI_ARTIFACT']).write_text(\n"
-        "    json.dumps(\n"
-        "        {'argv': sys.argv[1:], 'env': {key: os.environ.get(key) for key in keys}},\n"
-        "        sort_keys=True,\n"
-        "    ),\n"
-        "    encoding='utf-8',\n"
-        ")\n"
-    )
-    pi_bin.chmod(0o755)
-    monkeypatch.setenv("LARVA_PI_BIN", str(pi_bin))
-    monkeypatch.setenv("FAKE_PI_ARTIFACT", str(artifact))
-
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(
-        ["pi", "--persona", "known", "--", "--version"],
-        facade=_make_facade(),
-        stdout=stdout,
-        stderr=stderr,
-    )
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-
-    payload = json.loads(artifact.read_text(encoding="utf-8"))
-    child_env = payload["env"]
-    assert payload["argv"][0] == "-e"
-    assert "extension" in payload["argv"][1]
-    assert payload["argv"][2] == "--version"
-    assert child_env["LARVA_PI_INITIAL_PERSONA_ID"] == "known"
-    assert child_env["LARVA_PI_REAL_BIN"] == str(pi_bin)
-    assert child_env["LARVA_PI_EXTENSION_FLAG"] == "-e"
-    assert child_env["LARVA_PI_EXTENSION_ENTRY"] == payload["argv"][1]
-    assert child_env["LARVA_CLI_ARGV_JSON"]
-    assert child_env["LARVA_PI_INTERACTIVE_TUI"] == "1"
-    assert "LARVA_PI_TOOL_POLICY_FILE" not in child_env
-    assert child_env["LARVA_PI_LAUNCHED"] == "1"
+def _clean_env(**overrides: str) -> dict[str, str]:
+    """Return a subprocess environment without an activated project runtime."""
+    env = dict(os.environ)
+    for key in ("VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"):
+        env.pop(key, None)
+    env["UV_PYTHON_DOWNLOADS"] = "never"
+    env.update(overrides)
+    return env
 
 
-def test_launcher_private_capsule_prevents_shared_settings_leak(
-    mock_shutil_which, mock_subprocess_run, tmp_path, monkeypatch
-):
-    """Larva-launched Pi must write only a private settings capsule."""
-    import io
-
-    base_agent = tmp_path / ".pi" / "agent"
-    base_agent.mkdir(parents=True)
-    base_settings = base_agent / "settings.json"
-    original = b'{"model":"shared/base","thinkingLevel":"medium"}\n'
-    base_settings.write_bytes(original)
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("PI_CODING_AGENT_DIR", str(base_agent))
-    runtime_root = tmp_path / ".pi" / "larva" / "runtime"
-    stale = runtime_root / "stale-run"
-    stale.mkdir(parents=True)
-    os.utime(stale, (0, 0))
-    outside = tmp_path / "outside-preserved"
-    outside.mkdir()
-    (runtime_root / "stale-link").symlink_to(outside, target_is_directory=True)
-
-    observed: dict[str, object] = {}
-
-    def inspect_capsule(*_args, **kwargs):
-        child_env = kwargs["env"]
-        capsule = Path(child_env["PI_CODING_AGENT_DIR"])
-        observed.update(
-            base=child_env["LARVA_PI_BASE_AGENT_DIR"],
-            capsule=capsule,
-            capsule_mode=capsule.stat().st_mode & 0o777,
-            settings=(capsule / "settings.json").read_bytes(),
-            settings_mode=(capsule / "settings.json").stat().st_mode & 0o777,
-        )
-        return MagicMock(returncode=0, stdout=b"", stderr=b"")
-
-    mock_subprocess_run.side_effect = inspect_capsule
-    code = run_cli(
-        ["pi", "--persona", "known", "--", "--version"],
-        facade=_make_facade(),
-        stdout=io.StringIO(),
-        stderr=io.StringIO(),
+def _run(
+    command: list[str],
+    *,
+    cwd: Path = ROOT,
+    env: dict[str, str] | None = None,
+    timeout: float = 180,
+) -> subprocess.CompletedProcess[str]:
+    """Run a bounded subprocess and return its captured text streams."""
+    process_env = _clean_env()
+    process_env.update(env or {})
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        env=process_env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=timeout,
     )
 
-    assert code == 0
-    capsule = observed["capsule"]
-    assert observed["base"] == str(base_agent)
-    assert capsule != base_agent
-    assert observed["capsule_mode"] == 0o700
-    assert observed["settings"] == original
-    assert observed["settings_mode"] == 0o600
-    assert not capsule.exists()
-    assert not stale.exists()
-    assert outside.is_dir()
-    assert (runtime_root / "stale-link").is_symlink()
-    assert base_settings.read_bytes() == original
 
-    failed_capsules: list[Path] = []
-
-    def fail_after_start(*_args, **kwargs):
-        failed_capsules.append(Path(kwargs["env"]["PI_CODING_AGENT_DIR"]).parent)
-        return MagicMock(returncode=7, stdout=b"", stderr=b"startup failed")
-
-    mock_subprocess_run.side_effect = fail_after_start
-    failed_code = run_cli(
-        ["pi", "--persona", "known"],
-        facade=_make_facade(),
-        stdout=io.StringIO(),
-        stderr=io.StringIO(),
-    )
-    assert failed_code == 7
-    assert failed_capsules and all(not path.exists() for path in failed_capsules)
-    assert base_settings.read_bytes() == original
-
-
-def test_launcher_absent_policy_env_ignores_legacy_tool_policy_path(
-    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
-):
-    """Absent env must not select legacy ``~/.pi/tool-policy.json`` implicitly."""
-    home = tmp_path / "home"
-    legacy = home / ".pi" / "tool-policy.json"
-    legacy.parent.mkdir(parents=True)
-    legacy.write_text('{"personas":{"known":{"deny":["bash"]}}}', encoding="utf-8")
-    canonical = home / ".pi" / "larva" / "tool-policy.json"
-
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.delenv("LARVA_PI_TOOL_POLICY_FILE", raising=False)
-
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert "LARVA_PI_TOOL_POLICY_FILE" not in env
-    assert str(legacy.resolve()) not in env.values()
-
-
-def test_launcher_absent_policy_env_selects_canonical_tool_policy_path(
-    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
-):
-    """Absent env selects canonical ``~/.pi/larva/tool-policy.json`` when present."""
-    home = tmp_path / "home"
-    canonical = home / ".pi" / "larva" / "tool-policy.json"
-    canonical.parent.mkdir(parents=True)
-    canonical.write_text('{"personas":{"known":{"allow":["bash"]}}}', encoding="utf-8")
-
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.delenv("LARVA_PI_TOOL_POLICY_FILE", raising=False)
-
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert "LARVA_PI_TOOL_POLICY_FILE" not in env
-
-
-def test_launcher_explicit_policy_env_honors_legacy_tool_policy_path(
-    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
-):
-    """Legacy path remains valid only when explicitly named by env override."""
-    home = tmp_path / "home"
-    legacy = home / ".pi" / "tool-policy.json"
-    legacy.parent.mkdir(parents=True)
-    legacy.write_text('{"personas":{"known":{"deny":["bash"]}}}', encoding="utf-8")
-    canonical = home / ".pi" / "larva" / "tool-policy.json"
-    canonical.parent.mkdir(parents=True)
-    canonical.write_text('{"personas":{"known":{"allow":["bash"]}}}', encoding="utf-8")
-
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("LARVA_PI_TOOL_POLICY_FILE", str(legacy))
-
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(legacy)
-
-
-@pytest.mark.parametrize(
-    "env_name",
-    [
-        "LARVA_PI_TOOL_POLICY_FILE",
-        "LARVA_PI_MODEL_MAP_FILE",
-        "LARVA_PI_SUBAGENT_CONFIG_FILE",
-    ],
-)
-def test_launcher_rejects_relative_config_override_before_starting_pi(
-    mock_shutil_which, mock_subprocess_run, env_name, monkeypatch
-):
-    monkeypatch.setenv(env_name, "relative/path.json")
-
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-
-    assert code != 0
-    assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
-    assert mock_subprocess_run.call_count == 0
-
-def test_launcher_missing_persona(
-    mock_shutil_which, mock_subprocess_run, tmp_path
-):
-    """
-    Verification target 2:
-    `larva pi --persona missing` does not start Pi, exits non-zero, and writes
-    `larva pi: LARVA_PERSONA_NOT_FOUND:` to stderr.
-    """
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "missing"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code != 0
-    assert "larva pi: LARVA_PERSONA_NOT_FOUND:" in stderr.getvalue()
-    
-def test_launcher_missing_pi_executable(monkeypatch):
-    """
-    Verification target 3:
-    Missing real `pi` executable exits `127` and writes
-    `larva pi: LARVA_PI_NOT_FOUND:` to stderr.
-    """
-    monkeypatch.setattr(shutil, "which", lambda cmd, *args, **kwargs: None)
-    
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 127
-    assert "larva pi: LARVA_PI_NOT_FOUND:" in stderr.getvalue()
-
-def test_launcher_path_discovery_skips_larva_shim(tmp_path, mock_subprocess_run, monkeypatch):
-    """
-    Verification target 4 (B1):
-    PATH discovery skips Larva's own shim path and uses the first valid real `pi`
-    when `LARVA_PI_BIN` is not overriding.
-    """
-    shim_dir = tmp_path / "shim"
-    shim_dir.mkdir()
-    shim_bin = shim_dir / "pi"
-    shim_bin.write_text("#!/bin/sh\nexit 0\n")
-    shim_bin.chmod(0o755)
-    
-    real_dir = tmp_path / "real"
-    real_dir.mkdir()
-    real_bin = real_dir / "pi"
-    real_bin.write_text("#!/bin/sh\nexit 0\n")
-    real_bin.chmod(0o755)
-    
-    monkeypatch.setattr(sys, "argv", [str(shim_bin), "--version"])
-    monkeypatch.setenv("PATH", f"{shim_dir}:{real_dir}")
-    monkeypatch.delenv("LARVA_PI_BIN", raising=False)
-    
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0
-    
-    call_args = mock_subprocess_run.call_args[0]
-    assert call_args[0][0] == str(real_bin)
-
-def test_launcher_test_override_bin(mock_subprocess_run, fake_pi_executable, monkeypatch):
-    """
-    Verification target 4:
-    `LARVA_PI_BIN` test override is honored when it points to an executable.
-    """
-    monkeypatch.setenv("LARVA_PI_BIN", str(fake_pi_executable))
-    # mock which to return None to ensure we rely on LARVA_PI_BIN
-    monkeypatch.setattr(shutil, "which", lambda cmd, *args, **kwargs: None)
-    
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0
-    call_args = mock_subprocess_run.call_args[0]
-    assert call_args[0][0] == str(fake_pi_executable)
-
-def test_launcher_uses_fixed_short_extension_flag_without_help_probe(
-    mock_shutil_which, mock_subprocess_run, fake_pi_executable
-):
-    """Launcher requires modern Pi and always loads the extension with fixed `-e`."""
-    mock_subprocess_run.return_value.stdout = b"Options:\n  --extension  Extension path"
-
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(["pi", "--persona", "known", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
-
-    calls = [call.args[0] for call in mock_subprocess_run.call_args_list]
-    assert len(calls) == 1
-    assert calls[0][0] == str(fake_pi_executable)
-    assert calls[0][1] == "-e"
-    assert "extension" in calls[0][2]
-    assert calls[0][3] == "--version"
-    assert [str(fake_pi_executable), "--help"] not in calls
-
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_EXTENSION_FLAG") == "-e"
-
-@pytest.mark.parametrize("args, expected_tui", [
-    (["pi", "--persona", "known"], "1"),
-    (["pi", "--persona", "known", "--", "-p"], "0"),
-    (["pi", "--persona", "known", "--", "--print"], "0"),
-    (["pi", "--persona", "known", "--", "--json"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "rpc"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "print"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "json"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "sdk"], "0"),
-    (["pi", "--persona", "known", "--", "--mode"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "unknown"], "0"),
-    (["pi", "--persona", "known", "--", "--mode=rpc"], "0"),
-    (["pi", "--persona", "known", "--", "--mode=print"], "0"),
-    (["pi", "--persona", "known", "--", "--mode=json"], "0"),
-    (["pi", "--persona", "known", "--", "--mode=sdk"], "0"),
-    (["pi", "--persona", "known", "--", "--mode="], "0"),
-    (["pi", "--persona", "known", "--", "--mode=unknown"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "interactive"], "1"),
-    (["pi", "--persona", "known", "--", "--mode=interactive"], "1"),
-    (["pi", "--persona", "known", "--", "--mode", "interactive", "--json"], "0"),
-    (["pi", "--persona", "known", "--", "--mode=interactive", "-p"], "0"),
-    (["pi", "--persona", "known", "--", "--mode", "rpc", "--print"], "0"),
-])
-def test_launcher_interactive_tui_classification(mock_shutil_which, mock_subprocess_run, fake_pi_executable, args, expected_tui):
-    """
-    Verification target 10 (B3):
-    Launcher mode detection matrix sets `LARVA_PI_INTERACTIVE_TUI=0` for exact `-p`,
-    exact `--print`, exact `--json`, `--mode rpc|print|json|sdk`, missing/empty
-    or unknown `--mode`, and conflicting mode/print markers; it sets `1` when no
-    recognized non-interactive marker is present.
-    """
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(args, facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_INTERACTIVE_TUI") == expected_tui
-
-def test_bridge_uses_larva_cli_argv_json(mock_shutil_which, mock_subprocess_run, monkeypatch):
-    """
-    Verification target 37 (B4):
-    Persona resolution bridge uses `LARVA_CLI_ARGV_JSON` plus `resolve <id> --json`
-    and inherits launcher registry environment.
-    OWNERSHIP NOTE: Bridge suffix/fallback/list failure semantics are explicitly
-    owned by the extension runtime implementation (see test_pi_extension_contract.py).
-    """
-    import io
-    import json
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    monkeypatch.setattr(sys, "argv", ["larva", "pi", "--persona", "known"])
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert "LARVA_CLI_ARGV_JSON" in env
-    
-    argv_prefix = json.loads(env["LARVA_CLI_ARGV_JSON"])
-    assert isinstance(argv_prefix, list)
-    assert len(argv_prefix) >= 1
-
-def test_bridge_list_uses_larva_cli_argv_json(mock_shutil_which, mock_subprocess_run, monkeypatch):
-    """
-    Verification target 38 (B4):
-    Persona list bridge uses `LARVA_CLI_ARGV_JSON` plus `list --json`
-    OWNERSHIP NOTE: Bridge suffix/fallback/list failure semantics are explicitly
-    owned by the extension runtime implementation (see test_pi_extension_contract.py).
-    """
-    import io
-    import json
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    monkeypatch.setattr(sys, "argv", ["larva", "pi", "--persona", "known"])
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert "LARVA_CLI_ARGV_JSON" in env
-    
-    argv_prefix = json.loads(env["LARVA_CLI_ARGV_JSON"])
-    assert isinstance(argv_prefix, list)
-    assert len(argv_prefix) >= 1
-
-def test_launcher_propagates_extension_fatal_startup_errors(mock_shutil_which, mock_subprocess_run):
-    """
-    Verification target 39 (B5):
-    Launcher preserves stderr from the Pi process, including extension-detected
-    fatal startup errors that use the `larva pi: <ERROR_CODE>: <message>` shape.
-    OWNERSHIP NOTE: The parent-child pre-RPC whitelist mapping logic is distinctly
-    owned by the extension runtime implementation (see test_child_stderr_startup_error_whitelist).
-    """
-    mock_subprocess_run.return_value.returncode = 1
-    mock_subprocess_run.return_value.stderr = b"larva pi: LARVA_MODEL_UNAVAILABLE: model not found"
-    
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    # The launcher should exit non-zero and preserve the error
-    assert code != 0
-    assert "larva pi: LARVA_MODEL_UNAVAILABLE:" in stderr.getvalue()
-
-def test_launcher_agent_persona_switch_flag_handles_manual_confirm_auto_free(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
-    """
-    Verification target:
-    CLI forwards LARVA_PI_AGENT_PERSONA_SWITCH correctly for manual, confirm, auto, free.
-    """
-    import io
-
-    for mode in ("manual", "confirm", "auto", "free"):
-        stdout = io.StringIO()
-        stderr = io.StringIO()
-        
-        # Test CLI flag
-        code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", mode, "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-        assert code == 0, f"Expected 0 for {mode}, got {code}. Stderr: {stderr.getvalue()}"
-        env = mock_subprocess_run.call_args[1].get("env", os.environ)
-        assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == mode
-
-def test_launcher_agent_persona_switch_invalid_value(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
-    """
-    Verification target:
-    Invalid CLI mode fails before Pi launch.
-    """
-    import io
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    
-    code = run_cli(["pi", "--persona", "known", "--agent-persona-switch", "invalid_mode"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code != 0
-    assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
-    # Confirm Pi wasn't launched
-    assert mock_subprocess_run.call_count == 0
-
-
-@pytest.mark.parametrize("mode", ["manual", "confirm", "auto", "free"])
-def test_launcher_agent_persona_switch_accepts_only_canonical_policy_modes(
-    mock_shutil_which, mock_subprocess_run, mode
-):
-    """Current policy modes are exactly manual/confirm/auto/free."""
-    import io
-
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(
-        ["pi", "--persona", "known", "--agent-persona-switch", mode, "--", "--version"],
-        facade=_make_facade(),
-        stdout=stdout,
-        stderr=stderr,
+def _assert_success(result: subprocess.CompletedProcess[str], command: list[str]) -> None:
+    """Raise a useful assertion for a failed build/install/backend command."""
+    assert result.returncode == 0, (
+        f"command failed ({result.returncode}): {' '.join(command)}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
 
-    assert code == 0, f"{mode} must be accepted. stderr={stderr.getvalue()}"
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == mode
+
+@pytest.fixture(scope="module")
+def installed_wheel(tmp_path_factory: pytest.TempPathFactory) -> InstalledWheel:
+    """Build and install the wheel with locked project dependencies only."""
+    work = tmp_path_factory.mktemp("wheel-retirement")
+    wheel_dir = work / "dist"
+    wheel_dir.mkdir()
+
+    build_command = [
+        "uv",
+        "run",
+        "--locked",
+        "--python",
+        "3.12",
+        "--group",
+        "dev",
+        "python",
+        "-m",
+        "build",
+        "--wheel",
+        "--outdir",
+        str(wheel_dir),
+    ]
+    built = _run(build_command, timeout=300)
+    _assert_success(built, build_command)
+    wheels = sorted(wheel_dir.glob("larva-*.whl"))
+    assert len(wheels) == 1, f"expected one wheel, found {[path.name for path in wheels]}"
+
+    with zipfile.ZipFile(wheels[0]) as archive:
+        archive_names = set(archive.namelist())
+    assert "larva/shell/opencode_plugin/larva.ts" in archive_names
+    assert "larva/shell/pi.py" not in archive_names
+    assert not any(name.startswith("larva/shell/pi_extension/") for name in archive_names)
+
+    venv = work / "venv"
+    venv_command = ["uv", "venv", "--python", "3.12", str(venv)]
+    created = _run(venv_command, timeout=120)
+    _assert_success(created, venv_command)
+    python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    assert python.is_file(), f"isolated interpreter was not created: {python}"
+
+    # Resolve production dependencies from the repository's locked graph, then
+    # install the wheel itself without a second unconstrained dependency solve.
+    sync_env = _clean_env(UV_PROJECT_ENVIRONMENT=str(venv))
+    sync_command = [
+        "uv",
+        "sync",
+        "--locked",
+        "--python",
+        "3.12",
+        "--no-install-project",
+        "--no-dev",
+    ]
+    synced = _run(sync_command, env=sync_env, timeout=300)
+    _assert_success(synced, sync_command)
+
+    install_command = ["uv", "pip", "install", "--python", str(python), "--no-deps", str(wheels[0])]
+    installed = _run(install_command, timeout=120)
+    _assert_success(installed, install_command)
+
+    home = work / "home"
+    home.mkdir()
+    larva = venv / ("Scripts/larva.exe" if os.name == "nt" else "bin/larva")
+    return InstalledWheel(wheel=wheels[0], python=python, larva=larva, home=home)
 
 
-@pytest.mark.parametrize("legacy_or_unknown", ["off", "ask", "invalid_mode"])
-def test_launcher_agent_persona_switch_rejects_legacy_aliases_before_pi_launch(
-    mock_shutil_which, mock_subprocess_run, legacy_or_unknown
-):
-    """Launcher must not accept legacy off/ask aliases or other unknown values."""
-    import io
+@pytest.fixture(scope="module")
+def wheel_runtime(
+    installed_wheel: InstalledWheel,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> InstalledWheel:
+    """Seed one canonical persona through the installed CLI backend."""
+    spec_path = tmp_path_factory.mktemp("wheel-fixture") / "wheel-persona.json"
+    spec = canonical_persona_spec("wheel-persona", model="openai/gpt-5.5")
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    env = {"HOME": str(installed_wheel.home)}
+    command = [str(installed_wheel.larva), "register", str(spec_path), "--json"]
+    registered = _run(command, env=env)
+    _assert_success(registered, command)
+    assert json.loads(registered.stdout)["data"]["registered"] is True
+    return installed_wheel
 
+
+def test_removed_pi_command_is_rejected_by_actual_parser() -> None:
+    """The Python CLI no longer parses or dispatches a ``pi`` command."""
     stdout = io.StringIO()
     stderr = io.StringIO()
 
-    code = run_cli(
-        ["pi", "--persona", "known", "--agent-persona-switch", legacy_or_unknown],
-        facade=_make_facade(),
-        stdout=stdout,
-        stderr=stderr,
+    exit_code = run_cli(["pi", "--help"], facade=MagicMock(), stdout=stdout, stderr=stderr)
+
+    assert exit_code == EXIT_CRITICAL
+    assert stdout.getvalue() == ""
+    assert "Argument parsing failed" in stderr.getvalue()
+    assert "invalid choice: 'pi'" in stderr.getvalue()
+
+
+def test_built_wheel_owns_backend_resources_only(installed_wheel: InstalledWheel) -> None:
+    """Wheel contents retain OpenCode data but omit the retired Pi copy."""
+    with zipfile.ZipFile(installed_wheel.wheel) as archive:
+        names = set(archive.namelist())
+
+    assert "larva/shell/opencode_plugin/larva.ts" in names
+    assert "larva/shell/pi.py" not in names
+    assert not any(name.startswith("larva/shell/pi_extension/") for name in names)
+
+
+def test_installed_wheel_cli_retains_list_resolve_and_model_map(
+    wheel_runtime: InstalledWheel,
+) -> None:
+    """A clean wheel install serves the CLI backend and model-map command."""
+    env = {"HOME": str(wheel_runtime.home)}
+
+    listed_command = [str(wheel_runtime.larva), "list", "--json"]
+    listed = _run(listed_command, env=env)
+    _assert_success(listed, listed_command)
+    assert [item["id"] for item in json.loads(listed.stdout)["data"]] == ["wheel-persona"]
+
+    resolved_command = [str(wheel_runtime.larva), "resolve", "wheel-persona", "--json"]
+    resolved = _run(resolved_command, env=env)
+    _assert_success(resolved, resolved_command)
+    payload = json.loads(resolved.stdout)["data"]
+    assert payload["id"] == "wheel-persona"
+    assert payload["model"] == "openai/gpt-5.5"
+
+    model_map_help_command = [str(wheel_runtime.larva), "pi-model-map", "--help"]
+    model_map_help = _run(model_map_help_command, env=env)
+    _assert_success(model_map_help, model_map_help_command)
+    assert "pi-model-map" in model_map_help.stdout
+
+    retired_command = [str(wheel_runtime.larva), "pi", "--help"]
+    retired = _run(retired_command, env=env)
+    assert retired.returncode == EXIT_CRITICAL
+    assert "invalid choice: 'pi'" in retired.stderr
+
+
+def test_installed_wheel_python_api_resolves_backend_persona(
+    wheel_runtime: InstalledWheel,
+) -> None:
+    """The Python API resolves registry data from the wheel installation."""
+    script = (
+        "import json, larva.shell.python_api as api; "
+        "print(json.dumps({'module': api.__file__, 'spec': api.resolve('wheel-persona')}))"
     )
+    command = [str(wheel_runtime.python), "-c", script]
+    result = _run(command, env={"HOME": str(wheel_runtime.home)}, cwd=wheel_runtime.home)
+    _assert_success(result, command)
 
-    assert code != 0
-    assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
-    assert mock_subprocess_run.call_count == 0
+    payload = json.loads(result.stdout)
+    assert "site-packages" in payload["module"]
+    assert payload["spec"]["id"] == "wheel-persona"
+    assert payload["spec"]["model"] == "openai/gpt-5.5"
 
 
-def test_launcher_agent_persona_switch_default_is_confirm_when_flag_absent(
-    mock_shutil_which, mock_subprocess_run
-):
-    """The launcher-owned session policy default is confirm, not legacy off."""
-    import io
+def test_native_extension_reads_the_installed_wheel_backend(
+    wheel_runtime: InstalledWheel,
+) -> None:
+    """Native extension bridge calls use the real wheel-installed CLI binding."""
+    node = which("node")
+    assert node is not None, "node is required for the native backend bridge proof"
+    encoded_binding = json.dumps([str(wheel_runtime.larva)])
+    script = f"""
+import {{ pathToFileURL }} from "node:url";
+const extension = await import(pathToFileURL({json.dumps(str(PI_EXTENSION))}).href);
+const env = {{
+  HOME: {json.dumps(str(wheel_runtime.home))},
+  LARVA_CLI_ARGV_JSON: {json.dumps(encoded_binding)},
+}};
+const listed = await extension.listPersonas({{ env }});
+const resolved = await extension.resolvePersona("wheel-persona", {{ env }});
+console.log(JSON.stringify({{ listed, resolved }}));
+"""
+    command = [node, "--input-type=module", "-e", script]
+    result = _run(command, env={"HOME": str(wheel_runtime.home)}, cwd=ROOT, timeout=30)
+    _assert_success(result, command)
 
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    code = run_cli(["pi", "--persona", "known", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-
-    assert code == 0, stderr.getvalue()
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_AGENT_PERSONA_SWITCH") == "confirm"
+    payload: dict[str, Any] = json.loads(result.stdout)
+    assert [item["id"] for item in payload["listed"]] == ["wheel-persona"]
+    assert payload["resolved"]["id"] == "wheel-persona"
+    assert payload["resolved"]["model"] == "openai/gpt-5.5"
