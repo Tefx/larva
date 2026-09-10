@@ -144634,7 +144634,7 @@ phases:
       Repository product bytes unchanged by uvx. Gaps: none.'
 - id: pi_native_extension_cutover
   name: Native-only Pi extension repository delivery
-  status: in_progress
+  status: done
   gate: One final integrated repository acceptance by pi-native.accept-repository
     covers both producers and every material requirement in design/pi-native-extension.md,
     including its complete acceptance matrix and retained persona/subagent/invocation/compaction
@@ -145030,7 +145030,7 @@ phases:
       gate next.'
   - id: pi-native.accept-repository
     name: Accept the integrated native-only repository delivery
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - The single final integrated repository acceptance decision for phase pi_native_extension_cutover,\
       \ covering native package/runtime plus independent Python backend/launcher retirement.\
@@ -145149,6 +145149,27 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-09-10T19:37:49.180135Z'
+    done_at: '2026-09-10T19:41:53.429126+00:00'
+    evidence: 'Terminal DELTA gate PASS bound to exact integrated faf3c599570fefc8f298d43579176223ba1ae76d;
+      parent verified current HEAD unchanged/clean, inspected complete requirement
+      statuses/evidence/closure explanations against previously inspected product/source/runtime
+      observations. All11 material groups PROVEN, findings empty. Canonical gate.report.v2
+      preserved mode0600 /var/folders/rs/6_0h1ssn5439q1yfqy4pk... is NOT the report
+      path; exact report path is /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-gate-kbbymu7l/delta-report.json
+      with delta-binding.json adjacent. python3 /Users/tefx/.pi/agent/scripts/review_report_validator.py
+      --kind gate --binding <delta-binding.json> <delta-report.json> exit0 valid:true
+      binding_checked:true evidence_disposition:POSITIVE_GATE_EVIDENCE. Original FULL
+      failures closed: aged-active/unrelated capsule preservation; bounded cleanup
+      diagnostics/identity/process state; actual damaged installed-entry/dependency-import
+      fail-closed; explicit preflight plus nonfatal stored restore; exact post-retirement
+      pinned CLI full Invar42files0errors5existingwarnings. Applicable inventory939passes
+      (328repair-stage+611valid reused), not a fresh single full939 run.17Node/capability/frozen
+      canonical gate/offline wheel evidence applicable; repaired paths directly observed.
+      Unaffected prior FULL judgments retained; current caller binding covers both
+      original producers+repair within same phase. No user/global install or publication;
+      accepted repository delivery only. Gate output artifact retained /Users/tefx/.pi/larva/subagent-output-artifacts/2026-09-10T19-41-16-404Z-2026-09-10T18-43-16-138Z_01a08ca1-9a2a-7181-b8c4-9e3ba8c220d9.js-da239e842b3dd316.txt.
+      Continue separately authorized pi_system_prompt_resolution, notify pi-nunc only
+      after that phase acceptance.'
   - id: pi-native.repair-capsule-runtime-proof
     name: Repair capsule lifecycle and complete native runtime acceptance proof
     status: done
@@ -145340,7 +145361,7 @@ phases:
       acceptance; completed producer history preserved.'
 - id: pi_system_prompt_resolution
   name: Request-scoped Larva system prompt resolution
-  status: locked
+  status: pending
   gate: 'Orchestrator completion on pi-system-prompt.deliver-resolver owns final acceptance
     of this single Larva increment: all material design requirements, final integrated
     applicable regression, actual synchronous Pi EventBus/reload evidence and focused
