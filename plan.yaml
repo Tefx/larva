@@ -144563,7 +144563,7 @@ phases:
       Gaps: none. Push/tag/PyPI/uvx not part of this step.'
   - id: pi-subagent-inner-padding-release-0-6-5.github-pypi
     name: Publish GitHub and PyPI release 0.6.5
-    status: pending
+    status: claimed
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: from the exact integrated 0.6.5 product commit, fast-forward origin/main,
       create the non-draft non-prerelease GitHub Release and tag v0.6.5 at that exact
@@ -144595,6 +144595,8 @@ phases:
     depends_on:
     - pi-subagent-inner-padding-release-0-6-5.integrate
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-09-10T05:24:05.638846Z'
   - id: pi-subagent-inner-padding-release-0-6-5.local-uvx
     name: Activate Larva 0.6.5 in local uvx resolution
     status: pending
