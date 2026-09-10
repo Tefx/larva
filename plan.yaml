@@ -144477,7 +144477,7 @@ phases:
       passed. No repository, config, credential, GitHub, or PyPI mutation. Gaps: none.'
 - id: pi_subagent_inner_padding_release_20260902
   name: Pi Subagent Inner Padding and Larva 0.6.5 Release
-  status: in_progress
+  status: done
   gate: Close after the larva-subagent-result surface contains one background-colored
     blank row above its header and below its body in collapsed and expanded modes,
     the 16-body-line budget remains unchanged, version 0.6.5 is integrated at one
@@ -144608,7 +144608,7 @@ phases:
       matches local uv build. No direct PyPI upload. Gaps: none.'
   - id: pi-subagent-inner-padding-release-0-6-5.local-uvx
     name: Activate Larva 0.6.5 in local uvx resolution
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: only after public PyPI publication is proved, refresh the local uvx
       cache from https://pypi.org/simple for larva==0.6.5 and prove refreshed pinned,
@@ -144635,3 +144635,9 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-09-10T05:25:51.292329Z'
+    done_at: '2026-09-10T05:26:03.973968+00:00'
+    evidence: 'PASS. After public PyPI 0.6.5 hashes matched, local uvx from https://pypi.org/simple:
+      `/opt/homebrew/bin/uvx --refresh --index-url https://pypi.org/simple --from
+      larva==0.6.5 larva --version` -> larva 0.6.5; no-refresh pinned same; `/opt/homebrew/bin/uvx
+      --refresh --index-url https://pypi.org/simple larva --version` -> larva 0.6.5.
+      Repository product bytes unchanged by uvx. Gaps: none.'
