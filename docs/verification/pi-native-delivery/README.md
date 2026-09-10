@@ -2,17 +2,17 @@
 
 ## Result and ownership
 This is the **historical native-producer report**. The Python launcher was later
-removed. Its final repository scan and new capsule/loading/restore observations
-are recorded in [native repair evidence](../pi-native-repair/README.md). That
-repair remains blocked on the installed-dependency expectation described there;
-this predecessor report does not establish final project acceptance.
+removed. Its final repository scan and subsequent capsule/loading/restore proof
+are recorded in [native repair evidence](../pi-native-repair/README.md). The repair
+now includes actual failed dependency-import loading and a separate successful
+host-provided-TUI control. Final integration and terminal acceptance remain
+parent-owned; this predecessor report does not establish them.
 
-
-The native extension candidate preserves the package, admission, capsule and
-runtime work retained at `513f7928`. `node-typescript-engineer` remains the
-claimed implementation owner. `principal-engineer` performed this follow-through
-in `vectl/pi-native-deliver-extension`; no Plan/claim change or integration occurred.
-Python launcher/wheel retirement remains the next producer's work.
+The native extension candidate preserved the package, admission, capsule and
+runtime work retained at `513f7928`. `node-typescript-engineer` held that producer's
+claim; `principal-engineer` performed the follow-through in
+`vectl/pi-native-deliver-extension`. No Plan/claim change or integration occurred
+within that producer. Python launcher/wheel retirement followed separately.
 
 Supported observed host: macOS, Node **26.7.0**, Pi **0.85.1**, Python **3.12**.
 The A/B fixture used actual maturin **1.15.0** and compiled dependency-free Rust

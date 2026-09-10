@@ -520,22 +520,43 @@ async function runInstalledLoading(f, evidence) {
   assert.equal(control.code, 0, control.stderr); assert.equal(f.requests.length, 1);
   evidence.install = install; evidence.control = { ...control, requests: f.requests.length };
   evidence.cases = [];
-  for (const fault of ["missing-entry", "unusable-dependency"]) {
+  const missingDependency = `@larva-native-fixture/absent-tui-${randomUUID()}`;
+  for (const fault of ["missing-entry", "host-provided-dependency-control", "broken-dependency-import"]) {
     if (fault === "missing-entry") await rm(join(copy, "larva.ts"));
-    else {
+    else if (fault === "host-provided-dependency-control") {
       await copyFile(join(source, "larva.ts"), join(copy, "larva.ts"));
       await rm(join(copy, "node_modules"));
       const dependency = join(copy, "node_modules/@earendil-works/pi-tui");
       await mkdir(dependency, { recursive: true });
       await writeFile(join(dependency, "package.json"), JSON.stringify({ name: "@earendil-works/pi-tui", version: "0.85.1", type: "module", exports: "./index.js" }));
-      await writeFile(join(dependency, "index.js"), 'throw new Error("Deliberately unusable installed runtime dependency");\n');
+      await writeFile(join(dependency, "index.js"), 'throw new Error("Deliberately unusable package-local dependency");\n');
+    } else {
+      // Fault only the installed copy's actual import. Pi's embedded TUI and the
+      // production source stay intact; package-local TUI bytes are unused here.
+      const entry = join(copy, "larva.ts");
+      const installed = await readFile(entry, "utf8");
+      const specifier = 'from "@earendil-works/pi-tui";';
+      assert.equal(installed.split(specifier).length, 2, "fault must target exactly one import");
+      await writeFile(entry, installed.replace(specifier, `from "${missingDependency}";`));
     }
     const before = f.requests.length;
     const run = await execute(process.execPath, args, { env: f.env, cwd: f.cwd, timeout: 15000 });
-    evidence.cases.push({ fault, ...run, requests: f.requests.length - before });
-    assert.equal(run.timedOut, false); assert.equal(run.code, 1, JSON.stringify(run));
-    assert.match(run.stdout + run.stderr, /Unknown option|Failed to load|Error loading|extension/i);
-    assert.equal(f.requests.length, before, "damaged installed package issued a vanilla request");
+    evidence.cases.push({ fault, ...(fault === "broken-dependency-import" ? { missingDependency } : {}), ...run, requests: f.requests.length - before });
+    assert.equal(run.timedOut, false);
+    if (fault === "host-provided-dependency-control") {
+      assert.equal(run.code, 0, JSON.stringify(run));
+      assert.equal(f.requests.length, before + 1);
+      const system = f.requests.at(-1).payload.messages.filter((m) => m.role === "system" || m.role === "developer");
+      assert.ok(JSON.stringify(system).includes("larva-spec: ok@"), "host-provided dependency must preserve the requested persona");
+    } else {
+      assert.equal(run.code, 1, JSON.stringify(run));
+      if (fault === "missing-entry") assert.match(run.stderr, /Unknown option: --larva-persona/);
+      else {
+        assert.match(run.stdout + run.stderr, /Cannot find module|Cannot find package|ERR_MODULE_NOT_FOUND/);
+        assert.ok((run.stdout + run.stderr).includes(missingDependency), "native diagnostic must name the broken import");
+      }
+      assert.equal(f.requests.length, before, "failed installed loading issued a vanilla request");
+    }
   }
 }
 

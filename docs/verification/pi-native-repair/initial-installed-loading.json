@@ -8,13 +8,13 @@
     "args": [
       "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
       "install",
-      "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-50Hk36/installed-package"
+      "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-gXV8Go/installed-package"
     ],
-    "pid": 78697,
+    "pid": 67385,
     "code": 0,
     "signal": null,
     "timedOut": false,
-    "stdout": "Installing /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-50Hk36/installed-package...\nInstalled /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-50Hk36/installed-package\n",
+    "stdout": "Installing /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-gXV8Go/installed-package...\nInstalled /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-gXV8Go/installed-package\n",
     "stderr": ""
   },
   "control": {
@@ -28,7 +28,7 @@
       "ok",
       "Viable loopback prompt"
     ],
-    "pid": 78698,
+    "pid": 67386,
     "code": 0,
     "signal": null,
     "timedOut": false,
@@ -49,7 +49,7 @@
         "ok",
         "Viable loopback prompt"
       ],
-      "pid": 78707,
+      "pid": 67389,
       "code": 1,
       "signal": null,
       "timedOut": false,
@@ -58,7 +58,7 @@
       "requests": 0
     },
     {
-      "fault": "host-provided-dependency-control",
+      "fault": "unusable-dependency",
       "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
       "args": [
         "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
@@ -69,37 +69,17 @@
         "ok",
         "Viable loopback prompt"
       ],
-      "pid": 78710,
+      "pid": 67390,
       "code": 0,
       "signal": null,
       "timedOut": false,
       "stdout": "Deterministic protocol response.\n",
       "stderr": "",
       "requests": 1
-    },
-    {
-      "fault": "broken-dependency-import",
-      "missingDependency": "@larva-native-fixture/absent-tui-77662d54-5b1d-4e0e-a9de-5631884a5d2d",
-      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
-      "args": [
-        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
-        "-p",
-        "--offline",
-        "--approve",
-        "--larva-persona",
-        "ok",
-        "Viable loopback prompt"
-      ],
-      "pid": 78715,
-      "code": 1,
-      "signal": null,
-      "timedOut": false,
-      "stdout": "",
-      "stderr": "Error: Unknown option: --larva-persona\nError: Failed to load extension \"/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-50Hk36/installed-package/larva.ts\": Failed to load extension: Cannot find module '@larva-native-fixture/absent-tui-77662d54-5b1d-4e0e-a9de-5631884a5d2d'\nRequire stack:\n- /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-50Hk36/installed-package/larva.ts\nHint: Start without extensions using \"pi -ne\".\n",
-      "requests": 0
     }
   ],
-  "pass": true,
+  "pass": false,
+  "error": "AssertionError [ERR_ASSERTION]: {\"command\":\"/opt/homebrew/Cellar/node/26.7.0/bin/node\",\"args\":[\"/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js\",\"-p\",\"--offline\",\"--approve\",\"--larva-persona\",\"ok\",\"Viable loopback prompt\"],\"pid\":67390,\"code\":0,\"signal\":null,\"timedOut\":false,\"stdout\":\"Deterministic protocol response.\\n\",\"stderr\":\"\"}\n\n0 !== 1\n\n    at runInstalledLoading (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:510:47)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async runJourney (file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:628:48)\n    at async file:///Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule-runtime-proof/scripts/pi-native-journeys.mjs:645:20",
   "observations": {
     "events": []
   },

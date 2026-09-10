@@ -1,45 +1,39 @@
 # Native capsule/runtime repair evidence
 
-## Outcome and decision needed
+## Outcome and observation-method correction
 
-**BLOCKED on the installed-dependency expectation.** Capsule defects are repaired;
-actual missing-entry and combined explicit-preflight/stored-restore observations
-are complete; the exact post-launcher-removal CLI full Invar scan passed. This
-candidate does not claim the producer or repository gate passed.
+**Scoped repair verified.** Both capsule defects have red/green native proof;
+missing-entry and actual dependency-import failures fail closed in launched Pi;
+combined explicit preflight/stored restoration is proved; the exact
+post-launcher-removal CLI full Invar scan passed. Final repository acceptance
+remains the parent-owned terminal gate's decision.
 
 Actual executor: `principal-engineer`, assigned branch
 `vectl/pi-native-repair-capsule-runtime-proof`, post-claim base
-`5ff197a76ae1473168bb5aa93f7a861809fad963`. Earlier native and Python producer
-contributions remain intact. No Plan mutation, integration, rebase, user/global
-installation, registry change, external model request or Pi source patch occurred.
+`5ff197a76ae1473168bb5aa93f7a861809fad963`. Commit
+`0331a7c1c608f9ca5b57f1f543d890fbbb3d6c28` retained the capsule repair and first
+loading observations. This follow-through changes only the loading fixture and
+evidence; earlier producer contributions and capsule red proof remain intact.
+No Plan mutation, integration, rebase, user/global installation, registry change,
+external model request, production import change or Pi source patch occurred.
 
-The disputed expectation comes from the repair step: an unusable installed
-runtime dependency with explicit persona input must yield a nonzero native
-failure before any provider request. In `installed-loading.json`, actual locked
-Pi **0.85.1** on Node **26.7.0** loads a scratch-installed extension normally.
-After replacing that package's `@earendil-works/pi-tui` with a valid package whose
-entry throws, Pi exits **0**, emits no diagnostic and sends **one persona-bearing**
-loopback request. The successful control also sends one persona-bearing request.
-The damaged local dependency is not the dependency Pi actually uses.
+The first loading fixture targeted unused package-local TUI bytes. Pi 0.85.1's
+`dist/core/extensions/loader.js:416-425` supplies bundled Node extensions with
+`virtualModules: VIRTUAL_MODULES`; the unbundled path aliases TUI to the host
+module (`getAliases`, lines 84-101). A throwing package-local TUI therefore
+leaves native Pi usable. `initial-installed-loading.json` preserves this valid
+control and the original incorrect failure assertion without relabeling it.
 
-Source counterevidence: the supported Pi distribution's
-`dist/core/extensions/loader.js:416-425` gives bundled Node extensions
-`virtualModules: VIRTUAL_MODULES`; its map includes the host's imported Pi TUI
-module. The unbundled path also aliases this import to the host dependency
-(`getAliases`, lines 84-101). Larva uses the documented direct named import.
-Changing a package-local TUI file therefore cannot make this host-provided module
-unusable. The same native test removes the installed Larva entry and observes
-exit **1**, `Error: Unknown option: --larva-persona`, and **zero requests**.
-
-**Parent decision:** accept the observed host-supplied TUI behavior and adjust the
-unusable-dependency proof obligation, or obtain authorization for a separate
-package-integrity requirement. The latter would add rejection of an otherwise
-usable native session; it is not a private repair of the existing loader.
-Faulting the bundled host module by patching Pi would cross the stated boundary.
-Recommendation: retain native host dependency ownership and the missing-entry
-failure proof. The tracked `native-installed-loading` case currently retains the
-assigned nonzero assertion and fails visibly; it has not been weakened or skipped.
-Independent acceptance and any requirement decision remain parent/gate-owned.
+The parent independently confirmed that ownership and corrected the observation
+method within existing fixture authority. The binding requirement concerns an
+actual installed dependency-load failure. The corrected fixture changes only
+the exact TUI import specifier in a disposable installed Larva copy to a unique
+absent package, then invokes normal Pi loading with an explicit persona and a
+viable loopback prompt. Native Pi reports the failed import, exits 1 and issues
+zero provider requests. The unused-local-TUI case remains a separate successful
+host-ownership control. This proves a **broken installed dependency import**;
+it makes no claim about corrupting the host's embedded TUI bytes. No package
+integrity rule, host patch, contract change or outstanding user decision is needed.
 
 ## Red and green capsule proof
 
@@ -84,40 +78,46 @@ with all six checks passing. This private cleanup refinement leaves the previous
 verified non-error native and Node paths unchanged.
 
 ## Actual loading and restore observations
-
 ```sh
 node scripts/pi-native-journeys.mjs --scenario installed-loading --output docs/verification/pi-native-repair/installed-loading.json
 node scripts/pi-native-journeys.mjs --scenario stored-restore --output docs/verification/pi-native-repair/stored-restore.json
 ```
 
-Loading command exits **1** because the assigned unusable-dependency assertion
-fails as described above. Its missing-entry subcase passed. Each process used the
-real installed-package loader with viable loopback model settings and an explicit
-`--larva-persona ok` print prompt. No `--no-extensions`, missing-preload substitution,
-alternate launcher or environment workaround supplies this evidence.
+Both commands exit **0**. Loading uses the real installed-package loader and
+`-p --offline --approve --larva-persona ok "Viable loopback prompt"`, with viable
+loopback model settings. `installed-loading.json` records four separate outcomes:
 
-Restore command exits **0**. A native session first activates `ok`, writes real
-history and exits. Another native process reopens that saved session with
-`--larva-persona startup`. Backend observations record successful `startup` ID
-resolution before successful `ok` resolution. Both runtime model routes are made
-unavailable: the unused explicit route is not activated, and the stored route
-failure is nonfatal. RPC returns usable state and a visible
-`larva: unavailable (LARVA_MODEL_UNAVAILABLE)` status. An actual subsequent
-loopback request contains no active persona overlay, no false persona commit is
-added, and the parent exits 0. Product restore/admission semantics are unchanged.
+| Installed state | Native exit | Provider requests | Observation |
+|---|---|---|---|
+| Healthy copied package | 0 | 1 | Successful control |
+| Missing Larva entry | 1 | 0 | `Error: Unknown option: --larva-persona` |
+| Throwing package-local TUI, unchanged import | 0 | 1 | Requested `ok` persona remains active; host supplies TUI |
+| Actual TUI import changed to absent package in disposable copy | 1 | 0 | `Error: Failed to load extension ... Cannot find module '@larva-native-fixture/absent-tui-77662d54-5b1d-4e0e-a9de-5631884a5d2d'`; Pi also rejects the now-unregistered persona flag |
 
-The tracked acceptance inventory adds `native-capsule-aging`,
-`native-capsule-removal`, and `native-installed-loading`.
-`resume-stored-restore-nonfatal` now routes to the stronger actual saved-session
-journey; its old no-explicit-input branch was removed.
+No case times out. The absent package name is generated per run, and the assertion
+requires the native diagnostic to identify it. Only the single import specifier
+in the disposable copy changes. No `--no-extensions`, preload substitution,
+alternate launcher or patched host supplies the failure evidence.
+
+The stored-restore observation remains applicable unchanged: a native session
+activates `ok`, writes history and exits. Another native process reopens it with
+`--larva-persona startup`. Backend records show successful `startup` ID resolution
+before `ok` resolution. Both runtime routes are unavailable; the unused explicit
+route is not activated, and the stored route failure is nonfatal. RPC returns
+usable state and `larva: unavailable (LARVA_MODEL_UNAVAILABLE)`. A subsequent
+loopback request has no active persona overlay, no false commit is added, and
+the parent exits 0. Product restore/admission semantics remain unchanged.
+
+The tracked inventory includes `native-capsule-aging`, `native-capsule-removal`
+and `native-installed-loading`. `resume-stored-restore-nonfatal` uses the stronger
+actual saved-session journey; its old no-explicit-input branch was removed.
 
 ## Commands and integrated accounting
-
 All commands below ran in the assigned worktree. Python pytest selections ran
-through the existing tracked Invar wrapper, as required by the host tool policy.
-The wrapper now quotes pytest argument values and distinguishes test paths from
-`-k` expressions; the first attempt with an unquoted/misclassified expression
-exited 1 with **zero collected tests** and supplied no coverage.
+through the tracked Invar wrapper, as required by host policy. The wrapper quotes
+pytest argument values and distinguishes test paths from `-k` expressions. Its
+first unquoted/misclassified-expression attempt exited 1 with zero collected tests
+and supplied no coverage.
 
 | Command | Exit / actual observation |
 |---|---|
@@ -130,20 +130,22 @@ exited 1 with **zero collected tests** and supplied no coverage.
 | Exact pinned CLI command below | 0; `full-invar.log`: 42 files, 0 errors, 5 existing warnings, 7 infos; doctest passed, CrossHair verified, property tests passed |
 | `git diff --check` | 0 |
 
-Exact full scan, after Python launcher removal and the capsule source repair:
+Exact full scan, after Python launcher removal and capsule repair:
 
 ```sh
 env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH \
   UV_PYTHON_DOWNLOADS=never uvx --python 3.12 invar-tools==1.20.3 guard --all
 ```
 
-The scan covers original source and contracts. It is neither the old native
-producer artifact nor a Python-stage MCP summary. Later edits were excluded
-JavaScript runners and documentation; scanned source/configuration inputs remain
-unchanged. CrossHair's existing unsupported-operation exclusion for
-`core/pi_model_map.py` remains reported by the actual tool.
+This is the actual CLI scan of original Python source/contracts. Scanned inputs
+remain unchanged; the observation-method correction changes only the JavaScript
+loading fixture and evidence. It reuses this scan without presenting an old
+native-producer artifact or Python-stage MCP summary as new CLI evidence.
+CrossHair's existing unsupported-operation exclusion for `core/pi_model_map.py`
+remains reported. TypeScript cleanup behavior is covered by native/Node checks,
+including the final three-fault removal journey and six-check spawn-error rerun.
 
-Fresh integrated selection (the report paths below are passed as absolute paths):
+Initial integrated selection (report paths were passed as absolute paths):
 
 ```sh
 node scripts/pi-guard-checks.mjs \
@@ -157,29 +159,40 @@ node scripts/pi-guard-checks.mjs \
   --junitxml=$PWD/docs/verification/pi-native-repair/pi-regressions.xml
 ```
 
-Exit **1**: **68 passed, 1 failed**, no skips/errors. Invar stops on the native
-installed-loading assertion, before the last native mode observer and the other
-five files. Those five files were then run separately with the same wrapper and
+That historical invocation exited **1**: **68 passed, 1 failed**, no skips/errors.
+It stopped at the incorrect installed-loading assertion before the last native
+mode observer and the other five files. Those five files then ran separately
+through the same wrapper with
 `--junitxml=$PWD/docs/verification/pi-native-repair/retained.xml`: exit **0**,
-**259 passed**, no failures/errors/skips. `pi-regressions.log/xml` and
-`retained.log/xml` retain actual output. No failing test was converted to xfail,
-skipped or removed. The bounded fixture recovery has no live child/capsule leak.
+**259 passed**, no failures/errors/skips. These actual outputs remain unchanged
+in `pi-regressions.log/xml` and `retained.log/xml`.
+
+After correcting the loading observation method, this targeted inventory command
+ran with the absolute report path:
+
+```sh
+node scripts/pi-guard-checks.mjs \
+  'tests/shell/test_pi_extension_real_runtime.py::test_native_pi_acceptance_matrix[native-installed-loading]' \
+  --junitxml=$PWD/docs/verification/pi-native-repair/installed-loading.xml
+```
+
+Exit **0**, **1 passed**, no failures/errors/skips; actual output is in
+`installed-loading-guard.log` and `installed-loading.xml`. Its separate direct
+journey also exited 0 and retains native diagnostics/request observations in
+`installed-loading.json`. The prior invalid assertion was replaced by a truthful
+successful control **and** the required real dependency-import failure; no
+obligation was removed, skipped or converted to xfail.
 
 Complete current inventory: **939** repository cases (predecessor 936 plus 3 new).
-**327 fresh passes**, **1 current failure**, and **611 applicable reused passes**:
-608 unchanged non-Pi cases and 3 unchanged native observations (watchdog timing,
-backend A/B environment, final ctx.mode-only observer). This is an accounting of
-coverage and one blocker, **not** a fresh all-green full-suite claim. No raw
-`uv run ... pytest -q` full-suite rerun was performed by this worker.
-
-The final root-absence refinement is in `contrib/pi-extension/larva.ts`, outside
-this Python Invar scan's collected inputs. Its applicable verification is the
-fresh three-fault native cleanup journey and six-check spawn-error regression.
-The exact CLI full scan remains applicable to unchanged Python source/configuration;
-it is not being relabeled as TypeScript behavioral coverage.
+**328 repair-stage passes** plus **611 applicable prior passes**, with **zero
+remaining failures**: 608 unchanged non-Pi cases and 3 unchanged native observations
+(watchdog timing, backend A/B environment, final ctx.mode-only observer) are reused.
+The observation-method correction leaves all 327 earlier repair-stage passing
+cases' behavior and inputs unchanged. This combines applicable results rather
+than claiming one freshly rerun 939-test process; no raw full-suite
+`uv run ... pytest -q` rerun was performed by this worker.
 
 ## Reuse applicability and retained state
-
 The parent-validated Python-stage actual outputs are at:
 `/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-gate-kbbymu7l/python-execution-evidence.json`.
 They record the final **936 passed** full suite at 2026-09-10T18:20:39.939Z,
@@ -189,34 +202,46 @@ pass at 18:27:06.415Z against opifex
 
 `git diff --name-only 7b04f08222f0a04fcf0c538b0768367cf100a523 -- src pyproject.toml uv.lock contracts scripts/ci design/opifex-frozen-authority-packet.json README.md docs/guides/USAGE.md docs/reference/INTERFACES.md contrib/pi-extension/package.json contrib/pi-extension/package-lock.json`
 returned no paths. The frozen gate's three consumed docs and all its schema,
-metadata, naming and pin inputs are unchanged. Wheel build/installation inputs,
-Python backend and extension list/resolve behavior are unchanged. The offline
-wheel observation uses the already established no-isolation build 1.6.1 / hatchling
-1.32.0 fixture; it is reused without claiming a new wheel build.
+metadata, naming and pin inputs remain unchanged. Wheel build/installation inputs,
+Python backend and extension list/resolve behavior remain unchanged. The offline
+wheel observation uses the established no-isolation build 1.6.1 / hatchling 1.32.0
+fixture; it is reused without claiming a new wheel build.
 
 Historical native traces remain in `../pi-native-delivery/`. Watchdog timing,
-A/B environment and ctx.mode inputs are unchanged. Fresh capsule/cancellation and
-native new/resume/parent-shutdown cases cover the modified cleanup path; there is
-no reason to repeat the 120-second timer or Rust installation experiment just to
-rebind their unaffected observations. Other native and retained Pi tests ran
-against this repair. The old full Invar report is explicitly **not** reused.
+A/B environment and ctx.mode inputs are unchanged. Repair-stage capsule,
+cancellation, native new/resume and parent-shutdown cases cover modified cleanup.
+The observation-method correction changes only `runInstalledLoading` and evidence;
+other journey functions, shared support, production code and locks are unchanged
+from `0331a7c1`. The 327 previous repair-stage passes, 611 prior applicable passes,
+17 Node scripts, capability smoke and exact repair-stage CLI Invar scan therefore
+remain applicable. No unchanged 120-second watchdog, Rust installation experiment
+or full expensive suite was replayed. The old native-producer full Invar report
+is explicitly **not** reused.
 
-Each native fixture reaps its owned parent/process group, checks child PIDs and
+Each native fixture reaps its owned parents/process groups, checks child PIDs and
 capsules, closes its loopback server and removes its disposable root. The red
-removal proof intentionally observed one retained capsule with no live child;
+removal proof intentionally observed a retained capsule with no live child;
 fixture teardown then removed that owned scratch tree. Green removal fixtures
-reconciled dead children, preserved settings/session evidence, disabled their
-fault and removed only their retained owned capsule before normal final teardown.
-Raw direct-journey evidence is retained at `/tmp/larva-native-repair-raw-5ff197a7`;
-tracked JSON selects decisive actual request identity/counts and lifecycle
-metadata to avoid repeating full provider schemas. The tracked runners reproduce
-full evidence. Historical traces were not overwritten or relabeled.
+preserved settings/session evidence and reconciled dead children before removing
+only their retained owned capsules. The corrected loading journey's native
+processes exited naturally (0/1 as expected), with no spawned Larva children,
+no capsules, a closed loopback server and a removed scratch root.
+
+Raw direct-journey evidence remains at `/tmp/larva-native-repair-raw-5ff197a7`.
+`initial-installed-loading.json` preserves the first observation; the new
+`installed-loading.json` contains the corrected method's actual outcomes.
+Tracked JSON selects decisive request identity/counts and lifecycle metadata to
+avoid repeating provider schemas. Tracked runners reproduce full evidence;
+historical traces and failing invocation outputs were not relabeled.
 
 Reusable helpers: /tmp/larva-env-audit.pSGsLZ/helpers
 
-Self-review checked the product diff, caller-owned capsule identity, root-link
-refusal, stderr bound, no change to base/session ownership, native fault seam,
-saved-session route ordering and evidence reuse inputs. Remaining obligation:
-resolve the supported-host dependency expectation, then supply its authorized
-proof and final integrated acceptance. No external or protected effect needs
-rollback; no user environment or global installation was changed.
+Self-review checked capsule ownership/root-link refusal, bounded diagnostics,
+base/session persistence, actual native fault seams, stored-route ordering,
+single-specifier fixture mutation and evidence reuse inputs. All admitted repair
+obligations have implementation/proof evidence. Remaining work belongs to the
+parent: candidate integration and terminal Delta acceptance. No external or
+protected effect needs rollback; no user environment/global installation changed.
+
+Open Problems: none.
+Residual Risk within this repair scope: none.
