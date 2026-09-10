@@ -1,5 +1,20 @@
 # Larva Pi extension
 
+## Native extension cutover — implementation pending
+
+[The accepted native design](../../design/pi-native-extension.md) specifies normal
+Pi package loading, a fixed independent CLI backend, native startup admission,
+main preference persistence, and retained child capsules. The target removes
+`larva pi` and old-Pi compatibility; it does not add an environment sanitizer or a
+replacement launcher.
+
+This directory still contains the pre-cutover implementation. Launcher commands,
+parent-capsule guarantees and launcher-marker requirements below document that
+implementation, not requirements for the native target. Preserve the unaffected
+persona, policy, invocation, compaction and subagent contracts. New native flags
+and installation examples become supported only after the native runtime gates
+pass.
+
 This directory contains the bundled Pi Coding Agent extension used by
 `larva pi`. The integration projects Larva persona identity, prompt, model, and
 adapter-local tool rules into Pi at runtime. The canonical PersonaSpec schema and

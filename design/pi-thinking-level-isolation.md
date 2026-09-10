@@ -2,31 +2,43 @@
 
 ## Status
 
-Proposed. This document defines the Larva-owned design and implementation
-boundary. It does not authorize implementation by itself.
+The accepted [native extension target](pi-native-extension.md) now owns startup
+and settings isolation. Its implementation is pending. Main Pi uses normal
+settings persistence and session-local persona setters; only children retain
+private settings capsules.
+
+Thinking policy, route verification, profile switching and console behavior in
+this reference remain applicable unless explicitly superseded there. The older
+implementation-phase and handoff topology below is historical and does not
+require a new Vectl phase or authorize execution.
 
 ## Problem
 
-Pi persists model and thinking-level changes through the active
-`PI_CODING_AGENT_DIR/settings.json`. Multiple Larva parent sessions and child Pi
-processes can therefore change one shared settings file. A parent orchestration
-session may need a high thinking level while implementation personas need a lower
-level, yet child startup currently has no persona-specific thinking policy and
-the Subagent Console does not show the effective startup level.
+Parent and child sessions need independently selected model/thinking routes
+without persona automation changing unrelated sessions' defaults. The earlier
+launcher isolated the entire main settings file, which also discarded normal
+preference changes such as theme selection.
 
-Larva cannot require changes to Pi. The solution must use Pi's existing CLI,
-environment, session, and RPC surfaces.
+On the inspected Pi 0.85.1 host, extension model/thinking setters update runtime
+state and session history without saving global defaults. Other settings, such as
+theme, do persist. Therefore a native main can retain ordinary Pi preferences
+while persona changes stay session-local. Children still require private settings
+capsules and explicit verified routes.
+
+The native design records both the real-runtime evidence and its limits. It uses
+Pi's public extension, CLI, environment, session and RPC surfaces without changing
+Pi itself.
 
 ## Decision
 
-Larva will add two mechanisms:
+The native target retains adapter-local thinking policy and treats model and
+thinking as one runtime route, reusing the existing model-map profile switch
+control path and generation.
 
-1. A small adapter-local persona thinking policy.
-2. A private Pi agent-directory capsule for every Larva-launched parent and child
-   Pi process.
-
-Model and thinking will be resolved and applied as one runtime route while
-reusing the existing model-map profile switch control path and generation.
+Main persona automation uses session-local Pi APIs. Main ordinary settings use
+Pi's normal persistence, with no parent capsule or exit-time settings rollback.
+Each new or resumed child process retains a private Pi agent-directory capsule;
+its route is independently resolved and verified before the task prompt.
 
 ## Non-goals
 
@@ -34,12 +46,12 @@ reusing the existing model-map profile switch control path and generation.
 - No PersonaSpec, Opifex, or Larva registry schema change.
 - No model-specific thinking entries in the policy.
 - No `larva_subagent` thinking parameter.
-- No new slash command, daemon, file watcher, policy profile, or hot reload.
+- No new thinking-policy slash command, daemon, file watcher, policy profile, or
+  hot reload mechanism.
 - No second route generation or second active-run registry.
-- No automatic merge of capsule settings into the user's base Pi settings.
+- No automatic merge of child capsule settings into base Pi settings.
 - No contract for how another repository creates or deploys the policy file.
-- No parent-isolation guarantee when Larva's extension is loaded by bypassing the
-  supported `larva pi` launcher.
+- No main whole-settings isolation or retained `larva pi` compatibility layer.
 
 ## Thinking policy
 
@@ -93,40 +105,41 @@ differ.
 
 ### Boundary
 
-Before `larva pi` replaces `PI_CODING_AGENT_DIR`, it records the effective base
-Pi agent directory in `LARVA_PI_BASE_AGENT_DIR`. Each Larva-launched Pi process
-receives a private directory under:
+Main Pi uses its normal base agent directory. The native extension establishes
+that base identity and carries it into child startup; it does not require a
+Python launcher to supply `LARVA_PI_BASE_AGENT_DIR`.
+
+Each child receives a private directory under the existing Larva runtime root:
 
 ```text
 $HOME/.pi/larva/runtime/<run-id>/agent
 ```
 
-The capsule contains a private copy of `settings.json`. Other required Pi files
-and directories refer to the base Pi agent directory. Session storage remains in
-its existing explicit parent or child session directory rather than moving under
-the capsule.
+The capsule contains a private copy of the base `settings.json`. Other required
+Pi resources retain their existing references to the base agent directory.
+Session storage remains in the existing explicit parent or child session
+directory rather than moving under a capsule.
 
-This makes Pi's existing settings writes process-local without changing Pi.
-Parent and child processes must never write the base settings file through the
-capsule.
+Child processes must never write the base settings file through the capsule.
+Project settings, linked resources and arbitrary tool I/O retain their existing
+ownership; the capsule supplies no wider filesystem isolation.
 
 ### Safety and lifetime
 
-- Capsule directory mode: `0700`.
+- Child capsule directory mode: `0700`.
 - Private settings mode: `0600`.
 - Cleanup may remove only the capsule root and links within it; it must not
   follow links into the base Pi directory.
-- Parent capsules are removed by the `larva pi` launcher on normal return and
-  startup failure.
-- Child capsules join the existing child cleanup paths for completion,
-  cancellation, and startup failure.
-- A later Larva launch may remove bounded stale capsule directories left by a
-  process crash.
+- Child capsules join existing completion, cancellation, startup-failure and
+  other terminal cleanup paths; verify parent shutdown with a live child too.
+- Bounded stale-child cleanup may retain its existing lifetime rules.
 - Capsule settings are never merged back into base settings.
+- Native main has no capsule to clean up and never restores a global settings
+  snapshot on exit.
 
-The implementation should remain small helper functions in the existing Python
-launcher and TypeScript extension unless tests prove that a separate module is
-necessary.
+Reuse the existing child helpers unless an actual consumer or failure mode
+requires a separate module. The retired Python parent-capsule helpers do not
+need a TypeScript replacement.
 
 ## Runtime route
 
@@ -146,14 +159,16 @@ plane.
 
 - A fresh explicit persona activation applies that persona's requested thinking.
 - An explicit persona switch applies the target persona's requested thinking.
-- With no active persona, Larva leaves the Pi session thinking level unchanged.
-- Shift-Tab remains a manual current-session change and writes only the parent
-  capsule.
-- Resuming a parent session preserves the thinking level recorded in that Pi
-  session until another explicit persona or model-map profile switch applies a
-  policy value.
-- A turn-scoped persona borrow captures and restores both origin model and origin
-  thinking.
+- With no active persona, Larva leaves Pi's session thinking unchanged.
+- Persona automation uses session-local model/thinking setters. Session history
+  may record those choices; unrelated new sessions' global defaults remain
+  unchanged.
+- Manual current-session changes and explicit user saves follow native Pi's
+  respective semantics. Ordinary settings such as theme persist normally.
+- Resuming a parent session preserves its recorded thinking until another
+  explicit persona or model-map profile switch applies a policy value.
+- A turn-scoped persona borrow captures and restores actual origin model and
+  thinking, including manual pre-borrow choices.
 
 ### Child startup and resume
 
@@ -265,6 +280,9 @@ status, wait, event, cancellation, or route authority.
 
 ## Implementation phases
 
+> Historical rollout notes for the original thinking-isolation work. These phases and the following original code-scope list do not prescribe native-cutover ownership or Plan topology. The [native design](pi-native-extension.md#implementation-and-cutover-sequence) owns the replacement delivery sequence.
+
+
 ### 1. Current model-map phase prerequisite
 
 Complete the active `pi_model_map_profile_switch_20260725` remediation,
@@ -331,7 +349,8 @@ owner file.
 
 ## Implementation handoff
 
-Implementation must occur on a feature branch, never directly on `main`. The
-planner should append a new phase after the current model-map phase, preserve the
-prerequisite explicitly, require expected-red proof before mutation, and retain
-real installed-Pi concurrency and overlay verification as independent gate work.
+Use the [native cutover sequence and acceptance matrix](pi-native-extension.md#implementation-and-cutover-sequence).
+The earlier phase sequence above records the thinking-isolation implementation's
+history; it is not a request to append phases, preserve the launcher, or repeat
+completed work. Current execution authority and any matching managed step must be
+resolved when implementation is actually requested.

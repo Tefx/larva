@@ -236,6 +236,19 @@ see the new agent list. See `contrib/opencode-plugin/README.md` for current
 behavior, target refresh semantics, and failure handling.
 
 ## Pi Coding Agent integration
+
+### Native extension target — implementation pending
+
+The accepted [native Pi extension design](design/pi-native-extension.md) replaces
+`larva pi` with a normally installed extension and an independent Larva CLI
+backend. It permits ordinary main settings to persist, keeps persona model/thinking
+changes session-local, and retains private child settings capsules. It does not
+require old-Pi or launcher compatibility.
+
+The launcher instructions below describe the current pre-cutover implementation.
+Native flags and automatic discovery in the design are not implemented yet; use
+the design's acceptance matrix before changing an installation.
+
 ### Pi 0.84.1 child RPC bound
 
 Spawned child Pi processes preload Larva's packaged frame bridge before Pi

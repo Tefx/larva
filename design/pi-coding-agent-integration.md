@@ -1,7 +1,7 @@
 # Pi Coding Agent Integration
 
-Status: implementation authority for the current `larva pi` target except agent persona switch mode semantics, which are superseded by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
-Scope: `larva pi` launcher, bundled Pi extension, persona switching, adapter-local Pi tool policy keyed by persona id, and Larva-backed subagent spawning  
+Status: pre-cutover implementation reference. The accepted [native extension target](pi-native-extension.md) supersedes launcher, parent-capsule, startup-input, restore-precedence, and old-Pi requirements below; implementation of that target is pending. Agent persona switch semantics remain owned by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
+Scope: existing launcher/bundled-extension behavior and retained persona, tool-policy, and subagent contracts; use the native design for the replacement entry point.
 Canonical contract authority: opifex-owned PersonaSpec schema
 
 > Supersession note: the current target policy for `/larva-mode` and
@@ -11,16 +11,38 @@ Canonical contract authority: opifex-owned PersonaSpec schema
 > Pi model at assistant-turn end. Use
 > [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) for current mode semantics.
 
+## Native target precedence
+
+[Native Pi extension cutover](pi-native-extension.md) is the accepted replacement
+design. It is documentation of the target, not evidence that native installation
+or startup is already implemented.
+
+| Material in this reference | Native interpretation |
+|---|---|
+| Launch, Launcher contract, launcher-owned fields and CLI bridge fallback | Historical launcher behavior; use native package/flag/binding admission instead |
+| Parent capsules and whole-settings isolation | Retired for main; ordinary settings persist and persona setters remain session-local |
+| Old-Pi fallback and compatibility requirements | Outside the native target; keep mechanisms still needed by the tested current host, including child frame preload |
+| Launcher rows in Architecture basis, capability matrix, verification and implementation handoff | Historical owner/entrypoint assignments; they do not require retaining a launcher or its Plan topology |
+| Explicit-startup-wins restore prose | Superseded by native session restoration, which preserves current stored-session precedence and explicit preflight |
+| Persona policy, tool/result/session formats, invocation, compaction and async lifecycle | Retained, subject to the explicitly changed startup/settings boundaries |
+
+The native design also specifies Pi's normal `--no-extensions` behavior and later
+startup-error timing. No wrapper maintenance, environment-reconstruction feature,
+or replacement launcher belongs to that target.
+
 ## Decision
 
-`larva` will support Pi Coding Agent through a small launcher plus a bundled Pi
-extension.
+`larva` will support the accepted native target through a normally installed Pi
+extension and an independent CLI backend. The `larva pi` launcher remains in the
+current implementation until cutover; it is removed from the target architecture.
+See [Native Pi extension cutover](pi-native-extension.md) for the replacement
+interfaces, settings ownership, error behavior and acceptance criteria.
 
 The integration projects Larva personas into Pi at runtime. It does not change
-the canonical `PersonaSpec` shape and does not make Larva a workspace sandbox,
-task scheduler, or general Pi permission platform.
+the canonical `PersonaSpec` shape or add workspace sandboxing, task scheduling,
+or a general Pi permission platform.
 
-The integration owns six runtime behaviors:
+The integration retains six runtime behaviors:
 
 1. start Pi with an optional active Larva persona;
 2. switch the active persona in-place during a Pi session;
@@ -32,14 +54,18 @@ The integration owns six runtime behaviors:
 
 ## Rationale
 
-Pi keeps its core small and exposes extension hooks for commands, system-prompt
-updates, model changes, tool-call interception, UI status, and custom tools. The
-simplest integration is therefore a Pi extension loaded by a `larva pi` launcher.
+Pi exposes extension hooks for commands, prompt updates, session-local model and
+thinking changes, tool-call interception, UI and child orchestration. Those
+surfaces support the native target without activating Larva's Python environment
+in the main process. The CLI remains a subprocess backend for persona data.
 
-OpenCode is useful precedent but not a template to copy wholesale. OpenCode has a
-native agent/subagent/permission runtime. Pi does not. The Larva-Pi path should
-only project Larva persona identity and persona-owned runtime rules into Pi. It
-must not recreate OpenCode's full runtime or add unrelated workspace management.
+The historical launcher also provided whole-settings isolation and earlier
+preflight. The native design explicitly changes those boundaries rather than
+claiming complete startup-experience parity.
+
+OpenCode remains useful precedent for persona projection, but the Pi integration
+does not recreate its full agent/permission runtime or unrelated workspace
+management.
 
 ## Non-goals
 
@@ -96,6 +122,9 @@ must not recreate OpenCode's full runtime or add unrelated workspace management.
 ## Runtime UX
 
 ### Launch
+
+> Historical launcher contract. The accepted [native launch interface](pi-native-extension.md#native-startup-interface-and-admission) supersedes this subsection's entrypoint, pre-Pi error timing, parent capsule and launcher-marker requirements. The source implementation has not yet been cut over.
+
 Supported `larva pi` launches isolate Pi settings before process start. The launcher records the effective base agent directory in `LARVA_PI_BASE_AGENT_DIR`, creates an owner-only private agent-directory capsule, copies `settings.json` with mode `0600`, links other agent resources to the base directory, and points `PI_CODING_AGENT_DIR` at the capsule. Parent cleanup removes only that capsule root and never merges settings into the base. An absolute `LARVA_PI_THINKING_POLICY_FILE` selects adapter-local persona thinking policy; a missing default file uses `medium`, while an existing invalid file fails the affected explicit activation before prompt.
 
 
@@ -285,6 +314,9 @@ effect. The command returns a user-visible error with one of these stable codes:
 `LARVA_POLICY_INVALID`, or `LARVA_TOOL_ENUMERATION_FAILED`.
 
 ### Session-local active persona restore
+
+> The precedence paragraph below is historical and differs from current code and behavior tests. [Native session restoration](pi-native-extension.md#session-restoration) preserves stored-session precedence, later manual model/thinking choices, and mandatory explicit startup preflight. Its rule supersedes the old explicit-startup-wins wording; the session record format and registry ownership remain unchanged.
+
 
 Active persona choice is represented as an adapter-local Pi session custom entry,
 not as PersonaSpec data and not as shared opifex contract data. After each
@@ -1845,6 +1877,9 @@ resume validation remains path-based and is performed only by
 
 
 ## Launcher contract
+
+> Historical pre-cutover implementation contract. [Native cutover](pi-native-extension.md) removes this launcher and its registration; it does not preserve these environment prerequisites, discovery rules or a compatible forwarding command. Retained child transport/configuration fields serve their current consumers independently of launcher authority.
+
 The supported launcher also creates a private parent Pi agent-directory capsule before invocation. It records the base directory in `LARVA_PI_BASE_AGENT_DIR`, passes the capsule through `PI_CODING_AGENT_DIR`, validates an optional absolute `LARVA_PI_THINKING_POLICY_FILE`, and removes the capsule on normal return or startup failure. Child launches inherit the recorded base directory but create separate capsules. Capsule settings never merge back into the base.
 
 
@@ -2180,6 +2215,9 @@ Command and hook contracts:
   `can_spawn` and child tool policy allow it. Nested spawning is not special-cased.
 
 ### Larva CLI bridge contract
+
+> Native target change: the [CLI binding contract](pi-native-extension.md#cli-binding) retains the existing argv input and list/resolve protocol but makes the installation binding explicit. Launcher production of that input and automatic ambient `larva`/`uvx larva` fallbacks below are historical. A missing binding must not select or install another backend silently.
+
 
 The Pi TypeScript extension resolves and lists personas through the Larva CLI. It
 does not read registry files directly.
