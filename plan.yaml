@@ -144563,7 +144563,7 @@ phases:
       Gaps: none. Push/tag/PyPI/uvx not part of this step.'
   - id: pi-subagent-inner-padding-release-0-6-5.github-pypi
     name: Publish GitHub and PyPI release 0.6.5
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: runtime_state_only.
       Deliver: from the exact integrated 0.6.5 product commit, fast-forward origin/main,
       create the non-draft non-prerelease GitHub Release and tag v0.6.5 at that exact
@@ -144597,6 +144597,15 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-09-10T05:24:05.638846Z'
+    done_at: '2026-09-10T05:25:46.321885+00:00'
+    evidence: 'PASS. Pushed origin/main fast-forward c16087eb..463b6e59. GitHub Release
+      https://github.com/Tefx/larva/releases/tag/v0.6.5 is non-draft non-prerelease
+      tag v0.6.5 targeting product commit a43221a66237a21bb625a847ed01d21c333bb8f3.
+      Workflow Publish to PyPI run 34440944465 success (build 22s, publish 22s). Public
+      https://pypi.org/pypi/larva/0.6.5/json version 0.6.5: larva-0.6.5-py3-none-any.whl
+      243240 sha256 2762ade54501bf6faa5d7a32b77fdecdc17a8b9e917fad15ee2a5c32f286746c;
+      larva-0.6.5.tar.gz 2348655 sha256 53f56fd6e76a2f225a69e235e33a51ed08a59e3c194292c775fbc68d195daeaa;
+      matches local uv build. No direct PyPI upload. Gaps: none.'
   - id: pi-subagent-inner-padding-release-0-6-5.local-uvx
     name: Activate Larva 0.6.5 in local uvx resolution
     status: pending
