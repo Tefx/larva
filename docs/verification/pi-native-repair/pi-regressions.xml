@@ -1218,7 +1218,7 @@ E         "providerClosed": true,
 E         "rootRemoved": true
 E       }
 E     }
-E     
+E
 E     stderr=
 E   assert 1 == 0
 E    +  where 1 = CompletedProcess(args=['/opt/homebrew/bin/node', '/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.repair-capsule...false\n      }\n    },\n    "parents": [],\n    "providerClosed": true,\n    "rootRemoved": true\n  }\n}\n', stderr='').returncode</failure></testcase></testsuite></testsuites>
