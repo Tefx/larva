@@ -144871,7 +144871,7 @@ phases:
       excluded; remote CI not run. No unresolved producer obligations.'
   - id: pi-native.retire-python-launcher
     name: Remove Python Pi launcher and prove independent backend distribution
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- After the native producer's own behavior/proof is complete, remove\
       \ larva pi parser/help registration and dispatch, src/larva/shell/pi.py and\
@@ -145003,6 +145003,8 @@ phases:
     depends_on:
     - pi-native.deliver-extension
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-09-10T17:25:46.065391Z'
   - id: pi-native.accept-repository
     name: Accept the integrated native-only repository delivery
     status: pending
