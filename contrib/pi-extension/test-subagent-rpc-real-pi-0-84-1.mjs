@@ -219,6 +219,7 @@ async function runPublicScenario(mod, base, scenario) {
   const callbacks = [];
   const env = {
     LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, base.fakeCli]),
+    LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([base.fakePi]),
     LARVA_PI_REAL_BIN: base.fakePi,
     LARVA_PI_EXTENSION_FLAG: "-e",
     LARVA_PI_EXTENSION_ENTRY: extensionPath,

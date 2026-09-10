@@ -260,6 +260,7 @@ const HARNESS_SELECTOR_ENV_KEYS = [
   "LARVA_PI_PARENT_PERSONA_ID",
   "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE",
   "LARVA_PI_REAL_BIN",
+  "LARVA_PI_TEST_CHILD_ARGV_JSON",
   "LARVA_PI_SUBAGENT_ARTIFACT_DIR",
   "LARVA_PI_SUBAGENT_CONFIG_FILE",
   "LARVA_PI_SUBAGENT_LOG_FILE",
@@ -452,6 +453,23 @@ async function allocateRuntimeDirectory(prefix) {
     : await mkdtemp(join(runtimeIsolation.tempRoot, prefix));
 }
 
+function testChildArgvJson(env) {
+  if (env.LARVA_PI_REAL_BIN === "") return "";
+  if (typeof env.LARVA_PI_TEST_CHILD_ARGV_JSON === "string" && env.LARVA_PI_TEST_CHILD_ARGV_JSON.length > 0) return env.LARVA_PI_TEST_CHILD_ARGV_JSON;
+  const bin = env.LARVA_PI_REAL_BIN;
+  const flag = env.LARVA_PI_EXTENSION_FLAG;
+  if (typeof bin !== "string" || bin.length === 0) return JSON.stringify([PI_BIN]);
+  if (typeof flag === "string" && flag !== "-e" && flag.length > 0) return JSON.stringify([bin, flag]);
+  return JSON.stringify([bin]);
+}
+
+function withChildLaunchEnv(env, extra = {}) {
+  const next = { ...env, ...extra };
+  delete next.LARVA_PI_TEST_CHILD_ARGV_JSON;
+  next.LARVA_PI_TEST_CHILD_ARGV_JSON = testChildArgvJson(next);
+  return next;
+}
+
 function runtimeEnv(overrides = {}) {
   const defaults = runtimeIsolation?.envDefaults ?? {
     PI_OFFLINE: "1",
@@ -463,10 +481,11 @@ function runtimeEnv(overrides = {}) {
     LARVA_PI_LAUNCHED: "1",
   };
   const env = mergedHarnessEnv(process.env, { ...defaults, ...overrides });
+  env.LARVA_PI_TEST_CHILD_ARGV_JSON = testChildArgvJson(env);
   if (runtimeIsolation !== null) {
     runtimeIsolation.environmentObservations.push(observeRuntimeEnvironment(
       env,
-      [...Object.keys(defaults), ...Object.keys(overrides)],
+      [...Object.keys(defaults), ...Object.keys(overrides), "LARVA_PI_TEST_CHILD_ARGV_JSON"],
       runtimeIsolation.tempRoot,
     ));
   }
@@ -700,6 +719,8 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
       addAutocompleteProvider: (providerFactory) => { autocompleteProviders.push(providerFactory); return undefined; },
     },
     modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
+    mode: "tui",
+    hasUI: true,
   };
   const pi = {
     getAllTools: async () => ["read"],
@@ -1418,6 +1439,8 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
     env,
     modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
     ui: { setStatus: async () => undefined },
+    mode: "tui",
+    hasUI: true,
   };
   const pi = {
     getAllTools: async () => ["read", "grep", "larva_subagent"],
@@ -1462,7 +1485,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
     () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "running"),
     { label: "running presentation entry" },
   );
-  const commandResult = await command.handler("", { env: { ...env, LARVA_PI_INTERACTIVE_TUI: "1" }, modelRegistry: ctx.modelRegistry, ui: commandUi });
+  const commandResult = await command.handler("", { env: { ...env, LARVA_PI_INTERACTIVE_TUI: "1" }, modelRegistry: ctx.modelRegistry, ui: commandUi, mode: "tui", hasUI: true });
   if (component === null || commandResult?.ok !== true) throw new Error("subagent log overlay did not open during RPC stream proof");
   const rendersBeforeLive = requestRenderEvents.length;
   const liveEntry = await waitForSmokeCondition(
@@ -1542,7 +1565,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   const cacheFile = join(sessionRoot, "subagent-presentation-log.json");
   const env = runtimeEnv({ HOME: sessionRoot, LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
   await mod.initializeExtension(
-    { env, modelRegistry: { find: async () => ({ id: "model" }) }, ui: { setStatus: async () => undefined } },
+    { env, modelRegistry: { find: async () => ({ id: "model" }) }, ui: { setStatus: async () => undefined }, mode: "tui", hasUI: true },
     { registerTool: () => undefined, registerCommand: () => undefined, on: () => undefined },
   );
   mod.resetSubagentPresentationStateForTests();
@@ -1711,7 +1734,7 @@ async function subagentJsonPresentationProof(evidence) {
     return matches.at(-1)?.[0] ?? "";
   };
   const renderers = new Map();
-  const ctx = { env: runtimeEnv(), ui: { setStatus: () => undefined }, modelRegistry: { find: async () => ({ provider: "openai-codex", modelId: "gpt-5.5" }) } };
+  const ctx = { env: runtimeEnv(), ui: { setStatus: () => undefined }, modelRegistry: { find: async () => ({ provider: "openai-codex", modelId: "gpt-5.5" }) }, mode: "tui", hasUI: true };
   await mod.initializeExtension(ctx, {
     getAllTools: async () => ["read"],
     setActiveTools: async () => true,
@@ -2188,7 +2211,7 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
     const attempts = [];
     const probeCtx = {
       ...ctx,
-      env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: probeChild, LARVA_PI_REAL_BIN: process.execPath },
+      env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: probeChild, LARVA_PI_REAL_BIN: process.execPath }),
       session: { label, entries: [] },
       callbackSurface: {
         sendMessage: async (message, options) => {
@@ -2603,6 +2626,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) },
     ui: { setStatus: async (...args) => { statusCalls.push(args); }, notify: async () => undefined, custom: async () => ({ opened: true }) },
     hasUI: true,
+    mode: "tui",
     session: {
       entries: sessionEntries,
       isStreaming: true,
@@ -2877,6 +2901,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     ...ctx,
     env: { ...ctx.env, LARVA_PI_INTERACTIVE_TUI: "0" },
     hasUI: true,
+    mode: "rpc",
     ui: {
       setStatus: async () => undefined,
       notify: async () => undefined,
@@ -2887,6 +2912,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     ...ctx,
     env: { ...ctx.env, LARVA_PI_INTERACTIVE_TUI: "0" },
     hasUI: false,
+    mode: "print",
     ui: undefined,
   };
   const rpcList = await invokeUnifiedCommand("", rpcCtx);
@@ -3017,7 +3043,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     subagentTool,
     "failed-callback-shape",
     { persona_id: "child", task: "fail and send failed callback shape" },
-    { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: failedCallbackChild, LARVA_PI_REAL_BIN: process.execPath } },
+    { ...ctx, env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: failedCallbackChild, LARVA_PI_REAL_BIN: process.execPath }) },
   );
   try { await waitForSmokeCondition(() => callbackForStatus("failed", failedCallbackStart), { label: "failed callback shape", timeoutMs: 500 }); } catch {}
   const failedCallback = callbackForStatus("failed", failedCallbackStart);
@@ -3030,8 +3056,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
   await writeDelayedAsyncSubagentChild(siblingChild, { sessionFile: siblingASession, finalText: "SIBLING_A_FINAL", terminalDelayMs: 450, terminalMarkerFile: join(sessionRoot, "sibling-a-terminal.txt") });
   const siblingBCopy = join(sessionRoot, "sibling-b-child.mjs");
   await writeDelayedAsyncSubagentChild(siblingBCopy, { sessionFile: siblingBSession, finalText: "SIBLING_B_FINAL", terminalDelayMs: 450, terminalMarkerFile: join(sessionRoot, "sibling-b-terminal.txt") });
-  const siblingACtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: siblingChild, LARVA_PI_REAL_BIN: process.execPath } };
-  const siblingBCtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: siblingBCopy, LARVA_PI_REAL_BIN: process.execPath } };
+  const siblingACtx = { ...ctx, env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: siblingChild, LARVA_PI_REAL_BIN: process.execPath }) };
+  const siblingBCtx = { ...ctx, env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: siblingBCopy, LARVA_PI_REAL_BIN: process.execPath }) };
   const siblingAUpdates = [];
   const siblingBUpdates = [];
   const siblingAPromise = runTool(subagentTool, "cancel-source-a", { persona_id: "child", task: "cancel only task A" }, siblingACtx, undefined, (update) => siblingAUpdates.push(update));
@@ -3102,8 +3128,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
     const unsafeOutput = `ASSISTANT_OUTPUT_START ${"assistant body ".repeat(320)}\u0007 OUTPUT_TAIL_SHOULD_NOT_RENDER`;
     const unsafeTimeline = `TIMELINE_START ${"timeline body ".repeat(320)} TIMELINE_TAIL_SHOULD_NOT_RENDER`;
     const rawRpcSecret = "RAW_RPC_SECRET_SHOULD_NOT_RENDER";
-    const selectedCtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: selectedChild, LARVA_PI_REAL_BIN: process.execPath } };
-    const siblingCtx = { ...ctx, env: { ...ctx.env, LARVA_PI_EXTENSION_FLAG: siblingChildForConsole, LARVA_PI_REAL_BIN: process.execPath } };
+    const selectedCtx = { ...ctx, env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: selectedChild, LARVA_PI_REAL_BIN: process.execPath }) };
+    const siblingCtx = { ...ctx, env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: siblingChildForConsole, LARVA_PI_REAL_BIN: process.execPath }) };
     const selectedUpdates = [];
     const siblingUpdatesForConsole = [];
     const selectedPromise = runTool(subagentTool, "a9-console-selected", { persona_id: "child", task: unsafePrompt }, selectedCtx, undefined, (update) => selectedUpdates.push(update));
@@ -3172,6 +3198,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     const cancelCtx = {
       ...ctx,
       hasUI: true,
+      mode: "tui",
       ui: {
         setStatus: async () => undefined,
         notify: async () => undefined,
@@ -3188,7 +3215,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     const canonicalCancelStatus = canonicalCancelDetails?.status ?? null;
 
     const childFilesBeforeClear = { selected: await exists(selectedTaskId), sibling: await exists(siblingTaskIdForConsole) };
-    const canonicalClear = await invokeUnifiedCommand("--clear", { ...ctx, hasUI: true, ui: { setStatus: async () => undefined, notify: async () => undefined, custom: async () => ({ opened: true }) } });
+    const canonicalClear = await invokeUnifiedCommand("--clear", { ...ctx, hasUI: true, mode: "tui", ui: { setStatus: async () => undefined, notify: async () => undefined, custom: async () => ({ opened: true }) } });
     const entriesAfterCanonicalClear = mod.subagentPresentationLogForTests();
     const childFilesAfterCanonicalClear = { selected: await exists(selectedTaskId), sibling: await exists(siblingTaskIdForConsole) };
     const legacyClear = mod.larva_subagent_log("--clear");
@@ -3327,13 +3354,12 @@ async function asyncSubagentContractExpectedRed(evidence) {
     await writeNonresponsiveAbortSubagentChild(proofChild, { sessionFile: proofSessionFile });
     const proofCtx = {
       ...ctx,
-      env: {
-        ...ctx.env,
+      env: withChildLaunchEnv(ctx.env, {
         LARVA_PI_REAL_BIN: process.execPath,
         LARVA_PI_EXTENSION_FLAG: proofChild,
         LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
         LARVA_PI_CHILD_RPC_TRACE_FILE: proofTraceFile,
-      },
+      }),
     };
     const updates = [];
     const acceptedCall = await runTool(
@@ -3904,8 +3930,8 @@ rl.on("line", async (line) => {
   const commands = new Map();
   const tools = new Map();
   const setModels = [];
-  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "1", LARVA_PI_INITIAL_PERSONA_ID: "parent", LARVA_PI_REAL_BIN: fakePi, LARVA_PI_EXTENSION_FLAG: "-e", LARVA_PI_EXTENSION_ENTRY: extensionPath, LARVA_PI_CHILD_SESSION_DIR: childSessionDir, LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile, LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1" };
-  const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined } };
+  const env = { HOME: sessionRoot, LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_LAUNCHED: "1", LARVA_PI_INITIAL_PERSONA_ID: "parent", LARVA_PI_REAL_BIN: fakePi, LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([fakePi]), LARVA_PI_EXTENSION_FLAG: "-e", LARVA_PI_EXTENSION_ENTRY: extensionPath, LARVA_PI_CHILD_SESSION_DIR: childSessionDir, LARVA_PI_CHILD_RPC_TRACE_FILE: traceFile, LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1" };
+  const ctx = { env, modelRegistry: { find: async (provider, modelId) => ({ provider, modelId }) }, ui: { setStatus: async () => undefined, notify: async () => undefined }, mode: "tui", hasUI: true };
   const pi = { getAllTools: async () => [], setActiveTools: async () => true, setModel: async (model) => { setModels.push(model); return true; }, registerTool: (tool) => tools.set(tool.name, tool), registerCommand: (name, command) => commands.set(typeof name === "string" ? name : name.name, typeof name === "string" ? command : name), on: () => undefined };
   await mod.initializeExtension(ctx, pi);
   const command = commands.get("larva-model-map");
@@ -4613,6 +4639,7 @@ export default function (pi) {
       PATH: `${wrapperDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? "/opt/homebrew/bin:/usr/bin:/bin"}`,
       LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, larvaCli]),
       LARVA_PI_REAL_BIN: installedPi,
+      LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([installedPi]),
       LARVA_PI_EXTENSION_FLAG: "-e",
       LARVA_PI_EXTENSION_ENTRY: extensionPath,
       LARVA_PI_INITIAL_PERSONA_ID: "parent",

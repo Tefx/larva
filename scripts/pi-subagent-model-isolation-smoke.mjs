@@ -127,6 +127,7 @@ process.stdout.write(JSON.stringify({ data: {
       PI_CODING_AGENT_DIR: agentDir,
       LARVA_PI_BASE_AGENT_DIR: agentDir,
       LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeLarvaCli]),
+      LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([piBinary()]),
       LARVA_PI_REAL_BIN: piBinary(),
       LARVA_PI_EXTENSION_FLAG: "-e",
       LARVA_PI_EXTENSION_ENTRY: extensionPath,

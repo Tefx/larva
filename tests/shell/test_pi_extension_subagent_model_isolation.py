@@ -283,6 +283,7 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
           PI_CODING_AGENT_DIR: {json.dumps(str(agent_dir))},
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
           LARVA_PI_LAUNCHED: "1",
+          LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([{json.dumps(str(fake_pi))}]),
           LARVA_PI_REAL_BIN: {json.dumps(str(fake_pi))},
           LARVA_PI_EXTENSION_FLAG: "-e",
           LARVA_PI_EXTENSION_ENTRY: {json.dumps(str(EXTENSION))},

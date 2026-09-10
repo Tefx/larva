@@ -174,6 +174,7 @@ await mkdir(sessionDir, { recursive: true });
 
 const env = {
   LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+  LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([fakePi]),
   LARVA_PI_REAL_BIN: fakePi,
   LARVA_PI_EXTENSION_FLAG: "-e",
   LARVA_PI_EXTENSION_ENTRY: join(runtimeDir, "extension.ts"),

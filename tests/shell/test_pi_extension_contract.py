@@ -2574,6 +2574,7 @@ def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_ke
         const mod = await import({json.dumps(EXTENSION.as_uri())});
         const env = {{
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_pi))}]),
           LARVA_PI_REAL_BIN: process.execPath,
           LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
           LARVA_PI_EXTENSION_ENTRY: "larva-extension.ts",
@@ -2608,11 +2609,12 @@ def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_ke
     )
 
     assert payload["argv"] == [
+        "-e",
         str(source_one.resolve()),
-        str(fake_pi),
+        "-e",
         str(source_two.resolve()),
-        str(fake_pi),
-        "larva-extension.ts",
+        "-e",
+        str(EXTENSION),
         "--no-extensions",
         "--mode",
         "rpc",
@@ -2801,6 +2803,116 @@ def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_
     assert result["denied"]["status"] == "failed"
     assert result["denied"]["error"]["code"] == "LARVA_CHILD_START_FAILED"
     assert result["markerExists"] is False
+
+
+def test_child_terminal_cleanup_owns_private_capsule_and_preserves_base_session(tmp_path: Path) -> None:
+    """Child capsule identity must survive startChild's private env clone through terminal cleanup."""
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    home = tmp_path / "home"
+    agent = tmp_path / "agent"
+    sessions = tmp_path / "sessions"
+    child_sessions = tmp_path / "child-sessions"
+    runtime = home / ".pi" / "larva" / "runtime"
+    durable_session = sessions / "parent.jsonl"
+    child_session = child_sessions / "loopback.jsonl"
+    for path in (home, agent, sessions, child_sessions):
+        path.mkdir(parents=True)
+    (agent / "settings.json").write_text('{ "theme": "dark" }\n', encoding="utf-8")
+    durable_session.write_text("parent-session\n", encoding="utf-8")
+    child_session.write_text("", encoding="utf-8")
+    completing = ROOT / "tests" / "fixtures" / "pi" / "completing-rpc-child.mjs"
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        import {{ readdirSync, existsSync, readFileSync }} from "node:fs";
+        import {{ join }} from "node:path";
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{
+          HOME: {json.dumps(str(home))},
+          LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(completing))}]),
+          LARVA_PI_REAL_BIN: process.execPath,
+          LARVA_PI_EXTENSION_FLAG: {json.dumps(str(completing))},
+          LARVA_PI_EXTENSION_ENTRY: {json.dumps(str(EXTENSION))},
+          LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_sessions))},
+          LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
+          LARVA_PI_LAUNCHED: "1",
+          PI_CODING_AGENT_DIR: {json.dumps(str(agent))},
+          LARVA_COMPLETING_CHILD_SESSION_FILE: {json.dumps(str(child_session))},
+        }};
+        const ctx = {{
+          env,
+          ui: {{ setStatus: async () => undefined, notify: async () => undefined }},
+          modelRegistry: {{ find: async () => ({{ id: "model", provider: "provider" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerTool: () => undefined,
+          registerCommand: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        await mod.commitPersona("parent", ctx, pi);
+        const accepted = await mod.larva_subagent({{ persona_id: "child", task: "complete and cleanup" }}, {{ env }});
+        let waited = null;
+        if (accepted.status === "accepted" && accepted.task_id) {{
+          waited = await mod.larva_subagent_wait({{ task_ids: [accepted.task_id], return_when: "all", timeout_ms: 8000 }}, {{ env }});
+        }}
+        const runtimeRoot = {json.dumps(str(runtime))};
+        const deadline = Date.now() + 1500;
+        let remaining = existsSync(runtimeRoot) ? readdirSync(runtimeRoot) : [];
+        while (remaining.length > 0 && Date.now() < deadline) {{
+          await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+          remaining = existsSync(runtimeRoot) ? readdirSync(runtimeRoot) : [];
+        }}
+        console.log(JSON.stringify({{
+          acceptedStatus: accepted.status,
+          acceptedError: accepted.error ?? null,
+          waited,
+          remainingCapsules: remaining,
+          baseSettings: readFileSync({json.dumps(str(agent / "settings.json"))}, "utf8"),
+          durableSession: readFileSync({json.dumps(str(durable_session))}, "utf8"),
+          childSessionExists: existsSync({json.dumps(str(child_session))}),
+          parentCapsuleRoot: env.LARVA_PI_CAPSULE_ROOT ?? null,
+        }}));
+        """,
+        timeout=12,
+    )
+
+    assert result["acceptedStatus"] == "accepted", result
+    details = (result.get("waited") or {}).get("details") or {}
+    runs = details.get("runs") or []
+    waited_status = runs[0]["status"] if runs else details.get("status")
+    assert waited_status == "success", result
+    assert result["remainingCapsules"] == [], result
+    assert "dark" in result["baseSettings"]
+    assert result["durableSession"] == "parent-session\n"
+    assert result["childSessionExists"] is True
+    assert result["parentCapsuleRoot"] is None
 
 
 def test_no_sidecar_resume_contract() -> None:
@@ -3261,6 +3373,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
               LARVA_PI_AGENT_PERSONA_SWITCH: undefined,
               ...envOverrides,
             }},
+            mode: options.omitUi ? "print" : (envOverrides.LARVA_PI_INTERACTIVE_TUI === "0" ? "rpc" : "tui"),
             ui: options.omitUi ? undefined : ui,
             modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return options.modelUnavailable ? null : {{ id: "model" }}; }} }},
             sessionManager: options.omitSession ? undefined : {{ getEntries: () => sessionEntries }},
@@ -4518,6 +4631,7 @@ def test_agent_persona_switch_child_subagent_defaults_self_switch_manual_behavio
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
           LARVA_PI_REAL_BIN: process.execPath,
           LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
+          LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_pi))}]),
           LARVA_PI_EXTENSION_ENTRY: "unused-extension-entry.ts",
           LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(tmp_path))},
           LARVA_PI_AGENT_PERSONA_SWITCH: "auto",
@@ -4716,6 +4830,7 @@ def test_async_subagent_lifecycle_cleanup_aborts_via_child_rpc_stales_callbacks_
             LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             LARVA_PI_REAL_BIN: process.execPath,
             LARVA_PI_EXTENSION_FLAG: {json.dumps(str(child))},
+            LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(child))}]),
             LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
             LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_session_root))},
             LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
@@ -4855,6 +4970,7 @@ def test_async_subagent_stale_parent_session_identity_suppresses_late_callback(t
             LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
             LARVA_PI_REAL_BIN: process.execPath,
             LARVA_PI_EXTENSION_FLAG: {json.dumps(str(child))},
+            LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(child))}]),
             LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts",
             LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_session_root))},
             LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",

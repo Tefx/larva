@@ -31,6 +31,7 @@ const SCENARIOS = [
   "fresh-explicit-success",
   "fresh-explicit-model-fail",
   "missing-cli-binding",
+  "missing-extension-explicit-persona",
   "print-mode",
   "rpc-mode",
   "tui-mode",
@@ -149,8 +150,10 @@ async function startLoopback(scratch) {
   const server = createServer(async (request, response) => {
     let body = "";
     for await (const chunk of request) body += chunk.toString("utf8");
-    requests.push({ method: request.method, url: request.url, body: body.slice(0, 2000) });
+    const hold = body.includes("HOLD_CHILD");
+    requests.push({ method: request.method, url: request.url, body: body.slice(0, 2000), hold });
     response.writeHead(200, { "content-type": "text/event-stream", connection: "close" });
+    if (hold) return;
     response.write(`data: ${JSON.stringify({ id: "n", object: "chat.completion.chunk", created: 0, model: "neutral", choices: [{ index: 0, delta: { role: "assistant", content: "NEUTRAL_LOOPBACK_OK" }, finish_reason: "stop" }] })}\n\n`);
     response.end("data: [DONE]\n\n");
   });
@@ -348,7 +351,9 @@ async function runScenario(scenario) {
       evidence.exitCode = result.exitCode;
       evidence.stdout = result.stdout.slice(0, 2000);
       evidence.stderr = result.stderr.slice(0, 800);
-      evidence.pass = /larva: ok|larva-persona/.test(`${result.stdout}${result.stderr}`) && !/LARVA_/.test(result.stderr);
+      evidence.statusOk = /"statusText":"larva: ok"/.test(result.stdout);
+      evidence.stateOk = /"command":"get_state"/.test(result.stdout) && /"success":true/.test(result.stdout);
+      evidence.pass = result.exitCode === 0 && evidence.statusOk === true && evidence.stateOk === true && !/LARVA_/.test(result.stderr);
     });
   } else if (scenario === "fresh-explicit-model-fail") {
     await withScratch(async (scratch, loopback) => {
@@ -357,10 +362,12 @@ async function runScenario(scenario) {
         env: baseEnv(scratch, { FAKE_LARVA_MODEL: "missing-provider/missing-model" }),
         cwd: scratch.cwd,
         timeoutMs: 8_000,
+        stdinText: `${JSON.stringify({ id: "p1", type: "prompt", message: "must not reach the model" })}\n`,
       });
       evidence.exitCode = result.exitCode;
       evidence.stderr = result.stderr.slice(0, 1200);
       evidence.requests = loopback.requests.length;
+      evidence.queuedPrompt = true;
       evidence.pass = result.exitCode === 2 && /LARVA_MODEL_UNAVAILABLE/.test(result.stderr) && /larva pi:/.test(result.stderr) && loopback.requests.length === 0;
     });
   } else if (scenario === "missing-cli-binding") {
@@ -383,7 +390,20 @@ async function runScenario(scenario) {
       evidence.unselectedStderr = unselected.stderr.slice(0, 400);
       evidence.explicitExit = explicit.exitCode;
       evidence.explicitStderr = explicit.stderr.slice(0, 800);
-      evidence.pass = explicit.exitCode === 2 && /LARVA_PERSONA_NOT_FOUND/.test(explicit.stderr) && loopback.requests.length === 0;
+      evidence.unselectedUsable = unselected.exitCode === 0 && /"statusText":"larva: none"/.test(unselected.stdout) && /"success":true/.test(unselected.stdout);
+      evidence.pass = evidence.unselectedUsable === true && explicit.exitCode === 2 && /LARVA_PERSONA_NOT_FOUND/.test(explicit.stderr) && loopback.requests.length === 0;
+    });
+  } else if (scenario === "missing-extension-explicit-persona") {
+    await withScratch(async (scratch, loopback) => {
+      const result = await runProcess(PI_BIN, ["--mode", "print", "--offline", "--no-session", "--no-extensions", "--larva-persona", "ok", "-p", "must not issue a vanilla request"], {
+        env: baseEnv(scratch),
+        cwd: scratch.cwd,
+        timeoutMs: 8_000,
+      });
+      evidence.exitCode = result.exitCode;
+      evidence.stderr = result.stderr.slice(0, 800);
+      evidence.requests = loopback.requests.length;
+      evidence.pass = result.exitCode !== 0 && /Unknown option/.test(result.stderr) && loopback.requests.length === 0;
     });
   } else if (scenario === "print-mode" || scenario === "rpc-mode" || scenario === "tui-mode") {
     await withScratch(async (scratch, loopback) => {
@@ -402,39 +422,23 @@ async function runScenario(scenario) {
       evidence.stderr = result.stderr.slice(0, 600);
       if (existsSync(observe)) evidence.observation = JSON.parse(await readFile(observe, "utf8"));
       const expected = scenario === "tui-mode" ? "tui" : scenario === "rpc-mode" ? "rpc" : "print";
-      evidence.pass = evidence.observation?.mode === expected;
+      evidence.pass = result.exitCode === 0 && evidence.observation?.mode === expected && (expected !== "rpc" || evidence.observation?.hasUI === true);
     });
   } else if (scenario === "backend-a-project-b") {
-    await withScratch(async (scratch, loopback) => {
-      const projectB = join(scratch.tempRoot, "project-b");
-      const agentB = join(projectB, "agent");
-      await mkdir(agentB, { recursive: true });
-      await writeFile(join(agentB, "settings.json"), JSON.stringify({ defaultProjectTrust: "yes", packages: [], extensions: [] }), "utf8");
-      const installB = await runProcess(PI_BIN, ["install", EXTENSION_DIR], {
-        env: baseEnv(scratch, { PI_CODING_AGENT_DIR: agentB, HOME: join(projectB, "home") }),
-        cwd: projectB,
-        timeoutMs: 20_000,
+    await withScratch(async (scratch) => {
+      const probe = join(ROOT, "tests", "fixtures", "pi", "native_ab_probe.py");
+      const result = await runProcess(join(ROOT, ".venv", "bin", "python"), [probe, "--root", join(scratch.tempRoot, "ab"), "--worktree", ROOT], {
+        env: sanitizedEnv({ PATH: "/opt/homebrew/bin:/usr/bin:/bin" }),
+        cwd: ROOT,
+        timeoutMs: 240_000,
       });
-      await mkdir(join(projectB, "home"), { recursive: true });
-      const settingsB = JSON.parse(await readFile(join(agentB, "settings.json"), "utf8"));
-      const settingsA = JSON.parse(await readFile(join(scratch.agent, "settings.json"), "utf8"));
-      const list = await runProcess(NODE_BIN, [FAKE_CLI, "list", "--json"], {
-        env: baseEnv(scratch),
-        cwd: scratch.cwd,
-        timeoutMs: 5_000,
-      });
-      evidence.installB = { exitCode: installB.exitCode, stderr: installB.stderr.slice(0, 400) };
-      evidence.projectBHasPackage = JSON.stringify(settingsB).includes("pi-extension") || JSON.stringify(settingsB).includes(EXTENSION_DIR);
-      evidence.projectAUnchanged = JSON.stringify(settingsA) === JSON.stringify({
-        defaultProjectTrust: "yes",
-        packages: [],
-        extensions: [],
-        defaultProvider: "larva-neutral",
-        defaultModel: "neutral",
-        defaultThinkingLevel: "low",
-      });
-      evidence.cliListWorks = list.exitCode === 0 && /"id":"ok"/.test(list.stdout);
-      evidence.pass = installB.exitCode === 0 && evidence.projectBHasPackage === true && evidence.projectAUnchanged === true && evidence.cliListWorks === true;
+      evidence.stdout = result.stdout.slice(0, 2000);
+      evidence.stderr = result.stderr.slice(0, 1500);
+      evidence.exitCode = result.exitCode;
+      let parsed = {};
+      try { parsed = JSON.parse(result.stdout.split("\n").filter(Boolean).at(-1) ?? "{}"); } catch { parsed = {}; }
+      evidence.parsed = parsed;
+      evidence.pass = result.exitCode === 0 && parsed.pass === true;
     });
   } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails" || scenario === "resume-stored-restore-nonfatal") {
     await withScratch(async (scratch, loopback) => {
@@ -496,49 +500,78 @@ async function runScenario(scenario) {
       }
     });
   } else if (scenario === "parent-shutdown-active-child") {
-    const { mkdtemp: mk } = await import("node:fs/promises");
-    const root = await mk(join(tmpdir(), "larva-native-child-shutdown-"));
-    const fakeChild = join(ROOT, "tests", "fixtures", "pi", "blocking-rpc-child.mjs");
-    const marker = join(root, "started.txt");
-    await writeFile(join(root, "child.jsonl"), "", "utf8");
-    const fakeCli = FAKE_CLI;
-    const code = `
-      import { existsSync, readFileSync } from "node:fs";
-      const mod = await import(${JSON.stringify(new URL("../contrib/pi-extension/larva.ts", import.meta.url).href)});
-      const env = {
-        HOME: ${JSON.stringify(root)},
-        LARVA_CLI_ARGV_JSON: JSON.stringify([${JSON.stringify(NODE_BIN)}, ${JSON.stringify(fakeCli)}]),
-        LARVA_PI_REAL_BIN: ${JSON.stringify(NODE_BIN)},
-        LARVA_PI_EXTENSION_FLAG: ${JSON.stringify(fakeChild)},
-        LARVA_PI_EXTENSION_ENTRY: ${JSON.stringify(EXTENSION_ENTRY)},
-        LARVA_PI_CHILD_SESSION_DIR: ${JSON.stringify(root)},
+    await withScratch(async (scratch, loopback) => {
+      const audit = join(scratch.tempRoot, "audit");
+      await mkdir(audit, { recursive: true });
+      await mkdir(join(scratch.tempRoot, "children"), { recursive: true });
+      const driver = join(ROOT, "tests", "fixtures", "pi", "native-parent-main.ts");
+      const subagentConfig = join(scratch.tempRoot, "subagent-runtime.json");
+      await writeFile(subagentConfig, JSON.stringify({ schema_version: 1, extension_sources: [loopback.providerPath] }), "utf8");
+      const env = baseEnv(scratch, {
+        AUDIT_ROOT: audit,
+        LARVA_PI_CHILD_RPC_TRACE_FILE: join(audit, "child-trace.jsonl"),
+        LARVA_PI_CHILD_SESSION_DIR: join(scratch.tempRoot, "children"),
         LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
-        LARVA_PI_LAUNCHED: "1",
-        LARVA_BLOCKING_CHILD_PID_FILE: ${JSON.stringify(marker)},
-        LARVA_BLOCKING_CHILD_SESSION_FILE: ${JSON.stringify(join(root, "child.jsonl"))},
+        LARVA_PI_SUBAGENT_CONFIG_FILE: subagentConfig,
+      });
+      const args = ["--mode", "rpc", "--offline", "--approve", "--no-extensions", "-e", loopback.providerPath, "-e", driver, "--larva-persona", "ok", "--session-dir", scratch.sessions];
+      const proc = spawn(PI_BIN, args, { env, cwd: scratch.cwd, stdio: ["pipe", "pipe", "pipe"] });
+      let stdout = "";
+      let stderr = "";
+      proc.stdout.on("data", (chunk) => { stdout += chunk.toString("utf8"); });
+      proc.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
+      const observations = async () => {
+        try {
+          const text = await readFile(join(audit, "main-observations.jsonl"), "utf8");
+          return text.trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+        } catch { return []; }
       };
-      const handlers = {};
-      const ctx = { env, ui: { setStatus: async () => undefined, notify: async () => undefined }, modelRegistry: { find: async () => ({ id: "model", provider: "openai", api: "openai-completions" }) } };
-      const pi = { getAllTools: async () => ["larva_subagent"], setActiveTools: async () => true, setModel: async () => true, setThinkingLevel: () => undefined, registerTool: () => undefined, registerCommand: () => undefined, registerFlag: () => undefined, on: (event, handler) => { handlers[event] = handler; } };
-      await mod.initializeExtension(ctx, pi);
-      await mod.commitPersona("ok", ctx, pi);
-      const accepted = await mod.larva_subagent({ persona_id: "child", task: "stay running" }, { env });
-      const started = existsSync(${JSON.stringify(marker)}) ? readFileSync(${JSON.stringify(marker)}, "utf8").trim() : "";
-      await (handlers.session_shutdown ?? handlers.shutdown)?.({}, ctx);
-      let alive = false;
-      if (started) {
-        try { process.kill(Number(started), 0); alive = true; } catch { alive = false; }
+      const deadline = Date.now() + 20000;
+      while (Date.now() < deadline && !(await observations()).some((row) => row.event === "ready")) {
+        await new Promise((r) => setTimeout(r, 80));
       }
-      console.log(JSON.stringify({ acceptedStatus: accepted.status, acceptedError: accepted.error ?? null, startedPid: started, aliveAfterShutdown: alive }));
-    `;
-    const result = await runProcess(NODE_BIN, ["--input-type=module", "-e", code], { env: sanitizedEnv(), cwd: ROOT, timeoutMs: 15_000 });
-    evidence.stdout = result.stdout.slice(0, 800);
-    evidence.stderr = result.stderr.slice(0, 800);
-    let parsed = {};
-    try { parsed = JSON.parse(result.stdout); } catch { parsed = { raw: result.stdout }; }
-    evidence.parsed = parsed;
-    evidence.pass = parsed.acceptedStatus === "accepted" && parsed.startedPid && parsed.aliveAfterShutdown === false;
-    await rm(root, { recursive: true, force: true });
+      proc.stdin.write(`${JSON.stringify({ id: "hold", type: "prompt", message: "/audit-child-hold" })}\n`);
+      while (Date.now() < deadline && !(await observations()).some((row) => row.event === "accepted")) {
+        await new Promise((r) => setTimeout(r, 80));
+      }
+      let traces = [];
+      try {
+        traces = (await readFile(join(audit, "child-trace.jsonl"), "utf8")).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+      } catch { traces = []; }
+      evidence.traceCount = traces.length;
+      evidence.traceEvents = traces.map((row) => row.event);
+      const obs = await observations();
+      const acceptedObs = obs.find((row) => row.event === "accepted");
+      evidence.acceptedStatus = acceptedObs?.value?.status ?? acceptedObs?.value?.details?.status ?? null;
+      evidence.acceptedError = acceptedObs?.value?.error ?? acceptedObs?.value?.details?.error ?? null;
+      const spawnRow = traces.find((row) => row.event === "child_spawn");
+      const childPid = spawnRow?.pid ?? null;
+      let childAliveBefore = false;
+      if (childPid) {
+        try { process.kill(childPid, 0); childAliveBefore = true; } catch { childAliveBefore = false; }
+      }
+      const runtimeRoot = join(scratch.home, ".pi", "larva", "runtime");
+      let capsulesBefore = existsSync(runtimeRoot) ? (await import("node:fs")).readdirSync(runtimeRoot) : [];
+      proc.stdin.write(`${JSON.stringify({ id: "stop", type: "prompt", message: "/audit-stop" })}\n`);
+      const exit = await new Promise((resolveClose) => {
+        const timer = setTimeout(() => { proc.kill("SIGTERM"); resolveClose({ timeout: true }); }, 8000);
+        proc.once("close", (code, signal) => { clearTimeout(timer); resolveClose({ code, signal }); });
+      });
+      let childAliveAfter = false;
+      if (childPid) {
+        try { process.kill(childPid, 0); childAliveAfter = true; } catch { childAliveAfter = false; }
+      }
+      const capsulesAfter = existsSync(runtimeRoot) ? (await import("node:fs")).readdirSync(runtimeRoot) : [];
+      evidence.exit = exit;
+      evidence.stderr = stderr.slice(0, 800);
+      evidence.childPid = childPid;
+      evidence.childAliveBefore = childAliveBefore;
+      evidence.childAliveAfter = childAliveAfter;
+      evidence.capsulesBefore = capsulesBefore;
+      evidence.capsulesAfter = capsulesAfter;
+      evidence.observations = (await observations()).map((row) => row.event);
+      evidence.pass = childAliveBefore === true && childAliveAfter === false && evidence.observations.includes("session_shutdown") && capsulesAfter.length === 0;
+    });
   } else {
     evidence.error = `unknown scenario ${scenario}`;
   }

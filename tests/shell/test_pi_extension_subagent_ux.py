@@ -51,20 +51,28 @@ def _node_prelude(tmp_path: Path) -> str:
         const tmpRoot = {json.dumps(str(tmp_path))};
         const childRoot = join(tmpRoot, "child-sessions");
         await mkdir(childRoot, {{ recursive: true }});
-        const baseEnv = (extra = {{}}) => ({{
-          LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
-          LARVA_PI_REAL_BIN: process.execPath,
-          LARVA_PI_EXTENSION_FLAG: "-e",
-          LARVA_PI_EXTENSION_ENTRY: "fake-extension-entry.ts",
-          LARVA_PI_LAUNCHED: "1",
-          LARVA_PI_INITIAL_PERSONA_ID: "",
-          LARVA_PI_CHILD_SESSION_DIR: childRoot,
-          LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
-          HOME: tmpRoot,
-          LARVA_PI_INTERACTIVE_TUI: "0",
-          LARVA_PI_AGENT_PERSONA_SWITCH: "",
-          ...extra,
-        }});
+        const baseEnv = (extra = {{}}) => {{
+          const env = {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, fakeCli]),
+            LARVA_PI_REAL_BIN: process.execPath,
+            LARVA_PI_EXTENSION_FLAG: "-e",
+            LARVA_PI_EXTENSION_ENTRY: "fake-extension-entry.ts",
+            LARVA_PI_LAUNCHED: "1",
+            LARVA_PI_INITIAL_PERSONA_ID: "",
+            LARVA_PI_CHILD_SESSION_DIR: childRoot,
+            LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
+            HOME: tmpRoot,
+            LARVA_PI_INTERACTIVE_TUI: "0",
+            LARVA_PI_AGENT_PERSONA_SWITCH: "",
+            ...extra,
+          }};
+          if (!env.LARVA_PI_TEST_CHILD_ARGV_JSON) {{
+            const bin = env.LARVA_PI_REAL_BIN;
+            const flag = env.LARVA_PI_EXTENSION_FLAG;
+            env.LARVA_PI_TEST_CHILD_ARGV_JSON = (typeof flag === "string" && flag !== "-e") ? JSON.stringify([bin, flag]) : JSON.stringify([bin]);
+          }}
+          return env;
+        }};
         const modelRegistry = {{ find: () => ({{ provider: "openai-codex", model: "gpt-5.5" }}) }};
         const piBase = {{
           setModel: () => true,
@@ -116,7 +124,7 @@ def _node_prelude(tmp_path: Path) -> str:
         }}
         async function registeredTools(env = baseEnv(), extraPi = {{}}) {{
           const tools = [];
-          const ctx = {{ env, modelRegistry, ui: {{ setStatus: () => undefined }} }};
+          const ctx = {{ env, modelRegistry, mode: "tui", hasUI: true, ui: {{ setStatus: () => undefined }} }};
           await mod.initializeExtension(ctx, {{ ...piBase, ...extraPi, registerTool: (tool) => tools.push(tool) }});
           return {{ tools, ctx }};
         }}
@@ -501,7 +509,7 @@ def test_larva_subagent_background_indicator_count_only_expected_red(tmp_path: P
         const statusCalls = [];
         const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: childBin });
         const tools = [];
-        const ctx = { env, modelRegistry, ui: { setStatus: (...args) => statusCalls.push(args), notify: () => undefined } };
+        const ctx = { env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: (...args) => statusCalls.push(args), notify: () => undefined } };
         await mod.initializeExtension(ctx, { ...piBase, registerTool: (tool) => tools.push(tool) });
         await mod.commitPersona("ok", ctx, piBase);
         const subagent = tools.find((tool) => tool.name === "larva_subagent");
@@ -547,7 +555,7 @@ def test_larva_subagent_background_indicator_ignores_view_only_presentation_cach
         + """
         const statusCalls = [];
         const env = baseEnv();
-        const ctx = { env, modelRegistry, ui: { setStatus: (...args) => statusCalls.push(args), notify: () => undefined } };
+        const ctx = { env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: (...args) => statusCalls.push(args), notify: () => undefined } };
         await mod.initializeExtension(ctx, { ...piBase, registerTool: () => undefined });
         mod.recordSubagentPresentationEntryForTests(
           "/tmp/stale-cache-task.jsonl",
@@ -1571,8 +1579,8 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
           },
         };
         await mod.initializeExtension(
-          { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
-          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler("/tmp/long.jsonl", { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, ui: commandUi })); } },
+          { env: baseEnv(), modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler("/tmp/long.jsonl", { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, mode: "tui", hasUI: true, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
@@ -1693,7 +1701,7 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
         const tools = [];
         const commands = new Map();
         const env = baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: childBin, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" });
-        const ctx = { env, modelRegistry, hasUI: true, ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true } };
+        const ctx = { env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true } };
         await mod.initializeExtension(ctx, {
           ...piBase,
           registerTool: (tool) => tools.push(tool),
@@ -1844,8 +1852,8 @@ def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: 
           },
         };
         await mod.initializeExtension(
-          { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
-          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler(undefined, { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, ui: commandUi })); } },
+          { env: baseEnv(), modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } },
+          { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler(undefined, { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, mode: "tui", hasUI: true, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
         const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
@@ -1909,7 +1917,7 @@ def test_larva_subagent_persistent_log_cache_roundtrip_retention_and_clear(tmp_p
         await mkdir(configDir, { recursive: true });
         await writeFsFile(join(configDir, "subagent-log.json"), JSON.stringify({ enabled: true, max_entries: 3, max_age_days: 7, include_prompt: true, include_output: true }));
         const env = baseEnv({ LARVA_PI_SUBAGENT_LOG_FILE: cacheFile });
-        await mod.initializeExtension({ env, modelRegistry, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
+        await mod.initializeExtension({ env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
         mod.recordSubagentPresentationEntryForTests("/tmp/cache-old.jsonl", "cache", "success", { phase: "success", task_prompt: "old prompt", result_text: "old output", updated_at: "2000-01-01T00:00:00.000Z" });
         for (let index = 1; index <= 4; index += 1) {
           mod.recordSubagentPresentationEntryForTests(`/tmp/cache-${index}.jsonl`, "cache", "success", { phase: "success", task_prompt: `prompt ${index}`, result_text: `# Output ${index}\n\n- bullet ${index}` });
@@ -1960,7 +1968,7 @@ def test_larva_subagent_persistent_log_cache_privacy_config_and_fail_closed(tmp_
         const privateCache = join(tmpRoot, "private-cache.json");
         await writeFsFile(join(configDir, "subagent-log.json"), JSON.stringify({ enabled: true, max_entries: 10, max_age_days: 7, include_prompt: false, include_output: false }));
         const privateEnv = baseEnv({ LARVA_PI_SUBAGENT_LOG_FILE: privateCache });
-        await mod.initializeExtension({ env: privateEnv, modelRegistry, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
+        await mod.initializeExtension({ env: privateEnv, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
         mod.recordSubagentPresentationEntryForTests("/tmp/private.jsonl", "cache", "success", { phase: "success", task_prompt: "sensitive prompt", result_text: "sensitive output" });
         const privateCacheData = JSON.parse(await readFile(privateCache, "utf8"));
         const privateEntry = privateCacheData.entries[0];
@@ -1972,7 +1980,7 @@ def test_larva_subagent_persistent_log_cache_privacy_config_and_fail_closed(tmp_
         await writeFsFile(join(invalidConfigDir, "subagent-log.json"), JSON.stringify({ enabled: true, max_entries: 0, max_age_days: 7, include_prompt: true, include_output: true }));
         const invalidCache = join(tmpRoot, "invalid-cache.json");
         const invalidEnv = baseEnv({ HOME: invalidRoot, LARVA_PI_SUBAGENT_LOG_FILE: invalidCache });
-        await mod.initializeExtension({ env: invalidEnv, modelRegistry, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
+        await mod.initializeExtension({ env: invalidEnv, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } }, { ...piBase, registerTool: () => undefined });
         mod.recordSubagentPresentationEntryForTests("/tmp/invalid.jsonl", "cache", "success", { phase: "success", task_prompt: "must not persist", result_text: "must not persist" });
         const invalidLog = mod.larva_subagent_log("");
         let invalidCacheExists = true;
@@ -2142,7 +2150,7 @@ def test_subagent_result_presentation_console_and_callback_renderer(tmp_path: Pa
         };
         const renderers = new Map();
         await mod.initializeExtension(
-          { env: baseEnv(), modelRegistry, ui: { setStatus: () => undefined } },
+          { env: baseEnv(), modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } },
           { ...piBase, registerTool: () => undefined, registerMessageRenderer: (customType, renderer) => renderers.set(customType, renderer) },
         );
         const renderer = renderers.get("larva-subagent-result");
@@ -2551,7 +2559,7 @@ def test_vt46_render_result_final_views_parent_footer_and_no_dashboard(tmp_path:
         _node_prelude(tmp_path)
         + """
         const statuses = [];
-        const ctx = { env: baseEnv(), modelRegistry, ui: { setStatus: (key, value) => statuses.push([key, value]) } };
+        const ctx = { env: baseEnv(), modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: (key, value) => statuses.push([key, value]) } };
         const tools = [];
         await mod.initializeExtension(ctx, { ...piBase, registerTool: (tool) => tools.push(tool) });
         await mod.commitPersona("ok", ctx, piBase);
@@ -2704,6 +2712,8 @@ def test_persona_selector_cold_cache_waits_and_plain_larva_errors_do_not_reject(
             setStatus: () => undefined,
           }},
           modelRegistry,
+          mode: "tui",
+          hasUI: true,
         }};
         const selected = await mod.openPersonaSelector(ctx);
 
@@ -3042,7 +3052,7 @@ def test_async_subagent_real_tool_context_pushes_callback_via_pi_send_message_ex
         await mod.commitPersona("ok", ctx, piWithMessages);
         const subagent = tools.find((tool) => tool.name === "larva_subagent");
         const cancelTool = tools.find((tool) => tool.name === "larva_subagent_cancel");
-        const realToolCtx = { env, modelRegistry, ui: { setStatus: () => undefined } };
+        const realToolCtx = { env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined } };
         const successReceipt = await subagent.execute("realctx-success", { persona_id: "child", task: "complete and push" }, undefined, undefined, realToolCtx);
         const successMessage = await waitFor(() => sentMessages.find((entry) => entry.message?.details?.task_id === successReceipt.task_id), 2000);
         const successStatus = tools.find((tool) => tool.name === "larva_subagent_status");
@@ -3147,7 +3157,7 @@ def test_async_subagent_a5_targeted_cancellation_unobserved_exact_task_id_expect
         const tools = [];
         const commands = new Map();
         const env = baseEnv();
-        const ctx = { env, modelRegistry, ui: { setStatus: () => undefined, notify: () => undefined } };
+        const ctx = { env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined, notify: () => undefined } };
         await mod.initializeExtension(ctx, {
           ...piBase,
           registerTool: (tool) => tools.push(tool),
@@ -3203,6 +3213,7 @@ def test_async_subagent_cancel_presentation_only_running_row_is_not_control_auth
         const ctx = {
           env,
           modelRegistry,
+          mode: "tui",
           hasUI: true,
           ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true },
         };
@@ -3266,7 +3277,7 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
         + """
         const tools = [];
         const env = baseEnv();
-        const ctx = { env, modelRegistry, ui: { setStatus: () => undefined, notify: () => undefined } };
+        const ctx = { env, modelRegistry, mode: "tui", hasUI: true, ui: { setStatus: () => undefined, notify: () => undefined } };
         await mod.initializeExtension(ctx, { ...piBase, registerTool: (tool) => tools.push(tool), registerCommand: () => undefined });
         await mod.commitPersona("ok", ctx, piBase);
         const statusTool = tools.find((tool) => tool.name === "larva_subagent_status");
@@ -3413,6 +3424,7 @@ def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not
         const ctx = {
           env: baseEnv({ LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: cancelRaceChild, LARVA_PI_EXTENSION_ENTRY: "ignored-extension-entry.ts" }),
           modelRegistry,
+          mode: "tui",
           ui: { setStatus: () => undefined, notify: () => undefined, confirm: async () => true },
           hasUI: true,
         };

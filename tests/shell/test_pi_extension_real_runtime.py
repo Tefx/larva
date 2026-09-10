@@ -386,6 +386,7 @@ rl.on("line", async (line) => {
               HOME: tmpRoot,
               LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(FAKE_LARVA_CLI))}]),
               LARVA_PI_CHILD_SESSION_DIR: childRoot,
+              LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([childPath]),
               LARVA_PI_REAL_BIN: childPath,
               LARVA_PI_EXTENSION_FLAG: "-e",
               LARVA_PI_EXTENSION_ENTRY: childPath,
@@ -2074,6 +2075,7 @@ def _run_native_acceptance(scenario: str, timeout: float = 45.0) -> dict[str, An
         "fresh-explicit-success",
         "fresh-explicit-model-fail",
         "missing-cli-binding",
+        "missing-extension-explicit-persona",
         "print-mode",
         "rpc-mode",
         "backend-a-project-b",
@@ -2152,15 +2154,23 @@ def test_native_tui_mode_observer_records_ctx_mode() -> None:
     output: list[str] = []
     payload: dict[str, Any] | None = None
     try:
-        while time.monotonic() < deadline and proc.poll() is None and payload is None:
-            if observe.exists():
+        typed = False
+        while time.monotonic() < deadline and proc.poll() is None:
+            if observe.exists() and payload is None:
                 payload = json.loads(observe.read_text(encoding="utf-8"))
-                break
+            if payload is not None and not typed:
+                try:
+                    os.write(master, b"/larva-persona")
+                except OSError:
+                    pass
+                typed = True
             if select.select([master], [], [], 0.2)[0]:
                 try:
                     output.append(os.read(master, 65536).decode("utf-8", errors="replace"))
                 except OSError:
                     break
+            if typed and time.monotonic() > deadline - 9:
+                break
         if proc.poll() is None:
             proc.terminate()
             try:
@@ -2173,6 +2183,8 @@ def test_native_tui_mode_observer_records_ctx_mode() -> None:
     finally:
         os.close(master)
         shutil.rmtree(tmp, ignore_errors=True)
-    assert payload is not None, "".join(output)[-800:]
+    pty_text = "".join(output)
+    assert payload is not None, pty_text[-800:]
     assert payload["mode"] == "tui"
     assert payload["hasUI"] is True
+    assert "larva" in pty_text.lower()

@@ -131,6 +131,7 @@ function makePiRecorder(env, custom) {
   };
   const ctx = {
     env,
+    mode: env.LARVA_PI_INTERACTIVE_TUI === "0" ? "rpc" : "tui",
     hasUI: true,
     modelRegistry: {
       find(provider, modelId) {
@@ -340,6 +341,7 @@ async function shortcutEvidence() {
     ui: ctx.ui,
     modelRegistry: ctx.modelRegistry,
     isIdle: () => true,
+    mode: "tui",
   });
   return {
     registeredShortcut: shortcut?.[0] ?? null,

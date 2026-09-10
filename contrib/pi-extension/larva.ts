@@ -98,6 +98,7 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_REAL_BIN?: string;
   LARVA_PI_EXTENSION_FLAG?: string;
   LARVA_PI_EXTENSION_ENTRY?: string;
+  LARVA_PI_TEST_CHILD_ARGV_JSON?: string;
   LARVA_CLI_ARGV_JSON?: string;
   LARVA_PI_INTERACTIVE_TUI?: string;
   LARVA_PI_LAUNCHED?: string;
@@ -848,6 +849,7 @@ function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
     "LARVA_PI_REAL_BIN",
     "LARVA_PI_EXTENSION_FLAG",
     "LARVA_PI_EXTENSION_ENTRY",
+    "LARVA_PI_TEST_CHILD_ARGV_JSON",
     "LARVA_PI_INITIAL_PERSONA_ID",
   ] as const) {
     if (!Object.prototype.hasOwnProperty.call(ctx.env, childOnlyKey)) delete inherited[childOnlyKey];
@@ -4754,9 +4756,6 @@ function larvaHostMode(runtimeCtx: PiContext): SubagentCommandMode {
   if (runtimeCtx.mode === "rpc") return "rpc";
   if (runtimeCtx.mode === "json" || runtimeCtx.mode === "print") return "headless";
   if (runtimeCtx.hasUI === false || runtimeCtx.ui === undefined) return "headless";
-  const envMode = currentEnv(runtimeCtx).LARVA_PI_INTERACTIVE_TUI;
-  if (envMode === "0") return "rpc";
-  if (envMode === "1" || typeof runtimeCtx.ui.custom === "function") return "tui";
   return "rpc";
 }
 
@@ -4842,9 +4841,9 @@ function startupFailureStderr(personaId: string, larvaError: LarvaError): string
 function isSupportedPiCliScript(script: string): boolean {
   if (!isAbsolute(script) || !existsSync(script)) return false;
   const normalized = script.replaceAll("\\", "/");
-  const base = normalized.split("/").pop() ?? "";
-  if (base === "pi") return true;
-  return normalized.includes("/@earendil-works/pi-coding-agent/") && (normalized.endsWith("/cli.js") || normalized.endsWith("/bundle/cli.js") || normalized.endsWith("/rpc-entry.js"));
+  if (normalized.includes("/@earendil-works/pi-coding-agent/") && (normalized.endsWith("/cli.js") || normalized.endsWith("/bundle/cli.js") || normalized.endsWith("/rpc-entry.js"))) return true;
+  const current = currentPiCliScript();
+  return current.length > 0 && resolve(script) === current && (normalized.split("/").pop() ?? "") === "pi";
 }
 
 function currentPiCliScript(): string {
@@ -6494,13 +6493,14 @@ async function runPersonaInvocationChild(record: PersonaInvocationActiveRequest)
       return;
     }
     if (record.terminal) return;
-    const child = await startChild(record.env, root, record.persona_id);
-    if (isLarvaError(child)) {
-      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(child)));
+    const started = await startChild(record.env, root, record.persona_id);
+    if (isLarvaError(started)) {
+      await settlePersonaInvocation(record, failedPersonaInvocationResult(record.request_id, record.persona_id, mapPersonaInvocationChildError(started)));
       return;
     }
-    record.child = child;
-    const rpc = new RpcClient(child, record.env);
+    record.env = started.env;
+    record.child = started.child;
+    const rpc = new RpcClient(started.child, started.env);
     record.rpc = rpc;
     if (record.terminal) return;
     const stateResult = await rpc.command("state-1", { type: "get_state" }, personaInvocationRemainingMs(record));
@@ -8932,31 +8932,34 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
   }
 }
 
-function resolvePiCommandPrefix(env: RuntimeEnv): string[] | LarvaError {
-  const overrideBin = normalizeString(env.LARVA_PI_REAL_BIN);
-  if (overrideBin !== null) {
-    if (!isAbsolute(overrideBin) || !existsSync(overrideBin)) {
-      return error("LARVA_CHILD_START_FAILED", "Child Pi launch override is not an absolute existing command.");
-    }
-    return [overrideBin];
+function parseTestChildLaunchPrefix(env: RuntimeEnv): string[] | null {
+  const encoded = env.LARVA_PI_TEST_CHILD_ARGV_JSON;
+  if (typeof encoded !== "string" || encoded.length === 0) return null;
+  try {
+    const prefix = JSON.parse(encoded) as unknown;
+    if (!Array.isArray(prefix) || prefix.length === 0 || !prefix.every((part) => typeof part === "string" && part.length > 0)) return null;
+    if (!isAbsolute(prefix[0]) || !existsSync(prefix[0])) return null;
+    return prefix;
+  } catch {
+    return null;
   }
+}
+
+function resolvePiCommandPrefix(env: RuntimeEnv): string[] | LarvaError {
+  const testPrefix = parseTestChildLaunchPrefix(env);
+  if (testPrefix !== null) return testPrefix;
   const node = process.execPath;
   const script = currentPiCliScript();
-  if (!isAbsolute(node) || !existsSync(node) || !isSupportedPiCliScript(script) || !existsSync(script)) {
-    return error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup.");
-  }
-  return [node, script];
+  if (isAbsolute(node) && existsSync(node) && isSupportedPiCliScript(script)) return [node, script];
+  return error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup.");
 }
 
 function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[] | LarvaError {
   const prefix = resolvePiCommandPrefix(env);
   if (!Array.isArray(prefix)) return prefix;
-  const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG) ?? "-e";
-  const overrideEntry = normalizeString(env.LARVA_PI_EXTENSION_ENTRY);
-  const entry = overrideEntry ?? LARVA_EXTENSION_ENTRY_PATH;
-  if (overrideEntry === null && (!isAbsolute(entry) || !existsSync(entry))) {
-    return error("LARVA_CHILD_START_FAILED", "Larva Pi extension entry is missing.");
-  }
+  const flag = "-e";
+  const entry = LARVA_EXTENSION_ENTRY_PATH;
+  if (!isAbsolute(entry) || !existsSync(entry)) return error("LARVA_CHILD_START_FAILED", "Larva Pi extension entry is missing.");
   const explicitExtensions = extensionSources.flatMap((source) => [flag, source]);
   return [...prefix, ...explicitExtensions, flag, entry, "--no-extensions", "--mode", "rpc"];
 }
@@ -8982,7 +8985,9 @@ function childThinkingArgument(route: RuntimeRoute): PiThinkingLevel {
   return route.requested_thinking;
 }
 
-async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = [], record?: ActiveSubagentRun): Promise<ChildProcessWithoutNullStreams | LarvaError> {
+type StartedChild = { child: ChildProcessWithoutNullStreams; env: RuntimeEnv };
+
+async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string, extensionSources: string[] = [], record?: ActiveSubagentRun): Promise<StartedChild | LarvaError> {
   const env: RuntimeEnv = { ...parentEnv };
   delete env.LARVA_PI_CAPSULE_ROOT;
   if (typeof env.LARVA_PI_BASE_AGENT_DIR !== "string" || env.LARVA_PI_BASE_AGENT_DIR.length === 0) {
@@ -8998,18 +9003,15 @@ async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string
   const modelArgument = formatPiModel(route);
   const thinkingArgument = childThinkingArgument(route);
   env.LARVA_PI_CHILD_REQUESTED_THINKING = thinkingArgument;
-  parentEnv.LARVA_PI_CHILD_REQUESTED_THINKING = thinkingArgument;
   const [realBin, ...tail] = prefix;
   const args = [...tail, `--${LARVA_PERSONA_FLAG}`, personaId, `--${LARVA_AGENT_PERSONA_SWITCH_FLAG}`, "manual", "--model", modelArgument, "--thinking", thinkingArgument, "--session-dir", root];
   const preloadPath = LARVA_FRAME_PRELOAD_PATH;
-  if (!existsSync(preloadPath) && env.LARVA_PI_CHILD_RPC_LEGACY_FALLBACK !== "1") {
+  if (!existsSync(preloadPath)) {
     removeChildCapsuleRoot(env);
     return error("LARVA_CHILD_START_FAILED", "Child RPC frame preload is missing beside the Larva Pi extension.");
   }
   const inheritedNodeOptions = typeof env.NODE_OPTIONS === "string" ? env.NODE_OPTIONS.trim() : "";
-  const childNodeOptions = existsSync(preloadPath)
-    ? [inheritedNodeOptions, `--import=${pathToFileURL(preloadPath).href}`].filter((value) => value.length > 0).join(" ")
-    : inheritedNodeOptions;
+  const childNodeOptions = [inheritedNodeOptions, `--import=${pathToFileURL(preloadPath).href}`].filter((value) => value.length > 0).join(" ");
   try {
     const child = spawn(realBin, args, {
       env: {
@@ -9019,17 +9021,17 @@ async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string
         LARVA_PI_INITIAL_PERSONA_ID: personaId,
         LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI: modelArgument,
         LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
-        LARVA_PI_INTERACTIVE_TUI: "0",
         LARVA_PI_AGENT_PERSONA_SWITCH: "manual",
+        LARVA_PI_INTERACTIVE_TUI: "0",
         LARVA_PI_CHILD_RPC_FRAME_BOUND: "1",
         LARVA_PI_LAUNCHED: "1",
-        ...(childNodeOptions.length > 0 ? { NODE_OPTIONS: childNodeOptions } : {}),
+        NODE_OPTIONS: childNodeOptions,
       },
       stdio: ["pipe", "pipe", "pipe"],
       shell: false,
     });
     void traceChildRpc(env, "child_spawn", { pid: child.pid ?? null, command: realBin, args, root, persona_id: personaId });
-    return child;
+    return { child, env };
   } catch {
     void traceChildRpc(env, "child_spawn_error", { command: realBin, args, root, persona_id: personaId });
     removeChildCapsuleRoot(env);
@@ -9762,15 +9764,17 @@ async function runChildSequence(
 ): Promise<LarvaSubagentResult> {
   const lifecycle = callbacks ?? {};
   const activeRecord = record ?? createSubagentRun({ persona_id: personaId, task, task_id: taskId, no_progress_timeout_ms: noProgressTimeoutMs }, env, personaId, taskId);
-  const child = await startChild(env, root, personaId, extensionSources, activeRecord);
-  if (isLarvaError(child)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, child));
-  const activeChildEntry = { child, env };
-  activeRecord.child = child;
+  const started = await startChild(env, root, personaId, extensionSources, activeRecord);
+  if (isLarvaError(started)) return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, started));
+  activeRecord.env = started.env;
+  const activeChildEntry = { child: started.child, env: started.env };
+  activeRecord.child = started.child;
   activeSubagentChildren.add(activeChildEntry);
   let allocatedTaskId = taskId;
+  const child = started.child;
   const rpc = new RpcClient(
     child,
-    env,
+    started.env,
     (eventValue) => {
       noteSubagentProgress(activeRecord, noProgressTimeoutMs, eventValue, lifecycle.onPhase);
       lifecycle.onStreamEvent?.(eventValue, allocatedTaskId);
