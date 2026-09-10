@@ -145101,12 +145101,21 @@ phases:
       \ proved by its required real seam; refresh affected proof after integration\n\
       \  - id: final-requirement-judgment\n    expected: every material scoped requirement\
       \ PROVEN; zero blocking findings or unproven necessary requirements"
-    verification: Full phase gate over exactly pi_native_extension_cutover and its
-      final integrated candidate. Consume full regression/Invar and requirement-complete
-      runtime/package evidence, then judge integrated coverage and contradictions.
-      PASS only if all necessary requirements are proven with no blockers or proof
-      gaps. Explicitly state repo delivery only; no user installation or publication
-      performed/authorized. Use the same gate in Delta mode after a compatible repair.
+    verification: Same terminal phase gate, resumed in Delta mode after pi-native.repair-capsule-runtime-proof
+      is integrated, over exactly pi_native_extension_cutover and its final integrated
+      immutable candidate. Consume repair proof for aged active/unrelated capsule
+      preservation and cleanup-failure diagnostic/process truth, actual damaged installed-entry/dependency
+      native loading with explicit persona and no vanilla request, successful explicit-ID
+      preflight followed by nonfatal stored restore failure, and final applicable
+      exact pinned CLI full Invar. Judge affected requirements, direct dependencies,
+      all unresolved gaps and touched invariants while retaining valid unaffected
+      FULL evidence. Existing producer check references are supplemented by repair
+      checks and current Orchestrator integration evidence; never substitute the old
+      native full scan for post-launcher-removal CLI proof. Full final applicable
+      regression and every material requirement must be proven with no blocking defects
+      or necessary proof gaps before PASS. Repository delivery only; no user installation
+      or publication. This remains the sole acceptance decision and pi_system_prompt_resolution
+      continues to await this phase's terminal acceptance.
     evidence_template: 'gate.report.v2: immutable integrated target; PHASE_GATE/FULL
       (DELTA after repair); phase_ids [pi_native_extension_cutover]; authoritative
       refs; all material requirement results with applicable evidence; findings/remaining
@@ -145131,10 +145140,172 @@ phases:
     - docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md
     - docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md
     - README.md
+    - scripts/pi-native-acceptance.mjs
+    - docs/verification/pi-native-delivery/README.md
     depends_on:
     - pi-native.deliver-extension
     - pi-native.retire-python-launcher
+    - pi-native.repair-capsule-runtime-proof
     agent: gate-reviewer
+  - id: pi-native.repair-capsule-runtime-proof
+    name: Repair capsule lifecycle and complete native runtime acceptance proof
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      Deliver:\n- Deliver one repaired native extension candidate with tracked capsule\
+      \ lifecycle regressions and the missing installed-package/session-restore observations,\
+      \ consumed by the existing terminal repository gate. Preserve both completed\
+      \ producer results and all accepted native cutover semantics.\n- Child startup\
+      \ must preserve other active capsules, including older-than-24-hour capsules\
+      \ belonging to cooperative parent sessions sharing the runtime root, and unrelated\
+      \ runtime entries. Current cleanupStaleChildCapsules deletes directories based\
+      \ only on age; directory mtime does not establish owner termination. Preserve\
+      \ bounded terminal cleanup of the known owned capsule, base/settings/session\
+      \ persistence, and no link-following deletion. Removing the opportunistic stale\
+      \ sweep is an eligible minimal private correction if no binding requirement\
+      \ needs it; no new cleanup registry or hostile-actor hardening requirement is\
+      \ implied.\n- Capsule removal failure must produce the failure contract's bounded\
+      \ diagnostic and accurate retained-capsule/process state. Current removeChildCapsuleRoot\
+      \ silently catches filesystem errors. Exercise failure through actual cleanup\
+      \ callers; do not conceal an active process, discard known owned capsule identity\
+      \ on failed removal, delete base/session resources, or claim cleanup from an\
+      \ inert comment.\n- Add launched supported-Pi installed-package cases for a\
+      \ missing extension entry and unusable runtime dependency with explicit persona\
+      \ input and a viable loopback prompt path. Observe native diagnostic, nonzero\
+      \ exit before any vanilla provider request, and owned fixture/process cleanup.\
+      \ Disabling all extensions and child-only missing-preload rejection remain distinct\
+      \ existing cases and cannot prove damaged-package loading.\n- Add actual saved-session\
+      \ reopening with a successfully resolved explicit persona followed by failing\
+      \ stored-persona restoration. Prove successful explicit-ID preflight, a usable\
+      \ nonfatal session, visible restore-unavailable state and no false active persona.\
+      \ Preserve stored-selection precedence and ID-only main preflight; absent observation\
+      \ does not justify changing correct product semantics.\n- Correct affected verification/operator\
+      \ explanatory documentation to describe actual exercised seams. Supply the exact\
+      \ pinned CLI full Invar scan applicable after Python launcher removal and this\
+      \ repair; predecessor artifacts and an unestablished MCP scan cannot substitute.\
+      \ Keep source, meaningful tracked tests and necessary documentation in this\
+      \ delivery.\n\nBoundary:\n- principal-engineer owns this single repository repair\
+      \ and its disposable native-runtime proof. Qualifying escalation basis: the\
+      \ completed native producer records that the fitting node-typescript-engineer\
+      \ could not supply the required actual Pi runtime proof and substituted mock/non-Pi\
+      \ seams; its reconciled Principal takeover established the native harness this\
+      \ repair must extend. This assignment uses that concrete ordinary-owner capability\
+      \ gap for the same required host/proof surface, not scope size or a new acceptance\
+      \ authority.\n- Reversible repository edits and disposable HOME/agent/config/session/package\
+      \ roots and owned loopback processes only; supported macOS, Node 26.7.0, native\
+      \ Pi 0.85.1. Use committed dependency locks and declared Python 3.12/dev setup.\
+      \ Supporting fixture host/dependency resolution needed for reproducible checks\
+      \ stays here; inspect supported host APIs and do not patch Pi source.\n- No\
+      \ live user/global installation/configuration/registry, publication, external\
+      \ model calls, credentials, alternate launcher, product environment sanitizer,\
+      \ shared-schema/public record changes, Core changes or recovery-artifact changes.\
+      \ Preserve caller environment and existing backend binding. Do not mutate managed\
+      \ Plan or completed history. Actual user cutover and future system-prompt work\
+      \ are excluded.\n\nAdmit:\n- Read authoritative native design and retained contracts;\
+      \ inspect capsule creation/removal callers and current tracked native acceptance\
+      \ harness. Capture failing behavior for capsule deletion and missing cleanup\
+      \ diagnostics before correction, then green proof. A bounded live-owned aged\
+      \ capsule fixture can expose the deletion defect without a day-long wait. Prove\
+      \ preservation of unrelated runtime entries as well. Inject removal failure\
+      \ through the cleanup caller rather than replacing the caller/seam being asserted.\n\
+      - Host-bound loading and restore claims require actual Pi 0.85.1 processes with\
+      \ disposable state. Loopback responses may isolate provider protocol only. Missing\
+      \ cases must be wired into the tracked native acceptance inventory, fail meaningfully\
+      \ on regressions, and never pass via skip/xfail, source phrases, coached answers\
+      \ or runner self-report alone. Supply underlying request counts, native exit/diagnostics\
+      \ and observed state needed by the gate.\n- Required final integrated inventory\
+      \ remains full repository pytest, all Pi Node regressions, native acceptance\
+      \ inventory, capability smoke, frozen canonical repo-local gate, built-wheel/backend\
+      \ compatibility and exact CLI full Invar. Execute affected capsule/loading/restore\
+      \ proof and final applicable full CLI scan. Obtain meaningful final integrated\
+      \ regression after repair; reuse unaffected expensive observations only with\
+      \ an explicit evidence-input/applicability judgment. No needless replay of unchanged\
+      \ watchdog timing or unchanged consumer behavior solely for rebinding. Do not\
+      \ relabel old reports as fresh or waive missing required evidence.\n- Orchestrator\
+      \ completes this writable producer only after its own correction and tracked\
+      \ proof are satisfied and integrated. The existing read-only pi-native.accept-repository\
+      \ then resumes in Delta mode over affected requirements, unresolved gaps, direct\
+      \ dependencies and touched invariants, retaining valid unaffected proof and\
+      \ owning the sole final acceptance decision.\n\nRecovery:\n- On failed checks\
+      \ retain useful candidate/evidence, stop and reconcile owned test children/provider/streams,\
+      \ and remove only owned disposable fixtures when safe. Preserve resumable sessions/base\
+      \ data and accurate process truth, including cleanup failures. Compatible corrections\
+      \ remain here; a true authority/design boundary returns to the parent. No gate\
+      \ write authority, reopening DONE producers, replay of child tasks or extra\
+      \ acceptance node.\n\nscope:\n  allowed_paths: [contrib/pi-extension/**, scripts/pi-*.mjs,\
+      \ tests/shell/test_pi*.py, tests/fixtures/pi/**, docs/**, design/pi-native-extension.md,\
+      \ design/pi-coding-agent-integration.md, design/pi-thinking-level-isolation.md]\n\
+      \  blocked_paths: [plan.yaml, contracts/**, src/larva/core/**, .vectl/recovery/**]\n\
+      \nchecks:\n  - id: supported-node-host\n    command: [node, --version]\n   \
+      \ expected: Node v26.7.0 on macOS; no automatic host upgrade\n  - id: supported-native-pi\n\
+      \    command: [/opt/homebrew/bin/pi, --version]\n    expected: native Pi 0.85.1;\
+      \ declared supported host prerequisite, not an undeclared global dependency\n\
+      \  - id: locked-extension-dependencies\n    command: [npm, --prefix, contrib/pi-extension,\
+      \ ci]\n    expected: exit 0 using committed package-lock and Pi 0.85.1; no global\
+      \ installation\n  - id: locked-python-dependencies\n    command: [env, -u, VIRTUAL_ENV,\
+      \ -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never, uv,\
+      \ sync, --locked, --python, '3.12', --group, dev]\n    expected: exit 0 from\
+      \ tracked dependency state\n  - id: native-runtime-inventory\n    command: [env,\
+      \ -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never,\
+      \ uv, run, --locked, --python, '3.12', --group, dev, pytest, -q, tests/shell/test_pi_extension_real_runtime.py]\n\
+      \    expected: exit 0 with tracked aged-active/unrelated-capsule preservation,\
+      \ cleanup-removal failure diagnostics, damaged installed entry/dependency and\
+      \ explicit-preflight/nonfatal-restore proof; actual required seams and no mandatory\
+      \ skip/xfail\n  - id: all-node-pi-regressions\n    command: [bash, -c, 'set\
+      \ -euo pipefail; for f in contrib/pi-extension/test-*.mjs; do node \"$f\"; done']\n\
+      \    expected: exit 0 for all retained and new entrypoints\n  - id: full-repository-pytest\n\
+      \    command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uv, run, --locked, --python, '3.12', --group, dev,\
+      \ pytest, -q]\n    expected: exit 0 with complete applicable inventory accounted\
+      \ for; final integrated results and explicitly applicable reused observations,\
+      \ no weakening of necessary checks\n  - id: capability-smoke\n    command: [node,\
+      \ scripts/pi-extension-runtime-smoke.mjs, --scenario, capability-gates]\n  \
+      \  expected: exit 0 with actual supported capabilities\n  - id: frozen-authority-ci-gate\n\
+      \    evidence_from: pi-native.retire-python-launcher\n    required_check_ids:\
+      \ [frozen-authority-ci-gate, backend-and-removal]\n    expected: reuse only\
+      \ if source/lock/authority and relevant integration inputs remain applicable;\
+      \ otherwise rerun the exact declared predecessor commands against frozen read-only\
+      \ authority and disposable wheel fixtures\n  - id: full-invar\n    command:\
+      \ [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never,\
+      \ uvx, --python, '3.12', invar-tools==1.20.3, guard, --all]\n    expected: exit\
+      \ 0 from this exact authoritative CLI full scan on the final applicable source\
+      \ after launcher removal and repair; do not substitute MCP summary or predecessor\
+      \ artifact\n  - id: whitespace\n    command: [git, diff, --check]\n    expected:\
+      \ exit 0"
+    verification: Prove both capsule defects red then green, and execute tracked supported
+      native installed-entry/dependency and explicit-preflight/nonfatal-saved-restore
+      cases at their real seams. Deliver final applicable full pinned CLI Invar and
+      complete integrated regression accounting with justified unaffected evidence
+      reuse. Preserve base/session data, process truth, owned cleanup and all accepted
+      native contracts. Same read-only terminal gate performs Delta acceptance; this
+      producer cannot claim project acceptance.
+    evidence_template: Integrated candidate; corrected behavior and actual native
+      seam observations; red/green capsule proof; exact checks/exits and current-input
+      applicability of reused evidence; full pinned CLI scan; retained data and reconciled
+      owned processes/fixtures; unresolved obligations.
+    refs:
+    - design/pi-native-extension.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - contrib/pi-extension/README.md
+    - scripts/pi-native-acceptance.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_real_runtime.py
+    - tests/fixtures/pi/fake-larva-cli.mjs
+    - docs/verification/pi-native-delivery/README.md
+    - docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md
+    - docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md
+    - pyproject.toml
+    - uv.lock
+    - scripts/ci/larva_repo_local_gate.py
+    - design/opifex-frozen-authority-packet.json
+    depends_on:
+    - pi-native.deliver-extension
+    - pi-native.retire-python-launcher
+    agent: principal-engineer
 - id: pi_system_prompt_resolution
   name: Request-scoped Larva system prompt resolution
   status: locked
