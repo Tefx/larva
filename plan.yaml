@@ -8,33 +8,31 @@
 # =============================================================
 version: 1
 project: larva
-strategy_ref: design/pi-coding-agent-integration.md#architecture-basis
-context: Approved Larva Pi coding-agent integration implementation plan based on Iteration
-  20 PASS design review; no planner-owned git operations.
-project_guidance: 'Larva Pi integration planning guidance:
-
-  - For async subagent work, `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md` is the
-  authoritative design source. Older `design/pi-coding-agent-integration.md` notes
-  are historical for this surface and must yield when they conflict with the async-subagent
-  reference doc.
-
-  - Shared contract meaning remains in `../opifex`; shared-surface work must still
-  cite `../opifex/design/final-canonical-contract.md`, `../opifex/contracts/persona_spec.schema.json`,
-  `../opifex/conformance/shared_surfaces.yaml`, and relevant `../opifex/conformance/case_matrix/larva/*`
-  files when shared surfaces are touched.
-
-  - Canonical async subagent user command forms are exactly: `/larva-subagent`, `/larva-subagent
-  <task_id>`, `/larva-subagent --cancel <task_id>`, and `/larva-subagent --clear`.
-
-  - Do not add new aliases, fuzzy selectors, run_id/last handles, natural-language
-  cancel paths, or convenience control behavior. `/larva-log` may remain only as a
-  deprecated view-mode compatibility alias; it is not canonical authority.
-
-  - Invar constraints still apply: `**/core/**` requires `@pre`/`@post` contracts
-  and doctests before implementation; `**/shell/**` handles I/O and returns `Result[T,E]`.
-
-  - Preserve Pi runtime/deployability evidence: source-only, mock-only, or docs-only
-  proof is insufficient for runnable Pi extension, command, callback, or TUI/CLI surfaces.'
+strategy_ref: design/pi-native-extension.md
+context: Implement the accepted native-only Pi extension cutover in the Larva repository.
+  The current user authorizes repository source/tests/docs/package work and disposable
+  local verification, superseding the design document's earlier design-only authorization
+  note. Actual user installation/cutover, release/publish, Pi source changes, registry/schema
+  changes, real credentials and external-model requests remain excluded. Completed
+  Plan history is immutable.
+project_guidance: Current native Pi cutover authority is design/pi-native-extension.md.
+  It supersedes launcher ownership, parent capsules, launcher-marker admission, old-Pi
+  compatibility and conflicting restore precedence in older Pi design prose. Preserve
+  unaffected contracts in docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+  docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md and docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md.
+  Native Pi is the sole entry; no replacement launcher, environment sanitizer or project-venv
+  option. Main settings persist normally, while automatic persona model/thinking changes
+  remain session-local. Main explicit startup preflight always resolves its ID but
+  validates runtime routes only for the selected persona; Pi-owned syntax failures
+  keep Pi diagnostics. The current user authorizes repository implementation plus
+  disposable installation/runtime tests, not actual user installation/cutover or release.
+  Shared meaning stays in ../opifex; no PersonaSpec, registry or public result/session-schema
+  changes are authorized. Invar Core/Shell rules apply. Source tokens, documentation
+  phrases and coached fixture outputs are not behavioral proof. Real loader, runtime,
+  TUI and persistence claims require matching observations; credential-free loopback
+  proves protocol/state transitions only. Canonical async commands and exact-handle
+  semantics remain those in the async reference; do not restore removed aliases. Existing
+  completed evidence supplies context only where applicable, never new pending obligations.
 clipboard:
   author: vectl-orchestrator
   summary: Repair release branch/tag commit contradiction
@@ -144641,3 +144639,444 @@ phases:
       larva==0.6.5 larva --version` -> larva 0.6.5; no-refresh pinned same; `/opt/homebrew/bin/uvx
       --refresh --index-url https://pypi.org/simple larva --version` -> larva 0.6.5.
       Repository product bytes unchanged by uvx. Gaps: none.'
+- id: pi_native_extension_cutover
+  name: Native-only Pi extension repository delivery
+  status: pending
+  gate: One final integrated repository acceptance by pi-native.accept-repository
+    covers both producers and every material requirement in design/pi-native-extension.md,
+    including its complete acceptance matrix and retained persona/subagent/invocation/compaction
+    contracts. Require supported native Node Pi 0.85.1 on macOS, final-candidate full
+    applicable offline regression and Invar, and positive installation/runtime/UI
+    evidence from disposable targets. Reuse observations only when their evidence-affecting
+    inputs still apply. No necessary requirement may remain failed or unproven. Acceptance
+    authorizes no user installation, global configuration change, release or model-service
+    request.
+  context: 'Authorized outcome: one normally discoverable native Pi package, independent
+    explicitly bound Python backend, normal main settings persistence and retained
+    session-local persona/child behavior; remove larva pi and its obsolete implementation/distribution
+    ownership. Deliver native extension behavior first under node-typescript-engineer;
+    then python-executor removes the independently packaged Python launcher surface
+    and proves retained backend/wheel behavior. These are serial producer boundaries,
+    not parallel writers of larva.ts. gate-reviewer owns the sole terminal integrated
+    decision for this phase/repository change, consuming producer and Orchestrator
+    evidence. Existing historical phases are context, not reopened gate scope. All
+    installation/runtime observations target disposable HOME/agent/config/session
+    roots and owned loopback fixtures. Actual user cutover is outside delivery acceptance.
+    No implementation, installation or runtime proof is established by planning. Old
+    scratch feasibility evidence is not the new package''s acceptance proof. Host/dependency
+    setup and any missing tracked runtime checks stay with the native producer; Python
+    build/install checks stay with the retirement producer. Test harnesses may isolate
+    their disposable environments; the product must preserve the caller environment
+    without a sanitizer.'
+  steps:
+  - id: pi-native.deliver-extension
+    name: Deliver native Pi package, admission and retained runtime behavior
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      Deliver:\n- Make contrib/pi-extension the single native extension distribution\
+      \ owner with explicit pi.extensions metadata, adjacent frame preload and usable\
+      \ dependencies. Pin the supported host development dependency to Pi 0.85.1.\
+      \ Decide the existing TUI dependency from current-host UI/runtime evidence;\
+      \ no speculative TUI upgrade or permissive compatibility range. Normal disposable\
+      \ package installation/discovery loads exactly one Larva. Disable and explicit\
+      \ -e loading work; two distinct copies diagnose conflict before the second stateful\
+      \ registration. Missing/broken installation plus explicit persona cannot silently\
+      \ issue a vanilla request.\n- Implement the accepted native flags, lifecycle\
+      \ admission, backend binding and fixed launch context without a replacement\
+      \ launcher. LARVA_CLI_ARGV_JSON is the only backend command input: nonempty\
+      \ string argv with absolute executable, no shell, ambient larva/uvx fallback\
+      \ or activation. Preserve list/resolve protocol, timeout, JSON validation and\
+      \ error mapping. Missing/unusable binding leaves an unselected session usable\
+      \ but explicit persona admission fails.\n- Register flags at load and consume\
+      \ finalized values at the correct lifecycle stage. Fresh main starts larva:none/confirm\
+      \ unless accepted inputs select otherwise. Flag mode precedes environment input;\
+      \ saved mode/manual choices retain their existing precedence. Pi-owned missing-value/unknown-flag\
+      \ failures retain native diagnostics/nonzero exit. Larva invalid values produce\
+      \ LARVA_BAD_INPUT. Explicit-ID resolution always runs, including resume; only\
+      \ the persona selected for activation/restoration has its model/thinking/tools\
+      \ route validated. A valid stored selection wins over a resolvable unused explicit\
+      \ persona even when that unused persona's model is unavailable. Unresolvable\
+      \ explicit ID fails before any first request; stored restore failure remains\
+      \ nonfatal after successful preflight. Preserve error codes and child-consumed\
+      \ 'larva pi: <ERROR_CODE>: <message>' framing, fatal exit 2 when Larva owns\
+      \ it, no false active state, and terminal cleanup.\n- Preserve real saved-session\
+      \ reopening, digest drift, manual model/thinking, mode, new/fork/reload idempotence,\
+      \ temporary lease/continuation/manual-switch precedence and commit/rollback/visible\
+      \ restore failure. Main uses real native settings without parent capsules or\
+      \ exit rollback. Ordinary theme/preferences persist; persona/profile/borrow\
+      \ APIs leave global defaultProvider/defaultModel/defaultThinkingLevel unchanged\
+      \ and allow explicit native user saves.\n- Establish absolute supported Node/Pi\
+      \ launch inputs and the actual installed entry/preload pair, not bare-PATH rediscovery\
+      \ or copied parent argv. Remove external launcher-marker prerequisites and dead\
+      \ old-host compatibility while retaining live child frame protection/config\
+      \ overrides. Unsupported identity or missing preload fails child startup before\
+      \ spawn/prompt, with no launcher fallback.\n- Launch actual native child Pi\
+      \ directly with explicit extension allowlist, independently resolved/verified\
+      \ persona/model/thinking for every new/resumed invocation, requested/effective\
+      \ clamping and generation fencing before prompt. Each child process gets its\
+      \ own base-derived 0700 capsule and 0600 settings; sessions remain outside it;\
+      \ no merge to base or link-following deletion. Preserve child initial manual\
+      \ policy, parent isolation, preload-before-writer capture, exact task/result\
+      \ schemas, accepted/terminal distinction, readiness/status/events/wait/select,\
+      \ callbacks and stale/deduplicated delivery, cancellation precedence, watchdog,\
+      \ oversized-output artifacts and presentation-only caches.\n- Preserve caller\
+      \ project environment in main/backend/child seams, including currentEnv/spawnJsonCommand/startChild;\
+      \ backend A never activates parent/project B, and child-only capsule/role inputs\
+      \ never leak into later children. No reconstruction of already polluted caller\
+      \ environments. Prove actual native-tool installation into disposable B while\
+      \ explicit CLI in A still serves list/resolve, plus no-venv behavior.\n- Use\
+      \ ctx.mode for real TUI versus RPC/print. Preserve selector/shortcut/completion/mentions/status/console/log/cancel\
+      \ behavior and safe no-UI confirmation denial. Preserve one primary persona\
+      \ overlay and non-Larva system content, effective tool enforcement and actual\
+      \ invocation/compaction/fallback interfaces with representative co-loaded extensions.\
+      \ Use supported lifecycle events and prove parent shutdown with an active child.\n\
+      - Deliver tracked meaningful regression/runtime fixtures through the existing\
+      \ native test entrypoints below, covering every native/runtime row of the design\
+      \ acceptance matrix. Retarget legacy harnesses without weakening retained assertions;\
+      \ remove launcher-token/old-host-only assertions where obsolete. Keep preload/capsule\
+      \ behavior despite old filenames. Update corresponding runtime/operator/reference\
+      \ documentation and CI with source/tests. Document local package setup/disable/upgrade/rollback\
+      \ as operator instructions, without performing user cutover. The subsequent\
+      \ Python producer owns removal of the still-present larva pi command/wheel resources.\n\
+      \nBoundary:\n- node-typescript-engineer owns this cohesive host-extension package/runtime\
+      \ result, supporting Python test harnesses, configuration and documentation.\
+      \ Keep the shared extension under one writer. Python launcher source/distribution\
+      \ retirement is the next independently checkable producer; do not remove it\
+      \ before native behavior is proved.\n- Repository edits and disposable tests\
+      \ only. Supported first host is standard Node Pi 0.85.1 on macOS, Node 26.7.0.\
+      \ No Pi source modification, user/global install/config change, registry/schema\
+      \ or public record/result change, credentials, external-model calls, publication,\
+      \ alternate launcher, environment sanitizer or venv selector. Inspect supported\
+      \ host docs/types/events before choosing seams. No arbitrary third-party ordering\
+      \ guarantee or model-reasoning claim.\n\nAdmit:\n- Read the complete authoritative\
+      \ design and retained references. The current user implementation authorization\
+      \ supersedes its historical design-only status paragraph; actual operator installation\
+      \ remains excluded.\n- Capture meaningful failing behavior before correcting\
+      \ each new native admission/bootstrap seam, within this producer, then obtain\
+      \ green proof. Existing feasibility observations do not prove automatic discovery,\
+      \ admission/UI/cancel/active-child shutdown. Missing tracked tests/runners are\
+      \ this producer's work, never a read-only gate repair obligation.\n- Expand\
+      \ tests/shell/test_pi_extension_real_runtime.py and its tracked fixture/runners\
+      \ to invoke the complete acceptance-matrix native installation/runtime inventory.\
+      \ Required host cases must fail or report unavailable proof, never silently\
+      \ pass through skip/xfail or fixture self-report. Exercise actual native TUI/RPC/print,\
+      \ loader, settings, child processes, callback continuation and tool subprocesses\
+      \ where specified; controlled providers may supply only deterministic protocol\
+      \ responses. Include success/startup/RPC/runtime/cancel/timeout/live-child-parent-shutdown\
+      \ cleanup, no remaining owned process, safe capsule removal and surviving resumable\
+      \ sessions.\n- Orchestrator completion requires the producer's full result and\
+      \ required observations before completion. Any focused independent runtime observation\
+      \ needed to decide those claims is a completion procedure here, not another\
+      \ Plan step. Full requirement acceptance remains with the terminal gate after\
+      \ Python retirement.\n\nRecovery:\n- Reversible repository candidate plus owned\
+      \ disposable roots/processes only. On failure stop owned children/provider,\
+      \ reconcile process/stream/capsule state, preserve diagnostic evidence and repair\
+      \ within this step while its boundary remains unchanged. Never remove base/session\
+      \ data, overwrite ordinary saved settings, replay child work, edit Plan or alter\
+      \ the supported contract to make a test pass.\n\nscope:\n  allowed_paths: [contrib/pi-extension/**,\
+      \ tests/shell/test_pi*.py, tests/fixtures/pi/**, scripts/pi-*.mjs, .github/workflows/ci.yml,\
+      \ docs/**, README.md, design/pi-native-extension.md, design/pi-coding-agent-integration.md,\
+      \ design/pi-thinking-level-isolation.md]\n  blocked_paths: [plan.yaml, contracts/**,\
+      \ src/larva/core/**, .vectl/recovery/**]\n\nchecks:\n  - id: node-host\n   \
+      \ command: [node, --version]\n    expected: Node v26.7.0; supported macOS target,\
+      \ no automatic toolchain upgrade\n  - id: locked-extension-dependencies\n  \
+      \  command: [npm, --prefix, contrib/pi-extension, ci]\n    expected: exit 0\
+      \ from committed package-lock; Pi 0.85.1 available locally without global modification\n\
+      \  - id: native-runtime-inventory\n    command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT,\
+      \ -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never, uv, run, --locked, --python, '3.12',\
+      \ --group, dev, pytest, -q, tests/shell/test_pi_extension_real_runtime.py]\n\
+      \    expected: exit 0 plus direct evidence for every applicable native acceptance\
+      \ row; no mandatory case skipped or xfailed\n  - id: retained-python-pi-contracts\n\
+      \    command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uv, run, --locked, --python, '3.12', --group, dev,\
+      \ pytest, -q, tests/shell/test_pi_extension_contract.py, tests/shell/test_pi_extension_subagent_ux.py,\
+      \ tests/shell/test_pi_extension_subagent_model_isolation.py, tests/shell/test_pi_agent_persona_switch_policy_contract.py,\
+      \ tests/shell/test_pi_idle_callback_identity.py]\n    expected: exit 0; structural\
+      \ checks support only their actual mechanical contracts\n  - id: all-node-pi-regressions\n\
+      \    command: [bash, -c, 'set -euo pipefail; for f in contrib/pi-extension/test-*.mjs;\
+      \ do node \"$f\"; done']\n    expected: exit 0; retarget current-host probes\
+      \ and preserve all meaningful policy/lease/invocation/compaction/transport regressions\n\
+      \  - id: capability-smoke\n    command: [node, scripts/pi-extension-runtime-smoke.mjs,\
+      \ --scenario, capability-gates]\n    expected: exit 0 with applicable real capabilities\
+      \ and cleanup, not a standalone coverage substitute\n  - id: full-invar\n  \
+      \  command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uvx, --python, '3.12', invar-tools==1.20.3, guard,\
+      \ --all]\n    expected: exit 0 using the declared full-scan CLI; no weakened\
+      \ rules\n  - id: whitespace\n    command: [git, diff, --check]\n    expected:\
+      \ exit 0"
+    verification: 'Native package and retained runtime behavior satisfy the complete
+      applicable design acceptance matrix through tracked tests and direct launched
+      observations on the supported host. All declared checks pass; no required observation
+      is replaced by source phrases, expected fixture answers, skip/xfail, or historical
+      feasibility. Prove both corrected startup cases: Pi-owned syntax diagnostics
+      and unused explicit route on stored-persona main resume. Record real installation/discovery,
+      TUI/RPC/print, state persistence, A/B native-tool destination, actual child
+      lifecycle/preload/cancellation/watchdog/active-child shutdown and cleanup evidence.
+      Source, tests and runtime docs agree. Python command/wheel removal remains explicitly
+      downstream.'
+    evidence_template: Candidate and changed paths; failing behavior then green checks
+      (argv, runtime versions, exits); direct native acceptance observations with
+      remaining gaps; process/capsule/session reconciliation; unchanged-input evidence
+      reused and why; no user install/config/model-service effects. Do not claim model
+      reasoning from loopback.
+    refs:
+    - design/pi-native-extension.md
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - contrib/pi-extension/README.md
+    - tests/shell/test_pi_extension_real_runtime.py
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md
+    - docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md
+    - design/pi-thinking-level-isolation.md
+    - .github/workflows/ci.yml
+    - pyproject.toml
+    - uv.lock
+    agent: node-typescript-engineer
+  - id: pi-native.retire-python-launcher
+    name: Remove Python Pi launcher and prove independent backend distribution
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      Deliver:\n- After the native producer's own behavior/proof is complete, remove\
+      \ larva pi parser/help registration and dispatch, src/larva/shell/pi.py and\
+      \ launcher-only resources/helpers/tests. Remove only launcher-owned Pi wheel\
+      \ inclusion; retain unrelated OpenCode resources and independent Python CLI/API/backend\
+      \ behavior, including pi-model-map. No forwarding command, alias, alternate\
+      \ launcher or wheel-installed second native extension remains.\n- Inspect reverse\
+      \ dependencies before deletion. Retarget meaningful backend/runtime tests that\
+      \ depended on the old harness, retaining policy/session/child assertions. Native\
+      \ package entry/preload and existing child capsules remain intact. Test removed\
+      \ command behavior through actual CLI parsing/exit, retained list/resolve and\
+      \ Python API via the installed wheel in disposable targets, and wheel content/resource\
+      \ ownership. Shell out through the explicitly bound backend from the native\
+      \ runtime after removal; do not substitute a fake backend for that final package\
+      \ seam.\n- Synchronize end-user entrypoint/setup/disable/rollback examples,\
+      \ affected CI/test harnesses and package metadata. Distinguish repo-delivered\
+      \ native commands from actual operator installation, which is not performed\
+      \ or required for this repo outcome. Preserve ordinary saved settings/session\
+      \ history and unrelated docs/product behavior. Clean redundant old restoration\
+      \ prose without changing the design's corrected ID-only main preflight semantics.\n\
+      - Supply reproducible build/install tests and any required tracked dependency/lock\
+      \ declarations, including build backend/test dependencies rather than relying\
+      \ on an ambient venv. Keep these tests with the Python distribution result.\
+      \ Finish applicable full integrated repository checks below; coordinate native\
+      \ runtime evidence reuse with the Orchestrator where package/backend changes\
+      \ do not invalidate observations.\n\nBoundary:\n- python-executor owns the well-defined\
+      \ Python command/distribution removal and retained backend compatibility outcome.\
+      \ Native runtime is the completed predecessor; do not redesign its host contract.\
+      \ Necessary supporting harness/docs edits stay with this outcome. The separate\
+      \ consumer is the independently installable Python CLI/API, now free of Pi launcher\
+      \ distribution ownership.\n- Same authorized repository, reversible edits/build\
+      \ products, disposable wheel installations/fixtures only. No release/version\
+      \ publication, user/global Pi installation/configuration, live registry data\
+      \ mutation, Pi source edits, schema change, credentials or external-model requests.\
+      \ Opifex is read-only verification input, never a mutation target. No old recovery\
+      \ artifacts may be consumed or removed.\n\nAdmit:\n- Native producer completion\
+      \ evidence must prove admission/package/runtime behavior before deleting the\
+      \ launcher. Completed historical releases do not impose a new publication or\
+      \ user cutover requirement.\n- The existing tests/shell/test_pi_launcher_contract.py\
+      \ may be retargeted to behavioral launcher-removal/retained-backend/wheel checks;\
+      \ keep it executable rather than asserting source phrases. Add tracked fixtures/helpers/dependencies\
+      \ as needed; automatic source-token checks are not runtime proof.\n- Before\
+      \ completion/integration acceptance, execute the full project-native offline\
+      \ inventory on the actual integrated candidate: full pytest, every retained/new\
+      \ Pi Node regression, capability/runtime acceptance, repository-local canonical\
+      \ CI gate and full Invar. The shared-surface gate must use its tracked frozen\
+      \ opifex revision exported to disposable space from the existing local repository;\
+      \ do not repoint or mutate the live opifex checkout or fetch new authority.\
+      \ This named consumer requires its existing pin, not a new identity ceremony.\n\
+      - The native-runtime inventory command must invoke the tracked acceptance inventory\
+      \ delivered by the predecessor. Mandatory runtime observations cannot silently\
+      \ skip. Rerun affected seams after backend/package/docs/CI integration; reuse\
+      \ valid unaffected expensive observations with an explicit applicability judgment.\
+      \ The final gate consumes this final-candidate evidence and decides all material\
+      \ requirements together.\n\nRecovery:\n- Preserve native candidate and unrelated\
+      \ resources/data; reconcile owned test installs/processes before cleanup. A\
+      \ failed necessary check keeps this producer incomplete while repair fits its\
+      \ writable boundary. Report a concrete native product repair outside that boundary\
+      \ to the Orchestrator; do not rewrite DONE history or waive evidence. Rollback\
+      \ is the repository change plus removal of owned disposable fixtures, never\
+      \ restoration of old user settings.\n\nscope:\n  allowed_paths: [src/larva/shell/pi.py,\
+      \ src/larva/shell/cli.py, src/larva/shell/cli_parser.py, pyproject.toml, uv.lock,\
+      \ tests/**, scripts/**, .github/workflows/ci.yml, README.md, docs/**, design/pi-native-extension.md,\
+      \ design/pi-coding-agent-integration.md, design/pi-thinking-level-isolation.md,\
+      \ contrib/pi-extension/README.md]\n  blocked_paths: [plan.yaml, contracts/**,\
+      \ src/larva/core/**, .vectl/recovery/**]\n\nchecks:\n  - id: locked-python-dependencies\n\
+      \    command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uv, sync, --locked, --python, '3.12', --group,\
+      \ dev]\n    expected: exit 0; use updated tracked build/test dependency state\
+      \ if required\n  - id: backend-and-removal\n    command: [env, -u, VIRTUAL_ENV,\
+      \ -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never, uv,\
+      \ run, --locked, --python, '3.12', --group, dev, pytest, -q, tests/shell/test_cli.py,\
+      \ tests/shell/test_python_api.py, tests/shell/test_pi_launcher_contract.py,\
+      \ tests/shell/test_pi_model_map.py, tests/shell/test_pi_model_map_draft_contract.py]\n\
+      \    expected: exit 0 including disposable built-wheel public CLI/API and removed-command/resource\
+      \ checks\n  - id: full-repository-pytest\n    command: [env, -u, VIRTUAL_ENV,\
+      \ -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never, uv,\
+      \ run, --locked, --python, '3.12', --group, dev, pytest, -q]\n    expected:\
+      \ exit 0; mandatory native runtime inventory executed, no necessary case hidden\
+      \ by skip/xfail\n  - id: locked-extension-dependencies\n    command: [npm, --prefix,\
+      \ contrib/pi-extension, ci]\n    expected: exit 0 against integrated lock, supported\
+      \ Node 26.7.0/Pi 0.85.1 on macOS\n  - id: all-node-pi-regressions\n    command:\
+      \ [bash, -c, 'set -euo pipefail; for f in contrib/pi-extension/test-*.mjs; do\
+      \ node \"$f\"; done']\n    expected: exit 0 for every retained/new test entrypoint\n\
+      \  - id: capability-smoke\n    command: [node, scripts/pi-extension-runtime-smoke.mjs,\
+      \ --scenario, capability-gates]\n    expected: exit 0 with native capability\
+      \ evidence\n  - id: frozen-authority-ci-gate\n    command: [bash, -c, 'set -euo\
+      \ pipefail; unset VIRTUAL_ENV UV_PROJECT_ENVIRONMENT PYTHONPATH; export UV_PYTHON_DOWNLOADS=never;\
+      \ authority=$(mktemp -d); trap ''rm -rf -- \"$authority\"'' EXIT; ref=$(uv run\
+      \ --locked --python 3.12 --group dev python -c ''import json; print(json.load(open(\"\
+      design/opifex-frozen-authority-packet.json\"))[\"ref\"])''); git -C /Users/tefx/Projects/opifex\
+      \ archive \"$ref\" | tar -xf - -C \"$authority\"; uv run --locked --python 3.12\
+      \ --group dev python scripts/ci/larva_repo_local_gate.py verify --opifex-root\
+      \ \"$authority\"']\n    expected: exit 0; read-only local frozen authority export\
+      \ and disposable cleanup, no live checkout mutation\n  - id: full-invar\n  \
+      \  command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uvx, --python, '3.12', invar-tools==1.20.3, guard,\
+      \ --all]\n    expected: exit 0 using the declared full-scan CLI\n  - id: whitespace\n\
+      \    command: [git, diff, --check]\n    expected: exit 0"
+    verification: Removed launcher is unreachable through actual parser/dispatch;
+      built wheel retains usable list/resolve, Python API and unrelated resources
+      while omitting obsolete Pi distribution. Actual native extension can use this
+      bound backend. Native predecessor evidence remains applicable or affected observations
+      are refreshed. Full final-integrated pytest, all Pi Node regressions, native
+      acceptance inventory, capability smoke, canonical repo-local CI gate and Invar
+      pass. Docs describe delivered repository setup without claiming user installation.
+      No retained behavior asserted by an old launcher harness is silently discarded.
+    evidence_template: Candidate and removal/reverse-dependency summary; built-wheel
+      install/public CLI/API observations; command argv/exits for full integrated
+      inventory; retained native observations and applicability after integration;
+      cleanup and prohibited-effect confirmation; gaps (none required for completion).
+    refs:
+    - design/pi-native-extension.md
+    - src/larva/shell/cli.py
+    - src/larva/shell/cli_parser.py
+    - pyproject.toml
+    - uv.lock
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_cli.py
+    - tests/shell/test_python_api.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/ci/larva_repo_local_gate.py
+    - design/opifex-frozen-authority-packet.json
+    - .github/workflows/ci.yml
+    - README.md
+    - contrib/pi-extension/README.md
+    - docs/guides/USAGE.md
+    - docs/reference/INTERFACES.md
+    depends_on:
+    - pi-native.deliver-extension
+    agent: python-executor
+  - id: pi-native.accept-repository
+    name: Accept the integrated native-only repository delivery
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - The single final integrated repository acceptance decision for phase pi_native_extension_cutover,\
+      \ covering native package/runtime plus independent Python backend/launcher retirement.\
+      \ This is the terminal project-change acceptance for the user, not a release\
+      \ or installation authorization. Review every material requirement in the complete\
+      \ design/pi-native-extension.md acceptance matrix and its retained persona policy,\
+      \ async subagent, invocation and compaction contracts. Both predecessor results\
+      \ are included; historical completed phases are not reopened.\n- Judge coverage/applicability\
+      \ and cross-result consistency: the native package works without launcher markers\
+      \ or wheel extension copies, explicitly binds the independently installable\
+      \ backend, preserves caller environment/main settings/session persona/child\
+      \ lifecycle, and documents the same delivered behavior. Test that evidence distinguishes\
+      \ native syntax errors from Larva validation and ID-only explicit main preflight\
+      \ from selected-route validation. Preserve settings/launcher-removal decisions\
+      \ already accepted by the user.\n\nBoundary:\n- gate-reviewer is read-only.\
+      \ Consume established producer/Orchestrator observations and perform scoped\
+      \ source/contract review; do not edit source/tests/docs/Plan, create missing\
+      \ runners, install software, change configuration, launch model-service requests\
+      \ or dispatch other agents. Missing runtime modality goes to the Orchestrator\
+      \ for bounded observation using tracked checks within existing authority.\n\
+      - Bind the decision to the exact final integrated immutable candidate supplied\
+      \ by the Orchestrator. Only this phase's two delivered outcomes and concretely\
+      \ consumed unchanged contracts are in scope. User/global installation/cutover,\
+      \ publication, registry/schema changes, Pi source modification, newer/older\
+      \ hosts and hostile-local-process threat modeling are excluded.\n\nAdmit:\n\
+      - Both producers complete their own results/proof before this gate. Require\
+      \ final integrated full project-native offline regression evidence: all repository\
+      \ pytest, every applicable Pi Node regression, complete native installation/runtime\
+      \ acceptance inventory, capability smoke, canonical repo-local gate using its\
+      \ declared frozen authority, and full Invar. Their exact reproducible commands\
+      \ are declared in the producer checks; developer dependencies must come from\
+      \ committed locks and declared interpreters. Orchestrator supplies current integrated\
+      \ binding and results. Component-only PASS or a missing tracked test cannot\
+      \ establish acceptance.\n- Require actual supported Node Pi 0.85.1/macOS observations\
+      \ for automatic package discovery/disable/explicit loading/duplicates/missing\
+      \ resources, native TUI/RPC/print admission before first request, saved-session\
+      \ and settings persistence, actual child routes/transport/callback/cancel/watchdog/active-child-parent-shutdown,\
+      \ isolated cleanup/persistence, A/B tool-install destination, and extension\
+      \ invocation/compaction/composition. Loopback proves deterministic protocol/state\
+      \ transitions only. Python built-wheel/backend observations must cover the final\
+      \ package after launcher removal.\n- Reuse unchanged valid observations only\
+      \ after judging target binding, inputs, authority and requirement applicability;\
+      \ integration/package/backend changes require affected proof. Rebinding a report\
+      \ alone does not replay unchanged runtime effects. No separate review ladder\
+      \ or duplicate acceptance decision. Necessary failed or unproven requirements\
+      \ prevent PASS, regardless of all producer lifecycles being DONE.\n- Project\
+      \ repository delivery is accepted only when every material scoped requirement\
+      \ is positively proved, full final-candidate checks pass, and no blocking defect\
+      \ or missing proof remains. Actual user cutover is neither completed nor a condition\
+      \ for this repository decision.\n\nRecovery:\n- Return the full supported finding/proof-gap\
+      \ batch. Keep this same gate unfinished on FAIL/BLOCKED. Missing reporting/observations\
+      \ stay in the compatible completion procedure; a repository repair after completed\
+      \ producers requires the Orchestrator/Planner's normal writable-owner reconciliation\
+      \ without modifying DONE history. Continue this gate in Delta mode after repair,\
+      \ preserving valid unaffected evidence. No human-wait or retry/gate node is\
+      \ implied.\n\nscope:\n  allowed_paths: [contrib/pi-extension/**, src/larva/shell/cli.py,\
+      \ src/larva/shell/cli_parser.py, pyproject.toml, uv.lock, tests/**, scripts/**,\
+      \ .github/workflows/ci.yml, README.md, docs/**, design/pi-native-extension.md,\
+      \ design/pi-coding-agent-integration.md, design/pi-thinking-level-isolation.md]\n\
+      \  blocked_paths: [plan.yaml, contracts/**, src/larva/core/**, .vectl/recovery/**]\n\
+      \nchecks:\n  - id: integrated-inventory-evidence\n    evidence_from: pi-native.retire-python-launcher\n\
+      \    required_check_ids: [backend-and-removal, full-repository-pytest, all-node-pi-regressions,\
+      \ capability-smoke, frozen-authority-ci-gate, full-invar, whitespace]\n    expected:\
+      \ all green on the final integrated candidate or demonstrably applicable unchanged\
+      \ inputs\n  - id: native-acceptance-observations\n    evidence_from: pi-native.deliver-extension\n\
+      \    required_check_ids: [native-runtime-inventory, retained-python-pi-contracts,\
+      \ all-node-pi-regressions]\n    expected: every native acceptance-matrix behavior\
+      \ proved by its required real seam; refresh affected proof after integration\n\
+      \  - id: final-requirement-judgment\n    expected: every material scoped requirement\
+      \ PROVEN; zero blocking findings or unproven necessary requirements"
+    verification: Full phase gate over exactly pi_native_extension_cutover and its
+      final integrated candidate. Consume full regression/Invar and requirement-complete
+      runtime/package evidence, then judge integrated coverage and contradictions.
+      PASS only if all necessary requirements are proven with no blockers or proof
+      gaps. Explicitly state repo delivery only; no user installation or publication
+      performed/authorized. Use the same gate in Delta mode after a compatible repair.
+    evidence_template: 'gate.report.v2: immutable integrated target; PHASE_GATE/FULL
+      (DELTA after repair); phase_ids [pi_native_extension_cutover]; authoritative
+      refs; all material requirement results with applicable evidence; findings/remaining
+      gaps; final repo acceptance decision excluding actual user cutover.'
+    refs:
+    - design/pi-native-extension.md
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - contrib/pi-extension/README.md
+    - pyproject.toml
+    - uv.lock
+    - src/larva/shell/cli.py
+    - src/larva/shell/cli_parser.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - scripts/ci/larva_repo_local_gate.py
+    - design/opifex-frozen-authority-packet.json
+    - docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md
+    - docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md
+    - README.md
+    depends_on:
+    - pi-native.deliver-extension
+    - pi-native.retire-python-launcher
+    agent: gate-reviewer
