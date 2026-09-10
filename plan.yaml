@@ -145030,7 +145030,7 @@ phases:
       gate next.'
   - id: pi-native.accept-repository
     name: Accept the integrated native-only repository delivery
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - The single final integrated repository acceptance decision for phase pi_native_extension_cutover,\
       \ covering native package/runtime plus independent Python backend/launcher retirement.\
@@ -145147,6 +145147,8 @@ phases:
     - pi-native.retire-python-launcher
     - pi-native.repair-capsule-runtime-proof
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-09-10T19:37:49.180135Z'
   - id: pi-native.repair-capsule-runtime-proof
     name: Repair capsule lifecycle and complete native runtime acceptance proof
     status: done
