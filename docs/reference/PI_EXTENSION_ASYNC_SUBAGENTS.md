@@ -1581,6 +1581,21 @@ Lifecycle abort, ordinary terminal finalization, and child cleanup all invalidat
 the run's stall timer. Cached rows, late callback attempts, and post-cleanup
 frames cannot re-arm it or change terminal ownership.
 
+### Native resume and startup failures
+
+Resume keeps the exact public handle unchanged. After lexical syntax validation,
+filesystem admission also recognizes a configured child-session directory's
+physical root, including macOS `/var` → `/private/var`. This allows a retained
+canonical receipt to resume in a later native parent. Observer tools keep their
+process-local, no-filesystem-discovery rules.
+
+Recognized child startup errors retain the existing `larva pi: <ERROR_CODE>:`
+projection before RPC readiness. A failed `get_state` must not be overwritten by
+a missing-frame-marker diagnostic. A missing adjacent preload still fails
+before spawn. Runtime/protocol failures, cancellation, timeout, and successful
+shutdown remove owned capsules while retaining existing child session history.
+[Native evidence](../verification/pi-native-delivery/README.md) records these
+terminal paths separately from controlled transport fault injection.
 ## Trace-file proof instrumentation
 
 `LARVA_PI_CHILD_RPC_TRACE_FILE` is available for runtime proof probes only. Trace

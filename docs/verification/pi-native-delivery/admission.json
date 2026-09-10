@@ -1,0 +1,1448 @@
+{
+  "scenario": "admission",
+  "modality": "actual native CLI + normal package loader + loopback provider",
+  "node": "v26.7.0",
+  "cli": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+  "cases": [
+    {
+      "mode": "rpc",
+      "case": "missing-id",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "missing"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_PERSONA_NOT_FOUND: initial persona 'missing' failed before first prompt/model turn: Unable to resolve persona missing\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "rpc",
+      "case": "bad-model",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "ok"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_MODEL_UNAVAILABLE: initial persona 'ok' failed before first prompt/model turn: Model unavailable unavailable/missing\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "rpc",
+      "case": "bad-policy",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "ok"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_POLICY_INVALID: initial persona 'ok' failed before first prompt/model turn: Invalid Larva Pi tool policy\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "rpc",
+      "case": "bad-mode",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-agent-persona-switch",
+        "invalid"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_BAD_INPUT: Invalid --larva-agent-persona-switch value\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "rpc",
+      "case": "bad-binding",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "ok"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_PERSONA_NOT_FOUND: initial persona 'ok' failed before first prompt/model turn: Unable to resolve persona ok\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "rpc",
+      "case": "unknown-flag",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--unknown-native-fixture-flag"
+      ],
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "Error: Unknown option: --unknown-native-fixture-flag\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "rpc",
+      "case": "missing-value",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "--mode",
+        "rpc",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona"
+      ],
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "Error: Extension flag \"--larva-persona\" requires a value\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "missing-id",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "missing"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_PERSONA_NOT_FOUND: initial persona 'missing' failed before first prompt/model turn: Unable to resolve persona missing\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "bad-model",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "ok"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_MODEL_UNAVAILABLE: initial persona 'ok' failed before first prompt/model turn: Model unavailable unavailable/missing\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "bad-policy",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "ok"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_POLICY_INVALID: initial persona 'ok' failed before first prompt/model turn: Invalid Larva Pi tool policy\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "bad-mode",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-agent-persona-switch",
+        "invalid"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_BAD_INPUT: Invalid --larva-agent-persona-switch value\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "bad-binding",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona",
+        "ok"
+      ],
+      "code": 2,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "larva pi: LARVA_PERSONA_NOT_FOUND: initial persona 'ok' failed before first prompt/model turn: Unable to resolve persona ok\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "unknown-flag",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--unknown-native-fixture-flag"
+      ],
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "Error: Unknown option: --unknown-native-fixture-flag\n",
+      "firstRequests": 0
+    },
+    {
+      "mode": "print",
+      "case": "missing-value",
+      "command": "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+      "args": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "-p",
+        "--offline",
+        "--approve",
+        "-e",
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/native-controls.ts",
+        "--larva-persona"
+      ],
+      "code": 1,
+      "signal": null,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "Error: Extension flag \"--larva-persona\" requires a value\n",
+      "firstRequests": 0
+    }
+  ],
+  "tui": [
+    {
+      "case": "missing-id",
+      "exit": 2,
+      "pid": 92063,
+      "transcript": "\u001b[?2004h\u001b[>7u\u001b[?u\u001b[c\u001b[?25l\u001b[16t\u001b[?2026h\u001b[0m\u001b]8;;\u0007\r\r\n \u001b[1m\u001b[38;2;138;190;183mpi\u001b[39m\u001b[22m\u001b[38;2;102;102;102m v0.85.1\u001b[39m                                                                                                                                 \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mescape\u001b[39m\u001b[38;2;128;128;128m interrupt\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102mctrl+c/ctrl+d\u001b[39m\u001b[38;2;128;128;128m clear/exit\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102m/\u001b[39m\u001b[38;2;128;128;128m commands\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102m!\u001b[39m\u001b[38;2;128;128;128m bash\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m more\u001b[39m                                                            \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mPress ctrl+o to show full startup help and loaded resources.\u001b[39m                                                                               \u001b[0m\u001b]8;;\u0007\r\r\n                                                                                                                                            \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mPi can explain its own features and look up its docs. Ask it how to use or extend Pi.\u001b[39m                                                      \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;255;255;0mWarning: fd not found. Offline mode enabled, skipping download.\u001b[39m                                                                            \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;95;135;175m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[7m \u001b[0m                                                                                                                                           \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;95;135;175m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;102;102;102m/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/project\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;102;102;102m0.0%/33k\u001b[39m\u001b[38;2;102;102;102m                                                                                                                        origin • low\u001b[39m\u001b[0m\u001b]8;;\u0007\u001b[?2026l\u001b[3A\u001b[1G\u001b[?25llarva pi: LARVA_PERSONA_NOT_FOUND: initial persona 'missing' failed before first prompt/model turn: Unable to resolve persona missing\r\n\u001b[<u"
+    },
+    {
+      "case": "bad-model",
+      "exit": 2,
+      "pid": 92099,
+      "transcript": "\u001b[?2004h\u001b[>7u\u001b[?u\u001b[c\u001b[?25l\u001b[16t\u001b[?2026h\u001b[0m\u001b]8;;\u0007\r\r\n \u001b[1m\u001b[38;2;138;190;183mpi\u001b[39m\u001b[22m\u001b[38;2;102;102;102m v0.85.1\u001b[39m                                                                                                                                 \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mescape\u001b[39m\u001b[38;2;128;128;128m interrupt\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102mctrl+c/ctrl+d\u001b[39m\u001b[38;2;128;128;128m clear/exit\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102m/\u001b[39m\u001b[38;2;128;128;128m commands\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102m!\u001b[39m\u001b[38;2;128;128;128m bash\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m more\u001b[39m                                                            \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mPress ctrl+o to show full startup help and loaded resources.\u001b[39m                                                                               \u001b[0m\u001b]8;;\u0007\r\r\n                                                                                                                                            \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mPi can explain its own features and look up its docs. Ask it how to use or extend Pi.\u001b[39m                                                      \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;255;255;0mWarning: fd not found. Offline mode enabled, skipping download.\u001b[39m                                                                            \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;95;135;175m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[7m \u001b[0m                                                                                                                                           \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;95;135;175m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;102;102;102m/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/project\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;102;102;102m0.0%/33k\u001b[39m\u001b[38;2;102;102;102m                                                                                                                        origin • low\u001b[39m\u001b[0m\u001b]8;;\u0007\u001b[?2026l\u001b[3A\u001b[1G\u001b[?25llarva pi: LARVA_MODEL_UNAVAILABLE: initial persona 'ok' failed before first prompt/model turn: Model unavailable unavailable/missing\r\n\u001b[<u"
+    },
+    {
+      "case": "bad-policy",
+      "exit": 2,
+      "pid": 92117,
+      "transcript": "\u001b[?2004h\u001b[>7u\u001b[?u\u001b[c\u001b[?25l\u001b[16t\u001b[?2026h\u001b[0m\u001b]8;;\u0007\r\r\n \u001b[1m\u001b[38;2;138;190;183mpi\u001b[39m\u001b[22m\u001b[38;2;102;102;102m v0.85.1\u001b[39m                                                                                                                                 \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mescape\u001b[39m\u001b[38;2;128;128;128m interrupt\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102mctrl+c/ctrl+d\u001b[39m\u001b[38;2;128;128;128m clear/exit\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102m/\u001b[39m\u001b[38;2;128;128;128m commands\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102m!\u001b[39m\u001b[38;2;128;128;128m bash\u001b[39m\u001b[38;2;128;128;128m · \u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m more\u001b[39m                                                            \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mPress ctrl+o to show full startup help and loaded resources.\u001b[39m                                                                               \u001b[0m\u001b]8;;\u0007\r\r\n                                                                                                                                            \u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;102;102;102mPi can explain its own features and look up its docs. Ask it how to use or extend Pi.\u001b[39m                                                      \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n \u001b[38;2;255;255;0mWarning: fd not found. Offline mode enabled, skipping download.\u001b[39m                                                                            \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;95;135;175m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[7m \u001b[0m                                                                                                                                           \u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;95;135;175m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;102;102;102m/private/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/project\u001b[39m\u001b[0m\u001b]8;;\u0007\r\r\n\u001b[38;2;102;102;102m0.0%/33k\u001b[39m\u001b[38;2;102;102;102m                                                                                                                        origin • low\u001b[39m\u001b[0m\u001b]8;;\u0007\u001b[?2026l\u001b[3A\u001b[1G\u001b[?25llarva pi: LARVA_POLICY_INVALID: initial persona 'ok' failed before first prompt/model turn: Invalid Larva Pi tool policy\r\n\u001b[<u"
+    },
+    {
+      "case": "bad-mode",
+      "exit": 2,
+      "pid": 92155,
+      "transcript": "\u001b[?2004h\u001b[>7u\u001b[?u\u001b[c\u001b[?25l\u001b[16tlarva pi: LARVA_BAD_INPUT: Invalid --larva-agent-persona-switch value\r\n\u001b[<u"
+    },
+    {
+      "case": "bad-binding",
+      "exit": 2,
+      "pid": 92170,
+      "transcript": "\u001b[?2004h\u001b[>7u\u001b[?u\u001b[c\u001b[?25l\u001b[16tlarva pi: LARVA_PERSONA_NOT_FOUND: initial persona 'ok' failed before first prompt/model turn: Unable to resolve persona ok\r\n\u001b[<u"
+    },
+    {
+      "case": "unknown-flag",
+      "exit": 1,
+      "pid": 92197,
+      "transcript": "\u001b[31mError: Unknown option: --unknown-native-fixture-flag\u001b[39m\r\n"
+    },
+    {
+      "case": "missing-value",
+      "exit": 1,
+      "pid": 92218,
+      "transcript": "\u001b[31mError: Extension flag \"--larva-persona\" requires a value\u001b[39m\r\n"
+    }
+  ],
+  "pass": true,
+  "observations": [
+    {
+      "event": "session_start",
+      "pid": 92025,
+      "value": {
+        "reason": "startup",
+        "mode": "rpc",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-49-714Z_01a08c09-38b2-767a-a038-3046862cef81.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "de6346fe",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:50.396Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "1663dbf1",
+            "parentId": "de6346fe",
+            "timestamp": "2026-09-10T15:56:50.396Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92027,
+      "value": {
+        "reason": "startup",
+        "mode": "rpc",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-50-597Z_01a08c09-3c25-7399-82e4-457702b40414.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "c976d661",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:50.630Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "c41a6b25",
+            "parentId": "c976d661",
+            "timestamp": "2026-09-10T15:56:50.630Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92030,
+      "value": {
+        "reason": "startup",
+        "mode": "rpc",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-50-850Z_01a08c09-3d22-7507-ad3b-db2610262e5d.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "58650efa",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:50.879Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "bfb18cc4",
+            "parentId": "58650efa",
+            "timestamp": "2026-09-10T15:56:50.879Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92033,
+      "value": {
+        "reason": "startup",
+        "mode": "rpc",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-51-093Z_01a08c09-3e15-75d4-9a94-fe39cb7358df.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "34fdb926",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:51.122Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "db6b278f",
+            "parentId": "34fdb926",
+            "timestamp": "2026-09-10T15:56:51.122Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92034,
+      "value": {
+        "reason": "startup",
+        "mode": "rpc",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-51-281Z_01a08c09-3ed1-749d-b547-121ae3287cd2.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "060198aa",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:51.310Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "c6e1d880",
+            "parentId": "060198aa",
+            "timestamp": "2026-09-10T15:56:51.310Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92037,
+      "value": {
+        "reason": "startup",
+        "mode": "print",
+        "hasUI": false,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-51-844Z_01a08c09-4103-7250-bcbd-b63151c20c8f.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "f9f43894",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:51.873Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "65b0e06a",
+            "parentId": "f9f43894",
+            "timestamp": "2026-09-10T15:56:51.873Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92039,
+      "value": {
+        "reason": "startup",
+        "mode": "print",
+        "hasUI": false,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-52-057Z_01a08c09-41d9-751a-9aa5-f6d2edb23adc.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "d2d8735a",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:52.086Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "1a701939",
+            "parentId": "d2d8735a",
+            "timestamp": "2026-09-10T15:56:52.086Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92042,
+      "value": {
+        "reason": "startup",
+        "mode": "print",
+        "hasUI": false,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-52-300Z_01a08c09-42cc-77c7-815e-6792b294f4ca.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "ff0d5421",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:52.328Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "7dee8527",
+            "parentId": "ff0d5421",
+            "timestamp": "2026-09-10T15:56:52.328Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92045,
+      "value": {
+        "reason": "startup",
+        "mode": "print",
+        "hasUI": false,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-52-537Z_01a08c09-43b9-7449-bc1e-2b200587ffb0.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "e3795636",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:52.566Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "f126862d",
+            "parentId": "e3795636",
+            "timestamp": "2026-09-10T15:56:52.566Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92046,
+      "value": {
+        "reason": "startup",
+        "mode": "print",
+        "hasUI": false,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-52-722Z_01a08c09-4472-72fe-8310-29c3f6d7378f.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "6a23a6bb",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:52.752Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "f7b2add6",
+            "parentId": "6a23a6bb",
+            "timestamp": "2026-09-10T15:56:52.752Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92063,
+      "value": {
+        "reason": "startup",
+        "mode": "tui",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-53-359Z_01a08c09-46ee-7772-95d8-ad760d873419.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "23a5fcb6",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:53.392Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "5b8d9b4b",
+            "parentId": "23a5fcb6",
+            "timestamp": "2026-09-10T15:56:53.392Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92099,
+      "value": {
+        "reason": "startup",
+        "mode": "tui",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-53-605Z_01a08c09-47e5-7419-8e03-a450a878ca9b.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "ef6ade39",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:53.638Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "70b1ab02",
+            "parentId": "ef6ade39",
+            "timestamp": "2026-09-10T15:56:53.638Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92117,
+      "value": {
+        "reason": "startup",
+        "mode": "tui",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-53-883Z_01a08c09-48fb-7637-994a-4003370a045a.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "fb2f4598",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:53.913Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "9bf861db",
+            "parentId": "fb2f4598",
+            "timestamp": "2026-09-10T15:56:53.913Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92155,
+      "value": {
+        "reason": "startup",
+        "mode": "tui",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-54-158Z_01a08c09-4a0e-77b0-94f9-4dc3b89101e9.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "6d89ad25",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:54.189Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "bf19e957",
+            "parentId": "6d89ad25",
+            "timestamp": "2026-09-10T15:56:54.190Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    },
+    {
+      "event": "session_start",
+      "pid": 92170,
+      "value": {
+        "reason": "startup",
+        "mode": "tui",
+        "hasUI": true,
+        "model": {
+          "id": "origin",
+          "name": "origin",
+          "api": "openai-completions",
+          "provider": "native-loopback",
+          "baseUrl": "http://127.0.0.1:52660/v1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 32768,
+          "maxTokens": 2048
+        },
+        "thinking": "low",
+        "activeTools": [
+          "read",
+          "bash",
+          "edit",
+          "write",
+          "larva_subagent",
+          "larva_subagent_sessions",
+          "larva_subagent_status",
+          "larva_subagent_events",
+          "larva_subagent_wait",
+          "larva_subagent_select",
+          "larva_subagent_cancel",
+          "larva_persona_switch",
+          "larva_personas"
+        ],
+        "session": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/sessions/2026-09-10T15-56-54-399Z_01a08c09-4aff-7222-8bd2-444a17ff664d.jsonl",
+        "entries": [
+          {
+            "type": "model_change",
+            "id": "0e7fb5f6",
+            "parentId": null,
+            "timestamp": "2026-09-10T15:56:54.432Z",
+            "provider": "native-loopback",
+            "modelId": "origin"
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "606e5229",
+            "parentId": "0e7fb5f6",
+            "timestamp": "2026-09-10T15:56:54.432Z",
+            "thinkingLevel": "low"
+          }
+        ],
+        "theme": "dark",
+        "editor": "",
+        "env": {
+          "virtualEnv": null,
+          "path": "/opt/homebrew/Cellar/node/26.7.0/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+          "agent": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-wT4NXP/agent",
+          "base": null,
+          "capsule": null
+        }
+      }
+    }
+  ],
+  "requests": [],
+  "stderr": [],
+  "cleanup": {
+    "traces": [],
+    "pids": [],
+    "liveChildren": [],
+    "capsules": [],
+    "sessions": [],
+    "settings": {
+      "defaultProjectTrust": "yes",
+      "theme": "dark",
+      "lastChangelogVersion": "0.85.1",
+      "packages": [
+        "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/contrib/pi-extension"
+      ],
+      "defaultProvider": "native-loopback",
+      "defaultModel": "origin",
+      "defaultThinkingLevel": "low",
+      "compaction": {
+        "enabled": false,
+        "reserveTokens": 512,
+        "keepRecentTokens": 512
+      },
+      "retry": {
+        "enabled": false
+      }
+    },
+    "parents": [],
+    "providerClosed": true,
+    "rootRemoved": true
+  }
+}

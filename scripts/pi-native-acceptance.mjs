@@ -40,6 +40,7 @@ const SCENARIOS = [
   "resume-unresolvable-explicit-fails",
   "resume-stored-restore-nonfatal",
   "parent-shutdown-active-child",
+  "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print",
 ];
 
 function usage() {
@@ -227,6 +228,10 @@ async function withScratch(fn) {
 
 async function runScenario(scenario) {
   const evidence = { scenario, pi: PI_BIN, extensionDir: EXTENSION_DIR, pass: false };
+  if (scenario.startsWith("native-") || scenario === "backend-a-project-b") {
+    const { runJourney } = await import("./pi-native-journeys.mjs");
+    return { ...await runJourney(scenario === "backend-a-project-b" ? "environment" : scenario.slice(7)), scenario };
+  }
   if (scenario === "package-discovery") {
     await withScratch(async (scratch, loopback) => {
       const install = await piInstall(scratch);
@@ -424,22 +429,6 @@ async function runScenario(scenario) {
       const expected = scenario === "tui-mode" ? "tui" : scenario === "rpc-mode" ? "rpc" : "print";
       evidence.pass = result.exitCode === 0 && evidence.observation?.mode === expected && (expected !== "rpc" || evidence.observation?.hasUI === true);
     });
-  } else if (scenario === "backend-a-project-b") {
-    await withScratch(async (scratch) => {
-      const probe = join(ROOT, "tests", "fixtures", "pi", "native_ab_probe.py");
-      const result = await runProcess(join(ROOT, ".venv", "bin", "python"), [probe, "--root", join(scratch.tempRoot, "ab"), "--worktree", ROOT], {
-        env: sanitizedEnv({ PATH: "/opt/homebrew/bin:/usr/bin:/bin" }),
-        cwd: ROOT,
-        timeoutMs: 240_000,
-      });
-      evidence.stdout = result.stdout.slice(0, 2000);
-      evidence.stderr = result.stderr.slice(0, 1500);
-      evidence.exitCode = result.exitCode;
-      let parsed = {};
-      try { parsed = JSON.parse(result.stdout.split("\n").filter(Boolean).at(-1) ?? "{}"); } catch { parsed = {}; }
-      evidence.parsed = parsed;
-      evidence.pass = result.exitCode === 0 && parsed.pass === true;
-    });
   } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails" || scenario === "resume-stored-restore-nonfatal") {
     await withScratch(async (scratch, loopback) => {
       await piInstall(scratch);
@@ -506,18 +495,21 @@ async function runScenario(scenario) {
       await mkdir(join(scratch.tempRoot, "children"), { recursive: true });
       const driver = join(ROOT, "tests", "fixtures", "pi", "native-parent-main.ts");
       const subagentConfig = join(scratch.tempRoot, "subagent-runtime.json");
-      await writeFile(subagentConfig, JSON.stringify({ schema_version: 1, extension_sources: [loopback.providerPath] }), "utf8");
+      await writeFile(subagentConfig, JSON.stringify({ schema_version: 1, extension_sources: [loopback.providerPath, join(ROOT, "tests/fixtures/pi/native-child-observer.ts")] }), "utf8");
       const env = baseEnv(scratch, {
         AUDIT_ROOT: audit,
+        NATIVE_AUDIT_ROOT: audit,
         LARVA_PI_CHILD_RPC_TRACE_FILE: join(audit, "child-trace.jsonl"),
         LARVA_PI_CHILD_SESSION_DIR: join(scratch.tempRoot, "children"),
-        LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
         LARVA_PI_SUBAGENT_CONFIG_FILE: subagentConfig,
       });
       const args = ["--mode", "rpc", "--offline", "--approve", "--no-extensions", "-e", loopback.providerPath, "-e", driver, "--larva-persona", "ok", "--session-dir", scratch.sessions];
-      const proc = spawn(PI_BIN, args, { env, cwd: scratch.cwd, stdio: ["pipe", "pipe", "pipe"] });
+      const proc = spawn(PI_BIN, args, { env, cwd: scratch.cwd, detached: true, stdio: ["pipe", "pipe", "pipe"] });
+      const closed = new Promise((resolveClose) => { proc.once("error", (error) => resolveClose({ error: error.message })); proc.once("close", (code, signal) => resolveClose({ code, signal })); });
       let stdout = "";
       let stderr = "";
+      let childPid = null;
+      try {
       proc.stdout.on("data", (chunk) => { stdout += chunk.toString("utf8"); });
       proc.stderr.on("data", (chunk) => { stderr += chunk.toString("utf8"); });
       const observations = async () => {
@@ -545,18 +537,21 @@ async function runScenario(scenario) {
       evidence.acceptedStatus = acceptedObs?.value?.status ?? acceptedObs?.value?.details?.status ?? null;
       evidence.acceptedError = acceptedObs?.value?.error ?? acceptedObs?.value?.details?.error ?? null;
       const spawnRow = traces.find((row) => row.event === "child_spawn");
-      const childPid = spawnRow?.pid ?? null;
+      childPid = spawnRow?.pid ?? null;
       let childAliveBefore = false;
       if (childPid) {
         try { process.kill(childPid, 0); childAliveBefore = true; } catch { childAliveBefore = false; }
       }
       const runtimeRoot = join(scratch.home, ".pi", "larva", "runtime");
       let capsulesBefore = existsSync(runtimeRoot) ? (await import("node:fs")).readdirSync(runtimeRoot) : [];
+      while (Date.now() < deadline && !loopback.requests.some((row) => row.hold)) await new Promise((r) => setTimeout(r, 20));
+      evidence.inFlightProvider = loopback.requests.some((row) => row.hold);
       proc.stdin.write(`${JSON.stringify({ id: "stop", type: "prompt", message: "/audit-stop" })}\n`);
-      const exit = await new Promise((resolveClose) => {
-        const timer = setTimeout(() => { proc.kill("SIGTERM"); resolveClose({ timeout: true }); }, 8000);
-        proc.once("close", (code, signal) => { clearTimeout(timer); resolveClose({ code, signal }); });
-      });
+      let timedOut = false;
+      const timer = setTimeout(() => { timedOut = true; try { process.kill(-proc.pid, "SIGKILL"); } catch {} }, 8000);
+      const exit = await closed;
+      clearTimeout(timer);
+      evidence.timedOut = timedOut;
       let childAliveAfter = false;
       if (childPid) {
         try { process.kill(childPid, 0); childAliveAfter = true; } catch { childAliveAfter = false; }
@@ -570,7 +565,17 @@ async function runScenario(scenario) {
       evidence.capsulesBefore = capsulesBefore;
       evidence.capsulesAfter = capsulesAfter;
       evidence.observations = (await observations()).map((row) => row.event);
-      evidence.pass = childAliveBefore === true && childAliveAfter === false && evidence.observations.includes("session_shutdown") && capsulesAfter.length === 0;
+      const taskId = acceptedObs?.value?.task_id ?? acceptedObs?.value?.details?.task_id;
+      evidence.retainedSession = typeof taskId === "string" && existsSync(taskId) && (await readFile(taskId, "utf8")).includes("HOLD_CHILD");
+      const childObservations = (await readFile(join(audit, "children.jsonl"), "utf8")).trim().split("\n").filter(Boolean).map(JSON.parse);
+      evidence.childBeforePrompt = childObservations.find((row) => row.event === "before_prompt");
+      evidence.pass = evidence.acceptedStatus === "accepted" && exit.code === 0 && exit.signal === null && !timedOut && evidence.retainedSession && evidence.inFlightProvider && capsulesBefore.length === 1 && evidence.childBeforePrompt?.frame?.configured === true && childAliveBefore === true && childAliveAfter === false && evidence.observations.includes("session_shutdown") && capsulesAfter.length === 0;
+      } finally {
+        // Exceptions before acceptance still own the parent process group.
+        if (proc.exitCode === null && proc.signalCode === null) { try { process.kill(-proc.pid, "SIGKILL"); } catch {} }
+        await closed;
+        if (childPid) { try { process.kill(childPid, 0); process.kill(childPid, "SIGKILL"); } catch {} }
+      }
     });
   } else {
     evidence.error = `unknown scenario ${scenario}`;
@@ -589,4 +594,4 @@ if (!existsSync(PI_BIN) || !existsSync(EXTENSION_ENTRY) || !existsSync(FAKE_CLI)
 }
 const evidence = await runScenario(args.get("scenario"));
 process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
-process.exit(evidence.pass ? 0 : 1);
+process.exitCode = evidence.pass ? 0 : 1;

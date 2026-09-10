@@ -89,17 +89,63 @@ jobs:
       - name: Sync dependencies
         run: uv sync --group dev
 
+      - name: Setup supported Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26.7.0"
+
       - name: Install Pi extension npm dependencies
         run: npm --prefix contrib/pi-extension ci
 
       - name: Verify repo-local gate script tests
         run: uv run pytest -q tests/shell/test_repo_local_ci_gate.py
 
-      - name: Verify Pi extension supplemental runtime and UI gates
-        run: uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_pi_extension_real_runtime.py -v
+      - name: Verify Pi extension controlled contracts and UI gates
+        run: uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py -v
 
       - name: Verify Pi extension runtime smoke gates
         run: node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
 
       - name: Verify shared-surface repo-local gate
         run: uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root opifex
+
+  pi-native-runtime:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.7.0"
+      - name: Install locked project dependencies
+        run: |
+          uv sync --locked --group dev
+          npm --prefix contrib/pi-extension ci
+      - name: Prepare supported Pi identity in disposable runner
+        run: |
+          # Retained installed-host probes select this exact standard prefix.
+          # This affects only the ephemeral CI runner, never an operator machine.
+          sudo env PATH="$PATH" npm install --global --prefix /opt/homebrew @earendil-works/pi-coding-agent@0.85.1
+          /opt/homebrew/bin/pi --version
+      - name: Verify complete native runtime inventory
+        run: |
+          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
+            uv run --locked --python 3.12 --group dev pytest -q tests/shell/test_pi_extension_real_runtime.py
+      - name: Verify retained contracts and all Node regressions
+        run: |
+          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
+            uv run --locked --python 3.12 --group dev pytest -q \
+            tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py \
+            tests/shell/test_pi_extension_subagent_model_isolation.py \
+            tests/shell/test_pi_agent_persona_switch_policy_contract.py tests/shell/test_pi_idle_callback_identity.py
+          set -euo pipefail
+          for f in contrib/pi-extension/test-*.mjs; do node "$f"; done
+          node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
+      - name: Verify pinned full Invar scan
+        run: |
+          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
+            uvx --python 3.12 invar-tools==1.20.3 guard --all

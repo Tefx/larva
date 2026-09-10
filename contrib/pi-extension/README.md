@@ -81,6 +81,35 @@ policy failures write `larva pi: <ERROR_CODE>: <message>` to stderr and exit `2`
 before the first prompt/model turn. Stored-persona restore failures stay
 nonfatal after successful explicit-ID preflight.
 
+### Native runtime verification
+
+The supported native host is Node 26.7.0 / Pi 0.85.1 on macOS. References below
+to earlier Pi versions explain historical constraints; they do not expand the
+supported host. The still-present Python launcher is a downstream retirement
+item, not the native startup path.
+
+Child launch identity is captured once from the actual Node executable, Pi
+package manifest, and declared `bin.pi` entry. Parent argv changes and ambient
+`LARVA_PI_TEST_CHILD_ARGV_JSON` / `LARVA_PI_REAL_BIN` values cannot redirect it.
+Protocol fault fixtures use a repository-only test loader or disposable adapter
+copy. Neither mechanism belongs to the published package or native acceptance
+journeys.
+
+`tests/shell/test_pi_extension_real_runtime.py` invokes the tracked native
+installation/admission inventory and `scripts/pi-native-journeys.mjs` scenarios.
+The journeys launch Pi, a loopback provider, and actual children; PTY cases send
+real selector/shortcut/completion/confirmation/console keys. The environment
+journey installs Larva in disposable A and maturin in disposable B, then invokes
+`maturin develop --bindings bin --offline` through native main/child bash tools.
+No external model service is contacted. The watchdog case waits the actual
+120-second silence deadline.
+
+See [delivery evidence and applicability](../../docs/verification/pi-native-delivery/README.md)
+for commands, native versus controlled observations, cleanup, and exclusions.
+When using Invar as the test runner, `scripts/pi-guard-checks.mjs` supplies a
+600-second deadline in a disposable verification config; it leaves the project
+`pyproject.toml` and rules unchanged. Normal CI invokes the same pytest inventory
+directly, followed by the full pinned Invar check.
 ## Adapter-local thinking policy and Pi capsules
 
 Native main uses Pi's real agent directory. Larva does not create a parent

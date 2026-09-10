@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "../../scripts/pi-test-child-loader.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";

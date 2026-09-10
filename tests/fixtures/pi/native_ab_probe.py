@@ -1,10 +1,12 @@
-# purpose: disposable Python venv A/B native-tool install destination vs bound Larva CLI
-# usage: python tests/fixtures/pi/native_ab_probe.py --root <scratch>
-# effects: creates A/B venvs, compiles a tiny C extension, records install prefixes only under --root
-# requires: uv, a C compiler, worktree larva package; no user/global venv mutation
+"""Actual native-tool target probe; all activation comes from the Pi caller.
+
+purpose: prepare disposable backend A/project B or execute an observed native build
+usage: python native_ab_probe.py --prepare ROOT WORKTREE; --tool ROOT LABEL
+ effects: only the supplied scratch root; subprocesses inherit observed environment
+requires: uv, Rust toolchain, Python 3.12; cached/downloadable maturin 1.15.0
+"""
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import subprocess
@@ -12,137 +14,56 @@ import sys
 from pathlib import Path
 
 
-def run(argv: list[str], env: dict[str, str], cwd: Path, timeout: int = 180) -> dict[str, object]:
-    completed = subprocess.run(argv, env=env, cwd=cwd, capture_output=True, text=True, timeout=timeout)
-    return {
-        "argv": argv,
-        "cwd": str(cwd),
-        "exit": completed.returncode,
-        "stdout": completed.stdout[-4000:],
-        "stderr": completed.stderr[-4000:],
-    }
+def run(argv: list[str], cwd: Path | None = None) -> dict[str, object]:
+    proc = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=180)
+    return {"argv": argv, "exit": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root", required=True)
-    parser.add_argument("--worktree", required=True)
-    args = parser.parse_args()
-    root = Path(args.root).resolve()
-    worktree = Path(args.worktree).resolve()
-    uv = "/opt/homebrew/bin/uv"
-    host_python = sys.executable
-    base_env = {
-        "HOME": str(root / "home"),
-        "PATH": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-        "TMPDIR": str(root / "tmp"),
-        "UV_CACHE_DIR": str(root / "uv-cache"),
-        "UV_PYTHON_DOWNLOADS": "never",
-        "PYTHONDONTWRITEBYTECODE": "1",
-        "XDG_CACHE_HOME": str(root / "cache"),
-        "XDG_CONFIG_HOME": str(root / "config"),
-    }
-    for name in ("home", "tmp", "uv-cache", "cache", "config", "A", "B", "crate"):
-        (root / name).mkdir(parents=True, exist_ok=True)
-    records: dict[str, object] = {"root": str(root)}
-    records["venv_a"] = run([uv, "venv", "--python", host_python, str(root / "A")], base_env, root)
-    records["venv_b"] = run([uv, "venv", "--python", host_python, str(root / "B")], base_env, root)
-    a_python = root / "A" / "bin" / "python"
-    b_python = root / "B" / "bin" / "python"
-    crate = root / "crate"
-    (crate / "probe.c").write_text(
-        """#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-static PyObject* where(PyObject* self, PyObject* args) {
-    return PyUnicode_FromString(Py_GetPrefix());
-}
-static PyMethodDef methods[] = {{"where", where, METH_NOARGS, NULL}, {NULL, NULL, 0, NULL}};
-static struct PyModuleDef module = {PyModuleDef_HEAD_INIT, "larva_ab_probe", NULL, -1, methods};
-PyMODINIT_FUNC PyInit_larva_ab_probe(void) { return PyModule_Create(&module); }
-""",
-        encoding="utf-8",
+def prepare(root: Path, worktree: Path) -> dict[str, object]:
+    root.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for name in ("A", "B"):
+        rows.append(run(["uv", "venv", "--python", sys.executable, str(root / name)]))
+    rows.append(run(["uv", "pip", "install", "--python", str(root / "A/bin/python"), str(worktree)]))
+    rows.append(run(["uv", "pip", "install", "--python", str(root / "B/bin/python"), "maturin==1.15.0"]))
+    assert all(row["exit"] == 0 for row in rows), json.dumps(rows)
+    for label in ("main", "child", "red", "no-main", "no-child"):
+        crate = root / f"crate-{label}"
+        (crate / "src").mkdir(parents=True)
+        (crate / "Cargo.toml").write_text(f'[package]\nname = "larva-native-{label}"\nversion = "0.1.0"\nedition = "2021"\n')
+        (crate / "src/main.rs").write_text('fn main() { println!("native binary executed"); }\n')
+    # Observe the real backend interpreter and env, then call its installed public CLI.
+    # No synthetic list/resolve responses and no activation.
+    backend = root / "backend.py"
+    backend.write_text(
+        'import json,os,sys\nfrom larva.shell.cli import main\n'
+        f'with open({str(root / "backend.jsonl")!r}, "a") as f:\n'
+        ' f.write(json.dumps({"argv":sys.argv[1:],"prefix":sys.prefix,"virtualEnv":os.environ.get("VIRTUAL_ENV"),"path":os.environ.get("PATH")})+"\\n")\n'
+        'main()\n'
     )
-    (crate / "setup.py").write_text(
-        "from setuptools import Extension, setup\n"
-        "setup(name='larva-ab-probe', version='0.0.1', ext_modules=[Extension('larva_ab_probe', ['probe.c'])])\n",
-        encoding="utf-8",
-    )
-    def probe(python: Path) -> dict[str, object]:
-        return run(
-            [str(python), "-c", "import larva_ab_probe, sys; print(larva_ab_probe.where()); print(sys.prefix)"],
-            base_env,
-            root,
-        )
+    for persona in ("ok", "child"):
+        spec = root / f"{persona}.json"
+        spec.write_text(json.dumps({"id": persona, "description": "Native environment fixture", "prompt": "Native fixture persona.", "model": "openai/gpt-5.5", "capabilities": {}, "spec_version": "0.1.0", "can_spawn": True}))
+        registered = run([str(root / "A/bin/larva"), "register", str(spec), "--json"])
+        assert registered["exit"] == 0, registered
+        rows.append(registered)
+    return {"setup": rows, "versions": [run([str(root / "B/bin/python"), "-m", "maturin", "--version"]), run(["rustc", "--version"])]}
 
-    records["pip_a"] = run([uv, "pip", "install", "--python", str(a_python), "pip", "setuptools", "wheel"], base_env, root)
-    records["pip_b"] = run([uv, "pip", "install", "--python", str(b_python), "pip", "setuptools", "wheel"], base_env, root)
-    leaked = dict(base_env, VIRTUAL_ENV=str(root / "A"), PATH=f"{root / 'A' / 'bin'}:{base_env['PATH']}")
-    records["install_leaked_a"] = run(
-        [str(b_python), "-m", "pip", "install", "--force-reinstall", "--no-deps", "."],
-        leaked,
-        crate,
-    )
-    records["probe_after_leaked"] = {
-        "a": probe(a_python),
-        "b": probe(b_python),
-    }
-    no_venv = dict(base_env)
-    no_venv.pop("VIRTUAL_ENV", None)
-    records["install_no_venv"] = run(
-        [str(b_python), "-m", "pip", "install", "--force-reinstall", "--no-deps", "."],
-        no_venv,
-        crate,
-    )
-    explicit_b = dict(base_env, VIRTUAL_ENV=str(root / "B"), PATH=f"{root / 'B' / 'bin'}:{base_env['PATH']}")
-    records["install_explicit_b"] = run(
-        [str(b_python), "-m", "pip", "install", "--force-reinstall", "--no-deps", "."],
-        explicit_b,
-        crate,
-    )
 
-    records["probe_a"] = probe(a_python)
-    records["probe_b"] = probe(b_python)
-    records["larva_in_a"] = run(
-        [uv, "pip", "install", "--python", str(a_python), str(worktree)],
-        base_env,
-        root,
-        timeout=240,
-    )
-    larva = root / "A" / "bin" / "larva"
-    records["bound_cli_no_activation"] = run(
-        [str(larva), "list", "--json"] if larva.exists() else [str(a_python), "-c", "import shutil; print(shutil.which('larva'))"],
-        no_venv,
-        root,
-    )
-    a_has = records["probe_a"]["exit"] == 0
-    b_has = records["probe_b"]["exit"] == 0
-    records["assertions"] = {
-        "a_created": (root / "A" / "bin" / "python").exists(),
-        "b_created": (root / "B" / "bin" / "python").exists(),
-        "native_present_in_b_after_explicit": b_has,
-        "native_absent_from_a_after_explicit": not a_has or str(root / "A") not in str(records["probe_a"].get("stdout", "")),
-        "bound_cli_exists": larva.exists(),
-        "bound_cli_ran_without_virtual_env": records["bound_cli_no_activation"]["exit"] == 0,
-        "no_venv_key_in_clean_env": "VIRTUAL_ENV" not in no_venv,
-    }
-    records["pass"] = all(records["assertions"].values()) and records["install_explicit_b"]["exit"] == 0
-    (root / "ab-result.json").write_text(json.dumps(records, indent=2), encoding="utf-8")
-    print(json.dumps({
-        "pass": records["pass"],
-        "assertions": records["assertions"],
-        "install_explicit_b_exit": records["install_explicit_b"]["exit"],
-        "install_b_stderr": str(records["install_explicit_b"].get("stderr", ""))[-800:],
-        "probe_b": {"exit": records["probe_b"]["exit"], "stdout": records["probe_b"]["stdout"], "stderr": str(records["probe_b"].get("stderr", ""))[-500:]},
-        "leaked": {
-            "a_exit": records["probe_after_leaked"]["a"]["exit"],
-            "b_exit": records["probe_after_leaked"]["b"]["exit"],
-            "a_stdout": records["probe_after_leaked"]["a"]["stdout"],
-            "b_stdout": records["probe_after_leaked"]["b"]["stdout"],
-        },
-        "result": str(root / "ab-result.json"),
-    }))
-    return 0 if records["pass"] else 1
+def native_tool(root: Path, label: str) -> dict[str, object]:
+    observation = {"pid": os.getpid(), "ppid": os.getppid(), "label": label, "virtualEnv": os.environ.get("VIRTUAL_ENV"), "path": os.environ.get("PATH"), "prefix": sys.prefix, "piSession": os.environ.get("PI_SESSION_FILE")}
+    result = run([str(root / "B/bin/python"), "-m", "maturin", "develop", "--bindings", "bin", "--offline"], root / f"crate-{label}")
+    targets = {name: (root / name / "bin" / f"larva-native-{label}").exists() for name in ("A", "B")}
+    observation.update(result=result, targets=targets)
+    (root / f"{label}-tool.json").write_text(json.dumps(observation, indent=2))
+    return observation
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if sys.argv[1] == "--prepare":
+        result = prepare(Path(sys.argv[2]), Path(sys.argv[3]))
+    elif sys.argv[1] == "--tool":
+        result = native_tool(Path(sys.argv[2]), sys.argv[3])
+    else:
+        raise SystemExit("expected --prepare or --tool")
+    print(json.dumps(result))

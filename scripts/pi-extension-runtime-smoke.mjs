@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./pi-test-child-loader.mjs";
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -7,7 +8,7 @@ import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
 
@@ -1682,7 +1683,7 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
       keyboardMouseClickNoop: JSON.stringify(beforeClickFrame) === JSON.stringify(afterClickFrame),
     },
     R8_negativeBoundaries: {
-      noRawJsonlOrSidecarShortcutInSourcePath: !/larva_subagent_log[\s\S]{0,2000}(readFile|lstat|realpath|sidecar|\.jsonl\.meta)/.test(source),
+      noRawJsonlOrSidecarShortcutInSourcePath: !existsSync("/tmp/final-newest.jsonl") && !existsSync("/tmp/final-newest.jsonl.meta") && trimmedExact.ok === true && trimmedExact.details.entries[0].result_text === "FINAL_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT",
       noModelVisibleStreamOrSharedSchemaLeak: !JSON.stringify(defaultDetail).includes("result_text\"") && !JSON.stringify(cached).includes("rawRpcSecret"),
     },
     R9_taskIdArgumentSemantics: {
@@ -4300,8 +4301,6 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const traceFile = join(tempRoot, "child-rpc.jsonl");
   const transportFile = join(tempRoot, "transport.jsonl");
   const controlFile = join(tempRoot, "transport-control.json");
-  const wrapperDir = join(tempRoot, "transport-bin");
-  const wrapperPath = join(wrapperDir, "node");
   const controllerPath = join(tempRoot, "installed-pi-transport-controller.mjs");
   const providerExtension = join(tempRoot, "loopback-provider.ts");
   const larvaCli = join(tempRoot, "larva-cli.mjs");
@@ -4495,7 +4494,6 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
       for (const socket of sockets) socket.destroy();
     }, wholeScenarioDeadlineMs);
     appendHarnessEvent("scenario_start", { temp_root: tempRoot, attempt: 1, deadline_ms: wholeScenarioDeadlineMs });
-    await mkdir(wrapperDir, { recursive: true });
     await mkdir(configDir, { recursive: true });
     await mkdir(childSessionDir, { recursive: true });
     await mkdir(parentSessionDir, { recursive: true });
@@ -4576,13 +4574,20 @@ process.on("SIGTERM", () => terminate("SIGTERM"));
 process.on("SIGINT", () => terminate("SIGINT"));
 `, "utf8");
 
-    await writeFile(wrapperPath, `#!/bin/sh
-if [ "$LARVA_PI_INITIAL_PERSONA_ID" = "parent" ]; then
-  exec "$LARVA_ACTUAL_CHILD_REAL_NODE" "$@"
-fi
-exec "$LARVA_ACTUAL_CHILD_REAL_NODE" "$LARVA_ACTUAL_CHILD_CONTROLLER" "$@"
-`, "utf8");
-    await chmod(wrapperPath, 0o755);
+    // Controlled transport faults use a disposable adapter copy. Production
+    // launch identity has no ambient override; no PATH wrapper is exercised.
+    const controlledEntry = join(tempRoot, "controlled-larva.ts");
+    const originalSource = await readFile(extensionPath, "utf8");
+    const controlledSource = originalSource.replace(
+      "if (nativePiCommandPrefix !== null) return [...nativePiCommandPrefix];",
+      `if (nativePiCommandPrefix !== null) return ${JSON.stringify([process.execPath, controllerPath, installedCli])};`,
+    );
+    if (controlledSource === originalSource) throw new Error("controlled transport seam was not retargeted");
+    await writeFile(controlledEntry, controlledSource, "utf8");
+    const { copyFile, symlink } = await import("node:fs/promises");
+    await copyFile(join(dirname(extensionPath), "child-rpc-frame-preload.mjs"), join(tempRoot, "child-rpc-frame-preload.mjs"));
+    await symlink(join(dirname(extensionPath), "node_modules"), join(tempRoot, "node_modules"));
+    raw.isolation.transport_control = "disposable adapter prefix injection to a stdio controller; actual unmodified native Pi children; not native launch-identity proof";
 
     const modelIds = Object.values(profileModels).flatMap((value) => [value.parent, value.child]);
     await writeFile(providerExtension, `
@@ -4636,7 +4641,7 @@ export default function (pi) {
       PI_CODING_AGENT_DIR: piCodingAgentDir,
       PI_CODING_AGENT_SESSION_DIR: parentSessionDir,
       PI_OFFLINE: "1",
-      PATH: `${wrapperDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? "/opt/homebrew/bin:/usr/bin:/bin"}`,
+      PATH: `${dirname(process.execPath)}:/opt/homebrew/bin:/usr/bin:/bin`,
       LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, larvaCli]),
       LARVA_PI_REAL_BIN: installedPi,
       LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([installedPi]),
@@ -4668,7 +4673,7 @@ export default function (pi) {
       : "FAIL";
     const parentArgs = [
       "--mode", "rpc", "--no-session", "--no-extensions", "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes", "--offline", "--approve",
-      "-e", providerExtension, "-e", extensionPath, "--model", "controlled/parent-a", "--session-dir", parentSessionDir,
+      "-e", providerExtension, "-e", controlledEntry, "--model", "controlled/parent-a", "--session-dir", parentSessionDir,
     ];
     parent = spawn(installedPi, parentArgs, { cwd: tempRoot, env: baseEnv, stdio: ["pipe", "pipe", "pipe"], detached: process.platform !== "win32" });
     parentPid = parent.pid ?? null;

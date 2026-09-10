@@ -1,0 +1,10 @@
+{
+  "root": "/var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-native-journey-sT8bdO",
+  "observedPids": [
+    78260
+  ],
+  "live": [],
+  "capsules": [],
+  "removed": true,
+  "reason": "reconciled scratch from initial provider harness failure"
+}

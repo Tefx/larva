@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "./pi-test-child-loader.mjs";
 
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";

@@ -50,7 +50,7 @@ if (command === "list" && idOrFlag === "--json") {
 }
 
 if (command === "resolve" && maybeFlag === "--json") {
-  if (scenario === "resolve-exit" || idOrFlag === "missing") process.exit(19);
+  if (scenario === "resolve-exit" || idOrFlag === "missing" || (scenario === "native-child-resolve-exit" && process.env.LARVA_PI_CAPSULE_ROOT)) process.exit(19);
   if (scenario === "resolve-malformed" || idOrFlag === "unparseable") {
     process.stdout.write("{not json");
     process.exit(0);
@@ -66,6 +66,7 @@ if (command === "resolve" && maybeFlag === "--json") {
       spec_version: "0.1.0",
       spec_digest: idOrFlag === "ok" ? "digest-ok" : `sha256:${idOrFlag}`,
       can_spawn: true,
+      ...(process.env.FAKE_LARVA_COMPACTION_FOCUS ? { compaction_prompt: process.env.FAKE_LARVA_COMPACTION_FOCUS } : {}),
     },
   });
   process.exit(0);

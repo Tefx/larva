@@ -321,7 +321,7 @@ def _run_node_inline(tmp_path: Path, script: str, *, timeout: float = 8.0) -> di
     script_path = tmp_path / "runtime-artifact.mjs"
     script_path.write_text(script, encoding="utf-8")
     completed = subprocess.run(
-        [node, str(script_path)],
+        [node, "--import", str(ROOT / "scripts/pi-test-child-loader.mjs"), str(script_path)],
         check=False,
         capture_output=True,
         text=True,
@@ -2044,7 +2044,7 @@ def test_runtime_smoke_persona_invocation_bus_records_contract_anchor_fingerprin
 NATIVE_ACCEPTANCE = ROOT / "scripts" / "pi-native-acceptance.mjs"
 
 
-def _run_native_acceptance(scenario: str, timeout: float = 45.0) -> dict[str, Any]:
+def _run_native_acceptance(scenario: str, timeout: float = 300.0) -> dict[str, Any]:
     node = shutil.which("node")
     assert node is not None, "node is required for native Pi acceptance"
     completed = subprocess.run(
@@ -2083,6 +2083,7 @@ def _run_native_acceptance(scenario: str, timeout: float = 45.0) -> dict[str, An
         "resume-unresolvable-explicit-fails",
         "resume-stored-restore-nonfatal",
         "parent-shutdown-active-child",
+        "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print",
     ],
 )
 def test_native_pi_acceptance_matrix(scenario: str) -> None:

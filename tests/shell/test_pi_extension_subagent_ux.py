@@ -29,7 +29,7 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str,
     script_path = tmp_path / "scenario.mjs"
     script_path.write_text(textwrap.dedent(script), encoding="utf-8")
     completed = subprocess.run(
-        [node, str(script_path)],
+        [node, "--import", str(ROOT / "scripts/pi-test-child-loader.mjs"), str(script_path)],
         check=False,
         capture_output=True,
         text=True,

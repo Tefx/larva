@@ -361,6 +361,18 @@ This policy intentionally defines no automatic safe-default persona fallback.
 - Restore notices use status/event/audit surfaces, not chat-body text.
 - Restore failure is visible; it is never silently ignored.
 
+### Native UI and temporary identity persistence
+
+On Pi 0.85.1, RPC can expose `hasUI=true` and UI proxy methods. Confirmation
+borrows require `ctx.mode === "tui"`; RPC/print deny with
+`LARVA_CONFIRMATION_UNAVAILABLE` without waiting on an unsupported dialog.
+
+Temporary borrows keep their audit events but do not append a persistent
+`larva-active-persona-commit` for the borrowed identity. Otherwise a later native
+initialization/reload could reactivate that identity after the lease restored the
+origin model. Persistent `free` switches and explicit user switches still append
+their normal commit. Native continuation and TUI confirmation tests verify the
+origin persona, actual model, and thinking level after restoration.
 ## Suggested verification cases
 
 - New session with no explicit mode starts in `confirm`.

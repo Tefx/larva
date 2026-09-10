@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import pytest
+import yaml
 
 ROOT: Final = Path(__file__).resolve().parents[2]
 CI_WORKFLOW: Final = ROOT / ".github" / "workflows" / "ci.yml"
@@ -118,7 +119,7 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
     script_path = tmp_path / "scenario.mjs"
     script_path.write_text(textwrap.dedent(script), encoding="utf-8")
     completed = subprocess.run(
-        [node, str(script_path)],
+        [node, "--import", str(ROOT / "scripts/pi-test-child-loader.mjs"), str(script_path)],
         check=False,
         capture_output=True,
         text=True,
@@ -288,28 +289,28 @@ def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
     """CI must hydrate the repo-local Pi extension dependencies before UI/runtime gates."""
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
 
-    assert PI_EXTENSION_NPM_CI_COMMAND in workflow
-    assert PI_EXTENSION_RUNTIME_GATE_COMMAND in workflow
-    assert PI_EXTENSION_RUNTIME_SMOKE_COMMAND in workflow
-    assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(
-        PI_EXTENSION_RUNTIME_GATE_COMMAND
-    )
-    assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(
-        PI_EXTENSION_RUNTIME_SMOKE_COMMAND
-    )
-    assert workflow.index(PI_EXTENSION_RUNTIME_GATE_COMMAND) < workflow.index(
-        PI_EXTENSION_RUNTIME_SMOKE_COMMAND
-    )
-
+    controlled_gate = "uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py -v"
+    assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(controlled_gate)
+    assert workflow.index(controlled_gate) < workflow.index(PI_EXTENSION_RUNTIME_SMOKE_COMMAND)
     _assert_required_workflow_step(workflow, PI_EXTENSION_NPM_CI_COMMAND)
     for retained_gate in (
         REPO_LOCAL_GATE_TEST_COMMAND,
-        PI_EXTENSION_RUNTIME_GATE_COMMAND,
+        controlled_gate,
         PI_EXTENSION_RUNTIME_SMOKE_COMMAND,
         SHARED_SURFACE_GATE_COMMAND,
     ):
         assert retained_gate in workflow
         _assert_required_workflow_step(workflow, retained_gate)
+
+    native = yaml.safe_load(workflow)["jobs"]["pi-native-runtime"]
+    assert native["runs-on"].startswith("macos-")
+    steps = native["steps"]
+    install = next(i for i, step in enumerate(steps) if PI_EXTENSION_NPM_CI_COMMAND in step.get("run", ""))
+    runtime = next(i for i, step in enumerate(steps) if "pytest -q tests/shell/test_pi_extension_real_runtime.py" in step.get("run", ""))
+    assert install < runtime
+    assert steps[runtime].get("continue-on-error", False) is False
+    assert "if" not in steps[runtime]
+    assert any(step.get("with", {}).get("node-version") == "26.7.0" for step in steps)
 
 
 def test_pi_tui_dependency_is_exact_lockfile_backed_and_ci_installable() -> None:

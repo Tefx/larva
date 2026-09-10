@@ -20,7 +20,7 @@ def _run_node(tmp_path: Path, source: str, *, timeout: int = 15) -> dict[str, ob
     script = tmp_path / "model-isolation-contract.mjs"
     script.write_text(source, encoding="utf-8")
     completed = subprocess.run(
-        ["node", str(script)],
+        ["node", "--import", str(ROOT / "scripts/pi-test-child-loader.mjs"), str(script)],
         cwd=ROOT,
         check=False,
         capture_output=True,

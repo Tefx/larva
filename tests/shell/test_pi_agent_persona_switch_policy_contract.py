@@ -103,6 +103,7 @@ def _run_confirm_borrow_dialog_scenario(tmp_path: Path, selected_expression: str
         const setModelCalls = [];
         const activeToolCalls = [];
         const ctx = {{
+          mode: "tui",
           env: {{ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]) }},
           ui: {{
             select: async (title, options) => {{

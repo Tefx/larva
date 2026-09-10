@@ -1,0 +1,403 @@
+{
+  "status": "passed",
+  "static": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 5,
+    "infos": 9,
+    "findings": [
+      {
+        "file": "src/larva/core/validate.py",
+        "line": null,
+        "rule": "file_size_warning",
+        "severity": "warning",
+        "message": "File has 495 lines (99% of 500 limit)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Consider splitting before reaching limit.\nExtractable groups:\n[A] _is_json_safe_dict, _validate_can_spawn, _validate_capabilities, _validate_forbidden_fields, _validate_identity_fields, _validate_required_fields, _validate_required_string_fields, validate_spec (274L) | Deps: none\n[B] _build_variant_name_error, validate_variant_name (109L) | Deps: none"
+        },
+        "rule_meta": {
+          "category": "size",
+          "detects": "File approaching max_file_lines limit (80% threshold)",
+          "cannot_detect": [
+            "Whether split is actually needed"
+          ],
+          "hint": "Consider splitting before reaching limit"
+        }
+      },
+      {
+        "file": "src/larva/core/validate.py",
+        "line": 147,
+        "rule": "redundant_type_contract",
+        "severity": "info",
+        "message": "Function 'validate_variant_name' contract only checks types already in annotations",
+        "fix": {
+          "action": "replace_decorator",
+          "code": "@pre(lambda name: len(name) > 0)"
+        },
+        "rule_meta": {
+          "category": "contracts",
+          "detects": "Contract only checks types already in annotations",
+          "cannot_detect": [
+            "Whether better constraints exist"
+          ],
+          "hint": "Add value constraints beyond type checks if possible"
+        }
+      },
+      {
+        "file": "src/larva/core/pi_model_map.py",
+        "line": 57,
+        "rule": "function_size",
+        "severity": "warning",
+        "message": "Function 'draft_model_map' has 94 code lines (excl. doctest) (max: 50 for core)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Extract helper functions"
+        },
+        "rule_meta": {
+          "category": "size",
+          "detects": "Function exceeds max_function_lines limit",
+          "cannot_detect": [
+            "Algorithm complexity",
+            "Whether extraction helps readability"
+          ],
+          "hint": "Extract helper functions or simplify logic"
+        }
+      },
+      {
+        "file": "src/larva/core/pi_model_map.py",
+        "line": 168,
+        "rule": "redundant_type_contract",
+        "severity": "info",
+        "message": "Function '_group_registry_usage' contract only checks types already in annotations",
+        "fix": {
+          "action": "replace_decorator",
+          "code": "@pre(lambda registry_usage: len(registry_usage) > 0)"
+        },
+        "rule_meta": {
+          "category": "contracts",
+          "detects": "Contract only checks types already in annotations",
+          "cannot_detect": [
+            "Whether better constraints exist"
+          ],
+          "hint": "Add value constraints beyond type checks if possible"
+        }
+      },
+      {
+        "file": "src/larva/core/pi_model_map.py",
+        "line": 186,
+        "rule": "redundant_type_contract",
+        "severity": "info",
+        "message": "Function '_candidates_for_source' contract only checks types already in annotations",
+        "fix": {
+          "action": "replace_decorator",
+          "code": "@pre(lambda source_model, inventory: len(source_model) > 0 and len(inventory) > 0)"
+        },
+        "rule_meta": {
+          "category": "contracts",
+          "detects": "Contract only checks types already in annotations",
+          "cannot_detect": [
+            "Whether better constraints exist"
+          ],
+          "hint": "Add value constraints beyond type checks if possible"
+        }
+      },
+      {
+        "file": "src/larva/core/pi_model_map.py",
+        "line": 216,
+        "rule": "redundant_type_contract",
+        "severity": "info",
+        "message": "Function '_prefix_rule_target' contract only checks types already in annotations",
+        "fix": {
+          "action": "replace_decorator",
+          "code": "@pre(lambda source_model, rules: len(source_model) > 0 and len(rules) > 0)"
+        },
+        "rule_meta": {
+          "category": "contracts",
+          "detects": "Contract only checks types already in annotations",
+          "cannot_detect": [
+            "Whether better constraints exist"
+          ],
+          "hint": "Add value constraints beyond type checks if possible"
+        }
+      },
+      {
+        "file": "src/larva/core/pi_model_map.py",
+        "line": 246,
+        "rule": "redundant_type_contract",
+        "severity": "info",
+        "message": "Function '_plan_prefix_rules' contract only checks types already in annotations",
+        "fix": {
+          "action": "replace_decorator",
+          "code": "@pre(lambda rules, source_models, inventory_keys: len(rules) > 0 and len(source_models) > 0 and len(inventory_keys) > 0)"
+        },
+        "rule_meta": {
+          "category": "contracts",
+          "detects": "Contract only checks types already in annotations",
+          "cannot_detect": [
+            "Whether better constraints exist"
+          ],
+          "hint": "Add value constraints beyond type checks if possible"
+        }
+      },
+      {
+        "file": "src/larva/shell/cli_commands.py",
+        "line": 94,
+        "rule": "shell_too_complex",
+        "severity": "info",
+        "message": "Shell function 'register_command' has 4 branches (max: 3)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        },
+        "rule_meta": {
+          "category": "shell",
+          "detects": "Shell function with excessive branching complexity",
+          "cannot_detect": [
+            "Whether complexity is justified",
+            "Domain-specific patterns"
+          ],
+          "hint": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        }
+      },
+      {
+        "file": "src/larva/shell/cli_commands.py",
+        "line": 120,
+        "rule": "shell_too_complex",
+        "severity": "info",
+        "message": "Shell function 'resolve_command' has 4 branches (max: 3)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        },
+        "rule_meta": {
+          "category": "shell",
+          "detects": "Shell function with excessive branching complexity",
+          "cannot_detect": [
+            "Whether complexity is justified",
+            "Domain-specific patterns"
+          ],
+          "hint": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        }
+      },
+      {
+        "file": "src/larva/shell/registry.py",
+        "line": null,
+        "rule": "file_size_warning",
+        "severity": "warning",
+        "message": "File has 564 lines (80% of 700 limit)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Consider splitting before reaching limit.\nExtractable groups:\n[A] FileSystemRegistryStore.save (96L) | Deps: none\n[B] FileSystemRegistryStore.update_materialized (47L) | Deps: none\n[C] FileSystemRegistryStore._read_spec_at (32L) | Deps: none"
+        },
+        "rule_meta": {
+          "category": "size",
+          "detects": "File approaching max_file_lines limit (80% threshold)",
+          "cannot_detect": [
+            "Whether split is actually needed"
+          ],
+          "hint": "Consider splitting before reaching limit"
+        }
+      },
+      {
+        "file": "src/larva/shell/pi.py",
+        "line": 246,
+        "rule": "shell_too_complex",
+        "severity": "info",
+        "message": "Shell function '_cleanup_stale_capsules' has 4 branches (max: 3)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        },
+        "rule_meta": {
+          "category": "shell",
+          "detects": "Shell function with excessive branching complexity",
+          "cannot_detect": [
+            "Whether complexity is justified",
+            "Domain-specific patterns"
+          ],
+          "hint": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        }
+      },
+      {
+        "file": "src/larva/shell/pi.py",
+        "line": 261,
+        "rule": "shell_too_complex",
+        "severity": "info",
+        "message": "Shell function '_create_pi_capsule' has 6 branches (max: 3)",
+        "fix": {
+          "action": "manual",
+          "instruction": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        },
+        "rule_meta": {
+          "category": "shell",
+          "detects": "Shell function with excessive branching complexity",
+          "cannot_detect": [
+            "Whether complexity is justified",
+            "Domain-specific patterns"
+          ],
+          "hint": "Extract logic to Core, or add: # @shell_complexity: <reason>"
+        }
+      },
+      {
+        "file": "<project>",
+        "line": null,
+        "rule": "escape_hatch_project_limit",
+        "severity": "warning",
+        "message": "Project rule budget shell_result: 6/7",
+        "fix": null
+      },
+      {
+        "file": "<project>",
+        "line": null,
+        "rule": "escape_hatch_budget",
+        "severity": "warning",
+        "message": "Escape hatch weighted budget: 18/19",
+        "fix": null
+      }
+    ]
+  },
+  "summary": {
+    "files_checked": 43,
+    "errors": 0,
+    "warnings": 5,
+    "infos": 9
+  },
+  "escape_hatches": {
+    "count": 6,
+    "by_rule": {
+      "shell_result": 6
+    },
+    "details": [
+      {
+        "file": "src/larva/cli_entrypoint.py",
+        "line": 11,
+        "rule": "shell_result",
+        "reason": "process entrypoint returns int exit code for console scripts"
+      },
+      {
+        "file": "src/larva/shell/python_api.py",
+        "line": 58,
+        "rule": "shell_result",
+        "reason": "shared Python API dispatch unwraps facade Results to exceptions"
+      },
+      {
+        "file": "src/larva/shell/web_routes.py",
+        "line": 54,
+        "rule": "shell_result",
+        "reason": "pure HTTP status projection helper returns int for JSONResponse"
+      },
+      {
+        "file": "src/larva/shell/cli.py",
+        "line": 248,
+        "rule": "shell_result",
+        "reason": "CLI entry handler returns process exit code"
+      },
+      {
+        "file": "src/larva/shell/cli_runtime.py",
+        "line": 74,
+        "rule": "shell_result",
+        "reason": "CLI exit-code projection is a pure transport helper"
+      },
+      {
+        "file": "src/larva/shell/shared/facade_factory.py",
+        "line": 12,
+        "rule": "shell_result",
+        "reason": "shared adapter factory returns concrete facade for local wrappers"
+      }
+    ],
+    "gating": {
+      "status": "warning",
+      "per_rule_violations": [
+        {
+          "rule": "escape_hatch_budget",
+          "count": 1,
+          "violations": [
+            {
+              "severity": "warning",
+              "file": "<project>",
+              "line": null,
+              "message": "Escape hatch weighted budget: 18/19"
+            }
+          ]
+        },
+        {
+          "rule": "escape_hatch_project_limit",
+          "count": 1,
+          "violations": [
+            {
+              "severity": "warning",
+              "file": "<project>",
+              "line": null,
+              "message": "Project rule budget shell_result: 6/7"
+            }
+          ]
+        }
+      ],
+      "budget": {
+        "used": 18,
+        "limit": 19
+      },
+      "non_suppressible": [],
+      "combination": []
+    }
+  },
+  "verification_level": "STANDARD",
+  "doctest": {
+    "passed": true,
+    "output": ""
+  },
+  "crosshair": {
+    "status": "verified",
+    "verified": [
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validation_contract.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validation_field_shapes.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/_structured_error.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validate.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validation_warnings.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/normalize.py"
+    ],
+    "failed": [],
+    "cached": [],
+    "skipped": [
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/spec.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/pi_model_map.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/patch.py"
+    ],
+    "skipped_reasons": [
+      {
+        "file": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/pi_model_map.py",
+        "reason": "uses unsupported operations (ast/compile/signature)"
+      },
+      {
+        "file": "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/patch.py",
+        "reason": "uses unsupported operations (ast/compile/signature)"
+      }
+    ],
+    "counterexamples": [],
+    "files": [
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/patch.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validation_field_shapes.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validation_contract.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/normalize.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/spec.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validate.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/validation_warnings.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/pi_model_map.py",
+      "/Users/tefx/Projects/larva/.vectl/worktrees/pi-native.deliver-extension/tests/fixtures/pi/.guard-YIlArP/src/larva/core/_structured_error.py"
+    ],
+    "files_verified": 8,
+    "files_cached": 0,
+    "total_time_ms": 183072,
+    "workers": 8
+  },
+  "property_tests": {
+    "status": "passed",
+    "functions_tested": 11,
+    "functions_passed": 11,
+    "functions_failed": 0,
+    "total_examples": 1100,
+    "failures": [],
+    "errors": []
+  }
+}

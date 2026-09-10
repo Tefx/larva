@@ -98,7 +98,6 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_REAL_BIN?: string;
   LARVA_PI_EXTENSION_FLAG?: string;
   LARVA_PI_EXTENSION_ENTRY?: string;
-  LARVA_PI_TEST_CHILD_ARGV_JSON?: string;
   LARVA_CLI_ARGV_JSON?: string;
   LARVA_PI_INTERACTIVE_TUI?: string;
   LARVA_PI_LAUNCHED?: string;
@@ -849,7 +848,6 @@ function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
     "LARVA_PI_REAL_BIN",
     "LARVA_PI_EXTENSION_FLAG",
     "LARVA_PI_EXTENSION_ENTRY",
-    "LARVA_PI_TEST_CHILD_ARGV_JSON",
     "LARVA_PI_INITIAL_PERSONA_ID",
   ] as const) {
     if (!Object.prototype.hasOwnProperty.call(ctx.env, childOnlyKey)) delete inherited[childOnlyKey];
@@ -4839,15 +4837,42 @@ function startupFailureStderr(personaId: string, larvaError: LarvaError): string
 }
 
 function isSupportedPiCliScript(script: string): boolean {
-  if (!isAbsolute(script) || !existsSync(script)) return false;
-  const normalized = script.replaceAll("\\", "/");
-  if (normalized.includes("/@earendil-works/pi-coding-agent/") && (normalized.endsWith("/cli.js") || normalized.endsWith("/bundle/cli.js") || normalized.endsWith("/rpc-entry.js"))) return true;
-  const current = currentPiCliScript();
-  return current.length > 0 && resolve(script) === current && (normalized.split("/").pop() ?? "") === "pi";
+  if (!isAbsolute(script)) return false;
+  try {
+    const actual = realpathSync(script);
+    // The supported npm installation owns its bin mapping. Resolve symlinks
+    // (including /opt/homebrew/bin/pi); a basename or path fragment proves nothing.
+    let directory = dirname(actual);
+    for (let depth = 0; depth < 4; depth += 1) {
+      const manifest = join(directory, "package.json");
+      if (existsSync(manifest)) {
+        const pkg = JSON.parse(readFileSync(manifest, "utf8"));
+        return pkg.name === "@earendil-works/pi-coding-agent" && pkg.version === "0.85.1"
+          && typeof pkg.bin?.pi === "string"
+          && realpathSync(resolve(directory, pkg.bin.pi)) === actual;
+      }
+      directory = dirname(directory);
+    }
+  } catch { /* missing, unreadable or unsupported install */ }
+  return false;
 }
 
+function captureNativePiCommandPrefix(): readonly string[] | null {
+  try {
+    if (process.release.name !== "node" || !isAbsolute(process.execPath)) return null;
+    const script = typeof process.argv[1] === "string" ? resolve(process.argv[1]) : "";
+    if (!isSupportedPiCliScript(script)) return null;
+    accessSync(process.execPath, constants.X_OK);
+    accessSync(script, constants.R_OK);
+    return Object.freeze([realpathSync(process.execPath), realpathSync(script)]);
+  } catch { return null; }
+}
+
+// Capture only installation identity at module load, never prompts or resume flags.
+const nativePiCommandPrefix = captureNativePiCommandPrefix();
+
 function currentPiCliScript(): string {
-  return typeof process.argv[1] === "string" && process.argv[1].length > 0 ? resolve(process.argv[1]) : "";
+  return nativePiCommandPrefix?.[1] ?? "";
 }
 
 function larvaOwnsFatalAdmission(env: RuntimeEnv, explicitPersonaId: string): boolean {
@@ -5452,6 +5477,7 @@ function mapPersonaBorrowSelectionToOutcome(selected: string | SelectorOption | 
 }
 
 async function requestPersonaBorrowConfirmation(ctx: PiContext, originPersona: string | null, targetPersona: string, reason: string): Promise<ConfirmPersonaBorrowOutcome | LarvaError> {
+  if (larvaHostMode(ctx) !== "tui") return error("LARVA_CONFIRMATION_UNAVAILABLE", "Larva confirm mode requires the native interactive TUI; active persona is unchanged.");
   const prompt = [
     "Borrow persona?",
     "",
@@ -5480,7 +5506,7 @@ async function requestPersonaBorrowConfirmation(ctx: PiContext, originPersona: s
 }
 
 async function commitBorrowedPersona(personaId: string, ctx: PiContext, pi: PiApi, auditBase: Record<string, unknown>, lease: PersonaLease | null): Promise<AgentPersonaSwitchToolResult> {
-  const committed = await commitPersonaWithOptions(personaId, ctx, pi, { sessionCommitSource: "self-switch" });
+  const committed = await commitPersonaWithOptions(personaId, ctx, pi, { sessionCommitSource: lease === null ? "self-switch" : null });
   if (!committed.ok) {
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, approved: true, error_code: committed.error.code, lease });
     return switchToolFailure(committed.error);
@@ -8932,25 +8958,8 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
   }
 }
 
-function parseTestChildLaunchPrefix(env: RuntimeEnv): string[] | null {
-  const encoded = env.LARVA_PI_TEST_CHILD_ARGV_JSON;
-  if (typeof encoded !== "string" || encoded.length === 0) return null;
-  try {
-    const prefix = JSON.parse(encoded) as unknown;
-    if (!Array.isArray(prefix) || prefix.length === 0 || !prefix.every((part) => typeof part === "string" && part.length > 0)) return null;
-    if (!isAbsolute(prefix[0]) || !existsSync(prefix[0])) return null;
-    return prefix;
-  } catch {
-    return null;
-  }
-}
-
-function resolvePiCommandPrefix(env: RuntimeEnv): string[] | LarvaError {
-  const testPrefix = parseTestChildLaunchPrefix(env);
-  if (testPrefix !== null) return testPrefix;
-  const node = process.execPath;
-  const script = currentPiCliScript();
-  if (isAbsolute(node) && existsSync(node) && isSupportedPiCliScript(script)) return [node, script];
+function resolvePiCommandPrefix(_env: RuntimeEnv): string[] | LarvaError {
+  if (nativePiCommandPrefix !== null) return [...nativePiCommandPrefix];
   return error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup.");
 }
 
@@ -9806,6 +9815,7 @@ async function runChildSequence(
     } else {
       const stateResult = await rpc.command("state-1", { type: "get_state" });
       if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
+      if (isLarvaError(stateResult)) return await finishSubagentRunEarly(activeRecord, failed(null, personaId, stateResult));
       if (!rpc.hasFrameCapability()) {
         return await finishSubagentRunEarly(activeRecord, failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state omitted the Larva RPC frame capability marker before prompt.")));
       }
@@ -9864,7 +9874,17 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   }
   const { personaId, task, taskId, noProgressTimeoutMs } = parsed;
   const env = currentEnv(ctx);
-  const lexicallyValidTaskId = taskId === null ? null : validateExactPublicTaskIdLexical(taskId, env);
+  let lexicallyValidTaskId = taskId === null ? null : validateExactPublicTaskIdLexical(taskId, env);
+  // All handle syntax checks precede filesystem access. A syntactically valid
+  // canonical receipt may name the physical root of a configured directory
+  // alias (Darwin /var -> /private/var). Retry only that root comparison; the
+  // exact handle stays untouched and observer tools retain their no-I/O path.
+  if (taskId !== null && isLarvaError(lexicallyValidTaskId) && lexicallyValidTaskId.message === "task_id must stay inside childSessionRoot.") {
+    const configuredRoot = lexicalStatusChildSessionRoot(env);
+    if (!isLarvaError(configuredRoot)) {
+      try { lexicallyValidTaskId = validateExactPublicTaskIdLexical(taskId, { ...env, LARVA_PI_CHILD_SESSION_DIR: realpathSync(configuredRoot) }); } catch { /* preserve the original admission failure */ }
+    }
+  }
   if (isLarvaError(lexicallyValidTaskId)) {
     const result = failed(null, personaId, lexicallyValidTaskId);
     if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
