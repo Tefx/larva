@@ -571,9 +571,15 @@ resolve personas when needed.
 Prompt injection must be idempotent. If the incoming `event.systemPrompt` already
 contains previous Larva-managed identity or active-persona blocks, the extension
 removes only those marker-bounded blocks before adding the current committed
-envelope. It must not match or rewrite Pi's default identity sentence, rebuild
-Pi's prompt builder from `systemPromptOptions`, or modify provider-specific
-request payloads to make persona identity work.
+envelope. It must not match or rewrite Pi's default identity sentence or rebuild
+Pi's prompt builder from `systemPromptOptions`. User-prompt turns still compose
+identity through `before_agent_start`. Idle Larva `triggerTurn` custom messages
+skip that hook, so the extension also projects the same marker-bounded identity
+blocks through Pi's existing `before_provider_request` hook onto known provider
+system-instruction slots for every request in that turn, including tool
+continuations. That projection may rewrite only Larva-managed identity blocks; it
+must not rebuild Pi's prompt, overwrite non-Larva system content, or change
+non-identity request semantics.
 
 Model projection uses Pi's documented `pi.setModel(model)` API. The PersonaSpec
 `model` string stays canonical Larva data; Pi-provider aliases are adapter-local
@@ -2118,6 +2124,9 @@ Command and hook contracts:
   prompt, selector, or `larva: none` status.
 - Prompt injection uses Pi `before_agent_start` and returns a composed
   `systemPrompt`; it never replaces Pi's project/user context wholesale.
+  Idle custom `triggerTurn` turns also project the same identity blocks through
+  `before_provider_request` onto known provider system-instruction slots so tool
+  continuations keep the current envelope.
 - Prompt injection is idempotent: existing Larva-managed blocks bounded by
   `larva:identity-policy` and `larva:active-persona` markers are removed before
   current blocks are added, and no unbounded Pi identity text is matched or
@@ -2948,10 +2957,12 @@ Implementation gates must prove these observable behaviors:
     prompt string matching. The effective prompt preserves the incoming Pi
     chained system prompt unchanged between `larva:identity-policy` and
     `larva:active-persona` blocks, removes only previous Larva-managed marker
-    blocks for idempotence, includes the active `larva-spec` watermark and
-    committed PersonaSpec prompt, and does not rebuild Pi's prompt from
-    `systemPromptOptions` or modify provider-specific request payloads for
-    persona identity.
+    blocks for idempotence, and includes the active `larva-spec` watermark and
+    committed PersonaSpec prompt. It does not rebuild Pi's prompt from
+    `systemPromptOptions`. For idle Larva `triggerTurn` custom turns, the same
+    overlay is projected through `before_provider_request` onto known provider
+    system-instruction structures without rewriting non-Larva system content or
+    non-identity request fields.
 
 
 ### Pi TUI enhanced UI verification addendum
@@ -3116,7 +3127,12 @@ Watch for:
   Larva-managed marker blocks for prompt idempotence.
 - Do not rebuild Pi's prompt builder from `systemPromptOptions`; preserve Pi's
   chained system prompt as the operational context.
-- Do not use provider-specific request payload rewriting for persona identity.
+- Do not rebuild provider payloads or guess unknown system-instruction fields to
+  install persona identity. Idle `triggerTurn` identity may project only
+  Larva-managed marker blocks through `before_provider_request` onto known Pi
+  0.85.1 system-instruction slots, including inserting a slot the known API
+  already admits. Unknown/custom APIs may request abort; that is not a claim
+  that every transport stopped.
 - Do not treat `@persona:<id>` as an automatic command, persona switch, forced
   subagent invocation, or prompt/spec injection.
 - Do not intercept Pi-owned `@` file references; raw `@`, `@p`, and `@persona`

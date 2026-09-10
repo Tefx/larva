@@ -1860,9 +1860,18 @@ async function subagentJsonPresentationProof(evidence) {
   }, { expanded: false, outputPad: 1 }, frameTheme);
   const framedExpanded = framedExpandedView.render(80);
   const framedPlain = framedExpanded.map(stripAnsi);
-  const framedSurface = framedExpanded.slice(1, -1);
-  const framedSurfacePlain = framedPlain.slice(1, -1);
-  const hasOuterBlankLines = (lines) => lines.length >= 3 && lines[0] === "" && lines[1] !== "" && lines.at(-2) !== "" && lines.at(-1) === "";
+  const framedContentPlain = framedPlain.slice(1, -1);
+  const hasStyledInnerBlankLines = (lines, width) => lines.length >= 3
+    && lines[0] !== ""
+    && lines[1] !== ""
+    && lines.at(-2) !== ""
+    && lines.at(-1) !== ""
+    && lines[0] !== stripAnsi(lines[0])
+    && lines.at(-1) !== stripAnsi(lines.at(-1))
+    && stripAnsi(lines[0]).trim() === ""
+    && stripAnsi(lines.at(-1)).trim() === ""
+    && piTui.visibleWidth(stripAnsi(lines[0])) === width
+    && piTui.visibleWidth(stripAnsi(lines.at(-1))) === width;
   const rowHasFrameBackground = (line, expectedTag) => {
     const sgr = new RegExp(`${ansi}\\[([0-9;]*)m`, "g");
     let background = false;
@@ -1880,12 +1889,11 @@ async function subagentJsonPresentationProof(evidence) {
   };
   const framedByWidth = [40, 80, 120].map((width) => {
     const lines = framedCollapsedView.render(width);
-    return { width, outerBlankLines: hasOuterBlankLines(lines), widths: lines.slice(1, -1).map((line) => piTui.visibleWidth(line)) };
+    return { width, innerPaddingLines: hasStyledInnerBlankLines(lines, width), widths: lines.map((line) => piTui.visibleWidth(line)) };
   });
   const framedNarrowWidths = [1, 2, 3, 4].map((width) => {
     const lines = framedCollapsedView.render(width);
-    const surface = lines.slice(1, -1);
-    return { width, outerBlankLines: hasOuterBlankLines(lines), widths: surface.map((line) => piTui.visibleWidth(line)), endsReset: surface.every((line) => line.endsWith(`${ansi}[0m`)) };
+    return { width, innerPaddingLines: hasStyledInnerBlankLines(lines, width), widths: lines.map((line) => piTui.visibleWidth(line)), endsReset: lines.every((line) => line.endsWith(`${ansi}[0m`)) };
   });
   const frameThemeA = framedCollapsedView.render(80).join("\n");
   frameBackgroundTag = 25;
@@ -1894,12 +1902,14 @@ async function subagentJsonPresentationProof(evidence) {
     customType: "larva-subagent-result",
     content: "keep-model-visible",
     details: { result_text: malformed, status: "success", execution_status: "success" },
-  }, { expanded: false, outputPad: 1 }, frameTheme).render(80).map(stripAnsi);
+  }, { expanded: false, outputPad: 1 }, frameTheme).render(80);
   const plainFrame = renderer({
     customType: "larva-subagent-result",
     content: "keep-model-visible",
     details: { result_text: "plain fallback", status: "success", execution_status: "success" },
-  }, { expanded: false, outputPad: 1 }, frameTheme).render(80).map(stripAnsi);
+  }, { expanded: false, outputPad: 1 }, frameTheme).render(80);
+  const malformedFramePlain = malformedFrame.map(stripAnsi);
+  const plainFramePlain = plainFrame.map(stripAnsi);
   const renderResult = (resultText, expanded, width = 80) => renderer(
     { customType: "larva-subagent-result", content: "keep-model-visible", details: { result_text: resultText, status: "success", execution_status: "success" } },
     { expanded, outputPad: 0 },
@@ -1920,7 +1930,7 @@ async function subagentJsonPresentationProof(evidence) {
   const emptyCollapsed = renderResult("", false);
   const formatWidths = [1, 2, 3, 4, 40, 80, 120].flatMap((width) => [markdownSource, fencedSource, bareFenceSource, leadingLinkSource, numericLinkSource, plainSource, malformed, malformedArrayWithLink, ""].map((source) => {
     const lines = renderResult(source, false, width);
-    return { width, outerBlankLines: hasOuterBlankLines(lines), fit: lines.slice(1, -1).every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
+    return { width, innerPaddingLines: hasStyledInnerBlankLines(lines, width), fit: lines.every((line) => piTui.visibleWidth(line) <= width), lineCount: lines.length };
   }));
   const collapsedByWidth = [40, 80, 120].map((width) => {
     const lines = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: callbackDetails }, { expanded: false, outputPad: 0 }, theme).render(width);
@@ -1984,7 +1994,7 @@ async function subagentJsonPresentationProof(evidence) {
     collapsedWidthSafe: collapsedByWidth.every((item) => item.fit),
     collapsedKeyScalarStyles: highlighter.loaded && lastAnsi(collapsedHighlighted, "status") !== lastAnsi(collapsedHighlighted, "child_payload_ok"),
     collapsedNoArtifactAccess: artifactReads === 0,
-    outerBlankLines: hasOuterBlankLines(expanded) && hasOuterBlankLines(collapsed) && hasOuterBlankLines(largeCollapsed) && hasOuterBlankLines(largeExpanded),
+    innerPaddingLines: hasStyledInnerBlankLines(expanded, 80) && hasStyledInnerBlankLines(collapsed, 80) && hasStyledInnerBlankLines(largeCollapsed, 80) && hasStyledInnerBlankLines(largeExpanded, 80),
     largeCollapsedBounded: largeCollapsed.length <= 19 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
     largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
     markdownCollapsedRendered: renderedPlainText(markdownCollapsed).includes("Markdown Heading") && renderedPlainText(markdownCollapsed).includes("bullet one"),
@@ -1997,19 +2007,19 @@ async function subagentJsonPresentationProof(evidence) {
     plainMultilinePreserved: renderedPlainText(plainCollapsed).includes("plain <root> & literal braces {x}") && renderedPlainText(plainCollapsed).includes("second line a_b"),
     malformedArrayWithLinkPlain: renderedPlainText(malformedArrayCollapsed).includes(malformedArrayWithLink),
     emptyOutputStable: renderedPlainText(emptyCollapsed).includes("No final subagent output is available."),
-    allFormatsWidthSafeAndBounded: formatWidths.every((item) => item.outerBlankLines && item.fit && item.lineCount <= 19),
-    surfaceOuterBlankLines: hasOuterBlankLines(framedExpanded),
-    surfaceHasNoBorder: framedSurfacePlain.every((line) => !/[┌┐└┘│─]/.test(line)),
-    surfaceFullWidth: framedSurfacePlain.every((line) => piTui.visibleWidth(line) === 80),
-    surfaceUsesOutputPadding: framedSurfacePlain.every((line) => line.startsWith(" ") && line.endsWith(" ")),
-    frameBackgroundThroughResets: framedSurface.every((line) => rowHasFrameBackground(line, 24)),
-    frameRowsEndReset: framedSurface.every((line) => line.endsWith(`${ansi}[0m`)),
-    frameSentinelUnstyled: framedSurface.every((line) => lastAnsi(`${line}SENTINEL`, "SENTINEL") === `${ansi}[0m`),
-    frameWidthsSafe: framedByWidth.every((item) => item.outerBlankLines && item.widths.every((itemWidth) => itemWidth === item.width)),
-    frameNarrowSafe: framedNarrowWidths.every((item) => item.outerBlankLines && item.widths.every((itemWidth) => itemWidth <= item.width) && item.endsReset),
+    allFormatsWidthSafeAndBounded: formatWidths.every((item) => item.innerPaddingLines && item.fit && item.lineCount <= 19),
+    surfaceInnerPaddingLines: hasStyledInnerBlankLines(framedExpanded, 80),
+    surfaceHasNoBorder: framedContentPlain.every((line) => !/[┌┐└┘│─]/.test(line)),
+    surfaceFullWidth: framedExpanded.every((line) => piTui.visibleWidth(line) === 80),
+    surfaceUsesOutputPadding: framedContentPlain.every((line) => line.startsWith(" ") && line.endsWith(" ")),
+    frameBackgroundThroughResets: framedExpanded.every((line) => rowHasFrameBackground(line, 24)),
+    frameRowsEndReset: framedExpanded.every((line) => line.endsWith(`${ansi}[0m`)),
+    frameSentinelUnstyled: framedExpanded.every((line) => lastAnsi(`${line}SENTINEL`, "SENTINEL") === `${ansi}[0m`),
+    frameWidthsSafe: framedByWidth.every((item) => item.innerPaddingLines && item.widths.every((itemWidth) => itemWidth === item.width)),
+    frameNarrowSafe: framedNarrowWidths.every((item) => item.innerPaddingLines && item.widths.every((itemWidth) => itemWidth <= item.width) && item.endsReset),
     frameThemeRefresh: frameThemeA.includes(`${ansi}[48;5;24m`) && frameThemeB.includes(`${ansi}[48;5;25m`),
     frameOuterStatusStyling: frameFgTokens.includes("success") && !frameFgTokens.includes("error") && frameBgTokens.includes("toolSuccessBg"),
-    surfaceFallbacks: hasOuterBlankLines(malformedFrame) && hasOuterBlankLines(plainFrame) && malformedFrame[1]?.startsWith(" ") === true && plainFrame[1]?.startsWith(" ") === true && !malformedFrame.slice(1, -1).some((line) => /[┌┐└┘│─]/.test(line)) && !plainFrame.slice(1, -1).some((line) => /[┌┐└┘│─]/.test(line)),
+    surfaceFallbacks: hasStyledInnerBlankLines(malformedFrame, 80) && hasStyledInnerBlankLines(plainFrame, 80) && malformedFramePlain[1]?.startsWith(" ") === true && plainFramePlain[1]?.startsWith(" ") === true && !malformedFramePlain.slice(1, -1).some((line) => /[┌┐└┘│─]/.test(line)) && !plainFramePlain.slice(1, -1).some((line) => /[┌┐└┘│─]/.test(line)),
     installedObservationRecorded: installedRender.attempted === true || typeof version.stdout === "string",
   };
   const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);
@@ -2021,7 +2031,7 @@ async function subagentJsonPresentationProof(evidence) {
     overlayByWidth,
     consoleFormats,
     highlighter,
-    expandedHeader: expanded[0] ?? null,
+    expandedHeader: expanded[1] ?? null,
     collapsedText: renderedPlainText(collapsed),
     collapsedByWidth,
     collapsedTheme: { first: collapsedThemeA, second: collapsedThemeB },
@@ -2050,7 +2060,7 @@ async function subagentJsonPresentationProof(evidence) {
       widths: formatWidths,
     },
     artifactReads,
-    innerFailedHeader: innerFailed[0] ?? null,
+    innerFailedHeader: innerFailed[1] ?? null,
     installedPiObservation: {
       binary: installedPi,
       binaryVersion: version.stdout.trim(),
@@ -2262,7 +2272,7 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
 async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.84.4";
+  const expectedVersion = "0.85.1";
   const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
   const childSessionRoot = join(proofRoot, "child-sessions");
   const providerExtension = join(proofRoot, "watchdog-provider.ts");
@@ -3921,7 +3931,7 @@ rl.on("line", async (line) => {
 async function installedPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.84.4";
+  const expectedVersion = "0.85.1";
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
@@ -4228,7 +4238,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
   const installedCli = join(installedPackageRoot, "dist", "bundle", "cli.js");
-  const expectedVersion = "0.84.4";
+  const expectedVersion = "0.85.1";
   const scenarioStartedWallMs = Date.now();
   const scenarioStartedMonotonicNs = process.hrtime.bigint();
   const wholeScenarioDeadlineMs = 180_000;

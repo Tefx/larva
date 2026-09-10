@@ -609,7 +609,6 @@ The full target policy is documented in
 [`../../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 ### Prompt identity composition
-
 When a Larva persona is active, the extension keeps Pi's operational prompt
 intact and adds Larva-owned identity blocks around it. This is intentionally not a
 replacement of Pi's full system prompt: Pi still owns the tool list, guidelines,
@@ -636,9 +635,21 @@ resolve personas when needed.
 Prompt injection is idempotent by removing only previous Larva-managed blocks
 bounded by the `larva:identity-policy` and `larva:active-persona` markers before
 adding the current blocks. The extension must not match or rewrite Pi's default
-identity sentence, rebuild Pi's prompt builder, or edit provider-specific request
-payloads to make persona identity work.
+identity sentence or rebuild Pi's prompt builder. User-prompt turns compose
+identity in `before_agent_start`. Idle Larva `triggerTurn` custom messages skip
+that hook, so `before_provider_request` projects the same marker-bounded identity
+onto known provider system-instruction slots for every request in that turn,
+including tool continuations, without overwriting non-Larva system content.
 
+Known APIs insert an instruction slot when the request already admits one
+(for example a `messages`/`input` array with no leading system message, or a
+config object without `systemInstruction`). That keeps a usable turn instead of
+cancelling it. If the API is unknown or the payload has no admitted instruction
+container, the hook calls public `ctx.abort()` before notifying. The warning
+says cancellation was requested; it does not claim that every transport stopped.
+Unknown custom transports that ignore the abort signal, and
+`openai-codex-responses` websocket dispatch after `onPayload`, can still emit a
+request.
 
 ### `/larva-persona` Tab completion
 
@@ -1195,9 +1206,9 @@ results. It resolves a Pi background token on every render from the outer callba
 starts at the available line origin and callback content aligns with tool-result
 content. Nested Markdown/JSON ANSI resets restore the surface background before
 the next printable or padding cell, and every row ends with a reset. Exactly one
-unstyled empty row precedes and follows the colored surface in both collapsed and
-expanded rendering; those outer rows do not consume the collapsed 16-body-line
-budget. The surface uses the available renderer width, stays full-width at 40, 80, and 120 columns,
+background-colored empty row sits inside the surface above the header and below
+the body in both collapsed and expanded rendering; those internal padding rows do
+not consume the collapsed 16-body-line budget. The surface uses the available renderer width, stays full-width at 40, 80, and 120 columns,
 and degrades without throwing at narrower positive widths. A JSON field such as
 payload `status` is rendered only as payload data.
 
@@ -1708,7 +1719,6 @@ machine, and boundaries:
 [`../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`](../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md).
 
 ## Explicit non-goals and unsupported guarantees
-
 Do not infer these guarantees from `larva pi` or this extension:
 
 - No PersonaSpec schema changes, Pi-specific PersonaSpec fields, Pi-specific
@@ -1720,9 +1730,11 @@ Do not infer these guarantees from `larva pi` or this extension:
   vendor-guessing semantics for model-map resolution.
 - No `ask` permission action; tool policy is exact `allow`/`deny` only.
 - No Pi settings fallback for extension loading.
-- No Pi prompt-builder replacement, Pi default identity sentence matching, Pi
-  default compaction prompt replacement, or provider-payload rewrite for persona
-  identity or compaction focus.
+- No Pi prompt-builder replacement, Pi default identity sentence matching, or Pi
+  default compaction prompt replacement. Compaction focus does not rewrite
+  provider payloads. Persona identity may rewrite known provider
+  system-instruction slots as described in Prompt identity composition; aborting
+  an unprojectable request is not a universal transport fail-closed guarantee.
 - No automatic continuation after threshold or manual compaction.
 - No worktree isolation, file locking, merge management, sandboxing, or credential
   isolation.

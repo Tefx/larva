@@ -423,9 +423,9 @@ results. It resolves a Pi background token on every render from the outer callba
 starts at the available line origin and callback content aligns with tool-result
 content. Nested Markdown/JSON ANSI resets restore the surface background before
 the next printable or padding cell, and every row ends with a reset. Exactly one
-unstyled empty row precedes and follows the colored surface in both collapsed and
-expanded rendering; those outer rows do not consume the collapsed 16-body-line
-budget. The surface uses the available renderer width, stays full-width at 40, 80, and 120 columns,
+background-colored empty row sits inside the surface above the header and below
+the body in both collapsed and expanded rendering; those internal padding rows do
+not consume the collapsed 16-body-line budget. The surface uses the available renderer width, stays full-width at 40, 80, and 120 columns,
 and degrades without throwing at narrower positive widths. A JSON field such as
 payload `status` is rendered only as payload data.
 
@@ -505,7 +505,14 @@ Before sending, the extension must verify parent-session identity, terminal-stat
 idempotency, and callback suppression state. Each terminal run may deliver at
 most one callback. When the parent is streaming, `deliverAs: "steer"` queues the
 custom event before the next LLM call. When idle, `triggerTurn: true` starts a new
-LLM turn. `callback_delivery: "delivered"` appears in the delivered callback
+LLM turn. That idle path does not run `before_agent_start`; Larva projects the
+current envelope identity onto the known Pi 0.85.1 system-instruction slot for
+`ctx.model.api` through `before_provider_request` so every provider request in
+the turn, including tool continuations, still carries a single active
+`larva-spec` overlay. Known APIs insert an instruction slot when the payload
+already admits one. Unknown/custom APIs request `ctx.abort()`; that does not
+prove every transport stopped.
+`callback_delivery: "delivered"` appears in the delivered callback
 itself; failed/suppressed/stale attempts are observable through `status` or the
 future deterministic orchestration tools, not through a delivered callback that
 does not exist.

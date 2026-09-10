@@ -1787,8 +1787,8 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
 
     assert payload["pi"]["binary"] == "/opt/homebrew/bin/pi"
     assert payload["package"]["packageRoot"] == "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent"
-    assert payload["package"]["versionText"] == "0.84.4"
-    assert payload["package"]["installedVersion"] == "0.84.4"
+    assert payload["package"]["versionText"] == "0.85.1"
+    assert payload["package"]["installedVersion"] == "0.85.1"
     assert payload["rpc"]["attempted"] is True
     assert payload["rpc"]["supported"] is True
     assert payload["rpc"]["stderr"] == ""
@@ -1831,7 +1831,7 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     assert proof["selected"] == {
         "binary": "/opt/homebrew/bin/pi",
         "packageRoot": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
-        "packageVersion": "0.84.4",
+        "packageVersion": "0.85.1",
     }
     assert proof["executed"] == proof["selected"]
     assert proof["reload"] == {
@@ -1889,7 +1889,7 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     assert proof["selected"]["parent"] == {
         "binary": "/opt/homebrew/bin/pi",
         "package_root": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
-        "package_version": "0.84.4",
+        "package_version": "0.85.1",
         "cli": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
     }
     assert proof["selected"]["child"] == proof["selected"]["parent"]
@@ -1897,7 +1897,7 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     children = proof["executed"]["children"]
     assert 5 <= len(children) <= proof["limits"]["child_processes"] == 8
     assert all(child["selected_binary"] == "/opt/homebrew/bin/pi" for child in children)
-    assert all(child["package_version"] == "0.84.4" for child in children)
+    assert all(child["package_version"] == "0.85.1" for child in children)
     assert all(isinstance(child["controller_pid"], int) for child in children)
     assert all(isinstance(child["actual_pid"], int) for child in children)
     assert proof["limits"]["rpc_timeout_ms"] == 5_000

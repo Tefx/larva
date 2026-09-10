@@ -523,6 +523,8 @@ type PiContext = PiApi & {
   model?: unknown;
   abortSignal?: AbortSignal;
   signal?: AbortSignal;
+  /** Abort the current agent operation. Public on Pi 0.85 ExtensionContext. */
+  abort?: () => void;
   streamFn?: unknown;
 };
 type SubagentCallbackSurface = {
@@ -586,6 +588,7 @@ const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 300;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
 const LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE = "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE";
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
+const LARVA_SPEC_COMMENT_RE = /\n?<!-- larva-spec:.*?-->\n?/g;
 const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
 const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
 const LARVA_ACTIVE_PERSONA_BEGIN = "<!-- larva:active-persona:begin -->";
@@ -760,6 +763,7 @@ let activePersonaLease: PersonaLease | null = null;
 let activePersonaLeaseOriginPiModel: unknown | null = null;
 let activePersonaLeaseOriginPiThinking: PiThinkingLevel | null = null;
 let pendingPersonaSwitchContinuation: PersonaSwitchContinuation | null = null;
+let lastIdentityProjectionNotice: string | null = null;
 let restoreFailureState: PersonaRestoreFailureState | null = null;
 let lastPersonaLeaseRuntimeCtx: PiContext | null = null;
 let lastPersonaLeasePi: PiApi | null = null;
@@ -1565,12 +1569,12 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     const body = this.expanded
       ? renderSubagentResultPresentationLines(presentation, bodyWidth, markdownTheme)
       : collapsedSubagentResultPreviewLines(presentation, bodyWidth, markdownTheme);
-    const surface = [header, ...body].map((line) => subagentResultSurfaceLine(
+    const surface = ["", header, ...body, ""].map((line) => subagentResultSurfaceLine(
       this.theme,
       this.executionStatus,
       subagentResultSurfaceContent(line, surfaceWidth, padding),
     ));
-    return ["", ...surface, ""];
+    return surface;
   }
 }
 
@@ -5549,7 +5553,10 @@ function agentPersonaSwitchPromptGuidance(): string | null {
 export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnvelope): string {
   const cleanPrompt = systemPrompt
     .replace(LARVA_MANAGED_BLOCK_RE, "\n")
+    .replace(/<!-- larva:(?:identity-policy|active-persona):begin -->/g, "")
+    .replace(/<!-- larva:(?:identity-policy|active-persona):end -->/g, "")
     .replace(LARVA_WATERMARK_RE, "")
+    .replace(LARVA_SPEC_COMMENT_RE, "\n")
     .trim();
   const identityPolicy = [
     LARVA_IDENTITY_POLICY_BEGIN,
@@ -5566,6 +5573,205 @@ export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnv
     LARVA_ACTIVE_PERSONA_END,
   ].join("\n");
   return `${identityPolicy}\n\n${cleanPrompt}\n\n${activePersona}`;
+}
+
+const ANTHROPIC_OAUTH_CLI_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude.";
+const LARVA_KNOWN_PROVIDER_APIS = new Set([
+  "openai-completions",
+  "mistral-conversations",
+  "openai-responses",
+  "azure-openai-responses",
+  "openai-codex-responses",
+  "anthropic-messages",
+  "bedrock-converse-stream",
+  "google-generative-ai",
+  "google-vertex",
+  "pi-messages",
+]);
+
+export type LarvaIdentityProjectionResult =
+  | { status: "no_envelope" }
+  | { status: "unchanged" }
+  | { status: "projected"; payload: Record<string, unknown> }
+  | { status: "unsupported_api"; api: string }
+  | { status: "missing_slot"; api: string };
+
+function composeProviderSystemText(text: string, envelope: PersonaEnvelope): string {
+  let composed = replaceLarvaWatermark(text, envelope);
+  const continuation = pendingPersonaSwitchContinuation;
+  if (continuation !== null && continuation.phase === "continuation_running" && !composed.includes(LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN)) {
+    composed = appendPersonaSwitchContinuationPrompt(composed, continuation);
+  }
+  return composed;
+}
+
+function projectSystemText(text: string, envelope: PersonaEnvelope): { status: "unchanged" | "projected"; text: string } {
+  const next = composeProviderSystemText(text, envelope);
+  return next === text ? { status: "unchanged", text } : { status: "projected", text: next };
+}
+
+function providerApiFromModel(model: unknown): string | null {
+  return isRecord(model) && typeof model.api === "string" && model.api.length > 0 ? model.api : null;
+}
+
+function projectStringField(payload: Record<string, unknown>, envelope: PersonaEnvelope, field: string, api: string): LarvaIdentityProjectionResult {
+  const value = payload[field];
+  if (value === undefined) {
+    return { status: "projected", payload: { ...payload, [field]: composeProviderSystemText("", envelope) } };
+  }
+  if (typeof value !== "string") return { status: "missing_slot", api };
+  const projected = projectSystemText(value, envelope);
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  return { status: "projected", payload: { ...payload, [field]: projected.text } };
+}
+
+function projectFirstInstructionMessage(payload: Record<string, unknown>, envelope: PersonaEnvelope, field: "messages" | "input", api: string): LarvaIdentityProjectionResult {
+  const messages = payload[field];
+  if (!Array.isArray(messages)) return { status: "missing_slot", api };
+  const first = messages.length > 0 && isRecord(messages[0]) ? messages[0] : null;
+  if (first === null || (first.role !== "system" && first.role !== "developer")) {
+    const role = field === "input" ? "developer" : "system";
+    return { status: "projected", payload: { ...payload, [field]: [{ role, content: composeProviderSystemText("", envelope) }, ...messages] } };
+  }
+  if (typeof first.content === "string") {
+    const projected = projectSystemText(first.content, envelope);
+    if (projected.status === "unchanged") return { status: "unchanged" };
+    return { status: "projected", payload: { ...payload, [field]: [{ ...first, content: projected.text }, ...messages.slice(1)] } };
+  }
+  if (!Array.isArray(first.content)) return { status: "missing_slot", api };
+  const partIndex = first.content.findIndex((part) => isRecord(part) && (part.type === "text" || part.type === "input_text") && typeof part.text === "string");
+  if (partIndex < 0) {
+    const partType = field === "input" ? "input_text" : "text";
+    return { status: "projected", payload: { ...payload, [field]: [{ ...first, content: [{ type: partType, text: composeProviderSystemText("", envelope) }, ...first.content] }, ...messages.slice(1)] } };
+  }
+  const part = first.content[partIndex] as Record<string, unknown>;
+  const projected = projectSystemText(part.text as string, envelope);
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  const content = first.content.slice();
+  content[partIndex] = { ...part, text: projected.text };
+  return { status: "projected", payload: { ...payload, [field]: [{ ...first, content }, ...messages.slice(1)] } };
+}
+
+function projectAnthropicSystem(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+  if (typeof payload.system === "string") return projectStringField(payload, envelope, "system", api);
+  if (payload.system === undefined) {
+    return { status: "projected", payload: { ...payload, system: composeProviderSystemText("", envelope) } };
+  }
+  if (!Array.isArray(payload.system)) return { status: "missing_slot", api };
+  let target = -1;
+  for (let index = payload.system.length - 1; index >= 0; index -= 1) {
+    const block = payload.system[index];
+    if (!isRecord(block) || typeof block.text !== "string") continue;
+    if (block.text === ANTHROPIC_OAUTH_CLI_IDENTITY) continue;
+    target = index;
+    break;
+  }
+  if (target < 0) {
+    return { status: "projected", payload: { ...payload, system: [...payload.system, { type: "text", text: composeProviderSystemText("", envelope) }] } };
+  }
+  const block = payload.system[target] as Record<string, unknown>;
+  const projected = projectSystemText(block.text as string, envelope);
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  const system = payload.system.slice();
+  system[target] = { ...block, text: projected.text };
+  return { status: "projected", payload: { ...payload, system } };
+}
+
+function projectBedrockSystem(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+  if (payload.system === undefined) {
+    return { status: "projected", payload: { ...payload, system: [{ text: composeProviderSystemText("", envelope) }] } };
+  }
+  if (!Array.isArray(payload.system)) return { status: "missing_slot", api };
+  const target = payload.system.findIndex((block) => isRecord(block) && typeof block.text === "string");
+  if (target < 0) {
+    return { status: "projected", payload: { ...payload, system: [{ text: composeProviderSystemText("", envelope) }, ...payload.system] } };
+  }
+  const block = payload.system[target] as Record<string, unknown>;
+  const projected = projectSystemText(block.text as string, envelope);
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  const system = payload.system.slice();
+  system[target] = { ...block, text: projected.text };
+  return { status: "projected", payload: { ...payload, system } };
+}
+
+function projectGoogleInstruction(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+  if (payload.config === undefined) {
+    return { status: "projected", payload: { ...payload, config: { systemInstruction: composeProviderSystemText("", envelope) } } };
+  }
+  if (!isRecord(payload.config)) return { status: "missing_slot", api };
+  if (payload.config.systemInstruction === undefined) {
+    return { status: "projected", payload: { ...payload, config: { ...payload.config, systemInstruction: composeProviderSystemText("", envelope) } } };
+  }
+  if (typeof payload.config.systemInstruction !== "string") return { status: "missing_slot", api };
+  const projected = projectSystemText(payload.config.systemInstruction, envelope);
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  return { status: "projected", payload: { ...payload, config: { ...payload.config, systemInstruction: projected.text } } };
+}
+
+function projectPiMessages(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+  if (payload.context === undefined) {
+    return { status: "projected", payload: { ...payload, context: { systemPrompt: composeProviderSystemText("", envelope) } } };
+  }
+  if (!isRecord(payload.context)) return { status: "missing_slot", api };
+  if (payload.context.systemPrompt === undefined) {
+    return { status: "projected", payload: { ...payload, context: { ...payload.context, systemPrompt: composeProviderSystemText("", envelope) } } };
+  }
+  if (typeof payload.context.systemPrompt !== "string") return { status: "missing_slot", api };
+  const projected = projectSystemText(payload.context.systemPrompt, envelope);
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  return { status: "projected", payload: { ...payload, context: { ...payload.context, systemPrompt: projected.text } } };
+}
+
+export function projectLarvaIdentityIntoProviderPayload(payload: unknown, envelope: PersonaEnvelope | null, api: string | null): LarvaIdentityProjectionResult {
+  if (envelope === null) return { status: "no_envelope" };
+  if (api === null) return { status: "missing_slot", api: "unknown" };
+  if (!LARVA_KNOWN_PROVIDER_APIS.has(api)) return { status: "unsupported_api", api };
+  if (!isRecord(payload)) return { status: "missing_slot", api };
+  switch (api) {
+    case "openai-completions":
+    case "mistral-conversations":
+      return projectFirstInstructionMessage(payload, envelope, "messages", api);
+    case "openai-responses":
+    case "azure-openai-responses":
+      return projectFirstInstructionMessage(payload, envelope, "input", api);
+    case "openai-codex-responses":
+      return projectStringField(payload, envelope, "instructions", api);
+    case "anthropic-messages":
+      return projectAnthropicSystem(payload, envelope, api);
+    case "bedrock-converse-stream":
+      return projectBedrockSystem(payload, envelope, api);
+    case "google-generative-ai":
+    case "google-vertex":
+      return projectGoogleInstruction(payload, envelope, api);
+    case "pi-messages":
+      return projectPiMessages(payload, envelope, api);
+    default:
+      return { status: "unsupported_api", api };
+  }
+}
+
+function requestIdentityProjectionCancellation(ctx: PiContext | undefined): void {
+  ctx?.abort?.();
+}
+
+async function warnIdentityProjection(ctx: PiContext | undefined, status: string, api: string): Promise<void> {
+  const key = `${status}:${api}:${state.envelope?.persona_id ?? "none"}`;
+  if (lastIdentityProjectionNotice === key) return;
+  lastIdentityProjectionNotice = key;
+  await notify(ctx ?? lastPersonaLeaseRuntimeCtx ?? {}, `Larva could not project persona identity onto this ${api} provider request (${status}); cancellation of this model call was requested. The current larva-spec was not applied.`, "warning");
+}
+
+export async function before_provider_request(event: unknown, ctx?: PiContext): Promise<unknown | undefined> {
+  if (!state.envelope || !isRecord(event)) return undefined;
+  const result = projectLarvaIdentityIntoProviderPayload(event.payload, state.envelope, providerApiFromModel(ctx?.model));
+  if (result.status === "projected") {
+    lastIdentityProjectionNotice = null;
+    return result.payload;
+  }
+  if (result.status === "unchanged" || result.status === "no_envelope") return undefined;
+  requestIdentityProjectionCancellation(ctx);
+  await warnIdentityProjection(ctx, result.status, result.api);
+  return undefined;
 }
 
 function latestAssistantTerminalMessage(event: unknown): Record<string, unknown> | null {
@@ -7207,6 +7413,13 @@ async function callbackPayloadFromRun(record: ActiveSubagentRun): Promise<Record
   };
 }
 
+export function larvaSubagentResultCallbackDelivery(content: string, details: Record<string, unknown>): { message: SubagentCallbackMessage; options: SubagentCallbackMessageOptions } {
+  return {
+    message: { customType: "larva-subagent-result", content, display: true, details },
+    options: { triggerTurn: true, deliverAs: "steer" },
+  };
+}
+
 async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise<void> {
   if (record.callback_delivery !== "pending" || record.terminal_snapshot === null) return;
   if (!parentSessionStillCurrent(record)) {
@@ -7215,36 +7428,31 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
   }
   const ctx = record.callback_ctx;
   const payload = await callbackPayloadFromRun(record);
-  const options: SubagentCallbackMessageOptions = { triggerTurn: true, deliverAs: "steer" };
+  const callback = larvaSubagentResultCallbackDelivery(payload.message as string, payload);
   if (typeof record.callback_surface.sendMessage === "function") {
     try {
-      await record.callback_surface.sendMessage({
-        customType: "larva-subagent-result",
-        content: payload.message as string,
-        display: true,
-        details: payload,
-      }, options);
+      await record.callback_surface.sendMessage(callback.message, callback.options);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       if (!message.includes("Cannot read properties of undefined (reading 'emit')")) throw caught;
       void traceChildRpc(record.env, "callback_host_completion_failed", { task_id: record.task_id, code: "LARVA_CALLBACK_HOST_POST_DELIVERY_FAILED", message_preview: boundedTracePreview(message) });
     }
   } else if (typeof ctx?.sendMessage === "function") {
-    await ctx.sendMessage({ customType: "larva-subagent-result", content: payload.message as string, display: true, details: payload }, options);
+    await ctx.sendMessage(callback.message, callback.options);
   } else if (typeof ctx?.sendCustomMessage === "function") {
-    await ctx.sendCustomMessage("larva-subagent-result", payload, options);
+    await ctx.sendCustomMessage("larva-subagent-result", payload, callback.options);
   } else if (typeof ctx?.session?.appendEntry === "function") {
-    ctx.session.appendEntry("larva-subagent-result", payload, options);
+    ctx.session.appendEntry("larva-subagent-result", payload, callback.options);
   } else if (typeof ctx?.session?.addCustomEntry === "function") {
-    ctx.session.addCustomEntry("larva-subagent-result", payload, options);
+    ctx.session.addCustomEntry("larva-subagent-result", payload, callback.options);
   } else if (typeof record.callback_surface.appendEntry === "function") {
     record.callback_surface.appendEntry("larva-subagent-result", payload);
   } else if (typeof ctx?.appendEntry === "function") {
-    ctx.appendEntry("larva-subagent-result", payload, options);
+    ctx.appendEntry("larva-subagent-result", payload, callback.options);
   } else if (typeof record.callback_surface.sendUserMessage === "function") {
-    await record.callback_surface.sendUserMessage(payload.message as string, { customType: "larva-subagent-result", details: payload, ...options });
+    await record.callback_surface.sendUserMessage(callback.message.content as string, { customType: "larva-subagent-result", details: payload, ...callback.options });
   } else if (typeof ctx?.sendUserMessage === "function") {
-    await ctx.sendUserMessage(payload.message as string, { customType: "larva-subagent-result", details: payload, ...options });
+    await ctx.sendUserMessage(callback.message.content as string, { customType: "larva-subagent-result", details: payload, ...callback.options });
   } else {
     setSubagentCallbackDelivery(record, "failed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_SURFACE_UNAVAILABLE", "No Pi callback delivery surface was available; no larva-subagent-result callback was injected."));
     return;
@@ -9940,6 +10148,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     await ensureSessionInitialized(runtimeCtx, pi);
     return before_agent_start(payload, runtimeCtx, pi);
   });
+  pi.on?.("before_provider_request", async (event: unknown, eventCtx?: PiContext) => before_provider_request(event, withRuntimeEnv(eventCtx ?? ctx, env)));
   pi.on?.("agent_end", async (payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     const terminal = terminalRestorePath(payload) ?? "success";
