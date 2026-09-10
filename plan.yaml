@@ -144864,7 +144864,7 @@ phases:
       excluded; remote CI not run. No unresolved producer obligations.'
   - id: pi-native.retire-python-launcher
     name: Remove Python Pi launcher and prove independent backend distribution
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- After the native producer's own behavior/proof is complete, remove\
       \ larva pi parser/help registration and dispatch, src/larva/shell/pi.py and\
@@ -144998,6 +144998,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-09-10T17:25:46.065391Z'
+    done_at: '2026-09-10T18:41:21.744084+00:00'
+    evidence: 'Integrated exact 2cf4682c55b0a99d6dd35dd5f833a872541d787e by compare-and-fast-forward
+      onto ebb6d17b21a70df20866d9b06d1740492e191839. Retained original final 2996e0b697a93482d5cedef1b88422f86db48905
+      at refs/vectl/retained/pi-native.retire-python-launcher/final and original initial
+      a82b7333 at /initial. Parent inspected actual wheel fixture, removal/metadata
+      diff, corrective --no-isolation build and execution outputs from worker session
+      2026-09-10T17-27-06-033Z_01a08c5b-de31-76d7-b5c3-38246f776a9a.jsonl. Actual
+      full pytest output at 18:20:39Z: 936 passed in 458.25s, native runtime output
+      17:53:26Z:69 passed. 977->936 accounted by 48 retired-launcher cases replaced
+      by 5 real installed-wheel/backend cases (-43), 19 model-map cases retained plus
+      2 parser cases (+2). Final corrected wheel command UV_OFFLINE=1 uv run --locked
+      --python 3.12 --group dev pytest -q tests/shell/test_pi_launcher_contract.py:5
+      passed in6.50s, build1.6.1/hatchling1.32.0 with --no-isolation uses locked environment.
+      Native list/resolve bridge uses actual installed CLI and extension module, CLI/API
+      site-packages and wheel ownership inspected. Worker Node suite17, capability/full
+      Invar and commit hooks passed; full Invar zero errors five existing warnings.
+      Frozen local archive gate observed 18:27:06Z exit0: pin d3603bf04b2e6021e98b5fa54efb8ff379ccc674,
+      schema parity, capabilities metadata, nine MCP names and docs parity PASS; live
+      opifex unchanged. uv lock --check exit0. Scoped doc correction restored unauthorized
+      design/pi-model-map-draft-helper.md, original patch retained. Worker clipboard
+      mutations were reconciled as metadata-only integration commits, no task/claim
+      definition changes; latest user notification instruction preserved. Rebase diff
+      ONLY managed clipboard Plan metadata; source/config/lock/runtime unchanged,
+      observations applicable to final integrated commit. Final test-only build correction
+      freshly verified; previous broader unaffected observations retained. Old producer
+      docs/verification artifacts are historical, not falsely relabeled as Python-stage
+      fresh outputs. Final integrated diff-check passed and HEAD verified. Worktrees
+      clean; no owned matching processes observed. No user installation, publication
+      or external model effects. No unresolved producer obligations; terminal phase
+      gate next.'
   - id: pi-native.accept-repository
     name: Accept the integrated native-only repository delivery
     status: pending
