@@ -144499,7 +144499,7 @@ phases:
   steps:
   - id: pi-subagent-inner-padding-release-0-6-5.integrate
     name: Integrate inner-panel padding and bump Larva to 0.6.5
-    status: claimed
+    status: done
     description: 'step_type: implementation; repo_change_policy: modifies_repo. Deliver:
       finalize the current larva-subagent-result renderer so one full-width background-colored
       blank row sits inside the surface above the header and below the body in expanded
@@ -144542,6 +144542,25 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-09-10T04:59:18.701278Z'
+    done_at: '2026-09-10T05:23:49.322462+00:00'
+    evidence: 'PASS. Product commit a43221a66237a21bb625a847ed01d21c333bb8f3 on main:
+      feat(pi): add inner panel padding, project idle callback identity, and bump
+      to 0.6.5. Base origin/main c16087eb; local also contains plan mutate 96e73c68
+      and claim 52cdc3c2. Changed paths: contrib/pi-extension/README.md, larva.ts,
+      test-idle-callback-identity-real-pi-0-85-1.mjs, test-idle-callback-identity-runtime.mjs;
+      design/pi-coding-agent-integration.md; docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md;
+      pyproject.toml; scripts/pi-extension-runtime-smoke.mjs; src/larva/__init__.py;
+      tests/shell/test_pi_extension_contract.py, test_pi_extension_real_runtime.py,
+      test_pi_extension_subagent_ux.py, test_pi_idle_callback_identity.py; uv.lock.
+      plan.yaml not in product commit. Verification all exit 0: npm --prefix contrib/pi-extension
+      ci; uv sync --group dev --frozen; uv lock --check; uv run --frozen larva --version
+      = larva 0.6.5; node --check larva.ts and smoke; all contrib/pi-extension/test-*.mjs;
+      smoke subagent-json-presentation and capability-gates; async-subagent-contract
+      cancelledCallbackShape passed first run; pytest -q 947 passed in 248.12s; uvx
+      invar-tools guard --all 0 errors 43 files; git diff --check clean. Artifacts
+      (not committed): dist/larva-0.6.5-py3-none-any.whl 243240 bytes SHA-256 2762ade54501bf6faa5d7a32b77fdecdc17a8b9e917fad15ee2a5c32f286746c;
+      dist/larva-0.6.5.tar.gz 2348655 bytes SHA-256 53f56fd6e76a2f225a69e235e33a51ed08a59e3c194292c775fbc68d195daeaa.
+      Gaps: none. Push/tag/PyPI/uvx not part of this step.'
   - id: pi-subagent-inner-padding-release-0-6-5.github-pypi
     name: Publish GitHub and PyPI release 0.6.5
     status: pending
