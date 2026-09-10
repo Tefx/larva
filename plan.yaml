@@ -34,21 +34,21 @@ project_guidance: Current native Pi cutover authority is design/pi-native-extens
   semantics remain those in the async reference; do not restore removed aliases. Existing
   completed evidence supplies context only where applicable, never new pending obligations.
 clipboard:
-  author: python-executor
-  summary: Pi launcher retirement committed and verified
-  content: 'Commit a82b7333 on /Users/tefx/Projects/larva/.vectl/worktrees/pi-native.retire-python-launcher
-    (clean). Removed Python larva pi parser/dispatch/module and wheel Pi force-includes;
-    retained OpenCode, CLI/API/pi-model-map, restored 19 meaningful model-map cases
-    plus 2 parser cases. Added locked build/hatchling deps, isolated wheel/install/backend/native
-    bridge tests, locked CI gates, and classified historical docs. Evidence: npm --prefix
-    contrib/pi-extension ci passed; full pytest 936 passed in 458.25s; native runtime
-    pytest 69 passed in 296.43s; targeted wheel/model-map 7 passed then model-map
-    21 passed; Node extension suites passed; ruff on changed Python files passed;
-    invar guard changed and full passed (full report ok, 5 warnings/7 infos, no errors);
-    commit hooks Invar Guard passed. Full mypy/ruff repository commands expose pre-existing
-    unrelated errors (mypy 62, ruff 1629); changed-file ruff clean.'
-  written_at: '2026-09-10T18:24:24.422150Z'
-  expires_at: '2026-09-11T18:24:24.422150Z'
+  author: vectl-orchestrator
+  summary: 'User: finish system prompt phase, then notify pi-nunc to dispatch'
+  content: 'Current user instruction: 完成pi_system_prompt_resolution phase后发消息通知pi-nunc
+    agent开始调度实施剩余计划. Preserve execution order: finish ongoing pi_native_extension_cutover
+    including terminal acceptance, then execute pi_system_prompt_resolution under
+    its existing accepted Plan. Only after pi_system_prompt_resolution is verified
+    complete, discover current agent-network peers and send the pi-nunc agent a message
+    that the Larva phase is complete and it may start scheduling/implementing its
+    remaining plan. Include applicable integrated commit and concise acceptance/interface
+    evidence. Do not notify readiness early or implement pi-nunc repository work here.
+    Use exact discovered peer address; if unavailable, report pending delivery rather
+    than claim notification. This instruction persists across worker callbacks and
+    handoffs.'
+  written_at: '2026-09-10T18:37:21.618148Z'
+  expires_at: '2026-09-13T18:37:21.618148Z'
 phases:
 - id: meta.discovery
   name: Discovery
