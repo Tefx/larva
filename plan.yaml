@@ -145149,7 +145149,7 @@ phases:
     agent: gate-reviewer
   - id: pi-native.repair-capsule-runtime-proof
     name: Repair capsule lifecycle and complete native runtime acceptance proof
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Deliver one repaired native extension candidate with tracked capsule\
       \ lifecycle regressions and the missing installed-package/session-restore observations,\
@@ -145306,6 +145306,8 @@ phases:
     - pi-native.deliver-extension
     - pi-native.retire-python-launcher
     agent: principal-engineer
+    claimed_by: principal-engineer
+    claimed_at: '2026-09-10T18:54:35.452425Z'
 - id: pi_system_prompt_resolution
   name: Request-scoped Larva system prompt resolution
   status: locked
