@@ -145149,7 +145149,7 @@ phases:
     agent: gate-reviewer
   - id: pi-native.repair-capsule-runtime-proof
     name: Repair capsule lifecycle and complete native runtime acceptance proof
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Deliver one repaired native extension candidate with tracked capsule\
       \ lifecycle regressions and the missing installed-package/session-restore observations,\
@@ -145308,6 +145308,34 @@ phases:
     agent: principal-engineer
     claimed_by: principal-engineer
     claimed_at: '2026-09-10T18:54:35.452425Z'
+    done_at: '2026-09-10T19:37:37.835380+00:00'
+    evidence: 'Integrated exact45881345e0e38dea3969de52fb9fddc91a81c8cb atop8981a9dd;
+      original repair candidate retained refs/vectl/retained/pi-native.repair-capsule-runtime-proof/final.
+      Parent inspected source deletion of age-only sweep, bounded stderr/trace removal
+      diagnostics, retained identity on rm failure, root lstat ENOENT distinction
+      and alive-child preservation. docs/verification/pi-native-repair/README.md and
+      JSON/XML/logs record both capsule defects actual native red(exit1)->green(exit0),
+      aged active/unrelated preservation, rm/lstat EACCES and recursive rm ENOENT,
+      saved explicit-preflight+stored-route failure with usable nonfatal session.
+      Parent verified installed-loading actual fixture assertions and evidence: healthy0/1
+      request, missing entry1/0, unused local TUI control0/1 persona-bearing request,
+      actual broken dependency import1/0 with module diagnostic. Host virtualModules
+      independently inspected; fixture method correction preserves fail-closed requirement,
+      no package-integrity feature or Pi patch. Targeted tracked installed-loading
+      XML one pass/no errors/skips, closes prior real failure. Combined939 applicable
+      passes =328 repair-stage and611 reused; no claim fresh full-suite rerun. 17Node/capability
+      passed; exact pinned CLI uvx --python3.12 invar-tools==1.20.3 guard --all exit0
+      after Python retirement (42files,0errors,5existing warnings), actual full-invar.log.
+      Prior unchanged wheel/frozen canonical evidence remains applicable; source/lock/authority
+      consumers inspected by worker and parent, affected capsule/native paths freshly
+      exercised. Process/fixture cleanup reconciled by owner, no live writer. Parent
+      originally integrated8981a9dd despite failed committed-range diff-check from
+      raw XML whitespace; effect reconciled as repository-only, current-step correction45881345
+      changes that XML trailing whitespace only. Parent now ran git diff --check 5ff197a7..45881345
+      exit0 before final fast-forward and verified integrated HEAD; no behavior rerun
+      for artifact-only correction. No Plan mutation by owner or user/global installation/publication/external-model
+      effect. All five gate obligations addressed, subject to same terminal Delta
+      acceptance; completed producer history preserved.'
 - id: pi_system_prompt_resolution
   name: Request-scoped Larva system prompt resolution
   status: locked
