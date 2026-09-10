@@ -144671,7 +144671,7 @@ phases:
   steps:
   - id: pi-native.deliver-extension
     name: Deliver native Pi package, admission and retained runtime behavior
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Make contrib/pi-extension the single native extension distribution\
       \ owner with explicit pi.extensions metadata, adjacent frame preload and usable\
@@ -144841,6 +144841,34 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-09-10T12:56:16.026842Z'
+    done_at: '2026-09-10T17:25:25.158237+00:00'
+    evidence: 'Integrated 6b1a6510f377fb822d367993c5585139b344b75a by compare-and-fast-forward
+      onto integration_basis 8bec3d2c1315019e72410a1bd12529ddeead7861. Original candidates
+      retained refs/vectl/retained/pi-native.deliver-extension/{initial,corrective,principal};
+      principal candidate 47701da2e6102347e95fff525c9bac0227831ccd. Planned owner
+      node-typescript-engineer supplied package/admission/capsule work; actual final
+      executor principal-engineer after repeated missing required real-runtime proof,
+      with prior writer terminal and process/worktree quiescence reconciled. Parent
+      inspected product corrective diff, actual native child/environment assertions,
+      full acceptance matrix and machine test inventories. docs/verification/pi-native-delivery/README.md
+      maps every required row and exact commands to tracked observations. JUnit: native-runtime.xml
+      69, retained.xml 259, remaining-repo.xml 649 = 977 tests, zero failures/errors/skips.
+      17 Node scripts, capability smoke, pinned full invar-tools==1.20.3 guard --all
+      passed (43 files, zero errors, five existing warnings); whitespace passed. Python
+      selections executed via tracked Invar wrapper using locked interpreter and same
+      repository test inventory; original-source full guard separately verifies doctests/contracts.
+      Native Node26.7/Pi0.85.1 macOS loopback/PTY evidence includes actual maturin
+      A/B main/backend/child + absent activation, admission, theme/settings/restore/borrow,
+      child new/resume/readiness/callback/cancel/watchdog/active-parent shutdown,
+      typed errors, capsules and surviving sessions, invocation/compaction/tool-policy.
+      Parent read assertions rather than accepting scenario PASS alone. Rebase changed
+      ONLY independent design/pi-system-prompt-resolution.md and managed future Plan
+      topology; no source/lock/config/runtime evidence inputs changed, so underlying
+      observations remain applicable to integrated target without replay. No target-bound
+      verifier/gate report required for producer. Clean worktree, no matching owned
+      processes observed, cleanup evidence retained. No Plan changes in candidate.
+      Python command/wheel retirement remains next producer; user installation/publishing
+      excluded; remote CI not run. No unresolved producer obligations.'
   - id: pi-native.retire-python-launcher
     name: Remove Python Pi launcher and prove independent backend distribution
     status: pending
