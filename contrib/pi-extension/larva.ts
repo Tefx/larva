@@ -2698,6 +2698,10 @@ function homeDir(env: RuntimeEnv): string {
   return env.HOME && env.HOME.length > 0 ? env.HOME : homedir();
 }
 
+function childCapsuleBaseAgentDir(env: RuntimeEnv): string {
+  return resolve(env.LARVA_PI_BASE_AGENT_DIR || env.PI_CODING_AGENT_DIR || join(homeDir(env), ".pi", "agent"));
+}
+
 const DEFAULT_LARVA_COMPACTION_CARRY_FORWARD_RULE_TEXT = "If the task is unfinished, keep it in Progress/In Progress and Next Steps.\nDo not mark work as complete unless completion evidence exists.\nPreserve next concrete action, files changed, commands run, failing tests, and blockers.";
 const LARVA_COMPACTION_CARRY_FORWARD_RULE_MAX_CODE_POINTS = 4_000;
 const LARVA_COMPACTION_MANUAL_FOCUS_MAX_CODE_POINTS = 2_000;
@@ -3597,17 +3601,130 @@ async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok:
   return await spawnJsonCommand(argv, env);
 }
 
+function expandUserHome(filePath: string, env: RuntimeEnv): string {
+  if (filePath === "~" || filePath.startsWith("~/")) {
+    return join(homeDir(env), filePath.slice(2));
+  }
+  return filePath;
+}
+
+function parseCliSettingValue(value: unknown, baseDir: string, env: RuntimeEnv): string[] | null {
+  if (typeof value === "string" && value.trim().length > 0) {
+    const expanded = expandUserHome(value.trim(), env);
+    const candidate = isAbsolute(expanded) ? expanded : resolve(baseDir, expanded);
+    if (existsSync(candidate)) {
+      try {
+        accessSync(candidate, constants.X_OK);
+        return [realpathSync(candidate)];
+      } catch {
+        return null;
+      }
+    }
+  }
+  if (Array.isArray(value) && value.length > 0 && value.every((part) => typeof part === "string" && part.trim().length > 0)) {
+    const head = expandUserHome(value[0].trim(), env);
+    const candidate = isAbsolute(head) ? head : resolve(baseDir, head);
+    if (existsSync(candidate)) {
+      try {
+        accessSync(candidate, constants.X_OK);
+        return [realpathSync(candidate), ...value.slice(1).map((s) => (typeof s === "string" ? s.trim() : s))];
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function resolveLarvaCliFromSettings(env: RuntimeEnv): string[] | null {
+  const candidateFiles = [
+    join(process.cwd(), ".pi", "settings.json"),
+    join(childCapsuleBaseAgentDir(env), "settings.json"),
+    join(homeDir(env), ".pi", "agent", "settings.json"),
+  ];
+  const seen = new Set<string>();
+  for (const file of candidateFiles) {
+    const normalized = resolve(file);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    if (!existsSync(normalized)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(normalized, "utf8")) as unknown;
+      if (!isRecord(parsed)) continue;
+      const fileDir = dirname(normalized);
+      const larvaSection = parsed.larva;
+      if (isRecord(larvaSection)) {
+        const fromPath = parseCliSettingValue(larvaSection.cliPath, fileDir, env);
+        if (fromPath !== null) return fromPath;
+        const fromArgv = parseCliSettingValue(larvaSection.cliArgv, fileDir, env);
+        if (fromArgv !== null) return fromArgv;
+        const fromCli = parseCliSettingValue(larvaSection.cli, fileDir, env);
+        if (fromCli !== null) return fromCli;
+      }
+      const fromTopPath = parseCliSettingValue(parsed.larvaCliPath, fileDir, env);
+      if (fromTopPath !== null) return fromTopPath;
+      const fromTopArgv = parseCliSettingValue(parsed.larvaCliArgv, fileDir, env);
+      if (fromTopArgv !== null) return fromTopArgv;
+    } catch {
+      // ignore parse errors and proceed
+    }
+  }
+  return null;
+}
+
+function autoDiscoverLarvaCli(env: RuntimeEnv): string[] | null {
+  // 1. ~/.local/bin/larva (standard uv tool install destination)
+  const userLocalBin = join(homeDir(env), ".local", "bin", process.platform === "win32" ? "larva.exe" : "larva");
+  if (existsSync(userLocalBin)) {
+    try {
+      accessSync(userLocalBin, constants.X_OK);
+      return [realpathSync(userLocalBin)];
+    } catch {
+      // not executable
+    }
+  }
+
+  // 2. PATH search
+  const pathEnv = typeof env.PATH === "string" ? env.PATH : (typeof process.env.PATH === "string" ? process.env.PATH : "");
+  if (pathEnv.length > 0) {
+    const delimiter = process.platform === "win32" ? ";" : ":";
+    const entries = pathEnv.split(delimiter).filter((entry) => entry.length > 0);
+    const binaryNames = process.platform === "win32" ? ["larva.exe", "larva.cmd", "larva"] : ["larva"];
+    for (const dir of entries) {
+      for (const name of binaryNames) {
+        const candidate = join(dir, name);
+        if (existsSync(candidate)) {
+          try {
+            accessSync(candidate, constants.X_OK);
+            return [realpathSync(candidate)];
+          } catch {
+            // continue
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 function parseLarvaCliArgvPrefix(env: RuntimeEnv): string[] | null {
   const encoded = env.LARVA_CLI_ARGV_JSON;
-  if (typeof encoded !== "string" || encoded.length === 0) return null;
-  try {
-    const prefix = JSON.parse(encoded) as unknown;
-    if (!Array.isArray(prefix) || prefix.length === 0 || !prefix.every((part) => typeof part === "string" && part.length > 0)) return null;
-    if (!isAbsolute(prefix[0])) return null;
-    return prefix;
-  } catch {
-    return null;
+  if (typeof encoded === "string" && encoded.length > 0) {
+    try {
+      const prefix = JSON.parse(encoded) as unknown;
+      if (!Array.isArray(prefix) || prefix.length === 0 || !prefix.every((part) => typeof part === "string" && part.length > 0)) return null;
+      if (!isAbsolute(prefix[0])) return null;
+      return prefix;
+    } catch {
+      return null;
+    }
   }
+  const fromSettings = resolveLarvaCliFromSettings(env);
+  if (fromSettings !== null) return fromSettings;
+  const autoDiscovered = autoDiscoverLarvaCli(env);
+  if (autoDiscovered !== null) return autoDiscovered;
+  return null;
 }
 
 function buildLarvaArgv(env: RuntimeEnv, suffix: string[]): string[] | null {
@@ -3715,7 +3832,11 @@ function isPersonaSpec(value: unknown): value is PersonaSpec {
 }
 
 function personaListCacheKey(env: RuntimeEnv): string {
-  return env.LARVA_CLI_ARGV_JSON ?? "larva-default-argv";
+  if (typeof env.LARVA_CLI_ARGV_JSON === "string" && env.LARVA_CLI_ARGV_JSON.length > 0) {
+    return env.LARVA_CLI_ARGV_JSON;
+  }
+  const prefix = parseLarvaCliArgvPrefix(env);
+  return prefix !== null ? JSON.stringify(prefix) : "larva-default-argv";
 }
 
 function personaCandidateCachePath(env: RuntimeEnv): string {
@@ -5293,7 +5414,13 @@ async function openEnhancedPersonaSelector(ctx: PiContext, personas: BridgeListI
 
 export async function openPersonaSelector(ctx: PiContext): Promise<string | null> {
   const personas = await listPersonas(ctx);
-  if (personas.length === 0) throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
+  if (personas.length === 0) {
+    const env = currentEnv(ctx);
+    if (parseLarvaCliArgvPrefix(env) === null) {
+      throw error("LARVA_PERSONA_NOT_FOUND", "No personas available: Larva backend CLI is not configured or found. Configure 'larva.cliPath' in settings.json or set LARVA_CLI_ARGV_JSON.");
+    }
+    throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
+  }
   const enhanced = await openEnhancedPersonaSelector(ctx, personas);
   if (enhanced.handled) return enhanced.selected;
   const options = personas.map((persona) => ({ id: persona.id, label: persona.id, description: persona.description ?? persona.model }));
@@ -9329,10 +9456,6 @@ function childCapsuleRuntimeRoot(env: RuntimeEnv): string {
   return join(homeDir(env), ".pi", "larva", "runtime");
 }
 
-function childCapsuleBaseAgentDir(env: RuntimeEnv): string {
-  return resolve(env.LARVA_PI_BASE_AGENT_DIR || env.PI_CODING_AGENT_DIR || join(homeDir(env), ".pi", "agent"));
-}
-
 function reportChildCapsuleCleanupFailure(env: RuntimeEnv, reason: string): void {
   const fields = { capsule_root: env.LARVA_PI_CAPSULE_ROOT, reason };
   // stderr is always visible; the optional trace alone cannot satisfy diagnostics.
@@ -9445,6 +9568,12 @@ async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string
   delete env.LARVA_PI_CAPSULE_ROOT;
   if (typeof env.LARVA_PI_BASE_AGENT_DIR !== "string" || env.LARVA_PI_BASE_AGENT_DIR.length === 0) {
     env.LARVA_PI_BASE_AGENT_DIR = childCapsuleBaseAgentDir(parentEnv);
+  }
+  if (typeof env.LARVA_CLI_ARGV_JSON !== "string" || env.LARVA_CLI_ARGV_JSON.length === 0) {
+    const discovered = parseLarvaCliArgvPrefix(parentEnv);
+    if (discovered !== null) {
+      env.LARVA_CLI_ARGV_JSON = JSON.stringify(discovered);
+    }
   }
   const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;

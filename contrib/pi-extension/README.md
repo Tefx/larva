@@ -9,20 +9,28 @@ owns setup, admission, settings, and child-capsule rules. PersonaSpec meaning
 remains owned by opifex.
 
 Native `pi` is the only Pi session entry point. The Python `larva` package is
-used only as the explicitly bound persona data backend.
+used only as the persona data backend.
 
 ```bash
 npm --prefix contrib/pi-extension ci
-export LARVA_CLI_ARGV_JSON='["/absolute/path/to/larva"]'
 pi install /absolute/path/to/larva/contrib/pi-extension
 pi --larva-persona python-senior --larva-agent-persona-switch confirm
 ```
 
-`LARVA_CLI_ARGV_JSON` is the only backend command input: a nonempty JSON argv
-array whose first item is an absolute executable. The extension does not fall
-back to ambient `larva` or `uvx`. Disable automatic loading with
-`pi --no-extensions`; explicit `-e /absolute/path/to/larva.ts` still loads this
-package. Two distinct copies diagnose a conflict and keep the first stateful
+Backend resolution order:
+1. `LARVA_CLI_ARGV_JSON` environment variable (explicit override)
+2. `settings.json` (`~/.pi/agent/settings.json` or `.pi/settings.json`):
+   ```json
+   {
+     "larva": {
+       "cliPath": "/absolute/path/to/larva"
+     }
+   }
+   ```
+3. Auto-discovery fallback: `~/.local/bin/larva` (standard `uv tool install` location) or `PATH`
+
+Disable automatic loading with `pi --no-extensions`; explicit `-e /absolute/path/to/larva.ts`
+still loads this package. Two distinct copies diagnose a conflict and keep the first stateful
 instance.
 
 `--larva-persona` is optional. A fresh session without it starts as `larva:none`.
