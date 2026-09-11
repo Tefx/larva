@@ -35,20 +35,15 @@ project_guidance: Current native Pi cutover authority is design/pi-native-extens
   completed evidence supplies context only where applicable, never new pending obligations.
 clipboard:
   author: vectl-orchestrator
-  summary: 'User: finish system prompt phase, then notify pi-nunc to dispatch'
-  content: 'Current user instruction: 完成pi_system_prompt_resolution phase后发消息通知pi-nunc
-    agent开始调度实施剩余计划. Preserve execution order: finish ongoing pi_native_extension_cutover
-    including terminal acceptance, then execute pi_system_prompt_resolution under
-    its existing accepted Plan. Only after pi_system_prompt_resolution is verified
-    complete, discover current agent-network peers and send the pi-nunc agent a message
-    that the Larva phase is complete and it may start scheduling/implementing its
-    remaining plan. Include applicable integrated commit and concise acceptance/interface
-    evidence. Do not notify readiness early or implement pi-nunc repository work here.
-    Use exact discovered peer address; if unavailable, report pending delivery rather
-    than claim notification. This instruction persists across worker callbacks and
-    handoffs.'
-  written_at: '2026-09-10T18:37:21.618148Z'
-  expires_at: '2026-09-13T18:37:21.618148Z'
+  summary: User revoked pi-nunc notification; finish Plan and report locally
+  content: 'Latest explicit user instruction: 完成plan后不要通知pi nunc，我会自行通知. This supersedes
+    the earlier instruction to notify pi-nunc after pi_system_prompt_resolution acceptance.
+    Continue authorized implementation, independent review and Plan completion. Do
+    NOT send readiness/completion/scheduling messages to pi-nunc; the user will notify
+    it personally. Report verified outcome to the user. Preserve current live executor,
+    claims, scope and acceptance requirements.'
+  written_at: '2026-09-11T05:20:19.567231Z'
+  expires_at: '2026-09-14T05:20:19.567231Z'
 phases:
 - id: meta.discovery
   name: Discovery
