@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import { proveSessionReplacement } from "./resolver-session-replacement-proof.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const extensionPath = join(root, "contrib/pi-extension/larva.ts");
@@ -235,10 +236,23 @@ process.exit(3);
       models: [{ id: modelId, name: modelId, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 256 }],
     });
     await modelRuntime.setRuntimeApiKey("loopback", "loopback-only");
+    const resolvedForSerialization = [];
+    const providerObservations = [];
     const loader = new pi.DefaultResourceLoader({
       cwd,
       agentDir,
       additionalExtensionPaths: [extensionPath],
+      extensionFactories: [api => {
+        api.on("before_agent_start", event => {
+          const replies = [];
+          api.events.emit("larva:resolve-system-prompt:v1", { scope: "main", systemPrompt: event.systemPrompt, reply: result => replies.push(result) });
+          assert.equal(replies.length, 1);
+          assert.equal(replies[0].status, "ok");
+          resolvedForSerialization.push(replies[0].systemPrompt);
+          return { systemPrompt: replies[0].systemPrompt };
+        });
+        api.on("before_provider_request", event => { providerObservations.push(structuredClone(event.payload)); });
+      }],
       noSkills: true,
       noPromptTemplates: true,
       noThemes: true,
@@ -274,6 +288,9 @@ process.exit(3);
       const userTurn = captured.filter((entry) => !entry.wake);
       assert.ok(userTurn.length >= 1, "user prompt must hit the loopback provider");
       assertCurrentIdentity(userTurn[0].system, "user-turn provider request");
+      assert.equal(resolvedForSerialization.length, 1);
+      assert.equal(systemTextFromPayload(providerObservations[0]), resolvedForSerialization[0], "returned resolver text must pass through real Pi serializer and projection unchanged");
+      assert.equal(userTurn[0].system, resolvedForSerialization[0], "loopback receives the returned resolver text");
 
       session.setActiveToolsByName(session.getActiveToolNames());
       const beforeIdle = captured.length;
@@ -385,6 +402,7 @@ process.exit(3);
     } finally {
       missingSlotSession.dispose();
     }
+    await proveSessionReplacement(pi, { cwd, agentDir, modelRuntime, model, extensionPath, tempRoot });
   } finally {
     for (const socket of sockets) socket.destroy();
     if (server?.listening) await new Promise((resolveClose) => server.close(resolveClose));

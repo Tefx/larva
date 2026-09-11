@@ -218,12 +218,14 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
         encoding="utf-8",
     )
     observed_env = tmp_path / "observed-profile-path.txt"
+    race_ready = tmp_path / "race-ready"
+    race_release = tmp_path / "race-release"
     fake_pi = tmp_path / "fake-pi.mjs"
     fake_pi.write_text(
         textwrap.dedent(
             f"""\
             #!/usr/bin/env node
-            import {{ appendFileSync, mkdirSync, readFileSync, writeFileSync }} from "node:fs";
+            import {{ appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync }} from "node:fs";
             import {{ join }} from "node:path";
             import {{ createInterface }} from "node:readline";
             const args = process.argv.slice(2);
@@ -237,6 +239,8 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
             const expected = currentProvider + "/" + currentModelId;
             const actual = arg("--model");
             appendFileSync({json.dumps(str(observed_env))}, selectedMap + "\\n", "utf8");
+            const isRacedChild = persona === "child" && readFileSync({json.dumps(str(observed_env))}, "utf8").trim().split("\\n").length === 2;
+            let firstState = true;
             if (actual !== expected) {{
               process.stderr.write("larva pi: LARVA_MODEL_UNAVAILABLE: initial persona 'child' route mismatch cli=" + actual + " profile=" + expected + "\\n");
               process.exit(2);
@@ -250,8 +254,17 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
             const sessionFile = join(root, "profile-child-" + process.pid + ".jsonl");
             writeFileSync(sessionFile, "", "utf8");
             const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
-            createInterface({{ input: process.stdin }}).on("line", (line) => {{
+            createInterface({{ input: process.stdin }}).on("line", async (line) => {{
               const message = JSON.parse(line);
+              if (isRacedChild && firstState && message.type === "get_state") {{
+                firstState = false;
+                writeFileSync({json.dumps(str(race_ready))}, "ready");
+                const deadline = Date.now() + 5000;
+                while (!existsSync({json.dumps(str(race_release))})) {{
+                  if (Date.now() > deadline) throw new Error("race release deadline");
+                  await new Promise(resolve => setTimeout(resolve, 5));
+                }}
+              }}
               if (persona === "cleanup" && message.type === "get_state" && String(message.id).startsWith("model-map-previous-")) {{
                 process.exit(0);
               }} else if (message.type === "set_model") {{
@@ -299,10 +312,19 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
         const parent = await mod.commitPersona("parent", ctx, pi);
         const switched = await mod.switchModelMapProfile("openrouter", ctx, pi);
         const child = await mod.larva_subagent({{ persona_id: "child", task: "return ok" }}, ctx);
+        await mod.larva_subagent_wait({{ task_ids: [child.task_id], timeout_ms: 5000 }}, ctx);
+        const {{ existsSync, writeFileSync }} = await import("node:fs");
         const racedChildPromise = mod.larva_subagent({{ persona_id: "child", task: "race switch against admission" }}, ctx);
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        const codexSwitchPromise = mod.switchModelMapProfile("codex", ctx, pi);
-        const [racedChild, codexSwitch] = await Promise.all([racedChildPromise, codexSwitchPromise]);
+        // Observe captured admission and hold first RPC readiness while changing
+        // the profile. A 10ms guess could instead race before admission capture.
+        const deadline = Date.now() + 5000;
+        while (!existsSync({json.dumps(str(race_ready))})) {{
+          if (Date.now() > deadline) throw new Error("race readiness deadline");
+          await new Promise(resolve => setTimeout(resolve, 5));
+        }}
+        const codexSwitch = await mod.switchModelMapProfile("codex", ctx, pi);
+        writeFileSync({json.dumps(str(race_release))}, "release");
+        const racedChild = await racedChildPromise;
         const cleanupChild = await mod.larva_subagent({{ persona_id: "cleanup", task: "exit during profile switch" }}, ctx);
         const cleanupSwitch = await mod.switchModelMapProfile("openrouter", ctx, pi);
         const startupFailure = await mod.larva_subagent({{ persona_id: "startup-fail", task: "fail before RPC" }}, {{ ...ctx, presentationCallId: "startup-call-1" }});
@@ -321,7 +343,7 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
     assert payload["parent"]["ok"] is True  # type: ignore[index]
     assert payload["switched"]["status"] == "success"  # type: ignore[index]
     assert payload["child"]["status"] == "accepted"  # type: ignore[index]
-    assert payload["racedChild"]["status"] == "accepted"  # type: ignore[index]
+    assert payload["racedChild"]["status"] == "accepted", payload["racedChild"]  # type: ignore[index]
     assert payload["codexSwitch"]["status"] == "success"  # type: ignore[index]
     assert payload["cleanupChild"]["status"] == "accepted"  # type: ignore[index]
     cleanup_rows = payload["cleanupSwitch"]["children"]  # type: ignore[index]

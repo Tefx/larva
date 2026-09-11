@@ -737,6 +737,24 @@ Consumer rules and lifecycle contract:
   admission, usage receipts, auto-compaction, long tool loops) is explicitly not
   performed as part of this Larva delivery.
 
+
+Diagnostics use fixed bounded categories and never echo caller exceptions, prompt
+text, or paths. A callable reply accessor is captured once; invalid fields still
+receive one synchronous `unavailable` reply, and a throwing reply gets no retry.
+
+Opaque persona/continuation text may contain delimiter examples. Larva preserves
+that text using private length framing when needed. Consumers must treat the
+returned string as opaque, without parsing or editing its framing. Ambiguous
+unframed historical boundaries return `unavailable` instead of leaving a stale
+tail or discarding foreign text.
+
+Readiness covers the complete outer borrow/restore and confirmed rollback.
+Incomplete or failed non-null identity cancels provider requests; a failed stored
+persona startup that leaves native `larva:none` retains its nonfatal fallback.
+The resolver remains unavailable for that failed initialization. Pi may reuse a
+module factory on new/resume/fork: Larva resets its retired instruction state and
+ignores publication from the previous generation's pending initialization.
+
 ### `/larva-persona` Tab completion
 
 The supported editor-autocomplete target is Pi interactive TUI with a runtime UI

@@ -789,7 +789,11 @@ let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 let sessionInitializationPromise: Promise<void> | null = null;
 let instructionDead = false;
+let instructionGeneration = 0;
 let instructionReady = false;
+// A best-effort rollback cannot publish a coherent instruction state when a
+// host setter rejected restoration. Only a later complete commit can recover it.
+let instructionStateUncertain = false;
 let instructionTransitionDepth = 0;
 let resolveSystemPromptUnsubscribe: (() => void) | null = null;
 let admissionBlocked = false;
@@ -798,25 +802,32 @@ const initializedPiSessionRestoreKeys = new WeakMap<object, string>();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
-function beginInstructionTransition(): void {
+function beginInstructionTransition(): number {
   instructionTransitionDepth += 1;
   instructionReady = false;
+  return instructionGeneration;
 }
 
-function endInstructionTransition(): void {
+function instructionGenerationIsCurrent(generation: number): boolean {
+  return !instructionDead && generation === instructionGeneration;
+}
+
+function endInstructionTransition(generation: number): void {
+  if (generation !== instructionGeneration) return;
   if (instructionTransitionDepth > 0) instructionTransitionDepth -= 1;
   if (instructionDead) {
     instructionReady = false;
     return;
   }
-  if (instructionTransitionDepth === 0) instructionReady = restoreFailureState === null;
+  if (instructionTransitionDepth === 0) instructionReady = restoreFailureState === null && !instructionStateUncertain;
 }
 
 function instructionResolverAcceptsReads(): boolean {
-  return !instructionDead && instructionReady && instructionTransitionDepth === 0 && restoreFailureState === null;
+  return !instructionDead && instructionReady && !instructionStateUncertain && instructionTransitionDepth === 0 && restoreFailureState === null;
 }
 
 function invalidateInstructionResolver(): void {
+  instructionGeneration += 1;
   instructionDead = true;
   instructionReady = false;
   instructionTransitionDepth = 0;
@@ -5094,9 +5105,13 @@ async function commitPersonaInternal(
   applyThinking: boolean,
   preselectedModel: ParsedModel | null,
 ): Promise<PersonaSwitchResult> {
-  beginInstructionTransition();
+  const generation = beginInstructionTransition();
+  const requireCurrentGeneration = (): void => {
+    if (!instructionGenerationIsCurrent(generation)) throw error("LARVA_BAD_INPUT", "Persona transition belongs to a retired session");
+  };
   try {
   const previousEnvelope = state.envelope;
+  const previousInstructionUncertain = instructionStateUncertain;
   const previousActiveTools = new Set(state.activeTools);
   const previousPiModel = state.piModel;
   const previousRequestedThinking = state.requestedThinking;
@@ -5107,21 +5122,26 @@ async function commitPersonaInternal(
   let activeToolsUpdated = false;
   try {
     const spec = await resolvePersona(personaId, ctx);
+    requireCurrentGeneration();
     const requestedThinking = applyThinking ? await requestedThinkingForPersona(currentEnv(ctx), spec.id) : null;
     const model = applyModel
       ? await validateModel(spec, ctx)
       : preselectedModel === null
         ? null
         : await validatePreselectedPiModel(spec, ctx, preselectedModel);
+    requireCurrentGeneration();
     const baseline = await toolBaseline(pi);
+    requireCurrentGeneration();
     rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
     const activeTools = applyAgentPersonaToolExposure(filterPolicyTools(baseline, tool_policy));
+    requireCurrentGeneration();
 
     if (applyModel && model !== null) {
       await setPiModel(pi, model, spec.model);
       modelUpdated = true;
     }
+    requireCurrentGeneration();
     const effectiveThinking = requestedThinking === null ? previousEffectiveThinking : setPiThinking(pi, requestedThinking);
     thinkingUpdated = requestedThinking !== null;
     let applied: boolean | void | undefined;
@@ -5132,6 +5152,7 @@ async function commitPersonaInternal(
     }
     if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
     activeToolsUpdated = true;
+    requireCurrentGeneration();
 
     const envelope: PersonaEnvelope = {
       persona_id: spec.id,
@@ -5150,17 +5171,26 @@ async function commitPersonaInternal(
     if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
     rememberSessionInitialized(ctx);
     await setStatus(ctx);
+    requireCurrentGeneration();
+    instructionStateUncertain = false;
     return { ok: true, envelope };
   } catch (caught) {
+    if (!instructionGenerationIsCurrent(generation)) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona transition belongs to a retired session") };
+    let rollbackFailed = false;
     if (activeToolsUpdated && rollbackTools) {
-      try { await pi.setActiveTools?.(rollbackTools); } catch { /* preserve previous active tool rules best-effort */ }
+      try { if (await pi.setActiveTools?.(rollbackTools) === false) rollbackFailed = true; } catch { rollbackFailed = true; }
     }
-    if (modelUpdated && previousPiModel !== null) {
-      try { await pi.setModel?.(previousPiModel); } catch { /* fail-safe: do not report a false active persona after model rollback failure */ }
+    if (modelUpdated) {
+      if (previousPiModel === null) rollbackFailed = true;
+      else {
+        try { if (await pi.setModel?.(previousPiModel) === false) rollbackFailed = true; } catch { rollbackFailed = true; }
+      }
     }
     if (thinkingUpdated && previousEffectiveThinking !== null) {
-      try { pi.setThinkingLevel?.(previousEffectiveThinking); } catch { /* preserve prior route best-effort */ }
+      try { pi.setThinkingLevel?.(previousEffectiveThinking); } catch { rollbackFailed = true; }
     }
+    if (!instructionGenerationIsCurrent(generation)) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona transition belongs to a retired session") };
+    instructionStateUncertain = previousInstructionUncertain || rollbackFailed;
     state.envelope = previousEnvelope; // previousEnvelope rollback preserves user-visible persona state.
     state.activeTools = previousActiveTools;
     state.piModel = previousPiModel;
@@ -5170,7 +5200,7 @@ async function commitPersonaInternal(
     return { ok: false, error: larvaError };
   }
   } finally {
-    endInstructionTransition();
+    endInstructionTransition(generation);
   }
 }
 
@@ -5279,13 +5309,13 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
   const trimmed = input?.trim() ?? "";
   if (trimmed === "--refresh-cache") return refreshPersonaCandidateCache(ctx);
   if (trimmed.length > 0) {
-    beginInstructionTransition();
+    const generation = beginInstructionTransition();
     try {
       const result = await commitPersonaWithOptions(trimmed, ctx, pi, { sessionCommitSource: "slash-command" });
-      if (result.ok) clearActivePersonaLease("manual switch via /larva-persona: do not later restore old origin", ctx, pi);
+      if (result.ok && instructionGenerationIsCurrent(generation)) clearActivePersonaLease("manual switch via /larva-persona: do not later restore old origin", ctx, pi);
       return result;
     } finally {
-      endInstructionTransition();
+      endInstructionTransition(generation);
     }
   }
   if (larvaHostMode(ctx) !== "tui") {
@@ -5299,13 +5329,13 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
     throw caught;
   }
   if (!selected) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selection cancelled") };
-  beginInstructionTransition();
+  const generation = beginInstructionTransition();
   try {
     const result = await commitPersonaWithOptions(selected, ctx, pi, { sessionCommitSource: "selector" });
-    if (result.ok) clearActivePersonaLease("manual switch via selector clears active lease and skip restore", ctx, pi);
+    if (result.ok && instructionGenerationIsCurrent(generation)) clearActivePersonaLease("manual switch via selector clears active lease and skip restore", ctx, pi);
     return result;
   } finally {
-    endInstructionTransition();
+    endInstructionTransition(generation);
   }
 }
 
@@ -5451,14 +5481,14 @@ function createPersonaSwitchContinuation(fromPersonaId: string | null, toPersona
 }
 
 async function failPendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation, larvaError: LarvaError): Promise<void> {
-  beginInstructionTransition();
+  const generation = beginInstructionTransition();
   try {
     if (pendingPersonaSwitchContinuation === continuation) pendingPersonaSwitchContinuation = null;
     if (agentPersonaSwitchPendingFollowUpContinuations > 0) agentPersonaSwitchPendingFollowUpContinuations -= 1;
     appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: false, error_code: larvaError.code, error_message: larvaError.message, lease: continuation.lease });
     await attemptPersonaLeaseRestore(ctx, pi, terminal);
   } finally {
-    endInstructionTransition();
+    endInstructionTransition(generation);
   }
 }
 
@@ -5626,7 +5656,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", max_switches_per_chain: effectiveSwitchBudget, error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
-  beginInstructionTransition();
+  const generation = beginInstructionTransition();
   try {
     if (mode === "confirm") {
       const outcome = await requestPersonaBorrowConfirmation(ctx, fromPersona, personaId, reason);
@@ -5674,7 +5704,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     }
     return result;
   } finally {
-    endInstructionTransition();
+    endInstructionTransition(generation);
   }
 }
 
@@ -5784,12 +5814,38 @@ function parseManagedBlockRanges(text: string): { status: "ok"; ranges: TopLevel
   const stack: FoundToken[] = [];
   const topLevelRanges: TopLevelManagedRange[] = [];
   const orphanEnds: TopLevelManagedRange[] = [];
+  const closedKinds = new Set<ManagedBlockKind>();
+  let opaqueEnd = 0;
 
   for (const token of tokens) {
+    if (token.index < opaqueEnd) continue;
     if (token.isBegin) {
+      // Private length framing disambiguates opaque prompt examples without
+      // escaping, normalizing or restricting persona/continuation content.
+      const afterBegin = token.index + token.length;
+      const suffix = text.slice(afterBegin);
+      if (suffix.startsWith("\n<!-- larva:opaque-body:")) {
+        const header = /^\n<!-- larva:opaque-body:(0|[1-9][0-9]*) -->\n/.exec(suffix);
+        if (header === null) return { status: "unavailable", reason: "damaged managed boundaries" };
+        const length = Number(header[1]);
+        const end = afterBegin + header[0].length + length;
+        const endToken = MANAGED_TOKEN_DEFS.find((def) => def.kind === token.kind && !def.isBegin)!.text;
+        if (!Number.isSafeInteger(length) || !text.startsWith(`\n${endToken}`, end)) {
+          return { status: "unavailable", reason: "damaged managed boundaries" };
+        }
+        opaqueEnd = end + 1 + endToken.length;
+        if (stack.length === 0) {
+          topLevelRanges.push({ start: token.index, end: opaqueEnd, kind: token.kind });
+          closedKinds.add(token.kind);
+        }
+        continue;
+      }
       stack.push(token);
     } else {
       if (stack.length === 0) {
+        // A second unframed end may actually close an opaque example's outer
+        // block. Its intervening tail has unknown ownership; never call it repaired.
+        if (closedKinds.has(token.kind)) return { status: "unavailable", reason: "ambiguous managed boundaries" };
         orphanEnds.push({ start: token.index, end: token.index + token.length, kind: "dangling-end" });
       } else {
         const top = stack[stack.length - 1];
@@ -5797,6 +5853,7 @@ function parseManagedBlockRanges(text: string): { status: "ok"; ranges: TopLevel
           stack.pop();
           if (stack.length === 0) {
             topLevelRanges.push({ start: top.index, end: token.index + token.length, kind: top.kind });
+            closedKinds.add(top.kind);
           }
         } else {
           return { status: "unavailable", reason: "damaged managed boundaries" };
@@ -5894,19 +5951,27 @@ function identityPolicyBlock(): string {
   ].join("\n");
 }
 
+function managedOpaqueBlock(begin: string, body: string, end: string): string {
+  // Keep the recognized legacy layout when no delimiter can collide. Length is
+  // measured in JS string units, exactly the units used by slice in the reader.
+  const framing = MANAGED_TOKEN_DEFS.some((def) => body.includes(def.text))
+    || body.startsWith("<!-- larva:opaque-body:")
+    ? `<!-- larva:opaque-body:${body.length} -->\n` : "";
+  return `${begin}\n${framing}${body}\n${end}`;
+}
+
 function activePersonaBlock(envelope: PersonaEnvelope, guidance: string | null): string {
-  return [
-    LARVA_ACTIVE_PERSONA_BEGIN,
+  const body = [
     `<!-- larva-spec: ${envelope.persona_id}@${envelope.spec_digest} -->`,
     envelope.prompt,
     ...(guidance === null ? [] : [guidance]),
     "Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.",
-    LARVA_ACTIVE_PERSONA_END,
   ].join("\n");
+  return managedOpaqueBlock(LARVA_ACTIVE_PERSONA_BEGIN, body, LARVA_ACTIVE_PERSONA_END);
 }
 
 function continuationPromptBlock(message: string): string {
-  return [LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN, message, LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END].join("\n");
+  return managedOpaqueBlock(LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN, message, LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END);
 }
 
 export function composeLarvaSystemPrompt(base: string, snapshot: SystemPromptComposeSnapshot): SystemPromptComposeResult {
@@ -5945,8 +6010,9 @@ function handleResolveSystemPromptRequest(request: unknown): void {
   if (!isRecord(request)) return;
   let replyFn: ((result: ResolveSystemPromptResult) => void) | null = null;
   try {
-    if (typeof request.reply === "function") {
-      replyFn = request.reply as (result: ResolveSystemPromptResult) => void;
+    const candidate = request.reply;
+    if (typeof candidate === "function") {
+      replyFn = candidate as (result: ResolveSystemPromptResult) => void;
     }
   } catch {
     return;
@@ -5980,9 +6046,9 @@ function handleResolveSystemPromptRequest(request: unknown): void {
       return;
     }
     replyOnce({ status: "ok", systemPrompt: composed.systemPrompt });
-  } catch (caught) {
-    const message = caught instanceof Error ? caught.message : String(caught);
-    replyOnce({ status: "unavailable", reason: boundedVisible(`request error: ${message}`, 200) });
+  } catch {
+    // Arbitrary thrown values may be non-coercible or contain prompt/path data.
+    replyOnce({ status: "unavailable", reason: "request unavailable" });
   }
 }
 
@@ -6190,7 +6256,9 @@ async function warnIdentityProjection(ctx: PiContext | undefined, status: string
 }
 
 export async function before_provider_request(event: unknown, ctx?: PiContext): Promise<unknown | undefined> {
-  if (admissionBlocked) {
+  // Failed stored-persona startup may leave a usable native none session. That
+  // exception does not admit a partially committed or failed non-null identity.
+  if (admissionBlocked || (state.envelope !== null && !instructionResolverAcceptsReads())) {
     ctx?.abort?.();
     return undefined;
   }
@@ -6255,6 +6323,7 @@ function childAgentTerminalError(event: unknown): LarvaError | null {
 }
 
 async function restoreLeaseOriginPiModel(lease: PersonaLease, pi: PiApi): Promise<LarvaError | null> {
+  const generation = instructionGeneration;
   if (!lease.originPiModelCaptured) return null;
   const model = activePersonaLeaseOriginPiModel;
   if (model === null || model === undefined) return null;
@@ -6265,7 +6334,7 @@ async function restoreLeaseOriginPiModel(lease: PersonaLease, pi: PiApi): Promis
     const message = caught instanceof Error ? caught.message : String(caught);
     return error("LARVA_MODEL_UNAVAILABLE", `Pi rejected restore model ${lease.originPiModelLabel ?? "captured origin model"}: ${message}`);
   }
-  state.piModel = model;
+  if (instructionGenerationIsCurrent(generation)) state.piModel = model;
   return null;
 }
 
@@ -6290,7 +6359,7 @@ async function failPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "suc
 
 async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout"): Promise<void> {
   if (activePersonaLease === null) return;
-  beginInstructionTransition();
+  const generation = beginInstructionTransition();
   const lease = activePersonaLease;
   try {
     if (lease.scope !== "turn") return;
@@ -6302,11 +6371,13 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
       return;
     }
     const restored = await commitPersonaWithOptions(lease.originPersonaId, ctx, pi, { sessionCommitSource: null, applyModel: !lease.originPiModelCaptured });
+    if (!instructionGenerationIsCurrent(generation)) return;
     if (!restored.ok) {
       await failPersonaLeaseRestore(ctx, pi, terminal, lease, restored.error);
       return;
     }
     const modelRestoreError = await restoreLeaseOriginPiModel(lease, pi);
+    if (!instructionGenerationIsCurrent(generation)) return;
     if (modelRestoreError !== null) {
       await failPersonaLeaseRestore(ctx, pi, terminal, lease, modelRestoreError);
       return;
@@ -6321,12 +6392,12 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
     await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
     appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "status/event/audit only; not assistant chat-body text" });
   } catch (caught) {
-    if (activePersonaLease !== null) {
+    if (instructionGenerationIsCurrent(generation) && activePersonaLease !== null) {
       const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_RESTORE_FAILED", caught instanceof Error ? caught.message : String(caught));
       await failPersonaLeaseRestore(ctx, pi, terminal, lease, larvaError);
     }
   } finally {
-    endInstructionTransition();
+    endInstructionTransition(generation);
   }
 }
 
@@ -10325,19 +10396,23 @@ async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void
   const sessionIdentity = piSessionIdentity(ctx);
   const restoreKey = sessionInitializationRestoreKey(ctx);
   if (sessionIdentity !== null && initializedPiSessionRestoreKeys.get(sessionIdentity) === restoreKey) return;
-  beginInstructionTransition();
+  const generation = beginInstructionTransition();
   try {
     const initialization = initializeSession(ctx, pi);
     sessionInitializationPromise = initialization;
     await initialization;
-    if (instructionDead) return;
+    if (!instructionGenerationIsCurrent(generation)) return;
     if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, sessionInitializationRestoreKey(ctx));
+  } catch (caught) {
+    if (instructionGenerationIsCurrent(generation)) instructionStateUncertain = true;
+    throw caught;
   } finally {
-    endInstructionTransition();
+    endInstructionTransition(generation);
   }
 }
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
+  const generation = instructionGeneration;
   const env = currentEnv(ctx);
   nativeStartupFlags = readNativeStartupFlags(pi);
   if (nativeStartupFlags.invalid !== null) {
@@ -10345,6 +10420,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   }
   setAgentPersonaSwitchMode(resolveAgentPersonaSwitchMode(ctx));
   await emitAgentPersonaSwitchModeWarnings(ctx);
+  if (!instructionGenerationIsCurrent(generation)) return;
   registerAgentPersonaSwitchTools(ctx, pi);
   const requestedCliModel = env.LARVA_PI_LAUNCHED === "1" && ctx.model !== undefined && ctx.model !== null
     ? parseModel(env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?.trim() ?? "")
@@ -10357,7 +10433,9 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   if (explicitPersonaId.length > 0) {
     try {
       await resolvePersona(explicitPersonaId, ctx);
+      if (!instructionGenerationIsCurrent(generation)) return;
     } catch (caught) {
+      if (!instructionGenerationIsCurrent(generation)) return;
       const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve persona ${explicitPersonaId}`);
       restoreFailureState = {
         failedRestoreTarget: explicitPersonaId,
@@ -10381,6 +10459,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       applyThinking: false,
       ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
     });
+    if (!instructionGenerationIsCurrent(generation)) return;
     if (!restored.ok) {
       restoreFailureState = {
         failedRestoreTarget: stored.personaId,
@@ -10402,6 +10481,7 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       applyModel: cliSelectedModel === null,
       ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
     });
+    if (!instructionGenerationIsCurrent(generation)) return;
     if (!committed.ok) {
       restoreFailureState = {
         failedRestoreTarget: explicitPersonaId,
@@ -10470,7 +10550,19 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   }
   (globalThis as Record<symbol, { entry: string }>)[LARVA_STATEFUL_REGISTRATION] = { entry: LARVA_EXTENSION_ENTRY_PATH };
   const firstResolverSetup = resolveSystemPromptUnsubscribe === null;
+  if (instructionDead) {
+    // Pi may reuse a cached module factory for new/resume/fork. Its new runtime
+    // must load current session state, never inherit the previous envelope.
+    state.envelope = null;
+    state.activeTools = new Set<string>();
+    state.piModel = null;
+    state.requestedThinking = null;
+    state.effectiveThinking = null;
+    instructionStateUncertain = false;
+    sessionInitializationPromise = null;
+  }
   registerResolveSystemPromptListener(pi);
+  const instanceGeneration = instructionGeneration;
   if (firstResolverSetup) instructionReady = false;
   pi.registerFlag?.(LARVA_PERSONA_FLAG, { type: "string", description: "Optional Larva persona ID for this session" });
   pi.registerFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG, { type: "string", description: "Larva agent persona switch mode: manual, confirm, auto, or free" });
@@ -10659,15 +10751,17 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   const initialRuntimeCtx = withRuntimeEnv(ctx, env);
   if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi);
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
-    beginInstructionTransition();
+    if (!instructionGenerationIsCurrent(instanceGeneration)) return;
+    const generation = beginInstructionTransition();
     try {
       const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
       registerSubagentBackgroundIndicatorContext(runtimeCtx);
       registerLarvaPersonaAutocompleteProvider(runtimeCtx);
       await resetExtensionUI("session_start");
+      if (!instructionGenerationIsCurrent(generation)) return;
       await ensureSessionInitialized(runtimeCtx, pi);
     } finally {
-      endInstructionTransition();
+      endInstructionTransition(generation);
     }
   });
   pi.on?.("session_before_compact", async (payload: unknown, eventCtx?: PiContext) => {
@@ -10675,6 +10769,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
   });
   pi.on?.("session_shutdown", (payload: unknown) => {
+    if (!instructionGenerationIsCurrent(instanceGeneration)) return;
     invalidateInstructionResolver();
     const reason = isRecord(payload) && typeof payload.reason === "string" ? payload.reason : "session_shutdown";
     return resetExtensionUI(reason);
@@ -10698,12 +10793,12 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
       return;
     }
     if (continuation !== null && continuation.phase === "continuation_running") {
-      beginInstructionTransition();
+      const generation = beginInstructionTransition();
       try {
         pendingPersonaSwitchContinuation = null;
         await attemptPersonaLeaseRestore(runtimeCtx, pi, terminal);
       } finally {
-        endInstructionTransition();
+        endInstructionTransition(generation);
       }
       return;
     }

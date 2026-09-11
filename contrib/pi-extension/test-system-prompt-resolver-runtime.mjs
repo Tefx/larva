@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
+import { observePrivateInstructionState, observeReadEffects, barrier } from "./resolver-test-support.mjs";
+import { proveSerializers } from "./resolver-serialization-proof.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -9,6 +12,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const extensionUrl = pathToFileURL(join(root, "contrib/pi-extension/larva.ts"));
 const results = [];
+const ownedDirs = [];
+const runtimes = [];
+const observationHook = observePrivateInstructionState(extensionUrl);
 
 const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
 const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
@@ -36,6 +42,7 @@ async function loadEventBus() {
 
 async function makeFakeCli(name, personas = ["origin", "target"]) {
   const dir = await mkdtemp(join(tmpdir(), `larva-resolver-${name}-`));
+  ownedDirs.push(dir);
   const cli = join(dir, "fake-larva-cli.mjs");
   const records = personas.map((id) => ({
     id,
@@ -78,6 +85,8 @@ async function boot(name, env = {}, extraPi = {}) {
   let getAllToolsCalls = 0;
   let setActiveToolsCalls = 0;
   let setModelCalls = 0;
+  let sessionReads = 0;
+  const commands = {};
   const sessionEntries = [];
   const ctx = {
     env: {
@@ -89,7 +98,7 @@ async function boot(name, env = {}, extraPi = {}) {
     modelRegistry: { find: async () => ({ id: "model", provider: "loopback" }) },
     session: {
       entries: sessionEntries,
-      getEntries: () => sessionEntries,
+      getEntries: () => { sessionReads++; return sessionEntries; },
       appendEntry: (customType, data) => {
         const entry = { customType, data };
         auditEntries.push(entry);
@@ -111,7 +120,7 @@ async function boot(name, env = {}, extraPi = {}) {
     setModel: async () => { setModelCalls += 1; return true; },
     getThinkingLevel: () => "off",
     setThinkingLevel: () => {},
-    registerCommand: () => {},
+    registerCommand: (name, command) => { commands[name] = command; },
     registerTool: () => {},
     on: (event, handler) => { handlers[event] = handler; },
     ...extraPi,
@@ -121,8 +130,11 @@ async function boot(name, env = {}, extraPi = {}) {
     get getAllTools() { return getAllToolsCalls; },
     get setActiveTools() { return setActiveToolsCalls; },
     get setModel() { return setModelCalls; },
+    get sessionReads() { return sessionReads; },
   };
-  return { mod, ctx, pi, events, handlers, auditEntries, chatMessages, runtimeMessages, counts, sessionEntries };
+  const runtime = { mod, ctx, pi, events, handlers, commands, auditEntries, chatMessages, runtimeMessages, counts, sessionEntries };
+  runtimes.push(runtime);
+  return runtime;
 }
 
 function emitResolve(events, eventName, systemPrompt, extra = {}) {
@@ -237,6 +249,25 @@ await run("F2 opaque persona with complete same-kind marker example preserves fi
   assert.ok(switched.systemPrompt.includes("Base foreign text"));
 });
 
+await run("F2 unmatched opaque markers preserve fixed points and disappear on switch", async () => {
+  const mod = await importFresh("opaque-unmatched");
+  const none = { envelope: null, switchGuidance: null, continuationMessage: null };
+  for (const marker of [LARVA_ACTIVE_PERSONA_END, LARVA_ACTIVE_PERSONA_BEGIN, LARVA_IDENTITY_POLICY_END, LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END]) {
+    const prompt = `Example token: ${marker}\nTAIL 🦋 e\u0301`;
+    const snapshot = { ...none, envelope: { persona_id: "opaque", spec_digest: "sha256:opaque", prompt, model: "loopback/model", tool_policy: {} }, continuationMessage: `handoff ${marker}\nCONT TAIL` };
+    const first = mod.composeLarvaSystemPrompt("BASE", snapshot);
+    assert.equal(first.status, "ok");
+    assert.ok(first.systemPrompt.includes(prompt));
+    assert.deepEqual(mod.composeLarvaSystemPrompt(first.systemPrompt, snapshot), first);
+    assert.deepEqual(mod.composeLarvaSystemPrompt(first.systemPrompt, none), { status: "ok", systemPrompt: "BASE" });
+    const switched = mod.composeLarvaSystemPrompt(first.systemPrompt, { ...snapshot, envelope: { ...snapshot.envelope, prompt: "NEXT" }, continuationMessage: null });
+    assert.equal(switched.status, "ok");
+    assert.equal(switched.systemPrompt.includes("TAIL"), false);
+  }
+  const ambiguous = `${LARVA_ACTIVE_PERSONA_BEGIN}old ${LARVA_ACTIVE_PERSONA_END}\nTAIL${LARVA_ACTIVE_PERSONA_END}`;
+  assert.equal(mod.composeLarvaSystemPrompt(ambiguous, none).status, "unavailable");
+});
+
 // ---------------------------------------------------------------------------
 // F3: Robust synchronous event error handling and single reply
 // ---------------------------------------------------------------------------
@@ -253,7 +284,7 @@ await run("F3 throwing scope or systemPrompt getters produce bounded unavailable
   });
   assert.equal(scopeReplies.length, 1);
   assert.equal(scopeReplies[0].status, "unavailable");
-  assert.ok(scopeReplies[0].reason.includes("throwing scope getter"));
+  assert.equal(scopeReplies[0].reason.includes("throwing scope getter"), false);
 
   // Throwing systemPrompt getter
   const promptReplies = [];
@@ -264,7 +295,7 @@ await run("F3 throwing scope or systemPrompt getters produce bounded unavailable
   });
   assert.equal(promptReplies.length, 1);
   assert.equal(promptReplies[0].status, "unavailable");
-  assert.ok(promptReplies[0].reason.includes("throwing systemPrompt getter"));
+  assert.equal(promptReplies[0].reason.includes("throwing systemPrompt getter"), false);
 
   // Throwing reply function does not crash or emit second reply
   let replyAttempts = 0;
@@ -283,6 +314,46 @@ await run("F3 throwing scope or systemPrompt getters produce bounded unavailable
   assert.equal(scopeReplies.length, 1);
   assert.equal(promptReplies.length, 1);
   assert.equal(replyAttempts, 1);
+});
+
+await run("F3 one captured reply, safe error categories, invalid and nested real EventBus queries", async () => {
+  const runtime = await boot("f3-accessors", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+  const name = runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT;
+  const errors = [];
+  const originalError = console.error;
+  console.error = (...args) => errors.push(args);
+  try {
+    let reads = 0, attempts = 0;
+    runtime.events.emit(name, { scope: "main", systemPrompt: "base", get reply() { return ++reads === 1 ? () => attempts++ : undefined; } });
+    assert.equal(reads, 1);
+    assert.equal(attempts, 1);
+    for (const thrown of [new Error("/private/project/persona.md"), new Error("FULL PRIVATE PROMPT"), Object.create(null), { get message() { throw null; } }]) {
+      const replies = [];
+      runtime.events.emit(name, { get scope() { throw thrown; }, systemPrompt: "base", reply: r => replies.push(r) });
+      assert.equal(replies.length, 1);
+      assert.equal(replies[0].status, "unavailable");
+      assert.ok(replies[0].reason.length > 0 && replies[0].reason.length < 100);
+      assert.equal(/private|PROMPT|person[a]/.test(replies[0].reason), false);
+    }
+    for (const fields of [{ scope: "maintenance", systemPrompt: "base" }, { scope: "main", systemPrompt: 3 }, {}]) {
+      const replies = [];
+      runtime.events.emit(name, { ...fields, reply: r => replies.push(r) });
+      assert.equal(replies.length, 1);
+      assert.equal(replies[0].status, "unavailable");
+    }
+    for (const input of [null, [], {}, { reply: 1 }]) runtime.events.emit(name, input);
+    const outer = [], inner = [];
+    const request = Object.freeze({ scope: "main", systemPrompt: "outer", reply: r => {
+      outer.push(r);
+      runtime.events.emit(name, Object.freeze({ scope: "main", systemPrompt: "inner", reply: r => inner.push(r) }));
+    } });
+    runtime.events.emit(name, request);
+    assert.equal(outer.length, 1); assert.equal(inner.length, 1);
+    assert.notEqual(outer[0].systemPrompt, inner[0].systemPrompt);
+    await Promise.resolve();
+    assert.equal(outer.length, 1); assert.equal(inner.length, 1);
+    assert.deepEqual(errors, []);
+  } finally { console.error = originalError; }
 });
 
 // ---------------------------------------------------------------------------
@@ -316,6 +387,20 @@ await run("F4 failed restore sets failure state and keeps resolver unavailable",
   assert.equal(failReplies.length, 1);
   assert.equal(failReplies[0].status, "unavailable");
   assert.ok(failReplies[0].reason.length > 0);
+  let aborted = 0;
+  const payload = { messages: [{ role: "system", content: "base" }] };
+  assert.equal(await runtime.handlers.before_provider_request({ payload }, { model: { api: "openai-completions" }, abort: () => aborted++ }), undefined);
+  assert.equal(aborted, 1);
+  assert.equal(payload.messages[0].content, "base");
+  await assertUnavailableAndTransportCancelled(runtime);
+});
+
+await run("F4 non-coercible restore rejection remains unavailable", async () => {
+  const runtime = await boot("non-coercible-restore", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+  assert.equal((await runtime.mod.larva_persona_switch({ persona_id: "target", reason: "restore rejection" }, runtime.ctx, runtime.pi)).status, "success");
+  runtime.pi.setModel = async () => { throw Object.create(null); };
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  await assertUnavailableAndTransportCancelled(runtime);
 });
 
 await run("F4 valid rollback after switch failure restores ok on old state", async () => {
@@ -340,11 +425,98 @@ await run("F4 valid rollback after switch failure restores ok on old state", asy
   assert.ok(afterRollback[0].systemPrompt.includes("Prompt for origin"));
 });
 
+async function assertUnavailableAndTransportCancelled(runtime) {
+  const replies = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base");
+  assert.equal(replies.length, 1); assert.equal(replies[0].status, "unavailable");
+  let requests = 0, calls = 0;
+  const server = createServer((_request, response) => { requests++; response.writeHead(500); response.end("unexpected transport"); });
+  await new Promise(r => server.listen(0, "127.0.0.1", r));
+  try {
+    const adapter = await import(pathToFileURL(join(piPackageRoot(), "node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js")).href);
+    const model = { id: "proof", name: "proof", api: "openai-completions", provider: "loopback", baseUrl: `http://127.0.0.1:${server.address().port}/v1`, input: ["text"], reasoning: false, maxTokens: 128, contextWindow: 8192, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
+    const controller = new AbortController();
+    const result = await adapter.stream(model, { systemPrompt: "unresolved base", messages: [{ role: "user", content: "hi", timestamp: 1 }] }, {
+      apiKey: "loopback-only", signal: controller.signal, maxRetries: 0,
+      onPayload: async payload => {
+        calls++;
+        assert.equal(await runtime.handlers.before_provider_request({ payload }, { model, abort: () => controller.abort() }), undefined);
+        assert.equal(payload.messages[0].content, "unresolved base");
+      },
+    }).result();
+    assert.equal(calls, 1);
+    assert.equal(controller.signal.aborted, true);
+    assert.equal(result.stopReason, "aborted");
+    assert.equal(requests, 0, "supported OpenAI transport must not send after this cancellation");
+  } finally { server.closeAllConnections(); await new Promise(r => server.close(r)); }
+}
+
+await run("F4 outer borrow and restore await barriers suppress resolver and real transport", async () => {
+  const runtime = await boot("outer-barriers", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+  const original = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base")[0];
+  const borrowGate = barrier();
+  runtime.ctx.ui.setStatus = async text => { if (text.startsWith("Borrowing persona:")) { borrowGate.enter(); await borrowGate.wait; } };
+  const borrowing = runtime.mod.larva_persona_switch({ persona_id: "target", reason: "outer barrier" }, runtime.ctx, runtime.pi);
+  try {
+    await borrowGate.entered;
+    assert.equal(runtime.mod.getActiveEnvelope().persona_id, "target", "inner commit already applied");
+    assert.equal(runtime.mod.observeInstructionStateForTests().instructionTransitionDepth, 1);
+    await assertUnavailableAndTransportCancelled(runtime);
+  } finally { borrowGate.release(); }
+  assert.equal((await borrowing).status, "success");
+  assert.equal(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base")[0].status, "ok");
+  const restoreGate = barrier();
+  runtime.pi.setModel = async () => { restoreGate.enter(); await restoreGate.wait; return true; };
+  const restoring = runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  try {
+    await restoreGate.entered;
+    assert.equal(runtime.mod.getActiveEnvelope().persona_id, "origin", "origin inner commit already applied");
+    assert.equal(runtime.mod.observeInstructionStateForTests().instructionTransitionDepth, 1);
+    await assertUnavailableAndTransportCancelled(runtime);
+  } finally { restoreGate.release(); }
+  await restoring;
+  assert.deepEqual(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base")[0], original);
+});
+
+await run("F4 partial application rollback publishes only confirmed old state", async () => {
+  for (const rejectRollback of [false, true]) {
+    const runtime = await boot(`partial-rollback-${rejectRollback}`, { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+    const original = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base")[0];
+    const originModel = runtime.mod.observeInstructionStateForTests().state.piModel;
+    let actualModel = originModel;
+    runtime.ctx.modelRegistry.find = async () => ({ id: "target-model", provider: "loopback" });
+    const rollbackGate = barrier();
+    let modelCalls = 0;
+    runtime.pi.setModel = async model => {
+      modelCalls++;
+      if (modelCalls === 2) { rollbackGate.enter(); await rollbackGate.wait; if (rejectRollback) return false; }
+      actualModel = model; return true;
+    };
+    runtime.ctx.ui.setStatus = async text => { if (text === "larva: target") throw new Error("status failed after application"); };
+    const switching = runtime.mod.larva_persona_switch({ persona_id: "target", reason: "partial rollback" }, runtime.ctx, runtime.pi);
+    try {
+      await rollbackGate.entered;
+      assert.equal(runtime.mod.getActiveEnvelope().persona_id, "target");
+      assert.equal(actualModel.id, "target-model");
+      await assertUnavailableAndTransportCancelled(runtime);
+    } finally { rollbackGate.release(); }
+    assert.equal((await switching).status, "failed");
+    assert.equal(modelCalls, 2);
+    if (rejectRollback) {
+      assert.equal(actualModel.id, "target-model");
+      await assertUnavailableAndTransportCancelled(runtime);
+    } else {
+      assert.deepEqual(actualModel, originModel);
+      assert.deepEqual(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base")[0], original);
+    }
+  }
+});
+
 // ---------------------------------------------------------------------------
 // F5: Lifecycle suppression: pending initialization across shutdown
 // ---------------------------------------------------------------------------
 await run("F5 pending initialization across shutdown does not revive after completion", async () => {
   const dir = await mkdtemp(join(tmpdir(), "larva-f5-suppress-"));
+  ownedDirs.push(dir);
   const gate = join(dir, "go");
   const cli = join(dir, "cli.mjs");
   await writeFile(cli, `
@@ -415,18 +587,32 @@ process.exit(3);
   assert.equal(afterLateInit.length, 0);
 });
 
-await run("F5 lifecycle re-establishment on session_start new, resume, fork", async () => {
-  const runtime = await boot("f5-lifecycle-reasons", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
-  const eventName = runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT;
-
-  for (const reason of ["new", "resume", "fork"]) {
-    await runtime.handlers.session_start({ reason }, runtime.ctx);
-    const replies = emitResolve(runtime.events, eventName, "base");
-    assert.equal(replies.length, 1);
-    assert.equal(replies[0].status, "ok");
-    assert.ok(replies[0].systemPrompt.includes("Prompt for origin"));
-  }
+await run("F5 cached factory replacement cannot be overwritten by old pending initialization", async () => {
+  const runtime = await boot("late-old-cached", { LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
+  const gate = barrier();
+  runtime.ctx.env.LARVA_PI_INITIAL_PERSONA_ID = "origin";
+  runtime.ctx.modelRegistry.find = async () => { gate.enter(); await gate.wait; return { id: "model", provider: "loopback" }; };
+  const oldShutdown = runtime.handlers.session_shutdown;
+  const oldStart = runtime.handlers.session_start({ reason: "startup" }, runtime.ctx);
+  await gate.entered;
+  await runtime.handlers.session_shutdown({ reason: "new" });
+  assert.equal(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base").length, 0);
+  const replacementCtx = { ...runtime.ctx, env: { ...runtime.ctx.env, LARVA_PI_INITIAL_PERSONA_ID: "target" }, session: { getEntries: () => [] }, modelRegistry: { find: async () => ({ id: "model", provider: "loopback" }) } };
+  try {
+    await runtime.mod.initializeExtension(replacementCtx, runtime.pi);
+    const current = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base");
+    assert.equal(current.length, 1); assert.equal(current[0].status, "ok");
+    assert.ok(current[0].systemPrompt.includes("Prompt for target"));
+    gate.release();
+    await oldStart;
+    assert.deepEqual(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base"), current);
+    await oldShutdown({ reason: "new" });
+    assert.deepEqual(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base"), current, "repeated retired cleanup cannot unsubscribe the replacement");
+  } finally { gate.release(); await oldStart; }
 });
+
+// Actual new/resume/fork replacement and old-listener retirement are exercised
+// through the real AgentSession in test-idle-callback-identity-real-pi-0-85-1.mjs.
 
 // ---------------------------------------------------------------------------
 // F5: Comprehensive read-side purity observation
@@ -440,7 +626,10 @@ await run("F5 resolver reads strictly observe zero effect on state, queues, tool
   }, runtime.ctx, runtime.pi);
 
   const baseline = {
-    envelope: runtime.mod.getActiveEnvelope(),
+    privateState: runtime.mod.observeInstructionStateForTests(),
+    sessionEntries: structuredClone(runtime.sessionEntries),
+    sessionReads: runtime.counts.sessionReads,
+    envelope: structuredClone(runtime.mod.getActiveEnvelope()),
     auditCount: runtime.auditEntries.length,
     chatCount: runtime.chatMessages.length,
     runtimeMessageCount: runtime.runtimeMessages.length,
@@ -449,13 +638,15 @@ await run("F5 resolver reads strictly observe zero effect on state, queues, tool
     setModelCalls: runtime.counts.setModel,
   };
 
-  // Perform multiple resolver queries
-  for (let i = 0; i < 5; i++) {
-    const replies = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "Base text " + i);
-    assert.equal(replies.length, 1);
-    assert.equal(replies[0].status, "ok");
-  }
-
+  const observations = [];
+  const effects = observeReadEffects(() => {
+    for (let i = 0; i < 5; i++) observations.push(emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "Base text " + i));
+  });
+  assert.deepEqual(effects, []);
+  for (const replies of observations) { assert.equal(replies.length, 1); assert.equal(replies[0].status, "ok"); }
+  assert.deepEqual(runtime.mod.observeInstructionStateForTests(), baseline.privateState);
+  assert.deepEqual(runtime.sessionEntries, baseline.sessionEntries);
+  assert.equal(runtime.counts.sessionReads, baseline.sessionReads);
   assert.deepEqual(runtime.mod.getActiveEnvelope(), baseline.envelope);
   assert.equal(runtime.auditEntries.length, baseline.auditCount);
   assert.equal(runtime.chatMessages.length, baseline.chatCount);
@@ -468,7 +659,7 @@ await run("F5 resolver reads strictly observe zero effect on state, queues, tool
 // ---------------------------------------------------------------------------
 // F5: Resolver-to-serializer-to-provider consistency across all APIs
 // ---------------------------------------------------------------------------
-await run("F5 resolver output fed to provider serializers returns unchanged for all supported APIs", async () => {
+await run("F5 provider payload fixtures return unchanged for all supported slots", async () => {
   const runtime = await boot("f5-serializers", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
   const eventName = runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT;
   const resolved = emitResolve(runtime.events, eventName, "Base text");
@@ -559,6 +750,13 @@ await run("F5 resolver output fed to provider serializers returns unchanged for 
 // ---------------------------------------------------------------------------
 // Existing Section 8 core proofs
 // ---------------------------------------------------------------------------
+await run("F5 actual ten Pi API serializers feed resolver output to unchanged provider hook", async () => {
+  const runtime = await boot("actual-serializers", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+  const resolved = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "BASE 🦋\t\nrepeat\nrepeat")[0];
+  assert.equal(resolved.status, "ok");
+  await proveSerializers(runtime, piPackageRoot(), resolved.systemPrompt);
+});
+
 await run("A-B-A restore deletes B blocks and equals current A composition", async () => {
   const runtime = await boot("aba", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
   const first = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "shared base");
@@ -667,6 +865,42 @@ await run("true post-resolution state change still projects", async () => {
   assert.equal(projected.messages[1].content, "hi");
 });
 
+await run("F5 post-resolution mode and continuation changes revalidate provider payload", async () => {
+  const runtime = await boot("mode-and-cont", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+  const resolvePrompt = base => emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, base)[0].systemPrompt;
+  const hook = async old => {
+    const payload = { messages: [{ role: "system", content: old }, { role: "user", content: "foreign" }], temperature: 0.3 };
+    const before = structuredClone(payload);
+    const result = await runtime.handlers.before_provider_request({ payload }, { model: { api: "openai-completions" } });
+    assert.ok(result, "actual state change must cause replacement");
+    assert.deepEqual(payload, before);
+    assert.equal(result.messages[0].content, resolvePrompt("base"));
+    assert.deepEqual(result.messages[1], before.messages[1]);
+    assert.equal(result.temperature, 0.3);
+    assert.equal(await runtime.handlers.before_provider_request({ payload: result }, { model: { api: "openai-completions" } }), undefined);
+    return result.messages[0].content;
+  };
+  const auto = resolvePrompt("base");
+  await runtime.commands["larva-mode"].handler("free", runtime.ctx);
+  const free = await hook(auto);
+  await runtime.mod.larva_persona_switch({ persona_id: "target", reason: "continuation", continue_task: true }, runtime.ctx, runtime.pi);
+  const pending = resolvePrompt("base");
+  const delivered = Promise.withResolvers();
+  runtime.ctx.sendUserMessage = async () => delivered.resolve();
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  await delivered.promise;
+  const running = await hook(pending);
+  assert.notEqual(running, free);
+  assert.ok(running.includes("<larva_persona_switch_continuation>"));
+  await proveSerializers(runtime, piPackageRoot(), running);
+  const stateBefore = runtime.mod.observeInstructionStateForTests();
+  assert.deepEqual(observeReadEffects(() => { for (let i = 0; i < 5; i++) resolvePrompt(running); }), []);
+  assert.deepEqual(runtime.mod.observeInstructionStateForTests(), stateBefore);
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  const ended = await hook(running);
+  assert.equal(ended.includes("<larva_persona_switch_continuation>"), false);
+});
+
 await run("idempotent setup keeps a single listener", async () => {
   const runtime = await boot("idempotent-setup", { LARVA_PI_AGENT_PERSONA_SWITCH: "manual" });
   await runtime.mod.initializeExtension(runtime.ctx, runtime.pi);
@@ -684,6 +918,9 @@ await run("no-persona known slot without stale content stays unchanged and does 
   }, null, "google-generative-ai").status, "unchanged");
 });
 
+for (const runtime of runtimes) await runtime.handlers.session_shutdown({ reason: "quit" });
+observationHook.deregister();
+for (const dir of ownedDirs) await rm(dir, { recursive: true, force: true });
 const failed = results.filter((result) => result.status === "FAIL");
 for (const result of results) {
   process.stdout.write(`${result.status} ${result.name}${result.message ? `\n${result.message}` : ""}\n`);
