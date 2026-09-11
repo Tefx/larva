@@ -203,6 +203,75 @@ await run("F2 crossed identity and persona markers explicitly fail as unavailabl
   }
 });
 
+const legacyFooter = "Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.";
+const damagedLegacyInputs = [
+  `BASE\n<!-- larva-spec: old@x\nKEEP FOREIGN\n${legacyFooter}`,
+  "BASE\n<!-- larva-spec: old@x\nKEEP FOREIGN", // No footer: isolated-comment branch.
+  `BASE\n<!-- larva-spec: old@x\nKEEP FOREIGN<!-- unrelated -->\n${legacyFooter}`,
+  `BASE\n<!-- larva-spec: old@x KEEP<!-- larva-spec: next@y -->\n${legacyFooter}`,
+];
+const legacyRuntime = await boot("f2-legacy-boundaries");
+const noneSnapshot = { envelope: null, switchGuidance: null, continuationMessage: null };
+await run("F2 malformed legacy boundaries fail composition without deleting foreign text", async () => {
+  for (const input of damagedLegacyInputs) {
+    assert.equal(legacyRuntime.mod.composeLarvaSystemPrompt(input, noneSnapshot).status, "unavailable", input);
+  }
+});
+await run("F2 malformed legacy boundaries fail the registered synchronous resolver", async () => {
+  for (const input of damagedLegacyInputs) {
+    const replies = emitResolve(legacyRuntime.events, legacyRuntime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, input);
+    assert.equal(replies.length, 1);
+    assert.equal(replies[0].status, "unavailable", input);
+    assert.equal("systemPrompt" in replies[0], false);
+  }
+});
+await run("F2 malformed legacy boundaries cancel the registered provider hook without rewriting", async () => {
+  for (const input of damagedLegacyInputs) {
+    const payload = { messages: [{ role: "system", content: input }, { role: "user", content: "KEEP USER" }], temperature: 0.3 };
+    const original = structuredClone(payload);
+    let aborted = 0;
+    const projected = legacyRuntime.mod.projectLarvaIdentityIntoProviderPayload(payload, null, "openai-completions");
+    const result = await legacyRuntime.handlers.before_provider_request({ payload }, {
+      model: { api: "openai-completions" }, abort: () => aborted++,
+    });
+    assert.equal(projected.status, "compose_failed", input);
+    assert.equal(result, undefined);
+    assert.equal(aborted, 1);
+    assert.deepEqual(payload, original);
+  }
+});
+await run("F2 complete legacy formats and isolated compatibility comments remain repairable", async () => {
+  const validCases = [
+    [`BASE\n<!-- larva-spec: old@x -->\nOld persona\n${legacyFooter}`, "BASE"],
+    ["LEFT<!-- larva-spec: old@x -->KEEP<!-- unrelated -->", "LEFT\nKEEP<!-- unrelated -->"],
+    ["BASE\n<!-- larva-spec: old@x -->\nKEEP FOREIGN", "BASE\nKEEP FOREIGN"],
+    // A discovery sentence inside a complete comment cannot end a watermark early.
+    [`BASE\n<!-- larva-spec: old@x ${legacyFooter} -->\nKEEP FOREIGN`, "BASE\nKEEP FOREIGN"],
+  ];
+  for (const [input, expected] of validCases) {
+    const composed = legacyRuntime.mod.composeLarvaSystemPrompt(input, noneSnapshot);
+    assert.deepEqual(composed, { status: "ok", systemPrompt: expected });
+    assert.deepEqual(legacyRuntime.mod.composeLarvaSystemPrompt(expected, noneSnapshot), composed);
+    assert.deepEqual(emitResolve(legacyRuntime.events, legacyRuntime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, input), [composed]);
+    let aborted = 0;
+    const eventCtx = { model: { api: "openai-completions" }, abort: () => aborted++ };
+    const payload = { messages: [{ role: "system", content: input }], temperature: 0.3 };
+    const original = structuredClone(payload);
+    const updated = await legacyRuntime.handlers.before_provider_request({ payload }, eventCtx);
+    assert.deepEqual(updated, { ...payload, messages: [{ role: "system", content: expected }] });
+    assert.equal(await legacyRuntime.handlers.before_provider_request({ payload: updated }, eventCtx), undefined);
+    assert.equal(aborted, 0);
+    assert.deepEqual(payload, original);
+  }
+  const envelope = { persona_id: "opaque", spec_digest: "sha256:opaque", model: "loopback/model", prompt: damagedLegacyInputs[0], tool_policy: {} };
+  const snapshot = { ...noneSnapshot, envelope };
+  const first = legacyRuntime.mod.composeLarvaSystemPrompt("FOREIGN", snapshot);
+  assert.equal(first.status, "ok");
+  assert.ok(first.systemPrompt.includes(envelope.prompt));
+  assert.deepEqual(legacyRuntime.mod.composeLarvaSystemPrompt(first.systemPrompt, snapshot), first);
+  assert.deepEqual(legacyRuntime.mod.composeLarvaSystemPrompt(first.systemPrompt, noneSnapshot), { status: "ok", systemPrompt: "FOREIGN" });
+});
+
 await run("F2 opaque persona with complete same-kind marker example preserves fixed point and clean switch", async () => {
   const mod = await importFresh("f2-nested");
   const nestedPrompt = [

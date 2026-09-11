@@ -595,7 +595,7 @@ const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
 const PERSONA_HOTPATH_COLD_REFRESH_BUDGET_MS = 300;
 const PERSONA_CANDIDATE_CACHE_SOURCE = ["larva", "list", "--json"].join(" ");
 const LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE = "LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE";
-const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
+const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?-->[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
 const LARVA_SPEC_COMMENT_RE = /\n?<!-- larva-spec:.*?-->\n?/g;
 const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
 const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
@@ -5939,6 +5939,18 @@ function stripManagedInstructionText(text: string): SystemPromptComposeResult {
   }
   output += text.slice(last);
 
+  // Validate both legacy deletion branches before either can consume text. A
+  // later comment's closing delimiter cannot close a damaged spec comment.
+  // Modern managed bodies have already been removed, so their opaque examples
+  // are deliberately outside this compatibility check.
+  for (const marker of output.matchAll(/<!-- larva-spec:/g)) {
+    const bodyStart = marker.index + marker[0].length;
+    const close = output.indexOf("-->", bodyStart);
+    const nextOpen = output.indexOf("<!--", bodyStart);
+    if (close < 0 || (nextOpen >= 0 && nextOpen < close)) {
+      return { status: "unavailable", reason: "damaged legacy boundaries" };
+    }
+  }
   const strippedLegacy = output.replace(LARVA_WATERMARK_RE, "").replace(LARVA_SPEC_COMMENT_RE, "\n");
   return { status: "ok", systemPrompt: strippedLegacy };
 }
