@@ -145356,7 +145356,7 @@ phases:
       acceptance; completed producer history preserved.'
 - id: pi_system_prompt_resolution
   name: Request-scoped Larva system prompt resolution
-  status: in_progress
+  status: done
   gate: 'Orchestrator completion on pi-system-prompt.deliver-resolver owns final acceptance
     of this single Larva increment: all material design requirements, final integrated
     applicable regression, actual synchronous Pi EventBus/reload evidence and focused
@@ -145382,7 +145382,7 @@ phases:
   steps:
   - id: pi-system-prompt.deliver-resolver
     name: Deliver synchronous request system prompt resolution and fixed-point projection
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Deliver every material requirement in design/pi-system-prompt-resolution.md\
       \ as one Larva-only result: pure fixed-point composition shared by before_agent_start,\
@@ -145575,3 +145575,39 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-09-10T19:42:10.278463Z'
+    done_at: '2026-09-11T05:46:16.642538+00:00'
+    evidence: 'Completed Larva-only resolver delivery and independent acceptance on
+      integrated exact d31bdf724dd46492d13460aea34ad54917f76836. Parent verified clean
+      integration HEAD==integration_basis e6c0ed99e16b62496afca56157771bed0cd0f6b6,
+      ancestor relationship, committed-range diff-check exit0; fast-forwarded exact
+      reviewed target and verified HEAD equality. Original Principal candidate6af85e48
+      retained refs/vectl/retained/pi-system-prompt.deliver-resolver/principal; initial52ed17c3/corrective70acd4e87b44
+      and legacy-fix refs retain prior contributions. Rebase changed ONLY managed
+      user clipboard (revokes pi-nunc notification), so observations unaffected; final
+      narrow legacy repair refreshed parser/resolver/provider/serializer and identity
+      proof. Planned/claimed owner node-typescript-engineer preserved; actual executor
+      Principal Engineer after repeated independently demonstrated missed contracts,
+      prior writer/effects quiesced, scope unchanged. Principal owns final repairs,
+      not inherited earlier Git author identity. User-requested careful independent
+      review retained same gate-reviewer COMPLETION_REVIEW FULL then DELTA; all supported
+      findings closed. Final gate.report.v2 target d31bdf72, all6material requirement
+      groups PROVEN, findings empty. Exact report /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/larva-resolver-review-joohfnz_/legacy-report.json
+      and legacy-binding.json mode0600; validator exit0 valid:true binding_checked:true
+      POSITIVE_GATE_EVIDENCE. Parent inspected closure explanations and relevant source/final
+      legacy validation diff, supported by owner full requirement mapping /tmp/larva-env-audit.pSGsLZ/resolver-takeover/delivery-report.md
+      and legacy-boundary-delivery.md. Actual evidence delivery-python.json/log:940passed453.75s
+      all49test files via Invar run_doctests_on_files wrapper;18Node entrypoints delivery-node.log;
+      capability.log, canonical-gate.log frozen local opifex unchanged; exact pinned
+      CLI fullscan delivery-invar.log42files0errors5existingwarnings after final broad
+      source. Final legacy fix red->green composition/registered resolver/provider
+      cancellation/no rewrite, identity regression, real serialization observations
+      passed; applicable broader940/18 evidence reused, not falsely described as rerun
+      on finalcommit. Actual ten exported adapter serializers, synchronous Pi EventBus,
+      real reload/newSession/fork/switchSession, old initialization/repeated cleanup
+      suppression, readside state/I-O purity, outer transitions/failed rollback readiness
+      and transport cancellation covered. Complete modern opaque and legacy markers,
+      whitespace/foreign text preservation, fixedpoint and unchanged hook proven.
+      Candidate/runtime processes reconciled clean; no user/global install/config,
+      release, external model or Nunc endtoend verification. User explicitly revoked
+      notification: do NOT notify pi-nunc; report only to user. No unresolved Larva
+      implementation or acceptance obligations.'
