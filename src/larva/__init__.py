@@ -4,4 +4,4 @@ Package-root policy: this module is intentionally metadata-only.
 """
 
 # Keep in sync with `pyproject.toml` `[project].version`.
-__version__ = "0.6.5"
+__version__ = "0.7.0"
