@@ -274,6 +274,9 @@ process.exit(3);
       resourceLoader: loader,
       sessionManager: pi.SessionManager.inMemory(cwd),
     });
+    await session.bindExtensions({
+      onError: () => {},
+    });
     try {
       await session.prompt("Do not use tools. Reply with user-turn-done only.");
       const userTurn = captured.filter((entry) => !entry.wake);
@@ -301,6 +304,63 @@ process.exit(3);
         assert.ok(nonLarvaBase(entry.system).includes(userBase) || entry.system.includes(userBase), `idle provider request ${index + 1} must keep Pi base text`);
         assert.equal(entry.loopback, true);
       });
+
+      // Synchronous request resolver on real EventBus and comparison with real provider serialization
+      const eventBus = loader.eventBus;
+      assert.ok(eventBus, "loader must provide real Pi EventBus");
+      const resolverReplies = [];
+      eventBus.emit("larva:resolve-system-prompt:v1", {
+        scope: "main",
+        systemPrompt: userBase,
+        reply: (result) => resolverReplies.push(result),
+      });
+      assert.equal(resolverReplies.length, 1, "resolver on real EventBus must reply once synchronously before emit returns");
+      assert.equal(resolverReplies[0].status, "ok");
+      assertCurrentIdentity(resolverReplies[0].systemPrompt, "resolved system prompt");
+      assert.equal(resolverReplies[0].systemPrompt, userTurn[0].system, "resolved prompt must match real provider payload system text under identical state");
+
+      // Verify that feeding resolved prompt back to resolver is fixed-point
+      const fixedPointReplies = [];
+      eventBus.emit("larva:resolve-system-prompt:v1", {
+        scope: "main",
+        systemPrompt: resolverReplies[0].systemPrompt,
+        reply: (result) => fixedPointReplies.push(result),
+      });
+      assert.equal(fixedPointReplies.length, 1);
+      assert.equal(fixedPointReplies[0].systemPrompt, resolverReplies[0].systemPrompt);
+
+      // Verify real Pi reload lifecycle:
+      // 1. Subscribe a sidecar listener to verify other subscribers survive reload
+      let sidecarCalls = 0;
+      const unsubscribeSidecar = eventBus.on("test:sidecar", () => { sidecarCalls += 1; });
+      eventBus.emit("test:sidecar", {});
+      assert.equal(sidecarCalls, 1, "sidecar listener must receive event before reload");
+
+      // 2. Perform real session reload
+      await session.reload();
+
+      // 3. Sidecar still receives events
+      eventBus.emit("test:sidecar", {});
+      assert.equal(sidecarCalls, 2, "other EventBus subscribers must survive session reload");
+      unsubscribeSidecar();
+
+      // Give new session_start async initialization turn to commit
+      await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+
+      // 4. Resolver on reloaded session: exactly one reply from new instance
+      const postReloadReplies = [];
+      eventBus.emit("larva:resolve-system-prompt:v1", {
+        scope: "main",
+        systemPrompt: userBase,
+        reply: (result) => postReloadReplies.push(result),
+      });
+      assert.equal(postReloadReplies.length, 1, "post-reload resolver must reply exactly once without duplicate from old instance");
+      assert.equal(postReloadReplies[0].status, "ok");
+      assert.equal(postReloadReplies[0].systemPrompt, resolverReplies[0].systemPrompt);
+
+      // 5. Verify no late duplicate reply from microtasks
+      await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+      assert.equal(postReloadReplies.length, 1, "no asynchronous duplicate reply after emit returns");
     } finally {
       session.dispose();
     }

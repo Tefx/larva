@@ -680,6 +680,63 @@ Unknown custom transports that ignore the abort signal, and
 `openai-codex-responses` websocket dispatch after `onPayload`, can still emit a
 request.
 
+### Synchronous system prompt resolution (`larva:resolve-system-prompt:v1`)
+
+For consumers such as Nunc that need effective `systemPrompt` before admission,
+Larva provides synchronous request-level prompt resolution via Pi's public
+`pi.events`:
+
+```typescript
+type ResolveSystemPromptResult =
+  | { status: "ok"; systemPrompt: string }
+  | { status: "unavailable"; reason: string };
+
+type ResolveSystemPromptRequest = {
+  scope: "main";
+  systemPrompt: string;
+  reply: (result: ResolveSystemPromptResult) => void;
+};
+```
+
+Consumer rules and lifecycle contract:
+
+- **Channel and scope**: In-process synchronous event emitted on `pi.events`.
+  `scope` must be `"main"`. Maintenance and auto-compaction requests keep their
+  own system prompt and must not call this interface.
+- **Synchronous reply-before-emit-return**: The active Larva listener invokes
+  `reply` exactly once before `pi.events.emit()` returns, without async deferral,
+  promises, microtask delays, or retained request objects.
+- **Zero-reply absence vs. unavailable**: When Larva is not loaded or after
+  extension shutdown, `pi.events.emit()` produces zero replies; consumers must
+  recognize zero replies as interface absence. `status: "unavailable"` indicates
+  Larva is loaded but cannot determine a valid prompt (e.g. extension still
+  initializing, incomplete identity/lease transition, restore failure, or
+  malformed/damaged input boundaries).
+- **Duplicate-reply error**: Multiple replies indicate a protocol violation;
+  consumers must not pick one arbitrarily.
+- **Pure fixed-point composition**: Shared across `before_agent_start`,
+  `before_provider_request`, and this resolver. Preserves foreign text, Unicode,
+  internal whitespace, and relative ordering; strips only recognized managed
+  blocks (`identity-policy`, `active-persona`, `continuation`) and cleans stale
+  blocks under `larva:none`. Fixed-point guarantee: `C(S, C(S, B)) = C(S, B)`.
+- **Provider projection parity**: When the prompt passed to the provider already
+  matches the composed fixed point under the same runtime state,
+  `before_provider_request` detects identical text, returns `undefined`, and
+  leaves provider payloads, slots, roles, cache controls, and message structures
+  untouched. True state changes (such as subsequent persona switch or lease
+  restoration) project at request time.
+- **Lifecycle and teardown**: Registered synchronously on `pi.events` during
+  extension setup. Cleaned up synchronously during `session_shutdown` before
+  async teardown; reloads re-establish readiness under the new extension
+  instance without duplicate handlers or revival of old initialization.
+- **Read-side purity**: Resolver calls have zero side effects on leases,
+  continuation queues, session history, file system, or child runtimes.
+- **Unperformed Nunc combination validation**: This step delivers and verifies
+  Larva's synchronous resolver, fixed-point composition, and provider projection
+  parity in isolation. End-to-end combination testing with Nunc (capacity
+  admission, usage receipts, auto-compaction, long tool loops) is explicitly not
+  performed as part of this Larva delivery.
+
 ### `/larva-persona` Tab completion
 
 The supported editor-autocomplete target is Pi interactive TUI with a runtime UI

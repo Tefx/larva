@@ -206,7 +206,13 @@ For `confirm`/`auto` temporary borrows with `continue_task=true`:
 5. call Pi `sendUserMessage("Continue.")` only as a minimal trigger so the next
    run enters a fresh `before_agent_start`;
 6. inject the deterministic Larva-generated continuation as a one-turn system
-   prompt addon under the borrowed persona/model, not as the visible user message;
+   prompt addon under the borrowed persona/model, not as the visible user message.
+   Prompt composition includes the continuation section within the unified
+   fixed-point boundary (`C(S, C(S, B)) = C(S, B)`). Both `before_agent_start` and
+   `before_provider_request` (as well as synchronous request resolver
+   `larva:resolve-system-prompt:v1`) share this composition without paragraph
+   movement. Once the continuation turn completes or is manually cleared,
+   subsequent composition removes the continuation block;
 7. restore the original persona and captured original Pi model on the
    continuation run's `agent_end`.
 

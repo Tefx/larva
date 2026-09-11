@@ -511,7 +511,9 @@ current envelope identity onto the known Pi 0.85.1 system-instruction slot for
 the turn, including tool continuations, still carries a single active
 `larva-spec` overlay. Known APIs insert an instruction slot when the payload
 already admits one. Unknown/custom APIs request `ctx.abort()`; that does not
-prove every transport stopped.
+prove every transport stopped. Synchronous request-level prompt resolution is
+also available via `pi.events` (`larva:resolve-system-prompt:v1`) using the
+same pure fixed-point composition.
 `callback_delivery: "delivered"` appears in the delivered callback
 itself; failed/suppressed/stale attempts are observable through `status` or the
 future deterministic orchestration tools, not through a delivered callback that

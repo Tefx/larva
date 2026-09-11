@@ -501,6 +501,10 @@ type PiApi = {
     ) => PiRenderableComponent | undefined,
   ) => void;
   on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown | Promise<unknown>) => void;
+  events?: {
+    emit: (channel: string, data: unknown) => void;
+    on: (channel: string, handler: (data: unknown) => void) => () => void;
+  };
 };
 type PiContext = PiApi & {
   env?: RuntimeEnv;
@@ -597,6 +601,7 @@ const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
 const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
 const LARVA_ACTIVE_PERSONA_BEGIN = "<!-- larva:active-persona:begin -->";
 const LARVA_ACTIVE_PERSONA_END = "<!-- larva:active-persona:end -->";
+export const LARVA_RESOLVE_SYSTEM_PROMPT_EVENT = "larva:resolve-system-prompt:v1";
 const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona):begin -->[\s\S]*?<!-- larva:(?:identity-policy|active-persona):end -->\n?/g;
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const ENABLE_MOUSE_REPORTING = "\x1b[?1000h\x1b[?1006h";
@@ -783,11 +788,42 @@ let agentPersonaSwitchMaxPerChain = DEFAULT_AGENT_PERSONA_SWITCH_MAX_PER_CHAIN;
 let agentPersonaSwitchPendingFollowUpContinuations = 0;
 let agentPersonaSwitchToolsRegistered = false;
 let sessionInitializationPromise: Promise<void> | null = null;
+let instructionDead = false;
+let instructionReady = false;
+let instructionTransitionDepth = 0;
+let resolveSystemPromptUnsubscribe: (() => void) | null = null;
 let admissionBlocked = false;
 let nativeStartupFlags: { personaId: string | null; mode: AgentPersonaSwitchMode | null; invalid: LarvaError | null } = { personaId: null, mode: null, invalid: null };
 const initializedPiSessionRestoreKeys = new WeakMap<object, string>();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
+
+function beginInstructionTransition(): void {
+  instructionTransitionDepth += 1;
+  instructionReady = false;
+}
+
+function endInstructionTransition(): void {
+  if (instructionTransitionDepth > 0) instructionTransitionDepth -= 1;
+  if (instructionDead) {
+    instructionReady = false;
+    return;
+  }
+  if (instructionTransitionDepth === 0) instructionReady = restoreFailureState === null;
+}
+
+function instructionResolverAcceptsReads(): boolean {
+  return !instructionDead && instructionReady && instructionTransitionDepth === 0 && restoreFailureState === null;
+}
+
+function invalidateInstructionResolver(): void {
+  instructionDead = true;
+  instructionReady = false;
+  instructionTransitionDepth = 0;
+  const unsubscribe = resolveSystemPromptUnsubscribe;
+  resolveSystemPromptUnsubscribe = null;
+  unsubscribe?.();
+}
 
 type ChildRpcTraceFields = Record<string, unknown>;
 type OversizedChildRpcResponse = Readonly<{
@@ -5058,6 +5094,8 @@ async function commitPersonaInternal(
   applyThinking: boolean,
   preselectedModel: ParsedModel | null,
 ): Promise<PersonaSwitchResult> {
+  beginInstructionTransition();
+  try {
   const previousEnvelope = state.envelope;
   const previousActiveTools = new Set(state.activeTools);
   const previousPiModel = state.piModel;
@@ -5130,6 +5168,9 @@ async function commitPersonaInternal(
     state.effectiveThinking = previousEffectiveThinking;
     const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
     return { ok: false, error: larvaError };
+  }
+  } finally {
+    endInstructionTransition();
   }
 }
 
@@ -5238,9 +5279,14 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
   const trimmed = input?.trim() ?? "";
   if (trimmed === "--refresh-cache") return refreshPersonaCandidateCache(ctx);
   if (trimmed.length > 0) {
-    const result = await commitPersonaWithOptions(trimmed, ctx, pi, { sessionCommitSource: "slash-command" });
-    if (result.ok) clearActivePersonaLease("manual switch via /larva-persona: do not later restore old origin", ctx, pi);
-    return result;
+    beginInstructionTransition();
+    try {
+      const result = await commitPersonaWithOptions(trimmed, ctx, pi, { sessionCommitSource: "slash-command" });
+      if (result.ok) clearActivePersonaLease("manual switch via /larva-persona: do not later restore old origin", ctx, pi);
+      return result;
+    } finally {
+      endInstructionTransition();
+    }
   }
   if (larvaHostMode(ctx) !== "tui") {
     return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selector is interactive TUI only; preserve previousEnvelope") };
@@ -5253,9 +5299,14 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
     throw caught;
   }
   if (!selected) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selection cancelled") };
-  const result = await commitPersonaWithOptions(selected, ctx, pi, { sessionCommitSource: "selector" });
-  if (result.ok) clearActivePersonaLease("manual switch via selector clears active lease and skip restore", ctx, pi);
-  return result;
+  beginInstructionTransition();
+  try {
+    const result = await commitPersonaWithOptions(selected, ctx, pi, { sessionCommitSource: "selector" });
+    if (result.ok) clearActivePersonaLease("manual switch via selector clears active lease and skip restore", ctx, pi);
+    return result;
+  } finally {
+    endInstructionTransition();
+  }
 }
 
 function switchToolText(text: string): PiTextContent[] {
@@ -5400,10 +5451,15 @@ function createPersonaSwitchContinuation(fromPersonaId: string | null, toPersona
 }
 
 async function failPendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation, larvaError: LarvaError): Promise<void> {
-  if (pendingPersonaSwitchContinuation === continuation) pendingPersonaSwitchContinuation = null;
-  if (agentPersonaSwitchPendingFollowUpContinuations > 0) agentPersonaSwitchPendingFollowUpContinuations -= 1;
-  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: false, error_code: larvaError.code, error_message: larvaError.message, lease: continuation.lease });
-  await attemptPersonaLeaseRestore(ctx, pi, terminal);
+  beginInstructionTransition();
+  try {
+    if (pendingPersonaSwitchContinuation === continuation) pendingPersonaSwitchContinuation = null;
+    if (agentPersonaSwitchPendingFollowUpContinuations > 0) agentPersonaSwitchPendingFollowUpContinuations -= 1;
+    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "continuation", terminal, to_persona_id: continuation.toPersonaId, delivered: false, error_code: larvaError.code, error_message: larvaError.message, lease: continuation.lease });
+    await attemptPersonaLeaseRestore(ctx, pi, terminal);
+  } finally {
+    endInstructionTransition();
+  }
 }
 
 async function deliverPendingPersonaSwitchContinuation(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout", continuation: PersonaSwitchContinuation, surface: PersonaSwitchContinuationDeliverySurface): Promise<void> {
@@ -5570,51 +5626,56 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", max_switches_per_chain: effectiveSwitchBudget, error_code: larvaError.code });
     return switchToolFailure(larvaError);
   }
-  if (mode === "confirm") {
-    const outcome = await requestPersonaBorrowConfirmation(ctx, fromPersona, personaId, reason);
-    if (isLarvaError(outcome)) {
-      appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: outcome.code });
-      return switchToolFailure(outcome);
+  beginInstructionTransition();
+  try {
+    if (mode === "confirm") {
+      const outcome = await requestPersonaBorrowConfirmation(ctx, fromPersona, personaId, reason);
+      if (isLarvaError(outcome)) {
+        appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: outcome.code });
+        return switchToolFailure(outcome);
+      }
+      if (outcome === "deny") {
+        const larvaError = error("LARVA_BAD_INPUT", "Larva persona borrow was denied; do not change persona, model, or tool state.");
+        appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: larvaError.code });
+        return switchToolFailure(larvaError);
+      }
+      if (outcome === "auto_session") {
+        setAgentPersonaSwitchMode("auto");
+        appendSessionCustomEntry(ctx, "larva-agent-persona-switch-mode", { mode: "auto", source: "session-local mode override", note: "confirm -> auto" }, pi);
+        await notify(ctx, "Persona mode changed for this session: confirm -> auto", "info");
+      }
+      if (outcome === "persistent") {
+        const result = await commitPersonaWithOptions(personaId, ctx, pi, { sessionCommitSource: "slash-command" });
+        if (!result.ok) return switchToolFailure(result.error);
+        clearActivePersonaLease("Switch persistently selected; manual persistent switch clears active lease", ctx, pi);
+        appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: true, persistent: true, lease: null });
+        return switchToolSuccess(`Larva persona switched persistently to ${personaId}`, { ...personaSwitchProof(fromPersona, result.envelope, true), lease: null }, false);
+      }
     }
-    if (outcome === "deny") {
-      const larvaError = error("LARVA_BAD_INPUT", "Larva persona borrow was denied; do not change persona, model, or tool state.");
-      appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: larvaError.code });
-      return switchToolFailure(larvaError);
+    const lease = mode === "free" ? null : createTurnScopedPersonaLease(fromPersona, personaId, "agent", ctx, pi);
+    const result = await commitBorrowedPersona(personaId, ctx, pi, auditBase, lease);
+    if (result.status === "success") {
+      agentPersonaSwitchMaxPerChain = effectiveSwitchBudget;
+      agentPersonaSwitchCountInChain += 1;
+      if (continueTask) {
+        pendingPersonaSwitchContinuation = createPersonaSwitchContinuation(fromPersona, personaId, reason, handoff, lease);
+        result.terminate = true;
+        result.details = {
+          ...result.details,
+          continuation: {
+            terminate: true,
+            delivery: "deferred_until_agent_end_setTimeout_0_minimal_trigger_hidden_custom_message",
+            customType: LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE,
+            trigger_message: LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE,
+            restore_after_continuation: lease !== null,
+          },
+        };
+      }
     }
-    if (outcome === "auto_session") {
-      setAgentPersonaSwitchMode("auto");
-      appendSessionCustomEntry(ctx, "larva-agent-persona-switch-mode", { mode: "auto", source: "session-local mode override", note: "confirm -> auto" }, pi);
-      await notify(ctx, "Persona mode changed for this session: confirm -> auto", "info");
-    }
-    if (outcome === "persistent") {
-      const result = await commitPersonaWithOptions(personaId, ctx, pi, { sessionCommitSource: "slash-command" });
-      if (!result.ok) return switchToolFailure(result.error);
-      clearActivePersonaLease("Switch persistently selected; manual persistent switch clears active lease", ctx, pi);
-      appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: true, committed: true, persistent: true, lease: null });
-      return switchToolSuccess(`Larva persona switched persistently to ${personaId}`, { ...personaSwitchProof(fromPersona, result.envelope, true), lease: null }, false);
-    }
+    return result;
+  } finally {
+    endInstructionTransition();
   }
-  const lease = mode === "free" ? null : createTurnScopedPersonaLease(fromPersona, personaId, "agent", ctx, pi);
-  const result = await commitBorrowedPersona(personaId, ctx, pi, auditBase, lease);
-  if (result.status === "success") {
-    agentPersonaSwitchMaxPerChain = effectiveSwitchBudget;
-    agentPersonaSwitchCountInChain += 1;
-    if (continueTask) {
-      pendingPersonaSwitchContinuation = createPersonaSwitchContinuation(fromPersona, personaId, reason, handoff, lease);
-      result.terminate = true;
-      result.details = {
-        ...result.details,
-        continuation: {
-          terminate: true,
-          delivery: "deferred_until_agent_end_setTimeout_0_minimal_trigger_hidden_custom_message",
-          customType: LARVA_PERSONA_SWITCH_CONTINUATION_CUSTOM_TYPE,
-          trigger_message: LARVA_PERSONA_SWITCH_CONTINUATION_TRIGGER_MESSAGE,
-          restore_after_continuation: lease !== null,
-        },
-      };
-    }
-  }
-  return result;
 }
 
 export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ content: PiTextContent[]; details: { status: "success" | "failed"; personas: BridgeListItem[]; error: LarvaError | null }; isError: boolean }> {
@@ -5652,20 +5713,132 @@ function agentPersonaSwitchPromptGuidance(): string | null {
 }
 
 export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnvelope): string {
-  const cleanPrompt = systemPrompt
-    .replace(LARVA_MANAGED_BLOCK_RE, "\n")
-    .replace(/<!-- larva:(?:identity-policy|active-persona):begin -->/g, "")
-    .replace(/<!-- larva:(?:identity-policy|active-persona):end -->/g, "")
-    .replace(LARVA_WATERMARK_RE, "")
-    .replace(LARVA_SPEC_COMMENT_RE, "\n")
-    .trim();
-  const identityPolicy = [
+  const composed = composeLarvaSystemPrompt(systemPrompt, {
+    envelope,
+    switchGuidance: agentPersonaSwitchPromptGuidance(),
+    continuationMessage: null,
+  });
+  if (composed.status !== "ok") throw new Error("Larva system prompt composition unavailable");
+  return composed.systemPrompt;
+}
+
+export type SystemPromptComposeSnapshot = {
+  envelope: PersonaEnvelope | null;
+  switchGuidance: string | null;
+  continuationMessage: string | null;
+};
+
+export type SystemPromptComposeResult =
+  | { status: "ok"; systemPrompt: string }
+  | { status: "unavailable"; reason: string };
+
+export type ResolveSystemPromptResult =
+  | { status: "ok"; systemPrompt: string }
+  | { status: "unavailable"; reason: string };
+
+type ManagedMarkerKind =
+  | "identity-begin"
+  | "identity-end"
+  | "persona-begin"
+  | "persona-end"
+  | "continuation-begin"
+  | "continuation-end";
+
+const MANAGED_MARKERS: ReadonlyArray<{ kind: ManagedMarkerKind; text: string }> = [
+  { kind: "identity-begin", text: LARVA_IDENTITY_POLICY_BEGIN },
+  { kind: "identity-end", text: LARVA_IDENTITY_POLICY_END },
+  { kind: "persona-begin", text: LARVA_ACTIVE_PERSONA_BEGIN },
+  { kind: "persona-end", text: LARVA_ACTIVE_PERSONA_END },
+  { kind: "continuation-begin", text: LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN },
+  { kind: "continuation-end", text: LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END },
+];
+
+function matchingManagedEnd(kind: ManagedMarkerKind): string | null {
+  if (kind === "identity-begin") return LARVA_IDENTITY_POLICY_END;
+  if (kind === "persona-begin") return LARVA_ACTIVE_PERSONA_END;
+  if (kind === "continuation-begin") return LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END;
+  return null;
+}
+
+function findNextManagedMarker(text: string, from: number): { kind: ManagedMarkerKind; index: number; length: number } | null {
+  let best: { kind: ManagedMarkerKind; index: number; length: number } | null = null;
+  for (const marker of MANAGED_MARKERS) {
+    const index = text.indexOf(marker.text, from);
+    if (index < 0) continue;
+    if (best === null || index < best.index || (index === best.index && marker.text.length > best.length)) {
+      best = { kind: marker.kind, index, length: marker.text.length };
+    }
+  }
+  return best;
+}
+
+function stripManagedInstructionText(text: string): SystemPromptComposeResult {
+  const ranges: Array<{ start: number; end: number; kind: string }> = [];
+  let cursor = 0;
+  while (cursor <= text.length) {
+    const marker = findNextManagedMarker(text, cursor);
+    if (marker === null) break;
+    const endText = matchingManagedEnd(marker.kind);
+    if (endText === null) {
+      ranges.push({ start: marker.index, end: marker.index + marker.length, kind: "orphan-end" });
+      cursor = marker.index + marker.length;
+      continue;
+    }
+    const endIndex = text.indexOf(endText, marker.index + marker.length);
+    if (endIndex < 0) return { status: "unavailable", reason: "damaged managed boundaries" };
+    ranges.push({ start: marker.index, end: endIndex + endText.length, kind: marker.kind });
+    cursor = endIndex + endText.length;
+  }
+
+  ranges.sort((a, b) => a.start - b.start);
+
+  const merged: Array<{ start: number; end: number; kind: string }> = [];
+  for (const r of ranges) {
+    if (merged.length > 0) {
+      const prev = merged[merged.length - 1];
+      const gap = text.slice(prev.end, r.start);
+      if (/^\s*$/.test(gap)) {
+        prev.end = r.end;
+        continue;
+      }
+    }
+    merged.push({ start: r.start, end: r.end, kind: r.kind });
+  }
+
+  for (let i = 0; i < merged.length; i++) {
+    const r = merged[i];
+    if (r.end + 2 <= text.length && text.slice(r.end, r.end + 2) === "\n\n") {
+      r.end += 2;
+    } else if (r.start >= 2 && text.slice(r.start - 2, r.start) === "\n\n") {
+      r.start -= 2;
+    } else if (r.end < text.length && text[r.end] === "\n") {
+      r.end += 1;
+    } else if (r.start >= 1 && text[r.start - 1] === "\n") {
+      r.start -= 1;
+    }
+  }
+
+  let output = "";
+  let last = 0;
+  for (const r of merged) {
+    output += text.slice(last, r.start);
+    last = r.end;
+  }
+  output += text.slice(last);
+  const strippedLegacy = output.replace(LARVA_WATERMARK_RE, "").replace(LARVA_SPEC_COMMENT_RE, "\n");
+  return { status: "ok", systemPrompt: strippedLegacy };
+}
+
+function identityPolicyBlock(): string {
+  return [
     LARVA_IDENTITY_POLICY_BEGIN,
     "Active Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.",
     LARVA_IDENTITY_POLICY_END,
   ].join("\n");
-  const guidance = agentPersonaSwitchPromptGuidance();
-  const activePersona = [
+}
+
+function activePersonaBlock(envelope: PersonaEnvelope, guidance: string | null): string {
+  return [
     LARVA_ACTIVE_PERSONA_BEGIN,
     `<!-- larva-spec: ${envelope.persona_id}@${envelope.spec_digest} -->`,
     envelope.prompt,
@@ -5673,7 +5846,85 @@ export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnv
     "Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.",
     LARVA_ACTIVE_PERSONA_END,
   ].join("\n");
-  return `${identityPolicy}\n\n${cleanPrompt}\n\n${activePersona}`;
+}
+
+function continuationPromptBlock(message: string): string {
+  return [LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN, message, LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END].join("\n");
+}
+
+export function composeLarvaSystemPrompt(base: string, snapshot: SystemPromptComposeSnapshot): SystemPromptComposeResult {
+  const stripped = stripManagedInstructionText(base);
+  if (stripped.status !== "ok") return stripped;
+  const foreign = stripped.systemPrompt;
+  if (snapshot.envelope === null) return { status: "ok", systemPrompt: foreign };
+  const sections = [identityPolicyBlock(), foreign, activePersonaBlock(snapshot.envelope, snapshot.switchGuidance)];
+  if (snapshot.continuationMessage !== null) sections.push(continuationPromptBlock(snapshot.continuationMessage));
+  return { status: "ok", systemPrompt: sections.join("\n\n") };
+}
+
+function effectiveContinuationMessage(envelope: PersonaEnvelope | null): string | null {
+  const continuation = pendingPersonaSwitchContinuation;
+  if (continuation === null || continuation.phase !== "continuation_running") return null;
+  if (envelope === null || envelope.persona_id !== continuation.toPersonaId) return null;
+  if (continuation.lease !== null) {
+    if (activePersonaLease === null) return null;
+    if (activePersonaLease.borrowedPersonaId !== continuation.toPersonaId) return null;
+  }
+  return continuation.message;
+}
+
+function readInstructionComposeSnapshot(): SystemPromptComposeSnapshot {
+  return {
+    envelope: state.envelope,
+    switchGuidance: state.envelope === null ? null : agentPersonaSwitchPromptGuidance(),
+    continuationMessage: effectiveContinuationMessage(state.envelope),
+  };
+}
+
+function handleResolveSystemPromptRequest(request: unknown): void {
+  if (instructionDead) return;
+  if (!isRecord(request) || typeof request.reply !== "function") return;
+  const reply = request.reply as (result: ResolveSystemPromptResult) => void;
+  let replied = false;
+  const replyOnce = (result: ResolveSystemPromptResult): void => {
+    if (replied) return;
+    replied = true;
+    try {
+      reply(result);
+    } catch {
+      // Isolate consumer reply exceptions; one reply attempt is the protocol.
+    }
+  };
+  if (request.scope !== "main" || typeof request.systemPrompt !== "string") {
+    replyOnce({ status: "unavailable", reason: "invalid request" });
+    return;
+  }
+  if (!instructionResolverAcceptsReads()) {
+    replyOnce({ status: "unavailable", reason: "not ready" });
+    return;
+  }
+  const composed = composeLarvaSystemPrompt(request.systemPrompt, readInstructionComposeSnapshot());
+  if (composed.status !== "ok") {
+    replyOnce({ status: "unavailable", reason: composed.reason });
+    return;
+  }
+  replyOnce({ status: "ok", systemPrompt: composed.systemPrompt });
+}
+
+function registerResolveSystemPromptListener(pi: PiApi): void {
+  if (resolveSystemPromptUnsubscribe !== null) return;
+  instructionDead = false;
+  const events = pi.events;
+  if (!isRecord(events) || typeof events.on !== "function") return;
+  resolveSystemPromptUnsubscribe = events.on(LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, handleResolveSystemPromptRequest);
+}
+
+function snapshotForEnvelope(envelope: PersonaEnvelope | null): SystemPromptComposeSnapshot {
+  return {
+    envelope,
+    switchGuidance: envelope === null ? null : agentPersonaSwitchPromptGuidance(),
+    continuationMessage: effectiveContinuationMessage(envelope),
+  };
 }
 
 const ANTHROPIC_OAUTH_CLI_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude.";
@@ -5691,73 +5942,78 @@ const LARVA_KNOWN_PROVIDER_APIS = new Set([
 ]);
 
 export type LarvaIdentityProjectionResult =
-  | { status: "no_envelope" }
   | { status: "unchanged" }
   | { status: "projected"; payload: Record<string, unknown> }
   | { status: "unsupported_api"; api: string }
-  | { status: "missing_slot"; api: string };
+  | { status: "missing_slot"; api: string }
+  | { status: "compose_failed"; api: string };
 
-function composeProviderSystemText(text: string, envelope: PersonaEnvelope): string {
-  let composed = replaceLarvaWatermark(text, envelope);
-  const continuation = pendingPersonaSwitchContinuation;
-  if (continuation !== null && continuation.phase === "continuation_running" && !composed.includes(LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN)) {
-    composed = appendPersonaSwitchContinuationPrompt(composed, continuation);
-  }
-  return composed;
+function projectSystemText(text: string, snapshot: SystemPromptComposeSnapshot): { status: "unchanged" | "projected" | "compose_failed"; text: string } {
+  const composed = composeLarvaSystemPrompt(text, snapshot);
+  if (composed.status !== "ok") return { status: "compose_failed", text };
+  return composed.systemPrompt === text ? { status: "unchanged", text } : { status: "projected", text: composed.systemPrompt };
 }
 
-function projectSystemText(text: string, envelope: PersonaEnvelope): { status: "unchanged" | "projected"; text: string } {
-  const next = composeProviderSystemText(text, envelope);
-  return next === text ? { status: "unchanged", text } : { status: "projected", text: next };
+function applyProjectedText(
+  projected: { status: "unchanged" | "projected" | "compose_failed"; text: string },
+  api: string,
+  build: (text: string) => Record<string, unknown>,
+): LarvaIdentityProjectionResult {
+  if (projected.status === "unchanged") return { status: "unchanged" };
+  if (projected.status === "compose_failed") return { status: "compose_failed", api };
+  return { status: "projected", payload: build(projected.text) };
+}
+
+function injectInstructionText(
+  snapshot: SystemPromptComposeSnapshot,
+  api: string,
+  build: (text: string) => Record<string, unknown>,
+): LarvaIdentityProjectionResult {
+  if (snapshot.envelope === null) return { status: "unchanged" };
+  const composed = composeLarvaSystemPrompt("", snapshot);
+  if (composed.status !== "ok") return { status: "compose_failed", api };
+  return { status: "projected", payload: build(composed.systemPrompt) };
 }
 
 function providerApiFromModel(model: unknown): string | null {
   return isRecord(model) && typeof model.api === "string" && model.api.length > 0 ? model.api : null;
 }
 
-function projectStringField(payload: Record<string, unknown>, envelope: PersonaEnvelope, field: string, api: string): LarvaIdentityProjectionResult {
+function projectStringField(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, field: string, api: string): LarvaIdentityProjectionResult {
   const value = payload[field];
-  if (value === undefined) {
-    return { status: "projected", payload: { ...payload, [field]: composeProviderSystemText("", envelope) } };
-  }
+  if (value === undefined) return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: text }));
   if (typeof value !== "string") return { status: "missing_slot", api };
-  const projected = projectSystemText(value, envelope);
-  if (projected.status === "unchanged") return { status: "unchanged" };
-  return { status: "projected", payload: { ...payload, [field]: projected.text } };
+  return applyProjectedText(projectSystemText(value, snapshot), api, (text) => ({ ...payload, [field]: text }));
 }
 
-function projectFirstInstructionMessage(payload: Record<string, unknown>, envelope: PersonaEnvelope, field: "messages" | "input", api: string): LarvaIdentityProjectionResult {
+function projectFirstInstructionMessage(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, field: "messages" | "input", api: string): LarvaIdentityProjectionResult {
   const messages = payload[field];
   if (!Array.isArray(messages)) return { status: "missing_slot", api };
   const first = messages.length > 0 && isRecord(messages[0]) ? messages[0] : null;
   if (first === null || (first.role !== "system" && first.role !== "developer")) {
     const role = field === "input" ? "developer" : "system";
-    return { status: "projected", payload: { ...payload, [field]: [{ role, content: composeProviderSystemText("", envelope) }, ...messages] } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: [{ role, content: text }, ...messages] }));
   }
   if (typeof first.content === "string") {
-    const projected = projectSystemText(first.content, envelope);
-    if (projected.status === "unchanged") return { status: "unchanged" };
-    return { status: "projected", payload: { ...payload, [field]: [{ ...first, content: projected.text }, ...messages.slice(1)] } };
+    return applyProjectedText(projectSystemText(first.content, snapshot), api, (text) => ({ ...payload, [field]: [{ ...first, content: text }, ...messages.slice(1)] }));
   }
   if (!Array.isArray(first.content)) return { status: "missing_slot", api };
   const partIndex = first.content.findIndex((part) => isRecord(part) && (part.type === "text" || part.type === "input_text") && typeof part.text === "string");
   if (partIndex < 0) {
     const partType = field === "input" ? "input_text" : "text";
-    return { status: "projected", payload: { ...payload, [field]: [{ ...first, content: [{ type: partType, text: composeProviderSystemText("", envelope) }, ...first.content] }, ...messages.slice(1)] } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: [{ ...first, content: [{ type: partType, text }, ...first.content] }, ...messages.slice(1)] }));
   }
   const part = first.content[partIndex] as Record<string, unknown>;
-  const projected = projectSystemText(part.text as string, envelope);
-  if (projected.status === "unchanged") return { status: "unchanged" };
-  const content = first.content.slice();
-  content[partIndex] = { ...part, text: projected.text };
-  return { status: "projected", payload: { ...payload, [field]: [{ ...first, content }, ...messages.slice(1)] } };
+  return applyProjectedText(projectSystemText(part.text as string, snapshot), api, (text) => {
+    const content = first.content.slice();
+    content[partIndex] = { ...part, text };
+    return { ...payload, [field]: [{ ...first, content }, ...messages.slice(1)] };
+  });
 }
 
-function projectAnthropicSystem(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
-  if (typeof payload.system === "string") return projectStringField(payload, envelope, "system", api);
-  if (payload.system === undefined) {
-    return { status: "projected", payload: { ...payload, system: composeProviderSystemText("", envelope) } };
-  }
+function projectAnthropicSystem(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, api: string): LarvaIdentityProjectionResult {
+  if (typeof payload.system === "string") return projectStringField(payload, snapshot, "system", api);
+  if (payload.system === undefined) return injectInstructionText(snapshot, api, (text) => ({ ...payload, system: text }));
   if (!Array.isArray(payload.system)) return { status: "missing_slot", api };
   let target = -1;
   for (let index = payload.system.length - 1; index >= 0; index -= 1) {
@@ -5768,84 +6024,80 @@ function projectAnthropicSystem(payload: Record<string, unknown>, envelope: Pers
     break;
   }
   if (target < 0) {
-    return { status: "projected", payload: { ...payload, system: [...payload.system, { type: "text", text: composeProviderSystemText("", envelope) }] } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, system: [...payload.system, { type: "text", text }] }));
   }
   const block = payload.system[target] as Record<string, unknown>;
-  const projected = projectSystemText(block.text as string, envelope);
-  if (projected.status === "unchanged") return { status: "unchanged" };
-  const system = payload.system.slice();
-  system[target] = { ...block, text: projected.text };
-  return { status: "projected", payload: { ...payload, system } };
+  return applyProjectedText(projectSystemText(block.text as string, snapshot), api, (text) => {
+    const system = payload.system.slice();
+    system[target] = { ...block, text };
+    return { ...payload, system };
+  });
 }
 
-function projectBedrockSystem(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+function projectBedrockSystem(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, api: string): LarvaIdentityProjectionResult {
   if (payload.system === undefined) {
-    return { status: "projected", payload: { ...payload, system: [{ text: composeProviderSystemText("", envelope) }] } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, system: [{ text }] }));
   }
   if (!Array.isArray(payload.system)) return { status: "missing_slot", api };
   const target = payload.system.findIndex((block) => isRecord(block) && typeof block.text === "string");
   if (target < 0) {
-    return { status: "projected", payload: { ...payload, system: [{ text: composeProviderSystemText("", envelope) }, ...payload.system] } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, system: [{ text }, ...payload.system] }));
   }
   const block = payload.system[target] as Record<string, unknown>;
-  const projected = projectSystemText(block.text as string, envelope);
-  if (projected.status === "unchanged") return { status: "unchanged" };
-  const system = payload.system.slice();
-  system[target] = { ...block, text: projected.text };
-  return { status: "projected", payload: { ...payload, system } };
+  return applyProjectedText(projectSystemText(block.text as string, snapshot), api, (text) => {
+    const system = payload.system.slice();
+    system[target] = { ...block, text };
+    return { ...payload, system };
+  });
 }
 
-function projectGoogleInstruction(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+function projectGoogleInstruction(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, api: string): LarvaIdentityProjectionResult {
   if (payload.config === undefined) {
-    return { status: "projected", payload: { ...payload, config: { systemInstruction: composeProviderSystemText("", envelope) } } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, config: { systemInstruction: text } }));
   }
   if (!isRecord(payload.config)) return { status: "missing_slot", api };
   if (payload.config.systemInstruction === undefined) {
-    return { status: "projected", payload: { ...payload, config: { ...payload.config, systemInstruction: composeProviderSystemText("", envelope) } } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, config: { ...payload.config, systemInstruction: text } }));
   }
   if (typeof payload.config.systemInstruction !== "string") return { status: "missing_slot", api };
-  const projected = projectSystemText(payload.config.systemInstruction, envelope);
-  if (projected.status === "unchanged") return { status: "unchanged" };
-  return { status: "projected", payload: { ...payload, config: { ...payload.config, systemInstruction: projected.text } } };
+  return applyProjectedText(projectSystemText(payload.config.systemInstruction, snapshot), api, (text) => ({ ...payload, config: { ...payload.config, systemInstruction: text } }));
 }
 
-function projectPiMessages(payload: Record<string, unknown>, envelope: PersonaEnvelope, api: string): LarvaIdentityProjectionResult {
+function projectPiMessages(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, api: string): LarvaIdentityProjectionResult {
   if (payload.context === undefined) {
-    return { status: "projected", payload: { ...payload, context: { systemPrompt: composeProviderSystemText("", envelope) } } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, context: { systemPrompt: text } }));
   }
   if (!isRecord(payload.context)) return { status: "missing_slot", api };
   if (payload.context.systemPrompt === undefined) {
-    return { status: "projected", payload: { ...payload, context: { ...payload.context, systemPrompt: composeProviderSystemText("", envelope) } } };
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, context: { ...payload.context, systemPrompt: text } }));
   }
   if (typeof payload.context.systemPrompt !== "string") return { status: "missing_slot", api };
-  const projected = projectSystemText(payload.context.systemPrompt, envelope);
-  if (projected.status === "unchanged") return { status: "unchanged" };
-  return { status: "projected", payload: { ...payload, context: { ...payload.context, systemPrompt: projected.text } } };
+  return applyProjectedText(projectSystemText(payload.context.systemPrompt, snapshot), api, (text) => ({ ...payload, context: { ...payload.context, systemPrompt: text } }));
 }
 
 export function projectLarvaIdentityIntoProviderPayload(payload: unknown, envelope: PersonaEnvelope | null, api: string | null): LarvaIdentityProjectionResult {
-  if (envelope === null) return { status: "no_envelope" };
   if (api === null) return { status: "missing_slot", api: "unknown" };
   if (!LARVA_KNOWN_PROVIDER_APIS.has(api)) return { status: "unsupported_api", api };
   if (!isRecord(payload)) return { status: "missing_slot", api };
+  const snapshot = snapshotForEnvelope(envelope);
   switch (api) {
     case "openai-completions":
     case "mistral-conversations":
-      return projectFirstInstructionMessage(payload, envelope, "messages", api);
+      return projectFirstInstructionMessage(payload, snapshot, "messages", api);
     case "openai-responses":
     case "azure-openai-responses":
-      return projectFirstInstructionMessage(payload, envelope, "input", api);
+      return projectFirstInstructionMessage(payload, snapshot, "input", api);
     case "openai-codex-responses":
-      return projectStringField(payload, envelope, "instructions", api);
+      return projectStringField(payload, snapshot, "instructions", api);
     case "anthropic-messages":
-      return projectAnthropicSystem(payload, envelope, api);
+      return projectAnthropicSystem(payload, snapshot, api);
     case "bedrock-converse-stream":
-      return projectBedrockSystem(payload, envelope, api);
+      return projectBedrockSystem(payload, snapshot, api);
     case "google-generative-ai":
     case "google-vertex":
-      return projectGoogleInstruction(payload, envelope, api);
+      return projectGoogleInstruction(payload, snapshot, api);
     case "pi-messages":
-      return projectPiMessages(payload, envelope, api);
+      return projectPiMessages(payload, snapshot, api);
     default:
       return { status: "unsupported_api", api };
   }
@@ -5867,13 +6119,19 @@ export async function before_provider_request(event: unknown, ctx?: PiContext): 
     ctx?.abort?.();
     return undefined;
   }
-  if (!state.envelope || !isRecord(event)) return undefined;
-  const result = projectLarvaIdentityIntoProviderPayload(event.payload, state.envelope, providerApiFromModel(ctx?.model));
+  if (!isRecord(event)) return undefined;
+  const api = providerApiFromModel(ctx?.model);
+  if (!instructionResolverAcceptsReads()) {
+    requestIdentityProjectionCancellation(ctx);
+    await warnIdentityProjection(ctx, "not_ready", api ?? "unknown");
+    return undefined;
+  }
+  const result = projectLarvaIdentityIntoProviderPayload(event.payload, state.envelope, api);
   if (result.status === "projected") {
     lastIdentityProjectionNotice = null;
     return result.payload;
   }
-  if (result.status === "unchanged" || result.status === "no_envelope") return undefined;
+  if (result.status === "unchanged") return undefined;
   requestIdentityProjectionCancellation(ctx);
   await warnIdentityProjection(ctx, result.status, result.api);
   return undefined;
@@ -5957,6 +6215,8 @@ async function failPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "suc
 
 async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout"): Promise<void> {
   if (activePersonaLease === null) return;
+  beginInstructionTransition();
+  try {
   const lease = activePersonaLease;
   if (lease.scope !== "turn") return;
   if (lease.originPersonaId === null) {
@@ -5985,6 +6245,9 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
   lastPersonaLeasePi = null;
   await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
   appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "status/event/audit only; not assistant chat-body text" });
+  } finally {
+    endInstructionTransition();
+  }
 }
 
 export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = ctx ?? {}): { systemPrompt: string } | null | Promise<{ systemPrompt: string } | null> {
@@ -5996,13 +6259,12 @@ export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = 
   const runtimeCtx = ctx ?? (isRecord(event) && isRecord(event.ctx) ? event.ctx as PiContext : lastPersonaLeaseRuntimeCtx ?? {});
   const terminal = terminalRestorePath(event);
   const composePrompt = (): { systemPrompt: string } | null => {
-    if (!state.envelope || !isRecord(event) || typeof event.systemPrompt !== "string") return null;
-    const basePrompt = replaceLarvaWatermark(event.systemPrompt, state.envelope);
-    const continuation = pendingPersonaSwitchContinuation;
-    if (continuation !== null && continuation.phase === "continuation_running") {
-      return { systemPrompt: appendPersonaSwitchContinuationPrompt(basePrompt, continuation) };
-    }
-    return { systemPrompt: basePrompt };
+    if (!isRecord(event) || typeof event.systemPrompt !== "string") return null;
+    if (!instructionResolverAcceptsReads()) return null;
+    const composed = composeLarvaSystemPrompt(event.systemPrompt, readInstructionComposeSnapshot());
+    if (composed.status !== "ok") return null;
+    if (state.envelope === null && composed.systemPrompt === event.systemPrompt) return null;
+    return { systemPrompt: composed.systemPrompt };
   };
   const refreshLazyExtensionToolsAndCompose = async (): Promise<{ systemPrompt: string } | null> => {
     // Pi invokes hooks in extension load order. Sources explicitly loaded before
@@ -9983,10 +10245,16 @@ async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void
   const sessionIdentity = piSessionIdentity(ctx);
   const restoreKey = sessionInitializationRestoreKey(ctx);
   if (sessionIdentity !== null && initializedPiSessionRestoreKeys.get(sessionIdentity) === restoreKey) return;
-  const initialization = initializeSession(ctx, pi);
-  sessionInitializationPromise = initialization;
-  await initialization;
-  if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, sessionInitializationRestoreKey(ctx));
+  beginInstructionTransition();
+  try {
+    const initialization = initializeSession(ctx, pi);
+    sessionInitializationPromise = initialization;
+    await initialization;
+    if (instructionDead) return;
+    if (sessionIdentity !== null) initializedPiSessionRestoreKeys.set(sessionIdentity, sessionInitializationRestoreKey(ctx));
+  } finally {
+    endInstructionTransition();
+  }
 }
 
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
@@ -10103,6 +10371,9 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     return;
   }
   (globalThis as Record<symbol, { entry: string }>)[LARVA_STATEFUL_REGISTRATION] = { entry: LARVA_EXTENSION_ENTRY_PATH };
+  const firstResolverSetup = resolveSystemPromptUnsubscribe === null;
+  registerResolveSystemPromptListener(pi);
+  if (firstResolverSetup) instructionReady = false;
   pi.registerFlag?.(LARVA_PERSONA_FLAG, { type: "string", description: "Optional Larva persona ID for this session" });
   pi.registerFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG, { type: "string", description: "Larva agent persona switch mode: manual, confirm, auto, or free" });
   const env = currentEnv(ctx);
@@ -10290,17 +10561,27 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   const initialRuntimeCtx = withRuntimeEnv(ctx, env);
   if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi);
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
-    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
-    registerSubagentBackgroundIndicatorContext(runtimeCtx);
-    registerLarvaPersonaAutocompleteProvider(runtimeCtx);
-    await resetExtensionUI("session_start");
-    await ensureSessionInitialized(runtimeCtx, pi);
+    beginInstructionTransition();
+    try {
+      const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+      registerSubagentBackgroundIndicatorContext(runtimeCtx);
+      registerLarvaPersonaAutocompleteProvider(runtimeCtx);
+      await resetExtensionUI("session_start");
+      await ensureSessionInitialized(runtimeCtx, pi);
+    } finally {
+      endInstructionTransition();
+    }
   });
   pi.on?.("session_before_compact", async (payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
   });
-  for (const lifecycleEvent of ["session_shutdown", "shutdown", "session_end", "exit", "reload", "new_session", "session_new", "resume", "fork", "quit"]) {
+  pi.on?.("session_shutdown", (payload: unknown) => {
+    invalidateInstructionResolver();
+    const reason = isRecord(payload) && typeof payload.reason === "string" ? payload.reason : "session_shutdown";
+    return resetExtensionUI(reason);
+  });
+  for (const lifecycleEvent of ["shutdown", "session_end", "exit", "reload", "new_session", "session_new", "resume", "fork", "quit"]) {
     pi.on?.(lifecycleEvent, async () => resetExtensionUI(lifecycleEvent));
   }
   pi.on?.("before_agent_start", async (payload: unknown, eventCtx?: PiContext) => {
@@ -10319,7 +10600,14 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
       return;
     }
     if (continuation !== null && continuation.phase === "continuation_running") {
-      pendingPersonaSwitchContinuation = null;
+      beginInstructionTransition();
+      try {
+        pendingPersonaSwitchContinuation = null;
+        await attemptPersonaLeaseRestore(runtimeCtx, pi, terminal);
+      } finally {
+        endInstructionTransition();
+      }
+      return;
     }
     await attemptPersonaLeaseRestore(runtimeCtx, pi, terminal);
   });

@@ -116,33 +116,29 @@ await run("stale larva-spec and tampered prompt are replaced", async () => {
   assert.equal(repaired.messages[0].content.includes("TAMPERED PROMPT"), false);
 });
 
-await run("truncated active-persona block is repaired without dropping Pi text", async () => {
+await run("truncated active-persona block fails explicitly without rewriting payload", async () => {
   const mod = await importFresh("truncated");
   const truncated = `${identityBegin}\nActive Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.\n<!-- larva:identity-policy:end -->\n\nKeep this Pi text\n\n${personaBegin}\n${marker}\nincomplete`;
-  const next = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload({
-    messages: [{ role: "system", content: truncated }],
-  }, envelope, "openai-completions"));
-  assert.ok(next.messages[0].content.includes("Keep this Pi text"));
-  assert.ok(next.messages[0].content.includes("incomplete"));
-  assert.ok(next.messages[0].content.includes(envelope.prompt));
-  assert.equal(count(next.messages[0].content, identityBegin), 1);
-  assert.equal(count(next.messages[0].content, "larva-spec:"), 1);
-  assert.ok(next.messages[0].content.includes("<!-- larva:active-persona:end -->"));
+  const payload = { messages: [{ role: "system", content: truncated }], temperature: 0 };
+  const result = mod.projectLarvaIdentityIntoProviderPayload(payload, envelope, "openai-completions");
+  assert.equal(result.status, "compose_failed");
+  assert.equal(payload.messages[0].content, truncated);
+  assert.ok(truncated.includes("Keep this Pi text"));
+  const composed = mod.composeLarvaSystemPrompt(truncated, { envelope, switchGuidance: null, continuationMessage: null });
+  assert.equal(composed.status, "unavailable");
+  assert.equal(typeof composed.reason, "string");
+  assert.ok(composed.reason.length > 0);
+  assert.equal(composed.reason.includes(truncated), false);
+  assert.equal(composed.reason.includes(envelope.prompt), false);
 });
 
 await run("unpaired larva-spec comment is unique after repair and surrounding base is kept", async () => {
   const mod = await importFresh("spec-comment");
-  const staleMarker = "<!-- larva-spec: old-persona@sha256:old -->";
-  const truncated = `Keep this Pi text\n\n${personaBegin}\n${staleMarker}\nincomplete leftover`;
-  const next = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload({
+  const truncated = `Keep this Pi text\n\n${personaBegin}\n<!-- larva-spec: old-persona@sha256:old -->\nincomplete leftover`;
+  const damaged = mod.projectLarvaIdentityIntoProviderPayload({
     messages: [{ role: "system", content: truncated }, { role: "user", content: "hi" }],
-  }, envelope, "openai-completions"));
-  assert.equal(count(next.messages[0].content, "larva-spec:"), 1);
-  assert.ok(next.messages[0].content.includes(marker));
-  assert.equal(next.messages[0].content.includes(staleMarker), false);
-  assert.ok(next.messages[0].content.includes("Keep this Pi text"));
-  assert.ok(next.messages[0].content.includes("incomplete leftover"));
-  assert.equal(next.messages[1].content, "hi");
+  }, envelope, "openai-completions");
+  assert.equal(damaged.status, "compose_failed");
 
   const sameLine = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload({
     messages: [{ role: "system", content: "<!-- larva-spec: old@x -->KEEP<!-- unrelated -->" }],
@@ -184,11 +180,21 @@ await run("continuation block is kept once and not duplicated", async () => {
   const next = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload({
     messages: [{ role: "system", content: wrapped }, { role: "user", content: "hi" }],
   }, envelope, "openai-completions"));
-  assert.equal(count(next.messages[0].content, begin), 1);
-  assert.ok(next.messages[0].content.includes("keep going"));
+  assert.equal(count(next.messages[0].content, begin), 0);
+  assert.equal(next.messages[0].content.includes("keep going"), false);
   assert.ok(next.messages[0].content.includes("Pi base"));
   assert.equal(next.messages[1].content, "hi");
-  assert.equal(JSON.stringify(next).includes("Continue."), false);
+  const again = mod.projectLarvaIdentityIntoProviderPayload({
+    messages: [{ role: "system", content: next.messages[0].content }, { role: "user", content: "hi" }],
+  }, envelope, "openai-completions");
+  assert.equal(again.status, "unchanged");
+  assert.equal(next.messages[0].content, mod.replaceLarvaWatermark("Pi base", envelope));
+
+  const withCont = mod.composeLarvaSystemPrompt("Pi base", { envelope, switchGuidance: null, continuationMessage: "keep going" });
+  assert.equal(count(withCont.systemPrompt, begin), 1);
+  const withContAgain = mod.composeLarvaSystemPrompt(withCont.systemPrompt, { envelope, switchGuidance: null, continuationMessage: "keep going" });
+  assert.equal(count(withContAgain.systemPrompt, begin), 1);
+  assert.equal(withContAgain.systemPrompt, withCont.systemPrompt);
 });
 
 await run("anthropic keeps Claude Code identity and cache_control and wraps one Pi block", async () => {
@@ -292,7 +298,12 @@ await run("unsupported api, unadmitted slot, and missing envelope do not rewrite
   assert.equal(mod.projectLarvaIdentityIntoProviderPayload({ messages: [{ role: "system", content: { broken: true } }] }, envelope, "openai-completions").status, "missing_slot");
   assert.equal(mod.projectLarvaIdentityIntoProviderPayload({ messages: [{ role: "system", content: "base" }] }, envelope, null).status, "missing_slot");
   assert.equal(mod.projectLarvaIdentityIntoProviderPayload({ messages: [{ role: "system", content: "base" }] }, envelope, "not-a-pi-api").status, "unsupported_api");
-  assert.equal(mod.projectLarvaIdentityIntoProviderPayload({ messages: [{ role: "system", content: "base" }] }, null, "openai-completions").status, "no_envelope");
+  assert.equal(mod.projectLarvaIdentityIntoProviderPayload({ messages: [{ role: "system", content: "base" }] }, null, "openai-completions").status, "unchanged");
+  const cleanedNone = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload({
+    messages: [{ role: "system", content: `${identityBegin}\nstale\n<!-- larva:identity-policy:end -->\n\nKeep base` }],
+  }, null, "openai-completions"));
+  assert.equal(cleanedNone.messages[0].content.includes(identityBegin), false);
+  assert.ok(cleanedNone.messages[0].content.includes("Keep base"));
 });
 
 await run("before_provider_request uses ctx.model.api and current envelope", async () => {
@@ -422,6 +433,7 @@ process.exit(3);
     env: { LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_INITIAL_PERSONA_ID: "origin", LARVA_PI_AGENT_PERSONA_SWITCH: "auto" },
     ui: { setStatus: async () => {}, notify: async () => {} },
     modelRegistry: { find: async () => ({ id: "model" }) },
+    session: { appendEntry: () => {} },
     sendMessage: async () => {},
     sendUserMessage: async (message, options) => { chatMessages.push({ message, options }); },
   };
@@ -457,14 +469,71 @@ process.exit(3);
   assert.ok(system.includes("<larva_persona_switch_continuation>"));
   assert.ok(system.includes("[Larva-generated continuation after persona switch]"));
   assert.equal(count(system, "<larva_persona_switch_continuation>"), 1);
+  const personaBegin = system.indexOf("<!-- larva:active-persona:begin -->");
+  const continuationBegin = system.indexOf("<larva_persona_switch_continuation>");
+  assert.ok(personaBegin >= 0 && continuationBegin > personaBegin, "continuation must follow active persona without paragraph movement");
+  const agentStart = await handlers.before_agent_start({ prompt: "Continue.", systemPrompt: "Pi base" }, ctx);
+  assert.equal(agentStart.systemPrompt, system);
   const again = await handlers.before_provider_request({
     type: "before_provider_request",
     payload: { messages: [{ role: "system", content: system }, { role: "user", content: "hi" }] },
   }, eventCtx);
-  const second = again ?? projected;
-  assert.equal(count(second.messages[0].content, "<larva_persona_switch_continuation>"), 1);
-  assert.equal(count(second.messages[0].content, "larva-spec:"), 1);
-  assert.equal(second.messages[1].content, "hi");
+  assert.equal(again, undefined);
+});
+
+await run("whole-string fixed point preserves unicode whitespace and repetitions", async () => {
+  const mod = await importFresh("fixed-point");
+  const base = "Keep  this\n\nKeep  this\n日本語\u{1F9E9}\t  trailing  ";
+  const snapshot = { envelope, switchGuidance: null, continuationMessage: null };
+  const first = mod.composeLarvaSystemPrompt(base, snapshot);
+  assert.equal(first.status, "ok");
+  assert.ok(first.systemPrompt.includes(base));
+  assert.equal(count(first.systemPrompt, "Keep  this"), 2);
+  const second = mod.composeLarvaSystemPrompt(first.systemPrompt, snapshot);
+  assert.equal(second.status, "ok");
+  assert.equal(second.systemPrompt, first.systemPrompt);
+  const withCont = mod.composeLarvaSystemPrompt(base, { ...snapshot, continuationMessage: "continue-body" });
+  assert.equal(withCont.status, "ok");
+  const withContAgain = mod.composeLarvaSystemPrompt(withCont.systemPrompt, { ...snapshot, continuationMessage: "continue-body" });
+  assert.equal(withContAgain.systemPrompt, withCont.systemPrompt);
+  assert.equal(count(withCont.systemPrompt, "<larva_persona_switch_continuation>"), 1);
+});
+
+await run("actual Pi EventBus replies once synchronously for larva:resolve-system-prompt:v1", async () => {
+  const mod = await importFresh("resolver-bus");
+  const piRoot = process.env.LARVA_TEST_PI_CODING_AGENT ?? join(process.cwd(), "contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent");
+  assert.equal(typeof piRoot, "string");
+  assert.ok(piRoot.length > 0);
+  const { createEventBus } = await import(pathToFileURL(join(piRoot, "dist/core/event-bus.js")).href);
+  const events = createEventBus();
+  const fakeCli = await mkdtemp(join(tmpdir(), "larva-resolver-bus-"));
+  const cli = join(fakeCli, "cli.mjs");
+  await writeFile(cli, `process.exit(3);\n`, "utf8");
+  const ctx = {
+    env: { LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_AGENT_PERSONA_SWITCH: "manual" },
+    ui: { setStatus: async () => {}, notify: async () => {} },
+    modelRegistry: { find: async () => ({ id: "model" }) },
+  };
+  const pi = {
+    events,
+    getAllTools: async () => ["read"],
+    setActiveTools: async () => true,
+    registerCommand: () => {},
+    registerTool: () => {},
+    on: () => {},
+  };
+  await mod.initializeExtension(ctx, pi);
+  const replies = [];
+  events.emit(mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, {
+    scope: "main",
+    systemPrompt: "Pi base",
+    reply: (result) => replies.push(result),
+  });
+  assert.equal(replies.length, 1);
+  assert.equal(replies[0].status, "ok");
+  assert.equal(replies[0].systemPrompt, mod.composeLarvaSystemPrompt("Pi base", { envelope: null, switchGuidance: null, continuationMessage: null }).systemPrompt);
+  await new Promise((resolve) => queueMicrotask(resolve));
+  assert.equal(replies.length, 1);
 });
 
 const failed = results.filter((result) => result.status === "FAIL");
