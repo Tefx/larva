@@ -5736,95 +5736,152 @@ export type ResolveSystemPromptResult =
   | { status: "ok"; systemPrompt: string }
   | { status: "unavailable"; reason: string };
 
-type ManagedMarkerKind =
-  | "identity-begin"
-  | "identity-end"
-  | "persona-begin"
-  | "persona-end"
-  | "continuation-begin"
-  | "continuation-end";
+type ManagedBlockKind = "identity" | "persona" | "continuation";
 
-const MANAGED_MARKERS: ReadonlyArray<{ kind: ManagedMarkerKind; text: string }> = [
-  { kind: "identity-begin", text: LARVA_IDENTITY_POLICY_BEGIN },
-  { kind: "identity-end", text: LARVA_IDENTITY_POLICY_END },
-  { kind: "persona-begin", text: LARVA_ACTIVE_PERSONA_BEGIN },
-  { kind: "persona-end", text: LARVA_ACTIVE_PERSONA_END },
-  { kind: "continuation-begin", text: LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN },
-  { kind: "continuation-end", text: LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END },
+type ManagedTokenDef = {
+  kind: ManagedBlockKind;
+  isBegin: boolean;
+  text: string;
+};
+
+const MANAGED_TOKEN_DEFS: ReadonlyArray<ManagedTokenDef> = [
+  { kind: "identity", isBegin: true, text: LARVA_IDENTITY_POLICY_BEGIN },
+  { kind: "identity", isBegin: false, text: LARVA_IDENTITY_POLICY_END },
+  { kind: "persona", isBegin: true, text: LARVA_ACTIVE_PERSONA_BEGIN },
+  { kind: "persona", isBegin: false, text: LARVA_ACTIVE_PERSONA_END },
+  { kind: "continuation", isBegin: true, text: LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_BEGIN },
+  { kind: "continuation", isBegin: false, text: LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END },
 ];
 
-function matchingManagedEnd(kind: ManagedMarkerKind): string | null {
-  if (kind === "identity-begin") return LARVA_IDENTITY_POLICY_END;
-  if (kind === "persona-begin") return LARVA_ACTIVE_PERSONA_END;
-  if (kind === "continuation-begin") return LARVA_PERSONA_SWITCH_CONTINUATION_PROMPT_END;
-  return null;
-}
+type FoundToken = {
+  kind: ManagedBlockKind;
+  isBegin: boolean;
+  index: number;
+  length: number;
+};
 
-function findNextManagedMarker(text: string, from: number): { kind: ManagedMarkerKind; index: number; length: number } | null {
-  let best: { kind: ManagedMarkerKind; index: number; length: number } | null = null;
-  for (const marker of MANAGED_MARKERS) {
-    const index = text.indexOf(marker.text, from);
-    if (index < 0) continue;
-    if (best === null || index < best.index || (index === best.index && marker.text.length > best.length)) {
-      best = { kind: marker.kind, index, length: marker.text.length };
+function findAllManagedTokens(text: string): FoundToken[] {
+  const tokens: FoundToken[] = [];
+  for (const def of MANAGED_TOKEN_DEFS) {
+    let index = 0;
+    while ((index = text.indexOf(def.text, index)) !== -1) {
+      tokens.push({ kind: def.kind, isBegin: def.isBegin, index, length: def.text.length });
+      index += def.text.length;
     }
   }
-  return best;
+  tokens.sort((a, b) => a.index - b.index);
+  return tokens;
+}
+
+type TopLevelManagedRange = {
+  start: number;
+  end: number;
+  kind: ManagedBlockKind | "dangling-end" | "identity-and-persona";
+};
+
+function parseManagedBlockRanges(text: string): { status: "ok"; ranges: TopLevelManagedRange[] } | { status: "unavailable"; reason: string } {
+  const tokens = findAllManagedTokens(text);
+  const stack: FoundToken[] = [];
+  const topLevelRanges: TopLevelManagedRange[] = [];
+  const orphanEnds: TopLevelManagedRange[] = [];
+
+  for (const token of tokens) {
+    if (token.isBegin) {
+      stack.push(token);
+    } else {
+      if (stack.length === 0) {
+        orphanEnds.push({ start: token.index, end: token.index + token.length, kind: "dangling-end" });
+      } else {
+        const top = stack[stack.length - 1];
+        if (top.kind === token.kind) {
+          stack.pop();
+          if (stack.length === 0) {
+            topLevelRanges.push({ start: top.index, end: token.index + token.length, kind: top.kind });
+          }
+        } else {
+          return { status: "unavailable", reason: "damaged managed boundaries" };
+        }
+      }
+    }
+  }
+
+  if (stack.length > 0) {
+    return { status: "unavailable", reason: "damaged managed boundaries" };
+  }
+
+  const allRanges = [...topLevelRanges, ...orphanEnds];
+  allRanges.sort((a, b) => a.start - b.start);
+  return { status: "ok", ranges: allRanges };
 }
 
 function stripManagedInstructionText(text: string): SystemPromptComposeResult {
-  const ranges: Array<{ start: number; end: number; kind: string }> = [];
-  let cursor = 0;
-  while (cursor <= text.length) {
-    const marker = findNextManagedMarker(text, cursor);
-    if (marker === null) break;
-    const endText = matchingManagedEnd(marker.kind);
-    if (endText === null) {
-      ranges.push({ start: marker.index, end: marker.index + marker.length, kind: "orphan-end" });
-      cursor = marker.index + marker.length;
-      continue;
-    }
-    const endIndex = text.indexOf(endText, marker.index + marker.length);
-    if (endIndex < 0) return { status: "unavailable", reason: "damaged managed boundaries" };
-    ranges.push({ start: marker.index, end: endIndex + endText.length, kind: marker.kind });
-    cursor = endIndex + endText.length;
-  }
+  const parsed = parseManagedBlockRanges(text);
+  if (parsed.status !== "ok") return parsed;
+  const ranges = parsed.ranges;
 
-  ranges.sort((a, b) => a.start - b.start);
-
-  const merged: Array<{ start: number; end: number; kind: string }> = [];
-  for (const r of ranges) {
-    if (merged.length > 0) {
-      const prev = merged[merged.length - 1];
+  const connected: TopLevelManagedRange[] = [];
+  for (let i = 0; i < ranges.length; i++) {
+    const r = { ...ranges[i] };
+    if (connected.length > 0) {
+      const prev = connected[connected.length - 1];
       const gap = text.slice(prev.end, r.start);
-      if (/^\s*$/.test(gap)) {
+      if (prev.kind === "persona" && r.kind === "continuation" && /^\r?\n(\r?\n)?$/.test(gap)) {
         prev.end = r.end;
+        prev.kind = "persona";
+        continue;
+      }
+      if (prev.kind === "identity" && r.kind === "persona" && (gap === "\n\n" || gap === "\r\n\r\n" || gap === "\n" || gap === "\r\n")) {
+        prev.end = r.end;
+        prev.kind = "identity-and-persona";
         continue;
       }
     }
-    merged.push({ start: r.start, end: r.end, kind: r.kind });
+    connected.push(r);
   }
 
-  for (let i = 0; i < merged.length; i++) {
-    const r = merged[i];
-    if (r.end + 2 <= text.length && text.slice(r.end, r.end + 2) === "\n\n") {
-      r.end += 2;
-    } else if (r.start >= 2 && text.slice(r.start - 2, r.start) === "\n\n") {
-      r.start -= 2;
-    } else if (r.end < text.length && text[r.end] === "\n") {
-      r.end += 1;
-    } else if (r.start >= 1 && text[r.start - 1] === "\n") {
-      r.start -= 1;
+  for (const r of connected) {
+    if (r.kind === "identity") {
+      if (r.end + 4 <= text.length && text.slice(r.end, r.end + 4) === "\r\n\r\n") {
+        r.end += 4;
+      } else if (r.end + 2 <= text.length && text.slice(r.end, r.end + 2) === "\n\n") {
+        r.end += 2;
+      } else if (r.end + 2 <= text.length && text.slice(r.end, r.end + 2) === "\r\n") {
+        r.end += 2;
+      } else if (r.end < text.length && text[r.end] === "\n") {
+        r.end += 1;
+      }
+    } else if (r.kind === "persona" || r.kind === "continuation") {
+      if (r.start >= 4 && text.slice(r.start - 4, r.start) === "\r\n\r\n") {
+        r.start -= 4;
+      } else if (r.start >= 2 && text.slice(r.start - 2, r.start) === "\n\n") {
+        r.start -= 2;
+      } else if (r.start >= 2 && text.slice(r.start - 2, r.start) === "\r\n") {
+        r.start -= 2;
+      } else if (r.start >= 1 && text[r.start - 1] === "\n") {
+        r.start -= 1;
+      }
+      if (r.end < text.length && text.slice(r.end) === "\n") {
+        r.end += 1;
+      }
+    } else if (r.kind === "identity-and-persona") {
+      if (r.end < text.length && text.slice(r.end) === "\n") {
+        r.end += 1;
+      }
+    } else if (r.kind === "dangling-end") {
+      if (r.end < text.length && text[r.end] === "\n") {
+        r.end += 1;
+      }
     }
   }
 
   let output = "";
   let last = 0;
-  for (const r of merged) {
+  for (const r of connected) {
     output += text.slice(last, r.start);
     last = r.end;
   }
   output += text.slice(last);
+
   const strippedLegacy = output.replace(LARVA_WATERMARK_RE, "").replace(LARVA_SPEC_COMMENT_RE, "\n");
   return { status: "ok", systemPrompt: strippedLegacy };
 }
@@ -5857,7 +5914,9 @@ export function composeLarvaSystemPrompt(base: string, snapshot: SystemPromptCom
   if (stripped.status !== "ok") return stripped;
   const foreign = stripped.systemPrompt;
   if (snapshot.envelope === null) return { status: "ok", systemPrompt: foreign };
-  const sections = [identityPolicyBlock(), foreign, activePersonaBlock(snapshot.envelope, snapshot.switchGuidance)];
+  const sections = [identityPolicyBlock()];
+  if (foreign.length > 0) sections.push(foreign);
+  sections.push(activePersonaBlock(snapshot.envelope, snapshot.switchGuidance));
   if (snapshot.continuationMessage !== null) sections.push(continuationPromptBlock(snapshot.continuationMessage));
   return { status: "ok", systemPrompt: sections.join("\n\n") };
 }
@@ -5883,32 +5942,48 @@ function readInstructionComposeSnapshot(): SystemPromptComposeSnapshot {
 
 function handleResolveSystemPromptRequest(request: unknown): void {
   if (instructionDead) return;
-  if (!isRecord(request) || typeof request.reply !== "function") return;
-  const reply = request.reply as (result: ResolveSystemPromptResult) => void;
+  if (!isRecord(request)) return;
+  let replyFn: ((result: ResolveSystemPromptResult) => void) | null = null;
+  try {
+    if (typeof request.reply === "function") {
+      replyFn = request.reply as (result: ResolveSystemPromptResult) => void;
+    }
+  } catch {
+    return;
+  }
+  if (replyFn === null) return;
   let replied = false;
   const replyOnce = (result: ResolveSystemPromptResult): void => {
     if (replied) return;
     replied = true;
     try {
-      reply(result);
+      replyFn?.(result);
     } catch {
       // Isolate consumer reply exceptions; one reply attempt is the protocol.
     }
   };
-  if (request.scope !== "main" || typeof request.systemPrompt !== "string") {
-    replyOnce({ status: "unavailable", reason: "invalid request" });
-    return;
+  try {
+    const scope = request.scope;
+    const systemPrompt = request.systemPrompt;
+    if (scope !== "main" || typeof systemPrompt !== "string") {
+      replyOnce({ status: "unavailable", reason: "invalid request" });
+      return;
+    }
+    if (!instructionResolverAcceptsReads()) {
+      replyOnce({ status: "unavailable", reason: "not ready" });
+      return;
+    }
+    const snapshot = readInstructionComposeSnapshot();
+    const composed = composeLarvaSystemPrompt(systemPrompt, snapshot);
+    if (composed.status !== "ok") {
+      replyOnce({ status: "unavailable", reason: composed.reason });
+      return;
+    }
+    replyOnce({ status: "ok", systemPrompt: composed.systemPrompt });
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    replyOnce({ status: "unavailable", reason: boundedVisible(`request error: ${message}`, 200) });
   }
-  if (!instructionResolverAcceptsReads()) {
-    replyOnce({ status: "unavailable", reason: "not ready" });
-    return;
-  }
-  const composed = composeLarvaSystemPrompt(request.systemPrompt, readInstructionComposeSnapshot());
-  if (composed.status !== "ok") {
-    replyOnce({ status: "unavailable", reason: composed.reason });
-    return;
-  }
-  replyOnce({ status: "ok", systemPrompt: composed.systemPrompt });
 }
 
 function registerResolveSystemPromptListener(pi: PiApi): void {
@@ -6121,11 +6196,6 @@ export async function before_provider_request(event: unknown, ctx?: PiContext): 
   }
   if (!isRecord(event)) return undefined;
   const api = providerApiFromModel(ctx?.model);
-  if (!instructionResolverAcceptsReads()) {
-    requestIdentityProjectionCancellation(ctx);
-    await warnIdentityProjection(ctx, "not_ready", api ?? "unknown");
-    return undefined;
-  }
   const result = projectLarvaIdentityIntoProviderPayload(event.payload, state.envelope, api);
   if (result.status === "projected") {
     lastIdentityProjectionNotice = null;
@@ -6188,8 +6258,13 @@ async function restoreLeaseOriginPiModel(lease: PersonaLease, pi: PiApi): Promis
   if (!lease.originPiModelCaptured) return null;
   const model = activePersonaLeaseOriginPiModel;
   if (model === null || model === undefined) return null;
-  const accepted = await pi.setModel?.(model);
-  if (accepted === false) return error("LARVA_MODEL_UNAVAILABLE", `Pi rejected restore model ${lease.originPiModelLabel ?? "captured origin model"}`);
+  try {
+    const accepted = await pi.setModel?.(model);
+    if (accepted === false) return error("LARVA_MODEL_UNAVAILABLE", `Pi rejected restore model ${lease.originPiModelLabel ?? "captured origin model"}`);
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    return error("LARVA_MODEL_UNAVAILABLE", `Pi rejected restore model ${lease.originPiModelLabel ?? "captured origin model"}: ${message}`);
+  }
   state.piModel = model;
   return null;
 }
@@ -6216,35 +6291,40 @@ async function failPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "suc
 async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "success" | "failure" | "cancellation" | "timeout"): Promise<void> {
   if (activePersonaLease === null) return;
   beginInstructionTransition();
-  try {
   const lease = activePersonaLease;
-  if (lease.scope !== "turn") return;
-  if (lease.originPersonaId === null) {
+  try {
+    if (lease.scope !== "turn") return;
+    if (lease.originPersonaId === null) {
+      activePersonaLease = null;
+      activePersonaLeaseOriginPiModel = null;
+      activePersonaLeaseOriginPiThinking = null;
+      appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: false, reason: "no origin persona" });
+      return;
+    }
+    const restored = await commitPersonaWithOptions(lease.originPersonaId, ctx, pi, { sessionCommitSource: null, applyModel: !lease.originPiModelCaptured });
+    if (!restored.ok) {
+      await failPersonaLeaseRestore(ctx, pi, terminal, lease, restored.error);
+      return;
+    }
+    const modelRestoreError = await restoreLeaseOriginPiModel(lease, pi);
+    if (modelRestoreError !== null) {
+      await failPersonaLeaseRestore(ctx, pi, terminal, lease, modelRestoreError);
+      return;
+    }
+    restoreLeaseOriginPiThinking(pi);
     activePersonaLease = null;
     activePersonaLeaseOriginPiModel = null;
     activePersonaLeaseOriginPiThinking = null;
-    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: false, reason: "no origin persona" });
-    return;
-  }
-  const restored = await commitPersonaWithOptions(lease.originPersonaId, ctx, pi, { sessionCommitSource: null, applyModel: !lease.originPiModelCaptured });
-  if (!restored.ok) {
-    await failPersonaLeaseRestore(ctx, pi, terminal, lease, restored.error);
-    return;
-  }
-  const modelRestoreError = await restoreLeaseOriginPiModel(lease, pi);
-  if (modelRestoreError !== null) {
-    await failPersonaLeaseRestore(ctx, pi, terminal, lease, modelRestoreError);
-    return;
-  }
-  restoreLeaseOriginPiThinking(pi);
-  activePersonaLease = null;
-  activePersonaLeaseOriginPiModel = null;
-  activePersonaLeaseOriginPiThinking = null;
-  restoreFailureState = null;
-  lastPersonaLeaseRuntimeCtx = null;
-  lastPersonaLeasePi = null;
-  await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
-  appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "status/event/audit only; not assistant chat-body text" });
+    restoreFailureState = null;
+    lastPersonaLeaseRuntimeCtx = null;
+    lastPersonaLeasePi = null;
+    await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
+    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "status/event/audit only; not assistant chat-body text" });
+  } catch (caught) {
+    if (activePersonaLease !== null) {
+      const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_RESTORE_FAILED", caught instanceof Error ? caught.message : String(caught));
+      await failPersonaLeaseRestore(ctx, pi, terminal, lease, larvaError);
+    }
   } finally {
     endInstructionTransition();
   }
@@ -10279,6 +10359,12 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       await resolvePersona(explicitPersonaId, ctx);
     } catch (caught) {
       const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve persona ${explicitPersonaId}`);
+      restoreFailureState = {
+        failedRestoreTarget: explicitPersonaId,
+        borrowedPersonaId: null,
+        error: larvaError,
+        audit: { source: "startup_resolve", explicitPersonaId, error: larvaError },
+      };
       fatalInitialPersonaStartup(ctx, env, explicitPersonaId, larvaError);
       await setStartupUnavailableStatus(ctx, explicitPersonaId, larvaError);
       await notify(ctx, `Larva startup persona unavailable: ${larvaError.code}: ${larvaError.message}`, "error");
@@ -10296,6 +10382,12 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
     });
     if (!restored.ok) {
+      restoreFailureState = {
+        failedRestoreTarget: stored.personaId,
+        borrowedPersonaId: null,
+        error: restored.error,
+        audit: { source: "session_restore", stored, error: restored.error },
+      };
       await setStartupUnavailableStatus(ctx, stored.personaId, restored.error);
       await notify(ctx, `Larva session persona restore unavailable: ${restored.error.code}: ${restored.error.message}`, "warning");
     } else if (stored.specDigest.length > 0 && restored.envelope.spec_digest !== stored.specDigest) {
@@ -10311,6 +10403,12 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
     });
     if (!committed.ok) {
+      restoreFailureState = {
+        failedRestoreTarget: explicitPersonaId,
+        borrowedPersonaId: null,
+        error: committed.error,
+        audit: { source: "startup_commit", explicitPersonaId, error: committed.error },
+      };
       fatalInitialPersonaStartup(ctx, env, explicitPersonaId, committed.error);
       await setStartupUnavailableStatus(ctx, explicitPersonaId, committed.error);
       await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");

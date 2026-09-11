@@ -3046,7 +3046,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     { persona_id: "child", task: "fail and send failed callback shape" },
     { ...ctx, env: withChildLaunchEnv(ctx.env, { LARVA_PI_EXTENSION_FLAG: failedCallbackChild, LARVA_PI_REAL_BIN: process.execPath }) },
   );
-  try { await waitForSmokeCondition(() => callbackForStatus("failed", failedCallbackStart), { label: "failed callback shape", timeoutMs: 500 }); } catch {}
+  try { await waitForSmokeCondition(() => callbackForStatus("failed", failedCallbackStart), { label: "failed callback shape", timeoutMs: 2_000 }); } catch {}
   const failedCallback = callbackForStatus("failed", failedCallbackStart);
 
   const exact500Reason = "x".repeat(500);
@@ -3065,15 +3065,15 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const siblingBPromise = runTool(subagentTool, "cancel-source-b", { persona_id: "child", task: "sibling B must continue" }, siblingBCtx, undefined, (update) => siblingBUpdates.push(update));
   let siblingARunning = null;
   let siblingBRunning = null;
-  try { siblingARunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "cancel-source-a" && entry.status === "running"), { label: "sibling A running", timeoutMs: 500 }); } catch {}
-  try { siblingBRunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "cancel-source-b" && entry.status === "running"), { label: "sibling B running", timeoutMs: 500 }); } catch {}
+  try { siblingARunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "cancel-source-a" && entry.status === "running"), { label: "sibling A running", timeoutMs: 2_000 }); } catch {}
+  try { siblingBRunning = await waitForSmokeCondition(() => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "cancel-source-b" && entry.status === "running"), { label: "sibling B running", timeoutMs: 2_000 }); } catch {}
   const siblingTaskId = siblingARunning?.task_id ?? siblingASession;
   const userCancelCallbackStart = callbackEntries.length;
   const userCancelResult = await invokeUnifiedCommand(`--cancel ${siblingTaskId}`, siblingACtx);
   const modelCancelExact500 = await invokeCancel(siblingTaskId, exact500Reason, "reason-500", siblingACtx);
   const modelCancelOverlong = await invokeCancel(siblingTaskId, overlongReason, "reason-overlong", siblingACtx);
   const siblingResults = await Promise.all([siblingAPromise, siblingBPromise]);
-  try { await waitForSmokeCondition(() => callbackForStatus("cancelled", userCancelCallbackStart), { label: "cancelled callback shape", timeoutMs: 500 }); } catch {}
+  try { await waitForSmokeCondition(() => callbackForStatus("cancelled", userCancelCallbackStart), { label: "cancelled callback shape", timeoutMs: 2_000 }); } catch {}
   const cancelledCallback = callbackForStatus("cancelled", userCancelCallbackStart);
   const parentEnvelopeAfterCancel = mod.getActiveEnvelope();
   const cancellationSourceRulesProbe = {

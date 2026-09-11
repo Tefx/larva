@@ -497,6 +497,15 @@ await run("whole-string fixed point preserves unicode whitespace and repetitions
   const withContAgain = mod.composeLarvaSystemPrompt(withCont.systemPrompt, { ...snapshot, continuationMessage: "continue-body" });
   assert.equal(withContAgain.systemPrompt, withCont.systemPrompt);
   assert.equal(count(withCont.systemPrompt, "<larva_persona_switch_continuation>"), 1);
+
+  for (const ws of ["\t", " ", "   ", "\n"]) {
+    const wsFirst = mod.composeLarvaSystemPrompt(ws, snapshot);
+    assert.equal(wsFirst.status, "ok");
+    const wsSecond = mod.composeLarvaSystemPrompt(wsFirst.systemPrompt, snapshot);
+    assert.equal(wsSecond.systemPrompt, wsFirst.systemPrompt);
+    const wsNone = mod.composeLarvaSystemPrompt(wsFirst.systemPrompt, { envelope: null, switchGuidance: null, continuationMessage: null });
+    assert.equal(wsNone.systemPrompt, ws);
+  }
 });
 
 await run("actual Pi EventBus replies once synchronously for larva:resolve-system-prompt:v1", async () => {

@@ -19,7 +19,7 @@ RESOLVER_RUNTIME: Final = ROOT / "contrib" / "pi-extension" / "test-system-promp
 def _node() -> str:
     node = shutil.which("node")
     if node is None:
-        pytest.skip("node is required for idle callback identity tests")
+        pytest.fail("node is required for idle callback identity tests")
     return node
 
 
@@ -61,9 +61,6 @@ def test_idle_callback_identity_real_pi_tool_continuation() -> None:
         timeout=90.0,
         env=_env(),
     )
-    if completed.returncode == 2 and "PI_0_85_UNAVAILABLE" in completed.stderr:
-        assert "PASS" not in completed.stdout
-        pytest.skip(completed.stderr.strip())
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "FAIL" not in completed.stdout
     assert "PASS idle custom callback identity on three real-read hops and admitted empty-system repair" in completed.stdout
@@ -81,14 +78,19 @@ def test_system_prompt_resolver_runtime() -> None:
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "FAIL" not in completed.stdout
-    assert "PASS ready none cleans stale managed text and keeps pure base" in completed.stdout
+    assert "PASS F1 whitespace-only base preservation under persona and ready none" in completed.stdout
+    assert "PASS F2 crossed identity and persona markers explicitly fail as unavailable" in completed.stdout
+    assert "PASS F2 opaque persona with complete same-kind marker example preserves fixed point and clean switch" in completed.stdout
+    assert "PASS F3 throwing scope or systemPrompt getters produce bounded unavailable without escaping to bus" in completed.stdout
+    assert "PASS F4 failed restore sets failure state and keeps resolver unavailable" in completed.stdout
+    assert "PASS F4 valid rollback after switch failure restores ok on old state" in completed.stdout
+    assert "PASS F5 pending initialization across shutdown does not revive after completion" in completed.stdout
+    assert "PASS F5 lifecycle re-establishment on session_start new, resume, fork" in completed.stdout
+    assert "PASS F5 resolver reads strictly observe zero effect on state, queues, tools, and CLI" in completed.stdout
+    assert "PASS F5 resolver output fed to provider serializers returns unchanged for all supported APIs" in completed.stdout
     assert "PASS A-B-A restore deletes B blocks and equals current A composition" in completed.stdout
     assert "PASS pending ended and manually cleared continuation stay out of composition" in completed.stdout
+    assert "PASS free mode continuation projects and when cleared leaves prompt unchanged" in completed.stdout
     assert "PASS true post-resolution state change still projects" in completed.stdout
-    assert "PASS synchronous invalid reply-throw and nested queries isolate one attempt each" in completed.stdout
-    assert "PASS resolver reads do not mutate lease continuation counters or queues" in completed.stdout
-    assert "PASS incomplete initialization replies unavailable then current state after commit" in completed.stdout
-    assert "PASS shutdown unsubscribes before async cleanup and late init cannot revive" in completed.stdout
     assert "PASS idempotent setup keeps a single listener" in completed.stdout
-    assert "PASS crossed identity and persona markers fail without swallowing foreign text" in completed.stdout
     assert "PASS no-persona known slot without stale content stays unchanged and does not insert empty slots" in completed.stdout

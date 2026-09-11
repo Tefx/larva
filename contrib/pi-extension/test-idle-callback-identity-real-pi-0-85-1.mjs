@@ -31,29 +31,25 @@ const QUARANTINE_KEYS = [
 ];
 
 function resolvePi085Index() {
-  const candidates = [];
   const envPath = process.env.LARVA_TEST_PI_CODING_AGENT;
+  let pkg = null;
   if (typeof envPath === "string" && envPath.length > 0) {
-    candidates.push(envPath);
-    if (envPath.endsWith("/dist/index.js")) candidates.push(dirname(dirname(envPath)));
-    else if (envPath.endsWith("/dist")) candidates.push(dirname(envPath));
+    pkg = envPath;
+    if (pkg.endsWith("/dist/index.js")) pkg = dirname(dirname(pkg));
+    else if (pkg.endsWith("/dist")) pkg = dirname(pkg);
+  } else {
+    pkg = join(root, "contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent");
   }
-  try {
-    const req = createRequire(join(root, "contrib/pi-extension/package.json"));
-    candidates.push(dirname(req.resolve("@earendil-works/pi-coding-agent/package.json")));
-  } catch {}
-  try {
-    candidates.push(join(execFileSync("npm", ["root", "-g"], { encoding: "utf8" }).trim(), "@earendil-works/pi-coding-agent"));
-  } catch {}
-  candidates.push("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent");
-  for (const pkg of candidates) {
-    const pkgJsonPath = join(pkg, "package.json");
-    const index = join(pkg, "dist/index.js");
-    if (!existsSync(pkgJsonPath) || !existsSync(index)) continue;
-    const version = JSON.parse(readFileSync(pkgJsonPath, "utf8")).version;
-    if (typeof version === "string" && version.startsWith("0.85.")) return { index, version, pkg };
+  const pkgJsonPath = join(pkg, "package.json");
+  const index = join(pkg, "dist/index.js");
+  if (!existsSync(pkgJsonPath) || !existsSync(index)) {
+    throw new Error(`Required Pi 0.85.1 package not found at ${pkg}`);
   }
-  return null;
+  const version = JSON.parse(readFileSync(pkgJsonPath, "utf8")).version;
+  if (version !== "0.85.1") {
+    throw new Error(`Expected Pi version 0.85.1, found ${version} at ${pkg}`);
+  }
+  return { index, version, pkg };
 }
 
 function systemTextFromPayload(payload) {
@@ -121,10 +117,6 @@ function restoreEnv(originalEnv) {
 
 async function main() {
   const piResolved = resolvePi085Index();
-  if (piResolved === null) {
-    process.stderr.write("PI_0_85_UNAVAILABLE set LARVA_TEST_PI_CODING_AGENT to a Pi 0.85.x package root\n");
-    process.exit(2);
-  }
   const originalEnv = { ...process.env };
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-idle-identity-"));
   const home = join(tempRoot, "home");
