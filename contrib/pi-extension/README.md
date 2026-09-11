@@ -23,7 +23,8 @@ Backend resolution order:
    ```json
    {
      "larva": {
-       "cliPath": "/absolute/path/to/larva"
+       "cliPath": "/absolute/path/to/larva",
+       "defaultPersona": "general"
      }
    }
    ```
@@ -33,7 +34,8 @@ Disable automatic loading with `pi --no-extensions`; explicit `-e /absolute/path
 still loads this package. Two distinct copies diagnose a conflict and keep the first stateful
 instance.
 
-`--larva-persona` is optional. A fresh session without it starts as `larva:none`.
+`--larva-persona` is optional. A fresh session without it uses `larva.defaultPersona` if
+configured in `settings.json`, or starts as `larva:none`.
 Resume restores the stored session persona when that selection is still valid.
 An explicit ID is always resolved, including on resume, but an unused explicit
 persona's model is not validated. Invalid flag values that reach Larva fail with

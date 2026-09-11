@@ -3831,6 +3831,46 @@ function isPersonaSpec(value: unknown): value is PersonaSpec {
   );
 }
 
+function parsePersonaSettingValue(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length > 0 && PERSONA_ID_RE.test(trimmed)) return trimmed;
+  return null;
+}
+
+export function resolveDefaultPersonaFromSettings(env: RuntimeEnv): string | null {
+  const candidateFiles = [
+    join(process.cwd(), ".pi", "settings.json"),
+    join(childCapsuleBaseAgentDir(env), "settings.json"),
+    join(homeDir(env), ".pi", "agent", "settings.json"),
+  ];
+  const seen = new Set<string>();
+  for (const file of candidateFiles) {
+    const normalized = resolve(file);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    if (!existsSync(normalized)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(normalized, "utf8")) as unknown;
+      if (!isRecord(parsed)) continue;
+      const larvaSection = parsed.larva;
+      if (isRecord(larvaSection)) {
+        const fromDefault = parsePersonaSettingValue(larvaSection.defaultPersona);
+        if (fromDefault !== null) return fromDefault;
+        const fromPersona = parsePersonaSettingValue(larvaSection.persona);
+        if (fromPersona !== null) return fromPersona;
+      }
+      const fromTopDefault = parsePersonaSettingValue(parsed.larvaDefaultPersona);
+      if (fromTopDefault !== null) return fromTopDefault;
+      const fromTopPersona = parsePersonaSettingValue(parsed.larvaPersona);
+      if (fromTopPersona !== null) return fromTopPersona;
+    } catch {
+      // ignore parse errors and proceed
+    }
+  }
+  return null;
+}
+
 function personaListCacheKey(env: RuntimeEnv): string {
   if (typeof env.LARVA_CLI_ARGV_JSON === "string" && env.LARVA_CLI_ARGV_JSON.length > 0) {
     return env.LARVA_CLI_ARGV_JSON;
@@ -10536,8 +10576,11 @@ function piSessionIdentity(ctx: PiContext): object | null {
 function sessionInitializationRestoreKey(ctx: PiContext): string {
   const stored = latestStoredActivePersonaCommit(ctx);
   if (stored !== null) return `stored:${stored.personaId}:${stored.entryIndex}:${sessionHasModelChangeAfter(ctx, stored.entryIndex) ? "model-after" : "persona-model"}`;
-  const explicitPersonaId = currentEnv(ctx).LARVA_PI_INITIAL_PERSONA_ID?.trim() ?? "";
+  const env = currentEnv(ctx);
+  const explicitPersonaId = explicitStartupPersonaId(env);
   if (explicitPersonaId.length > 0) return `explicit:${explicitPersonaId}`;
+  const defaultPersonaId = resolveDefaultPersonaFromSettings(env);
+  if (defaultPersonaId !== null) return `default:${defaultPersonaId}`;
   return "none";
 }
 
@@ -10648,6 +10691,29 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
     }
     return;
+  }
+  const defaultPersonaId = resolveDefaultPersonaFromSettings(env);
+  if (defaultPersonaId !== null) {
+    try {
+      await resolvePersona(defaultPersonaId, ctx);
+      if (!instructionGenerationIsCurrent(generation)) return;
+      const committed = await commitPersonaWithOptions(defaultPersonaId, ctx, pi, {
+        toolBaseline: startupToolBaseline,
+        sessionCommitSource: "startup",
+        applyModel: cliSelectedModel === null,
+        ...(cliSelectedModel === null ? {} : { preselectedModel: cliSelectedModel }),
+      });
+      if (!instructionGenerationIsCurrent(generation)) return;
+      if (!committed.ok) {
+        await notify(ctx, `Larva default persona unavailable: ${committed.error.code}: ${committed.error.message}`, "warning");
+      } else {
+        return;
+      }
+    } catch (caught) {
+      if (!instructionGenerationIsCurrent(generation)) return;
+      const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve default persona ${defaultPersonaId}`);
+      await notify(ctx, `Larva default persona unavailable: ${larvaError.code}: ${larvaError.message}`, "warning");
+    }
   }
   await setStatus(ctx);
 }
