@@ -6005,6 +6005,19 @@ function readInstructionComposeSnapshot(): SystemPromptComposeSnapshot {
   };
 }
 
+// Read-only test observation, matching the existing adapter-local ForTests
+// surfaces. The event resolver does not call this or expose private state.
+export function observeInstructionStateForTests(): Record<string, unknown> {
+  return structuredClone({
+    state, activePersonaLease, activePersonaLeaseOriginPiModel,
+    activePersonaLeaseOriginPiThinking, pendingPersonaSwitchContinuation,
+    agentPersonaSwitchMode, agentPersonaSwitchCountInChain, agentPersonaSwitchMaxPerChain,
+    agentPersonaSwitchPendingFollowUpContinuations, restoreFailureState,
+    instructionReady, instructionDead, instructionTransitionDepth,
+    instructionStateUncertain, instructionGeneration,
+  });
+}
+
 function handleResolveSystemPromptRequest(request: unknown): void {
   if (instructionDead) return;
   if (!isRecord(request)) return;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
-import { observePrivateInstructionState, observeReadEffects, barrier } from "./resolver-test-support.mjs";
+import { observeReadEffects, barrier } from "./resolver-test-support.mjs";
 import { proveSerializers } from "./resolver-serialization-proof.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -14,7 +14,6 @@ const extensionUrl = pathToFileURL(join(root, "contrib/pi-extension/larva.ts"));
 const results = [];
 const ownedDirs = [];
 const runtimes = [];
-const observationHook = observePrivateInstructionState(extensionUrl);
 
 const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
 const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
@@ -919,7 +918,6 @@ await run("no-persona known slot without stale content stays unchanged and does 
 });
 
 for (const runtime of runtimes) await runtime.handlers.session_shutdown({ reason: "quit" });
-observationHook.deregister();
 for (const dir of ownedDirs) await rm(dir, { recursive: true, force: true });
 const failed = results.filter((result) => result.status === "FAIL");
 for (const result of results) {

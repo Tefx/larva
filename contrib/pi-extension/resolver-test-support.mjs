@@ -5,26 +5,7 @@ import cp from "node:child_process";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
-import { registerHooks, syncBuiltinESMExports } from "node:module";
-
-export function observePrivateInstructionState(extensionUrl) {
-  return registerHooks({
-    load(url, context, nextLoad) {
-      const loaded = nextLoad(url, context);
-      if (!url.startsWith(extensionUrl.href + "?resolver=")) return loaded;
-      return { ...loaded, source: String(loaded.source) + `
-export function observeInstructionStateForTests() {
-  return structuredClone({ state, activePersonaLease, activePersonaLeaseOriginPiModel,
-    activePersonaLeaseOriginPiThinking, pendingPersonaSwitchContinuation,
-    agentPersonaSwitchMode, agentPersonaSwitchCountInChain, agentPersonaSwitchMaxPerChain,
-    agentPersonaSwitchPendingFollowUpContinuations, restoreFailureState,
-    instructionReady, instructionDead, instructionTransitionDepth,
-    instructionStateUncertain, instructionGeneration });
-}
-` };
-    },
-  });
-}
+import { syncBuiltinESMExports } from "node:module";
 
 export function observeReadEffects(fn) {
   const effects = [];
