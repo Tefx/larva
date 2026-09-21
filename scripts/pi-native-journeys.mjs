@@ -493,8 +493,10 @@ async function runStoredRestore(f, evidence) {
   const resolves = await jsonLines(log);
   assert.deepEqual(resolves.slice(0, 2), [{ id: "startup", resolved: true }, { id: "ok", resolved: true }]);
   const status = q.frames.filter((r) => r.type === "extension_ui_request" && r.method === "setStatus");
-  assert.ok(status.some((r) => /unavailable.*LARVA_MODEL_UNAVAILABLE|restore unavailable/.test(r.statusText)));
-  assert.ok(!status.some((r) => /^larva: (ok|startup)$/.test(r.statusText)));
+  const notifications = q.frames.filter((r) => r.type === "extension_ui_request" && r.method === "notify");
+  assert.ok(status.some((r) => r.statusText === "🎭 ⚠️ ok (LARVA_MODEL_UNAVAILABLE)"), JSON.stringify(status));
+  assert.ok(notifications.some((r) => r.notifyType === "warning" && /session persona restore unavailable: LARVA_MODEL_UNAVAILABLE/.test(r.message)), JSON.stringify(notifications));
+  assert.ok(!status.some((r) => /^(?:larva: |🎭 )(ok|startup)$/.test(r.statusText)));
   const before = f.requests.length;
   await q.prompt("Prove the reopened session is still usable");
   assert.equal(f.requests.length, before + 1);
@@ -503,7 +505,7 @@ async function runStoredRestore(f, evidence) {
   const after = await q.snapshot();
   assert.equal(commits(after).length, commits(saved).length);
   const exit = await q.stop();
-  evidence.restore = { session: saved.value.session, resolves, state, status, exit, providerRequests: 1, system, commitsBefore: commits(saved).length, commitsAfter: commits(after).length };
+  evidence.restore = { session: saved.value.session, resolves, state, status, notifications, exit, providerRequests: 1, system, commitsBefore: commits(saved).length, commitsAfter: commits(after).length };
 }
 
 async function runInstalledLoading(f, evidence) {

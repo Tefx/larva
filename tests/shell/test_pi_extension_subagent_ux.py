@@ -1820,9 +1820,16 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
 def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: Path) -> None:
     """Pin Scheme B: open subagent log overlays refresh on presentation mutations, not polling."""
 
+    theme_module = ROOT / "contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent/dist/index.js"
     payload = _run_node(
         tmp_path,
         _node_prelude(tmp_path)
+        + f"""
+        // Native interactive Pi initializes its theme before rendering. This
+        // standalone component fixture must establish the same precondition.
+        const {{ initTheme }} = await import({json.dumps(theme_module.as_uri())});
+        initTheme("dark", false);
+        """
         + """
         mod.resetSubagentPresentationStateForTests();
         mod.recordSubagentPresentationEntryForTests("/tmp/live.jsonl", "live", "running", {
@@ -1856,8 +1863,7 @@ def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: 
           { ...piBase, registerTool: () => undefined, registerCommand: (name, command) => { if (name === "larva-subagent") commandResults.push(command.handler(undefined, { env: baseEnv({ LARVA_PI_INTERACTIVE_TUI: "1" }), modelRegistry, mode: "tui", hasUI: true, ui: commandUi })); } },
         );
         const commandResult = await commandResults[0];
-        const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
-        const stripAnsi = (line) => line.replace(ANSI_RE, "");
+        const { stripVTControlCharacters: stripAnsi } = await import("node:util");
         const beforeOutputPlain = component.render(80).map(stripAnsi).join("\\n");
         const rendersBeforeMutation = requestRenderEvents.length;
         mod.recordSubagentPresentationEntryForTests("/tmp/live.jsonl", "live", "success", {
@@ -1884,6 +1890,7 @@ def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: 
           selectedTaskId: commandResult.details.selected_task_id,
           outputTabPreserved: beforeOutputPlain.includes("● 3 Output") && afterOutputPlain.includes("● 3 Output"),
           beforeFallback: beforeOutputPlain.includes("No final subagent output"),
+          afterOutputPlain,
           refreshedMarkdown: afterOutputPlain.includes("Refreshed Heading") && afterOutputPlain.includes("• refreshed bullet") && afterOutputPlain.includes("refreshed code") && !afterOutputPlain.includes("# Refreshed Heading") && !afterOutputPlain.includes("- refreshed bullet") && !afterOutputPlain.includes("```text"),
           eventDrivenRenderRequested: rendersAfterMutation > rendersBeforeMutation,
           overlaySnapshotUpdated: overlayAfterRefresh?.task_id === "/tmp/live.jsonl",
@@ -1897,7 +1904,7 @@ def test_larva_subagent_presentation_log_overlay_event_driven_refresh(tmp_path: 
     assert payload["selectedTaskId"] == "/tmp/live.jsonl"
     assert payload["outputTabPreserved"] is True
     assert payload["beforeFallback"] is True
-    assert payload["refreshedMarkdown"] is True
+    assert payload["refreshedMarkdown"] is True, payload["afterOutputPlain"]
     assert payload["eventDrivenRenderRequested"] is True
     assert payload["overlaySnapshotUpdated"] is True
     assert payload["closeStopsRefresh"] is True
