@@ -90,9 +90,11 @@ try {
             data.method === "setStatus" &&
             data.statusKey === "larva" &&
             typeof data.statusText === "string" &&
-            data.statusText.startsWith("larva: ")
+            (data.statusText.startsWith("🎭 ") || data.statusText.startsWith("larva: "))
           ) {
-            larvaStatus = data.statusText.slice("larva: ".length);
+            larvaStatus = data.statusText.startsWith("🎭 ")
+              ? data.statusText.slice("🎭 ".length)
+              : data.statusText.slice("larva: ".length);
             cp.kill();
           }
         } catch {}

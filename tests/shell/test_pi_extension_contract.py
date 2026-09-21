@@ -124,7 +124,7 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
         capture_output=True,
         text=True,
         timeout=timeout,
-        env={**os.environ, "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0"},
+        env={**os.environ, "HOME": str(tmp_path), "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0"},
     )
     assert completed.returncode == 0, completed.stderr
     return json.loads(completed.stdout)
@@ -1262,8 +1262,8 @@ def test_current_pi_factory_uses_event_context_for_startup_status_and_commands(t
     assert result["registeredName"] == "larva-persona"
     assert result["hasSessionStart"] is True
     assert result["toolHasCurrentShape"] is True
-    assert result["statuses"][0] == {"key": "larva", "status": "larva: startup"}
-    assert result["statuses"][-1] == {"key": "larva", "status": "larva: ok"}
+    assert result["statuses"][0] == {"key": "larva", "status": "🎭 startup"}
+    assert result["statuses"][-1] == {"key": "larva", "status": "🎭 ok"}
     assert result["notifications"][-1] == {"message": "Larva persona active: ok", "notifyType": "info"}
     assert result["switchResult"]["ok"] is True
     assert result["finalEnvelope"]["persona_id"] == "ok"
@@ -1339,7 +1339,7 @@ def test_current_pi_factory_defers_process_env_initial_persona_until_session_con
 
     assert result["envelopeBeforeSession"] is None
     assert result["finalEnvelope"]["persona_id"] == "startup"
-    assert result["statuses"][-1] == {"key": "larva", "status": "larva: startup"}
+    assert result["statuses"][-1] == {"key": "larva", "status": "🎭 startup"}
     assert result["modelCalls"] == [["provider", "model"]]
 
 
@@ -1451,7 +1451,7 @@ def test_no_active_persona_sets_none_status(tmp_path: Path) -> None:
         """,
     )
     assert result["envelope"] is None
-    assert result["statuses"] == ["larva: none"]
+    assert result["statuses"] == ["🎭 none"]
 
 
 def test_prompt_watermark_composes_replaces_and_never_dumps_catalogue() -> None:
@@ -2182,7 +2182,7 @@ def test_initial_unsupported_tool_enumerator_uses_empty_baseline_but_switch_fail
         """,
     )
 
-    assert result["statuses"][0] == "larva: startup"
+    assert result["statuses"][0] == "🎭 startup"
     assert result["activeToolCalls"] == [[]]
     assert result["startupEnvelope"]["persona_id"] == "startup"
     assert result["deniedAfterStartup"]["action"] == "deny"
@@ -2798,6 +2798,91 @@ def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_
     assert result["denied"]["status"] == "failed"
     assert result["denied"]["error"]["code"] == "LARVA_CHILD_START_FAILED"
     assert result["markerExists"] is False
+
+
+def test_pi_version_compatibility_range_and_diagnostics(tmp_path: Path) -> None:
+    """Pi CLI detection supports >= 0.85.0 (including 0.86.1) and provides actionable diagnostics."""
+    source = _source()
+    _assert_tokens(source, "MIN_SUPPORTED_PI_VERSION", "isSupportedPiVersion", "inspectPiCliScript")
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+
+        // 1. Version range checks
+        const versionChecks = {{
+          v0850: mod.isSupportedPiVersionForTests("0.85.0"),
+          v0851: mod.isSupportedPiVersionForTests("0.85.1"),
+          v0860: mod.isSupportedPiVersionForTests("0.86.0"),
+          v0861: mod.isSupportedPiVersionForTests("0.86.1"),
+          v100: mod.isSupportedPiVersionForTests("1.0.0"),
+          v0841: mod.isSupportedPiVersionForTests("0.84.1"),
+          v0800: mod.isSupportedPiVersionForTests("0.80.0"),
+        }};
+
+        // 2. 0.86.1 layout check
+        const pkgDir = {json.dumps(str(tmp_path / "pkg-0-86-1"))};
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        await fs.mkdir(path.join(pkgDir, "dist/bundle"), {{ recursive: true }});
+        await fs.writeFile(path.join(pkgDir, "package.json"), JSON.stringify({{
+          name: "@earendil-works/pi-coding-agent",
+          version: "0.86.1",
+          bin: {{ pi: "dist/bundle/cli.js" }},
+        }}));
+        const cli86 = path.join(pkgDir, "dist/bundle/cli.js");
+        await fs.writeFile(cli86, "#!/usr/bin/env node\\n");
+        await fs.chmod(cli86, 0o755);
+        const inspection86 = mod.inspectPiCliScriptForTests(cli86);
+
+        // 3. Unsupported version check (0.84.1)
+        const pkg84Dir = {json.dumps(str(tmp_path / "pkg-0-84-1"))};
+        await fs.mkdir(path.join(pkg84Dir, "dist/bundle"), {{ recursive: true }});
+        await fs.writeFile(path.join(pkg84Dir, "package.json"), JSON.stringify({{
+          name: "@earendil-works/pi-coding-agent",
+          version: "0.84.1",
+          bin: {{ pi: "dist/bundle/cli.js" }},
+        }}));
+        const cli84 = path.join(pkg84Dir, "dist/bundle/cli.js");
+        await fs.writeFile(cli84, "#!/usr/bin/env node\\n");
+        await fs.chmod(cli84, 0o755);
+        const inspection84 = mod.inspectPiCliScriptForTests(cli84);
+
+        // 4. Missing package.json check (path abnormality)
+        const impostor = {json.dumps(str(tmp_path / "impostor"))};
+        await fs.writeFile(impostor, "console.log('not pi');");
+        await fs.chmod(impostor, 0o755);
+        const inspectionImpostor = mod.inspectPiCliScriptForTests(impostor);
+
+        console.log(JSON.stringify({{
+          versionChecks,
+          inspection86,
+          inspection84,
+          inspectionImpostor,
+        }}));
+        """,
+    )
+
+    vc = result["versionChecks"]
+    assert vc["v0850"] is True
+    assert vc["v0851"] is True
+    assert vc["v0860"] is True
+    assert vc["v0861"] is True
+    assert vc["v100"] is True
+    assert vc["v0841"] is False
+    assert vc["v0800"] is False
+
+    assert result["inspection86"]["ok"] is True
+    assert result["inspection86"]["version"] == "0.86.1"
+
+    assert result["inspection84"]["ok"] is False
+    assert result["inspection84"]["code"] == "VERSION_UNSUPPORTED"
+    assert "0.84.1" in result["inspection84"]["message"]
+    assert ">= 0.85.0" in result["inspection84"]["message"]
+
+    assert result["inspectionImpostor"]["ok"] is False
+    assert result["inspectionImpostor"]["code"] == "MANIFEST_MISSING"
 
 
 def test_child_terminal_cleanup_owns_private_capsule_and_preserves_base_session(tmp_path: Path) -> None:
@@ -3481,7 +3566,7 @@ def test_active_persona_session_restore_uses_latest_commit_without_rewriting_ses
             },
         }
     ]
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
     assert any(call[:3] == ["find", "provider", "model"] for call in payload["modelCalls"])
     assert "read" in payload["activeTools"]
 
@@ -3617,7 +3702,7 @@ def test_active_persona_session_restore_runs_on_extension_reload_without_session
     )
 
     assert payload["envelope"]["persona_id"] == "python"
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
     assert "read" in payload["activeTools"]
     assert len([entry for entry in payload["sessionEntries"] if entry.get("customType") == "larva-active-persona-commit"]) == 1
 
@@ -3653,7 +3738,7 @@ def test_active_persona_session_restore_before_agent_start_uses_event_ctx_withou
 
     assert payload["envelope"]["persona_id"] == "python"
     assert "Prompt for python" in payload["before"]["systemPrompt"]
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
     assert payload["eventEntries"] == [
         {
             "type": "custom",
@@ -3851,7 +3936,7 @@ def test_active_persona_session_restore_from_real_pi_session_manager_reopen_beha
     )
 
     assert payload["envelope"]["persona_id"] == "python"
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
     assert "read" in payload["activeTools"]
     assert payload["entries"] == [
         {
@@ -3894,7 +3979,7 @@ def test_active_persona_session_restore_session_commit_wins_over_explicit_startu
     assert len(active_entries) == 1
     assert active_entries[0]["data"]["persona_id"] == "python"
     assert active_entries[0]["data"]["source"] == "slash-command"
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
 
 
 def test_resume_preflight_resolves_unused_explicit_persona_without_validating_its_model(tmp_path: Path) -> None:
@@ -3922,7 +4007,7 @@ def test_resume_preflight_resolves_unused_explicit_persona_without_validating_it
     )
 
     assert payload["envelope"]["persona_id"] == "python"
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
     assert [call for call in payload["modelCalls"] if call and call[0] == "find"] == [["find", "provider", "model"]]
 
 
@@ -3967,7 +4052,7 @@ def test_active_persona_restore_preserves_session_model_change_after_persona_com
         },
         {"type": "model_change", "provider": "manual-provider", "modelId": "manual-model"},
     ]
-    assert any(status == ["larva: python"] for status in payload["statuses"])
+    assert any(status == ["🎭 python"] for status in payload["statuses"])
 
 
 def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: Path) -> None:
@@ -3990,7 +4075,7 @@ def test_active_persona_session_restore_failure_is_nonfatal_behavior(tmp_path: P
     )
 
     assert payload["envelope"] is None
-    assert any(status == ["larva: python unavailable (LARVA_MODEL_UNAVAILABLE)"] for status in payload["statuses"])
+    assert any(status == ["🎭 ⚠️ python (LARVA_MODEL_UNAVAILABLE)"] for status in payload["statuses"])
     assert any("Larva session persona restore unavailable: LARVA_MODEL_UNAVAILABLE" in notification[0] for notification in payload["notifications"])
     assert payload["sessionEntries"] == [
         {
@@ -4589,7 +4674,7 @@ def test_agent_persona_switch_restore_notices_status_event_audit_not_chat_body_b
     assert payload["finalEnvelope"]["persona_id"] == "architect"
     assert payload["sentUserMessages"] == []
     assert any(entry.get("customType") == "larva-agent-persona-switch-audit" and entry.get("data", {}).get("event") == "restore" for entry in payload["sessionEntries"])
-    assert any(status and "Restored persona: architect" in status[0] for status in payload["statuses"])
+    assert any(status and "🎭 architect" in status[0] for status in payload["statuses"])
 
 
 
@@ -5905,7 +5990,7 @@ def test_compaction_focus_hook_case_table(tmp_path: Path) -> None:
     assert payload["allWarnings"] is True
     assert payload["bounded"] is True
     assert payload["redacted"] is True
-    assert payload["statusFallback"] == ["larva", "compaction focus: LARVA_COMPACTION_FOCUS_UNAVAILABLE"]
+    assert payload["statusFallback"] == ["larva", "🎭 ⚠️ compaction: LARVA_COMPACTION_FOCUS_UNAVAILABLE"]
     assert payload["notifyBeforeStatus"] is True
 
 

@@ -1157,7 +1157,7 @@ def test_real_pi_slash_status_commits_success_persona() -> None:
     assert any(
         request.get("method") == "setStatus"
         and request.get("statusKey") == "larva"
-        and request.get("statusText") == "larva: ok"
+        and request.get("statusText") in ("🎭 ok", "larva: ok")
         for request in ui_requests
     )
     assert any(
@@ -1176,7 +1176,7 @@ def test_real_pi_startup_status_commits_startup_persona() -> None:
     assert any(
         request.get("method") == "setStatus"
         and request.get("statusKey") == "larva"
-        and request.get("statusText") == "larva: startup"
+        and request.get("statusText") in ("🎭 startup", "larva: startup")
         for request in payload["rpc"].get("uiRequests", [])
     )
 

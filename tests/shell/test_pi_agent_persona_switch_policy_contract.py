@@ -533,7 +533,7 @@ def test_agent_end_cancellation_restores_turn_scoped_persona_lease(tmp_path: Pat
     assert result["during"] == "target"
     assert result["after"] == "origin"
     assert result["restoreAudit"] is True
-    assert any("Restored persona: origin" in text for text in result["statusTexts"])
+    assert any("🎭 origin" in text for text in result["statusTexts"])
 
 
 def test_restore_notices_never_chat_body() -> None:

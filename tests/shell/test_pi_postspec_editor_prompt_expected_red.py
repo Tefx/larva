@@ -348,7 +348,7 @@ def test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects(t
     assert payload["beforeEnvelope"] is None
     assert payload["afterEnvelope"] is None
     assert payload["promptAfterMention"] is None
-    assert ["larva", "larva: none"] in payload["sessionStartStatus"]
+    assert any(item == ["larva", "🎭 none"] or item == ["larva", "larva: none"] for item in payload["sessionStartStatus"])
     assert payload["mentionStatus"] == []
 
 

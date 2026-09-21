@@ -353,7 +353,7 @@ async function shortcutEvidence() {
     customCalls: calls.customCalls,
     modelSetCount: calls.models.length,
     activeToolsSetCount: calls.activeTools.length,
-    statusUpdated: calls.statuses.some((status) => status.includes("larva: vectl-planner") || status.includes("vectl-planner")),
+    statusUpdated: calls.statuses.some(([key, status]) => typeof status === "string" && status.includes("vectl-planner")),
   };
 }
 

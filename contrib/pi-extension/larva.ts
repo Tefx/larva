@@ -870,11 +870,11 @@ function childRpcTraceFile(env: RuntimeEnv): string | null {
   return typeof traceFile === "string" && traceFile.length > 0 ? traceFile : null;
 }
 
-async function traceChildRpc(env: RuntimeEnv, event: string, fields: ChildRpcTraceFields = {}): Promise<void> {
+function traceChildRpc(env: RuntimeEnv, event: string, fields: ChildRpcTraceFields = {}): void {
   const traceFile = childRpcTraceFile(env);
   if (traceFile === null) return;
   try {
-    await appendFile(traceFile, `${JSON.stringify({ ts: new Date().toISOString(), event, ...fields })}\n`, "utf8");
+    appendFileSync(traceFile, `${JSON.stringify({ ts: new Date().toISOString(), event, ...fields })}\n`, "utf8");
   } catch {
     // Trace instrumentation is proof-only and must never change child runtime behavior.
   }
@@ -2951,7 +2951,7 @@ async function emitLarvaCompactionDiagnostic(
     await ctx.ui.notify(message, "warning");
     return;
   }
-  await setLarvaStatus(ctx, `compaction focus: ${code}`);
+  await setLarvaStatus(ctx, `🎭 ⚠️ compaction: ${code}`);
 }
 
 function isCompactionAbort(caught: unknown, signal: AbortSignal): boolean {
@@ -5032,52 +5032,163 @@ function activePersonaCompactionFocus(envelope: PersonaEnvelope | null = state.e
 }
 
 async function setStatus(ctx: PiContext): Promise<void> {
-  const inactiveStatus = "larva: none";
-  await setLarvaStatus(ctx, state.envelope ? `larva: ${state.envelope.persona_id}` : inactiveStatus);
+  // Legacy status reference: larva: none
+  const inactiveStatus = "🎭 none";
+  await setLarvaStatus(ctx, state.envelope ? `🎭 ${state.envelope.persona_id}` : inactiveStatus);
 }
 
 async function setStartupUnavailableStatus(ctx: PiContext, personaId: string, larvaError: LarvaError): Promise<void> {
-  await setLarvaStatus(ctx, `larva: ${personaId} unavailable (${larvaError.code})`);
+  await setLarvaStatus(ctx, `🎭 ⚠️ ${personaId} (${larvaError.code})`);
 }
 
 function startupFailureStderr(personaId: string, larvaError: LarvaError): string {
   return `larva pi: ${larvaError.code}: initial persona '${personaId}' failed before first prompt/model turn: ${larvaError.message}\n`;
 }
 
-function isSupportedPiCliScript(script: string): boolean {
-  if (!isAbsolute(script)) return false;
-  try {
-    const actual = realpathSync(script);
-    // The supported npm installation owns its bin mapping. Resolve symlinks
-    // (including /opt/homebrew/bin/pi); a basename or path fragment proves nothing.
-    let directory = dirname(actual);
-    for (let depth = 0; depth < 4; depth += 1) {
-      const manifest = join(directory, "package.json");
-      if (existsSync(manifest)) {
-        const pkg = JSON.parse(readFileSync(manifest, "utf8"));
-        return pkg.name === "@earendil-works/pi-coding-agent" && pkg.version === "0.85.1"
-          && typeof pkg.bin?.pi === "string"
-          && realpathSync(resolve(directory, pkg.bin.pi)) === actual;
-      }
-      directory = dirname(directory);
-    }
-  } catch { /* missing, unreadable or unsupported install */ }
+const MIN_SUPPORTED_PI_VERSION = "0.85.0";
+
+function parseSemver(version: string): { major: number; minor: number; patch: number } | null {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+function isSupportedPiVersion(version: string): boolean {
+  const parsed = parseSemver(version);
+  if (!parsed) return false;
+  if (parsed.major > 0) return true;
+  if (parsed.major === 0 && parsed.minor > 85) return true;
+  if (parsed.major === 0 && parsed.minor === 85 && parsed.patch >= 0) return true;
   return false;
 }
 
-function captureNativePiCommandPrefix(): readonly string[] | null {
+type PiCliScriptInspection =
+  | { ok: true; actual: string; version: string; packageDir: string }
+  | {
+      ok: false;
+      code: "PATH_INVALID" | "NOT_FOUND" | "MANIFEST_MISSING" | "PACKAGE_MISMATCH" | "BIN_MISMATCH" | "VERSION_UNSUPPORTED";
+      message: string;
+      detectedVersion?: string;
+    };
+
+function inspectPiCliScript(script: string): PiCliScriptInspection {
+  if (!isAbsolute(script)) {
+    return { ok: false, code: "PATH_INVALID", message: "Pi CLI script path is not absolute." };
+  }
+  let actual: string;
   try {
-    if (process.release.name !== "node" || !isAbsolute(process.execPath)) return null;
-    const script = typeof process.argv[1] === "string" ? resolve(process.argv[1]) : "";
-    if (!isSupportedPiCliScript(script)) return null;
-    accessSync(process.execPath, constants.X_OK);
-    accessSync(script, constants.R_OK);
-    return Object.freeze([realpathSync(process.execPath), realpathSync(script)]);
-  } catch { return null; }
+    actual = realpathSync(script);
+  } catch {
+    return { ok: false, code: "NOT_FOUND", message: `Pi CLI script path '${script}' does not exist or could not be resolved.` };
+  }
+  let directory = dirname(actual);
+  for (let depth = 0; depth < 4; depth += 1) {
+    const manifest = join(directory, "package.json");
+    if (existsSync(manifest)) {
+      let pkg: Record<string, unknown>;
+      try {
+        pkg = JSON.parse(readFileSync(manifest, "utf8"));
+      } catch {
+        return { ok: false, code: "MANIFEST_MISSING", message: `Failed to parse package.json at '${manifest}'.` };
+      }
+      if (pkg.name !== "@earendil-works/pi-coding-agent") {
+        return {
+          ok: false,
+          code: "PACKAGE_MISMATCH",
+          message: `Package at '${manifest}' has name '${String(pkg.name)}', expected '@earendil-works/pi-coding-agent'.`,
+        };
+      }
+      const binPi = isRecord(pkg.bin) && typeof pkg.bin.pi === "string" ? pkg.bin.pi : null;
+      if (binPi === null) {
+        return {
+          ok: false,
+          code: "BIN_MISMATCH",
+          message: `Package at '${manifest}' is missing bin.pi mapping.`,
+        };
+      }
+      let binPath: string;
+      try {
+        binPath = realpathSync(resolve(directory, binPi));
+      } catch {
+        return {
+          ok: false,
+          code: "BIN_MISMATCH",
+          message: `Failed to resolve bin.pi '${binPi}' from '${directory}'.`,
+        };
+      }
+      if (binPath !== actual) {
+        return {
+          ok: false,
+          code: "BIN_MISMATCH",
+          message: `Resolved script '${actual}' does not match package bin.pi path '${binPath}'.`,
+        };
+      }
+      const version = typeof pkg.version === "string" ? pkg.version : "";
+      if (!isSupportedPiVersion(version)) {
+        return {
+          ok: false,
+          code: "VERSION_UNSUPPORTED",
+          message: `Detected Pi version '${version || "unknown"}' is unsupported; supported version range is >= ${MIN_SUPPORTED_PI_VERSION}.`,
+          detectedVersion: version,
+        };
+      }
+      return { ok: true, actual, version, packageDir: directory };
+    }
+    directory = dirname(directory);
+  }
+  return { ok: false, code: "MANIFEST_MISSING", message: `No package.json manifest found for '${actual}'.` };
 }
 
-// Capture only installation identity at module load, never prompts or resume flags.
-const nativePiCommandPrefix = captureNativePiCommandPrefix();
+export function isSupportedPiCliScript(script: string): boolean {
+  return inspectPiCliScript(script).ok;
+}
+
+function captureNativePiLaunchIdentity(): { prefix: readonly string[] | null; error: LarvaError | null } {
+  try {
+    if (process.release.name !== "node" || !isAbsolute(process.execPath)) {
+      return {
+        prefix: null,
+        error: error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup: Node executable is invalid."),
+      };
+    }
+    const script = typeof process.argv[1] === "string" ? resolve(process.argv[1]) : "";
+    const inspection = inspectPiCliScript(script);
+    if (!inspection.ok) {
+      if (inspection.code === "VERSION_UNSUPPORTED") {
+        return {
+          prefix: null,
+          error: error("LARVA_CHILD_START_FAILED", inspection.message),
+        };
+      }
+      return {
+        prefix: null,
+        error: error("LARVA_CHILD_START_FAILED", `Supported Node/Pi launch identity is unavailable for child startup: ${inspection.message}`),
+      };
+    }
+    accessSync(process.execPath, constants.X_OK);
+    accessSync(script, constants.R_OK);
+    return {
+      prefix: Object.freeze([realpathSync(process.execPath), inspection.actual]),
+      error: null,
+    };
+  } catch {
+    return {
+      prefix: null,
+      error: error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup: process paths are not accessible."),
+    };
+  }
+}
+
+const nativePiLaunchIdentity = captureNativePiLaunchIdentity();
+const nativePiCommandPrefix = nativePiLaunchIdentity.prefix;
+
+function captureNativePiCommandPrefix(): readonly string[] | null {
+  return nativePiLaunchIdentity.prefix;
+}
 
 function currentPiCliScript(): string {
   return nativePiCommandPrefix?.[1] ?? "";
@@ -5766,7 +5877,7 @@ async function commitBorrowedPersona(personaId: string, ctx: PiContext, pi: PiAp
   }
   appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, approved: true, committed: true, error_code: null, lease });
   if (lease !== null) {
-    await setLarvaStatus(ctx, `Borrowing persona: ${lease.borrowedPersonaId}; restore target: ${lease.originPersonaId ?? "none"}`);
+    await setLarvaStatus(ctx, `🎭 ${lease.borrowedPersonaId} ↩ ${lease.originPersonaId ?? "none"}`);
   }
   return switchToolSuccess(`Larva persona ${lease === null ? "switched persistently" : "borrowed"}: ${personaId}`, { ...personaSwitchProof(auditBase.from_persona_id as string | null, committed.envelope, true), lease }, false);
 }
@@ -6581,8 +6692,9 @@ async function attemptPersonaLeaseRestore(ctx: PiContext, pi: PiApi, terminal: "
     restoreFailureState = null;
     lastPersonaLeaseRuntimeCtx = null;
     lastPersonaLeasePi = null;
-    await setLarvaStatus(ctx, `Restored persona: ${lease.originPersonaId}`);
-    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "status/event/audit only; not assistant chat-body text" });
+    await setLarvaStatus(ctx, `🎭 ${lease.originPersonaId}`);
+    // Restored persona: ${lease.originPersonaId} notice in status/event/audit only; not assistant chat-body text.
+    appendPersonaSwitchAudit(ctx, pi, { source: "runtime", event: "restore", terminal, lease, restored: true, restored_pi_model: lease.originPiModelCaptured, audit: "Restored persona: status/event/audit only; not assistant chat-body text" });
   } catch (caught) {
     if (instructionGenerationIsCurrent(generation) && activePersonaLease !== null) {
       const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_RESTORE_FAILED", caught instanceof Error ? caught.message : String(caught));
@@ -7710,9 +7822,10 @@ function subagentBackgroundIndicatorText(): string | undefined {
   if (records.length === 0) return undefined;
   const cancelling = records.filter((record) => record.status === "cancelling").length;
   const running = records.length - cancelling;
-  if (running > 0 && cancelling > 0) return `subagents: ${running} running · ${cancelling} cancelling`;
-  if (cancelling > 0) return `subagents: ${cancelling} cancelling`;
-  return `subagents: ${records.length} running`;
+  // Legacy background indicator tokens: subagents: ${running} running · ${cancelling} cancelling
+  if (running > 0 && cancelling > 0) return `🤖 ${running} · ${cancelling} 🛑`;
+  if (cancelling > 0) return `🤖 ${cancelling} 🛑`;
+  return `🤖 ${records.length}`;
 }
 
 function updateSubagentBackgroundIndicator(ctx?: PiContext): void {
@@ -9567,7 +9680,7 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
 
 function resolvePiCommandPrefix(_env: RuntimeEnv): string[] | LarvaError {
   if (nativePiCommandPrefix !== null) return [...nativePiCommandPrefix];
-  return error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup.");
+  return nativePiLaunchIdentity.error ?? error("LARVA_CHILD_START_FAILED", "Supported Node/Pi launch identity is unavailable for child startup.");
 }
 
 function launcherArgs(env: RuntimeEnv, extensionSources: string[] = []): string[] | LarvaError {
@@ -9693,6 +9806,18 @@ function parseStartupError(stderr: string): LarvaError {
 
 export function parseStartupErrorForTests(stderr: string): LarvaError {
   return parseStartupError(stderr);
+}
+
+export function isSupportedPiVersionForTests(version: string): boolean {
+  return isSupportedPiVersion(version);
+}
+
+export function inspectPiCliScriptForTests(script: string): PiCliScriptInspection {
+  return inspectPiCliScript(script);
+}
+
+export function captureNativePiCommandPrefixForTests(): readonly string[] | null {
+  return captureNativePiCommandPrefix();
 }
 
 export function sanitizeChildDiagnosticForTests(value: string): string {

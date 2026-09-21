@@ -67,6 +67,9 @@ class Terminal:
     def visible(self, expected: str, after: int = 0) -> str:
         return self.wait(lambda: expected if expected in ANSI.sub("", self.output[after:]) else "", f"rendered {expected}")
 
+    def visible_any(self, candidates: tuple[str, ...], after: int = 0) -> str:
+        return self.wait(lambda: next((c for c in candidates if c in ANSI.sub("", self.output[after:])), ""), f"rendered any of {candidates}")
+
     def command(self, value: str) -> None:
         self.send(value + "\r")
 
@@ -99,7 +102,7 @@ def journey() -> dict:
     terminal = Terminal()
     try:
         terminal.wait(lambda: terminal.rows("session_start"), "session startup")
-        terminal.visible("larva: none")
+        terminal.visible_any(("🎭 none", "larva: none"))
         terminal.command("/larva-persona --refresh-cache")
         terminal.visible("cache refreshed")
         # Submit the actual slash selector and select a filtered persona.
@@ -161,7 +164,7 @@ def journey() -> dict:
         terminal.wait(lambda: terminal.rows("theme"), "theme API")
         terminal.command("NATIVE_TUI_START_CHILD")
         terminal.wait(lambda: any(r["value"].get("toolName") == "larva_subagent" for r in terminal.rows("tool_end")), "actual subagent tool result")
-        terminal.visible("subagents: 1 running")
+        terminal.visible_any(("🤖 1", "subagents: 1 running"))
         offset = len(terminal.output)
         terminal.command("/larva-subagent")
         terminal.visible("Larva subagent log", offset)

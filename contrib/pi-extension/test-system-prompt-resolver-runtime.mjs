@@ -522,7 +522,7 @@ await run("F4 outer borrow and restore await barriers suppress resolver and real
   const runtime = await boot("outer-barriers", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
   const original = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "base")[0];
   const borrowGate = barrier();
-  runtime.ctx.ui.setStatus = async text => { if (text.startsWith("Borrowing persona:")) { borrowGate.enter(); await borrowGate.wait; } };
+  runtime.ctx.ui.setStatus = async text => { if (text.startsWith("Borrowing persona:") || text.includes("↩")) { borrowGate.enter(); await borrowGate.wait; } };
   const borrowing = runtime.mod.larva_persona_switch({ persona_id: "target", reason: "outer barrier" }, runtime.ctx, runtime.pi);
   try {
     await borrowGate.entered;
@@ -559,7 +559,7 @@ await run("F4 partial application rollback publishes only confirmed old state", 
       if (modelCalls === 2) { rollbackGate.enter(); await rollbackGate.wait; if (rejectRollback) return false; }
       actualModel = model; return true;
     };
-    runtime.ctx.ui.setStatus = async text => { if (text === "larva: target") throw new Error("status failed after application"); };
+    runtime.ctx.ui.setStatus = async text => { if (text === "larva: target" || text === "🎭 target") throw new Error("status failed after application"); };
     const switching = runtime.mod.larva_persona_switch({ persona_id: "target", reason: "partial rollback" }, runtime.ctx, runtime.pi);
     try {
       await rollbackGate.entered;
