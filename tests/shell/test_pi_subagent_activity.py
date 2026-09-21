@@ -109,7 +109,16 @@ def test_activity_segment_reconstruction_and_bounds(tmp_path: Path) -> None:
         const seg2 = chunk2.details.call.segment;
         const seg3 = chunk3.details.call.segment;
 
-        const reconstructed = seg1.text + seg2.text + seg3.text;
+        const extractSeg = (res) => {{
+          const text = res.content[0].text;
+          const marker = "--- BEGIN SEGMENT ---\\n";
+          const start = text.indexOf(marker);
+          if (start < 0) return "";
+          const end = text.indexOf("\\n--- END SEGMENT ---", start + marker.length);
+          return end >= 0 ? text.slice(start + marker.length, end) : "";
+        }};
+
+        const reconstructed = extractSeg(chunk1) + extractSeg(chunk2) + extractSeg(chunk3);
 
         process.stdout.write(JSON.stringify({{
           byte1,
@@ -120,6 +129,8 @@ def test_activity_segment_reconstruction_and_bounds(tmp_path: Path) -> None:
           hasMore1: seg1.has_more,
           hasMore2: seg2.has_more,
           hasMore3: seg3.has_more,
+          detailsTextOmitted1: seg1.text === undefined,
+          detailsTextOmitted2: seg2.text === undefined,
         }}));
         """,
     )
@@ -130,6 +141,8 @@ def test_activity_segment_reconstruction_and_bounds(tmp_path: Path) -> None:
     assert result["hasMore1"] is True
     assert result["hasMore2"] is True
     assert result["hasMore3"] is False
+    assert result["detailsTextOmitted1"] is True
+    assert result["detailsTextOmitted2"] is True
 
 
 def test_activity_lifecycle_neutrality(tmp_path: Path) -> None:

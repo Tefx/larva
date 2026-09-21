@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { accessSync, appendFileSync, chmodSync, closeSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { accessSync, appendFileSync, chmodSync, closeSync, constants, copyFileSync, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10899,6 +10899,7 @@ export type LarvaActivityCallLocation = {
   parent_id: string | null;
   content_index: number;
   byte_offset: number;
+  line_byte_length: number;
   line_number: number;
 };
 
@@ -10906,10 +10907,12 @@ export type LarvaActivityResultLocation = {
   entry_id: string;
   parent_id: string | null;
   byte_offset: number;
+  line_byte_length: number;
   line_number: number;
 };
 
 export type LarvaActivityItem = {
+  key: string;
   call_id: string;
   tool_name: string;
   call_timestamp: string;
@@ -10925,11 +10928,11 @@ export type LarvaActivityItem = {
   is_error?: boolean | null;
   result_location?: LarvaActivityResultLocation;
   update_type?: "new_call" | "late_result";
+  matched_by?: "call_timestamp" | "result_timestamp";
 };
 
 export type LarvaActivitySegment = {
   part: LarvaActivityPart;
-  text: string;
   offset: number;
   length: number;
   total_chars: number;
@@ -10944,8 +10947,8 @@ export type LarvaActivityCallDetail = {
   tool_name: string;
   call_timestamp: string;
   call_location: LarvaActivityCallLocation;
-  args_preview: string;
-  args_truncated: boolean;
+  args_preview?: string;
+  args_truncated?: boolean;
   args_total_chars: number;
   result_status: "observed" | "none" | "incomplete";
   result_timestamp?: string;
@@ -10984,9 +10987,14 @@ export type LarvaSubagentActivityDetails = {
   items?: LarvaActivityItem[];
   call?: LarvaActivityCallDetail;
   candidates?: LarvaActivityAmbiguousCandidate[];
+  candidates_truncated?: boolean;
+  total_candidates_count?: number;
   cursor?: string;
   has_more?: boolean;
   diagnostics?: LarvaActivityDiagnostic[];
+  diagnostics_truncated?: boolean;
+  total_diagnostics_count?: number;
+  inspection_complete?: boolean;
   error?: LarvaError | null;
 };
 
@@ -10995,6 +11003,18 @@ export type LarvaSubagentActivityResult = {
   details: LarvaSubagentActivityDetails;
   isError: boolean;
 };
+
+const strictUtf8Decoder = new TextDecoder("utf-8", { fatal: true });
+
+function computeFilterHash(
+  toolName: string | null,
+  sinceTimestamp: number | null,
+  untilTimestamp: number | null,
+): string {
+  const hasher = createHash("sha256");
+  hasher.update(`${toolName ?? ""}:${sinceTimestamp ?? ""}:${untilTimestamp ?? ""}`);
+  return hasher.digest("hex").slice(0, 16);
+}
 
 function validateExactHistoricalSessionPath(inputPath: string, _env: RuntimeEnv): string | LarvaError {
   if (typeof inputPath !== "string" || inputPath.trim() !== inputPath || inputPath.length === 0) {
@@ -11016,19 +11036,31 @@ function validateExactHistoricalSessionPath(inputPath: string, _env: RuntimeEnv)
   if (resolve(inputPath) !== inputPath) {
     return error("LARVA_BAD_INPUT", "session_path must already be normalized; refusing to clean it.");
   }
-  if (!existsSync(inputPath)) {
-    return error("LARVA_SESSION_NOT_FOUND", `Session file not found: ${inputPath}`);
+  return inputPath;
+}
+
+function openSessionSnapshot(filePath: string): { fd: number; fileSize: number; dev: number; ino: number } | LarvaError {
+  let fd: number;
+  try {
+    fd = openSync(filePath, "r");
+  } catch (err: unknown) {
+    const code = isRecord(err) && typeof err.code === "string" ? err.code : "";
+    if (code === "ENOENT") {
+      return error("LARVA_SESSION_NOT_FOUND", `Session file not found: ${filePath}`);
+    }
+    return error("LARVA_BAD_INPUT", `Cannot open session file (${code || "access_error"}): ${filePath}`);
   }
   try {
-    accessSync(inputPath, constants.R_OK);
+    const st = fstatSync(fd);
+    if (!st.isFile()) {
+      closeSync(fd);
+      return error("LARVA_BAD_INPUT", `Path is not a regular file: ${filePath}`);
+    }
+    return { fd, fileSize: st.size, dev: st.dev, ino: st.ino };
   } catch {
-    return error("LARVA_BAD_INPUT", `Cannot read session file: access denied.`);
+    try { closeSync(fd); } catch {}
+    return error("LARVA_BAD_INPUT", `Cannot stat session file descriptor: ${filePath}`);
   }
-  const st = statSync(inputPath);
-  if (!st.isFile()) {
-    return error("LARVA_BAD_INPUT", `Path is not a regular file: ${inputPath}`);
-  }
-  return inputPath;
 }
 
 type ParsedActivityInput = {
@@ -11038,6 +11070,7 @@ type ParsedActivityInput = {
   toolName: string | null;
   sinceTimestamp: number | null;
   untilTimestamp: number | null;
+  filterHash: string;
   toolCallId: string | null;
   disambiguationIndex: number | null;
   entryId: string | null;
@@ -11125,6 +11158,7 @@ function parseActivityInput(input: unknown, env: RuntimeEnv): ParsedActivityInpu
     untilTimestamp = parsed;
   }
 
+  const filterHash = computeFilterHash(toolName, sinceTimestamp, untilTimestamp);
   const toolCallId = typeof rec.tool_call_id === "string" && rec.tool_call_id.trim().length > 0 ? rec.tool_call_id.trim() : null;
 
   let disambiguationIndex: number | null = null;
@@ -11170,6 +11204,7 @@ function parseActivityInput(input: unknown, env: RuntimeEnv): ParsedActivityInpu
     toolName,
     sinceTimestamp,
     untilTimestamp,
+    filterHash,
     toolCallId,
     disambiguationIndex,
     entryId,
@@ -11184,16 +11219,20 @@ type ActivityCursorPayload = {
   v: 1;
   p: string;
   sid: string;
+  dev: number;
+  ino: number;
   off: number;
   h: string;
-  page_offset?: number;
+  fh: string;
+  last_key?: string;
+  snapshot_off?: number;
 };
 
 function encodeActivityCursor(payload: ActivityCursorPayload): string {
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
-function decodeActivityCursor(raw: string, expectedPath: string): ActivityCursorPayload | LarvaError {
+function decodeActivityCursor(raw: string, expectedPath: string, expectedFilterHash: string): ActivityCursorPayload | LarvaError {
   try {
     const jsonStr = Buffer.from(raw, "base64url").toString("utf8");
     const parsed = JSON.parse(jsonStr) as unknown;
@@ -11202,6 +11241,8 @@ function decodeActivityCursor(raw: string, expectedPath: string): ActivityCursor
       parsed.v !== 1 ||
       typeof parsed.p !== "string" ||
       typeof parsed.sid !== "string" ||
+      typeof parsed.dev !== "number" ||
+      typeof parsed.ino !== "number" ||
       typeof parsed.off !== "number" ||
       typeof parsed.h !== "string"
     ) {
@@ -11210,37 +11251,49 @@ function decodeActivityCursor(raw: string, expectedPath: string): ActivityCursor
     if (parsed.p !== expectedPath) {
       return error("LARVA_CURSOR_INVALID", "Cursor session path does not match requested session path.");
     }
+    if (typeof parsed.fh === "string" && parsed.fh !== expectedFilterHash) {
+      return error("LARVA_CURSOR_INVALID", "Cursor was issued for a different filter query.");
+    }
     return parsed as ActivityCursorPayload;
   } catch {
     return error("LARVA_CURSOR_INVALID", "Cursor cannot be decoded or parsed.");
   }
 }
 
-interface ScannedToolCallInternal {
+interface ToolCallLocator {
+  key: string;
   toolCallId: string;
   toolName: string;
-  argsRaw: unknown;
-  argsText: string;
   callTimestamp: string;
   callTimestampMs: number;
   entryId: string;
   parentId: string | null;
   contentIndex: number;
   byteOffset: number;
+  lineByteLength: number;
   lineNumber: number;
+  argsPreview: string;
+  argsTruncated: boolean;
+  argsTotalChars: number;
+  fullArgsText?: string;
 }
 
-interface ScannedToolResultInternal {
+interface ToolResultLocator {
   toolCallId: string;
   toolName: string;
-  contentText: string;
-  isError: boolean | null;
   resultTimestamp: string;
+  resultTimestampMs: number;
   entryId: string;
   parentId: string | null;
   byteOffset: number;
+  lineByteLength: number;
   lineNumber: number;
-  upstreamTruncated?: boolean;
+  isError: boolean | null;
+  resultPreview: string;
+  resultTruncated: boolean;
+  resultTotalChars: number;
+  upstreamTruncated: boolean;
+  fullContentText?: string;
 }
 
 interface SessionScanSnapshot {
@@ -11248,8 +11301,8 @@ interface SessionScanSnapshot {
   committedByteOffset: number;
   consumedPrefixHash: string;
   sourceVersion: string;
-  calls: ScannedToolCallInternal[];
-  results: ScannedToolResultInternal[];
+  calls: ToolCallLocator[];
+  results: ToolResultLocator[];
   diagnostics: LarvaActivityDiagnostic[];
 }
 
@@ -11288,7 +11341,7 @@ function extractToolResultContentText(rawContent: unknown, rawDetails?: unknown)
       text = rawDetails.message;
     }
   }
-  if (isRecord(rawDetails) && rawDetails.truncated === true) {
+  if (isRecord(rawDetails) && (rawDetails.truncated === true || typeof rawDetails.fullOutputPath === "string")) {
     upstreamTruncated = true;
   }
   return { text, upstreamTruncated };
@@ -11297,25 +11350,34 @@ function extractToolResultContentText(rawContent: unknown, rawDetails?: unknown)
 function scanSessionActivityFile(
   filePath: string,
   cursor: ActivityCursorPayload | null,
+  targetToolCallId: string | null,
+  abortSignal?: AbortSignal,
 ): SessionScanSnapshot | LarvaError {
-  let fd: number;
-  try {
-    fd = openSync(filePath, "r");
-  } catch {
-    return error("LARVA_BAD_INPUT", `Cannot open session file: ${filePath}`);
-  }
+  const fileSnapshot = openSessionSnapshot(filePath);
+  if (isLarvaError(fileSnapshot)) return fileSnapshot;
+  const { fd, fileSize, dev, ino } = fileSnapshot;
 
-  const stat = statSync(filePath);
-  const fileSize = stat.size;
   if (fileSize === 0) {
     closeSync(fd);
     return error("LARVA_SESSION_INVALID", "Session file is empty.");
   }
 
-  if (cursor !== null && fileSize < cursor.off) {
-    closeSync(fd);
-    return error("LARVA_CURSOR_STALE", "Session file was truncated (current size is smaller than cursor offset).");
+  if (cursor !== null) {
+    if (dev !== cursor.dev || ino !== cursor.ino) {
+      closeSync(fd);
+      return error("LARVA_CURSOR_STALE", "Session file was replaced (file identity changed).");
+    }
+    if (fileSize < cursor.off) {
+      closeSync(fd);
+      return error("LARVA_CURSOR_STALE", "Session file was truncated (current size is smaller than cursor offset).");
+    }
+    if (cursor.snapshot_off !== undefined && fileSize < cursor.snapshot_off) {
+      closeSync(fd);
+      return error("LARVA_CURSOR_STALE", "Session file was truncated during pagination.");
+    }
   }
+
+  const maxReadOffset = cursor?.snapshot_off ?? fileSize;
 
   const BUFFER_SIZE = 65536;
   const buffer = Buffer.alloc(BUFFER_SIZE);
@@ -11330,13 +11392,20 @@ function scanSessionActivityFile(
   let verifiedCursorPrefix = cursor === null;
   let headerValidated = cursor === null;
 
-  const calls: ScannedToolCallInternal[] = [];
-  const results: ScannedToolResultInternal[] = [];
+  const calls: ToolCallLocator[] = [];
+  const results: ToolResultLocator[] = [];
   const diagnostics: LarvaActivityDiagnostic[] = [];
 
   try {
     let bytesRead = 0;
-    while ((bytesRead = readSync(fd, buffer, 0, BUFFER_SIZE, currentFileOffset)) > 0) {
+    while (currentFileOffset < maxReadOffset) {
+      if (abortSignal?.aborted) {
+        return error("LARVA_CHILD_CANCELLED", "Activity inspection was cancelled.");
+      }
+      const toRead = Math.min(BUFFER_SIZE, maxReadOffset - currentFileOffset);
+      bytesRead = readSync(fd, buffer, 0, toRead, currentFileOffset);
+      if (bytesRead <= 0) break;
+
       const chunk = buffer.subarray(0, bytesRead);
 
       if (prefixHasherForCursor !== null) {
@@ -11366,7 +11435,23 @@ function scanSessionActivityFile(
         lineStart = newlineIdx + 1;
         lineNumber += 1;
 
-        const lineStr = lineBytes.toString("utf8").replace(/\r$/, "");
+        let lineStr: string;
+        try {
+          lineStr = strictUtf8Decoder.decode(lineBytes).replace(/\r$/, "");
+        } catch {
+          if (lineNumber === 1) {
+            return error("LARVA_BAD_INPUT", "File is not a valid Pi session JSONL: session header contains invalid UTF-8 bytes.");
+          }
+          diagnostics.push({
+            kind: "invalid_utf8",
+            line_number: lineNumber,
+            byte_offset: lineStartOffset,
+            byte_length: lineByteLength,
+            message: `Interior line ${lineNumber} contains invalid UTF-8 byte sequences.`,
+          });
+          continue;
+        }
+
         if (lineStr.trim().length === 0) continue;
 
         let parsed: unknown;
@@ -11400,10 +11485,10 @@ function scanSessionActivityFile(
         }
 
         if (lineNumber === 1) {
-          if (parsed.type !== "session") {
-            return error("LARVA_BAD_INPUT", "File is not a valid Pi session JSONL: missing session header.");
+          if (parsed.type !== "session" || typeof parsed.id !== "string" || parsed.id.trim().length === 0 || typeof parsed.version !== "number") {
+            return error("LARVA_BAD_INPUT", "File is not a valid Pi session JSONL: session header missing required id or version.");
           }
-          sessionId = typeof parsed.id === "string" ? parsed.id : "";
+          sessionId = parsed.id.trim();
           if (cursor !== null && cursor.sid !== sessionId) {
             return error("LARVA_CURSOR_STALE", "Session file was replaced (session ID mismatch).");
           }
@@ -11444,54 +11529,98 @@ function scanSessionActivityFile(
 
           const entryId = typeof parsed.id === "string" ? parsed.id : "";
           const parentId = typeof parsed.parentId === "string" ? parsed.parentId : null;
-          const entryTimestamp = typeof parsed.timestamp === "string"
-            ? parsed.timestamp
-            : typeof msg.timestamp === "number"
-              ? new Date(msg.timestamp).toISOString()
-              : new Date().toISOString();
-          const entryTimestampMs = Date.parse(entryTimestamp) || 0;
+
+          let entryTimestamp = "unrecorded";
+          let entryTimestampMs = -1;
+          if (typeof parsed.timestamp === "string" && parsed.timestamp.trim().length > 0) {
+            entryTimestamp = parsed.timestamp;
+            entryTimestampMs = Date.parse(parsed.timestamp) || -1;
+          } else if (typeof msg.timestamp === "number" && Number.isFinite(msg.timestamp)) {
+            entryTimestamp = new Date(msg.timestamp).toISOString();
+            entryTimestampMs = msg.timestamp;
+          }
 
           if (msg.role === "assistant") {
             if (Array.isArray(msg.content)) {
               for (let cIdx = 0; cIdx < msg.content.length; cIdx += 1) {
                 const block = msg.content[cIdx];
                 if (isRecord(block) && block.type === "toolCall") {
-                  const callId = typeof block.id === "string" ? block.id : "";
-                  const toolName = typeof block.name === "string" ? block.name : "";
+                  const rawId = block.id;
+                  const rawName = block.name;
+                  if (typeof rawId !== "string" || rawId.trim().length === 0 || typeof rawName !== "string" || rawName.trim().length === 0) {
+                    diagnostics.push({
+                      kind: "malformed_record",
+                      line_number: lineNumber,
+                      byte_offset: lineStartOffset,
+                      message: `Tool call block ${cIdx} on line ${lineNumber} missing valid non-empty id or name.`,
+                    });
+                    continue;
+                  }
+
+                  const callId = rawId.trim();
+                  const toolName = rawName.trim();
                   const rawArgs = block.arguments;
                   const argsText = extractToolArgsText(rawArgs);
+                  const isTarget = targetToolCallId !== null && callId === targetToolCallId;
+                  const argsTrunc = argsText.length > 200;
+                  const argsPrev = argsTrunc ? argsText.slice(0, 200) : argsText;
+
                   calls.push({
+                    key: `c:${lineStartOffset}:${cIdx}`,
                     toolCallId: callId,
                     toolName,
-                    argsRaw: rawArgs,
-                    argsText,
                     callTimestamp: entryTimestamp,
                     callTimestampMs: entryTimestampMs,
                     entryId,
                     parentId,
                     contentIndex: cIdx,
                     byteOffset: lineStartOffset,
+                    lineByteLength,
                     lineNumber,
+                    argsPreview: argsPrev,
+                    argsTruncated: argsTrunc,
+                    argsTotalChars: argsText.length,
+                    fullArgsText: isTarget ? argsText : undefined,
                   });
                 }
               }
             }
           } else if (msg.role === "toolResult") {
-            const toolCallId = typeof msg.toolCallId === "string" ? msg.toolCallId : "";
-            const toolName = typeof msg.toolName === "string" ? msg.toolName : "";
+            const rawCallId = msg.toolCallId;
+            if (typeof rawCallId !== "string" || rawCallId.trim().length === 0) {
+              diagnostics.push({
+                kind: "malformed_record",
+                line_number: lineNumber,
+                byte_offset: lineStartOffset,
+                message: `Tool result entry on line ${lineNumber} missing valid non-empty toolCallId.`,
+              });
+              continue;
+            }
+
+            const toolCallId = rawCallId.trim();
+            const toolName = typeof msg.toolName === "string" ? msg.toolName.trim() : "";
             const isError = typeof msg.isError === "boolean" ? msg.isError : null;
             const { text: contentText, upstreamTruncated } = extractToolResultContentText(msg.content, msg.details);
+            const isTarget = targetToolCallId !== null && toolCallId === targetToolCallId;
+            const resTrunc = contentText.length > 500;
+            const resPrev = resTrunc ? contentText.slice(0, 500) : contentText;
+
             results.push({
               toolCallId,
               toolName,
-              contentText,
-              isError,
               resultTimestamp: entryTimestamp,
+              resultTimestampMs: entryTimestampMs,
               entryId,
               parentId,
               byteOffset: lineStartOffset,
+              lineByteLength,
               lineNumber,
-              upstreamTruncated,
+              isError,
+              resultPreview: resPrev,
+              resultTruncated: resTrunc,
+              resultTotalChars: contentText.length,
+              upstreamTruncated: Boolean(upstreamTruncated),
+              fullContentText: isTarget ? contentText : undefined,
             });
           }
         }
@@ -11530,19 +11659,58 @@ function scanSessionActivityFile(
   };
 }
 
+function findMatchingResult(
+  call: ToolCallLocator,
+  results: ToolResultLocator[],
+  allCalls: ToolCallLocator[],
+): ToolResultLocator | undefined {
+  const matchingResults = results.filter((r) => r.toolCallId === call.toolCallId);
+  if (matchingResults.length === 0) return undefined;
+  if (matchingResults.length === 1) {
+    const matchingCalls = allCalls.filter((c) => c.toolCallId === call.toolCallId);
+    if (matchingCalls.length === 1) return matchingResults[0];
+  }
+  const parentMatch = matchingResults.find((r) => r.parentId === call.entryId);
+  if (parentMatch) return parentMatch;
+
+  return undefined;
+}
+
+function matchesQueryFilter(
+  call: ToolCallLocator,
+  result: ToolResultLocator | undefined,
+  toolName: string | null,
+  sinceTimestamp: number | null,
+  untilTimestamp: number | null,
+): { matches: boolean; matchedBy?: "call_timestamp" | "result_timestamp" } {
+  if (toolName !== null && call.toolName !== toolName) return { matches: false };
+
+  const hasTimeFilter = sinceTimestamp !== null || untilTimestamp !== null;
+  if (!hasTimeFilter) return { matches: true };
+
+  const callMatches =
+    call.callTimestampMs >= 0 &&
+    (sinceTimestamp === null || call.callTimestampMs >= sinceTimestamp) &&
+    (untilTimestamp === null || call.callTimestampMs <= untilTimestamp);
+  if (callMatches) return { matches: true, matchedBy: "call_timestamp" };
+
+  if (result && result.resultTimestampMs >= 0) {
+    const resultMatches =
+      (sinceTimestamp === null || result.resultTimestampMs >= sinceTimestamp) &&
+      (untilTimestamp === null || result.resultTimestampMs <= untilTimestamp);
+    if (resultMatches) return { matches: true, matchedBy: "result_timestamp" };
+  }
+
+  return { matches: false };
+}
+
 function buildActivityItem(
-  call: ScannedToolCallInternal,
-  result: ScannedToolResultInternal | undefined,
+  call: ToolCallLocator,
+  result: ToolResultLocator | undefined,
   diagnostics: LarvaActivityDiagnostic[],
   updateType?: "new_call" | "late_result",
+  matchedBy?: "call_timestamp" | "result_timestamp",
 ): LarvaActivityItem {
-  const ARGS_PREVIEW_LIMIT = 200;
-  const RESULT_PREVIEW_LIMIT = 500;
-
-  const argsText = call.argsText;
-  const argsTruncated = argsText.length > ARGS_PREVIEW_LIMIT;
-  const argsPreview = argsTruncated ? argsText.slice(0, ARGS_PREVIEW_LIMIT) : argsText;
-
   let resultStatus: "observed" | "none" | "incomplete" = "none";
   let resultPreview: string | undefined = undefined;
   let resultTruncated: boolean | undefined = undefined;
@@ -11558,20 +11726,21 @@ function buildActivityItem(
       entry_id: result.entryId,
       parent_id: result.parentId,
       byte_offset: result.byteOffset,
+      line_byte_length: result.lineByteLength,
       line_number: result.lineNumber,
     };
     isError = result.isError;
-    const resText = result.contentText;
-    resultTotalChars = resText.length;
-    resultTruncated = resText.length > RESULT_PREVIEW_LIMIT;
-    resultPreview = resultTruncated ? resText.slice(0, RESULT_PREVIEW_LIMIT) : resText;
+    resultPreview = result.resultPreview;
+    resultTruncated = result.resultTruncated;
+    resultTotalChars = result.resultTotalChars;
   } else {
-    const hasMalformed = diagnostics.some((d) => d.kind === "malformed_json" || d.kind === "malformed_record");
+    const hasMalformed = diagnostics.some((d) => d.kind === "malformed_json" || d.kind === "malformed_record" || d.kind === "invalid_utf8");
     resultStatus = hasMalformed ? "incomplete" : "none";
     isError = null;
   }
 
   return {
+    key: updateType === "late_result" && result ? `r:${result.byteOffset}:${call.toolCallId}` : call.key,
     call_id: call.toolCallId,
     tool_name: call.toolName,
     call_timestamp: call.callTimestamp,
@@ -11580,11 +11749,12 @@ function buildActivityItem(
       parent_id: call.parentId,
       content_index: call.contentIndex,
       byte_offset: call.byteOffset,
+      line_byte_length: call.lineByteLength,
       line_number: call.lineNumber,
     },
-    args_preview: argsPreview,
-    args_truncated: argsTruncated,
-    args_total_chars: argsText.length,
+    args_preview: call.argsPreview,
+    args_truncated: call.argsTruncated,
+    args_total_chars: call.argsTotalChars,
     result_status: resultStatus,
     result_timestamp: resultTimestamp,
     result_preview: resultPreview,
@@ -11593,6 +11763,7 @@ function buildActivityItem(
     is_error: isError,
     result_location: resultLocation,
     update_type: updateType,
+    matched_by: matchedBy,
   };
 }
 
@@ -11604,31 +11775,35 @@ function renderActivityContent(details: LarvaSubagentActivityDetails): string {
     let text = `${details.error?.code ?? "LARVA_TOOL_CALL_NOT_FOUND"}: ${details.error?.message ?? "Tool call ID not found."}`;
     if (details.diagnostics && details.diagnostics.length > 0) {
       text += `\nInspection diagnostics (${details.diagnostics.length}):\n` + details.diagnostics.map((d) => `  - [${d.kind}] ${d.message}${d.line_number !== undefined ? ` (line ${d.line_number})` : ""}`).join("\n");
+      if (details.diagnostics_truncated && details.total_diagnostics_count) {
+        text += `\n  ... and ${details.total_diagnostics_count - details.diagnostics.length} additional diagnostics omitted.`;
+      }
     }
     return text;
   }
   if (details.status === "ambiguous") {
     const list = (details.candidates ?? []).map((c) => `  - Candidate ${c.index}: entry ${c.entry_id} (timestamp ${c.call_timestamp}, byte offset ${c.byte_offset}, content index ${c.content_index})`).join("\n");
-    return `Multiple candidate tool calls matched tool_call_id:\n${list}\nSpecify disambiguation_index (0..${(details.candidates?.length ?? 1) - 1}) or entry_id to select.`;
+    let text = `Multiple candidate tool calls matched tool_call_id:\n${list}\nSpecify disambiguation_index (0..${(details.candidates?.length ?? 1) - 1}) or entry_id to select.`;
+    if (details.candidates_truncated && details.total_candidates_count) {
+      text += `\n(${details.total_candidates_count - (details.candidates?.length ?? 0)} additional candidates omitted)`;
+    }
+    return text;
   }
   if (details.mode === "call_lookup" && details.call) {
     const c = details.call;
     const lines = [
       `Tool Call: ${c.tool_name} [${c.call_id}]`,
       `Session: ${details.session_path ?? ""}`,
-      `Timestamp: ${c.call_timestamp} | Location: entry ${c.call_location.entry_id}#${c.call_location.content_index}`,
-      `Arguments: ${c.args_preview}${c.args_truncated ? " (truncated)" : ""}`,
+      `Timestamp: ${c.call_timestamp} | Location: entry ${c.call_location.entry_id}#${c.call_location.content_index} (bytes ${c.call_location.byte_offset}..${c.call_location.byte_offset + c.call_location.line_byte_length}, line ${c.call_location.line_number})`,
+      `Arguments: ${c.args_preview ?? ""}${c.args_truncated ? " (truncated)" : ""}`,
       `Result Status: ${c.result_status}${c.is_error !== null && c.is_error !== undefined ? ` | Error: ${c.is_error}` : ""}`,
     ];
-    if (c.result_preview !== undefined) {
+    if (c.result_preview !== undefined && !c.segment) {
       lines.push(`Result Preview: ${c.result_preview}${c.result_truncated ? " (truncated)" : ""}`);
     }
     if (c.segment) {
       const seg = c.segment;
       lines.push(`Segment (${seg.part}): offset ${seg.offset}..${seg.offset + seg.length} of ${seg.total_chars} chars (has_more: ${seg.has_more})`);
-      lines.push("--- BEGIN SEGMENT ---");
-      lines.push(seg.text);
-      lines.push("--- END SEGMENT ---");
     }
     return lines.join("\n");
   }
@@ -11644,7 +11819,9 @@ function renderActivityContent(details: LarvaSubagentActivityDetails): string {
     items.forEach((item, idx) => {
       const errStr = item.is_error === null || item.is_error === undefined ? "" : item.is_error ? " [error]" : " [ok]";
       const updateTag = item.update_type ? ` [${item.update_type}]` : "";
-      lines.push(`${idx + 1}. [${item.call_id}] ${item.tool_name} (${item.call_timestamp})${updateTag}`);
+      const matchTag = item.matched_by ? ` [${item.matched_by}]` : "";
+      lines.push(`${idx + 1}. [${item.call_id}] ${item.tool_name} (${item.call_timestamp})${updateTag}${matchTag}`);
+      lines.push(`   Location: entry ${item.call_location.entry_id}#${item.call_location.content_index} (bytes ${item.call_location.byte_offset}..${item.call_location.byte_offset + item.call_location.line_byte_length}, line ${item.call_location.line_number})`);
       lines.push(`   args: ${item.args_preview}${item.args_truncated ? "…" : ""}`);
       if (item.result_status === "observed") {
         lines.push(`   result (${item.result_status}${errStr}): ${item.result_preview ?? ""}${item.result_truncated ? "…" : ""}`);
@@ -11664,18 +11841,46 @@ function renderActivityContent(details: LarvaSubagentActivityDetails): string {
     for (const d of details.diagnostics) {
       lines.push(`  - [${d.kind}] ${d.message}${d.line_number !== undefined ? ` (line ${d.line_number})` : ""}`);
     }
+    if (details.diagnostics_truncated && details.total_diagnostics_count) {
+      lines.push(`  ... and ${details.total_diagnostics_count - details.diagnostics.length} additional diagnostics omitted.`);
+    }
   }
   return lines.join("\n");
 }
 
-function enforceResponseBudget(result: LarvaSubagentActivityResult, maxBytes = 8192): LarvaSubagentActivityResult {
+function enforceResponseBudget(
+  result: LarvaSubagentActivityResult,
+  cursorBase: ActivityCursorPayload | null,
+  maxBytes = 8192,
+): LarvaSubagentActivityResult {
   let serialized = JSON.stringify(result);
   let bytes = Buffer.byteLength(serialized, "utf8");
-  if (bytes <= maxBytes) return result;
+  if (bytes <= maxBytes && (!result.details.diagnostics || result.details.diagnostics.length <= 5)) {
+    return result;
+  }
 
   const res: LarvaSubagentActivityResult = JSON.parse(serialized);
 
-  const previewLimits = [250, 150, 80, 40];
+  if (res.details.diagnostics && res.details.diagnostics.length > 5) {
+    const totalCount = res.details.diagnostics.length;
+    res.details.total_diagnostics_count = totalCount;
+    res.details.diagnostics_truncated = true;
+    res.details.diagnostics = res.details.diagnostics.slice(0, 5);
+  }
+
+  if (res.details.candidates && res.details.candidates.length > 5) {
+    const totalCandidates = res.details.candidates.length;
+    res.details.total_candidates_count = totalCandidates;
+    res.details.candidates_truncated = true;
+    res.details.candidates = res.details.candidates.slice(0, 5);
+  }
+
+  res.content = [{ type: "text", text: renderActivityContent(res.details) }];
+  serialized = JSON.stringify(res);
+  bytes = Buffer.byteLength(serialized, "utf8");
+  if (bytes <= maxBytes) return res;
+
+  const previewLimits = [100, 50, 20];
   for (const maxLen of previewLimits) {
     if (res.details.items) {
       for (const item of res.details.items) {
@@ -11709,25 +11914,32 @@ function enforceResponseBudget(result: LarvaSubagentActivityResult, maxBytes = 8
     while (res.details.items.length > 1 && bytes > maxBytes) {
       res.details.items.pop();
       res.details.has_more = true;
+      if (cursorBase !== null) {
+        const lastRemaining = res.details.items[res.details.items.length - 1];
+        const updatedCursorPayload: ActivityCursorPayload = {
+          ...cursorBase,
+          snapshot_off: cursorBase.snapshot_off ?? cursorBase.off,
+          last_key: lastRemaining.key,
+        };
+        res.details.cursor = encodeActivityCursor(updatedCursorPayload);
+      }
       res.content = [{ type: "text", text: renderActivityContent(res.details) }];
       serialized = JSON.stringify(res);
       bytes = Buffer.byteLength(serialized, "utf8");
     }
-    if (bytes <= maxBytes) return res;
   }
 
-  if (res.details.call?.segment) {
-    while (res.details.call.segment.text.length > 100 && bytes > maxBytes) {
-      const cut = Math.floor(res.details.call.segment.text.length / 2);
-      res.details.call.segment.text = res.details.call.segment.text.slice(0, cut);
-      res.details.call.segment.length = cut;
-      res.details.call.segment.has_more = true;
-      res.details.call.segment.continuation_offset = res.details.call.segment.offset + cut;
-      res.content = [{ type: "text", text: renderActivityContent(res.details) }];
-      serialized = JSON.stringify(res);
-      bytes = Buffer.byteLength(serialized, "utf8");
-    }
-    if (bytes <= maxBytes) return res;
+  if (bytes > maxBytes && res.details.diagnostics && res.details.diagnostics.length > 1) {
+    res.details.diagnostics = res.details.diagnostics.slice(0, 1);
+    res.content = [{ type: "text", text: renderActivityContent(res.details) }];
+    serialized = JSON.stringify(res);
+    bytes = Buffer.byteLength(serialized, "utf8");
+  }
+
+  if (bytes > maxBytes) {
+    const overhead = bytes - Buffer.byteLength(res.content[0].text, "utf8");
+    const allowedTextBytes = Math.max(100, maxBytes - overhead - 20);
+    res.content[0].text = res.content[0].text.slice(0, Math.floor(allowedTextBytes / 2)) + "… [output truncated to fit 8192-byte ceiling]";
   }
 
   return res;
@@ -11735,7 +11947,7 @@ function enforceResponseBudget(result: LarvaSubagentActivityResult, maxBytes = 8
 
 export async function larva_subagent_activity(
   input?: unknown,
-  ctx?: { env?: RuntimeEnv },
+  ctx?: { env?: RuntimeEnv; abortSignal?: AbortSignal },
 ): Promise<LarvaSubagentActivityResult> {
   const env = currentEnv(ctx);
   const parsed = parseActivityInput(input, env);
@@ -11753,7 +11965,7 @@ export async function larva_subagent_activity(
 
   let decodedCursor: ActivityCursorPayload | null = null;
   if (parsed.cursor !== null) {
-    const dec = decodeActivityCursor(parsed.cursor, parsed.sessionPath);
+    const dec = decodeActivityCursor(parsed.cursor, parsed.sessionPath, parsed.filterHash);
     if (isLarvaError(dec)) {
       const errorDetails: LarvaSubagentActivityDetails = {
         status: "failed",
@@ -11769,7 +11981,7 @@ export async function larva_subagent_activity(
     decodedCursor = dec;
   }
 
-  const snapshot = scanSessionActivityFile(parsed.sessionPath, decodedCursor);
+  const snapshot = scanSessionActivityFile(parsed.sessionPath, decodedCursor, parsed.toolCallId, ctx?.abortSignal);
   if (isLarvaError(snapshot)) {
     const errorDetails: LarvaSubagentActivityDetails = {
       status: "failed",
@@ -11783,15 +11995,20 @@ export async function larva_subagent_activity(
     };
   }
 
+  const fileStat = openSessionSnapshot(parsed.sessionPath);
+  const dev = isLarvaError(fileStat) ? 0 : fileStat.dev;
+  const ino = isLarvaError(fileStat) ? 0 : fileStat.ino;
+  if (!isLarvaError(fileStat)) closeSync(fileStat.fd);
+
   // Exact Tool Call Lookup
   if (parsed.toolCallId !== null) {
     const matchingCalls = snapshot.calls.filter((c) => c.toolCallId === parsed.toolCallId);
     if (matchingCalls.length === 0) {
-      const hasMalformed = snapshot.diagnostics.some((d) => d.kind === "malformed_json" || d.kind === "malformed_record");
+      const isPartial = snapshot.diagnostics.length > 0;
       const err = error(
         "LARVA_TOOL_CALL_NOT_FOUND",
-        hasMalformed
-          ? `Tool call ID "${parsed.toolCallId}" not found in inspected records (warning: inspection was incomplete due to malformed lines).`
+        isPartial
+          ? `Tool call ID "${parsed.toolCallId}" not found in inspected snapshot (inspection incomplete: malformed lines or unterminated tail exist).`
           : `Tool call ID "${parsed.toolCallId}" not found in session after complete inspection.`,
       );
       const details: LarvaSubagentActivityDetails = {
@@ -11802,13 +12019,14 @@ export async function larva_subagent_activity(
         snapshot_bytes: snapshot.committedByteOffset,
         total_calls_inspected: snapshot.calls.length,
         diagnostics: snapshot.diagnostics,
+        inspection_complete: !isPartial,
         error: err,
       };
       return enforceResponseBudget({
         content: [{ type: "text", text: renderActivityContent(details) }],
         details,
         isError: false,
-      });
+      }, null);
     }
 
     if (matchingCalls.length > 1 && parsed.disambiguationIndex === null && parsed.entryId === null) {
@@ -11834,10 +12052,10 @@ export async function larva_subagent_activity(
         content: [{ type: "text", text: renderActivityContent(details) }],
         details,
         isError: false,
-      });
+      }, null);
     }
 
-    let selectedCall: ScannedToolCallInternal = matchingCalls[0];
+    let selectedCall: ToolCallLocator = matchingCalls[0];
     if (matchingCalls.length > 1) {
       if (parsed.disambiguationIndex !== null) {
         if (parsed.disambiguationIndex >= matchingCalls.length) {
@@ -11872,17 +12090,21 @@ export async function larva_subagent_activity(
       };
     }
 
-    const matchingResult = snapshot.results.find((r) => r.toolCallId === selectedCall.toolCallId);
+    const matchingResult = findMatchingResult(selectedCall, snapshot.results, snapshot.calls);
     const item = buildActivityItem(selectedCall, matchingResult, snapshot.diagnostics);
 
-    const targetText = parsed.segmentPart === "args" ? selectedCall.argsText : (matchingResult ? matchingResult.contentText : "");
-    const segmentText = targetText.slice(parsed.offset, parsed.offset + parsed.length);
+    let segment: LarvaActivitySegment | undefined = undefined;
+    let segmentText = "";
+
+    const targetText = parsed.segmentPart === "args"
+      ? (selectedCall.fullArgsText ?? selectedCall.argsPreview)
+      : (matchingResult?.fullContentText ?? matchingResult?.resultPreview ?? "");
+    segmentText = targetText.slice(parsed.offset, parsed.offset + parsed.length);
     const hasMore = parsed.offset + segmentText.length < targetText.length;
     const continuationOffset = hasMore ? parsed.offset + segmentText.length : undefined;
 
-    const segment: LarvaActivitySegment = {
+    segment = {
       part: parsed.segmentPart,
-      text: segmentText,
       offset: parsed.offset,
       length: segmentText.length,
       total_chars: targetText.length,
@@ -11919,43 +12141,53 @@ export async function larva_subagent_activity(
       total_calls_inspected: snapshot.calls.length,
       call: callDetail,
       diagnostics: snapshot.diagnostics,
+      inspection_complete: snapshot.diagnostics.length === 0,
     };
 
+    let contentText = renderActivityContent(details);
+    if (segment) {
+      contentText += `\n--- BEGIN SEGMENT ---\n${segmentText}\n--- END SEGMENT ---`;
+    }
+
     return enforceResponseBudget({
-      content: [{ type: "text", text: renderActivityContent(details) }],
+      content: [{ type: "text", text: contentText }],
       details,
       isError: false,
-    });
+    }, null);
   }
 
-  // Recent / Incremental Mode
-  const isMatchFilter = (call: ScannedToolCallInternal): boolean => {
-    if (parsed.toolName !== null && call.toolName !== parsed.toolName) return false;
-    if (parsed.sinceTimestamp !== null && call.callTimestampMs < parsed.sinceTimestamp) return false;
-    if (parsed.untilTimestamp !== null && call.callTimestampMs > parsed.untilTimestamp) return false;
-    return true;
-  };
-
-  const resultsByCallId = new Map<string, ScannedToolResultInternal>();
-  for (const r of snapshot.results) {
-    if (!resultsByCallId.has(r.toolCallId)) {
-      resultsByCallId.set(r.toolCallId, r);
+  // Recent & Incremental Mode
+  // Build matched calls with associated results
+  const allMatchedItems: LarvaActivityItem[] = [];
+  for (const c of snapshot.calls) {
+    const res = findMatchingResult(c, snapshot.results, snapshot.calls);
+    const filterRes = matchesQueryFilter(c, res, parsed.toolName, parsed.sinceTimestamp, parsed.untilTimestamp);
+    if (filterRes.matches) {
+      allMatchedItems.push(buildActivityItem(c, res, snapshot.diagnostics, undefined, filterRes.matchedBy));
     }
   }
 
-  if (decodedCursor === null) {
-    const matchingCalls = snapshot.calls.filter(isMatchFilter);
-    const selectedCalls = matchingCalls.slice(-parsed.limit);
-    const items = selectedCalls.map((c) =>
-      buildActivityItem(c, resultsByCallId.get(c.toolCallId), snapshot.diagnostics),
-    );
+  // Stable sort by byteOffset, then contentIndex
+  allMatchedItems.sort((a, b) => {
+    if (a.call_location.byte_offset !== b.call_location.byte_offset) {
+      return a.call_location.byte_offset - b.call_location.byte_offset;
+    }
+    return a.call_location.content_index - b.call_location.content_index;
+  });
 
-    const cursorPayload: ActivityCursorPayload = {
+  // Mode 1: Fresh Recent Window (cursor === null)
+  if (decodedCursor === null) {
+    const candidateItems = allMatchedItems.slice(-parsed.limit);
+
+    const initialCursorPayload: ActivityCursorPayload = {
       v: 1,
       p: parsed.sessionPath,
       sid: snapshot.sessionId,
+      dev,
+      ino,
       off: snapshot.committedByteOffset,
       h: snapshot.consumedPrefixHash,
+      fh: parsed.filterHash,
     };
 
     const details: LarvaSubagentActivityDetails = {
@@ -11965,20 +12197,72 @@ export async function larva_subagent_activity(
       mode: "recent",
       snapshot_bytes: snapshot.committedByteOffset,
       total_calls_inspected: snapshot.calls.length,
-      items,
-      cursor: encodeActivityCursor(cursorPayload),
+      items: candidateItems,
+      cursor: encodeActivityCursor(initialCursorPayload),
       has_more: false,
       diagnostics: snapshot.diagnostics,
+      inspection_complete: snapshot.diagnostics.length === 0,
     };
 
     return enforceResponseBudget({
       content: [{ type: "text", text: renderActivityContent(details) }],
       details,
       isError: false,
-    });
+    }, initialCursorPayload);
   }
 
-  // Incremental mode using cursor
+  // Mode 2: Paging within a frozen snapshot (cursor.snapshot_off !== undefined)
+  if (decodedCursor.snapshot_off !== undefined) {
+    const lastKey = decodedCursor.last_key;
+    let startIndex = 0;
+    if (lastKey) {
+      const foundIdx = allMatchedItems.findIndex((it) => it.key === lastKey);
+      if (foundIdx >= 0) {
+        startIndex = foundIdx + 1;
+      }
+    }
+
+    const remainingItems = allMatchedItems.slice(startIndex);
+    const candidateItems = remainingItems.slice(0, parsed.limit);
+    const moreRemainInSnapshot = remainingItems.length > candidateItems.length;
+
+    const lastDelivered = candidateItems.length > 0 ? candidateItems[candidateItems.length - 1] : null;
+
+    const nextCursorPayload: ActivityCursorPayload = {
+      v: 1,
+      p: parsed.sessionPath,
+      sid: snapshot.sessionId,
+      dev,
+      ino,
+      off: moreRemainInSnapshot ? decodedCursor.off : decodedCursor.snapshot_off,
+      h: decodedCursor.h,
+      fh: parsed.filterHash,
+      snapshot_off: moreRemainInSnapshot ? decodedCursor.snapshot_off : undefined,
+      last_key: moreRemainInSnapshot && lastDelivered ? lastDelivered.key : undefined,
+    };
+
+    const details: LarvaSubagentActivityDetails = {
+      status: "success",
+      session_id: snapshot.sessionId,
+      session_path: parsed.sessionPath,
+      mode: "recent",
+      snapshot_bytes: snapshot.committedByteOffset,
+      total_calls_inspected: snapshot.calls.length,
+      items: candidateItems,
+      cursor: encodeActivityCursor(nextCursorPayload),
+      has_more: moreRemainInSnapshot,
+      diagnostics: snapshot.diagnostics,
+      inspection_complete: snapshot.diagnostics.length === 0,
+    };
+
+    return enforceResponseBudget({
+      content: [{ type: "text", text: renderActivityContent(details) }],
+      details,
+      isError: false,
+    }, nextCursorPayload);
+  }
+
+  // Mode 3: Incremental updates arriving after cursor.off
   const prevOff = decodedCursor.off;
 
   // 1. Late results: result was written at byteOffset >= prevOff for a call written before prevOff
@@ -11987,24 +12271,28 @@ export async function larva_subagent_activity(
   for (const r of snapshot.results) {
     if (r.byteOffset >= prevOff) {
       const parentCall = snapshot.calls.find((c) => c.toolCallId === r.toolCallId);
-      if (parentCall && parentCall.byteOffset < prevOff && isMatchFilter(parentCall)) {
-        if (!lateSeenCallIds.has(parentCall.toolCallId)) {
+      if (parentCall && parentCall.byteOffset < prevOff) {
+        const filterRes = matchesQueryFilter(parentCall, r, parsed.toolName, parsed.sinceTimestamp, parsed.untilTimestamp);
+        if (filterRes.matches && !lateSeenCallIds.has(parentCall.toolCallId)) {
           lateSeenCallIds.add(parentCall.toolCallId);
-          lateResultItems.push(buildActivityItem(parentCall, r, snapshot.diagnostics, "late_result"));
+          lateResultItems.push(buildActivityItem(parentCall, r, snapshot.diagnostics, "late_result", filterRes.matchedBy));
         }
       }
     }
   }
 
-  // 2. New calls: calls written at byteOffset >= prevOff
+  // 2. New calls: call was written at byteOffset >= prevOff
   const newCallItems: LarvaActivityItem[] = [];
   for (const c of snapshot.calls) {
-    if (c.byteOffset >= prevOff && isMatchFilter(c)) {
-      newCallItems.push(buildActivityItem(c, resultsByCallId.get(c.toolCallId), snapshot.diagnostics, "new_call"));
+    if (c.byteOffset >= prevOff) {
+      const res = findMatchingResult(c, snapshot.results, snapshot.calls);
+      const filterRes = matchesQueryFilter(c, res, parsed.toolName, parsed.sinceTimestamp, parsed.untilTimestamp);
+      if (filterRes.matches) {
+        newCallItems.push(buildActivityItem(c, res, snapshot.diagnostics, "new_call", filterRes.matchedBy));
+      }
     }
   }
 
-  // Combine and sort stable
   const allUpdates = [...lateResultItems, ...newCallItems];
   allUpdates.sort((a, b) => {
     if (a.call_location.byte_offset !== b.call_location.byte_offset) {
@@ -12013,18 +12301,21 @@ export async function larva_subagent_activity(
     return a.call_location.content_index - b.call_location.content_index;
   });
 
-  const pageOffset = decodedCursor.page_offset ?? 0;
-  const pagedItems = allUpdates.slice(pageOffset, pageOffset + parsed.limit);
-  const nextOffset = pageOffset + pagedItems.length;
-  const hasMore = nextOffset < allUpdates.length;
+  const candidateItems = allUpdates.slice(0, parsed.limit);
+  const moreRemain = allUpdates.length > candidateItems.length;
+  const lastDelivered = candidateItems.length > 0 ? candidateItems[candidateItems.length - 1] : null;
 
   const nextCursorPayload: ActivityCursorPayload = {
     v: 1,
     p: parsed.sessionPath,
     sid: snapshot.sessionId,
-    off: hasMore ? prevOff : snapshot.committedByteOffset,
-    h: hasMore ? decodedCursor.h : snapshot.consumedPrefixHash,
-    page_offset: hasMore ? nextOffset : undefined,
+    dev,
+    ino,
+    off: moreRemain ? prevOff : snapshot.committedByteOffset,
+    h: moreRemain ? decodedCursor.h : snapshot.consumedPrefixHash,
+    fh: parsed.filterHash,
+    snapshot_off: moreRemain ? snapshot.committedByteOffset : undefined,
+    last_key: moreRemain && lastDelivered ? lastDelivered.key : undefined,
   };
 
   const details: LarvaSubagentActivityDetails = {
@@ -12034,17 +12325,18 @@ export async function larva_subagent_activity(
     mode: "recent",
     snapshot_bytes: snapshot.committedByteOffset,
     total_calls_inspected: snapshot.calls.length,
-    items: pagedItems,
+    items: candidateItems,
     cursor: encodeActivityCursor(nextCursorPayload),
-    has_more: hasMore,
+    has_more: moreRemain,
     diagnostics: snapshot.diagnostics,
+    inspection_complete: snapshot.diagnostics.length === 0,
   };
 
   return enforceResponseBudget({
     content: [{ type: "text", text: renderActivityContent(details) }],
     details,
     isError: false,
-  });
+  }, nextCursorPayload);
 }
 
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {

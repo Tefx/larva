@@ -1438,32 +1438,46 @@ historical Pi session `.jsonl` file.
    activity from the committed snapshot boundary:
    - Delivers new tool calls arriving after the prior snapshot.
    - Delivers late results arriving for older calls, including calls outside the prior
-     tail window.
+     tail window. Also matches older calls whose results arrived in the requested time
+     window (`matched_by: "result_timestamp"`).
    - Paging: Unreturned updates or siblings within a single assistant message are
-     never skipped or dropped.
+     never skipped or dropped. Paging binds to a frozen snapshot offset (`snapshot_off`),
+     so concurrent appends between pages cannot shift offsets, insert before page cursors,
+     or duplicate/drop activity.
    - Cursors are self-contained and survive parent process restarts.
-   - Detects file replacement (session ID mismatch), truncation (file size smaller than
-     committed offset), and truncation-then-regrowth with altered prior contents
-     (consumed-prefix SHA-256 digest mismatch). Stale cursors fail safely with
-     `LARVA_CURSOR_STALE`.
+   - Cursors bind the filter query (`tool_name`, `since_timestamp`, `until_timestamp`).
+     Calling with a mismatched filter returns `LARVA_CURSOR_INVALID`.
+   - Detects file replacement via device/inode identity and session ID mismatch,
+     truncation (file size smaller than committed offset), and truncation-then-regrowth
+     with altered prior contents (consumed-prefix SHA-256 digest mismatch). Stale cursors
+     fail safely with `LARVA_CURSOR_STALE`.
 
 3. **Exact toolCallId lookup**: Extends beyond the recent window using `tool_call_id`.
    - Locates the tool call anywhere in the session file.
    - Duplicate/ambiguous IDs: Returns candidate provenance (`index`, `entry_id`,
      `call_timestamp`, `byte_offset`, `content_index`) with status `"ambiguous"`.
-     Callers disambiguate using `disambiguation_index` or `entry_id`.
+     Callers disambiguate using `disambiguation_index` or `entry_id`. Does not falsely
+     attach another branch's result to a duplicate call.
    - Segment reconstruction: Allows inspecting large argument or result payloads in
      bounded chunks (`segment_part: "args" | "result"`, `offset: number`, `length: number`).
+     Offset and length are measured in UTF-16 code units (JavaScript string indices).
      Continued chunks bind to the session's source version token (`source_version`),
      reusing the prefix validation mechanism.
    - Segment reconstruction covers data saved in the session, not content already lost
      through upstream truncation (reported via `upstream_truncated: true`).
+   - Single-copy payload contract: Segment text is placed in model-visible `content`
+     inside delimiter markers; `details.call.segment` retains range, continuation, and
+     source version metadata without duplicating full text payloads.
 
 #### Output Bounds and Anti-Slop
 - Hard whole-response ceiling of 8192 UTF-8 bytes for the entire serialized tool
   response (including text content, details object, diagnostics, and cursors).
-- Previews and item counts shrink dynamically when payloads approach the ceiling.
-- Model-visible activity text is rendered in `content`; `details` holds structured
+- Previews and item counts shrink dynamically when payloads approach the ceiling, with
+  the cursor synchronized to the last actually delivered item.
+- Diagnostics and ambiguous candidate lists are bounded to at most 5 items with explicit
+  counts and truncation indicators when oversized.
+- Model-visible activity text is rendered in `content` with exact entry locations
+  (`entry_id#content_index`, byte ranges, line numbers); `details` holds structured
   metadata without duplicating full payloads.
 
 #### Error and Partial Semantics
