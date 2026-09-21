@@ -1253,6 +1253,7 @@ larva_subagent_events(since_sequence?, task_ids?, limit?)
 larva_subagent_wait(task_ids, return_when?, timeout_ms?)
 larva_subagent_select(task_ids, timeout_ms?)
 larva_subagent_cancel(task_id, reason)
+larva_subagent_activity(session_path, task_id?, cursor?, limit?, tool_name?, since_timestamp?, until_timestamp?, tool_call_id?, disambiguation_index?, entry_id?, segment_part?, offset?, length?, source_version?)
 ```
 
 `larva_subagent` starts or resumes one child Pi session and returns only after the
@@ -1479,6 +1480,22 @@ stable error text in `content` and machine-readable state in `details`. Existing
 stable errors such as `LARVA_NO_ACTIVE_PERSONA`, `LARVA_BAD_INPUT`,
 `LARVA_CHILD_PROTOCOL_FAILED`, `LARVA_CHILD_CANCELLED`, and
 `LARVA_SESSION_BUSY` remain stable.
+
+`larva_subagent_activity` provides pure read-only inspection of recorded tool
+activity from an exact historical Pi session `.jsonl` file. It operates
+independently of parent subagent registries, active runs, and childSessionRoot.
+It delivers recent calls with associated results, incremental reading with
+lossless paging and late results for older calls, exact `tool_call_id` lookup
+with candidate disambiguation, and bounded segment reconstruction (up to 4000
+chars per segment). The whole serialized response is strictly bounded by an
+8192 UTF-8 byte ceiling. Cursors are self-contained and detect file replacement,
+truncation, and truncation-then-regrowth with altered prior contents. Activity
+reading is lifecycle-neutral and performs zero writes or state mutations.
+
+Suggested external Orchestrator guidance:
+Prefer bounded `larva_subagent_activity` on the exact session path; expand by
+call ID for a concrete question; retain lifecycle, callback, and acceptance
+authority; and use bounded manual parsing only when the tool is unavailable.
 
 For runtime proof probes only, tests may set `LARVA_PI_CHILD_RPC_TRACE_FILE` to
 an explicit trace path. The trace is diagnostic only: it is for runtime proof

@@ -7,7 +7,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-delete process.env.LARVA_CLI_ARGV_JSON;
+for (const key of Object.keys(process.env)) {
+  if (/^(LARVA_|PI_)/.test(key) && !key.startsWith("LARVA_TEST_")) delete process.env[key];
+}
 
 const root = await mkdtemp(join(tmpdir(), "larva-backend-discovery-"));
 try {

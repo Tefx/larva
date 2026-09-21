@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
-import { accessSync, appendFileSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { accessSync, appendFileSync, chmodSync, closeSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -48,7 +48,10 @@ type LarvaErrorCode =
   | "LARVA_CHILD_START_FAILED"
   | "LARVA_CHILD_PROTOCOL_FAILED"
   | "LARVA_CHILD_RUNTIME_FAILED"
-  | "LARVA_CHILD_CANCELLED";
+  | "LARVA_CHILD_CANCELLED"
+  | "LARVA_CURSOR_INVALID"
+  | "LARVA_CURSOR_STALE"
+  | "LARVA_TOOL_CALL_NOT_FOUND";
 
 type LarvaError = { code: LarvaErrorCode; message: string };
 type PiToolPolicy = { allow?: string[]; deny?: string[] };
@@ -10887,6 +10890,1163 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
   });
 }
 
+// --- larva_subagent_activity ---
+
+export type LarvaActivityPart = "args" | "result";
+
+export type LarvaActivityCallLocation = {
+  entry_id: string;
+  parent_id: string | null;
+  content_index: number;
+  byte_offset: number;
+  line_number: number;
+};
+
+export type LarvaActivityResultLocation = {
+  entry_id: string;
+  parent_id: string | null;
+  byte_offset: number;
+  line_number: number;
+};
+
+export type LarvaActivityItem = {
+  call_id: string;
+  tool_name: string;
+  call_timestamp: string;
+  call_location: LarvaActivityCallLocation;
+  args_preview: string;
+  args_truncated: boolean;
+  args_total_chars: number;
+  result_status: "observed" | "none" | "incomplete" | "present_omitted";
+  result_timestamp?: string;
+  result_preview?: string;
+  result_truncated?: boolean;
+  result_total_chars?: number;
+  is_error?: boolean | null;
+  result_location?: LarvaActivityResultLocation;
+  update_type?: "new_call" | "late_result";
+};
+
+export type LarvaActivitySegment = {
+  part: LarvaActivityPart;
+  text: string;
+  offset: number;
+  length: number;
+  total_chars: number;
+  has_more: boolean;
+  continuation_offset?: number;
+  source_version: string;
+  upstream_truncated?: boolean;
+};
+
+export type LarvaActivityCallDetail = {
+  call_id: string;
+  tool_name: string;
+  call_timestamp: string;
+  call_location: LarvaActivityCallLocation;
+  args_preview: string;
+  args_truncated: boolean;
+  args_total_chars: number;
+  result_status: "observed" | "none" | "incomplete";
+  result_timestamp?: string;
+  result_preview?: string;
+  result_truncated?: boolean;
+  result_total_chars?: number;
+  is_error?: boolean | null;
+  result_location?: LarvaActivityResultLocation;
+  segment?: LarvaActivitySegment;
+};
+
+export type LarvaActivityDiagnostic = {
+  kind: "malformed_json" | "malformed_record" | "unterminated_tail" | "invalid_utf8" | "incomplete_inspection";
+  line_number?: number;
+  byte_offset?: number;
+  byte_length?: number;
+  message: string;
+};
+
+export type LarvaActivityAmbiguousCandidate = {
+  index: number;
+  entry_id: string;
+  parent_id: string | null;
+  call_timestamp: string;
+  byte_offset: number;
+  content_index: number;
+};
+
+export type LarvaSubagentActivityDetails = {
+  status: "success" | "failed" | "ambiguous" | "not_found";
+  session_id?: string;
+  session_path?: string;
+  mode?: "recent" | "call_lookup";
+  snapshot_bytes?: number;
+  total_calls_inspected?: number;
+  items?: LarvaActivityItem[];
+  call?: LarvaActivityCallDetail;
+  candidates?: LarvaActivityAmbiguousCandidate[];
+  cursor?: string;
+  has_more?: boolean;
+  diagnostics?: LarvaActivityDiagnostic[];
+  error?: LarvaError | null;
+};
+
+export type LarvaSubagentActivityResult = {
+  content: PiTextContent[];
+  details: LarvaSubagentActivityDetails;
+  isError: boolean;
+};
+
+function validateExactHistoricalSessionPath(inputPath: string, _env: RuntimeEnv): string | LarvaError {
+  if (typeof inputPath !== "string" || inputPath.trim() !== inputPath || inputPath.length === 0) {
+    return error("LARVA_BAD_INPUT", "session_path must be an exact, unmodified absolute .jsonl path.");
+  }
+  if (inputPath.normalize("NFC") !== inputPath) {
+    return error("LARVA_BAD_INPUT", "session_path must already be Unicode-normalized NFC; refusing to clean it.");
+  }
+  if (!isAbsolute(inputPath) || !inputPath.endsWith(".jsonl")) {
+    return error("LARVA_BAD_INPUT", "session_path must be an absolute .jsonl path.");
+  }
+  if (inputPath.endsWith(sep) || inputPath.includes("~") || inputPath.includes("%") || (sep === "/" && inputPath.includes("\\"))) {
+    return error("LARVA_BAD_INPUT", "session_path must be an exact normalized public handle.");
+  }
+  const segments = inputPath.split(sep).slice(1);
+  if (segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")) {
+    return error("LARVA_BAD_INPUT", "session_path must not contain empty, dot, or dot-dot path segments.");
+  }
+  if (resolve(inputPath) !== inputPath) {
+    return error("LARVA_BAD_INPUT", "session_path must already be normalized; refusing to clean it.");
+  }
+  if (!existsSync(inputPath)) {
+    return error("LARVA_SESSION_NOT_FOUND", `Session file not found: ${inputPath}`);
+  }
+  try {
+    accessSync(inputPath, constants.R_OK);
+  } catch {
+    return error("LARVA_BAD_INPUT", `Cannot read session file: access denied.`);
+  }
+  const st = statSync(inputPath);
+  if (!st.isFile()) {
+    return error("LARVA_BAD_INPUT", `Path is not a regular file: ${inputPath}`);
+  }
+  return inputPath;
+}
+
+type ParsedActivityInput = {
+  sessionPath: string;
+  cursor: string | null;
+  limit: number;
+  toolName: string | null;
+  sinceTimestamp: number | null;
+  untilTimestamp: number | null;
+  toolCallId: string | null;
+  disambiguationIndex: number | null;
+  entryId: string | null;
+  segmentPart: LarvaActivityPart;
+  offset: number;
+  length: number;
+  sourceVersion: string | null;
+};
+
+function parseActivityInput(input: unknown, env: RuntimeEnv): ParsedActivityInput | LarvaError {
+  if (input !== undefined && input !== null && !isRecord(input)) {
+    return error("LARVA_BAD_INPUT", "activity input must be an object.");
+  }
+  const rec = isRecord(input) ? input : {};
+  const allowed = [
+    "session_path",
+    "task_id",
+    "cursor",
+    "limit",
+    "tool_name",
+    "since_timestamp",
+    "until_timestamp",
+    "tool_call_id",
+    "disambiguation_index",
+    "entry_id",
+    "segment_part",
+    "offset",
+    "length",
+    "source_version",
+  ];
+  const unexpected = rejectUnexpectedKeys(rec, allowed);
+  if (unexpected !== null) return unexpected;
+
+  const rawSessionPath = typeof rec.session_path === "string" ? rec.session_path : null;
+  const rawTaskId = typeof rec.task_id === "string" ? rec.task_id : null;
+  if (rawSessionPath === null && rawTaskId === null) {
+    return error("LARVA_BAD_INPUT", "session_path (or task_id) must be provided.");
+  }
+  if (rawSessionPath !== null && rawTaskId !== null && rawSessionPath !== rawTaskId) {
+    return error("LARVA_BAD_INPUT", "session_path and task_id cannot be different values; provide one.");
+  }
+  const targetPath = rawSessionPath ?? rawTaskId!;
+  const validatedPath = validateExactHistoricalSessionPath(targetPath, env);
+  if (isLarvaError(validatedPath)) return validatedPath;
+
+  let cursor: string | null = null;
+  if (rec.cursor !== undefined && rec.cursor !== null) {
+    if (typeof rec.cursor !== "string" || rec.cursor.trim().length === 0) {
+      return error("LARVA_BAD_INPUT", "cursor must be a non-empty string.");
+    }
+    cursor = rec.cursor.trim();
+  }
+
+  let limit = 5;
+  if (rec.limit !== undefined && rec.limit !== null) {
+    if (typeof rec.limit !== "number" || !Number.isInteger(rec.limit) || rec.limit < 1 || rec.limit > 20) {
+      return error("LARVA_BAD_INPUT", "limit must be an integer from 1 to 20.");
+    }
+    limit = rec.limit;
+  }
+
+  const toolName = typeof rec.tool_name === "string" && rec.tool_name.trim().length > 0 ? rec.tool_name.trim() : null;
+
+  let sinceTimestamp: number | null = null;
+  if (rec.since_timestamp !== undefined && rec.since_timestamp !== null) {
+    if (typeof rec.since_timestamp !== "string" || rec.since_timestamp.trim().length === 0) {
+      return error("LARVA_BAD_INPUT", "since_timestamp must be an ISO 8601 string.");
+    }
+    const parsed = Date.parse(rec.since_timestamp);
+    if (Number.isNaN(parsed)) {
+      return error("LARVA_BAD_INPUT", "since_timestamp is not a valid date string.");
+    }
+    sinceTimestamp = parsed;
+  }
+
+  let untilTimestamp: number | null = null;
+  if (rec.until_timestamp !== undefined && rec.until_timestamp !== null) {
+    if (typeof rec.until_timestamp !== "string" || rec.until_timestamp.trim().length === 0) {
+      return error("LARVA_BAD_INPUT", "until_timestamp must be an ISO 8601 string.");
+    }
+    const parsed = Date.parse(rec.until_timestamp);
+    if (Number.isNaN(parsed)) {
+      return error("LARVA_BAD_INPUT", "until_timestamp is not a valid date string.");
+    }
+    untilTimestamp = parsed;
+  }
+
+  const toolCallId = typeof rec.tool_call_id === "string" && rec.tool_call_id.trim().length > 0 ? rec.tool_call_id.trim() : null;
+
+  let disambiguationIndex: number | null = null;
+  if (rec.disambiguation_index !== undefined && rec.disambiguation_index !== null) {
+    if (typeof rec.disambiguation_index !== "number" || !Number.isInteger(rec.disambiguation_index) || rec.disambiguation_index < 0) {
+      return error("LARVA_BAD_INPUT", "disambiguation_index must be a non-negative integer.");
+    }
+    disambiguationIndex = rec.disambiguation_index;
+  }
+
+  const entryId = typeof rec.entry_id === "string" && rec.entry_id.trim().length > 0 ? rec.entry_id.trim() : null;
+
+  let segmentPart: LarvaActivityPart = "result";
+  if (rec.segment_part !== undefined && rec.segment_part !== null) {
+    if (rec.segment_part !== "args" && rec.segment_part !== "result") {
+      return error("LARVA_BAD_INPUT", "segment_part must be 'args' or 'result'.");
+    }
+    segmentPart = rec.segment_part;
+  }
+
+  let offset = 0;
+  if (rec.offset !== undefined && rec.offset !== null) {
+    if (typeof rec.offset !== "number" || !Number.isInteger(rec.offset) || rec.offset < 0) {
+      return error("LARVA_BAD_INPUT", "offset must be a non-negative integer.");
+    }
+    offset = rec.offset;
+  }
+
+  let length = 2000;
+  if (rec.length !== undefined && rec.length !== null) {
+    if (typeof rec.length !== "number" || !Number.isInteger(rec.length) || rec.length < 1 || rec.length > 4000) {
+      return error("LARVA_BAD_INPUT", "length must be an integer from 1 to 4000.");
+    }
+    length = rec.length;
+  }
+
+  const sourceVersion = typeof rec.source_version === "string" && rec.source_version.trim().length > 0 ? rec.source_version.trim() : null;
+
+  return {
+    sessionPath: validatedPath,
+    cursor,
+    limit,
+    toolName,
+    sinceTimestamp,
+    untilTimestamp,
+    toolCallId,
+    disambiguationIndex,
+    entryId,
+    segmentPart,
+    offset,
+    length,
+    sourceVersion,
+  };
+}
+
+type ActivityCursorPayload = {
+  v: 1;
+  p: string;
+  sid: string;
+  off: number;
+  h: string;
+  page_offset?: number;
+};
+
+function encodeActivityCursor(payload: ActivityCursorPayload): string {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+function decodeActivityCursor(raw: string, expectedPath: string): ActivityCursorPayload | LarvaError {
+  try {
+    const jsonStr = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(jsonStr) as unknown;
+    if (
+      !isRecord(parsed) ||
+      parsed.v !== 1 ||
+      typeof parsed.p !== "string" ||
+      typeof parsed.sid !== "string" ||
+      typeof parsed.off !== "number" ||
+      typeof parsed.h !== "string"
+    ) {
+      return error("LARVA_CURSOR_INVALID", "Invalid or malformed cursor payload.");
+    }
+    if (parsed.p !== expectedPath) {
+      return error("LARVA_CURSOR_INVALID", "Cursor session path does not match requested session path.");
+    }
+    return parsed as ActivityCursorPayload;
+  } catch {
+    return error("LARVA_CURSOR_INVALID", "Cursor cannot be decoded or parsed.");
+  }
+}
+
+interface ScannedToolCallInternal {
+  toolCallId: string;
+  toolName: string;
+  argsRaw: unknown;
+  argsText: string;
+  callTimestamp: string;
+  callTimestampMs: number;
+  entryId: string;
+  parentId: string | null;
+  contentIndex: number;
+  byteOffset: number;
+  lineNumber: number;
+}
+
+interface ScannedToolResultInternal {
+  toolCallId: string;
+  toolName: string;
+  contentText: string;
+  isError: boolean | null;
+  resultTimestamp: string;
+  entryId: string;
+  parentId: string | null;
+  byteOffset: number;
+  lineNumber: number;
+  upstreamTruncated?: boolean;
+}
+
+interface SessionScanSnapshot {
+  sessionId: string;
+  committedByteOffset: number;
+  consumedPrefixHash: string;
+  sourceVersion: string;
+  calls: ScannedToolCallInternal[];
+  results: ScannedToolResultInternal[];
+  diagnostics: LarvaActivityDiagnostic[];
+}
+
+function extractToolArgsText(rawArgs: unknown): string {
+  if (typeof rawArgs === "string") return rawArgs;
+  if (rawArgs === null || rawArgs === undefined) return "";
+  try {
+    return JSON.stringify(rawArgs);
+  } catch {
+    return String(rawArgs);
+  }
+}
+
+function extractToolResultContentText(rawContent: unknown, rawDetails?: unknown): { text: string; upstreamTruncated?: boolean } {
+  let text = "";
+  let upstreamTruncated: boolean | undefined = undefined;
+  if (typeof rawContent === "string") {
+    text = rawContent;
+  } else if (Array.isArray(rawContent)) {
+    text = rawContent
+      .map((block) => {
+        if (!block || typeof block !== "object") return "";
+        const rec = block as Record<string, unknown>;
+        if (rec.type === "text" && typeof rec.text === "string") return rec.text;
+        if (rec.type === "image") return "[image]";
+        return "";
+      })
+      .join("");
+  }
+  if (text.length === 0 && rawDetails !== undefined && rawDetails !== null) {
+    if (typeof rawDetails === "string") {
+      text = rawDetails;
+    } else if (isRecord(rawDetails) && typeof rawDetails.error === "string") {
+      text = rawDetails.error;
+    } else if (isRecord(rawDetails) && typeof rawDetails.message === "string") {
+      text = rawDetails.message;
+    }
+  }
+  if (isRecord(rawDetails) && rawDetails.truncated === true) {
+    upstreamTruncated = true;
+  }
+  return { text, upstreamTruncated };
+}
+
+function scanSessionActivityFile(
+  filePath: string,
+  cursor: ActivityCursorPayload | null,
+): SessionScanSnapshot | LarvaError {
+  let fd: number;
+  try {
+    fd = openSync(filePath, "r");
+  } catch {
+    return error("LARVA_BAD_INPUT", `Cannot open session file: ${filePath}`);
+  }
+
+  const stat = statSync(filePath);
+  const fileSize = stat.size;
+  if (fileSize === 0) {
+    closeSync(fd);
+    return error("LARVA_SESSION_INVALID", "Session file is empty.");
+  }
+
+  if (cursor !== null && fileSize < cursor.off) {
+    closeSync(fd);
+    return error("LARVA_CURSOR_STALE", "Session file was truncated (current size is smaller than cursor offset).");
+  }
+
+  const BUFFER_SIZE = 65536;
+  const buffer = Buffer.alloc(BUFFER_SIZE);
+  let leftover = Buffer.alloc(0);
+  let currentFileOffset = 0;
+  let committedByteOffset = 0;
+  let lineNumber = 0;
+  let sessionId = "";
+  const hasher = createHash("sha256");
+  const prefixHasherForCursor = cursor !== null ? createHash("sha256") : null;
+  let prefixBytesFed = 0;
+  let verifiedCursorPrefix = cursor === null;
+  let headerValidated = cursor === null;
+
+  const calls: ScannedToolCallInternal[] = [];
+  const results: ScannedToolResultInternal[] = [];
+  const diagnostics: LarvaActivityDiagnostic[] = [];
+
+  try {
+    let bytesRead = 0;
+    while ((bytesRead = readSync(fd, buffer, 0, BUFFER_SIZE, currentFileOffset)) > 0) {
+      const chunk = buffer.subarray(0, bytesRead);
+
+      if (prefixHasherForCursor !== null) {
+        const needed = cursor!.off - prefixBytesFed;
+        if (needed > 0) {
+          const toFeed = chunk.subarray(0, Math.min(chunk.length, needed));
+          prefixHasherForCursor.update(toFeed);
+          prefixBytesFed += toFeed.length;
+        }
+      }
+
+      const combined = Buffer.concat([leftover, chunk]);
+      currentFileOffset += bytesRead;
+
+      let lineStart = 0;
+      let newlineIdx = -1;
+
+      while ((newlineIdx = combined.indexOf(10, lineStart)) !== -1) {
+        const lineEnd = newlineIdx;
+        const lineBytes = combined.subarray(lineStart, lineEnd);
+        const lineByteLength = lineEnd - lineStart + 1;
+        const lineStartOffset = committedByteOffset;
+        committedByteOffset += lineByteLength;
+
+        hasher.update(combined.subarray(lineStart, lineEnd + 1));
+
+        lineStart = newlineIdx + 1;
+        lineNumber += 1;
+
+        const lineStr = lineBytes.toString("utf8").replace(/\r$/, "");
+        if (lineStr.trim().length === 0) continue;
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(lineStr);
+        } catch {
+          if (lineNumber === 1) {
+            return error("LARVA_BAD_INPUT", "File is not a valid Pi session JSONL: malformed session header at line 1.");
+          }
+          diagnostics.push({
+            kind: "malformed_json",
+            line_number: lineNumber,
+            byte_offset: lineStartOffset,
+            byte_length: lineByteLength,
+            message: `Interior line ${lineNumber} is not valid JSON.`,
+          });
+          continue;
+        }
+
+        if (!isRecord(parsed)) {
+          if (lineNumber === 1) {
+            return error("LARVA_BAD_INPUT", "File is not a valid Pi session JSONL: session header must be an object.");
+          }
+          diagnostics.push({
+            kind: "malformed_record",
+            line_number: lineNumber,
+            byte_offset: lineStartOffset,
+            message: `Line ${lineNumber} record is not an object.`,
+          });
+          continue;
+        }
+
+        if (lineNumber === 1) {
+          if (parsed.type !== "session") {
+            return error("LARVA_BAD_INPUT", "File is not a valid Pi session JSONL: missing session header.");
+          }
+          sessionId = typeof parsed.id === "string" ? parsed.id : "";
+          if (cursor !== null && cursor.sid !== sessionId) {
+            return error("LARVA_CURSOR_STALE", "Session file was replaced (session ID mismatch).");
+          }
+          headerValidated = true;
+          if (prefixHasherForCursor !== null && prefixBytesFed >= cursor!.off && !verifiedCursorPrefix) {
+            const currentPrefixHash = prefixHasherForCursor.digest("hex");
+            if (currentPrefixHash !== cursor!.h) {
+              return error("LARVA_CURSOR_STALE", "Session file prior contents changed or regrown after truncation.");
+            }
+            verifiedCursorPrefix = true;
+          }
+          continue;
+        }
+
+        if (headerValidated && prefixHasherForCursor !== null && prefixBytesFed >= cursor!.off && !verifiedCursorPrefix) {
+          const currentPrefixHash = prefixHasherForCursor.digest("hex");
+          if (currentPrefixHash !== cursor!.h) {
+            return error("LARVA_CURSOR_STALE", "Session file prior contents changed or regrown after truncation.");
+          }
+          verifiedCursorPrefix = true;
+        }
+
+        if (parsed.type === "compaction") {
+          continue;
+        }
+
+        if (parsed.type === "message") {
+          const msg = parsed.message;
+          if (!isRecord(msg)) {
+            diagnostics.push({
+              kind: "malformed_record",
+              line_number: lineNumber,
+              byte_offset: lineStartOffset,
+              message: `Message entry on line ${lineNumber} missing message payload.`,
+            });
+            continue;
+          }
+
+          const entryId = typeof parsed.id === "string" ? parsed.id : "";
+          const parentId = typeof parsed.parentId === "string" ? parsed.parentId : null;
+          const entryTimestamp = typeof parsed.timestamp === "string"
+            ? parsed.timestamp
+            : typeof msg.timestamp === "number"
+              ? new Date(msg.timestamp).toISOString()
+              : new Date().toISOString();
+          const entryTimestampMs = Date.parse(entryTimestamp) || 0;
+
+          if (msg.role === "assistant") {
+            if (Array.isArray(msg.content)) {
+              for (let cIdx = 0; cIdx < msg.content.length; cIdx += 1) {
+                const block = msg.content[cIdx];
+                if (isRecord(block) && block.type === "toolCall") {
+                  const callId = typeof block.id === "string" ? block.id : "";
+                  const toolName = typeof block.name === "string" ? block.name : "";
+                  const rawArgs = block.arguments;
+                  const argsText = extractToolArgsText(rawArgs);
+                  calls.push({
+                    toolCallId: callId,
+                    toolName,
+                    argsRaw: rawArgs,
+                    argsText,
+                    callTimestamp: entryTimestamp,
+                    callTimestampMs: entryTimestampMs,
+                    entryId,
+                    parentId,
+                    contentIndex: cIdx,
+                    byteOffset: lineStartOffset,
+                    lineNumber,
+                  });
+                }
+              }
+            }
+          } else if (msg.role === "toolResult") {
+            const toolCallId = typeof msg.toolCallId === "string" ? msg.toolCallId : "";
+            const toolName = typeof msg.toolName === "string" ? msg.toolName : "";
+            const isError = typeof msg.isError === "boolean" ? msg.isError : null;
+            const { text: contentText, upstreamTruncated } = extractToolResultContentText(msg.content, msg.details);
+            results.push({
+              toolCallId,
+              toolName,
+              contentText,
+              isError,
+              resultTimestamp: entryTimestamp,
+              entryId,
+              parentId,
+              byteOffset: lineStartOffset,
+              lineNumber,
+              upstreamTruncated,
+            });
+          }
+        }
+      }
+
+      leftover = combined.subarray(lineStart);
+    }
+
+    if (cursor !== null && !verifiedCursorPrefix) {
+      return error("LARVA_CURSOR_STALE", "Session file was truncated: committed offset not reached.");
+    }
+
+    if (leftover.length > 0) {
+      diagnostics.push({
+        kind: "unterminated_tail",
+        byte_offset: committedByteOffset,
+        byte_length: leftover.length,
+        message: "Pending unterminated tail bytes preserved without committing offset.",
+      });
+    }
+  } finally {
+    closeSync(fd);
+  }
+
+  const consumedPrefixHash = hasher.digest("hex");
+  const sourceVersion = `${sessionId}:${committedByteOffset}:${consumedPrefixHash.slice(0, 16)}`;
+
+  return {
+    sessionId,
+    committedByteOffset,
+    consumedPrefixHash,
+    sourceVersion,
+    calls,
+    results,
+    diagnostics,
+  };
+}
+
+function buildActivityItem(
+  call: ScannedToolCallInternal,
+  result: ScannedToolResultInternal | undefined,
+  diagnostics: LarvaActivityDiagnostic[],
+  updateType?: "new_call" | "late_result",
+): LarvaActivityItem {
+  const ARGS_PREVIEW_LIMIT = 200;
+  const RESULT_PREVIEW_LIMIT = 500;
+
+  const argsText = call.argsText;
+  const argsTruncated = argsText.length > ARGS_PREVIEW_LIMIT;
+  const argsPreview = argsTruncated ? argsText.slice(0, ARGS_PREVIEW_LIMIT) : argsText;
+
+  let resultStatus: "observed" | "none" | "incomplete" = "none";
+  let resultPreview: string | undefined = undefined;
+  let resultTruncated: boolean | undefined = undefined;
+  let resultTimestamp: string | undefined = undefined;
+  let resultLocation: LarvaActivityResultLocation | undefined = undefined;
+  let isError: boolean | null | undefined = null;
+  let resultTotalChars: number | undefined = undefined;
+
+  if (result !== undefined) {
+    resultStatus = "observed";
+    resultTimestamp = result.resultTimestamp;
+    resultLocation = {
+      entry_id: result.entryId,
+      parent_id: result.parentId,
+      byte_offset: result.byteOffset,
+      line_number: result.lineNumber,
+    };
+    isError = result.isError;
+    const resText = result.contentText;
+    resultTotalChars = resText.length;
+    resultTruncated = resText.length > RESULT_PREVIEW_LIMIT;
+    resultPreview = resultTruncated ? resText.slice(0, RESULT_PREVIEW_LIMIT) : resText;
+  } else {
+    const hasMalformed = diagnostics.some((d) => d.kind === "malformed_json" || d.kind === "malformed_record");
+    resultStatus = hasMalformed ? "incomplete" : "none";
+    isError = null;
+  }
+
+  return {
+    call_id: call.toolCallId,
+    tool_name: call.toolName,
+    call_timestamp: call.callTimestamp,
+    call_location: {
+      entry_id: call.entryId,
+      parent_id: call.parentId,
+      content_index: call.contentIndex,
+      byte_offset: call.byteOffset,
+      line_number: call.lineNumber,
+    },
+    args_preview: argsPreview,
+    args_truncated: argsTruncated,
+    args_total_chars: argsText.length,
+    result_status: resultStatus,
+    result_timestamp: resultTimestamp,
+    result_preview: resultPreview,
+    result_truncated: resultTruncated,
+    result_total_chars: resultTotalChars,
+    is_error: isError,
+    result_location: resultLocation,
+    update_type: updateType,
+  };
+}
+
+function renderActivityContent(details: LarvaSubagentActivityDetails): string {
+  if (details.status === "failed") {
+    return `${details.error?.code ?? "LARVA_ERROR"}: ${details.error?.message ?? "Activity inspection failed."}`;
+  }
+  if (details.status === "not_found") {
+    let text = `${details.error?.code ?? "LARVA_TOOL_CALL_NOT_FOUND"}: ${details.error?.message ?? "Tool call ID not found."}`;
+    if (details.diagnostics && details.diagnostics.length > 0) {
+      text += `\nInspection diagnostics (${details.diagnostics.length}):\n` + details.diagnostics.map((d) => `  - [${d.kind}] ${d.message}${d.line_number !== undefined ? ` (line ${d.line_number})` : ""}`).join("\n");
+    }
+    return text;
+  }
+  if (details.status === "ambiguous") {
+    const list = (details.candidates ?? []).map((c) => `  - Candidate ${c.index}: entry ${c.entry_id} (timestamp ${c.call_timestamp}, byte offset ${c.byte_offset}, content index ${c.content_index})`).join("\n");
+    return `Multiple candidate tool calls matched tool_call_id:\n${list}\nSpecify disambiguation_index (0..${(details.candidates?.length ?? 1) - 1}) or entry_id to select.`;
+  }
+  if (details.mode === "call_lookup" && details.call) {
+    const c = details.call;
+    const lines = [
+      `Tool Call: ${c.tool_name} [${c.call_id}]`,
+      `Session: ${details.session_path ?? ""}`,
+      `Timestamp: ${c.call_timestamp} | Location: entry ${c.call_location.entry_id}#${c.call_location.content_index}`,
+      `Arguments: ${c.args_preview}${c.args_truncated ? " (truncated)" : ""}`,
+      `Result Status: ${c.result_status}${c.is_error !== null && c.is_error !== undefined ? ` | Error: ${c.is_error}` : ""}`,
+    ];
+    if (c.result_preview !== undefined) {
+      lines.push(`Result Preview: ${c.result_preview}${c.result_truncated ? " (truncated)" : ""}`);
+    }
+    if (c.segment) {
+      const seg = c.segment;
+      lines.push(`Segment (${seg.part}): offset ${seg.offset}..${seg.offset + seg.length} of ${seg.total_chars} chars (has_more: ${seg.has_more})`);
+      lines.push("--- BEGIN SEGMENT ---");
+      lines.push(seg.text);
+      lines.push("--- END SEGMENT ---");
+    }
+    return lines.join("\n");
+  }
+
+  const items = details.items ?? [];
+  const lines = [
+    `Session Activity: ${details.session_path ?? ""}`,
+    `Snapshot: ${details.session_id ?? ""} | Calls in snapshot: ${details.total_calls_inspected ?? 0} | Showing: ${items.length}`,
+  ];
+  if (items.length === 0) {
+    lines.push("No recorded tool calls matching criteria.");
+  } else {
+    items.forEach((item, idx) => {
+      const errStr = item.is_error === null || item.is_error === undefined ? "" : item.is_error ? " [error]" : " [ok]";
+      const updateTag = item.update_type ? ` [${item.update_type}]` : "";
+      lines.push(`${idx + 1}. [${item.call_id}] ${item.tool_name} (${item.call_timestamp})${updateTag}`);
+      lines.push(`   args: ${item.args_preview}${item.args_truncated ? "…" : ""}`);
+      if (item.result_status === "observed") {
+        lines.push(`   result (${item.result_status}${errStr}): ${item.result_preview ?? ""}${item.result_truncated ? "…" : ""}`);
+      } else {
+        lines.push(`   result: [${item.result_status}]`);
+      }
+    });
+  }
+  if (details.cursor) {
+    lines.push(`Cursor: ${details.cursor}`);
+  }
+  if (details.has_more) {
+    lines.push(`(More activity available via cursor)`);
+  }
+  if (details.diagnostics && details.diagnostics.length > 0) {
+    lines.push(`Diagnostics (${details.diagnostics.length}):`);
+    for (const d of details.diagnostics) {
+      lines.push(`  - [${d.kind}] ${d.message}${d.line_number !== undefined ? ` (line ${d.line_number})` : ""}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+function enforceResponseBudget(result: LarvaSubagentActivityResult, maxBytes = 8192): LarvaSubagentActivityResult {
+  let serialized = JSON.stringify(result);
+  let bytes = Buffer.byteLength(serialized, "utf8");
+  if (bytes <= maxBytes) return result;
+
+  const res: LarvaSubagentActivityResult = JSON.parse(serialized);
+
+  const previewLimits = [250, 150, 80, 40];
+  for (const maxLen of previewLimits) {
+    if (res.details.items) {
+      for (const item of res.details.items) {
+        if (item.args_preview && item.args_preview.length > maxLen) {
+          item.args_preview = item.args_preview.slice(0, maxLen) + "…";
+          item.args_truncated = true;
+        }
+        if (item.result_preview && item.result_preview.length > maxLen) {
+          item.result_preview = item.result_preview.slice(0, maxLen) + "…";
+          item.result_truncated = true;
+        }
+      }
+    }
+    if (res.details.call) {
+      if (res.details.call.args_preview && res.details.call.args_preview.length > maxLen) {
+        res.details.call.args_preview = res.details.call.args_preview.slice(0, maxLen) + "…";
+        res.details.call.args_truncated = true;
+      }
+      if (res.details.call.result_preview && res.details.call.result_preview.length > maxLen) {
+        res.details.call.result_preview = res.details.call.result_preview.slice(0, maxLen) + "…";
+        res.details.call.result_truncated = true;
+      }
+    }
+    res.content = [{ type: "text", text: renderActivityContent(res.details) }];
+    serialized = JSON.stringify(res);
+    bytes = Buffer.byteLength(serialized, "utf8");
+    if (bytes <= maxBytes) return res;
+  }
+
+  if (res.details.items && res.details.items.length > 1) {
+    while (res.details.items.length > 1 && bytes > maxBytes) {
+      res.details.items.pop();
+      res.details.has_more = true;
+      res.content = [{ type: "text", text: renderActivityContent(res.details) }];
+      serialized = JSON.stringify(res);
+      bytes = Buffer.byteLength(serialized, "utf8");
+    }
+    if (bytes <= maxBytes) return res;
+  }
+
+  if (res.details.call?.segment) {
+    while (res.details.call.segment.text.length > 100 && bytes > maxBytes) {
+      const cut = Math.floor(res.details.call.segment.text.length / 2);
+      res.details.call.segment.text = res.details.call.segment.text.slice(0, cut);
+      res.details.call.segment.length = cut;
+      res.details.call.segment.has_more = true;
+      res.details.call.segment.continuation_offset = res.details.call.segment.offset + cut;
+      res.content = [{ type: "text", text: renderActivityContent(res.details) }];
+      serialized = JSON.stringify(res);
+      bytes = Buffer.byteLength(serialized, "utf8");
+    }
+    if (bytes <= maxBytes) return res;
+  }
+
+  return res;
+}
+
+export async function larva_subagent_activity(
+  input?: unknown,
+  ctx?: { env?: RuntimeEnv },
+): Promise<LarvaSubagentActivityResult> {
+  const env = currentEnv(ctx);
+  const parsed = parseActivityInput(input, env);
+  if (isLarvaError(parsed)) {
+    const errorDetails: LarvaSubagentActivityDetails = {
+      status: "failed",
+      error: parsed,
+    };
+    return {
+      content: [{ type: "text", text: `${parsed.code}: ${parsed.message}` }],
+      details: errorDetails,
+      isError: true,
+    };
+  }
+
+  let decodedCursor: ActivityCursorPayload | null = null;
+  if (parsed.cursor !== null) {
+    const dec = decodeActivityCursor(parsed.cursor, parsed.sessionPath);
+    if (isLarvaError(dec)) {
+      const errorDetails: LarvaSubagentActivityDetails = {
+        status: "failed",
+        session_path: parsed.sessionPath,
+        error: dec,
+      };
+      return {
+        content: [{ type: "text", text: `${dec.code}: ${dec.message}` }],
+        details: errorDetails,
+        isError: true,
+      };
+    }
+    decodedCursor = dec;
+  }
+
+  const snapshot = scanSessionActivityFile(parsed.sessionPath, decodedCursor);
+  if (isLarvaError(snapshot)) {
+    const errorDetails: LarvaSubagentActivityDetails = {
+      status: "failed",
+      session_path: parsed.sessionPath,
+      error: snapshot,
+    };
+    return {
+      content: [{ type: "text", text: `${snapshot.code}: ${snapshot.message}` }],
+      details: errorDetails,
+      isError: true,
+    };
+  }
+
+  // Exact Tool Call Lookup
+  if (parsed.toolCallId !== null) {
+    const matchingCalls = snapshot.calls.filter((c) => c.toolCallId === parsed.toolCallId);
+    if (matchingCalls.length === 0) {
+      const hasMalformed = snapshot.diagnostics.some((d) => d.kind === "malformed_json" || d.kind === "malformed_record");
+      const err = error(
+        "LARVA_TOOL_CALL_NOT_FOUND",
+        hasMalformed
+          ? `Tool call ID "${parsed.toolCallId}" not found in inspected records (warning: inspection was incomplete due to malformed lines).`
+          : `Tool call ID "${parsed.toolCallId}" not found in session after complete inspection.`,
+      );
+      const details: LarvaSubagentActivityDetails = {
+        status: "not_found",
+        session_id: snapshot.sessionId,
+        session_path: parsed.sessionPath,
+        mode: "call_lookup",
+        snapshot_bytes: snapshot.committedByteOffset,
+        total_calls_inspected: snapshot.calls.length,
+        diagnostics: snapshot.diagnostics,
+        error: err,
+      };
+      return enforceResponseBudget({
+        content: [{ type: "text", text: renderActivityContent(details) }],
+        details,
+        isError: false,
+      });
+    }
+
+    if (matchingCalls.length > 1 && parsed.disambiguationIndex === null && parsed.entryId === null) {
+      const candidates: LarvaActivityAmbiguousCandidate[] = matchingCalls.map((c, i) => ({
+        index: i,
+        entry_id: c.entryId,
+        parent_id: c.parentId,
+        call_timestamp: c.callTimestamp,
+        byte_offset: c.byteOffset,
+        content_index: c.contentIndex,
+      }));
+      const details: LarvaSubagentActivityDetails = {
+        status: "ambiguous",
+        session_id: snapshot.sessionId,
+        session_path: parsed.sessionPath,
+        mode: "call_lookup",
+        snapshot_bytes: snapshot.committedByteOffset,
+        total_calls_inspected: snapshot.calls.length,
+        candidates,
+        diagnostics: snapshot.diagnostics,
+      };
+      return enforceResponseBudget({
+        content: [{ type: "text", text: renderActivityContent(details) }],
+        details,
+        isError: false,
+      });
+    }
+
+    let selectedCall: ScannedToolCallInternal = matchingCalls[0];
+    if (matchingCalls.length > 1) {
+      if (parsed.disambiguationIndex !== null) {
+        if (parsed.disambiguationIndex >= matchingCalls.length) {
+          const err = error("LARVA_BAD_INPUT", `disambiguation_index ${parsed.disambiguationIndex} out of range (0..${matchingCalls.length - 1}).`);
+          return {
+            content: [{ type: "text", text: `${err.code}: ${err.message}` }],
+            details: { status: "failed", error: err },
+            isError: true,
+          };
+        }
+        selectedCall = matchingCalls[parsed.disambiguationIndex];
+      } else if (parsed.entryId !== null) {
+        const found = matchingCalls.find((c) => c.entryId === parsed.entryId);
+        if (!found) {
+          const err = error("LARVA_BAD_INPUT", `No candidate found matching entry_id "${parsed.entryId}".`);
+          return {
+            content: [{ type: "text", text: `${err.code}: ${err.message}` }],
+            details: { status: "failed", error: err },
+            isError: true,
+          };
+        }
+        selectedCall = found;
+      }
+    }
+
+    if (parsed.sourceVersion !== null && parsed.sourceVersion !== snapshot.sourceVersion) {
+      const err = error("LARVA_CURSOR_STALE", "Session file changed; source version does not match expected version.");
+      return {
+        content: [{ type: "text", text: `${err.code}: ${err.message}` }],
+        details: { status: "failed", error: err },
+        isError: true,
+      };
+    }
+
+    const matchingResult = snapshot.results.find((r) => r.toolCallId === selectedCall.toolCallId);
+    const item = buildActivityItem(selectedCall, matchingResult, snapshot.diagnostics);
+
+    const targetText = parsed.segmentPart === "args" ? selectedCall.argsText : (matchingResult ? matchingResult.contentText : "");
+    const segmentText = targetText.slice(parsed.offset, parsed.offset + parsed.length);
+    const hasMore = parsed.offset + segmentText.length < targetText.length;
+    const continuationOffset = hasMore ? parsed.offset + segmentText.length : undefined;
+
+    const segment: LarvaActivitySegment = {
+      part: parsed.segmentPart,
+      text: segmentText,
+      offset: parsed.offset,
+      length: segmentText.length,
+      total_chars: targetText.length,
+      has_more: hasMore,
+      continuation_offset: continuationOffset,
+      source_version: snapshot.sourceVersion,
+      upstream_truncated: matchingResult?.upstreamTruncated,
+    };
+
+    const callDetail: LarvaActivityCallDetail = {
+      call_id: item.call_id,
+      tool_name: item.tool_name,
+      call_timestamp: item.call_timestamp,
+      call_location: item.call_location,
+      args_preview: item.args_preview,
+      args_truncated: item.args_truncated,
+      args_total_chars: item.args_total_chars,
+      result_status: item.result_status === "present_omitted" ? "observed" : item.result_status,
+      result_timestamp: item.result_timestamp,
+      result_preview: item.result_preview,
+      result_truncated: item.result_truncated,
+      result_total_chars: item.result_total_chars,
+      is_error: item.is_error,
+      result_location: item.result_location,
+      segment,
+    };
+
+    const details: LarvaSubagentActivityDetails = {
+      status: "success",
+      session_id: snapshot.sessionId,
+      session_path: parsed.sessionPath,
+      mode: "call_lookup",
+      snapshot_bytes: snapshot.committedByteOffset,
+      total_calls_inspected: snapshot.calls.length,
+      call: callDetail,
+      diagnostics: snapshot.diagnostics,
+    };
+
+    return enforceResponseBudget({
+      content: [{ type: "text", text: renderActivityContent(details) }],
+      details,
+      isError: false,
+    });
+  }
+
+  // Recent / Incremental Mode
+  const isMatchFilter = (call: ScannedToolCallInternal): boolean => {
+    if (parsed.toolName !== null && call.toolName !== parsed.toolName) return false;
+    if (parsed.sinceTimestamp !== null && call.callTimestampMs < parsed.sinceTimestamp) return false;
+    if (parsed.untilTimestamp !== null && call.callTimestampMs > parsed.untilTimestamp) return false;
+    return true;
+  };
+
+  const resultsByCallId = new Map<string, ScannedToolResultInternal>();
+  for (const r of snapshot.results) {
+    if (!resultsByCallId.has(r.toolCallId)) {
+      resultsByCallId.set(r.toolCallId, r);
+    }
+  }
+
+  if (decodedCursor === null) {
+    const matchingCalls = snapshot.calls.filter(isMatchFilter);
+    const selectedCalls = matchingCalls.slice(-parsed.limit);
+    const items = selectedCalls.map((c) =>
+      buildActivityItem(c, resultsByCallId.get(c.toolCallId), snapshot.diagnostics),
+    );
+
+    const cursorPayload: ActivityCursorPayload = {
+      v: 1,
+      p: parsed.sessionPath,
+      sid: snapshot.sessionId,
+      off: snapshot.committedByteOffset,
+      h: snapshot.consumedPrefixHash,
+    };
+
+    const details: LarvaSubagentActivityDetails = {
+      status: "success",
+      session_id: snapshot.sessionId,
+      session_path: parsed.sessionPath,
+      mode: "recent",
+      snapshot_bytes: snapshot.committedByteOffset,
+      total_calls_inspected: snapshot.calls.length,
+      items,
+      cursor: encodeActivityCursor(cursorPayload),
+      has_more: false,
+      diagnostics: snapshot.diagnostics,
+    };
+
+    return enforceResponseBudget({
+      content: [{ type: "text", text: renderActivityContent(details) }],
+      details,
+      isError: false,
+    });
+  }
+
+  // Incremental mode using cursor
+  const prevOff = decodedCursor.off;
+
+  // 1. Late results: result was written at byteOffset >= prevOff for a call written before prevOff
+  const lateResultItems: LarvaActivityItem[] = [];
+  const lateSeenCallIds = new Set<string>();
+  for (const r of snapshot.results) {
+    if (r.byteOffset >= prevOff) {
+      const parentCall = snapshot.calls.find((c) => c.toolCallId === r.toolCallId);
+      if (parentCall && parentCall.byteOffset < prevOff && isMatchFilter(parentCall)) {
+        if (!lateSeenCallIds.has(parentCall.toolCallId)) {
+          lateSeenCallIds.add(parentCall.toolCallId);
+          lateResultItems.push(buildActivityItem(parentCall, r, snapshot.diagnostics, "late_result"));
+        }
+      }
+    }
+  }
+
+  // 2. New calls: calls written at byteOffset >= prevOff
+  const newCallItems: LarvaActivityItem[] = [];
+  for (const c of snapshot.calls) {
+    if (c.byteOffset >= prevOff && isMatchFilter(c)) {
+      newCallItems.push(buildActivityItem(c, resultsByCallId.get(c.toolCallId), snapshot.diagnostics, "new_call"));
+    }
+  }
+
+  // Combine and sort stable
+  const allUpdates = [...lateResultItems, ...newCallItems];
+  allUpdates.sort((a, b) => {
+    if (a.call_location.byte_offset !== b.call_location.byte_offset) {
+      return a.call_location.byte_offset - b.call_location.byte_offset;
+    }
+    return a.call_location.content_index - b.call_location.content_index;
+  });
+
+  const pageOffset = decodedCursor.page_offset ?? 0;
+  const pagedItems = allUpdates.slice(pageOffset, pageOffset + parsed.limit);
+  const nextOffset = pageOffset + pagedItems.length;
+  const hasMore = nextOffset < allUpdates.length;
+
+  const nextCursorPayload: ActivityCursorPayload = {
+    v: 1,
+    p: parsed.sessionPath,
+    sid: snapshot.sessionId,
+    off: hasMore ? prevOff : snapshot.committedByteOffset,
+    h: hasMore ? decodedCursor.h : snapshot.consumedPrefixHash,
+    page_offset: hasMore ? nextOffset : undefined,
+  };
+
+  const details: LarvaSubagentActivityDetails = {
+    status: "success",
+    session_id: snapshot.sessionId,
+    session_path: parsed.sessionPath,
+    mode: "recent",
+    snapshot_bytes: snapshot.committedByteOffset,
+    total_calls_inspected: snapshot.calls.length,
+    items: pagedItems,
+    cursor: encodeActivityCursor(nextCursorPayload),
+    has_more: hasMore,
+    diagnostics: snapshot.diagnostics,
+  };
+
+  return enforceResponseBudget({
+    content: [{ type: "text", text: renderActivityContent(details) }],
+    details,
+    isError: false,
+  });
+}
+
 export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
   const existingRegistration = (globalThis as Record<symbol, { entry: string } | undefined>)[LARVA_STATEFUL_REGISTRATION];
   if (existingRegistration !== undefined && existingRegistration.entry !== LARVA_EXTENSION_ENTRY_PATH) {
@@ -11091,6 +12251,35 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     parameters: cancelSchema,
     handler: async (input: unknown) => larva_subagent_cancel(input, { env }),
     execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_cancel(input, withRuntimeEnv(toolCtx ?? ctx, env)),
+  });
+  const activitySchema = {
+    type: "object",
+    properties: {
+      session_path: { type: "string", description: "Exact absolute path to the Pi session .jsonl file." },
+      task_id: { type: "string", description: "Optional alias for session_path (exact absolute child session .jsonl path)." },
+      cursor: { type: "string", description: "Opaque cursor from a previous activity response for incremental updates." },
+      limit: { type: "integer", minimum: 1, maximum: 20, default: 5, description: "Maximum number of recent tool calls to return (default 5, max 20)." },
+      tool_name: { type: "string", description: "Optional exact tool name filter." },
+      since_timestamp: { type: "string", description: "Optional ISO 8601 timestamp; include calls on or after this time." },
+      until_timestamp: { type: "string", description: "Optional ISO 8601 timestamp; include calls on or before this time." },
+      tool_call_id: { type: "string", description: "Optional exact toolCallId to look up beyond the recent window." },
+      disambiguation_index: { type: "integer", minimum: 0, description: "Zero-based candidate index when multiple tool calls share the same tool_call_id." },
+      entry_id: { type: "string", description: "Optional entry ID to disambiguate when duplicate tool_call_ids exist." },
+      segment_part: { enum: ["args", "result"], description: "For exact tool_call_id lookup: segment to inspect ('args' or 'result', default 'result')." },
+      offset: { type: "integer", minimum: 0, description: "Character offset (Unicode code points/units) for segment reading (default 0)." },
+      length: { type: "integer", minimum: 1, maximum: 4000, description: "Maximum characters to return for the segment (default 2000, max 4000)." },
+      source_version: { type: "string", description: "Optional source version token to ensure segment reads bind to the same unchanged session file." },
+    },
+    additionalProperties: false,
+  };
+  pi.registerTool?.({
+    name: "larva_subagent_activity",
+    label: "Larva Subagent Activity",
+    description: "Read-only compact inspection of recorded tool activity from an authorized historical Pi session .jsonl file. Supports recent activity with associated results, incremental continuation with late results, and exact tool_call_id expansion with bounded segment reconstruction.",
+    inputSchema: activitySchema,
+    parameters: activitySchema,
+    handler: async (input: unknown) => larva_subagent_activity(input, { env }),
+    execute: async (_toolCallId, input, _signal, _onUpdate, toolCtx) => larva_subagent_activity(input, withRuntimeEnv(toolCtx ?? ctx, env)),
   });
   registerAgentPersonaSwitchTools(ctx, pi);
   const initialRuntimeCtx = withRuntimeEnv(ctx, env);

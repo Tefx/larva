@@ -1407,6 +1407,80 @@ not child output, and must not send agents to `status` to retrieve output.
 `wait(return_when: "any")`: fewer arguments, identical output model, and the same
 internal implementation path. It exists as a compact readiness verb only; it must
 not grow independent semantics.
+
+### `larva_subagent_activity(session_path, task_id?, cursor?, limit?, tool_name?, since_timestamp?, until_timestamp?, tool_call_id?, disambiguation_index?, entry_id?, segment_part?, offset?, length?, source_version?)`
+
+Read-only compact inspection of recorded tool activity from an exact, authorized
+historical Pi session `.jsonl` file.
+
+#### Design and Authority
+- **No registry prerequisite**: Works on any authorized historical Pi session `.jsonl`
+  path, independent of parent registry state, active subagent runs, or childSessionRoot.
+- **Pure read-only**: Does not modify session files, consume callbacks, mutate
+  subagent presentation or event logs, reset watchdogs, or spawn child processes.
+- **Evidence semantics**: Logged tool calls and arguments are recorded historical
+  evidence, not proof of execution, post-hook arguments, system effects, task
+  completion, or acceptance.
+
+#### Modes
+
+1. **Recent mode (default)**: Returns a small bounded selection of recorded calls
+   with associated results.
+   - `limit`: Integer from 1 to 20 (default 5).
+   - `tool_name`: Exact string filter on tool name.
+   - `since_timestamp` / `until_timestamp`: ISO 8601 strings for timezone-qualified
+     timestamp range filtering.
+   - Ordering: Stable ordering based on line start byte offset followed by assistant
+     content array index. Timestamps need not be monotonic or unique.
+   - Previews: Argument preview is bounded to 200 characters; result preview to 500 characters.
+
+2. **Incremental continuation**: Passing an opaque `cursor` returns subsequent
+   activity from the committed snapshot boundary:
+   - Delivers new tool calls arriving after the prior snapshot.
+   - Delivers late results arriving for older calls, including calls outside the prior
+     tail window.
+   - Paging: Unreturned updates or siblings within a single assistant message are
+     never skipped or dropped.
+   - Cursors are self-contained and survive parent process restarts.
+   - Detects file replacement (session ID mismatch), truncation (file size smaller than
+     committed offset), and truncation-then-regrowth with altered prior contents
+     (consumed-prefix SHA-256 digest mismatch). Stale cursors fail safely with
+     `LARVA_CURSOR_STALE`.
+
+3. **Exact toolCallId lookup**: Extends beyond the recent window using `tool_call_id`.
+   - Locates the tool call anywhere in the session file.
+   - Duplicate/ambiguous IDs: Returns candidate provenance (`index`, `entry_id`,
+     `call_timestamp`, `byte_offset`, `content_index`) with status `"ambiguous"`.
+     Callers disambiguate using `disambiguation_index` or `entry_id`.
+   - Segment reconstruction: Allows inspecting large argument or result payloads in
+     bounded chunks (`segment_part: "args" | "result"`, `offset: number`, `length: number`).
+     Continued chunks bind to the session's source version token (`source_version`),
+     reusing the prefix validation mechanism.
+   - Segment reconstruction covers data saved in the session, not content already lost
+     through upstream truncation (reported via `upstream_truncated: true`).
+
+#### Output Bounds and Anti-Slop
+- Hard whole-response ceiling of 8192 UTF-8 bytes for the entire serialized tool
+  response (including text content, details object, diagnostics, and cursors).
+- Previews and item counts shrink dynamically when payloads approach the ceiling.
+- Model-visible activity text is rendered in `content`; `details` holds structured
+  metadata without duplicating full payloads.
+
+#### Error and Partial Semantics
+- Non-existent session: `LARVA_SESSION_NOT_FOUND`.
+- Empty file: `LARVA_SESSION_INVALID`.
+- Missing or malformed session header at line 1: `LARVA_BAD_INPUT`.
+- Interior malformed JSON: Bounded diagnostic with line number and byte offset;
+  remaining valid records remain readable.
+- Unterminated tail: Pending bytes lacking a final newline are preserved uncommitted
+  without advancing the cursor offset; committed records remain readable.
+- Missing call ID: Reported as `LARVA_TOOL_CALL_NOT_FOUND` only after complete
+  inspection (or noted as incomplete if interior malformed lines were encountered).
+
+#### Suggested External Orchestrator Guidance
+Prefer bounded `larva_subagent_activity` on the exact session path; expand by call ID
+for a concrete question; retain lifecycle, callback, and acceptance authority; and use
+bounded manual parsing only when the tool is unavailable.
 ## Subagent Console
 The TUI Subagent Console is an overlay over adapter-local presentation state. The
 only user command is `/larva-subagent`; the former log alias has been removed.

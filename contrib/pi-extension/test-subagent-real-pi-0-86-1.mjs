@@ -9,6 +9,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+for (const key of Object.keys(process.env)) {
+  if (/^(LARVA_|PI_)/.test(key) && !key.startsWith("LARVA_TEST_")) delete process.env[key];
+}
+
 const piCandidates = [
   "/opt/homebrew/bin/pi",
   "/usr/local/bin/pi",
