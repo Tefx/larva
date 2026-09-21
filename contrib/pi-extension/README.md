@@ -1230,6 +1230,34 @@ behavior. `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gat
 records runtime hard-gate provenance; mock-only or unavailable Pi/TUI evidence
 must be reported as unsupported or blocked rather than as live support.
 
+## Read-only historical activity
+
+`larva_subagent_activity({session_path: "/absolute/history.jsonl", limit: 5})`
+reads recorded calls/results without requiring a live child-registry entry.
+Continue with the returned `cursor`; expand a concrete `tool_call_id` using
+`segment_part`, then its `continuation_offset` and `source_version`.
+
+The model receives one JSON payload in `content`; `details` contains only status.
+The complete response is capped at 8192 UTF-8 bytes, including metadata, errors
+and segments. Segments reconstruct saved arguments JSON or the entire saved
+result-message JSON, including structured details. Reading does not operate on
+children, callbacks, lifecycle events or watchdog timers.
+
+The shipped `activity.ts` module owns only the file descriptor and bounded
+per-request scan state. It uses async 64KiB reads, bounded joins and consumed-prefix
+validation; large JSONL records remain intact. See the
+[activity interface and limitations](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#larva_subagent_activity)
+for filters, exact provenance, UTF-16 offsets, partial/error semantics and I/O costs.
+
+`test-subagent-activity-runtime.mjs` covers reader regressions;
+`scripts/pi-subagent-activity-native.mjs` executes the registered tool through
+native Pi, reconstructs both large parts, continues in a fresh parent, and reads a
+real pending/stalled child through its unchanged 120-second watchdog callback.
+Both participate in `tests/shell/test_pi_subagent_activity.py`. Activity delivery
+was also exercised on Node 26.8.2 with locked Pi 0.85.1; the native baseline above
+remains Node 26.7.0. No installed Pi or global Node change is required.
+
+
 ## `larva_subagent` custom tool
 
 The accepted design basis for the implemented async subagent surface is

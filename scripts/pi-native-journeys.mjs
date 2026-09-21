@@ -340,7 +340,7 @@ async function runFailures(f, evidence) {
   const copy = join(f.root, "missing-preload-package");
   await mkdir(copy);
   const source = join(ROOT, "contrib/pi-extension");
-  for (const file of ["larva.ts", "package.json"]) await copyFile(join(source, file), join(copy, file));
+  for (const file of ["larva.ts", "activity.ts", "package.json"]) await copyFile(join(source, file), join(copy, file));
   await symlink(join(source, "node_modules"), join(copy, "node_modules"));
   await writeFile(join(f.agent, "settings.json"), JSON.stringify({ ...f.settings, packages: [copy] }));
   const p = new NativeRpc(f, ["--larva-persona", "ok"]);
@@ -510,7 +510,7 @@ async function runInstalledLoading(f, evidence) {
   const source = join(ROOT, "contrib/pi-extension");
   const copy = join(f.root, "installed-package");
   await mkdir(copy);
-  for (const name of ["larva.ts", "child-rpc-frame-preload.mjs", "package.json"]) await copyFile(join(source, name), join(copy, name));
+  for (const name of ["larva.ts", "activity.ts", "child-rpc-frame-preload.mjs", "package.json"]) await copyFile(join(source, name), join(copy, name));
   await symlink(join(source, "node_modules"), join(copy, "node_modules"));
   await writeFile(join(f.agent, "settings.json"), JSON.stringify({ ...f.settings, packages: [] }));
   const install = await execute(process.execPath, [CLI, "install", copy], { env: f.env, cwd: f.cwd });

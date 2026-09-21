@@ -1408,93 +1408,157 @@ not child output, and must not send agents to `status` to retrieve output.
 internal implementation path. It exists as a compact readiness verb only; it must
 not grow independent semantics.
 
-### `larva_subagent_activity(session_path, task_id?, cursor?, limit?, tool_name?, since_timestamp?, until_timestamp?, tool_call_id?, disambiguation_index?, entry_id?, segment_part?, offset?, length?, source_version?)`
+### `larva_subagent_activity`
 
-Read-only compact inspection of recorded tool activity from an exact, authorized
-historical Pi session `.jsonl` file.
+Read recorded tool activity from one exact, authorized absolute Pi session
+`.jsonl` path. Historical files need no process-local registry entry or current
+child-root membership. This reader accepts session format versions 2 and 3;
+other versions return `LARVA_SESSION_INVALID` without migration or repair.
+Existing host tool/read authorization still applies. Control/resume tools retain
+their separate restrictions.
 
-#### Design and Authority
-- **No registry prerequisite**: Works on any authorized historical Pi session `.jsonl`
-  path, independent of parent registry state, active subagent runs, or childSessionRoot.
-- **Pure read-only**: Does not modify session files, consume callbacks, mutate
-  subagent presentation or event logs, reset watchdogs, or spawn child processes.
-- **Evidence semantics**: Logged tool calls and arguments are recorded historical
-  evidence, not proof of execution, post-hook arguments, system effects, task
-  completion, or acceptance.
+#### Inputs and ordering
 
-#### Modes
+- Supply `session_path`, or the identical exact path as `task_id`. Fuzzy selectors,
+  relative paths, unknown keys, mistyped values and cleaned-up selectors are rejected.
+- Recent mode: `limit` defaults to 5, maximum 20; `tool_name` matches exactly.
+  `since_timestamp` and `until_timestamp` are inclusive timezone-qualified ISO
+  timestamps. A call matches when its recorded entry timestamp OR an associated
+  result entry timestamp falls inside the range. `matched_by` identifies the
+  match; original message timestamps are also retained when present. Timestamps
+  never determine ordering.
+- A fresh read chooses the last matching calls in file-byte/content-index order.
+  Older calls outside that window remain available by exact ID. Budget-induced
+  paging retains every sibling in the selected window.
+- Pass `cursor` with the same filters to finish a frozen page, then receive new
+  calls and results for old calls, including calls outside the previous tail.
+  Updates are ordered by their event byte position: call position for new calls,
+  result position for late results. A new call includes results already in that
+  snapshot; each subsequently recorded result is a separate late update.
+  Appends made during paging wait for the next incremental snapshot.
+- Exact lookup uses `tool_call_id` without recent filters/cursor. Duplicate IDs
+  return `status: ambiguous`, at most five candidate locations, and the total
+  count. `disambiguation_index` selects by zero-based file order even beyond the
+  displayed candidates; alternatively `entry_id` must identify exactly one call.
+  Duplicate IDs correlate results through recorded ancestry rather than first or
+  last write. Unresolvable associations are explicitly ambiguous. Multiple
+  associated results expose candidates and `result_index` for exact expansion.
+- Detail: `segment_part` is `args` or `result` (default); `offset` defaults to 0;
+  `length` defaults to 2000, maximum 4000 **UTF-16 code units**. Arguments are the
+  JSON serialization of the saved arguments value. Results are the JSON
+  serialization of the **entire saved toolResult message**, including content,
+  structured details, images and recorded error/usage fields. This deliberately
+  avoids a lossy plain-text projection. Join `segment.text` values before parsing
+  reconstructed JSON; a chunk can split a surrogate pair.
+- Follow `segment.continuation_offset` with its `source_version`; offsets above
+  zero require that token. It binds the exact call/part/result selection, file
+  identity and unchanged consumed prefix. It freezes the original snapshot, so
+  later appends do not invalidate an otherwise unchanged segment source.
 
-1. **Recent mode (default)**: Returns a small bounded selection of recorded calls
-   with associated results.
-   - `limit`: Integer from 1 to 20 (default 5).
-   - `tool_name`: Exact string filter on tool name.
-   - `since_timestamp` / `until_timestamp`: ISO 8601 strings for timezone-qualified
-     timestamp range filtering.
-   - Ordering: Stable ordering based on line start byte offset followed by assistant
-     content array index. Timestamps need not be monotonic or unique.
-   - Previews: Argument preview is bounded to 200 characters; result preview to 500 characters.
+```json
+{"session_path":"/absolute/history.jsonl","limit":5}
+```
 
-2. **Incremental continuation**: Passing an opaque `cursor` returns subsequent
-   activity from the committed snapshot boundary:
-   - Delivers new tool calls arriving after the prior snapshot.
-   - Delivers late results arriving for older calls, including calls outside the prior
-     tail window. Also matches older calls whose results arrived in the requested time
-     window (`matched_by: "result_timestamp"`).
-   - Paging: Unreturned updates or siblings within a single assistant message are
-     never skipped or dropped. Paging binds to a frozen snapshot offset (`snapshot_off`),
-     so concurrent appends between pages cannot shift offsets, insert before page cursors,
-     or duplicate/drop activity.
-   - Cursors are self-contained and survive parent process restarts.
-   - Cursors bind the filter query (`tool_name`, `since_timestamp`, `until_timestamp`).
-     Calling with a mismatched filter returns `LARVA_CURSOR_INVALID`.
-   - Detects file replacement via device/inode identity and session ID mismatch,
-     truncation (file size smaller than committed offset), and truncation-then-regrowth
-     with altered prior contents (consumed-prefix SHA-256 digest mismatch). Stale cursors
-     fail safely with `LARVA_CURSOR_STALE`.
+```json
+{"session_path":"/absolute/history.jsonl","cursor":"<returned cursor>","limit":5}
+```
 
-3. **Exact toolCallId lookup**: Extends beyond the recent window using `tool_call_id`.
-   - Locates the tool call anywhere in the session file.
-   - Duplicate/ambiguous IDs: Returns candidate provenance (`index`, `entry_id`,
-     `call_timestamp`, `byte_offset`, `content_index`) with status `"ambiguous"`.
-     Callers disambiguate using `disambiguation_index` or `entry_id`. Does not falsely
-     attach another branch's result to a duplicate call.
-   - Segment reconstruction: Allows inspecting large argument or result payloads in
-     bounded chunks (`segment_part: "args" | "result"`, `offset: number`, `length: number`).
-     Offset and length are measured in UTF-16 code units (JavaScript string indices).
-     Continued chunks bind to the session's source version token (`source_version`),
-     reusing the prefix validation mechanism.
-   - Segment reconstruction covers data saved in the session, not content already lost
-     through upstream truncation (reported via `upstream_truncated: true`).
-   - Single-copy payload contract: Segment text is placed in model-visible `content`
-     inside delimiter markers; `details.call.segment` retains range, continuation, and
-     source version metadata without duplicating full text payloads.
+```json
+{"session_path":"/absolute/history.jsonl","tool_call_id":"call-123","segment_part":"result","length":4000}
+```
 
-#### Output Bounds and Anti-Slop
-- Hard whole-response ceiling of 8192 UTF-8 bytes for the entire serialized tool
-  response (including text content, details object, diagnostics, and cursors).
-- Previews and item counts shrink dynamically when payloads approach the ceiling, with
-  the cursor synchronized to the last actually delivered item.
-- Diagnostics and ambiguous candidate lists are bounded to at most 5 items with explicit
-  counts and truncation indicators when oversized.
-- Model-visible activity text is rendered in `content` with exact entry locations
-  (`entry_id#content_index`, byte ranges, line numbers); `details` holds structured
-  metadata without duplicating full payloads.
+```json
+{"session_path":"/absolute/history.jsonl","tool_call_id":"call-123","segment_part":"result","offset":1200,"source_version":"<returned source_version>","length":4000}
+```
 
-#### Error and Partial Semantics
-- Non-existent session: `LARVA_SESSION_NOT_FOUND`.
-- Empty file: `LARVA_SESSION_INVALID`.
-- Missing or malformed session header at line 1: `LARVA_BAD_INPUT`.
-- Interior malformed JSON: Bounded diagnostic with line number and byte offset;
-  remaining valid records remain readable.
-- Unterminated tail: Pending bytes lacking a final newline are preserved uncommitted
-  without advancing the cursor offset; committed records remain readable.
-- Missing call ID: Reported as `LARVA_TOOL_CALL_NOT_FOUND` only after complete
-  inspection (or noted as incomplete if interior malformed lines were encountered).
+Use the returned continuation offset rather than assuming the requested length
+fit the response budget.
 
-#### Suggested External Orchestrator Guidance
-Prefer bounded `larva_subagent_activity` on the exact session path; expand by call ID
-for a concrete question; retain lifecycle, callback, and acceptance authority; and use
-bounded manual parsing only when the tool is unavailable.
+#### Model-visible output and bounds
+
+`content[0].text` contains one compact JSON object with `status`, shared session
+and snapshot metadata, `items` or `call`, cursor/segment continuation, and any
+partial/error diagnostics. **All reader metadata reaches the model.** `details`
+contains only the small status discriminator; it does not duplicate activity or
+segment payloads. The complete serialized tool response is bounded to **8192
+UTF-8 bytes**, including JSON escaping, content, details and errors.
+
+Call/result locations include original entry/parent IDs when recorded, line
+number, byte offset/length and call content index. Missing timestamps/IDs remain
+absent with a diagnostic; none are synthesized. Recorded `is_error: false`,
+`true`, and an absent marker remain distinct. Result states distinguish
+`observed`, `present_omitted` (saved data exceeds the preview), `none` (no result
+in a completely inspected snapshot), `incomplete` (absence uncertain), and
+`ambiguous` (association or result selection unresolved). Logged calls/arguments
+are evidence of a record, without proving execution, post-hook arguments,
+system effects, completion or acceptance. Historical branches retain provenance
+without a claim about the current branch. Compaction `retainedTail` copies are
+never counted as new top-level activity.
+
+Argument previews use at most 200 code units, result previews at most 500.
+Item count and segment length shrink to fit the full response, and continuation
+always follows the last delivered item or character. Diagnostics and candidate
+lists retain at most five rows with exact totals and explicit truncation flags.
+Required metadata that cannot itself fit returns the bounded
+`LARVA_ACTIVITY_METADATA_TOO_LARGE` error without advancing a cursor. No sliced
+JSON, partial identifiers, fabricated continuation or full-output temp file is
+returned. `upstream_truncated` identifies saved truncation metadata; reconstruction
+cannot restore content already lost upstream and never follows output paths.
+
+#### Snapshot, failures and reader lifetime
+
+Each request opens one read-only descriptor and captures a finite size. Only
+newline-terminated records are committed, even when an unterminated tail is
+syntactically valid JSON. Complete prior records remain readable; completing the
+tail delivers it on the next incremental read. Interior malformed JSON, invalid
+UTF-8 and malformed relevant records produce located diagnostics and
+`inspection_complete: false`. ID lookup without a match explicitly distinguishes
+complete inspection from incomplete evidence.
+
+Self-contained tokens survive parent restart. Both cursor and segment validation
+check path/session/device/inode and the SHA-256 consumed prefix. Replacement,
+shrink, and changed-prefix truncation/regrowth return `LARVA_CURSOR_STALE`.
+The same descriptor supplies identity and records; intermediate passes and the
+final prefix/path check detect concurrent changes. Missing files, access denial,
+read/close failures, invalid input/token and unsupported formats have bounded
+explicit error codes. Read failures do not claim completeness. This is a finite
+read of cooperative append-oriented storage, without filesystem transaction or
+protection against deliberately transient rewrites.
+
+Memory scales with the largest JSONL record plus bounded call/result batches
+(32 call locators, at most 20 selected items and five diagnostics/candidates),
+not the number of session records. Large records are read in 64KiB chunks and
+parsed intact; the reader does not silently discard them. Async reads deliver
+same-thread cancellation between reads/records; cancellation cannot interrupt
+one synchronous `JSON.parse` or serialization operation. Descriptors close in
+`finally` on success, cancellation and errors. No persistent cache/index or
+session-wide call/result arrays are retained.
+
+Repeated scans trade I/O for bounded memory. Ordinary unfiltered recent and quiet
+incremental reads use a constant number of full-prefix passes. Joins for new
+calls/results or time-filtered history use bounded batches and additional scans;
+duplicate-ID ancestry can require further backward-entry scans. Incremental
+output does not promise incremental disk I/O. There is no service, background
+monitor, general query engine or model summary.
+
+The reader never spawns/resumes/cancels/waits, consumes callbacks, mutates
+lifecycle/events/presentation/watchdogs, or resets progress. Native proof observes
+a real pending child, unchanged event history and `stall_suspected`, followed by
+the original 120-second watchdog and one `message_end` callback. Lifecycle
+status/events/wait/select/reminder retain their existing roles.
+
+Exact lookup returns `status: partial` with `LARVA_ACTIVITY_INCOMPLETE` when
+corruption or a pending tail prevents an absence claim. `not_found` is reserved
+for complete inspection. A call with no observed result has no result segment.
+Selecting `result_index` exposes the selected saved record; any unresolved call
+association remains explicitly `ambiguous`, including on late-result pages.
+
+#### Suggested external Orchestrator guidance
+
+Prefer bounded `larva_subagent_activity` on the exact session path; expand by
+call ID for a concrete question. Retain lifecycle, callback and acceptance
+authority. Use bounded manual parsing only when this tool is unavailable.
+
 ## Subagent Console
 The TUI Subagent Console is an overlay over adapter-local presentation state. The
 only user command is `/larva-subagent`; the former log alias has been removed.

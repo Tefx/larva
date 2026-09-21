@@ -17,6 +17,7 @@ try {
   const source = await readFile(join(packageDir, "larva.ts"), "utf8");
   const entry = join(root, "larva.ts");
   await writeFile(entry, source + "\nexport { resolvePiCommandPrefix };\n");
+  await symlink(join(packageDir, "activity.ts"), join(root, "activity.ts"));
   const cli = join(packageDir, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
   const alias = join(root, "pi");
   await symlink(cli, alias);

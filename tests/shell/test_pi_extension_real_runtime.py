@@ -1031,6 +1031,7 @@ def test_compaction_prompt_real_runtime_envelope_focus_uses_active_state(tmp_pat
         encoding="utf-8",
     )
     extension = tmp_path / "larva-pi-compaction-runtime.ts"
+    shutil.copyfile(EXTENSION.with_name("activity.ts"), tmp_path / "activity.ts")
     extension.write_text(
         EXTENSION.read_text(encoding="utf-8") + "\nexport { activePersonaCompactionFocus };\n",
         encoding="utf-8",

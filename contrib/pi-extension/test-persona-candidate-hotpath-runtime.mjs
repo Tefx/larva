@@ -3,6 +3,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+for (const key of Object.keys(process.env)) {
+  if (/^(LARVA_|PI_)/.test(key) && !key.startsWith("LARVA_TEST_")) delete process.env[key];
+}
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const extensionUrl = pathToFileURL(join(root, "contrib", "pi-extension", "larva.ts")).href;
 const mod = await import(extensionUrl);
@@ -212,7 +215,7 @@ if (JSON.stringify(evidence.freshAfterRefresh).includes("fresh-public") !== true
 if (JSON.stringify(evidence.failureStale).includes("fresh-public") !== true) throw new Error("failure path did not preserve stale suggestions");
 if (!evidence.noPromptInUiOrCache) throw new Error("prompt material reached UI/cache evidence");
 if (!evidence.personasToolOwnPromptAbsent) throw new Error("larva_personas candidate output included prompt own property evidence");
-if (!evidence.hotPathUnder200ms) throw new Error("a hot path synchronously waited for refresh");
+if (!evidence.hotPathUnder200ms) throw new Error(`a hot path synchronously waited for refresh: ${JSON.stringify({ stale: [staleBeforeRefresh.slashElapsedMs, staleBeforeRefresh.selector.elapsedMs, staleBeforeRefresh.mention.elapsedMs], failure: [failureStale.slashElapsedMs, failureStale.selector.elapsedMs, failureStale.mention.elapsedMs] })}`);
 if (!evidence.refreshDidNotAlterActivePersonaModelToolsOrSession) throw new Error("refresh altered active persona/model/tool/session state");
 
 console.log(JSON.stringify(evidence, null, 2));

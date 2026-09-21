@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -30,12 +30,14 @@ export function wrapTextWithAnsi(value, width = 80) { const text = String(value)
   );
 }
 
-async function runtimeModule() {
+async function runtimeModule(t) {
   const root = await mkdtemp(join(tmpdir(), "larva-compaction-focus-runtime-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
   await writePiTuiMock(root);
   const modulePath = join(root, "larva-runtime.ts");
   const source = await import("node:fs/promises").then((fs) => fs.readFile(sourcePath, "utf8"));
   await writeFile(modulePath, source, "utf8");
+  await import("node:fs/promises").then(fs => fs.copyFile(join(dirname(sourcePath), "activity.ts"), join(root, "activity.ts")));
   return { root, mod: await import(pathToFileURL(modulePath).href) };
 }
 
@@ -68,8 +70,8 @@ function standardSummary() {
   ].join("\n");
 }
 
-test("compaction_focus registered hook uses runtime model/auth/signal/preparation and preserves Pi result shape", async () => {
-  const { root, mod } = await runtimeModule();
+test("compaction_focus registered hook uses runtime model/auth/signal/preparation and preserves Pi result shape", async (t) => {
+  const { root, mod } = await runtimeModule(t);
   const fakeCli = join(root, "fake-larva-cli.mjs");
   await writeFile(
     fakeCli,
@@ -144,8 +146,8 @@ process.exit(7);
   assert.match(calls[1].customInstructions, /Larva carry-forward rule:/);
 });
 
-test("compaction_focus abort and fallback do not start duplicate native compaction", async () => {
-  const { root, mod } = await runtimeModule();
+test("compaction_focus abort and fallback do not start duplicate native compaction", async (t) => {
+  const { root, mod } = await runtimeModule(t);
   const prep = preparation();
   let calls = 0;
   const ctx = {

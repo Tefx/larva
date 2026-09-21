@@ -124,7 +124,10 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
         capture_output=True,
         text=True,
         timeout=timeout,
-        env={**os.environ, "HOME": str(tmp_path), "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0"},
+        env={
+            **{key: value for key, value in os.environ.items() if not key.startswith(("LARVA_", "PI_")) or key.startswith("LARVA_TEST_")},
+            "HOME": str(tmp_path), "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0",
+        },
     )
     assert completed.returncode == 0, completed.stderr
     return json.loads(completed.stdout)
@@ -133,6 +136,10 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
 def _runtime_extension_copy(tmp_path: Path, appended_exports: str) -> Path:
     extension = tmp_path / "larva-pi-runtime-test.ts"
     extension.write_text(_source() + "\n" + textwrap.dedent(appended_exports), encoding="utf-8")
+    (tmp_path / "activity.ts").write_text(
+        (ROOT / "contrib/pi-extension/activity.ts").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     return extension
 
 

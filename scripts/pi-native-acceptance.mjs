@@ -278,6 +278,7 @@ async function runScenario(scenario) {
       await mkdir(copyDir, { recursive: true });
       const { cp } = await import("node:fs/promises");
       await cp(EXTENSION_ENTRY, join(copyDir, "larva.ts"));
+      await cp(join(EXTENSION_DIR, "activity.ts"), join(copyDir, "activity.ts"));
       await cp(join(EXTENSION_DIR, "child-rpc-frame-preload.mjs"), join(copyDir, "child-rpc-frame-preload.mjs"));
       await cp(join(EXTENSION_DIR, "package.json"), join(copyDir, "package.json"));
       const { symlink } = await import("node:fs/promises");
@@ -356,7 +357,7 @@ async function runScenario(scenario) {
       evidence.exitCode = result.exitCode;
       evidence.stdout = result.stdout.slice(0, 2000);
       evidence.stderr = result.stderr.slice(0, 800);
-      evidence.statusOk = /"statusText":"larva: ok"/.test(result.stdout);
+      evidence.statusOk = /"statusText":"(?:larva: |🎭 )ok"/.test(result.stdout);
       evidence.stateOk = /"command":"get_state"/.test(result.stdout) && /"success":true/.test(result.stdout);
       evidence.pass = result.exitCode === 0 && evidence.statusOk === true && evidence.stateOk === true && !/LARVA_/.test(result.stderr);
     });
@@ -395,7 +396,7 @@ async function runScenario(scenario) {
       evidence.unselectedStderr = unselected.stderr.slice(0, 400);
       evidence.explicitExit = explicit.exitCode;
       evidence.explicitStderr = explicit.stderr.slice(0, 800);
-      evidence.unselectedUsable = unselected.exitCode === 0 && /"statusText":"larva: none"/.test(unselected.stdout) && /"success":true/.test(unselected.stdout);
+      evidence.unselectedUsable = unselected.exitCode === 0 && /"statusText":"(?:larva: |🎭 )none"/.test(unselected.stdout) && /"success":true/.test(unselected.stdout);
       evidence.pass = evidence.unselectedUsable === true && explicit.exitCode === 2 && /LARVA_PERSONA_NOT_FOUND/.test(explicit.stderr) && loopback.requests.length === 0;
     });
   } else if (scenario === "missing-extension-explicit-persona") {
@@ -465,7 +466,7 @@ async function runScenario(scenario) {
         evidence.resumedExit = resumed.exitCode;
         evidence.resumedStdout = resumed.stdout.slice(0, 1500);
         evidence.resumedStderr = resumed.stderr.slice(0, 800);
-        evidence.pass = resumed.exitCode === 0 && /larva: ok/.test(resumed.stdout) && !/LARVA_MODEL_UNAVAILABLE/.test(resumed.stderr);
+        evidence.pass = resumed.exitCode === 0 && /"statusText":"(?:larva: |🎭 )ok"/.test(resumed.stdout) && !/LARVA_MODEL_UNAVAILABLE/.test(resumed.stderr);
       } else if (scenario === "resume-unresolvable-explicit-fails") {
         const resumed = await runProcess(PI_BIN, ["--mode", "rpc", "--offline", "--approve", "-e", loopback.providerPath, "--session", session, "--larva-persona", "missing"], {
           env: baseEnv(scratch),

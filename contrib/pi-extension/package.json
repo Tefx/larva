@@ -6,6 +6,7 @@
   "keywords": ["pi-package"],
   "files": [
     "larva.ts",
+    "activity.ts",
     "child-rpc-frame-preload.mjs"
   ],
   "pi": {

@@ -4586,6 +4586,7 @@ process.on("SIGINT", () => terminate("SIGINT"));
     await writeFile(controlledEntry, controlledSource, "utf8");
     const { copyFile, symlink } = await import("node:fs/promises");
     await copyFile(join(dirname(extensionPath), "child-rpc-frame-preload.mjs"), join(tempRoot, "child-rpc-frame-preload.mjs"));
+    await copyFile(join(dirname(extensionPath), "activity.ts"), join(tempRoot, "activity.ts"));
     await symlink(join(dirname(extensionPath), "node_modules"), join(tempRoot, "node_modules"));
     raw.isolation.transport_control = "disposable adapter prefix injection to a stdio controller; actual unmodified native Pi children; not native launch-identity proof";
 
