@@ -145611,3 +145611,219 @@ phases:
       release, external model or Nunc endtoend verification. User explicitly revoked
       notification: do NOT notify pi-nunc; report only to user. No unresolved Larva
       implementation or acceptance obligations.'
+- id: pi_subagent_activity
+  name: Bounded read-only Pi subagent activity inspection
+  status: pending
+  gate: 'Orchestrator accepts this Larva-only increment in pi-activity.deliver completion:
+    all nine user FR scenarios through the actual Pi extension, compact whole-response
+    bounds and resumable detail, session-independent cursor correctness, read-side
+    lifecycle neutrality, documented interface, and complete applicable final-candidate
+    offline regression evidence. Source/contract review reconciles reader state and
+    evidence semantics. No separate gate, deployment, user installation or external-repository
+    acceptance.'
+  context: 'Authority: current user request for larva_subagent_activity, original
+    nine FR acceptance cases, and the subsequently consolidated token-efficient design.
+    Deliver one cohesive repository result: reader plus registration, behavior/native
+    integration tests and usage documentation. These share one public-tool acceptance
+    boundary; no independently consumed parser or test-framework product is requested.
+    node-typescript-engineer owns interface details, append/read concurrency and Pi
+    host integration; no Principal admission is needed. Recommendations for schema,
+    chunk sizes, hashing and module layout remain replaceable implementation choices
+    if all accepted outcomes are preserved. The new adapter-local tool is authorized;
+    existing public lifecycle results, session persistence, PersonaSpec/shared contracts
+    and other repositories remain unchanged. No service, background monitor, persistent
+    index/cache, general log framework, summary model or health score.'
+  depends_on:
+  - pi_system_prompt_resolution
+  steps:
+  - id: pi-activity.deliver
+    name: Deliver compact session activity tool with native Pi proof and documentation
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      Deliver:\n- Register larva_subagent_activity in the actual Pi extension. Read\
+      \ only one exact explicitly supplied absolute Pi session JSONL path under existing\
+      \ host/read authorization; reject fuzzy selectors and non-session input without\
+      \ exposing arbitrary file contents. No registry membership prerequisite or dependence\
+      \ on the current parent's configured child root: authorized historical sessions\
+      \ remain readable after parent restart/switch. Preserve existing control/resume\
+      \ path restrictions and host tool policy.\n- Recent mode returns a small bounded\
+      \ selection of recorded calls with associated results, exact tool-name filtering\
+      \ and timezone-qualified timestamp range filtering. Incremental reads deliver\
+      \ new calls AND results arriving for old calls, including calls outside the\
+      \ prior tail window. Define filter time semantics, ordering and contextual associations\
+      \ in the public docs. File position plus content index provides stable order;\
+      \ timestamps need not be unique or monotonic. Paging cannot drop siblings in\
+      \ one assistant record or skip unreturned updates.\n- Exact toolCallId lookup\
+      \ reaches beyond the recent window. Return argument/result previews and allow\
+      \ bounded segments of either part with explicit range, truncation and continuation\
+      \ information. Duplicate/ambiguous IDs require bounded candidate provenance\
+      \ and exact disambiguation rather than silent last-write selection. Specify\
+      \ Unicode offset units if exposing offsets. Continued chunks must bind to the\
+      \ same unchanged source version; reuse the same file-validation mechanism rather\
+      \ than inventing a second protocol. Segment reconstruction covers the data saved\
+      \ in the session, not content already lost through upstream truncation.\n- Output\
+      \ is deliberately compact. Recommended starting configuration: 5 recent calls,\
+      \ maximum 20, argument preview about 200 characters, result preview about 500,\
+      \ detail segment about 4000 characters, whole serialized tool response ceiling\
+      \ 8192 UTF-8 bytes. Treat these numbers as engineering defaults from the proposal,\
+      \ not independent product meaning; an equivalent compact configuration must\
+      \ be justified by actual response measurements and documented. A hard whole-response\
+      \ ceiling is mandatory and includes content, details, diagnostics and cursors;\
+      \ never hide unbounded data in details. Put model-required activity in content,\
+      \ without a full duplicate in details. Shared session/range/cursor metadata\
+      \ appears once. Avoid empty fields, repeated disclaimers, generated summaries\
+      \ and a custom abbreviation language. Reduced previews/item count must preserve\
+      \ progress and readable provenance.\n- Preserve session identity, original call/result\
+      \ timestamps, name, toolCallId, argument/result data, recorded error markers\
+      \ and exact original-record location (entry/parent IDs and byte range, plus\
+      \ content index when needed). Distinguish observed result, no result observed\
+      \ in a completely inspected snapshot, unknown because inspection is incomplete,\
+      \ and result present but not fully displayed. Preserve absent versus false error\
+      \ markers; do not derive success from PASS text. Read top-level assistant toolCall\
+      \ and toolResult records only, omit thinking/ordinary assistant prose, do not\
+      \ count compaction retainedTail copies again, and retain historical-branch provenance\
+      \ without claiming current-branch membership. Logged calls/arguments are recorded\
+      \ evidence, not proof of execution, post-hook arguments, system effects, task\
+      \ completion or acceptance.\n- Self-contained bounded cursors survive parent\
+      \ restart. Bind target/session, query and required snapshot/record positions.\
+      \ Detect invalid/mismatched cursor, file replacement, truncation and truncation-then-regrowth\
+      \ with changed prior contents. Identity plus consumed-prefix digest is a recommended\
+      \ mechanism, not a required encoding/security framework. Capture a finite read\
+      \ snapshot; append after its boundary belongs to subsequent reads. Preserve\
+      \ pending unterminated tail bytes without committing their offset, including\
+      \ a syntactically valid final JSON object lacking its record terminator. Existing\
+      \ valid activity remains readable. Interior malformed JSON, invalid UTF-8 and\
+      \ malformed relevant records yield explicit partial/error diagnostics with locations;\
+      \ no silently skipped lines followed by a completeness claim. Missing file,\
+      \ access failure, read failure, unsupported format and stale cursor produce\
+      \ clear bounded outcomes. Claim ID absence only after sufficient complete inspection.\
+      \ No whole-file loading, silent large-record loss or unbounded retained session\
+      \ cache; close descriptors and honor cancellation. Linear snapshot scanning\
+      \ is acceptable: incremental output does not promise incremental disk I/O.\n\
+      - Reader has no spawn/resume/cancel/wait operation, no callback consumption,\
+      \ no registry/lifecycle/watchdog mutation or progress reset, no session repair/migration/writes\
+      \ and no inference of stalls from unchanged logs. status/events/wait/select/reminder\
+      \ retain existing duties. Do not follow result paths into other files, inspect\
+      \ ps/Git, execute logged commands, classify task drift or take over tasks. No\
+      \ full-output temp file, background service, persistent index/cache, model summary\
+      \ or general-purpose framework.\n- Update repository usage documentation with\
+      \ actual schema/examples, output/chunk limits, cursor/filter/error semantics\
+      \ and evidence limitations. Supply this suggested external Orchestrator guidance\
+      \ in the delivery: prefer bounded larva_subagent_activity on the exact session,\
+      \ expand by call ID for a concrete question, retain lifecycle/callback/acceptance\
+      \ authority, and use bounded manual parsing only when the tool is unavailable.\
+      \ Do not modify the external Orchestrator definition.\n\nBoundary:\n- node-typescript-engineer\
+      \ owns the complete reversible Larva repository change, supporting fixtures/tests/docs\
+      \ and local preparation. The work requires cross-function session/cursor consistency\
+      \ and public Pi registration semantics; all routine implementation remains with\
+      \ this owner. No forced module split; if an internal module is added, include\
+      \ it in the shipped package and prove loader reachability.\n- Effects are repository\
+      \ edits and disposable isolated local verification files/processes/loopback\
+      \ fixtures only. Existing user sessions are read-only and must not become fixtures.\
+      \ No installed Pi patch, global/user installation/config change, registry/persona/shared-schema\
+      \ mutation, external model/credential use, release/push or changes to another\
+      \ repository.\n\nAdmit:\n- Use the current native baseline and original nine\
+      \ FR preserved below. Inspect the selected Pi public docs/types and actual loader.\
+      \ Existing Larva ingestAssistantTimelineFromExactSession silently skips bad\
+      \ lines; Pi loadEntriesFromFile may append LF and skip malformed records. Neither\
+      \ is an admissible evidence reader. Existing validateExactPublicTaskIdLexical\
+      \ mixes registry/control-root policy: preserve those controls without imposing\
+      \ them on historical activity reads. Reuse applicable registration/validation\
+      \ helpers and scripts/pi-native-support.mjs instead of a new harness.\n- Implement\
+      \ meaningful checks, with failing proof where practical before correction, then\
+      \ green proof through the registered tool. Required fresh actual-extension scenarios:\
+      \ (1) multiple/parallel calls with errors and missing results; (2) append new\
+      \ calls and late results for old calls, with lossless paging; (3) exact ID outside\
+      \ the recent window; (4) large args/results with measured entire-response bounds\
+      \ and reconstructable segments; (5) partial tail followed by completion while\
+      \ prior records remain available; (6) missing/damaged input, invalid cursor,\
+      \ replacement, shrink and shrink/regrowth; (7) history read and cursor continuation\
+      \ from a new parent without registry; (8) no target writes, callback consumption\
+      \ or reader-induced lifecycle/watchdog changes; (9) actual native package discovery,\
+      \ schema visibility, tool execution and model-visible output. Include filters,\
+      \ Unicode/escaping, duplicate IDs, historical branches and compaction deduplication\
+      \ in affected tests. Parser-only/internal-handler tests and fixture PASS prose\
+      \ do not establish integration.\n- Use the existing native Pi loader and isolated\
+      \ credential-free loopback provider for tool execution. Keep any extra fixture\
+      \ capability tracked with this producer and invoked by the project-native test\
+      \ inventory. No external model run is necessary. Distinguish controlled provider\
+      \ responses from actual host execution. Observe child lifecycle neutrality with\
+      \ controlled transitions so unrelated real progress is not mistaken for reader\
+      \ mutation.\n- Final proof covers the complete applicable project-native offline\
+      \ inventory on the integrated candidate, as documented in the extension README\
+      \ and native delivery reference. Always obtain fresh new-feature/native-boundary\
+      \ proof, whole-response budget proof and required Invar verification after changes.\
+      \ Reuse earlier unaffected regression observations only with explicit target/input\
+      \ applicability; do not automatically rerun expensive unchanged native journeys.\
+      \ Broaden when registration, policy, shared lifecycle, dependencies or packaging\
+      \ change. No mandatory skip/xfail or weakened assertions for necessary behavior.\n\
+      - Orchestrator owns final integrated acceptance within this step, reviewing\
+      \ source/contracts for file-only reading, lossless continuation, honest partial/error\
+      \ semantics and lifecycle isolation against actual evidence. Producer reports\
+      \ alone do not complete acceptance. Necessary failed or unproven requirements\
+      \ block completion; compatible corrections stay on this unfinished step. No\
+      \ separate review node or repeated historical project acceptance is needed.\n\
+      \nRecovery:\n- Reconcile and stop owned test processes/servers, close handles\
+      \ and remove disposable owned roots after preserving minimum useful failure\
+      \ evidence. Keep user sessions, protected paths and completed history unchanged.\
+      \ Missing checks, environment resolution and compatible findings stay with this\
+      \ owner. Escalate material contract/authority conflicts without silently narrowing\
+      \ FR or introducing external effects.\n\nscope:\n  allowed_paths:\n  - contrib/pi-extension/**\n\
+      \  - tests/shell/test_pi_*.py\n  - tests/fixtures/pi/**\n  - scripts/pi-*.mjs\n\
+      \  - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n  blocked_paths:\n  - plan.yaml\n\
+      \  - contracts/**\n  - src/larva/core/**\n  - .vectl/recovery/**\n  - ../opifex/**\n\
+      \  - ../pi-nunc/**\n  - /Users/tefx/dotfiles/agent/**\nchecks:\n- id: locked-node-dependencies\n\
+      \  command: [npm, --prefix, contrib/pi-extension, ci]\n  expected: Reproduce\
+      \ committed package-lock; local package Pi 0.85.1, no global install. Use declared\
+      \ supported host; record actual Node version and reconcile compatibility rather\
+      \ than silently assuming an ambient runtime is equivalent.\n- id: locked-python-dependencies\n\
+      \  command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uv, sync, --locked, --python, '3.12', --group,\
+      \ dev]\n  expected: Reproduce committed uv.lock dev environment; reusable unchanged\
+      \ environment is allowed.\n- id: pi-node-inventory\n  command: [bash, -c, 'set\
+      \ -euo pipefail; export LARVA_TEST_PI_CODING_AGENT=\"$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent\"\
+      ; for f in contrib/pi-extension/test-*.mjs; do node \"$f\"; done']\n  expected:\
+      \ Inventory reference; tracked new feature entrypoints must participate and\
+      \ execute real native activity cases through existing support. Fresh affected\
+      \ entrypoint selection is owner-local; complete applicable inventory coverage\
+      \ is required at final acceptance, allowing justified unchanged proof reuse.\n\
+      - id: repository-test-inventory\n  command: [node, scripts/pi-guard-checks.mjs,\
+      \ tests]\n  expected: Existing Invar-backed runner for full repository test\
+      \ inventory with sufficient native-fixture timeout. Reference inventory, not\
+      \ an automatic fresh-full-run mandate; select affected tests during development\
+      \ and account for complete applicable final-candidate coverage.\n- id: full-invar\n\
+      \  command: [env, -u, VIRTUAL_ENV, -u, UV_PROJECT_ENVIRONMENT, -u, PYTHONPATH,\
+      \ UV_PYTHON_DOWNLOADS=never, uvx, --python, '3.12', invar-tools==1.20.3, guard,\
+      \ --all]\n  expected: Required fresh full Invar check after source changes,\
+      \ exit 0 with no weakened rules; report warnings honestly.\n- id: whitespace\n\
+      \  command: [git, diff, --check]\n  expected: exit 0\n"
+    verification: All nine FR demonstrated through actual registered native Pi tool
+      execution, plus compact complete-response bound and reconstructable segmentation,
+      lossless cross-process cursors, explicit partial/error outcomes and unchanged
+      read-side lifecycle authority. Documentation states actual interface and suggested
+      external guidance without editing dotfiles. Orchestrator records final integrated
+      acceptance with applicable offline regression coverage, required fresh Invar,
+      source/contract review, and no necessary unresolved proof gap.
+    evidence_template: Report integrated candidate and actual executor; commands/versions
+      and observed outcomes for FR 1-9; measured complete-response byte bound and
+      segment reconstruction; file/callback/lifecycle/watchdog noninterference; regression
+      inventory coverage and applicability of reused evidence; documentation/interface;
+      owned fixture cleanup; Orchestrator acceptance decision and any remaining gaps.
+      Do not claim implementation completion from parser tests or logged PASS alone.
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - scripts/pi-native-support.mjs
+    - scripts/pi-native-journeys.mjs
+    - scripts/pi-native-acceptance.mjs
+    - scripts/pi-guard-checks.mjs
+    - tests/shell/test_pi_extension_real_runtime.py
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/verification/pi-native-delivery/README.md
+    - design/pi-native-extension.md
+    - INVAR.md
+    - pyproject.toml
+    - uv.lock
+    agent: node-typescript-engineer
