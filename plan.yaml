@@ -145613,7 +145613,7 @@ phases:
       implementation or acceptance obligations.'
 - id: pi_subagent_activity
   name: Bounded read-only Pi subagent activity inspection
-  status: pending
+  status: in_progress
   gate: 'Orchestrator accepts this Larva-only increment in pi-activity.deliver completion:
     all nine user FR scenarios through the actual Pi extension, compact whole-response
     bounds and resumable detail, session-independent cursor correctness, read-side
@@ -145638,7 +145638,7 @@ phases:
   steps:
   - id: pi-activity.deliver
     name: Deliver compact session activity tool with native Pi proof and documentation
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Register larva_subagent_activity in the actual Pi extension. Read\
       \ only one exact explicitly supplied absolute Pi session JSONL path under existing\
@@ -145827,3 +145827,5 @@ phases:
     - pyproject.toml
     - uv.lock
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-09-21T18:51:18.121695Z'
