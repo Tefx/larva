@@ -90,7 +90,14 @@ try {
     const wrong = await inspect({ session_path: huge, tool_call_id: "big", segment_part: part === "args" ? "result" : "args", source_version: version });
     assert.equal(wrong.error.code, "LARVA_CURSOR_INVALID");
   }
-  console.log("complete Unicode/escaping args and structured result reconstruction; frozen selection-bound chunks");
+  for (const flag of [false, true, undefined]) {
+    const markers = join(root, `truncation-${flag}.jsonl`);
+    await writeFile(markers, header("flags") + call("cut") + result("cut", "cut", "recorded", { details: { truncation: flag === undefined ? {} : { truncated: flag }, fullOutputPath: "/must-not-be-followed" } }));
+    const observed = await inspect({ session_path: markers, tool_call_id: "cut" });
+    assert.equal(observed.call.upstream_truncated, flag);
+    assert.equal(observed.call.segment.upstream_truncated, flag);
+  }
+  console.log("complete Unicode/escaping args and structured result reconstruction; explicit truncation flags preserved; frozen selection-bound chunks");
 
   const partial = join(root, "partial.jsonl");
   const tail = call("tail").trimEnd();

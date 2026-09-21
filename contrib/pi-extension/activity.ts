@@ -21,7 +21,7 @@ const compare = (a: Position, b: Position) => a[0] - b[0] || a[1] - b[1] || a[2]
 type Location = { entry_id?: string; parent_id?: string | null; byte_offset: number; line_byte_length: number; line_number: number; content_index?: number };
 type RecordRow = { raw: Obj; location: Location };
 type Call = { id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; args_preview: string; args_total_chars: number; args_present: boolean };
-type ResultRow = { total?: number; id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; is_error?: boolean; text: string; upstream_truncated: boolean };
+type ResultRow = { total?: number; id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; is_error?: boolean; text: string; upstream_truncated?: boolean };
 type Input = { path: string; limit: number; tool?: string; since?: number; until?: number; filter: string; cursor?: Obj; call?: string; index?: number; entry?: string; resultIndex?: number; part: "args" | "result"; offset: number; length: number; version?: Obj };
 
 function token(raw: unknown): Obj {
@@ -172,7 +172,10 @@ function resultRow(row: RecordRow): ResultRow | undefined {
   if (row.raw.type !== "message" || !object(m) || m.role !== "toolResult" || !validResult(m)) return;
   // Preserve ALL saved result data, including structured details and images. No
   // projection to text, no following fullOutputPath. Segment format is JSON.
-  return { id: m.toolCallId, name: m.toolName, timestamp: typeof row.raw.timestamp === "string" ? row.raw.timestamp : undefined, message_timestamp: typeof m.timestamp === "number" ? m.timestamp : undefined, location: row.location, is_error: m.isError, text: JSON.stringify(m), upstream_truncated: object(m.details) && (m.details.truncated === true || object(m.details.truncation) || typeof m.details.fullOutputPath === "string") };
+  const top = object(m.details) ? m.details.truncated : undefined;
+  const nested = object(m.details?.truncation) ? m.details.truncation.truncated : undefined;
+  const upstream = top === true || nested === true ? true : top === false || nested === false ? false : undefined;
+  return { id: m.toolCallId, name: m.toolName, timestamp: typeof row.raw.timestamp === "string" ? row.raw.timestamp : undefined, message_timestamp: typeof m.timestamp === "number" ? m.timestamp : undefined, location: row.location, is_error: m.isError, text: JSON.stringify(m), upstream_truncated: upstream };
 }
 const callPosition = (c: Call): Position => [c.location.byte_offset, c.location.content_index!, 0, 0];
 const resultPosition = (c: Call, r: ResultRow): Position => [r.location.byte_offset, 0, c.location.byte_offset, c.location.content_index!];
@@ -187,7 +190,7 @@ function timeMatch(c: Call, r: ResultRow | undefined, q: Input): string | undefi
 function item(c: Call, r: ResultRow | undefined, reader: ActivityReader, count = r ? 1 : 0): Obj {
   return { key: `c:${c.location.byte_offset}:${c.location.content_index}`, call_id: c.id, tool_name: c.name, call_timestamp: c.timestamp, call_message_timestamp: c.message_timestamp, call_location: c.location, args_preview: c.args_preview, args_total_chars: c.args_total_chars, args_truncated: c.args_total_chars > c.args_preview.length,
     result_status: count > 1 ? "ambiguous" : r ? ((r.total ?? r.text.length) > 500 ? "present_omitted" : "observed") : reader.diagnosticCount ? "incomplete" : "none",
-    ...(r ? { result_timestamp: r.timestamp, result_message_timestamp: r.message_timestamp, result_location: r.location, result_preview: r.text.slice(0, 500), result_total_chars: r.total ?? r.text.length, result_truncated: (r.total ?? r.text.length) > 500, is_error: r.is_error, upstream_truncated: r.upstream_truncated || undefined } : {}),
+    ...(r ? { result_timestamp: r.timestamp, result_message_timestamp: r.message_timestamp, result_location: r.location, result_preview: r.text.slice(0, 500), result_total_chars: r.total ?? r.text.length, result_truncated: (r.total ?? r.text.length) > 500, is_error: r.is_error, upstream_truncated: r.upstream_truncated } : {}),
     ...(count > 1 ? { result_candidates_count: count, result_selection: "Use exact call lookup with result_index." } : {}) };
 }
 
@@ -358,7 +361,7 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
           if (q.version && q.version.selection !== selection) fail("LARVA_CURSOR_INVALID", "source_version belongs to a different call, result or segment part.");
           const part = text.slice(q.offset, q.offset + q.length);
           delete lookup.args_preview; delete lookup.result_preview;
-          lookup.segment = { part: q.part, encoding: "json", offset_units: "UTF-16 code units", offset: q.offset, length: part.length, total_chars: text.length, has_more: q.offset + part.length < text.length, continuation_offset: q.offset + part.length < text.length ? q.offset + part.length : undefined, source_version: encode({ ...source, selection }), text: part, upstream_truncated: q.part === "result" && r?.upstream_truncated || undefined };
+          lookup.segment = { part: q.part, encoding: "json", offset_units: "UTF-16 code units", offset: q.offset, length: part.length, total_chars: text.length, has_more: q.offset + part.length < text.length, continuation_offset: q.offset + part.length < text.length ? q.offset + part.length : undefined, source_version: encode({ ...source, selection }), text: part, upstream_truncated: q.part === "result" ? r?.upstream_truncated : undefined };
         } else if (mode === "recent" || c.location.byte_offset >= base) {
           offer(c, rec.timeResult ?? r, rec.count);
           const emitted = selected.find(x => x.value.call_location.byte_offset === c.location.byte_offset && x.value.call_location.content_index === c.location.content_index);
