@@ -1,4 +1,41 @@
+> Current authority (2026-09-22): this file preserves original delivery observations.
+> Its Pi version and external-contract checks are historical evidence, not current
+> requirements. Larva now owns its local schema/validator contract. Local dependency
+> locks reproduce builds; installed Pi versions are recorded without rejection,
+> compatibility probing or automatic upgrades. Use actual native functional tests
+> and the local schema suite for current acceptance. Original observations below
+> remain unchanged.
+
+
 # Native Pi delivery evidence
+
+## Current verification contract
+
+Larva-local schema admission is checked without an external repository:
+
+```bash
+node scripts/pi-guard-checks.mjs tests/core/test_schema_validation.py
+```
+
+This suite compares required/optional/forbidden fields with validator metadata,
+checks TypedDict requiredness, rejects malformed inputs through JSON Schema and
+Core validation, and tests drift counterexamples. The schema and Core meanings
+remain unchanged by the authority migration.
+
+The previously exact-global-version-gated scenarios now execute native functional
+behavior against the installed Pi. Version strings are observation context only:
+
+```bash
+node scripts/pi-guard-checks.mjs tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_subagent_ux.py -k 'runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence or async_subagent_installed_pi_no_progress_watchdog_runtime or installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc or installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence'
+```
+
+Keep real background callback, watchdog, profile-switch, rollback, child-RPC,
+loopback-only and cleanup assertions. Retire version-only prerequisites without
+claiming their removal proves functional behavior. Reuse unchanged earlier
+observations only for the source, fixture and runtime inputs they cover.
+The command inventory below is a historical run record, not an instruction to
+restore external authority or global-version gates.
+
 
 ## Result and ownership
 This is the **historical native-producer report**. The Python launcher was later

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (2026-04-06)
+Accepted (2026-04-06); authority updated 2026-09-22 by user decision.
+Larva is independent and Opifex is abandoned. No upstream schema checkout,
+conformance packet or approval is required. Existing PersonaSpec meaning is unchanged.
 
 ## Context
 
@@ -19,14 +21,15 @@ Accepted (2026-04-06)
 This mismatch created ambiguity about which surface is authoritative for
 requiredness and admission behavior.
 
-This ADR is the synchronization record for the requiredness alignment codified in
-`design/opifex-canonical-authority-basis.md`.
+This ADR records Larva-local requiredness. The former upstream adjudication
+at `../../design/opifex-canonical-authority-basis.md` is retained as retired history.
 
 ## Decision
 
 Canonical requiredness authority for admission is:
 
-1. `src/larva/core/validate.py` (runtime admission enforcement)
+1. `src/larva/core/validation_contract.py` (metadata exposed through `validate.py`)
+   and `src/larva/core/validate.py` (runtime admission enforcement)
 2. `contracts/persona_spec.schema.json` (reference mirror, must match authority)
 
 `../reference/INTERFACES.md` and MCP metadata are consumer documentation surfaces and must be
@@ -54,5 +57,8 @@ Forbidden at canonical admission:
   behavior (no `tools` fallback at admission).
 - Transition compatibility, if needed, belongs to upstream assembly inputs and
   explicit migration flows, not canonical admission requiredness.
-- Future changes to admission requiredness must be made in authority files first,
-  then synchronized downstream.
+- Future authorized changes to admission requiredness must update local authority
+  files and their projections together. `tests/core/test_schema_validation.py`
+  compares schema fields with validator metadata and TypedDict required/optional
+  keys, exercises malformed values against both schema and validator, and
+  detects deliberate required/optional/forbidden/open-admission drift.

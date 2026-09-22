@@ -10,12 +10,13 @@ Assembly/component public surfaces have been removed.
 projects canonical PersonaSpec artifacts across CLI, MCP, Python, and Web
 surfaces.
 
-The canonical PersonaSpec schema authority is `opifex`. Registry-local variants
+Larva owns the canonical PersonaSpec schema and validator contract. Registry-local variants
 are larva-local routing metadata and never become PersonaSpec fields.
 
 ## PersonaSpec Contract
 
-Canonical PersonaSpec fields are owned by `opifex`. larva must reject unknown
+Canonical PersonaSpec fields are defined locally in `contracts/persona_spec.schema.json`
+and enforced by the Core validator/types. Larva must reject unknown
 top-level fields, including `variant`, `_registry`, `active`, and manifest state.
 
 Core required fields include:
@@ -430,4 +431,4 @@ implementation fields.
 - `spec_digest` is computed from canonical JSON representation
 - `spec_digest` excludes itself from canonical JSON representation
 - active variant changes must change resolved `spec_digest` whenever materialized canonical content changes
-- larva is a downstream admission/projection layer; opifex owns the canonical contract
+- Larva owns its local canonical contract; no external schema checkout is required

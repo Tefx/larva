@@ -2,7 +2,7 @@
 
 Status: current normative authority for Pi agent persona switch mode semantics  
 Scope: Larva-owned Pi launcher and bundled Pi extension runtime policy  
-Contract boundary: no PersonaSpec schema change, no opifex shared-contract change
+Contract boundary: no local PersonaSpec schema change
 
 This document defines the current normative policy for agent/runtime-initiated
 persona switches in Pi. It is deliberately generic: the rules do not depend on

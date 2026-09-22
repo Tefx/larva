@@ -2,7 +2,7 @@
 
 Status: historical first-target design; superseded for future mode semantics by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md)
 Scope: `larva pi` launcher and bundled Pi extension only
-Canonical contract authority: opifex-owned PersonaSpec schema remains unchanged
+Canonical contract authority: Larva-local PersonaSpec schema and validator meaning remain unchanged
 
 > Supersession note: this document records the first implemented self-switch target.
 > The current target policy uses four canonical modes — `manual`, `confirm`,
@@ -60,7 +60,7 @@ persona prompt.
 ## Non-goals
 
 - No PersonaSpec schema change.
-- No opifex shared-contract change.
+- No PersonaSpec contract change.
 - No persona-level `auto|ask|off` policy.
 - No persona catalogue injected into the system prompt.
 - No direct LLM access to `commitPersona(...)`.
@@ -232,7 +232,7 @@ numeric budget:
   default budget unless the next switch call supplies a new parameter.
 
 The parameter is intentionally not an environment variable and does not alter
-PersonaSpec/opifex shared contracts. Agents should omit it unless the user has
+the local PersonaSpec contract. Agents should omit it unless the user has
 explicitly requested a different budget or unlimited switching.
 
 Current implementation path:
@@ -374,7 +374,7 @@ Historical suggested details shape:
 ```
 
 These entries are for user inspection, tests, and session recovery. They are not
-shared opifex contracts.
+the local PersonaSpec contract.
 
 ## Historical loop and abuse guards
 
@@ -411,7 +411,7 @@ architecture_basis:
     external_runtime: "Pi CLI/TUI/RPC remains the host runtime."
 
   source_of_truth_matrix:
-    PersonaSpec schema: "opifex canonical contract"
+    PersonaSpec schema: "Larva-local schema and Core validator/types"
     persona registry contents: "Larva registry through the existing CLI bridge"
     active Pi persona: "Pi extension session-local committed envelope"
     agent switch mode: "Pi session-level state; latest session override, else launcher env, else off"
@@ -449,7 +449,7 @@ architecture_basis:
     continuation_state: "queued Larva-generated message for the next turn only"
 
   transport_boundary_rules:
-    - "Do not change PersonaSpec or opifex shared contracts."
+    - "Do not change the local PersonaSpec contract."
     - "Do not expose commitPersona directly to the model."
     - "Do not inject a persona catalogue into the system prompt."
     - "Do not allow child self-switch to mutate parent persona state."

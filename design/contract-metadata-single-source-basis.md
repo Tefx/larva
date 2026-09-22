@@ -35,7 +35,7 @@ Original request: design the single-source metadata seam that all local projecti
   - required: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`
   - optional: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`
   - forbidden: `tools`, `side_effect_policy`
-- [Likely] If upstream opifex contract changes, the update order must be:
+- [Likely] For an authorized Larva-local contract change, the update order is:
   1. validator seam
   2. schema snapshot
   3. MCP contract text and other transport projections

@@ -2,7 +2,7 @@
 
 Status: accepted design target  
 Scope: `larva` registry, CLI, Python API, MCP, packaged Web REST/UI, and documentation  
-Canonical contract authority: opifex-owned PersonaSpec schema
+Canonical contract authority: Larva-local PersonaSpec schema and Core validator/types
 
 ## Decision
 
@@ -10,7 +10,7 @@ Canonical contract authority: opifex-owned PersonaSpec schema
 persona variants with registry-local variants.
 
 The canonical `PersonaSpec` shape does **not** change. `variant` is not a
-PersonaSpec field, is not accepted inside `spec`, and is not owned by `opifex`.
+PersonaSpec field, is not accepted inside `spec`, and belongs to Larva's registry.
 Variant state belongs only to the `larva` registry boundary.
 
 The registry storage target separates one base persona contract from one or more
@@ -24,7 +24,7 @@ The old assembly/component subsystem attempted to build a PersonaSpec from
 prompt, toolset, constraint, and model fragments. It has not proven useful in
 practice and expands every public surface: core assembly logic, component file
 loading, CLI commands, MCP tools, Web REST routes, Web UI compose flows, tests,
-docs, and `opifex` conformance references.
+docs, with no external conformance prerequisite.
 
 The active operational problem is different: several personas with the same role
 exist as separate ids, such as `blind-tester`, `blind-tester-tacit`,
@@ -42,7 +42,7 @@ that id to one active local variant.
 - No replacement templating, inheritance, component composition, diff UI,
   history, variant permissions, variant-specific admin profile, rollback, or
   transaction controller.
-- No local interpretation of `opifex` canonical fields.
+- No silent changes to local PersonaSpec field meaning.
 - No new public update API or alternate variant addressing syntax; existing
   register/resolve/update variant parameters remain the surface.
 
@@ -302,13 +302,11 @@ state that agent-facing list surfaces hide.
 - Active and last variants have disabled delete controls with explanatory text.
 - Deleting a base persona remains the only operation that removes all variants.
 
-## Opifex boundary
+## Local contract boundary
 
-This decision does not change the opifex-owned PersonaSpec schema or canonical
-PersonaSpec meaning. opifex may update design and conformance text to stop
-listing removed larva assembly/component surfaces and to describe variants as
-larva-local registry metadata. It must not accept `variant` inside a PersonaSpec
-or add compatibility aliases.
+Registry-local variants do not change PersonaSpec field meaning. Larva owns
+its schema and validator/types. `variant` remains forbidden inside PersonaSpec;
+no compatibility aliases or external conformance prerequisite are introduced.
 
 ## Migration
 

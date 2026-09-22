@@ -9,7 +9,12 @@ design for the current entry point. Agent persona switch semantics remain owned
 by [`../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 Scope: historical launcher/bundled-extension behavior and retained persona,
 tool-policy, and subagent contracts.
-Canonical contract authority: opifex-owned PersonaSpec schema
+Canonical contract authority: Larva-local schema and Core validator/types.
+Opifex is abandoned. All Opifex ownership, external conformance references,
+version gates and compatibility-governance statements in the historical
+sections below are retired; they impose no current prerequisite. Local locks
+reproduce builds without restricting installed Pi. Current native acceptance
+uses functional observations, with no upgrade or compatibility-probe requirement.
 
 > Supersession note: the current target policy for `/larva-mode` and
 > `--agent-persona-switch` uses four canonical modes: `manual`, `confirm`,
@@ -95,11 +100,11 @@ management.
 
 ## Evidence and constraints
 
-- [Proven] `../opifex/contracts/persona_spec.schema.json` makes `id`,
+- [Proven] `../contracts/persona_spec.schema.json` makes `id`,
   `description`, `prompt`, `model`, `capabilities`, and `spec_version` canonical
   PersonaSpec fields. It also defines optional `can_spawn`. `tools` and
   `side_effect_policy` are invalid canonical fields.
-- [Proven] `../opifex/design/final-canonical-contract.md` states that
+- [Proven] `../docs/adr/ADR-002-capability-intent-without-runtime-policy.md` states that
   `capabilities` expresses an intent ceiling, not runtime approval policy.
 - [Proven] Larva exposes persona registry access through MCP/facade surfaces such
   as `larva_list`, `larva_export`, and `larva_resolve` in `src/larva/shell`.

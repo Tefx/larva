@@ -1,9 +1,12 @@
 # Larva Hard-Cutover Canonical Alignment
 
 ## Status
-
-Target implementation plan for the no-compatibility cutover.
-
+Historical cutover plan, retained for provenance. Its external Opifex inputs,
+assembly/component surfaces and execution obligations are retired. Larva is
+independent; this document does not require an Opifex checkout or impose new
+work. Current local schema/validator admission rules are described in
+`../docs/adr/ADR-003-canonical-requiredness-authority.md`. Existing strict field
+rejection is preserved.
 ## Responsibility
 
 `larva` is the canonical PersonaSpec admission authority.

@@ -44,7 +44,7 @@ its route is independently resolved and verified before the task prompt.
 ## Non-goals
 
 - No Pi source or installed-package modification.
-- No PersonaSpec, Opifex, or Larva registry schema change.
+- No PersonaSpec or Larva registry schema change.
 - No model-specific thinking entries in the policy.
 - No `larva_subagent` thinking parameter.
 - No new thinking-policy slash command, daemon, file watcher, policy profile, or

@@ -11,7 +11,7 @@ async/background subagents, targeted cancellation, result callbacks, and the
 unified subagent control surface.
 
 It covers only the Pi adapter under `contrib/pi-extension`. It does not change
-canonical PersonaSpec contracts, Larva shared schemas, or opifex-owned semantics.
+canonical PersonaSpec contracts or Larva-local schema semantics.
 
 ## Source evidence
 
@@ -664,7 +664,7 @@ exist inside Pi 0.84.1. Optional upstream pre-serialization projection can remov
 that allocation later; it is not required for Larva's emitted-record and retained
 public-state bound.
 
-This adapter-local contract does not change PersonaSpec, opifex shared contracts,
+This adapter-local contract does not change PersonaSpec contracts,
 upstream or installed Pi packages, child session persistence, or Larva's package
 version.
 ### Background activity indicator
@@ -1916,7 +1916,7 @@ Implementation is not complete until these gates pass:
   `full_output_artifact` manifest is present.
 - No remote upload, automatic redaction, or managed retention guarantee for local
   full-output artifacts.
-- No shared PersonaSpec or opifex contract change.
+- No PersonaSpec contract change.
 - No full Pi TUI overlay in RPC/print/json modes.
 - No guarantee that background work survives process exit.
 

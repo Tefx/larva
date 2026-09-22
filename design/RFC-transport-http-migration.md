@@ -5,10 +5,8 @@
 **Affects**: MCPTransportMode type, mcp_contract.py, documentation
 
 ## Terminology
-
-See opifex umbrella RFC for canonical definitions. In short: `"http"` =
-MCP Streamable HTTP (spec 2025-03-26+). `"sse"` = legacy transport.
-
+`"http"` denotes MCP Streamable HTTP (spec 2025-03-26+).
+`"sse"` denotes the legacy transport. No external umbrella RFC is required.
 ## Context
 
 The MCP specification (2025-03-26+) designates **Streamable HTTP** as the

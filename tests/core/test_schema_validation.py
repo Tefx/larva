@@ -5,7 +5,7 @@ contract metadata seam in ``larva.core.validate``. It also includes explicit
 failure-path tests that demonstrate drift detection for field sets and
 canonical error wording.
 
-Canonical authority (per ADR-002, ADR-003, opifex authority basis):
+Larva-local authority (per ADR-002 and ADR-003):
 - Schema is a derived projection of validate.py metadata, not an independent owner.
 - Forbidden fields (tools, side_effect_policy) must NOT appear in schema properties.
 - additionalProperties must be false at canonical boundary.
@@ -27,12 +27,11 @@ from larva.shell import mcp_contract
 
 SCHEMA_PATH = Path(__file__).parent.parent.parent / "contracts" / "persona_spec.schema.json"
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
-OPIFEX_SCHEMA_PATH = Path("/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json")
-OPIFEX_SCHEMA = json.loads(OPIFEX_SCHEMA_PATH.read_text())
-README_PATH = Path(__file__).parent.parent.parent / "README.md"
-USER_GUIDE_PATH = Path(__file__).parent.parent.parent / "USER_GUIDE.md"
-USAGE_PATH = Path(__file__).parent.parent.parent / "USAGE.md"
-INTERFACES_PATH = Path(__file__).parent.parent.parent / "INTERFACES.md"
+ROOT = Path(__file__).resolve().parents[2]
+README_PATH = ROOT / "README.md"
+USER_GUIDE_PATH = ROOT / "docs/guides/USER_GUIDE.md"
+USAGE_PATH = ROOT / "docs/guides/USAGE.md"
+INTERFACES_PATH = ROOT / "docs/reference/INTERFACES.md"
 
 # ---------------------------------------------------------------------------
 # Canonical fixtures
@@ -69,14 +68,16 @@ NON_CANONICAL_EXTRA_FIELDS = ("variables", "tools", "side_effect_policy")
 def _schema_parity_violations(schema: dict[str, Any]) -> list[str]:
     violations: list[str] = []
 
-    expected_required = list(OPIFEX_SCHEMA["required"])
+    expected_required = list(validate_module.CANONICAL_REQUIRED_FIELDS)
     actual_required = list(schema.get("required", []))
     if actual_required != expected_required:
         violations.append(
             f"required mismatch: expected={expected_required}, actual={actual_required}"
         )
 
-    expected_allowed = set(OPIFEX_SCHEMA["properties"].keys())
+    expected_allowed = set(validate_module.CANONICAL_REQUIRED_FIELDS) | set(
+        validate_module.CANONICAL_OPTIONAL_FIELDS
+    )
     actual_properties = set(schema.get("properties", {}).keys())
     if actual_properties != expected_allowed:
         violations.append(
@@ -84,7 +85,7 @@ def _schema_parity_violations(schema: dict[str, Any]) -> list[str]:
             f"actual={sorted(actual_properties)}"
         )
 
-    forbidden = set(NON_CANONICAL_EXTRA_FIELDS)
+    forbidden = set(validate_module.CANONICAL_FORBIDDEN_FIELDS) | set(NON_CANONICAL_EXTRA_FIELDS)
     leaked_forbidden = sorted(forbidden & actual_properties)
     if leaked_forbidden:
         violations.append(f"forbidden fields present in schema properties: {leaked_forbidden}")
@@ -155,6 +156,7 @@ class TestSchemaAcceptanceRejection:
         canonical shape without convenience fields.
         """
         jsonschema.validate(CANONICAL_SCHEMA_INSTANCE_MINIMAL, SCHEMA)
+        assert validate_module.validate_spec(CANONICAL_SCHEMA_INSTANCE_MINIMAL)["valid"] is True
 
     def test_canonical_full_fixture_passes_schema(self) -> None:
         """Assert CANONICAL_SCHEMA_INSTANCE_FULL validates against the schema.
@@ -162,6 +164,7 @@ class TestSchemaAcceptanceRejection:
         Includes all optional canonical fields.
         """
         jsonschema.validate(CANONICAL_SCHEMA_INSTANCE_FULL, SCHEMA)
+        assert validate_module.validate_spec(CANONICAL_SCHEMA_INSTANCE_FULL)["valid"] is True
 
     @pytest.mark.parametrize(
         ("field", "value", "expected_code"),
@@ -243,6 +246,35 @@ class TestSchemaAcceptanceRejection:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(invalid_spec, SCHEMA)
 
+    @pytest.mark.parametrize("field", validate_module.CANONICAL_REQUIRED_FIELDS)
+    def test_schema_and_validator_reject_each_missing_required_field(self, field: str) -> None:
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        del invalid_spec[field]
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+        assert validate_module.validate_spec(invalid_spec)["valid"] is False
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("id", "Not a canonical id"),
+            ("description", ""),
+            ("prompt", 7),
+            ("model", ""),
+            ("spec_version", "9.0.0"),
+            ("capabilities", {"shell": "execute"}),
+            ("can_spawn", ["child", "child"]),
+            ("can_spawn", [""]),
+            ("model_params", {"temperature": 3}),
+        ],
+    )
+    def test_schema_and_validator_reject_malformed_values(self, field: str, value: object) -> None:
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec[field] = value
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+        assert validate_module.validate_spec(invalid_spec)["valid"] is False
+
     def test_empty_spec_rejected_by_schema(self) -> None:
         """Assert empty dict is rejected by schema — all required fields missing."""
         with pytest.raises(jsonschema.ValidationError):
@@ -306,8 +338,6 @@ class TestMCPProjectionParity:
     def test_repo_docs_list_the_full_mcp_tool_inventory(self) -> None:
         tool_names = [tool["name"] for tool in mcp_contract.LARVA_MCP_TOOLS]
         for path in (README_PATH, USER_GUIDE_PATH, USAGE_PATH, INTERFACES_PATH):
-            if not path.exists():
-                continue
             text = _doc_text(path)
             for tool_name in tool_names:
                 assert tool_name in text, f"{path.name} is missing MCP tool {tool_name}"
@@ -333,13 +363,27 @@ class TestFailurePathDriftDetection:
         assert any("forbidden fields present" in v for v in violations)
 
 
+    def test_optional_field_drift_is_detected(self) -> None:
+        drifted_schema = {**SCHEMA, "properties": dict(SCHEMA["properties"])}
+        del drifted_schema["properties"]["can_spawn"]
+        assert any(v.startswith("properties mismatch") for v in _schema_parity_violations(drifted_schema))
+
+    def test_open_admission_drift_is_detected(self) -> None:
+        drifted_schema = {**SCHEMA, "additionalProperties": True}
+        assert "schema must set additionalProperties=false at canonical boundary" in _schema_parity_violations(drifted_schema)
+
+
 class TestCanonicalTypingSurface:
     def test_validator_metadata_does_not_advertise_variables(self) -> None:
         assert "variables" not in validate_module.CANONICAL_OPTIONAL_FIELDS
 
     def test_persona_spec_typed_dict_matches_canonical_schema_fields(self) -> None:
         persona_spec_fields = set(get_type_hints(spec_module.PersonaSpec).keys())
-        assert persona_spec_fields == set(OPIFEX_SCHEMA["properties"].keys())
+        assert persona_spec_fields == set(SCHEMA["properties"])
+        assert spec_module.PersonaSpec.__required_keys__ == set(SCHEMA["required"])
+        assert spec_module.PersonaSpec.__optional_keys__ == (
+            set(SCHEMA["properties"]) - set(SCHEMA["required"])
+        )
 
     def test_assembly_input_is_not_exported(self) -> None:
         assert not hasattr(spec_module, "AssemblyInput")

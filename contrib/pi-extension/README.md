@@ -2,11 +2,11 @@
 
 ## Native Pi package
 
-This directory is the Larva extension package for native Pi 0.85.1. Install it
+This directory is the Larva extension package for native Pi. Install it
 into a Pi agent directory, bind the Larva CLI, and start `pi` from a normal
 project shell. [The accepted native design](../../design/pi-native-extension.md)
 owns setup, admission, settings, and child-capsule rules. PersonaSpec meaning
-remains owned by opifex.
+is owned by Larva's local schema and Core validator/types.
 
 Native `pi` is the only Pi session entry point. The Python `larva` package is
 used only as the persona data backend.
@@ -93,10 +93,12 @@ nonfatal after successful explicit-ID preflight.
 
 ### Native runtime verification
 
-The supported native host is Node 26.7.0 / Pi 0.85.1 on macOS. References below
-to earlier Pi versions explain historical constraints; they do not expand the
-supported host. The Python package is a downstream data backend, not the
-native startup path.
+The original native observations used Node 26.7.0 / Pi 0.85.1 on macOS.
+Versions are evidence context, not runtime admission restrictions. The local
+package lock reproduces development dependencies. Functional acceptance uses
+actual native execution in isolated fixtures, without version rejection,
+automatic upgrades, compatibility matrices or global installation changes.
+The Python package supplies data; native Pi owns session startup.
 
 Child launch identity is captured once from the actual Node executable, Pi
 package manifest, and declared `bin.pi` entry. Parent argv changes and ambient
@@ -185,7 +187,7 @@ variant's runtime routing label. Larva canonical validation requires it to be a
 non-empty string, but it does not maintain a static provider/model allowlist and
 it does not guarantee runtime availability. Pi-provider aliases and availability
 checks are adapter-local Larva-Pi configuration and must not be added to
-PersonaSpec or opifex shared contracts.
+the local PersonaSpec contract.
 
 The canonical model-map path is:
 
@@ -376,7 +378,7 @@ Operator migration guidance:
   between the two files at runtime.
 
 This file is adapter-local Larva-Pi configuration. It is not a canonical
-PersonaSpec field, is not interpreted by opifex, and does not change the meaning
+PersonaSpec field and does not change the meaning
 of PersonaSpec `capabilities` or `can_spawn`.
 
 Minimal shape:
@@ -504,7 +506,7 @@ Active persona selection is Pi-session-local adapter state. Successful persona
 commits append a versioned custom session entry, `larva-active-persona-commit`,
 containing the selected `persona_id`, current `spec_digest`, source, and commit
 time. This entry records the user's/session's active persona choice; it is not a
-PersonaSpec field, not an opifex/shared-contract surface, not a prompt block, and
+PersonaSpec field, not a prompt block, and
 not a child-session sidecar.
 
 Startup restore precedence is:
@@ -543,7 +545,7 @@ task ids as authority.
 ### Agent persona self-switch
 
 Agent persona self-switch is session-level Pi extension policy. It does not add
-fields to PersonaSpec, does not change opifex shared contracts, and does not give
+fields to PersonaSpec and does not give
 the model direct access to the internal `commitPersona` primitive.
 
 Configure the launch default with either surface:
@@ -989,7 +991,7 @@ Compaction focus does not:
 - modify installed Pi packages under `/opt/homebrew/...`;
 - replace Pi's default compaction prompts or summary schema;
 - rewrite provider payloads;
-- change PersonaSpec or opifex shared contracts;
+- change the local PersonaSpec contract;
 - inject the full persona prompt as compaction focus;
 - automatically continue work after threshold or manual compaction;
 - write, migrate, merge, delete, or create user config files automatically.
@@ -1189,11 +1191,10 @@ the extension dependency set before Pi-extension UI work:
 npm --prefix contrib/pi-extension ci
 ```
 
-Version governance: keep `@earendil-works/pi-tui` pinned to exactly `0.85.1` for
-this integration target. Do not use a semver range until compatibility is proven
-against the live Pi runtime. When Pi is upgraded, update both the package file and
-lockfile in the same implementation pass and rerun the Pi-extension UI/runtime
-gates.
+The committed `@earendil-works/pi-tui` version and lockfile reproduce local
+builds. They do not constrain installed Pi or trigger dependency upgrades when
+the host changes. Record the actual runtime version and test required behavior;
+do not add version-based rejection, compatibility probes or preventative adaptation.
 
 UI rendering rules:
 
@@ -1765,7 +1766,7 @@ only. The cache target is `subagent-presentation-log.json`; optional adapter-loc
 configuration remains `subagent-log.json`, and invalid config surfaces
 `LARVA_SUBAGENT_LOG_CONFIG_INVALID`. They are adapter-local UI continuity only,
 never orchestration authority, not a model-facing handle index, not resume
-authority, not model-visible log streams, not shared Larva/opifex schemas, and
+authority, not model-visible log streams, not PersonaSpec schema data, and
 not child-session sources of truth. Clearing the Console/cache with `--clear`
 must not delete child Pi session files, consume orchestration events, change
 exact-`task_id` rules, or mutate persona/model/tool-policy state.
@@ -1881,8 +1882,7 @@ machine, and boundaries:
 Do not infer these guarantees from this extension:
 
 - No PersonaSpec schema changes, Pi-specific PersonaSpec fields, Pi-specific
-  policy fields in PersonaSpec, shared-schema changes, or opifex shared-contract
-  changes for Pi model aliases, tool policy, or subagent state.
+  policy fields in PersonaSpec or local schema changes for Pi model aliases, tool policy, or subagent state.
 - No automatic migration or writes to user config files under `~/.pi`, including
   compaction config files.
 - No wildcard, regex, fuzzy, nearest-model, automatic guessing, or

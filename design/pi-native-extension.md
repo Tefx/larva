@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-Accepted direction. Native Pi 0.85.1 is the session entry point; this package
+Accepted direction. Native Pi is the session entry point; this package
 implements normal discovery, CLI binding, admission, main preference persistence,
 and retained child capsules. Operator installation onto a user agent directory
 remains a separate persistent-config action. The Python `larva pi` command was
@@ -20,9 +20,9 @@ contracts remain applicable. In particular, retain:
 - [persona invocation](../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md);
 - [compaction focus](../docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md).
 
-No PersonaSpec, registry, shared opifex contract, public subagent result, or
-session-record schema changes are part of this cutover. Shared meaning remains
-owned by opifex. This document supplies implementation boundaries, without
+No PersonaSpec, registry, public subagent result, or session-record schema
+meaning changes are part of this cutover. Larva owns its local contract;
+Opifex is abandoned and supplies no required input or approval. This document supplies implementation boundaries, without
 requiring an additional architecture-basis artifact or a particular private
 class layout, helper module, or serialization format.
 
@@ -34,15 +34,15 @@ Larva CLI as an on-demand data backend. The accepted cutover removed the Python
 runtime entry points, add a replacement Node launcher, patch Pi, or install a
 shell alias that disguises another wrapper as `pi`.
 
-The first acceptance target is the standard Node-installed Pi 0.85.1 CLI, tested
-on macOS with Node v26.7.0. The implementation uses that host's public extension
-API, including `ctx.mode` and session-local model/thinking setters. Older Pi
-compatibility is outside scope. Newer Pi releases and Bun, standalone-binary,
-embedded-SDK, or other launch forms require their own applicable evidence;
-version ordering alone does not establish compatibility.
+The original acceptance observations used the Node-installed Pi 0.85.1 CLI
+on macOS with Node v26.7.0. These versions describe historical evidence only.
+The extension uses native public APIs, including `ctx.mode` and session-local
+model/thinking setters. Admission checks package/bin identity and accessible
+paths without rejecting version metadata. Acceptance requires actual functional
+proof; do not add version matrices, compatibility probes, speculative adaptation,
+automatic upgrades or global installation/configuration changes.
 
-Preserve the currently supported TUI, RPC, and print/JSON behaviors within this
-host target. The change does not grant new UI capabilities to headless modes.
+Preserve the currently supported TUI, RPC, and print/JSON behaviors within native Pi. The change does not grant new UI capabilities to headless modes.
 
 ### Accepted behavior changes
 
@@ -114,9 +114,9 @@ removed. Preserve unrelated wheel resources and Python CLI/API functionality.
 Do not maintain a second installed Larva extension copy inside the wheel as a
 parallel native entry point.
 
-Use the supported host in the extension development dependency and runtime gates.
-The extension development dependency is Pi 0.85.1. Direct `@earendil-works/pi-tui`
-is pinned to exact `0.85.1` from that host's installed UI package and the imported
+Use the committed package lock to reproduce local development dependencies.
+Pi and direct `@earendil-works/pi-tui` currently resolve to `0.85.1` in that lock;
+this does not restrict the user's installed Pi. The extension imports
 custom-component primitives (`Input`, `Key`, `Markdown`, `SelectList`, `matchesKey`,
 `truncateToWidth`, `visibleWidth`, `wrapTextWithAnsi`).
 

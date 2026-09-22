@@ -1,14 +1,17 @@
 # larva
 
-`larva` is the PersonaSpec toolkit for the opifex stack. It validates,
+`larva` is an independent PersonaSpec toolkit. It validates,
 normalizes, registers, resolves, updates, exports, and projects persona specs.
 
 > Status: this document describes the implemented registry-local variants
 > public surface and the target contract/variant registry storage model.
 > Assembly/component public surfaces have been removed.
 
-The canonical PersonaSpec contract authority is opifex. larva consumes that
-contract; it does not redefine it.
+Larva owns its local PersonaSpec contract: `contracts/persona_spec.schema.json`
+and the Core validator/types define admission. Opifex is abandoned; no external
+checkout or upstream approval is required. Existing field meaning and strict
+malformed/unknown-field rejection are preserved. Historical upstream decisions
+are retired where linked; see [ADR-003](docs/adr/ADR-003-canonical-requiredness-authority.md).
 
 ## What larva is for
 
@@ -238,7 +241,7 @@ behavior, target refresh semantics, and failure handling.
 
 ### Native Pi extension
 
-Install `contrib/pi-extension` as a normal Pi 0.85.1 package and bind the Larva
+Install `contrib/pi-extension` as a normal Pi package and bind the Larva
 CLI with `LARVA_CLI_ARGV_JSON`. Native flags are `--larva-persona` and
 `--larva-agent-persona-switch`. Main preferences persist in Pi's real agent
 directory; child processes still use private settings capsules. Native `pi` is
@@ -326,8 +329,7 @@ fallback when no map hit exists.
 Persona-specific Pi tool rules live in adapter-local
 `~/.pi/larva/tool-policy.json`, or the absolute path explicitly named by
 `LARVA_PI_TOOL_POLICY_FILE`. Legacy `~/.pi/tool-policy.json` is not read as an
-implicit fallback. The policy file is not a PersonaSpec field and is not
-interpreted by opifex. The Pi extension validates the active persona entry and
+implicit fallback. The policy file is adapter-local and is not a PersonaSpec field. The Pi extension validates the active persona entry and
 supports only exact tool-name `allow` and `deny` arrays; there is no `ask` action,
 wildcard matching, project-level policy hierarchy, or PersonaSpec schema change.
 
@@ -373,7 +375,7 @@ restore fails, Larva reports the failure, preserves current runtime state, keeps
 audit detail, and requires explicit user persona choice before any further
 persona-changing action; there is no automatic safe-default persona fallback.
 Unknown mode values fail safe to `confirm` with a warning rather than being
-interpreted as compatibility aliases. No PersonaSpec/opifex contract changes are
+interpreted as compatibility aliases. No PersonaSpec contract changes are
 involved, and the model never receives a direct `commitPersona` tool.
 
 Initial `pi --larva-persona <id>` model/policy/tool failures are fatal startup
@@ -487,7 +489,7 @@ for exact task-id command examples. The former log alias has been removed;
 
 There is no public `run_id`, `last` alias, fuzzy selector, sidecar provenance
 handle, sidecar metadata file, batch cancel surface, scheduler, or shared
-PersonaSpec/opifex schema change. For runtime proof probes only,
+PersonaSpec schema change. For runtime proof probes only,
 `LARVA_PI_CHILD_RPC_TRACE_FILE` may record child RPC frames, but it is not a
 public resume handle, not a provenance record, not sidecar metadata, not
 model-facing helper state, and not authority for `larva_subagent_sessions`; trace

@@ -1,3 +1,10 @@
+> Authority update (2026-09-22): the recorded Opifex comparisons and installed-Pi
+> versions below are historical observations only. Opifex is abandoned; Larva's
+> local schema and validator/types govern admission. These records impose no
+> upstream checkout, approval or exact installed-version requirement. Original
+> observations remain unchanged.
+
+
 # Native capsule/runtime repair evidence
 
 ## Outcome and observation-method correction

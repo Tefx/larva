@@ -44,7 +44,7 @@ bounded focus text through Pi's `customInstructions` path.
 - Do not modify installed Pi packages under `/opt/homebrew/...`.
 - Do not replace Pi's default `SUMMARIZATION_PROMPT`,
   `UPDATE_SUMMARIZATION_PROMPT`, or split-turn prompt.
-- Do not change PersonaSpec or opifex shared contracts.
+- Do not change the local PersonaSpec contract.
 - Do not make threshold or manual compaction automatically continue execution.
 - Do not use provider-payload rewriting as the primary integration path.
 - Do not write, migrate, merge, or create user configuration files
@@ -408,7 +408,7 @@ Implementation must provide tests for:
 8. output summaries retain Pi's standard sections, including `## Goal`,
    `## Progress`, `## Next Steps`, and `## Critical Context`;
 9. non-overreach constraints: no installed Pi package edits, no PersonaSpec or
-   opifex schema changes, no Pi base prompt replacement, no provider-payload
+   PersonaSpec schema changes, no Pi base prompt replacement, no provider-payload
    rewrite, no automatic continuation message, and no automatic config file
    writes.
 

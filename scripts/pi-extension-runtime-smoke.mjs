@@ -2307,7 +2307,6 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
 async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.85.1";
   const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
   const childSessionRoot = join(proofRoot, "child-sessions");
   const providerExtension = join(proofRoot, "watchdog-provider.ts");
@@ -2557,7 +2556,7 @@ export default function (pi) {
   const longerStallIndex = cases.longer?.phases?.indexOf("stall_suspected") ?? -1;
   const longerRecoveryIndex = longerStallIndex >= 0 ? cases.longer.phases.indexOf("waiting_for_child", longerStallIndex + 1) : -1;
   const assertions = {
-    installedPiIdentity: version.exitCode === 0 && version.stdout.trim() === expectedVersion && packageVersion === expectedVersion,
+    installedPiExecutable: version.exitCode === 0,
     realChildrenSpawned: childPids.length === 3 && traceEvents.filter((event) => event?.event === "child_spawn").length === 3,
     blockingToolExecutedByInstalledChildren: ["hard-silent", "longer-silent", "continuing-0", "continuing-1", "continuing-2"].every((label) => [cases.hard, cases.longer, cases.continuing].flatMap((row) => row?.tool_rows ?? []).some((entry) => entry.label === label && entry.event === "start")),
     hardWarningPreservesRunning: cases.hard?.warning_count === 1 && hardWaitingIndex >= 0 && hardStallIndex > hardWaitingIndex && cases.hard?.warning?.row?.status === "running" && cases.hard?.warning?.row?.phase === "stall_suspected" && cases.hard?.warning?.row?.result_pending === true && cases.hard?.warning?.callback_count === 0,
@@ -2572,7 +2571,7 @@ export default function (pi) {
   };
   return {
     status: Object.values(assertions).every(Boolean) ? "PASS" : "FAIL",
-    identity: { binary: installedPi, package_root: installedPackageRoot, expected_version: expectedVersion, binary_version: version.stdout.trim(), package_version: packageVersion },
+    identity: { binary: installedPi, package_root: installedPackageRoot, binary_version: version.stdout.trim(), package_version: packageVersion },
     clock: { source: "performance.now", scale: clockScale, accelerated_only_for_deadlines_at_or_above_ms: 50_000 },
     files: { proof_root: proofRoot, trace_file: traceFile, tool_log_file: toolLogFile, model_map_path: modelMapPath, subagent_config_path: subagentConfigPath },
     host_settings_before: hostSettingsBefore,
@@ -3969,7 +3968,6 @@ rl.on("line", async (line) => {
 async function installedPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
-  const expectedVersion = "0.85.1";
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
@@ -4014,9 +4012,7 @@ async function installedPiModelMapProfileSwitchProof(evidence) {
     await Promise.all([childSessionDir, piCodingAgentDir, parentSessionDir, scratchDir].map((path) => mkdir(path, { recursive: true })));
     const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
     const packageJson = await readJsonFile(join(installedPackageRoot, "package.json"));
-    if (version.exitCode !== 0 || version.stdout.trim() !== expectedVersion || packageJson.version !== expectedVersion) {
-      throw new Error(`installed Pi mismatch: binary=${version.stdout.trim()} package=${packageJson.version}`);
-    }
+    if (version.exitCode !== 0) throw new Error(`installed Pi did not execute: ${version.stderr}`);
 
     server = createServer(async (request, response) => {
       let body = "";
@@ -4193,8 +4189,8 @@ export default function (pi) {
     evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
     evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: version.stdout.trim(), installedVersion: packageJson.version };
     const assertions = {
-      exactInstalledBinary: evidence.pi.binary === installedPi && evidence.package.versionText === expectedVersion,
-      exactInstalledPackage: evidence.package.packageRoot === installedPackageRoot && evidence.package.installedVersion === expectedVersion,
+      exactInstalledBinary: evidence.pi.binary === installedPi,
+      exactInstalledPackage: evidence.package.packageRoot === installedPackageRoot,
       ctxReloadBeforePublicCommand: reloadResponse.type === "response" && reloadResponse.success === true && Array.isArray(commandsAfterReload.data?.commands) && commandsAfterReload.data.commands.some((command) => command.name === "larva-model-map"),
       externalSymlinkPublicCommand: externalSwitchResponse.type === "response" && externalSwitchResponse.success === true && externalSwitchNotification.message.includes("parent=switched") && stateAfterExternalSwitch.data?.model?.provider === "openrouter" && stateAfterExternalSwitch.data?.model?.id === "openai/gpt-5.6-sol",
       externalLexicalStatus: externalStatusNotification.message.includes(`path=${lexicalOpenrouterPath}`) && externalStatusNotification.message.includes(externalOpenrouterPath) === false && externalStatusNotification.message.includes("parent=parent:openrouter/openai/gpt-5.6-sol") && externalStatusNotification.message.includes("apiKey") === false && externalStatusNotification.message.includes("local") === false,
@@ -4230,7 +4226,7 @@ export default function (pi) {
       providerRequests,
       childRpcEventNames: trace.map((event) => event.event),
       childPids,
-      selected: { binary: installedPi, packageRoot: installedPackageRoot, packageVersion: expectedVersion },
+      selected: { binary: installedPi, packageRoot: installedPackageRoot, packageVersion: packageJson.version },
       executed: { binary: installedPi, packageRoot: installedPackageRoot, packageVersion: packageJson.version },
       reload: { publicCommand: "/larva-proof-reload", contextMethod: "ctx.reload()", responseId: reloadResponse.id, commandsResponseId: commandsAfterReload.id },
       externalProfile: { publicCommand: "/larva-model-map openrouter", lexicalPath: lexicalOpenrouterPath, externalTargetPath: externalOpenrouterPath, modelRegistryResult: { provider: stateAfterExternalSwitch.data?.model?.provider ?? null, modelId: stateAfterExternalSwitch.data?.model?.id ?? null }, statusMessage: externalStatusNotification.message, loopbackRequestObserved: providerRequests.some((entry) => entry.model === "openai/gpt-5.6-sol") },
@@ -4276,7 +4272,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const installedPi = "/opt/homebrew/bin/pi";
   const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
   const installedCli = join(installedPackageRoot, "dist", "bundle", "cli.js");
-  const expectedVersion = "0.85.1";
+  let observedVersionText = null;
   const scenarioStartedWallMs = Date.now();
   const scenarioStartedMonotonicNs = process.hrtime.bigint();
   const wholeScenarioDeadlineMs = 180_000;
@@ -4504,9 +4500,10 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
     const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
     const packageJson = await readJsonFile(join(installedPackageRoot, "package.json"));
     const cliRealPath = await realpath(installedPi);
-    if (version.exitCode !== 0 || version.stdout.trim() !== expectedVersion || packageJson.version !== expectedVersion || cliRealPath !== installedCli) {
-      throw new Error(`installed Pi identity drift: version=${version.stdout.trim()} package=${packageJson.version} cli=${cliRealPath}`);
+    if (version.exitCode !== 0 || cliRealPath !== installedCli) {
+      throw new Error(`installed Pi executable mismatch: exit=${version.exitCode} cli=${cliRealPath}`);
     }
+    observedVersionText = version.stdout.trim();
     raw.selected.parent.package_version = packageJson.version;
     raw.selected.child.package_version = packageJson.version;
 
@@ -4679,7 +4676,7 @@ export default function (pi) {
     parent = spawn(installedPi, parentArgs, { cwd: tempRoot, env: baseEnv, stdio: ["pipe", "pipe", "pipe"], detached: process.platform !== "win32" });
     parentPid = parent.pid ?? null;
     if (!Number.isInteger(parentPid)) throw new Error("installed parent Pi did not expose a PID");
-    raw.executed.parent = { pid: parentPid, selected_binary: installedPi, executable: process.execPath, cli: installedCli, argv: parentArgs, package_version: expectedVersion };
+    raw.executed.parent = { pid: parentPid, selected_binary: installedPi, executable: process.execPath, cli: installedCli, argv: parentArgs, package_version: packageJson.version };
     appendHarnessEvent("parent_spawn", { pid: parentPid, selected_binary: installedPi, cli: installedCli });
     parent.stderr.on("data", (chunk) => parentStderr.push(chunk.toString("utf8")));
     parentLines = createInterface({ input: parent.stdout });
@@ -4864,7 +4861,7 @@ export default function (pi) {
     const allTransportBeforeCleanup = await readTransport();
     const processStarts = allTransportBeforeCleanup.filter((row) => row.event === "process_start");
     if (processStarts.length > childLimit) throw new Error(`actual child process limit exceeded: ${processStarts.length}`);
-    raw.executed.children = processStarts.map((row) => ({ persona_id: row.persona, controller_pid: row.controller_pid, actual_pid: row.actual_pid, selected_binary: row.selected_binary, executable: row.executable, cli: row.cli, package_version: expectedVersion }));
+    raw.executed.children = processStarts.map((row) => ({ persona_id: row.persona, controller_pid: row.controller_pid, actual_pid: row.actual_pid, selected_binary: row.selected_binary, executable: row.executable, cli: row.cli, package_version: packageJson.version }));
     const networkSamples = [await processNetworkSample(parentPid, "parent")];
     for (const row of processStarts.filter((entry) => processAlive(entry.actual_pid))) networkSamples.push(await processNetworkSample(row.actual_pid, "child", row.persona));
     raw.isolation.network_samples = networkSamples;
@@ -4974,7 +4971,7 @@ export default function (pi) {
     raw.status = casesPass && raw.observation.terminal_recheck === "PASS" && raw.isolation.environment_status === "PASS" && raw.isolation.loopback_only && raw.isolation.external_provider_requests === 0 && raw.isolation.credential_env_keys_present.length === 0 && raw.executed.children.length >= 5 && raw.executed.children.length <= childLimit && raw.cleanup.outcome === "PASS" && parentStderr.join("").length === 0 ? "PASS" : "FAIL";
     if (raw.status === "FAIL" && raw.error === null) raw.error = { code: "ACTUAL_CHILD_ASSERTION_FAILED", message: "One or more actual-child runtime assertions failed." };
     evidence.pi = { binary: installedPi, available: true, extensionFlag: "-e" };
-    evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: expectedVersion, installedVersion: expectedVersion };
+    evidence.package = { ...evidence.package, packageRoot: installedPackageRoot, versionText: observedVersionText, installedVersion: raw.selected.parent.package_version };
     evidence.rpc.attempted = parentPid !== null;
     evidence.rpc.supported = parentRpcEvents.some((event) => event?.type === "agent_end");
     evidence.rpc.stderr = parentStderr.join("");

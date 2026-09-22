@@ -7,9 +7,9 @@ the registry-local variants cutover.
 `larva` is a downstream admission, registry, and projection handler for
 PersonaSpec.
 
-The **canonical PersonaSpec contract authority is `opifex`**. `larva` validates,
-normalizes, registers, resolves, and projects PersonaSpec artifacts as a
-downstream consumer, not the contract owner.
+Larva owns the canonical PersonaSpec contract in its local schema and Core
+validator/types. It validates, normalizes, registers, resolves and projects
+PersonaSpec without an external contract checkout or upstream approval.
 
 Its scope is limited to:
 

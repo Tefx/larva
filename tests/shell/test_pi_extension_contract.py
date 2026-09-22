@@ -40,9 +40,6 @@ PI_EXTENSION_RUNTIME_SMOKE_COMMAND: Final = (
     "node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates"
 )
 REPO_LOCAL_GATE_TEST_COMMAND: Final = "uv run pytest -q tests/shell/test_repo_local_ci_gate.py"
-SHARED_SURFACE_GATE_COMMAND: Final = (
-    "uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root opifex"
-)
 
 
 REQUIREMENT_TRACEABILITY: Final[dict[int, tuple[str, ...]]] = {
@@ -298,7 +295,6 @@ def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
         REPO_LOCAL_GATE_TEST_COMMAND,
         controlled_gate,
         PI_EXTENSION_RUNTIME_SMOKE_COMMAND,
-        SHARED_SURFACE_GATE_COMMAND,
     ):
         assert retained_gate in workflow
         _assert_required_workflow_step(workflow, retained_gate)
@@ -2807,28 +2803,15 @@ def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_
     assert result["markerExists"] is False
 
 
-def test_pi_version_compatibility_range_and_diagnostics(tmp_path: Path) -> None:
-    """Pi CLI detection supports >= 0.85.0 (including 0.86.1) and provides actionable diagnostics."""
-    source = _source()
-    _assert_tokens(source, "MIN_SUPPORTED_PI_VERSION", "isSupportedPiVersion", "inspectPiCliScript")
+def test_pi_cli_identity_and_diagnostics_ignore_version_metadata(tmp_path: Path) -> None:
+    """Package/bin identity admits Pi independently of version metadata."""
 
     result = _run_node(
         tmp_path,
         f"""
         const mod = await import({json.dumps(EXTENSION.as_uri())});
 
-        // 1. Version range checks
-        const versionChecks = {{
-          v0850: mod.isSupportedPiVersionForTests("0.85.0"),
-          v0851: mod.isSupportedPiVersionForTests("0.85.1"),
-          v0860: mod.isSupportedPiVersionForTests("0.86.0"),
-          v0861: mod.isSupportedPiVersionForTests("0.86.1"),
-          v100: mod.isSupportedPiVersionForTests("1.0.0"),
-          v0841: mod.isSupportedPiVersionForTests("0.84.1"),
-          v0800: mod.isSupportedPiVersionForTests("0.80.0"),
-        }};
-
-        // 2. 0.86.1 layout check
+        // Actual package/bin inspection; this is not a runtime compatibility probe.
         const pkgDir = {json.dumps(str(tmp_path / "pkg-0-86-1"))};
         const fs = await import("node:fs/promises");
         const path = await import("node:path");
@@ -2843,7 +2826,7 @@ def test_pi_version_compatibility_range_and_diagnostics(tmp_path: Path) -> None:
         await fs.chmod(cli86, 0o755);
         const inspection86 = mod.inspectPiCliScriptForTests(cli86);
 
-        // 3. Unsupported version check (0.84.1)
+        // Changing version metadata cannot veto the same package/bin identity.
         const pkg84Dir = {json.dumps(str(tmp_path / "pkg-0-84-1"))};
         await fs.mkdir(path.join(pkg84Dir, "dist/bundle"), {{ recursive: true }});
         await fs.writeFile(path.join(pkg84Dir, "package.json"), JSON.stringify({{
@@ -2863,7 +2846,6 @@ def test_pi_version_compatibility_range_and_diagnostics(tmp_path: Path) -> None:
         const inspectionImpostor = mod.inspectPiCliScriptForTests(impostor);
 
         console.log(JSON.stringify({{
-          versionChecks,
           inspection86,
           inspection84,
           inspectionImpostor,
@@ -2871,22 +2853,11 @@ def test_pi_version_compatibility_range_and_diagnostics(tmp_path: Path) -> None:
         """,
     )
 
-    vc = result["versionChecks"]
-    assert vc["v0850"] is True
-    assert vc["v0851"] is True
-    assert vc["v0860"] is True
-    assert vc["v0861"] is True
-    assert vc["v100"] is True
-    assert vc["v0841"] is False
-    assert vc["v0800"] is False
-
     assert result["inspection86"]["ok"] is True
     assert result["inspection86"]["version"] == "0.86.1"
 
-    assert result["inspection84"]["ok"] is False
-    assert result["inspection84"]["code"] == "VERSION_UNSUPPORTED"
-    assert "0.84.1" in result["inspection84"]["message"]
-    assert ">= 0.85.0" in result["inspection84"]["message"]
+    assert result["inspection84"]["ok"] is True
+    assert result["inspection84"]["version"] == "0.84.1"
 
     assert result["inspectionImpostor"]["ok"] is False
     assert result["inspectionImpostor"]["code"] == "MANIFEST_MISSING"

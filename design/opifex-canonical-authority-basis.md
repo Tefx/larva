@@ -1,9 +1,13 @@
 # [Adjudication] Opifex Canonical Authority Basis
 
 ## Status
-
-Accepted authority basis for downstream remediation planning.
-
+Historical adjudication; upstream authority retired by the 2026-09-22 user decision.
+Larva is independent and Opifex is abandoned. All Opifex ownership rules,
+required inputs, conflict-resolution rules and update obligations below describe
+the former contract only and impose no current constraint. The retained local
+admission semantics are defined in `../docs/adr/ADR-003-canonical-requiredness-authority.md`,
+`../contracts/persona_spec.schema.json` and Larva's Core validator/types.
+The remaining text preserves the original decision for historical readers.
 ## Decision
 
 - [Proven] **Contract owner:** opifex canonical PersonaSpec prose/schema is the single contract authority.

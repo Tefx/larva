@@ -2,8 +2,8 @@
 
 This guide explains how to use larva as the local admission, registry, and
 projection layer for canonical PersonaSpec validation, storage, and
-registry-local variant routing. The canonical PersonaSpec contract is owned by
-opifex.
+registry-local variant routing. Larva owns the local PersonaSpec schema and validator contract; no Opifex
+checkout or upstream authority is required.
 
 ## 1. What larva does
 
@@ -26,7 +26,7 @@ larva does not:
 - manage agent memory
 - own runtime tool enforcement
 - define provider-specific gateway behavior
-- change the canonical PersonaSpec contract owned by opifex
+- silently redefine PersonaSpec during admission or projection
 
 ## 2. Installation
 
@@ -522,8 +522,8 @@ fallback. Unknown mode values fail safe to `confirm` with a warning; they are no
 compatibility aliases. The full target policy is documented in
 [`../reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
-This is Pi adapter-local behavior only: it does not change PersonaSpec or opifex
-contracts, and the model never receives a direct `commitPersona` tool.
+This is Pi adapter-local behavior only: it does not change the local PersonaSpec
+contract, and the model never receives a direct `commitPersona` tool.
 
 ## 17. Troubleshooting
 

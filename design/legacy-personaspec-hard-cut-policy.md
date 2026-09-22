@@ -1,3 +1,10 @@
+> Authority update (2026-09-22): Larva owns the local PersonaSpec contract.
+> References below to the former Opifex authority basis are historical
+> attributions only. The strict rejection/no-alias rules remain applicable under
+> [ADR-003](../docs/adr/ADR-003-canonical-requiredness-authority.md); no upstream
+> checkout, conformance input or approval is required.
+
+
 # Legacy PersonaSpec Hard-Cut Policy Matrix
 
 ## Authority Adjudication: Canonical Cutover Prep

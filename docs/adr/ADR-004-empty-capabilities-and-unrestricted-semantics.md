@@ -39,7 +39,7 @@ belong in PersonaSpec.
 ### Option B: Add an unrestricted wildcard inside `capabilities`
 - **Mechanism**: invent a sentinel such as `{"*": "destructive"}` or a new posture like `"unrestricted"`
 - **Pros**: explicit unrestricted marker
-- **Cons**: requires canonical schema/type changes in upstream authority; mixes declaration with broad runtime allowance; introduces open-ended wildcard semantics over non-enumerated capability families
+- **Cons**: requires authorized local canonical schema/type changes; mixes declaration with broad runtime allowance; introduces open-ended wildcard semantics over non-enumerated capability families
 - **Fails if**: other consumers reject the new sentinel or interpret it inconsistently
 
 ### Option C: Keep `{}` as "no declared capability postures" and keep unrestricted outside PersonaSpec
@@ -58,7 +58,7 @@ capabilities".
 
 If a deployment needs an unrestricted execution mode, that concern belongs to a
 runtime/deployment policy surface outside PersonaSpec unless and until upstream
-canonical authority (`opifex`) introduces an explicit unrestricted construct.
+an authorized Larva-local contract change introduces an explicit unrestricted construct.
 
 ## Consequences
 

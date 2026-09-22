@@ -34,6 +34,7 @@ export async function execute(command, args, options = {}) {
   const child = spawn(command, args, { ...options, stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
   if (options.input !== undefined) child.stdin.end(options.input);
   let stdout = "", stderr = "", timedOut = false;
+  child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
   child.stdout.on("data", (c) => { stdout += c; });
   child.stderr.on("data", (c) => { stderr += c; });
   const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, options.timeout ?? 120000);
@@ -48,6 +49,7 @@ export class NativeRpc {
     this.fixture = fixture;
     this.child = spawn(process.execPath, [CLI, "--mode", "rpc", "--offline", "--approve", "--no-skills", "--no-prompt-templates", "--session-dir", fixture.sessions, "-e", CONTROL, ...args], { env, cwd: fixture.cwd, detached: true, stdio: ["pipe", "pipe", "pipe"] });
     fixture.parents.push(this);
+    this.child.stdout.setEncoding("utf8"); this.child.stderr.setEncoding("utf8");
     let buffer = "";
     this.child.stdout.on("data", (c) => {
       buffer += c;
@@ -99,6 +101,8 @@ export async function createNativeFixture() {
   const fixture = { root, home: join(root, "home"), agent: join(root, "agent"), cwd: join(root, "project"), sessions: join(root, "sessions"), children: join(root, "children"), parents: [], errors: [], requests: [], requestEvents: new EventEmitter(), sockets: new Set(), respond: () => ({ text: "Deterministic protocol response." }) };
   for (const dir of [fixture.home, fixture.agent, fixture.cwd, fixture.sessions, fixture.children, join(root, "tmp")]) await mkdir(dir, { recursive: true });
   fixture.server = createServer(async (request, response) => {
+    // Preserve code points across transport chunks when recording provider input.
+    request.setEncoding("utf8");
     let raw = ""; for await (const chunk of request) raw += chunk;
     assert.equal(request.socket.remoteAddress, "127.0.0.1");
     const payload = JSON.parse(raw);

@@ -1,5 +1,5 @@
-// purpose: distinguish supported captured launch identity from ambient overrides,
-// verify semver compatibility range (>= 0.85.0), and test 0.86.1 layout and diagnostics.
+// purpose: distinguish captured package/bin identity from ambient overrides
+// and reject mismatched scripts without restricting runtime versions.
 // usage: node contrib/pi-extension/test-native-launch-context.mjs
 // effects: disposable source copy with private inspection exports; no child spawn
 // requires: Node 26.7.0 and npm ci
@@ -27,35 +27,7 @@ try {
   assert.deepEqual(supported.resolvePiCommandPrefix({}), [realpathSync(process.execPath), realpathSync(cli)], "launch identity must be captured once, resolving the installed bin symlink");
   assert.deepEqual(supported.resolvePiCommandPrefix({ LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify(["/usr/bin/true"]), LARVA_PI_REAL_BIN: "/usr/bin/false" }), [realpathSync(process.execPath), realpathSync(cli)], "ambient launch overrides must have no effect");
 
-  // Version compatibility checks (>= 0.85.0)
-  assert.equal(supported.isSupportedPiVersionForTests("0.85.0"), true, "0.85.0 must be supported");
-  assert.equal(supported.isSupportedPiVersionForTests("0.85.1"), true, "0.85.1 must be supported");
-  assert.equal(supported.isSupportedPiVersionForTests("0.86.0"), true, "0.86.0 must be supported");
-  assert.equal(supported.isSupportedPiVersionForTests("0.86.1"), true, "0.86.1 must be supported");
-  assert.equal(supported.isSupportedPiVersionForTests("0.90.0"), true, "0.90.0 must be supported");
-  assert.equal(supported.isSupportedPiVersionForTests("1.0.0"), true, "1.0.0 must be supported");
-  assert.equal(supported.isSupportedPiVersionForTests("0.84.1"), false, "0.84.1 must be rejected");
-  assert.equal(supported.isSupportedPiVersionForTests("0.80.0"), false, "0.80.0 must be rejected");
-  assert.equal(supported.isSupportedPiVersionForTests("invalid"), false, "invalid semver must be rejected");
-
-  // Test 0.86.1 installation layout
-  const pkg86Dir = join(root, "pkg-0-86-1");
-  await mkdir(join(pkg86Dir, "dist/bundle"), { recursive: true });
-  await writeFile(join(pkg86Dir, "package.json"), JSON.stringify({
-    name: "@earendil-works/pi-coding-agent",
-    version: "0.86.1",
-    bin: { pi: "dist/bundle/cli.js" },
-  }));
-  const cli86 = join(pkg86Dir, "dist/bundle/cli.js");
-  await writeFile(cli86, "#!/usr/bin/env node\nconsole.log('pi 0.86.1');\n");
-  await chmod(cli86, 0o755);
-  const alias86 = join(root, "pi-86");
-  await symlink(cli86, alias86);
-  process.argv = [process.execPath, alias86];
-  const supported86 = await import(pathToFileURL(entry).href + "?supported-0-86-1");
-  assert.deepEqual(supported86.resolvePiCommandPrefix({}), [realpathSync(process.execPath), realpathSync(cli86)], "0.86.1 install layout must be supported and captured");
-
-  // Test unsupported version (0.84.1) layout: fails closed with actionable diagnostic
+  // Version metadata cannot veto an otherwise valid captured package/bin.
   const pkg84Dir = join(root, "pkg-0-84-1");
   await mkdir(join(pkg84Dir, "dist/bundle"), { recursive: true });
   await writeFile(join(pkg84Dir, "package.json"), JSON.stringify({
@@ -69,10 +41,8 @@ try {
   const alias84 = join(root, "pi-84");
   await symlink(cli84, alias84);
   process.argv = [process.execPath, alias84];
-  const unsupported84 = await import(pathToFileURL(entry).href + "?unsupported-0-84-1");
-  const err84 = unsupported84.resolvePiCommandPrefix({});
-  assert.equal(err84.code, "LARVA_CHILD_START_FAILED", "unsupported Pi version must fail closed");
-  assert.match(err84.message, /Detected Pi version '0\.84\.1' is unsupported.*>= 0\.85\.0/, "unsupported version must name detected version and supported range");
+  const metadataOnly = await import(pathToFileURL(entry).href + "?metadata-only");
+  assert.deepEqual(metadataOnly.resolvePiCommandPrefix({}), [realpathSync(process.execPath), realpathSync(cli84)]);
 
   // Test bin mapping mismatch layout
   const pkgMismatchDir = join(root, "pkg-bin-mismatch");
@@ -125,14 +95,12 @@ try {
     checks: [
       "captured-native-bin",
       "no-ambient-launch-override",
-      "semver-compatibility-range",
-      "layout-0-86-1-supported",
-      "unsupported-version-diagnosed",
+      "version-metadata-does-not-veto-launch",
       "bin-mismatch-diagnosed",
       "package-mismatch-diagnosed",
       "impostor-path-diagnosed",
     ],
-    passed: 8,
+    passed: 6,
   }));
 } finally {
   process.argv = originalArgv;

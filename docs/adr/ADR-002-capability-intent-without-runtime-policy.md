@@ -7,7 +7,7 @@ Accepted (2026-03-19)
 ## Context
 
 `larva` is a downstream admission and projection handler for PersonaSpec.
-The canonical PersonaSpec schema authority is `opifex`. A persona should describe
+Larva owns the canonical PersonaSpec schema and validator contract. A persona should describe
 identity, prompt, model selection, and required tool capabilities. It should not
 encode runtime workflow behavior such as human approval gating.
 

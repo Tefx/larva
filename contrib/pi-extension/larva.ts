@@ -5049,34 +5049,12 @@ function startupFailureStderr(personaId: string, larvaError: LarvaError): string
   return `larva pi: ${larvaError.code}: initial persona '${personaId}' failed before first prompt/model turn: ${larvaError.message}\n`;
 }
 
-const MIN_SUPPORTED_PI_VERSION = "0.85.0";
-
-function parseSemver(version: string): { major: number; minor: number; patch: number } | null {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
-  if (!match) return null;
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-  };
-}
-
-function isSupportedPiVersion(version: string): boolean {
-  const parsed = parseSemver(version);
-  if (!parsed) return false;
-  if (parsed.major > 0) return true;
-  if (parsed.major === 0 && parsed.minor > 85) return true;
-  if (parsed.major === 0 && parsed.minor === 85 && parsed.patch >= 0) return true;
-  return false;
-}
-
 type PiCliScriptInspection =
   | { ok: true; actual: string; version: string; packageDir: string }
   | {
       ok: false;
-      code: "PATH_INVALID" | "NOT_FOUND" | "MANIFEST_MISSING" | "PACKAGE_MISMATCH" | "BIN_MISMATCH" | "VERSION_UNSUPPORTED";
+      code: "PATH_INVALID" | "NOT_FOUND" | "MANIFEST_MISSING" | "PACKAGE_MISMATCH" | "BIN_MISMATCH";
       message: string;
-      detectedVersion?: string;
     };
 
 function inspectPiCliScript(script: string): PiCliScriptInspection {
@@ -5132,14 +5110,6 @@ function inspectPiCliScript(script: string): PiCliScriptInspection {
         };
       }
       const version = typeof pkg.version === "string" ? pkg.version : "";
-      if (!isSupportedPiVersion(version)) {
-        return {
-          ok: false,
-          code: "VERSION_UNSUPPORTED",
-          message: `Detected Pi version '${version || "unknown"}' is unsupported; supported version range is >= ${MIN_SUPPORTED_PI_VERSION}.`,
-          detectedVersion: version,
-        };
-      }
       return { ok: true, actual, version, packageDir: directory };
     }
     directory = dirname(directory);
@@ -5162,12 +5132,6 @@ function captureNativePiLaunchIdentity(): { prefix: readonly string[] | null; er
     const script = typeof process.argv[1] === "string" ? resolve(process.argv[1]) : "";
     const inspection = inspectPiCliScript(script);
     if (!inspection.ok) {
-      if (inspection.code === "VERSION_UNSUPPORTED") {
-        return {
-          prefix: null,
-          error: error("LARVA_CHILD_START_FAILED", inspection.message),
-        };
-      }
       return {
         prefix: null,
         error: error("LARVA_CHILD_START_FAILED", `Supported Node/Pi launch identity is unavailable for child startup: ${inspection.message}`),
@@ -9810,10 +9774,6 @@ function parseStartupError(stderr: string): LarvaError {
 
 export function parseStartupErrorForTests(stderr: string): LarvaError {
   return parseStartupError(stderr);
-}
-
-export function isSupportedPiVersionForTests(version: string): boolean {
-  return isSupportedPiVersion(version);
 }
 
 export function inspectPiCliScriptForTests(script: string): PiCliScriptInspection {

@@ -37,7 +37,7 @@ name, because it is the least disruptive CLI shape.
 
 - Do not read `/Users/tefx/dotfiles/agent/models.yaml` or any personal scaffold
   file. Other users do not have that file.
-- Do not change `PersonaSpec`, opifex shared contracts, or Larva registry model
+- Do not change `PersonaSpec` or Larva registry model
   meaning.
 - Do not hard-code provider preferences such as "OpenAI means Codex first" or
   "Google means OpenRouter first".
@@ -386,7 +386,7 @@ architecture_basis:
     - "The helper must not read personal dotfiles scaffolds."
     - "Generated JSON must match the existing Pi extension model-map schema exactly."
     - "Report metadata must not be embedded in model-map JSON."
-    - "No PersonaSpec or opifex shared contract changes."
+    - "No local PersonaSpec contract changes."
 
   cross_cutting_governance:
     registries:

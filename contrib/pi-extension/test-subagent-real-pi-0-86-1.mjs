@@ -1,7 +1,7 @@
-// purpose: verify actual subagent startup on installed Pi 0.86.1 layout
+// purpose: verify actual subagent startup on installed Pi (filename is historical)
 // usage: node contrib/pi-extension/test-subagent-real-pi-0-86-1.mjs
 // effects: disposable test directory, child Pi process spawn
-// requires: installed Pi 0.86.1 (e.g. /opt/homebrew/bin/pi), Node 26.7+
+// requires: installed Pi (e.g. /opt/homebrew/bin/pi), Node 26.7+
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
@@ -38,10 +38,9 @@ try {
   process.argv = [process.execPath, piPath];
   const mod = await import(`./larva.ts?t=${Date.now()}`);
 
-  // 1. Verify inspection of 0.86.1 installation layout
+  // 1. Verify installed package/bin identity
   const inspection = mod.inspectPiCliScriptForTests(piPath);
   assert.equal(inspection.ok, true, `installed Pi at ${piPath} must be inspectable and valid`);
-  assert.equal(mod.isSupportedPiVersionForTests(inspection.version), true, `version ${inspection.version} must be supported`);
 
   // 2. Verify launch prefix resolution returns real binary paths
   const resolved = mod.captureNativePiCommandPrefixForTests();

@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { writeFile, appendFile, stat, rename, truncate } from "node:fs/promises";
 import { join } from "node:path";
+import { request as httpRequest } from "node:http";
 import { createNativeFixture, NativeRpc } from "./pi-native-support.mjs";
 const f = await createNativeFixture();
 const stamp = "2026-09-21T18:00:00Z";
@@ -40,7 +41,11 @@ async function invoke(name, args) {
   const payload = JSON.parse(end.result.content[0].text);
   // Check the next actual provider request, not only SDK details or the event.
   const delivered = f.requests.slice(from).flatMap(x => x.payload.messages ?? []).filter(x => x.role === "tool");
-  assert.ok(delivered.some(x => typeof x.content === "string" && x.content === end.result.content[0].text), "complete activity metadata and segments must reach model context");
+  const expected = end.result.content[0].text;
+  const current = delivered.findLast(x => x.tool_call_id === end.toolCallId)?.content;
+  let mismatch = 0;
+  while (typeof current === "string" && mismatch < expected.length && current[mismatch] === expected[mismatch]) mismatch++;
+  assert.ok(delivered.some(x => typeof x.content === "string" && x.content === expected), JSON.stringify({ message: "complete activity metadata and segments must reach model context", call: end.toolCallId, expectedLength: expected.length, deliveredLength: current?.length, mismatch, expectedNear: expected.slice(Math.max(0, mismatch - 40), mismatch + 80), deliveredNear: current?.slice?.(Math.max(0, mismatch - 40), mismatch + 80) }));
   return payload;
 }
 const activity = args => invoke("larva_subagent_activity", args);
@@ -181,6 +186,22 @@ try {
   assert.equal((await f.inspect()).liveChildren.length, 0);
   console.log(`FR8: live/pending and stall_suspected reads preserved events/phase/files; real watchdog fired at ${elapsed}ms; one native callback`);
   await p.stop();
+  // The evidence recorder itself must preserve split UTF-8 transport chunks.
+  const utf8Text = "split 😀 provider body";
+  const body = Buffer.from(JSON.stringify({ messages: [{ role: "user", content: utf8Text }] }));
+  const split = body.indexOf(Buffer.from("😀")) + 1;
+  const firstChunk = new Promise(resolve => f.server.once("request", request => request.once("data", resolve)));
+  let client;
+  const recorded = new Promise((resolve, reject) => {
+    client = httpRequest({ host: "127.0.0.1", port: f.server.address().port, method: "POST", path: "/v1/chat/completions" }, response => { response.resume(); response.once("end", resolve); });
+    client.once("error", reject);
+  });
+  client.write(body.subarray(0, split));
+  await firstChunk;
+  client.end(body.subarray(split));
+  await recorded;
+  assert.equal(f.requests.at(-1).payload.messages[0].content, utf8Text);
+  console.log("loopback recorder preserves deliberately split UTF-8 bytes");
   assert.deepEqual(f.errors, []);
   console.log(`native activity: ${executions} registered executions; maximum whole-response bytes=${maxBytes}`);
 } finally {

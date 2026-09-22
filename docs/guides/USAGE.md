@@ -2,7 +2,7 @@
 
 **Audience:** AI agents and operators consuming larva as a tool.
 **larva does:** validate, normalize, register, resolve, update, export, and manage registry-local PersonaSpec variants.
-**larva does NOT do:** call LLMs, execute agents, enforce runtime tool policy, store memory across runs, or change the opifex PersonaSpec schema.
+**larva does NOT do:** call LLMs, execute agents, enforce runtime tool policy, store memory across runs, or silently change the local PersonaSpec schema during admission.
 
 ---
 
