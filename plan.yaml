@@ -145660,7 +145660,7 @@ phases:
   steps:
   - id: pi-activity.deliver
     name: Deliver compact session activity tool with native Pi proof and documentation
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Register larva_subagent_activity in the actual Pi extension. Read\
       \ only one exact explicitly supplied absolute Pi session JSONL path under existing\
@@ -145918,3 +145918,5 @@ phases:
     - docs/guides/USAGE.md
     - tests/shell/test_pi_extension_subagent_ux.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-09-22T03:44:30.829149Z'
