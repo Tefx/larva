@@ -145754,7 +145754,19 @@ phases:
       \ runtime version rejection, compatibility probes, version matrices, speculative\
       \ adaptation or global installation/configuration changes. Existing committed\
       \ local dependency locks remain reproducible build inputs and do not constrain\
-      \ the user's installed Pi version.\n\nBoundary:\n- node-typescript-engineer\
+      \ the user's installed Pi version.\n- Complete Larva independence in the active\
+      \ CI workflow: remove external authority checkout, token consumption, frozen-pin\
+      \ admission and expected-red/verify prerequisites derived from Opifex. Preserve\
+      \ complete meaningful local schema/typing/validator drift checks and native\
+      \ functional coverage through existing tracked tests and runners. Remove the\
+      \ global Pi installation step; disposable runner provisioning uses committed\
+      \ local dependency locks and runner-local launch resolution without upgrading\
+      \ Pi or requiring a standard global prefix. Retire or simplify the obsolete\
+      \ gate and its tests coherently where existing local tests cover the retained\
+      \ requirements; do not preserve abandoned authority assertions merely to keep\
+      \ them green. Do not add a shadow wrapper, framework or extra gate. Historical\
+      \ pin/evidence may remain explicitly retired and unconsumed; mentioning Opifex\
+      \ alone is no reason to delete original evidence.\n\nBoundary:\n- node-typescript-engineer\
       \ remains the planned owner of the complete reversible Larva repository result,\
       \ supporting fixtures/tests/docs and local preparation. The work requires cross-function\
       \ session/cursor consistency and public Pi registration semantics. The documentation\
@@ -145769,70 +145781,96 @@ phases:
       \ meaning mutation, external model/credential use, release/push or changes to\
       \ another repository. Local schema and Core source remain protected; authority-reference\
       \ removal and local contract-test correction do not require changing them.\n\
-      \nAdmit:\n- Use the current native baseline and original nine FR preserved below.\
-      \ Inspect the selected Pi public docs/types and actual loader. Existing Larva\
-      \ ingestAssistantTimelineFromExactSession silently skips bad lines; Pi loadEntriesFromFile\
-      \ may append LF and skip malformed records. Neither is an admissible evidence\
-      \ reader. Existing validateExactPublicTaskIdLexical mixes registry/control-root\
-      \ policy: preserve those controls without imposing them on historical activity\
-      \ reads. Reuse applicable registration/validation helpers and scripts/pi-native-support.mjs\
-      \ instead of a new harness.\n- Implement meaningful checks, with failing proof\
-      \ where practical before correction, then green proof through the registered\
-      \ tool. Required actual-extension scenarios: (1) multiple/parallel calls with\
-      \ errors and missing results; (2) append new calls and late results for old\
-      \ calls, with lossless paging; (3) exact ID outside the recent window; (4) large\
-      \ args/results with measured entire-response bounds and reconstructable segments;\
-      \ (5) partial tail followed by completion while prior records remain available;\
-      \ (6) missing/damaged input, invalid cursor, replacement, shrink and shrink/regrowth;\
-      \ (7) history read and cursor continuation from a new parent without registry;\
-      \ (8) no target writes, callback consumption or reader-induced lifecycle/watchdog\
-      \ changes; (9) actual native package discovery, schema visibility, tool execution\
-      \ and model-visible output. Include filters, Unicode/escaping, duplicate IDs,\
-      \ historical branches and compaction deduplication in affected tests. Parser-only/internal-handler\
-      \ tests and fixture PASS prose do not establish integration.\n- Use the existing\
-      \ native Pi loader and isolated credential-free loopback provider for tool execution.\
-      \ Keep any extra fixture capability tracked with this producer and invoked by\
-      \ the project-native test inventory. No external model run is necessary. Distinguish\
-      \ controlled provider responses from actual host execution. Observe child lifecycle\
-      \ neutrality with controlled transitions so unrelated real progress is not mistaken\
-      \ for reader mutation.\n- Final proof covers the complete applicable project-native\
-      \ offline inventory on the integrated candidate, as documented in the extension\
-      \ README and native delivery reference, under the current user contract. Retained\
-      \ actual-native nine-FR, response-budget, large-session, lifecycle and unaffected\
-      \ regression observations may be reused when their relevant source, fixtures,\
-      \ dependencies and runtime inputs remain applicable. Plan/document-only authority\
-      \ changes do not invalidate those observations. Run fresh changed or missing\
-      \ meaningful tests: the local schema-validation suite must collect and pass\
-      \ without Opifex; formerly version-gated smoke/watchdog/model-map/child-RPC\
-      \ scenarios must prove their functional behavior after gate removal. An earlier\
-      \ identity-only failure or an unexecuted case supplies no functional PASS. Obtain\
-      \ fresh affected feature/native-boundary and whole-response proof when corresponding\
-      \ implementation or test inputs change. Broaden when registration, policy, shared\
-      \ lifecycle, dependencies or packaging change. Do not automatically repeat expensive\
-      \ unchanged native journeys or the full repository test command. Required fresh\
-      \ full Invar follows final changes. No skip/xfail or weakened assertions for\
-      \ necessary behavior; distinguish retired version/authority requirements from\
-      \ actual repaired or still-unproven behaviors in ordinary evidence.\n- Orchestrator\
-      \ owns final integrated acceptance within this step, reviewing source/contracts\
-      \ for file-only reading, lossless continuation, honest partial/error semantics,\
-      \ lifecycle isolation, Larva-local validation strength and current documentation\
-      \ against actual evidence. Producer reports alone do not complete acceptance.\
-      \ Necessary failed or unproven requirements block completion; compatible corrections\
-      \ stay on this unfinished step. No separate review node or repeated historical\
-      \ project acceptance is needed.\n\nRecovery:\n- Reconcile and stop owned test\
-      \ processes/servers, close handles and remove disposable owned roots after preserving\
-      \ minimum useful failure evidence. Keep user sessions, protected paths and completed\
-      \ history unchanged. Missing checks, environment resolution and compatible findings\
+      - CI work is limited to repository workflow/setup/test edits and disposable\
+      \ local validation. No remote CI dispatch, token use, secret changes, other-repository\
+      \ checkout, global installation or operator configuration mutation is authorized.\
+      \ Preserve existing protected schema/Core meaning. The obsolete gate, its associated\
+      \ tests and authority pin may be retired or adjusted only to remove abandoned\
+      \ prerequisites while retaining applicable local validation; inspect and repair\
+      \ their existing consumers.\n\nAdmit:\n- Use the current native baseline and\
+      \ original nine FR preserved below. Inspect the selected Pi public docs/types\
+      \ and actual loader. Existing Larva ingestAssistantTimelineFromExactSession\
+      \ silently skips bad lines; Pi loadEntriesFromFile may append LF and skip malformed\
+      \ records. Neither is an admissible evidence reader. Existing validateExactPublicTaskIdLexical\
+      \ mixes registry/control-root policy: preserve those controls without imposing\
+      \ them on historical activity reads. Reuse applicable registration/validation\
+      \ helpers and scripts/pi-native-support.mjs instead of a new harness.\n- Implement\
+      \ meaningful checks, with failing proof where practical before correction, then\
+      \ green proof through the registered tool. Required actual-extension scenarios:\
+      \ (1) multiple/parallel calls with errors and missing results; (2) append new\
+      \ calls and late results for old calls, with lossless paging; (3) exact ID outside\
+      \ the recent window; (4) large args/results with measured entire-response bounds\
+      \ and reconstructable segments; (5) partial tail followed by completion while\
+      \ prior records remain available; (6) missing/damaged input, invalid cursor,\
+      \ replacement, shrink and shrink/regrowth; (7) history read and cursor continuation\
+      \ from a new parent without registry; (8) no target writes, callback consumption\
+      \ or reader-induced lifecycle/watchdog changes; (9) actual native package discovery,\
+      \ schema visibility, tool execution and model-visible output. Include filters,\
+      \ Unicode/escaping, duplicate IDs, historical branches and compaction deduplication\
+      \ in affected tests. Parser-only/internal-handler tests and fixture PASS prose\
+      \ do not establish integration.\n- Use the existing native Pi loader and isolated\
+      \ credential-free loopback provider for tool execution. Keep any extra fixture\
+      \ capability tracked with this producer and invoked by the project-native test\
+      \ inventory. No external model run is necessary. Distinguish controlled provider\
+      \ responses from actual host execution. Observe child lifecycle neutrality with\
+      \ controlled transitions so unrelated real progress is not mistaken for reader\
+      \ mutation.\n- Final proof covers the complete applicable project-native offline\
+      \ inventory on the integrated candidate, as documented in the extension README\
+      \ and native delivery reference, under the current user contract. Retained actual-native\
+      \ nine-FR, response-budget, large-session, lifecycle and unaffected regression\
+      \ observations may be reused when their relevant source, fixtures, dependencies\
+      \ and runtime inputs remain applicable. Plan/document-only authority changes\
+      \ do not invalidate those observations. Run fresh changed or missing meaningful\
+      \ tests: the local schema-validation suite must collect and pass without Opifex;\
+      \ formerly version-gated smoke/watchdog/model-map/child-RPC scenarios must prove\
+      \ their functional behavior after gate removal. An earlier identity-only failure\
+      \ or an unexecuted case supplies no functional PASS. Obtain fresh affected feature/native-boundary\
+      \ and whole-response proof when corresponding implementation or test inputs\
+      \ change. Broaden when registration, policy, shared lifecycle, dependencies\
+      \ or packaging change. Do not automatically repeat expensive unchanged native\
+      \ journeys or the full repository test command. Required fresh full Invar follows\
+      \ final changes. No skip/xfail or weakened assertions for necessary behavior;\
+      \ distinguish retired version/authority requirements from actual repaired or\
+      \ still-unproven behaviors in ordinary evidence.\n- Orchestrator owns final\
+      \ integrated acceptance within this step, reviewing source/contracts for file-only\
+      \ reading, lossless continuation, honest partial/error semantics, lifecycle\
+      \ isolation, Larva-local validation strength and current documentation against\
+      \ actual evidence. Producer reports alone do not complete acceptance. Necessary\
+      \ failed or unproven requirements block completion; compatible corrections stay\
+      \ on this unfinished step. No separate review node or repeated historical project\
+      \ acceptance is needed.\n- Prove the changed CI structure and invocation contract\
+      \ locally: parse the workflow and check job dependencies, setup-before-use,\
+      \ required functional/local-schema test selections and failure propagation;\
+      \ ensure no active external authority/token/global-install prerequisite remains.\
+      \ Update existing workflow/gate tests rather than adding a parallel harness.\
+      \ Locally execute changed setup/launch resolution and affected check invocations\
+      \ using the existing native support and isolated fixtures, sufficient to detect\
+      \ broken paths, missing dependencies or dropped tests. Pure workflow structure\
+      \ checks establish only workflow structure; report actual executed observations\
+      \ separately and make no cloud CI PASS claim. Reuse prior local schema, drift,\
+      \ four formerly version-gated native scenarios, nine-FR, response-budget and\
+      \ full-inventory observations when unchanged evidence-affecting inputs remain\
+      \ applicable. Their already-satisfied fresh-proof requirement is not restarted\
+      \ by CI-only edits. New setup, launch, selection or fixture changes require\
+      \ corresponding affected proof; no automatic replay of unaffected expensive\
+      \ suites. Required fresh Invar after final corrections remains unchanged. Orchestrator\
+      \ acceptance includes CI independence and the applicability of local workflow/invocation\
+      \ evidence.\n\nRecovery:\n- Reconcile and stop owned test processes/servers,\
+      \ close handles and remove disposable owned roots after preserving minimum useful\
+      \ failure evidence. Keep user sessions, protected paths and completed history\
+      \ unchanged. Missing checks, environment resolution and compatible findings\
       \ stay with this owner. Correct actual functional failures within the authorized\
       \ repository scope; do not respond to version differences with upgrades, rejection\
       \ or speculative compatibility work. Escalate material contract/authority conflicts\
       \ without silently narrowing FR or introducing external effects.\n\nscope:\n\
       \  allowed_paths:\n  - contrib/pi-extension/**\n  - tests/shell/test_pi_*.py\n\
-      \  - tests/core/test_schema_validation.py\n  - tests/fixtures/pi/**\n  - scripts/pi-*.mjs\n\
-      \  - AGENTS.md\n  - README.md\n  - docs/**/*.md\n  - design/**/*.md\n  blocked_paths:\n\
-      \  - plan.yaml\n  - contracts/**\n  - src/larva/core/**\n  - .vectl/recovery/**\n\
-      \  - ../opifex/**\n  - ../pi-nunc/**\n  - /Users/tefx/dotfiles/agent/**\nchecks:\n\
-      - id: locked-node-dependencies\n  command: [npm, --prefix, contrib/pi-extension,\
+      \  - tests/core/test_schema_validation.py\n  - .github/workflows/ci.yml\n  -\
+      \ scripts/ci/larva_repo_local_gate.py\n  - tests/shell/test_repo_local_ci_gate.py\n\
+      \  - design/opifex-frozen-authority-packet.json\n  - tests/fixtures/pi/**\n\
+      \  - scripts/pi-*.mjs\n  - AGENTS.md\n  - README.md\n  - docs/**/*.md\n  - design/**/*.md\n\
+      \  blocked_paths:\n  - plan.yaml\n  - contracts/**\n  - src/larva/core/**\n\
+      \  - .vectl/recovery/**\n  - ../opifex/**\n  - ../pi-nunc/**\n  - /Users/tefx/dotfiles/agent/**\n\
+      checks:\n- id: locked-node-dependencies\n  command: [npm, --prefix, contrib/pi-extension,\
       \ ci]\n  expected: Reproduce committed local package-lock when setup is needed;\
       \ reuse an unchanged prepared environment. No automatic dependency upgrade or\
       \ global install. Local lock identity is a build input, not a global runtime\
@@ -145860,9 +145898,16 @@ phases:
       \ blocked scenarios with isolated settings and credential-free fixtures. No\
       \ exact global Pi version gate, skip or mock of the native execution seam. Owner\
       \ may use equivalent tracked invocations or update selection if tests are renamed,\
-      \ preserving every behavior.\n- id: repository-test-inventory\n  command: [node,\
-      \ scripts/pi-guard-checks.mjs, tests]\n  expected: Existing Invar-backed runner\
-      \ for full repository test inventory with sufficient native-fixture timeout.\
+      \ preserving every behavior.\n- id: local-ci-contract\n  command: [node, scripts/pi-guard-checks.mjs,\
+      \ tests/shell/test_pi_extension_contract.py, '-k', ci]\n  expected: Required\
+      \ fresh local workflow structure/invocation contract tests for the corrected\
+      \ CI. Run any additional changed existing gate tests and local setup/launch\
+      \ checks needed to prove retained local-schema/drift and native selections.\
+      \ Equivalent tracked selections are owner-local. No remote CI execution or cloud\
+      \ PASS claim; preserve failure propagation and distinguish structural assertions\
+      \ from actual functional execution.\n- id: repository-test-inventory\n  command:\
+      \ [node, scripts/pi-guard-checks.mjs, tests]\n  expected: Existing Invar-backed\
+      \ runner for full repository test inventory with sufficient native-fixture timeout.\
       \ Reference inventory, not an automatic fresh-full-run mandate; select affected\
       \ tests during development and account for complete applicable final-candidate\
       \ coverage. Retired upstream/global-version assertions do not count as functional\
@@ -145882,7 +145927,11 @@ phases:
       with complete applicable offline regression coverage, explicit applicability
       of retained observations, required fresh Invar, source/contract review and no
       necessary unresolved proof gap. Do not edit dotfiles, installed Pi, external
-      repositories or completed Plan history.
+      repositories or completed Plan history. Active CI has no Opifex checkout/token/pin
+      dependency or global Pi installation; local workflow structure and changed setup/launch/invocation
+      proof preserve native functional and local-schema/drift coverage. Applicable
+      unaffected observations remain reusable; remote CI was not executed or accepted
+      by this repository-only delivery.
     evidence_template: Report integrated candidate and actual executor; commands/observed
       versions and outcomes for FR 1-9; measured complete-response byte bound and
       segment reconstruction; file/callback/lifecycle/watchdog noninterference; Larva-local
@@ -145917,4 +145966,6 @@ phases:
     - docs/guides/USER_GUIDE.md
     - docs/guides/USAGE.md
     - tests/shell/test_pi_extension_subagent_ux.py
+    - .github/workflows/ci.yml
+    - tests/shell/test_pi_extension_contract.py
     agent: node-typescript-engineer
