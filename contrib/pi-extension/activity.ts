@@ -7,6 +7,8 @@ import { createHash } from "node:crypto";
 
 const CEILING = 8192;
 const BATCH = 32;
+const ACTION_MAX = 200;
+const RESULT_MAX = 500;
 const decoder = new TextDecoder("utf-8", { fatal: true });
 type Obj = Record<string, any>;
 const object = (x: unknown): x is Obj => x !== null && typeof x === "object" && !Array.isArray(x);
@@ -20,8 +22,8 @@ type Position = [number, number, number, number];
 const compare = (a: Position, b: Position) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3];
 type Location = { entry_id?: string; parent_id?: string | null; byte_offset: number; line_byte_length: number; line_number: number; content_index?: number };
 type RecordRow = { raw: Obj; location: Location };
-type Call = { id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; args_preview: string; args_total_chars: number; args_present: boolean };
-type ResultRow = { total?: number; id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; is_error?: boolean; text: string; upstream_truncated?: boolean };
+type Call = { id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; action_preview: string; action_truncated: boolean };
+type ResultRow = { id: string; name: string; timestamp?: string; message_timestamp?: number; location: Location; is_error?: boolean; content_preview: string; content_total_chars: number; has_image?: boolean; has_details?: boolean; non_text?: boolean; upstream_truncated?: boolean };
 type Input = { path: string; limit: number; tool?: string; since?: number; until?: number; filter: string; cursor?: Obj; call?: string; index?: number; entry?: string; resultIndex?: number; part: "args" | "result"; offset: number; length: number; version?: Obj };
 
 function token(raw: unknown): Obj {
@@ -159,23 +161,89 @@ class ActivityReader {
 }
 function validCall(b: Obj) { return typeof b.id === "string" && b.id.length > 0 && typeof b.name === "string" && b.name.length > 0 && Object.hasOwn(b, "arguments"); }
 function validResult(m: Obj) { return typeof m.toolCallId === "string" && m.toolCallId.length > 0 && typeof m.toolName === "string" && m.toolName.length > 0 && Object.hasOwn(m, "content") && (typeof m.content === "string" || Array.isArray(m.content)) && (m.isError === undefined || typeof m.isError === "boolean"); }
+
+function hasSubstantialDetails(details: unknown): boolean {
+  if (details === null || details === undefined) return false;
+  if (typeof details === "string") return details.length > 0;
+  if (typeof details === "number" || typeof details === "boolean") return true;
+  if (Array.isArray(details)) return details.length > 0;
+  if (object(details)) {
+    for (const [k, v] of Object.entries(details)) {
+      if (k === "truncated" || k === "fullOutputPath") continue;
+      if (k === "truncation") {
+        if (object(v)) {
+          if (Object.keys(v).some(tk => tk !== "truncated")) return true;
+          continue;
+        }
+        if (v !== null && v !== undefined) return true;
+        continue;
+      }
+      if (v !== null && v !== undefined) return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+function extractResultContent(m: Obj): { text: string; total_chars: number; has_image?: boolean; has_details?: boolean; non_text?: boolean } {
+  let text = "", has_image = false, has_details = false, non_text = false;
+  if (typeof m.content === "string") {
+    text = m.content;
+  } else if (Array.isArray(m.content)) {
+    const pieces: string[] = [];
+    for (const b of m.content) {
+      if (typeof b === "string") pieces.push(b);
+      else if (object(b)) {
+        if (b.type === "text" && typeof b.text === "string") pieces.push(b.text);
+        else if (b.type === "image") has_image = true;
+        else non_text = true;
+      } else if (b !== null && b !== undefined) non_text = true;
+    }
+    text = pieces.join("\n");
+  } else if (m.content !== null && m.content !== undefined) non_text = true;
+
+  if (hasSubstantialDetails(m.details)) has_details = true;
+  return { text: text.slice(0, RESULT_MAX), total_chars: text.length, ...(has_image ? { has_image: true } : {}), ...(has_details ? { has_details: true } : {}), ...(non_text ? { non_text: true } : {}) };
+}
+
 function *calls(row: RecordRow): Generator<Call> {
   const m = row.raw.message;
   if (row.raw.type !== "message" || !object(m) || m.role !== "assistant" || !Array.isArray(m.content)) return;
   for (const [i, b] of m.content.entries()) if (object(b) && b.type === "toolCall" && validCall(b)) {
-    const text = JSON.stringify(b.arguments);
-    yield { id: b.id, name: b.name, timestamp: typeof row.raw.timestamp === "string" ? row.raw.timestamp : undefined, message_timestamp: typeof m.timestamp === "number" ? m.timestamp : undefined, location: { ...row.location, content_index: i }, args_preview: text.slice(0, 200), args_total_chars: text.length, args_present: true };
+    const fullAction = `${b.name} ${JSON.stringify(b.arguments)}`;
+    const truncated = fullAction.length > ACTION_MAX;
+    yield {
+      id: b.id,
+      name: b.name,
+      timestamp: typeof row.raw.timestamp === "string" ? row.raw.timestamp : undefined,
+      message_timestamp: typeof m.timestamp === "number" ? m.timestamp : undefined,
+      location: { ...row.location, content_index: i },
+      action_preview: truncated ? fullAction.slice(0, ACTION_MAX) : fullAction,
+      action_truncated: truncated,
+    };
   }
 }
 function resultRow(row: RecordRow): ResultRow | undefined {
   const m = row.raw.message;
   if (row.raw.type !== "message" || !object(m) || m.role !== "toolResult" || !validResult(m)) return;
-  // Preserve ALL saved result data, including structured details and images. No
-  // projection to text, no following fullOutputPath. Segment format is JSON.
   const top = object(m.details) ? m.details.truncated : undefined;
   const nested = object(m.details?.truncation) ? m.details.truncation.truncated : undefined;
   const upstream = top === true || nested === true ? true : top === false || nested === false ? false : undefined;
-  return { id: m.toolCallId, name: m.toolName, timestamp: typeof row.raw.timestamp === "string" ? row.raw.timestamp : undefined, message_timestamp: typeof m.timestamp === "number" ? m.timestamp : undefined, location: row.location, is_error: m.isError, text: JSON.stringify(m), upstream_truncated: upstream };
+  const extracted = extractResultContent(m);
+  return {
+    id: m.toolCallId,
+    name: m.toolName,
+    timestamp: typeof row.raw.timestamp === "string" ? row.raw.timestamp : undefined,
+    message_timestamp: typeof m.timestamp === "number" ? m.timestamp : undefined,
+    location: row.location,
+    is_error: m.isError,
+    content_preview: extracted.text,
+    content_total_chars: extracted.total_chars,
+    has_image: extracted.has_image,
+    has_details: extracted.has_details,
+    non_text: extracted.non_text,
+    upstream_truncated: upstream,
+  };
 }
 const callPosition = (c: Call): Position => [c.location.byte_offset, c.location.content_index!, 0, 0];
 const resultPosition = (c: Call, r: ResultRow): Position => [r.location.byte_offset, 0, c.location.byte_offset, c.location.content_index!];
@@ -187,11 +255,39 @@ function timeMatch(c: Call, r: ResultRow | undefined, q: Input): string | undefi
   if (inside(r?.timestamp)) return "result_timestamp";
   return undefined;
 }
-function item(c: Call, r: ResultRow | undefined, reader: ActivityReader, count = r ? 1 : 0): Obj {
-  return { key: `c:${c.location.byte_offset}:${c.location.content_index}`, call_id: c.id, tool_name: c.name, call_timestamp: c.timestamp, call_message_timestamp: c.message_timestamp, call_location: c.location, args_preview: c.args_preview, args_total_chars: c.args_total_chars, args_truncated: c.args_total_chars > c.args_preview.length,
-    result_status: count > 1 ? "ambiguous" : r ? ((r.total ?? r.text.length) > 500 ? "present_omitted" : "observed") : reader.diagnosticCount ? "incomplete" : "none",
-    ...(r ? { result_timestamp: r.timestamp, result_message_timestamp: r.message_timestamp, result_location: r.location, result_preview: r.text.slice(0, 500), result_total_chars: r.total ?? r.text.length, result_truncated: (r.total ?? r.text.length) > 500, is_error: r.is_error, upstream_truncated: r.upstream_truncated } : {}),
-    ...(count > 1 ? { result_candidates_count: count, result_selection: "Use exact call lookup with result_index." } : {}) };
+function item(c: Call, r: ResultRow | undefined, reader: ActivityReader, count = r ? 1 : 0, dupeInfo?: { total: number; index: number }): Obj {
+  const it: Obj = {
+    call_id: c.id,
+    ...(dupeInfo && dupeInfo.total > 1 ? { disambiguation_index: dupeInfo.index } : {}),
+    action: c.action_preview,
+    ...(c.action_truncated ? { action_truncated: true } : {}),
+  };
+
+  if (count > 1) {
+    it.result_state = "ambiguous";
+    it.result_candidates_count = count;
+    it.result_selection = "Use exact call lookup with result_index.";
+    return it;
+  }
+
+  if (!r) {
+    it.result_state = reader.diagnosticCount ? "incomplete" : "not_observed";
+    return it;
+  }
+
+  const hasExtras = Boolean(r.has_image || r.has_details || r.non_text);
+  const textTruncated = r.content_total_chars > RESULT_MAX;
+  const resultTruncated = textTruncated || hasExtras;
+
+  it.result = r.content_preview;
+  if (resultTruncated) it.result_truncated = true;
+  if (r.has_image) it.has_image = true;
+  if (r.has_details) it.has_details = true;
+  if (r.non_text) it.non_text = true;
+  if (r.is_error !== undefined) it.is_error = r.is_error;
+  if (r.upstream_truncated === true) it.upstream_truncated = true;
+
+  return it;
 }
 
 // Duplicate call IDs require ancestry, never first/last-write selection. Resolve
@@ -224,7 +320,7 @@ function bounded(payload: Obj) {
   if (fits(payload)) return response(payload);
   // Never slice serialized JSON, identifiers, cursors or segment metadata. An
   // oversized metadata record is an explicit error, with no advanced cursor.
-  return response({ status: "failed", error: { code: "LARVA_ACTIVITY_METADATA_TOO_LARGE", message: "Required provenance exceeds the 8192-byte response ceiling. No continuation position was advanced.", byte_offset: payload.call?.call_location?.byte_offset ?? payload.items?.[0]?.call_location?.byte_offset } });
+  return response({ status: "failed", error: { code: "LARVA_ACTIVITY_METADATA_TOO_LARGE", message: "Required provenance exceeds the 8192-byte response ceiling. No continuation position was advanced.", byte_offset: payload.call?.call_location?.byte_offset ?? payload.candidates?.[0]?.byte_offset ?? undefined } });
 }
 
 export async function inspectSessionActivity(input: unknown, signal?: AbortSignal) {
@@ -243,7 +339,7 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
     for await (const _ of reader.records(true)) { /* validation pass, bounded diagnostic sample */ }
     for (const t of [q.cursor, q.version]) if (t) await reader.verify(t);
     const source = { v: 2, kind: "source", path: digest(q.path), sid: reader.sid, dev: initial.dev, ino: initial.ino, end: reader.end, hash: reader.hash };
-    const shared = { session_id: reader.sid, session_path: q.path, snapshot_bytes: reader.end, captured_bytes: reader.size, total_calls_inspected: reader.totalCalls, inspection_complete: reader.diagnosticCount === 0, ...(reader.diagnosticCount ? { diagnostics: reader.diagnostics, total_diagnostics_count: reader.diagnosticCount, diagnostics_truncated: reader.diagnosticCount > reader.diagnostics.length } : {}) };
+    const diagnosticInfo = reader.diagnosticCount ? { inspection_complete: false, diagnostics: reader.diagnostics, total_diagnostics_count: reader.diagnosticCount, diagnostics_truncated: reader.diagnosticCount > reader.diagnostics.length } : {};
     const checkTarget = async () => {
       await reader.verify(source);
       const current = await stat(q.path);
@@ -256,16 +352,15 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
     const after: Position | undefined = q.cursor?.paging ? q.cursor.after : undefined;
     const selected: Selected[] = [];
     let eligible = 0, sawAfter = after === undefined;
-    const offer = (c: Call, r: ResultRow | undefined, count = r ? 1 : 0, late = false, uncertain = false) => {
+    const offer = (c: Call, r: ResultRow | undefined, count = r ? 1 : 0, late = false, uncertain = false, dupeInfo?: { total: number; index: number }) => {
       const match = timeMatch(c, r, q);
       const position = late ? resultPosition(c, r!) : callPosition(c);
       if (!match) return;
       if (after && compare(position, after) === 0) sawAfter = true;
       if (after && compare(position, after) <= 0) return;
-      const value = item(c, r, reader, count);
-      if (uncertain) { value.result_status = "ambiguous"; value.result_association = "ambiguous"; }
-      if (mode === "updates") value.update_type = late ? "late_result" : "new_call";
-      if (late) value.key = `r:${r!.location.byte_offset}:${c.location.byte_offset}:${c.location.content_index}`;
+      const value = item(c, r, reader, count, dupeInfo);
+      if (uncertain) { value.result_state = "ambiguous"; value.result_association = "ambiguous"; delete value.result; delete value.result_truncated; }
+      if (late) value.update_type = "late_result";
       if (match !== "unfiltered") value.matched_by = match;
       eligible++; keep(selected, { position, value }, q.limit, tail);
     };
@@ -317,42 +412,67 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
     };
     let lookup: Obj | undefined;
     for await (const batch of batches()) {
-      const counts = new Map<Call, number>(batch.map(c => [c, 0]));
-      // No unbounded Map by all IDs. At most BATCH call keys are retained.
-      for await (const row of reader.records()) for (const c of calls(row)) for (const b of batch) if (c.id === b.id && c.name === b.name) counts.set(b, counts.get(b)! + 1);
+      const callDupes = new Map<Call, { total: number; index: number }>(batch.map(c => [c, { total: 0, index: 0 }]));
+      for await (const row of reader.records()) for (const c of calls(row)) {
+        const posC = callPosition(c);
+        for (const b of batch) if (c.id === b.id) {
+          const info = callDupes.get(b)!;
+          info.total++;
+          if (compare(posC, callPosition(b)) < 0) info.index++;
+        }
+      }
       const results = new Map<Call, { count: number; first?: ResultRow; chosen?: ResultRow; candidates: Obj[]; timeResult?: ResultRow; uncertain: number }>(batch.map(c => [c, { count: 0, candidates: [], uncertain: 0 }]));
       for await (const row of reader.records()) {
         const r = resultRow(row); if (!r) continue;
         const matching = batch.filter(c => c.id === r.id && c.name === r.name && c.location.byte_offset < r.location.byte_offset);
         if (!matching.length) continue;
-        const association = counts.get(matching[0])! > 1 ? await ancestor(reader, r) : undefined;
+        const association = callDupes.get(matching[0])!.total > 1 ? await ancestor(reader, r) : undefined;
         for (const c of matching) {
           const rec = results.get(c)!;
-          const uncertain = counts.get(c)! > 1 && !association;
-          if (counts.get(c)! > 1 && association && compare(association, callPosition(c)) !== 0) continue;
+          const uncertain = callDupes.get(c)!.total > 1 && !association;
+          if (callDupes.get(c)!.total > 1 && association && compare(association, callPosition(c)) !== 0) continue;
           if (uncertain) rec.uncertain++;
           const index = rec.count++;
-          // Keep previews only; the exact selected saved payload is loaded later.
-          const compact = { ...r, text: r.text.slice(0, 500), total: r.text.length } as ResultRow & { total: number };
-          if (!rec.first) rec.first = compact;
-          if (q.resultIndex === index) rec.chosen = compact;
-          if (timeMatch(c, r, q)) rec.timeResult = compact;
+          if (!rec.first) rec.first = r;
+          if (q.resultIndex === index) rec.chosen = r;
+          if (timeMatch(c, r, q)) rec.timeResult = r;
           if (rec.candidates.length < 5) rec.candidates.push({ index, ...r.location, result_timestamp: r.timestamp, is_error: r.is_error });
-          if (q.call === undefined && mode === "updates" && c.location.byte_offset < base && lateRange && r.location.byte_offset >= lateRange[0] && r.location.byte_offset <= lateRange[1]) offer(c, r, 1, true, uncertain);
+          if (q.call === undefined && mode === "updates" && c.location.byte_offset < base && lateRange && r.location.byte_offset >= lateRange[0] && r.location.byte_offset <= lateRange[1]) offer(c, r, 1, true, uncertain, callDupes.get(c));
         }
       }
       for (const c of batch) {
         const rec = results.get(c)!;
         const r = rec.chosen ?? rec.first;
         if (q.call !== undefined) {
-          lookup = { ...item(c, r, reader, q.resultIndex === undefined ? rec.count : 1), result_candidates: rec.count > 1 ? rec.candidates : undefined, result_candidates_count: rec.count, selected_result_index: q.resultIndex, unassociated_results_count: rec.uncertain || undefined };
-          if (rec.uncertain) lookup.result_status = "ambiguous";
+          const isUncertain = Boolean(rec.uncertain);
+          const hasMultipleResults = rec.count > 1;
+          const isAmbiguous = isUncertain || (hasMultipleResults && q.resultIndex === undefined);
+          lookup = {
+            call_id: c.id,
+            tool_name: c.name,
+            call_timestamp: c.timestamp,
+            call_message_timestamp: c.message_timestamp,
+            call_location: c.location,
+            result_state: isAmbiguous ? "ambiguous" : r ? undefined : reader.diagnosticCount ? "incomplete" : "not_observed",
+            ...(r ? {
+              result_timestamp: r.timestamp,
+              result_message_timestamp: r.message_timestamp,
+              result_location: r.location,
+              is_error: r.is_error,
+              upstream_truncated: r.upstream_truncated,
+            } : {}),
+            result_candidates: hasMultipleResults ? rec.candidates : undefined,
+            result_candidates_count: hasMultipleResults ? rec.count : undefined,
+            selected_result_index: q.resultIndex,
+            unassociated_results_count: rec.uncertain || undefined,
+          };
+          if (isUncertain) { lookup.result_state = "ambiguous"; lookup.result_association = "ambiguous"; }
           if (q.resultIndex !== undefined && !rec.chosen) fail("LARVA_BAD_INPUT", "result_index is out of range.");
           if (q.part === "result" && (!r || ((rec.uncertain || rec.count > 1) && q.resultIndex === undefined))) continue;
           let text = "";
           for await (const row of reader.records()) {
             if (q.part === "args" && row.location.byte_offset === c.location.byte_offset) text = JSON.stringify(row.raw.message.content[c.location.content_index!].arguments);
-            if (q.part === "result" && r && row.location.byte_offset === r.location.byte_offset) text = resultRow(row)!.text;
+            if (q.part === "result" && r && row.location.byte_offset === r.location.byte_offset) text = JSON.stringify(row.raw.message);
           }
           if (q.offset > text.length) fail("LARVA_BAD_INPUT", "Segment offset exceeds saved data length.");
           // Segment identity includes exact call/result selection, while the file
@@ -360,22 +480,27 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
           const selection = `${c.location.byte_offset}:${c.location.content_index}:${q.part}:${q.part === "result" ? r?.location.byte_offset ?? "none" : "args"}`;
           if (q.version && q.version.selection !== selection) fail("LARVA_CURSOR_INVALID", "source_version belongs to a different call, result or segment part.");
           const part = text.slice(q.offset, q.offset + q.length);
-          delete lookup.args_preview; delete lookup.result_preview;
           lookup.segment = { part: q.part, encoding: "json", offset_units: "UTF-16 code units", offset: q.offset, length: part.length, total_chars: text.length, has_more: q.offset + part.length < text.length, continuation_offset: q.offset + part.length < text.length ? q.offset + part.length : undefined, source_version: encode({ ...source, selection }), text: part, upstream_truncated: q.part === "result" ? r?.upstream_truncated : undefined };
         } else if (mode === "recent" || c.location.byte_offset >= base) {
-          offer(c, rec.timeResult ?? r, rec.count);
-          const emitted = selected.find(x => x.value.call_location.byte_offset === c.location.byte_offset && x.value.call_location.content_index === c.location.content_index);
-          if (emitted && rec.uncertain) { emitted.value.result_status = "ambiguous"; emitted.value.unassociated_results_count = rec.uncertain; }
+          offer(c, rec.timeResult ?? r, rec.count, false, false, callDupes.get(c));
+          const emitted = selected.find(x => x.position[0] === c.location.byte_offset && x.position[1] === c.location.content_index);
+          if (emitted && rec.uncertain) {
+            emitted.value.result_state = "ambiguous";
+            emitted.value.result_association = "ambiguous";
+            emitted.value.unassociated_results_count = rec.uncertain;
+            delete emitted.value.result;
+            delete emitted.value.result_truncated;
+          }
         }
       }
     }
     await checkTarget();
     if (!sawAfter) fail("LARVA_CURSOR_INVALID", "Cursor position does not identify a matching recorded event.");
     if (q.call !== undefined) {
-      if (!exactCount) return bounded({ status: reader.diagnosticCount ? "partial" : "not_found", ...shared, mode: "call_lookup", error: { code: reader.diagnosticCount ? "LARVA_ACTIVITY_INCOMPLETE" : "LARVA_TOOL_CALL_NOT_FOUND", message: reader.diagnosticCount ? "ID not observed; inspection incomplete." : "ID not found in session after complete inspection." } });
+      if (!exactCount) return bounded({ status: reader.diagnosticCount ? "partial" : "not_found", error: { code: reader.diagnosticCount ? "LARVA_ACTIVITY_INCOMPLETE" : "LARVA_TOOL_CALL_NOT_FOUND", message: reader.diagnosticCount ? "ID not observed; inspection incomplete." : "ID not found in session after complete inspection." }, ...diagnosticInfo });
       if (!exactEligible) fail("LARVA_BAD_INPUT", "Call selector is out of range or does not match.");
-      if (exactEligible > 1) return bounded({ status: "ambiguous", ...shared, mode: "call_lookup", candidates, total_candidates_count: exactCount, candidates_truncated: exactCount > candidates.length, selection: "Use disambiguation_index (file order, zero-based); entry_id must select exactly one call." });
-      const payload = { status: "success", ...shared, mode: "call_lookup", call: lookup! };
+      if (exactEligible > 1) return bounded({ status: "ambiguous", candidates, total_candidates_count: exactCount, candidates_truncated: exactCount > candidates.length, selection: "Use disambiguation_index (file order, zero-based); entry_id must select exactly one call.", ...diagnosticInfo });
+      const payload = { status: "success", session_id: reader.sid, call: lookup!, ...diagnosticInfo };
       if (lookup!.segment) {
         const segment = lookup!.segment;
         while (!fits(payload) && segment.text.length > 1) {
@@ -393,7 +518,7 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
     const makePayload = () => {
       const more = eligible > selected.length && selected.length > 0;
       const cursor = encode({ ...source, kind: "activity", filter: q.filter, mode, base, paging: more, ...(more ? { after: selected.at(-1)!.position } : {}) });
-      return { status: "success", ...shared, mode: "recent", items: selected.map(x => x.value), has_more: more, cursor };
+      return { status: "success", items: selected.map(x => x.value), has_more: more, cursor, ...diagnosticInfo };
     };
     let payload = makePayload();
     // Budget removal never commits a dropped item: regenerate the cursor from
@@ -401,8 +526,15 @@ export async function inspectSessionActivity(input: unknown, signal?: AbortSigna
     while (!fits(payload) && selected.length > 1) { selected.pop(); payload = makePayload(); }
     if (!fits(payload) && selected.length) {
       const v = selected[0].value;
-      v.args_preview = ""; v.args_truncated = v.args_total_chars > 0;
-      if (v.result_preview !== undefined) { v.result_preview = ""; v.result_truncated = true; v.result_status = "present_omitted"; }
+      if (v.action && v.action.length > 50) {
+        v.action = v.action.slice(0, 50);
+        v.action_truncated = true;
+      }
+      if (v.result !== undefined) {
+        delete v.result;
+        v.result_state = "present_omitted";
+        v.result_truncated = true;
+      }
       payload = makePayload();
     }
     return bounded(payload);

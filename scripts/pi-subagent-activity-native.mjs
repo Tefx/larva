@@ -66,8 +66,15 @@ try {
   await writeFile(path, header("native") + call("parallel", ["ok", "error", "absent", "missing"]) + result("ok", "parallel", "ok", { isError: false }) + result("error", "parallel", "error", { isError: true }) + result("absent", "parallel", "no marker"));
   const initial = await activity({ session_path: path });
   assert.equal(initial.items.length, 4); assert.equal(initial.items[0].is_error, false); assert.equal(initial.items[1].is_error, true);
-  assert.equal(Object.hasOwn(initial.items[2], "is_error"), false); assert.equal(initial.items[3].result_status, "none");
-  assert.equal(initial.items[3].call_location.content_index, 3);
+  assert.equal(Object.hasOwn(initial.items[2], "is_error"), false); assert.equal(initial.items[3].result_state, "not_observed");
+  assert.equal(Object.hasOwn(initial.items[3], "result"), false);
+  assert.equal(Object.hasOwn(initial.items[0], "result_state"), false);
+  assert.deepEqual(Object.keys(initial.items[0]), ["call_id", "action", "result", "is_error"]);
+  assert.equal(initial.items[0].action, "tool {}");
+  assert.equal(initial.items[0].result, "ok");
+  assert.equal(Object.hasOwn(initial.items[3], "call_location"), false);
+  const missingDetail = await activity({ session_path: path, tool_call_id: "missing" });
+  assert.equal(missingDetail.call.call_location.content_index, 3);
   const schema = f.requests[0].payload.tools.find(x => x.function?.name === "larva_subagent_activity").function.parameters;
   assert.ok(schema.properties.source_version); assert.ok(schema.properties.result_index);
   console.log("FR1/FR9: native registration/schema/execution and model-visible provenance/error/absence");
@@ -76,12 +83,14 @@ try {
   const updates = await activity({ session_path: path, cursor: initial.cursor, limit: 2 });
   await appendFile(path, call("later", ["between-pages"]));
   const incremental = await drain(path, updates, 2);
-  assert.equal(incremental.items.length, 21); assert.equal(new Set(incremental.items.map(x => x.key)).size, 21);
+  assert.equal(incremental.items.length, 21); assert.equal(new Set(incremental.items.map(x => x.call_id)).size, 21);
+  assert.equal(Object.hasOwn(incremental.items[0], "key"), false);
+  assert.equal(Object.hasOwn(incremental.items[0], "update_type"), false);
   assert.equal(incremental.items.at(-1).update_type, "late_result");
   assert.deepEqual((await activity({ session_path: path, cursor: incremental.cursor })).items.map(x => x.call_id), ["between-pages"]);
   const recent = await activity({ session_path: path, limit: 20 });
   const recentPages = await drain(path, recent);
-  assert.equal(recentPages.items.length, 20); assert.equal(new Set(recentPages.items.map(x => x.key)).size, 20);
+  assert.equal(recentPages.items.length, 20); assert.equal(new Set(recentPages.items.map(x => x.call_id)).size, 20);
   const exact = await activity({ session_path: path, tool_call_id: "ok" });
   assert.equal(JSON.parse(exact.call.segment.text).content, "ok");
   console.log("FR2/FR3: same-record pages, late result outside tail, append-between-pages, exact old ID");
@@ -107,7 +116,7 @@ try {
   const partial = join(f.cwd, "partial.jsonl"), tail = call("tail", ["tail"]).trimEnd();
   await writeFile(partial, header("partial") + call("prior", ["prior"]) + tail);
   const pending = await activity({ session_path: partial });
-  assert.equal(pending.inspection_complete, false); assert.equal(pending.items.length, 1); assert.equal(pending.items[0].result_status, "incomplete");
+  assert.equal(pending.inspection_complete, false); assert.equal(pending.items.length, 1); assert.equal(pending.items[0].result_state, "incomplete");
   await appendFile(partial, "\n");
   assert.deepEqual((await activity({ session_path: partial, cursor: pending.cursor })).items.map(x => x.call_id), ["tail"]);
   console.log("FR5: complete JSON without newline remained pending; newline completion delivered once");
@@ -134,7 +143,12 @@ try {
 
   const branches = join(f.cwd, "branches.jsonl");
   await writeFile(branches, header("branches") + call("a", ["same"], {}, "2026-09-21T17:00:00Z") + call("b", ["same"]) + result("same", "a", "branch-a") + result("same", "b", "branch-b") + line({ type: "compaction", retainedTail: [{ role: "assistant", content: [{ type: "toolCall", id: "copied", name: "tool", arguments: {} }] }] }));
-  assert.equal((await activity({ session_path: branches })).total_calls_inspected, 2);
+  const branchRecent = await activity({ session_path: branches });
+  assert.equal(branchRecent.items.length, 2);
+  assert.deepEqual(branchRecent.items.map(x => x.call_id), ["same", "same"]);
+  assert.ok(!branchRecent.items.some(x => x.call_id === "copied"), "compaction copy must not be emitted as an activity call");
+  assert.equal(branchRecent.items[0].disambiguation_index, 0);
+  assert.equal(branchRecent.items[1].disambiguation_index, 1);
   assert.equal((await activity({ session_path: branches, tool_call_id: "same" })).status, "ambiguous");
   assert.equal(JSON.parse((await activity({ session_path: branches, tool_call_id: "same", disambiguation_index: 0 })).call.segment.text).content, "branch-a");
   const filtered = await activity({ session_path: branches, since_timestamp: stamp });

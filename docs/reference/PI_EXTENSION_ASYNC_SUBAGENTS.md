@@ -1476,34 +1476,76 @@ fit the response budget.
 
 #### Model-visible output and bounds
 
-`content[0].text` contains one compact JSON object with `status`, shared session
-and snapshot metadata, `items` or `call`, cursor/segment continuation, and any
-partial/error diagnostics. **All reader metadata reaches the model.** `details`
-contains only the small status discriminator; it does not duplicate activity or
-segment payloads. The complete serialized tool response is bounded to **8192
-UTF-8 bytes**, including JSON escaping, content, details and errors.
+`content[0].text` contains one compact JSON object with `status`, `items` (for
+recent/incremental queries) or `call` (for exact lookup), cursor/segment
+continuation, and any partial/error diagnostics. **All model-facing activity
+is delivered in `content[0].text`.** `details` contains only the small status
+discriminator (`{ status: payload.status }`); it does not duplicate activity or
+segment payloads. The complete serialized tool response is strictly bounded to
+**8192 UTF-8 bytes**, including JSON escaping, content, details and errors.
 
-Call/result locations include original entry/parent IDs when recorded, line
-number, byte offset/length and call content index. Missing timestamps/IDs remain
-absent with a diagnostic; none are synthesized. Recorded `is_error: false`,
-`true`, and an absent marker remain distinct. Result states distinguish
-`observed`, `present_omitted` (saved data exceeds the preview), `none` (no result
-in a completely inspected snapshot), `incomplete` (absence uncertain), and
-`ambiguous` (association or result selection unresolved). Logged calls/arguments
-are evidence of a record, without proving execution, post-hook arguments,
-system effects, completion or acceptance. Historical branches retain provenance
-without a claim about the current branch. Compaction `retainedTail` copies are
-never counted as new top-level activity.
+Recent/incremental output defaults to a flat, compact item shape designed to
+minimize token overhead while retaining investigation hooks:
+`{ call_id, action, result?, is_error?, result_state? }`.
+Default output removes redundant session echoes (`session_id`, `session_path`),
+scanning stats (`snapshot_bytes`, `captured_bytes`, `total_calls_inspected`),
+fixed `mode`, per-item `key`, character counts, and normal per-item locations and
+timestamps. Required provenance and full location evidence remain fully accessible
+via exact `tool_call_id` lookup or candidate disambiguation.
 
-Argument previews use at most 200 code units, result previews at most 500.
-Item count and segment length shrink to fit the full response, and continuation
-always follows the last delivered item or character. Diagnostics and candidate
-lists retain at most five rows with exact totals and explicit truncation flags.
+Omission semantics for compact items and top-level response:
+- `action`: tool name and serialized arguments (`<tool_name> <arguments JSON>`),
+  capped at 200 UTF-16 code units. `action_truncated: true` is emitted only when
+  truncated; omitted when false.
+- `result`: excerpt of `message.content` text (up to 500 UTF-16 code units),
+  extracted directly from recorded message content to avoid wrapper JSON duplication.
+- `result_truncated: true`: emitted only when the text preview was truncated (>500
+  code units) or non-text blocks (image, non-text) or structured details were
+  omitted; omitted when the complete text is displayed and no non-text data was omitted.
+- Non-text content indicators: `has_image: true`, `has_details: true`, or
+  `non_text: true` are emitted when image, structured detail, or non-text blocks
+  are present, preventing non-text/mixed results from disguising as empty results.
+  Exact raw JSON remains available via exact lookup.
+- `result_state`: omitted when result was observed and presented in `result`.
+  Emitted only when result is NOT presented:
+  - `not_observed`: when no result was observed in a completely inspected snapshot.
+  - `incomplete`: when result presence/absence is uncertain due to corruption,
+    invalid UTF-8, or an unterminated tail in the session file.
+  - `ambiguous`: when multiple candidate results exist for the call or association
+    is ambiguous (accompanied by candidate counts and selector guidance).
+  - `present_omitted`: when a result exists in the file but was omitted to satisfy
+    the 8192-byte response budget.
+- `is_error`: boolean `false` when recorded as false, `true` when recorded as true,
+  and omitted when absent. `is_error` reflects the tool execution envelope, not a
+  process exit code; PASS/exit cannot be inferred.
+- `upstream_truncated: true`: emitted only when upstream tool details recorded
+  `truncated: true`; omitted when false or not recorded.
+- `update_type: "late_result"`: emitted only for newly recorded results of older
+  calls in incremental mode; omitted for ordinary new calls.
+- `disambiguation_index`: emitted when a `call_id` is duplicated in the session
+  (across branches, different tools, or sibling calls in one entry). It gives the
+  zero-based file-order candidate index matching exact lookup, allowing direct
+  expansion via `larva_subagent_activity({ tool_call_id, disambiguation_index })`.
+  Globally unique IDs omit this selector.
+- `inspection_complete: false`: emitted along with `diagnostics` only when errors
+  or corruption were detected; omitted when inspection was cleanly completed.
+- `matched_by`: emitted only when a time filter was specified (`"call_timestamp"`
+  or `"result_timestamp"`).
+
+Diagnostics and candidate lists retain at most five rows with exact totals and
+explicit truncation flags (`diagnostics_truncated`, `candidates_truncated`).
 Required metadata that cannot itself fit returns the bounded
-`LARVA_ACTIVITY_METADATA_TOO_LARGE` error without advancing a cursor. No sliced
-JSON, partial identifiers, fabricated continuation or full-output temp file is
-returned. `upstream_truncated` identifies saved truncation metadata; reconstruction
-cannot restore content already lost upstream and never follows output paths.
+`LARVA_ACTIVITY_METADATA_TOO_LARGE` error without advancing a cursor.
+
+Exact `tool_call_id` lookup retains full provenance: `session_id`, `call_location`,
+`result_location`, `call_timestamp`, `result_timestamp`, `is_error`,
+`upstream_truncated`, `result_state` (omitted when a valid `result_index` is chosen
+or single observed result is present; `"ambiguous"` only when multiple results are
+unselected or call association is uncertain), and the exact `segment` with
+`source_version`, raw JSON, UTF-16 code unit offsets, length, total chars, and
+continuation offset. Segments reconstruct saved arguments JSON or the entire saved
+result-message JSON verbatim, including structured details, images and error fields;
+reconstruction never follows `fullOutputPath`.
 
 #### Snapshot, failures and reader lifetime
 

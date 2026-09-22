@@ -11258,7 +11258,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent_activity",
     label: "Larva Subagent Activity",
-    description: "Read-only compact inspection of recorded tool activity from one exact authorized historical Pi session .jsonl path, independent of the live registry. Returns one model-visible JSON payload, whole response <=8192 UTF-8 bytes. Recent limit 5 (max20), cursor pages include old-call late results. Exact tool_call_id expands saved args JSON or entire result-message JSON; follow segment continuation_offset with source_version. Recorded evidence does not establish execution or acceptance. No lifecycle, callback or watchdog effects.",
+    description: "Read-only compact inspection of recorded tool activity from one exact authorized historical Pi session .jsonl path, independent of the live registry. Returns one model-visible JSON payload, whole response <=8192 UTF-8 bytes. Recent limit 5 (max20), compact items {call_id, action, result?, is_error?, result_state?}, cursor pages include old-call late results. Exact tool_call_id expands saved args JSON or entire result-message JSON; follow segment continuation_offset with source_version. Recorded evidence does not establish execution or acceptance. No lifecycle, callback or watchdog effects.",
     inputSchema: activitySchema,
     parameters: activitySchema,
     handler: async (input: unknown) => larva_subagent_activity(input, { env }),

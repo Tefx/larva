@@ -1526,13 +1526,18 @@ stable errors such as `LARVA_NO_ACTIVE_PERSONA`, `LARVA_BAD_INPUT`,
 `larva_subagent_activity` provides pure read-only inspection of recorded tool
 activity from an exact historical Pi session `.jsonl` file. It operates
 independently of parent subagent registries, active runs, and childSessionRoot.
-It delivers recent calls with associated results, incremental reading with
-lossless paging and late results for older calls, exact `tool_call_id` lookup
-with candidate disambiguation, and bounded segment reconstruction (up to 4000
-chars per segment). The whole serialized response is strictly bounded by an
-8192 UTF-8 byte ceiling. Cursors are self-contained and detect file replacement,
-truncation, and truncation-then-regrowth with altered prior contents. Activity
-reading is lifecycle-neutral and performs zero writes or state mutations.
+It delivers recent calls with associated results in a flat, compact item shape
+(`{ call_id, action, result?, is_error?, result_state? }`), incremental reading
+with lossless paging and late results for older calls, exact `tool_call_id`
+lookup with candidate disambiguation, and bounded segment reconstruction (up to
+4000 chars per segment). Duplicate call IDs conditionally include `disambiguation_index`
+for direct exact expansion. Redundant session metadata, statistics, and normal
+record locations are omitted from default recent output, while full provenance
+remains accessible via exact lookup. Candidate and diagnostic samples retain at
+most five rows with explicit truncation flags. The whole serialized response is strictly
+bounded by an 8192 UTF-8 byte ceiling. Cursors are self-contained and detect
+file replacement, truncation, and truncation-then-regrowth with altered prior
+contents. Activity reading is lifecycle-neutral and performs zero writes or state mutations.
 
 Suggested external Orchestrator guidance:
 Prefer bounded `larva_subagent_activity` on the exact session path; expand by
