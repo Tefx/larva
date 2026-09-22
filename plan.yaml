@@ -145627,7 +145627,7 @@ phases:
       implementation or acceptance obligations.'
 - id: pi_subagent_activity
   name: Bounded read-only Pi subagent activity inspection
-  status: in_progress
+  status: done
   gate: 'Orchestrator accepts this Larva-only increment in pi-activity.deliver completion:
     all nine user FR scenarios through the actual Pi extension, compact whole-response
     bounds and resumable detail, session-independent cursor correctness, read-side
@@ -145660,7 +145660,7 @@ phases:
   steps:
   - id: pi-activity.deliver
     name: Deliver compact session activity tool with native Pi proof and documentation
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- Register larva_subagent_activity in the actual Pi extension. Read\
       \ only one exact explicitly supplied absolute Pi session JSONL path under existing\
@@ -145971,3 +145971,29 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-09-22T04:25:09.965694Z'
+    done_at: '2026-09-22T04:55:45.727204+00:00'
+    evidence: 'Accepted and fast-forward integrated f5c9bdb4dfc7b445b263fde00ed8c698a1828651
+      onto integration_basis e6b75e095873ffb480cd589934de4324c851933e; HEAD verified
+      exact target. Planned owner node-typescript-engineer; actual Principal Engineer
+      completed evidence-backed takeover, prior candidates retained. Parent inspected
+      activity.ts complete source/registration, pagination/partial/error/source/cancellation
+      isolation, local schema/typing/drift/malformed tests, runtime-version-check
+      removal, fixture corrections, CI workflow/invocation tests and current authority
+      docs. Candidate protected Core/schema/Plan unchanged. User-authorized independence:
+      no Opifex authority/checkouts/token/pin; local schema meaning retained; no runtime
+      version rejection, upgrades, compatibility machinery, global install, external
+      writes or remote CI dispatch. Native9FR58registered calls max8050 serializedbytes,watchdog121935ms
+      onecallback; runtime8145bytes100kcall64MiB/cancellation/descriptors;22Nodeentrypoints
+      valid observations. Local-schema47passed; all4formerlyblocked native scenarios
+      genuinely ran. Finalaffected CI296localcontracts,72native runtime no skips/xfails,22CI/watchdog
+      passed (overlapping); full inventory union971distinct passing current cases
+      with explicit retired/replaced cases,no omitted/unresolved cases. Fresh pinned
+      fullInvar passed42files0errors5existingwarnings7infos; doctest/CrossHair/property
+      passed. Node26.8.2,localPi0.85.1; priorglobalPi0.86.1 native observations separately
+      retained. Lockedsetup npmci/uvsync succeeded; package dry-run contains activity.ts;
+      diff--check passed. Reused only unaffected source/runtime/fixture proof across
+      Plan-only rebases; CI launch changes got fresh affected native proof. Full fresh
+      whole-suite/cloudCI not claimed. Evidence .vectl/evidence/pi-activity.deliver/ACCEPTANCE.md,inventory-summary.json,original
+      XML/log observations,HANDOFF.md. Original worktree evidence paths superseded
+      by retained basenames; duplicate logs/builds/probes eligible for cleanup. No
+      remaining acceptance gaps; worktree cleanup follows after lifecycle reconciliation.'
