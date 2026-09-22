@@ -145853,7 +145853,7 @@ phases:
       \ and meaningful local contract checks pass without an Opifex checkout or external\
       \ schema; preserve drift detection and strict-admission assertions.\n- id: formerly-version-gated-native-behavior\n\
       \  command: [node, scripts/pi-guard-checks.mjs, tests/shell/test_pi_extension_real_runtime.py,\
-      \ '-k', 'runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence\
+      \ tests/shell/test_pi_extension_subagent_ux.py, '-k', 'runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence\
       \ or async_subagent_installed_pi_no_progress_watchdog_runtime or installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc\
       \ or installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence']\n\
       \  expected: Required fresh actual native functional proof for all four formerly\
@@ -145870,7 +145870,7 @@ phases:
       \ -u, PYTHONPATH, UV_PYTHON_DOWNLOADS=never, uvx, --python, '3.12', invar-tools==1.20.3,\
       \ guard, --all]\n  expected: Required fresh full Invar check after final source/tests/docs\
       \ corrections, exit 0 with no weakened rules; report warnings honestly.\n- id:\
-      \ whitespace\n  command: [git, diff, --check]\n  expected: exit 0\n"
+      \ whitespace\n  command: [git, diff, --check]\n  expected: exit 0"
     verification: All nine FR demonstrated through actual registered native Pi tool
       execution, plus compact complete-response bound and reconstructable segmentation,
       lossless cross-process cursors, explicit partial/error outcomes and unchanged
@@ -145916,4 +145916,5 @@ phases:
     - scripts/pi-extension-runtime-smoke.mjs
     - docs/guides/USER_GUIDE.md
     - docs/guides/USAGE.md
+    - tests/shell/test_pi_extension_subagent_ux.py
     agent: node-typescript-engineer
