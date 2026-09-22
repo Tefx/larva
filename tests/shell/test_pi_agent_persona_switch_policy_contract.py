@@ -77,7 +77,12 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str,
     return json.loads(completed.stdout)
 
 
-def _run_confirm_borrow_dialog_scenario(tmp_path: Path, selected_expression: str) -> dict[str, Any]:
+def _run_confirm_borrow_dialog_scenario(
+    tmp_path: Path,
+    selected_expression: str,
+    env_extra: dict[str, str] | None = None,
+    flag_extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return _run_node(
         tmp_path,
         f"""
@@ -97,21 +102,28 @@ def _run_confirm_borrow_dialog_scenario(tmp_path: Path, selected_expression: str
         }} }}));
         `, "utf8");
         const mod = await import(pathToFileURL({json.dumps(str(EXTENSION))}).href + "?case=confirm-borrow-dialog-" + Date.now() + Math.random());
+        const extraEnv = {json.dumps(env_extra or {})};
+        const extraFlags = {json.dumps(flag_extra or {})};
         const selectCalls = [];
         const statuses = [];
         const entries = [];
         const setModelCalls = [];
         const activeToolCalls = [];
+        const notifications = [];
         const ctx = {{
           mode: "tui",
-          env: {{ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]) }},
+          env: {{ LARVA_PI_AGENT_PERSONA_SWITCH: "confirm", LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), ...extraEnv }},
           ui: {{
-            select: async (title, options) => {{
-              selectCalls.push({{ title, options }});
+            select: async (title, options, opts) => {{
+              selectCalls.push({{
+                title,
+                options,
+                opts: opts ? {{ timeout: opts.timeout, hasSignal: Boolean(opts.signal) }} : null,
+              }});
               return {selected_expression};
             }},
             setStatus: async (...args) => statuses.push(args),
-            notify: async () => undefined,
+            notify: async (message, type) => {{ notifications.push({{ message, type }}); }},
           }},
           modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
         }};
@@ -122,6 +134,8 @@ def _run_confirm_borrow_dialog_scenario(tmp_path: Path, selected_expression: str
           appendEntry: (customType, data) => entries.push({{ customType, data }}),
           registerCommand: () => undefined,
           registerTool: () => undefined,
+          registerFlag: () => undefined,
+          getFlag: (name) => extraFlags[name],
           on: () => undefined,
         }};
         await mod.initializeExtension(ctx, pi);
@@ -137,10 +151,13 @@ def _run_confirm_borrow_dialog_scenario(tmp_path: Path, selected_expression: str
           afterPersona,
           resultStatus: result.status,
           errorCode: result.error?.code ?? null,
+          errorMessage: result.error?.message ?? null,
           lease: result.details?.lease ?? null,
           selectOptions: selectCalls[0]?.options ?? null,
           selectOptionTypes: (selectCalls[0]?.options ?? []).map((option) => typeof option),
           selectTitle: selectCalls[0]?.title ?? null,
+          selectOpts: selectCalls[0]?.opts ?? null,
+          notifications,
           setModelCallCount: setModelCalls.length,
           activeToolCallCount: activeToolCalls.length,
           auditEvents: entries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit").map((entry) => entry.data),
@@ -381,6 +398,70 @@ def test_confirm_mode_borrow_dialog_accepts_legacy_object_id_return_with_string_
     assert result["afterPersona"] == "target"
     assert result["lease"]["borrowedPersonaId"] == "target"
     assert result["lease"]["originPersonaId"] == "origin"
+
+
+def test_confirm_mode_borrow_dialog_passes_timeout_and_signal_opts(tmp_path: Path) -> None:
+    """Pi select is passed default 30s timeout and AbortSignal for auto-dismissal."""
+
+    result = _run_confirm_borrow_dialog_scenario(tmp_path, json.dumps("Borrow once"))
+
+    assert result["selectOpts"] is not None
+    assert result["selectOpts"]["timeout"] == 30_000
+    assert result["selectOpts"]["hasSignal"] is True
+
+
+def test_confirm_mode_borrow_dialog_timeout_auto_denies(tmp_path: Path) -> None:
+    """When the user does not respond before timeout, borrow is automatically denied."""
+
+    result = _run_confirm_borrow_dialog_scenario(
+        tmp_path,
+        "new Promise(() => {})",
+        env_extra={"LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS": "50"},
+    )
+
+    assert result["resultStatus"] == "failed"
+    assert result["errorCode"] == "LARVA_BAD_INPUT"
+    assert "timed out" in result["errorMessage"].lower()
+    assert "automatically denied" in result["errorMessage"].lower()
+    assert result["beforePersona"] == "origin"
+    assert result["afterPersona"] == "origin"
+    assert result["setModelCallCount"] == 0
+    assert result["activeToolCallCount"] == 0
+    assert any(
+        event.get("approved") is False and event.get("denial_reason") == "timeout"
+        for event in result["auditEvents"]
+    )
+    assert any("timed out" in n["message"].lower() for n in result["notifications"])
+
+
+def test_confirm_mode_borrow_dialog_startup_flag_overrides_timeout(tmp_path: Path) -> None:
+    """The --larva-agent-persona-switch-timeout startup flag configures the timeout."""
+
+    result = _run_confirm_borrow_dialog_scenario(
+        tmp_path,
+        "new Promise(() => {})",
+        flag_extra={"larva-agent-persona-switch-timeout": "40"},
+    )
+
+    assert result["resultStatus"] == "failed"
+    assert result["errorCode"] == "LARVA_BAD_INPUT"
+    assert result["selectOpts"]["timeout"] == 40
+    assert result["beforePersona"] == "origin"
+    assert result["afterPersona"] == "origin"
+
+
+def test_confirm_mode_borrow_dialog_timeout_disabled_when_zero(tmp_path: Path) -> None:
+    """Setting timeout to 0 disables the timeout countdown."""
+
+    result = _run_confirm_borrow_dialog_scenario(
+        tmp_path,
+        json.dumps("Borrow once"),
+        env_extra={"LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS": "0"},
+    )
+
+    assert result["resultStatus"] == "success"
+    assert result["selectOpts"] is not None
+    assert "timeout" not in result["selectOpts"] or result["selectOpts"]["timeout"] is None
 
 
 def test_auto_mode_is_temporary_borrow_with_turn_end_restore() -> None:

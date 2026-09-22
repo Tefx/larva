@@ -43,7 +43,7 @@ process.exit(3);
   return cli;
 }
 
-async function makeRuntime(name, env = {}) {
+async function makeRuntime(name, env = {}, overrides = {}) {
   const mod = await importFresh(name);
   const cli = await makeFakeLarvaCli(name);
   const registeredTools = [];
@@ -56,6 +56,7 @@ async function makeRuntime(name, env = {}) {
   const handlers = {};
   const activeToolSets = [];
   const ctx = {
+    mode: overrides.mode ?? "headless",
     env: {
       LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
       ...env,
@@ -63,12 +64,14 @@ async function makeRuntime(name, env = {}) {
     ui: {
       setStatus: async (...args) => statuses.push(args),
       notify: async (message, type) => notifications.push({ message, type }),
+      ...(overrides.ui ?? {}),
     },
     modelRegistry: { find: async () => ({ id: "model" }) },
     session: { appendEntry: (entry) => auditEntries.push(entry) },
     appendEntry: (customType, data) => auditEntries.push({ customType, data }),
     sendMessage: async (message, options) => runtimeMessages.push({ message, options }),
     sendUserMessage: async (message, options) => chatMessages.push({ message, options }),
+    ...(overrides.ctx ?? {}),
   };
   const pi = {
     getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas", "larva_subagent_status"],
@@ -131,6 +134,34 @@ await run("confirm mode has four outcomes and all non-approval paths fail safely
   const deniedOrUnavailable = await runtime.mod.larva_persona_switch({ persona_id: "target", reason: "needs target" }, runtime.ctx, runtime.pi);
   assert.equal(deniedOrUnavailable.status, "failed");
   assert.deepEqual(runtime.mod.getActiveEnvelope(), before, "missing UI/deny/cancel/timeout must preserve state");
+});
+
+await run("confirm mode auto-denies on timeout without mutating state", async () => {
+  let selectOpts = null;
+  const runtime = await makeRuntime("confirm-timeout", {
+    LARVA_PI_AGENT_PERSONA_SWITCH: "confirm",
+    LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS: "50",
+  }, {
+    mode: "tui",
+    ui: {
+      select: async (title, options, opts) => {
+        selectOpts = opts;
+        return new Promise(() => {});
+      },
+    },
+  });
+  const before = runtime.mod.getActiveEnvelope();
+  const result = await runtime.mod.larva_persona_switch({ persona_id: "target", reason: "testing timeout auto-deny" }, runtime.ctx, runtime.pi);
+  assert.equal(result.status, "failed");
+  assert.equal(result.error.code, "LARVA_BAD_INPUT");
+  assert.ok(result.error.message.includes("timed out"), "error message must indicate timeout");
+  assert.ok(result.error.message.includes("automatically denied"), "error message must indicate automatic denial");
+  assert.deepEqual(runtime.mod.getActiveEnvelope(), before, "persona state must remain unchanged after timeout");
+  assert.ok(selectOpts, "select must receive options");
+  assert.equal(selectOpts.timeout, 50, "select must receive configured timeout");
+  assert.ok(selectOpts.signal, "select must receive abort signal");
+  assert.ok(runtime.notifications.some((n) => n.message.includes("timed out")), "timeout warning notification emitted");
+  assert.ok(runtime.auditEntries.some((e) => e.data?.approved === false && e.data?.denial_reason === "timeout"), "audit entry recorded denial_reason=timeout");
 });
 
 await run("runtime prompt and tool descriptions include deterministic borrow-vs-subagent routing", async () => {

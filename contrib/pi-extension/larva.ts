@@ -89,6 +89,8 @@ type PiModelMapConfig = {
 type RuntimeEnv = Record<string, string | undefined> & {
   PI_CODING_AGENT_DIR?: string;
   LARVA_PI_AGENT_PERSONA_SWITCH?: string;
+  LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS?: string;
+  LARVA_PI_PERSONA_SWITCH_CONFIRM_TIMEOUT_MS?: string;
   LARVA_PI_INITIAL_PERSONA_ID?: string;
   LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI?: string;
   LARVA_PI_MODEL_MAP_FILE?: string;
@@ -467,7 +469,7 @@ type PiUi = {
   notify?: (message: string, notifyType?: "info" | "warning" | "error") => void | Promise<void>;
   confirm?: (message: string, options?: Record<string, unknown>) => boolean | Promise<boolean>;
   custom?: (factory: PiCustomFactory, options?: Record<string, unknown>) => unknown | Promise<unknown>;
-  select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
+  select?: (title: string, options: string[] | SelectorOption[], opts?: Record<string, unknown>) => Promise<string | SelectorOption | null | undefined>;
 };
 type SubagentCallbackMessage = {
   customType: string;
@@ -762,6 +764,8 @@ const CHILD_RPC_FRAME_PRELOAD_SYMBOL = Symbol.for("larva.pi.child-rpc-frame-prel
 const CHILD_RPC_FRAME_CAPABILITY = "larva-child-rpc-frame-preload-v1";
 const LARVA_PERSONA_FLAG = "larva-persona";
 const LARVA_AGENT_PERSONA_SWITCH_FLAG = "larva-agent-persona-switch";
+const LARVA_AGENT_PERSONA_SWITCH_TIMEOUT_FLAG = "larva-agent-persona-switch-timeout";
+const PERSONA_SWITCH_CONFIRM_DEFAULT_TIMEOUT_MS = 30_000;
 const LARVA_STATEFUL_REGISTRATION = Symbol.for("larva.pi.extension.stateful-registration");
 const LARVA_EXTENSION_ENTRY_PATH = fileURLToPath(import.meta.url);
 const LARVA_FRAME_PRELOAD_PATH = join(dirname(LARVA_EXTENSION_ENTRY_PATH), CHILD_RPC_FRAME_PRELOAD_FILENAME);
@@ -801,7 +805,7 @@ let instructionStateUncertain = false;
 let instructionTransitionDepth = 0;
 let resolveSystemPromptUnsubscribe: (() => void) | null = null;
 let admissionBlocked = false;
-let nativeStartupFlags: { personaId: string | null; mode: AgentPersonaSwitchMode | null; invalid: LarvaError | null } = { personaId: null, mode: null, invalid: null };
+let nativeStartupFlags: { personaId: string | null; mode: AgentPersonaSwitchMode | null; confirmTimeoutMs: number | null; invalid: LarvaError | null } = { personaId: null, mode: null, confirmTimeoutMs: null, invalid: null };
 const initializedPiSessionRestoreKeys = new WeakMap<object, string>();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
@@ -895,6 +899,8 @@ function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
     "LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI",
     "LARVA_PI_LAUNCHED",
     "LARVA_PI_AGENT_PERSONA_SWITCH",
+    "LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS",
+    "LARVA_PI_PERSONA_SWITCH_CONFIRM_TIMEOUT_MS",
     "LARVA_PI_CAPSULE_ROOT",
     "LARVA_PI_REAL_BIN",
     "LARVA_PI_EXTENSION_FLAG",
@@ -5192,23 +5198,51 @@ function fatalInitialPersonaStartup(ctx: PiContext, env: RuntimeEnv, personaId: 
   fatalLarvaAdmission(ctx, larvaError, startupFailureStderr(personaId, larvaError));
 }
 
-function readNativeStartupFlags(pi: PiApi): { personaId: string | null; mode: AgentPersonaSwitchMode | null; invalid: LarvaError | null } {
+function readNativeStartupFlags(pi: PiApi): { personaId: string | null; mode: AgentPersonaSwitchMode | null; confirmTimeoutMs: number | null; invalid: LarvaError | null } {
   const personaRaw = pi.getFlag?.(LARVA_PERSONA_FLAG);
   const modeRaw = pi.getFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG);
+  const timeoutRaw = pi.getFlag?.(LARVA_AGENT_PERSONA_SWITCH_TIMEOUT_FLAG);
   let personaId: string | null = null;
   let mode: AgentPersonaSwitchMode | null = null;
-  if (personaRaw === true) return { personaId: null, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-persona value") };
+  let confirmTimeoutMs: number | null = null;
+  if (personaRaw === true) return { personaId: null, mode: null, confirmTimeoutMs: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-persona value") };
   if (typeof personaRaw === "string") {
     const trimmed = personaRaw.trim();
-    if (trimmed.length === 0 || !PERSONA_ID_RE.test(trimmed)) return { personaId: null, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-persona value") };
+    if (trimmed.length === 0 || !PERSONA_ID_RE.test(trimmed)) return { personaId: null, mode: null, confirmTimeoutMs: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-persona value") };
     personaId = trimmed;
   }
-  if (modeRaw === true) return { personaId, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch value") };
+  if (modeRaw === true) return { personaId, mode: null, confirmTimeoutMs: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch value") };
   if (typeof modeRaw === "string") {
-    if (!isAgentPersonaSwitchMode(modeRaw)) return { personaId, mode: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch value") };
+    if (!isAgentPersonaSwitchMode(modeRaw)) return { personaId, mode: null, confirmTimeoutMs: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch value") };
     mode = modeRaw;
   }
-  return { personaId, mode, invalid: null };
+  if (timeoutRaw === true) return { personaId, mode, confirmTimeoutMs: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch-timeout value") };
+  if (typeof timeoutRaw === "string") {
+    const parsed = Number.parseInt(timeoutRaw.trim(), 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return { personaId, mode, confirmTimeoutMs: null, invalid: error("LARVA_BAD_INPUT", "Invalid --larva-agent-persona-switch-timeout value") };
+    }
+    confirmTimeoutMs = parsed;
+  }
+  return { personaId, mode, confirmTimeoutMs, invalid: null };
+}
+
+function parseConfirmTimeoutEnv(raw: string | undefined): number | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  return null;
+}
+
+function resolvePersonaBorrowConfirmationTimeoutMs(ctx: PiContext): number {
+  if (nativeStartupFlags.confirmTimeoutMs !== null) return nativeStartupFlags.confirmTimeoutMs;
+  const env = currentEnv(ctx);
+  const configured = parseConfirmTimeoutEnv(env.LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS)
+    ?? parseConfirmTimeoutEnv(env.LARVA_PI_PERSONA_SWITCH_CONFIRM_TIMEOUT_MS);
+  if (configured !== null) return configured;
+  return PERSONA_SWITCH_CONFIRM_DEFAULT_TIMEOUT_MS;
 }
 
 function explicitStartupPersonaId(env: RuntimeEnv): string {
@@ -5773,7 +5807,7 @@ async function schedulePendingPersonaSwitchContinuation(ctx: PiContext, pi: PiAp
   }, 0);
 }
 
-type ConfirmPersonaBorrowOutcome = "borrow_once" | "deny" | "auto_session" | "persistent";
+type ConfirmPersonaBorrowOutcome = "borrow_once" | "deny" | "auto_session" | "persistent" | "timeout";
 
 const CONFIRM_PERSONA_BORROW_CHOICE_LABELS = [
   "Borrow once",
@@ -5810,6 +5844,7 @@ function mapPersonaBorrowSelectionToOutcome(selected: string | SelectorOption | 
 
 async function requestPersonaBorrowConfirmation(ctx: PiContext, originPersona: string | null, targetPersona: string, reason: string): Promise<ConfirmPersonaBorrowOutcome | LarvaError> {
   if (larvaHostMode(ctx) !== "tui") return error("LARVA_CONFIRMATION_UNAVAILABLE", "Larva confirm mode requires the native interactive TUI; active persona is unchanged.");
+  const timeoutMs = resolvePersonaBorrowConfirmationTimeoutMs(ctx);
   const prompt = [
     "Borrow persona?",
     "",
@@ -5821,19 +5856,121 @@ async function requestPersonaBorrowConfirmation(ctx: PiContext, originPersona: s
     "",
     "[Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]",
   ].join("\n");
+
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const startTime = Date.now();
+
   const select = ctx.ui?.select;
   if (typeof select === "function") {
-    const selected = await select(prompt, [...CONFIRM_PERSONA_BORROW_CHOICE_LABELS]);
-    return mapPersonaBorrowSelectionToOutcome(selected);
+    try {
+      const selectPromise = (async () => {
+        const dialogOpts: Record<string, unknown> = {
+          signal: controller.signal,
+          ...(timeoutMs > 0 ? { timeout: timeoutMs } : {}),
+        };
+        const selected = await select(prompt, [...CONFIRM_PERSONA_BORROW_CHOICE_LABELS], dialogOpts);
+        return { kind: "selected" as const, selected };
+      })();
+
+      const timeoutPromise = timeoutMs > 0
+        ? new Promise<{ kind: "timeout" }>((resolve) => {
+            timer = setTimeout(() => {
+              try {
+                controller.abort();
+              } catch {
+                // ignore
+              }
+              resolve({ kind: "timeout" });
+            }, timeoutMs);
+          })
+        : null;
+
+      const winner = timeoutPromise !== null
+        ? await Promise.race([selectPromise, timeoutPromise])
+        : await selectPromise;
+
+      if (winner.kind === "timeout") {
+        return "timeout";
+      }
+
+      const elapsed = Date.now() - startTime;
+      const selected = winner.selected;
+      const isNearDeadline = timeoutMs > 0 && elapsed >= (timeoutMs >= 2000 ? timeoutMs - 1000 : timeoutMs * 0.8);
+      if (selected === undefined && isNearDeadline) {
+        return "timeout";
+      }
+      return mapPersonaBorrowSelectionToOutcome(selected);
+    } catch {
+      if (controller.signal.aborted) {
+        return "timeout";
+      }
+      return "deny";
+    } finally {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }
   }
+
   const confirm = ctx.ui?.confirm;
   if (typeof confirm === "function") {
     try {
-      return await confirm(prompt, { choices: [...CONFIRM_PERSONA_BORROW_CHOICE_LABELS], default: "Borrow once", persona_id: targetPersona, reason }) === true ? "borrow_once" : "deny";
+      const confirmPromise = (async () => {
+        const dialogOpts = {
+          choices: [...CONFIRM_PERSONA_BORROW_CHOICE_LABELS],
+          default: "Borrow once",
+          persona_id: targetPersona,
+          reason,
+          signal: controller.signal,
+          ...(timeoutMs > 0 ? { timeout: timeoutMs } : {}),
+        };
+        const confirmed = await confirm(prompt, dialogOpts);
+        return { kind: "confirmed" as const, confirmed };
+      })();
+
+      const timeoutPromise = timeoutMs > 0
+        ? new Promise<{ kind: "timeout" }>((resolve) => {
+            timer = setTimeout(() => {
+              try {
+                controller.abort();
+              } catch {
+                // ignore
+              }
+              resolve({ kind: "timeout" });
+            }, timeoutMs);
+          })
+        : null;
+
+      const winner = timeoutPromise !== null
+        ? await Promise.race([confirmPromise, timeoutPromise])
+        : await confirmPromise;
+
+      if (winner.kind === "timeout") {
+        return "timeout";
+      }
+
+      const elapsed = Date.now() - startTime;
+      const confirmed = winner.confirmed;
+      const isNearDeadline = timeoutMs > 0 && elapsed >= (timeoutMs >= 2000 ? timeoutMs - 1000 : timeoutMs * 0.8);
+      if (confirmed !== true && isNearDeadline) {
+        return "timeout";
+      }
+      return confirmed === true ? "borrow_once" : "deny";
     } catch {
+      if (controller.signal.aborted) {
+        return "timeout";
+      }
       return "deny";
+    } finally {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
     }
   }
+
   return error("LARVA_CONFIRMATION_UNAVAILABLE", "Larva confirm mode fails safely without changing the active persona because confirmation UI is unavailable.");
 }
 
@@ -5910,9 +6047,24 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
         appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: outcome.code });
         return switchToolFailure(outcome);
       }
-      if (outcome === "deny") {
-        const larvaError = error("LARVA_BAD_INPUT", "Larva persona borrow was denied; do not change persona, model, or tool state.");
-        appendPersonaSwitchAudit(ctx, pi, { ...auditBase, to_persona_id: personaId, reason, handoff: handoff ?? "", approved: false, error_code: larvaError.code });
+      if (outcome === "deny" || outcome === "timeout") {
+        const isTimeout = outcome === "timeout";
+        const message = isTimeout
+          ? "Larva persona borrow request timed out waiting for user confirmation; automatically denied."
+          : "Larva persona borrow was denied; do not change persona, model, or tool state.";
+        const larvaError = error("LARVA_BAD_INPUT", message);
+        appendPersonaSwitchAudit(ctx, pi, {
+          ...auditBase,
+          to_persona_id: personaId,
+          reason,
+          handoff: handoff ?? "",
+          approved: false,
+          error_code: larvaError.code,
+          denial_reason: isTimeout ? "timeout" : "user_denied",
+        });
+        if (isTimeout) {
+          await notify(ctx, `Persona borrow request for ${personaId} timed out; automatically denied.`, "warning");
+        }
         return switchToolFailure(larvaError);
       }
       if (outcome === "auto_session") {
@@ -10884,6 +11036,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   if (firstResolverSetup) instructionReady = false;
   pi.registerFlag?.(LARVA_PERSONA_FLAG, { type: "string", description: "Optional Larva persona ID for this session" });
   pi.registerFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG, { type: "string", description: "Larva agent persona switch mode: manual, confirm, auto, or free" });
+  pi.registerFlag?.(LARVA_AGENT_PERSONA_SWITCH_TIMEOUT_FLAG, { type: "string", description: "Larva agent persona switch confirmation timeout in ms (default: 30000, 0 disables)" });
   const env = currentEnv(ctx);
   installChildRpcFrameWriter(env);
   registerSubagentBackgroundIndicatorContext(ctx);

@@ -105,6 +105,11 @@ denial path: Escape, Ctrl+C, timeout, no available UI, or an unrecognized/no
 selection must fail without changing persona, model, or tool state. These
 cancellation paths are not additional visible choices.
 
+Confirmation dialogs support automatic timeout refusal:
+- Default timeout is 30 seconds (`30000` ms). In native interactive TUI, the dialog displays a live countdown timer.
+- If the user does not respond within the timeout, the dialog is dismissed and the borrow request is automatically denied without mutating persona, model, or tool state.
+- The timeout can be configured via `LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS` (or `LARVA_PI_PERSONA_SWITCH_CONFIRM_TIMEOUT_MS`) environment variable, or `--larva-agent-persona-switch-timeout` startup flag. Setting the timeout to `0` disables the countdown.
+
 If no confirmation UI is available, `confirm` follows the same fail-safe denial
 path without changing persona, model, or tool state.
 
