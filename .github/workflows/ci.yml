@@ -7,111 +7,32 @@ on:
       - main
 
 jobs:
-  repo-local-expected-red:
+  local-schema:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout larva
-        uses: actions/checkout@v4
-
-      - name: Read frozen opifex authority pin
-        id: opifex-authority
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          payload = json.loads(Path("design/opifex-frozen-authority-packet.json").read_text(encoding="utf-8"))
-          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
-              handle.write(f"repository={payload['repository']}\n")
-              handle.write(f"ref={payload['ref']}\n")
-          PY
-
-      - name: Checkout opifex authority
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ steps.opifex-authority.outputs.repository }}
-          ref: ${{ steps.opifex-authority.outputs.ref }}
-          path: opifex
-          token: ${{ secrets.OPIFEX_READ_TOKEN }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Sync locked dependencies
-        run: uv sync --locked --group dev
-
-      - name: Seed expected-red drift
-        run: uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root opifex
-
-  repo-local-gate:
-    runs-on: ubuntu-latest
-    needs: repo-local-expected-red
-    steps:
-      - name: Checkout larva
-        uses: actions/checkout@v4
-
-      - name: Read frozen opifex authority pin
-        id: opifex-authority
+      - uses: astral-sh/setup-uv@v4
+      - name: Install locked Python dependencies
+        run: uv sync --locked --python 3.12 --group dev
+      - name: Verify local schema, typing, validation and drift
         run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          payload = json.loads(Path("design/opifex-frozen-authority-packet.json").read_text(encoding="utf-8"))
-          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
-              handle.write(f"repository={payload['repository']}\n")
-              handle.write(f"ref={payload['ref']}\n")
-          PY
-
-      - name: Checkout opifex authority
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ steps.opifex-authority.outputs.repository }}
-          ref: ${{ steps.opifex-authority.outputs.ref }}
-          path: opifex
-          token: ${{ secrets.OPIFEX_READ_TOKEN }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Sync locked dependencies
-        run: uv sync --locked --group dev
-
-      - name: Setup supported Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "26.7.0"
-
-      - name: Install Pi extension npm dependencies
-        run: npm --prefix contrib/pi-extension ci
-
-      - name: Verify repo-local gate script tests
-        run: uv run pytest -q tests/shell/test_repo_local_ci_gate.py
-
-      - name: Verify Pi extension controlled contracts and UI gates
-        run: uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py -v
-
-      - name: Verify Pi extension runtime smoke gates
-        run: node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
-
-      - name: Verify shared-surface repo-local gate
-        run: uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root opifex
+          uv run --locked --python 3.12 --group dev pytest -q \
+            tests/core/test_schema_validation.py tests/core/test_validate.py \
+            tests/canonical_cutover/test_hard_cutover_readiness.py
 
   pi-native-runtime:
     runs-on: macos-15
+    needs: local-schema
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      PI_BIN: ${{ github.workspace }}/contrib/pi-extension/node_modules/.bin/pi
+      LARVA_TEST_PI_CODING_AGENT: ${{ github.workspace }}/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -123,14 +44,8 @@ jobs:
           node-version: "26.7.0"
       - name: Install locked project dependencies
         run: |
-          uv sync --locked --group dev
+          uv sync --locked --python 3.12 --group dev
           npm --prefix contrib/pi-extension ci
-      - name: Prepare supported Pi identity in disposable runner
-        run: |
-          # Retained installed-host probes select this exact standard prefix.
-          # This affects only the ephemeral CI runner, never an operator machine.
-          sudo env PATH="$PATH" npm install --global --prefix /opt/homebrew @earendil-works/pi-coding-agent@0.85.1
-          /opt/homebrew/bin/pi --version
       - name: Verify native-owned Python wheel and backend seam
         run: |
           env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
@@ -146,8 +61,8 @@ jobs:
             uv run --locked --python 3.12 --group dev pytest -q \
             tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py \
             tests/shell/test_pi_extension_subagent_model_isolation.py \
-            tests/shell/test_pi_agent_persona_switch_policy_contract.py tests/shell/test_pi_idle_callback_identity.py
-          set -euo pipefail
+            tests/shell/test_pi_agent_persona_switch_policy_contract.py tests/shell/test_pi_idle_callback_identity.py \
+            tests/shell/test_pi_subagent_activity.py tests/shell/test_repo_local_ci_gate.py
           for f in contrib/pi-extension/test-*.mjs; do node "$f"; done
           node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
       - name: Verify pinned full Invar scan

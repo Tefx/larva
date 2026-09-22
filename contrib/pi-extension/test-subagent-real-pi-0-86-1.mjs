@@ -1,42 +1,27 @@
 // purpose: verify actual subagent startup on installed Pi (filename is historical)
 // usage: node contrib/pi-extension/test-subagent-real-pi-0-86-1.mjs
 // effects: disposable test directory, child Pi process spawn
-// requires: installed Pi (e.g. /opt/homebrew/bin/pi), Node 26.7+
+// requires: npm ci in contrib/pi-extension, Node 26.7+
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { cleanTestEnv } from "../../scripts/pi-native-support.mjs";
 
-for (const key of Object.keys(process.env)) {
-  if (/^(LARVA_|PI_)/.test(key) && !key.startsWith("LARVA_TEST_")) delete process.env[key];
-}
-
-const piCandidates = [
-  "/opt/homebrew/bin/pi",
-  "/usr/local/bin/pi",
-];
-
-let piPath = null;
-for (const cand of piCandidates) {
-  if (existsSync(cand)) {
-    piPath = cand;
-    break;
-  }
-}
-
-if (!piPath) {
-  console.log(JSON.stringify({ skipped: true, reason: "No native Pi installation found" }));
-  process.exit(0);
-}
+const piPath = process.env.PI_BIN || fileURLToPath(new URL("./node_modules/.bin/pi", import.meta.url));
+const cleanEnv = cleanTestEnv({});
+for (const key of Object.keys(process.env)) if (!(key in cleanEnv)) delete process.env[key];
+assert.ok(existsSync(piPath), `Selected Pi is missing: ${piPath}; run npm ci in contrib/pi-extension`);
 
 const root = await mkdtemp(join(tmpdir(), "larva-real-pi-0861-"));
 const originalArgv = process.argv;
+let mod;
 
 try {
   process.argv = [process.execPath, piPath];
-  const mod = await import(`./larva.ts?t=${Date.now()}`);
+  mod = await import(`./larva.ts?t=${Date.now()}`);
 
   // 1. Verify installed package/bin identity
   const inspection = mod.inspectPiCliScriptForTests(piPath);
@@ -76,8 +61,8 @@ try {
   const commit = await mod.commitPersona("ok", ctx, pi);
   assert.equal(commit.ok, true, "persona commit must succeed");
 
-  // 4. Verify actual child subagent spawn under Pi 0.86.1
-  const result = await mod.larva_subagent({ persona_id: "child", task: "Verify subagent launch on 0.86.1" }, ctx);
+  // 4. Verify actual child allocation and RPC handshake on the selected Pi.
+  const result = await mod.larva_subagent({ persona_id: "child", task: "Verify selected native subagent launch" }, ctx);
 
   // Must NOT fail before child startup (the bug was LARVA_CHILD_START_FAILED before child launch)
   if (result.status === "failed") {
@@ -94,17 +79,17 @@ try {
 
   console.log(JSON.stringify({
     checks: [
-      "pi-0-86-1-layout-valid",
-      "pi-0-86-1-version-supported",
-      "pi-0-86-1-command-prefix-captured",
-      "pi-0-86-1-persona-committed",
-      "pi-0-86-1-subagent-spawn-succeeded",
+      "selected-package-bin-valid",
+      "native-command-prefix-captured",
+      "persona-committed",
+      "child-session-allocated-after-rpc-handshake",
     ],
-    passed: 5,
+    passed: 4,
     pi_version: inspection.version,
     task_id: result.task_id,
   }));
 } finally {
+  await mod?.resetExtensionUI("native-launch-test-cleanup");
   process.argv = originalArgv;
   await rm(root, { recursive: true, force: true });
 }

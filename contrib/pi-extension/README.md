@@ -122,6 +122,19 @@ When using Invar as the test runner, `scripts/pi-guard-checks.mjs` supplies a
 600-second deadline in a disposable verification config; it leaves the project
 `pyproject.toml` and rules unchanged. Normal CI invokes the same pytest inventory
 directly, followed by the full pinned Invar check.
+#### Checkout-local CI
+
+CI reproduces `uv.lock` and this package's lockfile, then launches
+`contrib/pi-extension/node_modules/.bin/pi`. Native fixture SDK imports resolve
+from that same local package; no standard global prefix or global Pi installation
+is required. Historical `installed-pi` test names now exercise the selected
+prepared installation. `PI_BIN` remains an explicit native-fixture executable
+selector. Workflow structure tests check dependency order, required functional
+selections and failure propagation; their result is separate from actual native
+execution and any remote CI result. See the
+[current verification contract](../../docs/verification/pi-native-delivery/README.md#current-verification-contract).
+
+
 ## Adapter-local thinking policy and Pi capsules
 Native main uses Pi's real agent directory. Larva does not create a parent
 settings capsule. Each child creates a capsule from the base agent directory

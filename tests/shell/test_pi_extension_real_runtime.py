@@ -13,6 +13,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTENSION = ROOT / "contrib" / "pi-extension" / "larva.ts"
+PI_PACKAGE_ROOT = EXTENSION.parent / "node_modules/@earendil-works/pi-coding-agent"
+PI_BIN = EXTENSION.parent / "node_modules/.bin/pi"
 SMOKE = ROOT / "scripts" / "pi-extension-autocomplete-smoke.mjs"
 RUNTIME_SMOKE = ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"
 AGENT_PERSONA_POLICY_SMOKE = ROOT / "scripts" / "pi-agent-persona-switch-policy-smoke.mjs"
@@ -362,7 +364,7 @@ rl.on("line", async (line) => {
             import {{ tmpdir }} from "node:os";
             import {{ join }} from "node:path";
             const mod = await import({json.dumps(EXTENSION.as_uri())});
-            const {{ AgentSession }} = await import("file:///opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js");
+            const {{ AgentSession }} = await import({json.dumps((PI_PACKAGE_ROOT / 'dist/core/agent-session.js').as_uri())});
 
             const tmpRoot = await mkdtemp(join(tmpdir(), "larva-real-send-message-"));
             const childRoot = join(tmpRoot, "child-sessions");
@@ -650,7 +652,7 @@ def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_
         tmp_path,
         f"""
         const mod = await import({json.dumps(EXTENSION.as_uri())});
-        const {{ AgentSession }} = await import("file:///opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js");
+        const {{ AgentSession }} = await import({json.dumps((PI_PACKAGE_ROOT / 'dist/core/agent-session.js').as_uri())});
 
         const activeToolCalls = [];
         const tools = {{}};
@@ -1788,8 +1790,8 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
     payload = _run_runtime_scenario("model-map-profile-switch-installed-pi", timeout=30.0)
     proof = payload["runtime"]["installedPiModelMapProfileSwitch"]
 
-    assert payload["pi"]["binary"] == "/opt/homebrew/bin/pi"
-    assert payload["package"]["packageRoot"] == "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent"
+    assert Path(payload["pi"]["binary"]).resolve() == PI_BIN.resolve()
+    assert Path(payload["package"]["packageRoot"]).resolve() == PI_PACKAGE_ROOT.resolve()
     assert payload["rpc"]["attempted"] is True
     assert payload["rpc"]["supported"] is True
     assert payload["rpc"]["stderr"] == ""
@@ -1830,8 +1832,8 @@ def test_installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc()
         "faultIsolation": True,
     }
     assert proof["selected"] == {
-        "binary": "/opt/homebrew/bin/pi",
-        "packageRoot": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+        "binary": str(PI_BIN),
+        "packageRoot": str(PI_PACKAGE_ROOT),
         "packageVersion": payload["package"]["installedVersion"],
     }
     assert proof["executed"] == proof["selected"]
@@ -1888,16 +1890,16 @@ def test_installed_child_pi_model_map_profile_switch_emits_raw_real_process_evid
     assert proof["schema_name"] == "larva.pi.model-map.actual-child.v1"
     assert proof["status"] == "PASS", json.dumps(proof, indent=2, sort_keys=True)
     assert proof["selected"]["parent"] == {
-        "binary": "/opt/homebrew/bin/pi",
-        "package_root": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent",
+        "binary": str(PI_BIN),
+        "package_root": str(PI_PACKAGE_ROOT),
         "package_version": payload["package"]["installedVersion"],
-        "cli": "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
+        "cli": str(PI_PACKAGE_ROOT / "dist/bundle/cli.js"),
     }
     assert proof["selected"]["child"] == proof["selected"]["parent"]
-    assert proof["executed"]["parent"]["selected_binary"] == "/opt/homebrew/bin/pi"
+    assert proof["executed"]["parent"]["selected_binary"] == str(PI_BIN)
     children = proof["executed"]["children"]
     assert 5 <= len(children) <= proof["limits"]["child_processes"] == 8
-    assert all(child["selected_binary"] == "/opt/homebrew/bin/pi" for child in children)
+    assert all(child["selected_binary"] == str(PI_BIN) for child in children)
     assert all(child["package_version"] == proof["selected"]["child"]["package_version"] for child in children)
     assert all(isinstance(child["controller_pid"], int) for child in children)
     assert all(isinstance(child["actual_pid"], int) for child in children)
@@ -2130,7 +2132,7 @@ def test_native_tui_mode_observer_records_ctx_mode() -> None:
         "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
     })
     argv = [
-        "/opt/homebrew/bin/pi",
+        str(PI_BIN),
         "--offline",
         "--no-session",
         "--approve",

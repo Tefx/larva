@@ -10,33 +10,41 @@
 # Native Pi delivery evidence
 
 ## Current verification contract
+CI uses the checked-in `.github/workflows/ci.yml` with two jobs. `local-schema`
+runs the existing schema/typing/drift suite, Core validator tests (including
+opaque prompt text), and canonical naming/readiness tests. `pi-native-runtime`
+depends on its success and runs native, controlled, activity and Node inventory
+checks plus full Invar. No Opifex checkout, authority token, frozen pin or
+external expected-red prerequisite remains. The old external gate script and
+pin were retired; `tests/shell/test_repo_local_ci_gate.py` now parses the actual
+workflow and tests setup ordering, selections, failure propagation and local
+launch resolution, including negative mutations.
 
-Larva-local schema admission is checked without an external repository:
+Reproduce the local contract checks without an external repository:
 
 ```bash
-node scripts/pi-guard-checks.mjs tests/core/test_schema_validation.py
+node scripts/pi-guard-checks.mjs tests/core/test_schema_validation.py tests/core/test_validate.py tests/canonical_cutover/test_hard_cutover_readiness.py tests/shell/test_repo_local_ci_gate.py
 ```
 
-This suite compares required/optional/forbidden fields with validator metadata,
-checks TypedDict requiredness, rejects malformed inputs through JSON Schema and
-Core validation, and tests drift counterexamples. The schema and Core meanings
-remain unchanged by the authority migration.
+CI installs Python dependencies with `uv sync --locked --python 3.12 --group dev`
+and Pi dependencies with `npm --prefix contrib/pi-extension ci`. Native launch
+uses `contrib/pi-extension/node_modules/.bin/pi` and SDK imports use the same
+local package. Runtime scripts default to this checkout-local binary; an explicit
+`PI_BIN` selects a different prepared executable where supported. There is no
+standard global prefix, global installation or host version acceptance range.
+Version strings are observation context only; dependency locks reproduce builds.
 
-The previously exact-global-version-gated scenarios now execute native functional
-behavior against the installed Pi. Version strings are observation context only:
+The four formerly global-version-gated tests retain actual background callback,
+watchdog, profile-switch, rollback, child-RPC, loopback-only and cleanup behavior:
 
 ```bash
 node scripts/pi-guard-checks.mjs tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_extension_subagent_ux.py -k 'runtime_smoke_async_subagent_background_contract_expected_red_records_json_evidence or async_subagent_installed_pi_no_progress_watchdog_runtime or installed_pi_model_map_profile_switch_uses_real_runtime_and_child_rpc or installed_child_pi_model_map_profile_switch_emits_raw_real_process_evidence'
 ```
 
-Keep real background callback, watchdog, profile-switch, rollback, child-RPC,
-loopback-only and cleanup assertions. Retire version-only prerequisites without
-claiming their removal proves functional behavior. Reuse unchanged earlier
-observations only for the source, fixture and runtime inputs they cover.
-The command inventory below is a historical run record, not an instruction to
-restore external authority or global-version gates.
-
-
+Structural workflow tests and local executions do not establish a remote CI pass.
+Reuse earlier observations only when their source, fixture, dependency and runtime
+inputs remain applicable. The command inventory below is a historical record;
+it does not restore external authority or global-version gates.
 ## Result and ownership
 This is the **historical native-producer report**. The Python launcher was later
 removed. Its final repository scan and subsequent capsule/loading/restore proof

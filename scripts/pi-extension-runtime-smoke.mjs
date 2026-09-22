@@ -5,22 +5,23 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync, readFileSync } from "node:fs";
 import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
 
-function resolvePiBin() {
-  const override = process.env.PI_BIN;
-  if (typeof override === "string" && override.length > 0 && isAbsolute(override) && existsSync(override)) return override;
-  for (const candidate of ["/opt/homebrew/bin/pi", "/usr/local/bin/pi"]) {
-    if (existsSync(candidate)) return candidate;
+const PI_BIN = process.env.PI_BIN || fileURLToPath(new URL("../contrib/pi-extension/node_modules/.bin/pi", import.meta.url));
+
+function selectedPiPackageRoot() {
+  let directory = dirname(realpathSync(PI_BIN));
+  for (let depth = 0; depth < 4; depth++, directory = dirname(directory)) {
+    const manifest = join(directory, "package.json");
+    if (existsSync(manifest) && JSON.parse(readFileSync(manifest, "utf8")).name === "@earendil-works/pi-coding-agent") return directory;
   }
-  return override && isAbsolute(override) ? override : "/opt/homebrew/bin/pi";
+  throw new Error(`No Pi package manifest for selected executable: ${PI_BIN}`);
 }
-const PI_BIN = resolvePiBin();
 
 const SCENARIOS = [
   "availability",
@@ -554,7 +555,7 @@ async function piAvailability(evidence) {
     evidence.package.versionExitCode = version.exitCode;
     evidence.package.versionText = `${version.stdout}${version.stderr}`.trim().slice(0, 500);
   }
-  const packageRoot = process.env.PI_PACKAGE_ROOT || "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const packageRoot = selectedPiPackageRoot();
   evidence.package.packageRoot = packageRoot;
   const commit = await runProcess("git", ["-C", packageRoot, "rev-parse", "HEAD"], { env, timeoutMs: 5_000 });
   evidence.package.commitExitCode = commit.exitCode;
@@ -1985,8 +1986,8 @@ async function subagentJsonPresentationProof(evidence) {
     number: mod.presentSubagentJsonSourceForTests("42"),
     array: mod.presentSubagentJsonSourceForTests("[true,null]"),
   };
-  const installedPi = "/opt/homebrew/bin/pi";
-  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const installedPi = PI_BIN;
+  const installedPackageRoot = selectedPiPackageRoot();
   const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
   let packageVersion = null;
   let installedRender = { attempted: false, rendered: false, widthSafe: false, version: null };
@@ -2305,8 +2306,8 @@ async function waitSelectPendingCallbackHandoffExpectedRed(evidence) {
 }
 
 async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
-  const installedPi = "/opt/homebrew/bin/pi";
-  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const installedPi = PI_BIN;
+  const installedPackageRoot = selectedPiPackageRoot();
   const proofRoot = join(sessionRoot, "installed-no-progress-watchdog");
   const childSessionRoot = join(proofRoot, "child-sessions");
   const providerExtension = join(proofRoot, "watchdog-provider.ts");
@@ -3966,8 +3967,8 @@ rl.on("line", async (line) => {
 }
 
 async function installedPiModelMapProfileSwitchProof(evidence) {
-  const installedPi = "/opt/homebrew/bin/pi";
-  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const installedPi = PI_BIN;
+  const installedPackageRoot = selectedPiPackageRoot();
   const tempRoot = await mkdtemp(join(tmpdir(), "larva-installed-pi-profile-switch-"));
   const home = join(tempRoot, "home");
   const piCodingAgentDir = join(tempRoot, "pi-agent");
@@ -4269,8 +4270,8 @@ function actualChildSecretFreeEnv(base, overrides = {}) {
 
 async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
   const schemaName = "larva.pi.model-map.actual-child.v1";
-  const installedPi = "/opt/homebrew/bin/pi";
-  const installedPackageRoot = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent";
+  const installedPi = PI_BIN;
+  const installedPackageRoot = selectedPiPackageRoot();
   const installedCli = join(installedPackageRoot, "dist", "bundle", "cli.js");
   let observedVersionText = null;
   const scenarioStartedWallMs = Date.now();
@@ -4348,7 +4349,7 @@ async function installedActualChildPiModelMapProfileSwitchProof(evidence) {
       child_session_dir: childSessionDir,
       provider_endpoint: null,
       network_samples: [],
-      transport_control: "harness-owned Node interpreter stdio control beneath the unchanged /opt/homebrew/bin/pi child launch seam",
+      transport_control: "harness-owned Node interpreter stdio control beneath the selected native Pi child launch seam",
       quarantined_inherited_keys: quarantinedInheritedKeys,
       environment_observation: null,
       environment_status: "PENDING",
@@ -4528,7 +4529,7 @@ const append = (event, fields = {}) => appendFileSync(logFile, JSON.stringify({ 
 const control = () => { try { return JSON.parse(readFileSync(controlFile, "utf8")); } catch { return { phase: "invalid", release_state: [] }; } };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const child = spawn(realNode, args, { env: process.env, stdio: ["pipe", "pipe", "pipe"] });
-append("process_start", { actual_pid: child.pid ?? null, selected_binary: "/opt/homebrew/bin/pi", executable: realNode, cli: args[0] ?? null, argv: args });
+append("process_start", { actual_pid: child.pid ?? null, selected_binary: ${JSON.stringify(installedPi)}, executable: realNode, cli: args[0] ?? null, argv: args });
 let outputClosed = false;
 const forward = (line, message, extra = {}) => {
   if (!outputClosed) process.stdout.write(line + "\\n");

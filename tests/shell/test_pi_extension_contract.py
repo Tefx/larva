@@ -39,7 +39,6 @@ PI_EXTENSION_RUNTIME_GATE_COMMAND: Final = (
 PI_EXTENSION_RUNTIME_SMOKE_COMMAND: Final = (
     "node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates"
 )
-REPO_LOCAL_GATE_TEST_COMMAND: Final = "uv run pytest -q tests/shell/test_repo_local_ci_gate.py"
 
 
 REQUIREMENT_TRACEABILITY: Final[dict[int, tuple[str, ...]]] = {
@@ -287,17 +286,8 @@ def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
     """CI must hydrate the repo-local Pi extension dependencies before UI/runtime gates."""
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
 
-    controlled_gate = "uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py -v"
-    assert workflow.index(PI_EXTENSION_NPM_CI_COMMAND) < workflow.index(controlled_gate)
-    assert workflow.index(controlled_gate) < workflow.index(PI_EXTENSION_RUNTIME_SMOKE_COMMAND)
     _assert_required_workflow_step(workflow, PI_EXTENSION_NPM_CI_COMMAND)
-    for retained_gate in (
-        REPO_LOCAL_GATE_TEST_COMMAND,
-        controlled_gate,
-        PI_EXTENSION_RUNTIME_SMOKE_COMMAND,
-    ):
-        assert retained_gate in workflow
-        _assert_required_workflow_step(workflow, retained_gate)
+    _assert_required_workflow_step(workflow, PI_EXTENSION_RUNTIME_SMOKE_COMMAND)
 
     native = yaml.safe_load(workflow)["jobs"]["pi-native-runtime"]
     assert native["runs-on"].startswith("macos-")
@@ -305,6 +295,8 @@ def test_ci_installs_pi_extension_dependencies_before_runtime_gate() -> None:
     install = next(i for i, step in enumerate(steps) if PI_EXTENSION_NPM_CI_COMMAND in step.get("run", ""))
     runtime = next(i for i, step in enumerate(steps) if "pytest -q tests/shell/test_pi_extension_real_runtime.py" in step.get("run", ""))
     assert install < runtime
+    assert native["env"]["PI_BIN"] == "${{ github.workspace }}/contrib/pi-extension/node_modules/.bin/pi"
+    assert native["env"]["LARVA_TEST_PI_CODING_AGENT"] == "${{ github.workspace }}/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent"
     assert steps[runtime].get("continue-on-error", False) is False
     assert "if" not in steps[runtime]
     assert any(step.get("with", {}).get("node-version") == "26.7.0" for step in steps)
@@ -3777,7 +3769,7 @@ def test_agent_persona_switch_mode_restore_before_agent_start_uses_event_ctx_wit
 
 def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behavior(tmp_path: Path) -> None:
     fake_cli = _write_agent_switch_fake_cli(tmp_path)
-    session_manager_js = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"
+    session_manager_js = str(EXTENSION.parent / "node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js")
     payload = _run_node(
         tmp_path,
         f"""
@@ -3845,7 +3837,7 @@ def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behav
 
 def test_active_persona_session_restore_from_real_pi_session_manager_reopen_behavior(tmp_path: Path) -> None:
     fake_cli = _write_agent_switch_fake_cli(tmp_path)
-    session_manager_js = "/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"
+    session_manager_js = str(EXTENSION.parent / "node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js")
     payload = _run_node(
         tmp_path,
         f"""

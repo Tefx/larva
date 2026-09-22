@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// purpose: native Pi 0.85.1 package/admission/runtime acceptance for contrib/pi-extension
+// purpose: native Pi package/admission/runtime acceptance for contrib/pi-extension
 // usage: node scripts/pi-native-acceptance.mjs --scenario <name>
 // effects: disposable scratch HOME/agent/session/provider only; no user/global install
-// requires: /opt/homebrew/bin/pi 0.85.1, local contrib/pi-extension after npm ci
+// requires: local contrib/pi-extension dependencies after npm ci
 
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -17,7 +17,7 @@ const EXTENSION_DIR = join(ROOT, "contrib", "pi-extension");
 const EXTENSION_ENTRY = join(EXTENSION_DIR, "larva.ts");
 const FAKE_CLI = join(ROOT, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
 const MODE_OBSERVER = join(ROOT, "tests", "fixtures", "pi", "mode-observer.ts");
-const PI_BIN = process.env.PI_BIN || "/opt/homebrew/bin/pi";
+const PI_BIN = process.env.PI_BIN || join(EXTENSION_DIR, "node_modules/.bin/pi");
 const NODE_BIN = process.execPath;
 
 const SCENARIOS = [
@@ -433,7 +433,7 @@ async function runScenario(scenario) {
   } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails") {
     await withScratch(async (scratch, loopback) => {
       await piInstall(scratch);
-      const { SessionManager } = await import("/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js");
+      const { SessionManager } = await import(join(EXTENSION_DIR, "node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"));
       const manager = SessionManager.create(scratch.cwd, scratch.sessions);
       manager.appendMessage({ role: "user", content: "seed", timestamp: Date.now() });
       manager.appendMessage({
