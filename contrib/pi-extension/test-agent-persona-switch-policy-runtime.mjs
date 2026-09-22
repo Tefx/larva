@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
 const extensionUrl = pathToFileURL(join(root, "contrib/pi-extension/larva.ts"));
 const results = [];
+const fixtureDirs = [];
 
 async function importFresh(name) {
   return await import(`${extensionUrl.href}?agent-persona-switch-policy=${encodeURIComponent(name)}-${Date.now()}-${Math.random()}`);
@@ -15,6 +16,7 @@ async function importFresh(name) {
 
 async function makeFakeLarvaCli(name) {
   const dir = await mkdtemp(join(tmpdir(), `larva-agent-persona-switch-${name}-`));
+  fixtureDirs.push(dir);
   const cli = join(dir, "fake-larva-cli.mjs");
   await writeFile(cli, `
 const [, , command, arg, jsonFlag] = process.argv;
@@ -55,9 +57,12 @@ async function makeRuntime(name, env = {}, overrides = {}) {
   const runtimeMessages = [];
   const handlers = {};
   const activeToolSets = [];
+  const modelSetCalls = [];
   const ctx = {
     mode: overrides.mode ?? "headless",
     env: {
+      HOME: dirname(cli),
+      LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: join(dirname(cli), "persona-candidates.json"),
       LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
       ...env,
     },
@@ -76,13 +81,13 @@ async function makeRuntime(name, env = {}, overrides = {}) {
   const pi = {
     getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas", "larva_subagent_status"],
     setActiveTools: async (tools) => { activeToolSets.push(tools); return true; },
-    setModel: async () => true,
+    setModel: async (model) => { modelSetCalls.push(model); return true; },
     registerCommand: (name, options) => { commands[name] = options; },
     registerTool: (tool) => { registeredTools.push(tool); },
     on: (event, handler) => { handlers[event] = handler; },
   };
   await mod.initializeExtension(ctx, pi);
-  return { mod, ctx, pi, registeredTools, commands, statuses, notifications, auditEntries, chatMessages, runtimeMessages, handlers, activeToolSets };
+  return { mod, ctx, pi, registeredTools, commands, statuses, notifications, auditEntries, chatMessages, runtimeMessages, handlers, activeToolSets, modelSetCalls };
 }
 
 async function run(name, fn) {
@@ -164,7 +169,7 @@ await run("confirm mode auto-denies on timeout without mutating state", async ()
   assert.ok(runtime.auditEntries.some((e) => e.data?.approved === false && e.data?.denial_reason === "timeout"), "audit entry recorded denial_reason=timeout");
 });
 
-await run("runtime prompt and tool descriptions include deterministic borrow-vs-subagent routing", async () => {
+await run("routing guidance projection in prompt and tool descriptions (structural only)", async () => {
   const runtime = await makeRuntime("routing-guidance", { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
   await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
   const prompt = await runtime.mod.before_agent_start({ systemPrompt: "base prompt" }, runtime.ctx, runtime.pi);
@@ -239,6 +244,108 @@ await run("continue_task uses hidden custom runtime message plus minimal trigger
   assert.equal(runtime.mod.getActiveEnvelope().persona_id, "origin");
 });
 
+for (const [name, handoff] of [
+  ["omitted", undefined],
+  ["empty", ""],
+  ["whitespace", " \n\t "],
+  ["short", "  保留约束 😀\n文件 /tmp/notes.md  "],
+  ["ascii-boundary", "a".repeat(1999) + "Z"],
+  ["chinese-boundary", "中".repeat(1999) + "尾"],
+  ["emoji-boundary", "😀".repeat(1999) + "🧪"],
+  ["combined-emoji-boundary", "a".repeat(1997) + "👩‍💻"],
+  ["trimmed-boundary", " \n" + "中".repeat(2000) + "\t "],
+]) {
+  await run(`handoff ${name} reaches continuation intact after trimming`, async () => {
+    const runtime = await makeRuntime(`handoff-${name}`, { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+    await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
+    const tool = runtime.registeredTools.find((item) => item.name === "larva_persona_switch");
+    const input = { persona_id: "target", reason: "continue same-session work", continue_task: true };
+    if (handoff !== undefined) input.handoff = handoff;
+    const switched = await tool.execute("handoff", input, undefined, undefined, runtime.ctx);
+    assert.equal(switched.isError, false);
+    assert.equal(runtime.mod.getActiveEnvelope().persona_id, "target");
+    await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const expected = handoff?.trim() ?? "";
+    assert.equal(runtime.runtimeMessages.length, 1);
+    assert.equal(runtime.runtimeMessages[0].message.details.handoff, expected);
+    const prompt = await runtime.handlers.before_agent_start({ prompt: "Continue.", systemPrompt: "base" }, runtime.ctx);
+    assert.ok(prompt.systemPrompt.includes(`Handoff: ${expected}\nYou are now operating`));
+    await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+    assert.equal(runtime.mod.getActiveEnvelope().persona_id, "origin");
+  });
+}
+
+for (const mode of ["auto", "free", "confirm"]) {
+  await run(`invalid handoff fails before effects in ${mode} mode`, async () => {
+    let confirmations = 0;
+    const runtime = await makeRuntime(`handoff-rejected-${mode}`, { LARVA_PI_AGENT_PERSONA_SWITCH: mode }, {
+      ui: { select: async () => { confirmations += 1; return "borrow_once"; } },
+    });
+    await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
+    const tool = runtime.registeredTools.find((item) => item.name === "larva_persona_switch");
+    const before = runtime.mod.getActiveEnvelope();
+    const toolCalls = runtime.activeToolSets.length;
+    const modelCalls = runtime.modelSetCalls.length;
+    for (const handoff of [
+      "a".repeat(2000) + "TAIL_MARKER",
+      "中".repeat(2001),
+      "😀".repeat(2001),
+      "a".repeat(1998) + "👩‍💻",
+      null, 42, false, {}, [],
+    ]) {
+      const rejected = await tool.execute("invalid-handoff", {
+        persona_id: "target", reason: "continue work", handoff,
+        continue_task: true, max_switches_per_chain: 1,
+      }, undefined, undefined, runtime.ctx);
+      assert.equal(rejected.isError, true);
+      assert.equal(rejected.details.error.code, "LARVA_BAD_INPUT");
+      if (typeof handoff === "string") {
+        assert.match(rejected.details.error.message, /2000 Unicode code points/);
+      }
+      assert.deepEqual(runtime.mod.getActiveEnvelope(), before);
+      assert.equal(runtime.activeToolSets.length, toolCalls);
+      assert.equal(runtime.modelSetCalls.length, modelCalls);
+      assert.equal(confirmations, 0);
+    }
+    await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(runtime.chatMessages.length, 0);
+    assert.equal(runtime.runtimeMessages.length, 0);
+    assert.deepEqual(runtime.mod.getActiveEnvelope(), before);
+    assert.equal(runtime.activeToolSets.length, toolCalls, "no lease restore caused by rejected requests");
+    if (mode !== "confirm") {
+      const valid = await tool.execute("valid-after-rejection", {
+        persona_id: "target", reason: "continue work", max_switches_per_chain: 1,
+      }, undefined, undefined, runtime.ctx);
+      assert.equal(valid.isError, false, "rejection must not consume the switch budget");
+      await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+    }
+  });
+}
+
+await run("rejected handoff preserves an existing borrow and its pending continuation", async () => {
+  const runtime = await makeRuntime("handoff-existing-lease", { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
+  await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
+  const switched = await runtime.mod.larva_persona_switch({
+    persona_id: "target", reason: "same-session work", handoff: "original notes", continue_task: true,
+  }, runtime.ctx, runtime.pi);
+  assert.equal(switched.status, "success");
+  const rejected = await runtime.mod.larva_persona_switch({
+    persona_id: "other", reason: "invalid replacement", handoff: "中".repeat(2001), continue_task: true,
+  }, runtime.ctx, runtime.pi);
+  assert.equal(rejected.error.code, "LARVA_BAD_INPUT");
+  assert.equal(runtime.mod.getActiveEnvelope().persona_id, "target");
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(runtime.runtimeMessages.length, 1);
+  assert.equal(runtime.runtimeMessages[0].message.details.handoff, "original notes");
+  assert.equal(runtime.runtimeMessages[0].message.details.to_persona_id, "target");
+  await runtime.handlers.before_agent_start({ prompt: "Continue.", systemPrompt: "base" }, runtime.ctx);
+  await runtime.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "stop" }] }, runtime.ctx);
+  assert.equal(runtime.mod.getActiveEnvelope().persona_id, "origin");
+});
+
 await run("free mode switches persistently without lease or restore", async () => {
   const runtime = await makeRuntime("free", { LARVA_PI_AGENT_PERSONA_SWITCH: "free" });
   await runtime.commands["larva-persona"].handler("origin", runtime.ctx);
@@ -275,6 +382,7 @@ await run("generic deterministic subagent orchestration tasks do not own persona
   assert.ok(!JSON.stringify(deterministicTools).includes("PersonaLease"));
 });
 
+await Promise.all(fixtureDirs.map((dir) => rm(dir, { recursive: true, force: true })));
 const failed = results.filter((result) => result.status === "FAIL");
 console.log(JSON.stringify({ status: failed.length === 0 ? "PASS" : "FAIL", results }, null, 2));
 if (failed.length > 0) process.exit(1);

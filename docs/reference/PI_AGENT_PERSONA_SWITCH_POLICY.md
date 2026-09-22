@@ -32,26 +32,32 @@ The mode is Pi adapter-local session policy. It is not a PersonaSpec field, not
 a registry field, and not controlled by persona prompt text.
 
 ## Routing decision guidance
+Follow host task-routing rules and existing ownership. An authorized, suitable
+executor completes its current deliverable, including path corrections, tests,
+formatting, and preparation cleanup. Remaining auxiliary operations do not by
+themselves justify choosing another persona.
 
-When the active Larva persona is materially unsuitable, the runtime prompt guides
-the model to choose a route before acting:
-
-- Use `larva_persona_switch`/borrow when the next model call needs current
-  conversation or runtime continuity: current user intent and constraints, prior
-  tool results, in-progress plan state, open edits, or session-local context that
-  would be costly or lossy to restate. The route rationale belongs in
-  `larva_persona_switch.reason` along with inspected persona evidence.
-- Use `larva_subagent` when the work benefits from clean context: fresh review,
-  independent review, second opinion, adversarial critique, parallelizable work,
-  long-running async work, or a self-contained task expressible with absolute
-  paths and clear inputs. The route rationale belongs at the top of
-  `larva_subagent.task` before the actual task.
+- Use `larva_subagent` for independently deliverable subresults when the parent
+  retains subsequent coordination, or when independent review or parallel
+  exploration benefits from clean context. Put the route rationale at the top of
+  `larva_subagent.task`.
+- For autonomous `larva_persona_switch`/borrow, explain both why the active persona
+  is materially unsuitable for the coherent work being handed over and why
+  necessary session state would be costly or lossy to transfer. Having conversation
+  history alone is insufficient. Put this rationale and inspected persona evidence
+  in `larva_persona_switch.reason`.
+- Explicit user persona selections remain supported within host authority and
+  runtime mode. A justified same-session borrow may return to the origin persona;
+  it need not take over every remaining part of the user's request.
 - Use neither tool for deterministic tool-only work or a minor style mismatch.
 
-Do not ask the user for separate chat confirmation or route approval. `confirm`
-mode already provides the runtime-owned confirmation UI for actual persona
-borrows, and `manual` still rejects model-facing persona switch requests.
+Normally omit `handoff` for a same-session switch. If needed, include only brief
+incremental notes or file references rather than repeating conversation history.
 
+Do not ask the user for separate chat confirmation or route approval. `confirm`
+mode provides the runtime-owned confirmation UI, and `manual` still rejects
+model-facing persona switch requests. This guidance does not change persona
+permissions, tool policies, or lease lifetimes.
 ## Mode semantics
 
 ### `manual`
@@ -190,6 +196,24 @@ If a runtime creates a real agent execution context, such as a child agent
 session or background agent session that calls a model and may produce assistant
 output, the lease may be scoped to that `agent_session` instead. Ordinary
 background tasks do not carry persona and must not create persona leases.
+
+## Optional handoff input
+
+`larva_persona_switch.handoff` accepts an optional string. The runtime removes
+leading and trailing whitespace using JavaScript `trim()` and treats an empty
+result as omitted. The normalized text may contain at most **2000 Unicode code
+points**, counted with `Array.from(text).length`; this is neither a byte count nor
+a UTF-16 code-unit count. For example, `😀` counts as one, while `👩‍💻` counts as
+three. Text within the limit is passed intact after trimming.
+
+An over-limit string or a provided non-string value returns `LARVA_BAD_INPUT`
+before confirmation, persona/model/tool changes, lease creation, switch-budget
+consumption, or continuation scheduling. Existing manual-mode and restore-failure
+blocks retain precedence. The runtime never truncates handoff text to make a
+switch succeed. Shorten it to essential notes or file references, or omit it.
+An invalid request leaves any existing borrow and queued continuation intact.
+
+The limit applies to this additional handoff field, not to session history.
 
 ## `continue_task=true` continuation boundary
 
@@ -418,3 +442,28 @@ origin persona, actual model, and thinking level after restoration.
   state, records audit detail, and requires explicit user persona choice before
   any further persona-changing action.
 - Unknown mode falls back to `confirm` with a warning and no alias mapping.
+
+### Handoff and routing regressions
+
+The runtime fixture `contrib/pi-extension/test-agent-persona-switch-policy-runtime.mjs`
+exercises omitted/empty input, trimmed text, 2000-code-point boundaries for ASCII,
+Chinese and emoji, over-limit and non-string rejection, state preservation, and
+actual continuation data/prompt delivery. Its prompt-token assertions establish
+projection only; they do not prove model routing decisions.
+
+For routing behavior, inspect actual model tool-call traces with the same task,
+starting persona, permissions and available tools before and after a guidance
+change. Do not give the model the expected route as part of the task:
+
+- Materials preparation followed by planning under a user-selected persona:
+  preparation reaches a complete handoff before planning; minor cleanup does not
+  cause repeated parent persona switches.
+- An existing suitable executor encounters a path or test failure: it repairs and
+  verifies its assigned result without rerouting solely for that operation.
+- An independent subresult still needs parent integration: the parent retains
+  coordination while a child delivers the bounded result.
+- Explicit persona selection and work requiring non-transferable same-session
+  state: switching remains available, including a justified temporary borrow.
+
+Record completed deliverables, actual calls, and any justified exceptions. Text
+presence checks or scripted tool calls cannot establish these model behaviors.

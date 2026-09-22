@@ -5649,6 +5649,18 @@ function boundedOptionalString(value: unknown, limit: number): string | undefine
   return Array.from(trimmed).slice(0, limit).join("");
 }
 
+const PERSONA_SWITCH_HANDOFF_MAX_CODE_POINTS = 2_000;
+
+function parsePersonaSwitchHandoff(value: unknown): string | undefined | LarvaError {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") return error("LARVA_BAD_INPUT", "handoff must be a string when provided.");
+  const trimmed = value.trim();
+  if (Array.from(trimmed).length > PERSONA_SWITCH_HANDOFF_MAX_CODE_POINTS) {
+    return error("LARVA_BAD_INPUT", `handoff must not exceed ${PERSONA_SWITCH_HANDOFF_MAX_CODE_POINTS} Unicode code points after trimming leading and trailing whitespace. Omit it or shorten it to essential notes or file references; no switch was performed.`);
+  }
+  return trimmed || undefined;
+}
+
 function parseSwitchBudget(value: unknown): number | null | LarvaError {
   if (value === undefined || value === null) return null;
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
@@ -5993,7 +6005,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
   const request = isRecord(input) ? input : {};
   const personaId = boundedOptionalString(request.persona_id, 200);
   const reason = boundedOptionalString(request.reason, 1_000);
-  const handoff = boundedOptionalString(request.handoff, 2_000);
+  const handoff = parsePersonaSwitchHandoff(request.handoff);
   const continueTask = request.continue_task === true;
   const requestedSwitchBudget = parseSwitchBudget(request.max_switches_per_chain);
   const auditBase = {
@@ -6002,7 +6014,7 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     from_persona_id: fromPersona,
     to_persona_id: personaId ?? null,
     reason: reason ?? "",
-    handoff: handoff ?? "",
+    handoff: isLarvaError(handoff) ? "" : handoff ?? "",
     approved: false,
     committed: false,
     error_code: null,
@@ -6018,6 +6030,10 @@ export async function larva_persona_switch(input: PersonaSwitchToolInput, ctx: P
     const larvaError = error("LARVA_PERSONA_RESTORE_FAILED", "Previous persona restore failed; explicit user persona choice is required before further persona-changing action.");
     appendPersonaSwitchAudit(ctx, pi, { ...auditBase, error_code: larvaError.code, restoreFailureState });
     return switchToolFailure(larvaError);
+  }
+  if (isLarvaError(handoff)) {
+    appendPersonaSwitchAudit(ctx, pi, { ...auditBase, error_code: handoff.code });
+    return switchToolFailure(handoff);
   }
   if (!personaId || !reason) {
     const larvaError = error("LARVA_BAD_INPUT", "larva_persona_switch requires persona_id and a non-empty reason.");
@@ -6123,13 +6139,13 @@ export async function larva_personas(input: unknown, ctx: PiContext): Promise<{ 
   return { content: switchToolText(text), details: { status: "success", personas, error: null }, isError: false };
 }
 
-const PERSONA_ROUTE_DECISION_GUIDANCE = "When the active Larva persona is materially unsuitable, choose the execution route before acting. Borrow/switch persona only when the next model call needs current conversation or runtime continuity: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Spawn a Larva subagent when the work benefits from clean context: fresh review, second opinion, adversarial critique, parallel exploration, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. If both apply, prefer larva_subagent for independent evidence, review, critique, or parallelizable work and prefer larva_persona_switch for single-owner execution that must preserve current context. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative.";
+const PERSONA_ROUTE_DECISION_GUIDANCE = "Follow host task-routing rules and existing ownership. An authorized, suitable executor should finish its current deliverable, including path corrections, tests, formatting, and preparation cleanup; do not reroute for each remaining operation. Use larva_subagent for independently deliverable work when the parent retains subsequent coordination, or when clean context is needed for independent review or parallel exploration. For autonomous borrowing/switching, establish both that the active persona is materially unsuitable for the work it would hand over and that current conversation or runtime continuity is necessary because the relevant state would be costly or lossy to transfer. Conversation history alone is insufficient. Explain the coherent work being handed over; do not use switching as a temporary detour for auxiliary edits. A justified same-session borrow may still return to the origin persona, and explicit user persona selections remain supported within host authority and runtime mode. Use neither for deterministic tool-only work or minor style mismatch. Record a concise route rationale before acting: put it in larva_persona_switch.reason for borrow/switch, or at the top of larva_subagent.task for subagent. Normally omit handoff for a same-session switch; if needed, provide only brief incremental notes or file references, without repeating conversation history. Do not ask the user for separate chat confirmation; runtime confirm mode remains authoritative.";
 
 const PERSONA_SWITCH_GROUNDING_GUIDANCE = `${PERSONA_ROUTE_DECISION_GUIDANCE} Before requesting persona borrow/switch, inspect candidate persona descriptions or resolved definitions; persona id/name alone is not suitability evidence. The larva_persona_switch reason must cite the inspected description/definition in your own words and explain task fit versus the active persona. If candidate information is unavailable, do not switch automatically; use larva_personas, Larva MCP, or the larva CLI to inspect first.`;
 
 function agentPersonaSwitchPromptGuidance(): string | null {
   if (agentPersonaSwitchMode === "auto") {
-    return `${PERSONA_SWITCH_GROUNDING_GUIDANCE} If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason and handoff. Do not call other tools in the same assistant message when borrowing persona. Do not switch for minor style mismatch. The default request-chain budget is 20 successful switches. Only set max_switches_per_chain, including 0 for unlimited, when the user explicitly requests a different switch budget. The borrow is temporary and the runtime restores at assistant turn end.`;
+    return `${PERSONA_SWITCH_GROUNDING_GUIDANCE} If the current active Larva persona is materially unsuitable and a clearly better registered Larva persona exists, call larva_persona_switch alone with a concise reason. Do not call other tools in the same assistant message when borrowing persona. Do not switch for minor style mismatch. The default request-chain budget is 20 successful switches. Only set max_switches_per_chain, including 0 for unlimited, when the user explicitly requests a different switch budget. The borrow is temporary and the runtime restores at assistant turn end.`;
   }
   if (agentPersonaSwitchMode === "confirm") {
     return `${PERSONA_SWITCH_GROUNDING_GUIDANCE} You may request a temporary persona borrow with larva_persona_switch when another registered Larva persona is clearly better suited. The user must choose Borrow once, Deny, Auto-borrow for this session, or Switch persistently before the runtime changes persona.`;
@@ -10968,7 +10984,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
     properties: {
       persona_id: { type: "string", description: "Target Larva persona id. Exact id resolution identifies the persona but is not semantic suitability evidence; inspect description/definition before switching." },
       reason: { type: "string", description: "Required concise reason for borrowing or switching persona. Must be grounded in inspected persona description or resolved definition; exact persona id/name only proves target identity, not semantic suitability. Cite the inspected evidence in your own words and explain why it fits the current task better than the active persona." },
-      handoff: { type: "string", description: "Optional bounded handoff for the next persona." },
+      handoff: { type: "string", description: `Optional brief incremental notes or file references; normally omit for a same-session switch. At most ${PERSONA_SWITCH_HANDOFF_MAX_CODE_POINTS} Unicode code points after trimming leading and trailing whitespace (combined emoji may count as multiple code points). Empty text is treated as omitted. Over-limit input fails with LARVA_BAD_INPUT before switching; it is never truncated.` },
       continue_task: { type: "boolean", description: "Queue a Larva-generated continuation after a successful switch." },
       max_switches_per_chain: { anyOf: [{ type: "integer", minimum: 0 }, { type: "null" }], description: "Optional request-chain switch budget. Omit for default 20; 0 means unlimited." },
     },
@@ -10978,7 +10994,7 @@ function registerAgentPersonaSwitchTools(ctx: PiContext, pi: PiApi): void {
   pi.registerTool?.({
     name: "larva_persona_switch",
     label: "Larva Persona Switch",
-    description: "Request an autonomous Larva persona borrow/switch. Use this route when current conversation or runtime continuity is required: current user intent and constraints, prior tool results, in-progress plan state, open edits, or session-local context that would be costly or lossy to restate. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -> auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
+    description: "Request a Larva persona borrow/switch within host task-routing rules and existing ownership. Keep an authorized, suitable executor on its current deliverable through path fixes, tests, formatting, and preparation cleanup. Use larva_subagent for independent subresults when the parent retains coordination. For autonomous switching, explain why the active persona is materially unsuitable for the coherent work being handed over and why necessary session state would be costly or lossy to transfer. Conversation history alone is insufficient; avoid auxiliary-edit detours. Explicit user selections and justified same-session borrows that return to the origin remain supported within host authority and runtime mode. Normally omit handoff; use only brief incremental notes or file references when necessary. Do not call this tool until you have inspected the target persona description or resolved definition; do not infer suitability from persona id/name alone. The reason must cite that inspected information in your own words, record the route rationale, and explain current-task fit versus the active persona. If persona information is unavailable, use persona discovery/resolve first or ask the user instead of switching. Call larva_persona_switch alone when borrowing/switching; do not call other tools in the same assistant message. Do not ask the user for separate chat route approval; runtime confirm mode remains authoritative. In confirm mode the UI asks: Borrow persona? [Borrow once] [Deny] [Auto-borrow for this session] [Switch persistently]. Borrow once is the default and creates scope: \"turn\" PersonaLease with originPersonaId and borrowedPersonaId; Deny leaves unchanged persona/tools; Auto-borrow for this session is a session-local mode override (confirm -> auto); Switch persistently is manual persistent and clear any active lease. Confirm fails safely without changing the active persona when UI is unavailable. Auto creates a temporary lease restored at assistant turn end. Free is persistent: No persona lease is created and No automatic restore. Manual mode rejects model-facing requests.",
     inputSchema: switchSchema,
     parameters: switchSchema,
     handler: (input: PersonaSwitchToolInput) => larva_persona_switch(input, ctx, pi),
@@ -11072,7 +11088,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",
-    description: `Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. ${SUBAGENT_NO_PROGRESS_TIMEOUT_DESCRIPTION} At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.`,
+    description: `Spawn or resume one Larva persona child Pi session and return an accepted receipt while final evidence remains pending. Use larva_subagent for clean-context work: fresh review, independent review, second opinion, adversarial critique, parallel exploration, parallelizable work, long-running async work, or a self-contained task expressible with absolute paths and clear inputs. Use a child for independently deliverable subresults when the parent retains subsequent coordination; keep an authorized, suitable executor on its current deliverable through necessary fixes and cleanup. Put a concise route rationale at the top of larva_subagent.task before the actual task. Use neither persona routing tool for deterministic tool-only work or minor style mismatch. ${SUBAGENT_NO_PROGRESS_TIMEOUT_DESCRIPTION} At the hard deadline Larva uses the existing cancelled terminal path; prior child tool effects may be unknown and require explicit reconciliation before any user-authorized resume. Larva never retries, replays the prompt, rolls back effects, or auto-resumes. For automation that depends on the child result, use larva_subagent_wait, larva_subagent_select, or larva_subagent_events with exact task_id handles. Use bounded larva_subagent_wait checkpoints followed by status/events inspection; conversational Pi continuation should rely on the larva-subagent-result push callback. Do not use shell sleep polling.`,
     inputSchema: subagentSchema,
     parameters: subagentSchema,
     handler: (input: LarvaSubagentInput) => larva_subagent(input, { ...withRuntimeEnv(ctx, env), env, abortSignal: ctx.abortSignal ?? ctx.signal, callbackSurface: callbackSurfaceFrom(ctx, pi) }).then((result) => wrapLarvaSubagentToolResult(result)),
