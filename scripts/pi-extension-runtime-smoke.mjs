@@ -1736,6 +1736,7 @@ async function subagentJsonPresentationProof(evidence) {
     return matches.at(-1)?.[0] ?? "";
   };
   const renderers = new Map();
+  const tools = new Map();
   const ctx = { env: runtimeEnv(), ui: { setStatus: () => undefined }, modelRegistry: { find: async () => ({ provider: "openai-codex", modelId: "gpt-5.5" }) }, mode: "tui", hasUI: true };
   await mod.initializeExtension(ctx, {
     getAllTools: async () => ["read"],
@@ -1743,7 +1744,7 @@ async function subagentJsonPresentationProof(evidence) {
     setModel: async () => true,
     registerCommand: () => undefined,
     registerShortcut: () => undefined,
-    registerTool: () => undefined,
+    registerTool: (tool) => tools.set(tool.name, tool),
     registerMessageRenderer: (customType, renderer) => renderers.set(customType, renderer),
     on: () => undefined,
   });
@@ -1754,6 +1755,7 @@ async function subagentJsonPresentationProof(evidence) {
   const malformed = '{"alphaKey":"betaValue",}';
   const malformedArrayWithLink = '["[docs](https://example.test)",]';
   const markdownSource = "# Markdown Heading\n\n- bullet one";
+  const tableSource = "| 中文列 | Value |\n| --- | --- |\n| 测试 | **粗体** |";
   const longMarkdown = ["# Long Markdown", "", ...Array.from({ length: 30 }, (_value, index) => `- item ${index}`), "MARKDOWN_EXPANDED_TAIL"].join("\n");
   const fencedSource = "```yaml\napiVersion: v1\nkind: ConfigMap\n```";
   const bareFenceSource = "```\nSELECT * FROM records;\n```";
@@ -1814,7 +1816,51 @@ async function subagentJsonPresentationProof(evidence) {
   const collapsedThemeA = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
   collapsedThemeTag = "B";
   const collapsedThemeB = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: { result_text: smallJson, status: "success", execution_status: "success" } }, { expanded: false, outputPad: 0 }, { fg: (token, text) => `[${token}]${text}`, bold: (text) => text }).render(80).map(stripAnsi).join("\n");
+  let markdownThemeReads = 0;
+  mod.setGetMarkdownThemeForTests(() => { markdownThemeReads++; return collapsedTheme(); });
+  const cachedCallback = renderer(
+    { customType: "larva-subagent-result", content: "ignored", details: { result_text: largeJson, status: "success", execution_status: "success" } },
+    { expanded: false, outputPad: 1 },
+    { fg: (_token, text) => text, bg: (_token, text) => text },
+  );
+  const cacheInitial = cachedCallback.render(80);
+  const readsAfterInitial = markdownThemeReads;
+  const cacheRepeated = cachedCallback.render(80);
+  const readsAfterRepeated = markdownThemeReads;
+  const cacheNarrow = cachedCallback.render(40);
+  const readsAfterNarrow = markdownThemeReads;
+  cachedCallback.expanded = true;
+  const cacheExpanded = cachedCallback.render(80);
+  const readsAfterExpanded = markdownThemeReads;
+  cachedCallback.resultText = fencedSource;
+  const cacheChanged = cachedCallback.render(80);
+  const readsAfterChanged = markdownThemeReads;
+  collapsedThemeTag = "C";
+  cachedCallback.invalidate();
+  const cacheInvalidated = cachedCallback.render(80);
+  const readsAfterInvalidated = markdownThemeReads;
   mod.setGetMarkdownThemeForTests(null);
+  const toolRenderer = tools.get("larva_subagent");
+  const toolCallView = toolRenderer.renderCall({ persona_id: "中文", task: "a line of Markdown **bold**" });
+  const toolCallInitial = toolCallView.render(80);
+  const toolCallRepeated = toolCallView.render(80);
+  const toolCallNarrow = toolCallView.render(24);
+  toolCallView.invalidate();
+  const toolCallInvalidated = toolCallView.render(80);
+  const toolResultView = toolRenderer.renderResult({ content: [], details: { persona_id: "worker", status: "success", task_id: null, result_text: fencedSource } }, { expanded: true, input: { task: "中文" } });
+  const toolResultInitial = toolResultView.render(80);
+  const toolResultRepeated = toolResultView.render(80);
+  toolResultView.invalidate();
+  const toolResultInvalidated = toolResultView.render(80);
+  const renderCache = {
+    callbackHit: readsAfterInitial === 1 && readsAfterRepeated === readsAfterInitial && cacheRepeated.join("\n") === cacheInitial.join("\n"),
+    widthMiss: readsAfterNarrow === readsAfterRepeated + 1 && cacheNarrow.every((line) => piTui.visibleWidth(line) <= 40),
+    expandMiss: readsAfterExpanded === readsAfterNarrow + 1 && cacheExpanded.length > cacheInitial.length,
+    contentMiss: readsAfterChanged === readsAfterExpanded + 1 && cacheChanged.join("\n").includes("ConfigMap"),
+    themeInvalidate: readsAfterInvalidated === readsAfterChanged + 1 && cacheInvalidated.join("\n").includes("[C:yaml]") && !cacheChanged.join("\n").includes("[C:yaml]"),
+    callHit: toolCallRepeated === toolCallInitial && toolCallNarrow.every((line) => piTui.visibleWidth(line) <= 24) && toolCallInvalidated !== toolCallInitial,
+    resultHit: toolResultRepeated === toolResultInitial && toolResultInitial.join("\n").includes("ConfigMap") && toolResultInvalidated !== toolResultInitial,
+  };
   let highlighter = { loaded: false, keyStyle: null, scalarStyle: null, differentiated: false, langSeen: false };
   try {
     const codingAgent = await import(pathToFileURL(join(piExtensionRoot, "node_modules/@earendil-works/pi-coding-agent/dist/index.js")).href);
@@ -1955,6 +2001,8 @@ async function subagentJsonPresentationProof(evidence) {
   const largeCollapsed = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: false, outputPad: 0 }, theme).render(80);
   const largeExpanded = renderer({ customType: "larva-subagent-result", content: "keep-model-visible", details: largeDetails }, { expanded: true, outputPad: 0 }, theme).render(80);
   const markdownCollapsed = renderResult(markdownSource, false);
+  const tableCollapsed = renderResult(tableSource, false, 80);
+  const tableExpanded = renderResult(tableSource, true, 109);
   const longMarkdownCollapsed = renderResult(longMarkdown, false);
   const longMarkdownExpanded = renderResult(longMarkdown, true);
   const fencedCollapsed = renderResult(fencedSource, false);
@@ -2007,6 +2055,7 @@ async function subagentJsonPresentationProof(evidence) {
   }
   const assertions = {
     rendererRegistered: renderers.has("larva-subagent-result"),
+    renderCache: Object.values(renderCache).every(Boolean),
     helperPrettyObject: helper.object.includes("```json") && helper.object.includes('"alphaKey": "betaValue"'),
     helperMalformedByteExact: helper.malformed === malformed,
     helperMarkdownUnchanged: helper.markdown === markdownSource,
@@ -2034,6 +2083,8 @@ async function subagentJsonPresentationProof(evidence) {
     largeCollapsedBounded: largeCollapsed.length <= 19 && largeCollapsed.some((line) => stripAnsi(line).includes("[truncated]")),
     largeExpandedTailVisible: largeExpanded.some((line) => stripAnsi(line).includes("COLLAPSED_JSON_EXPANDED_TAIL")),
     markdownCollapsedRendered: renderedPlainText(markdownCollapsed).includes("Markdown Heading") && renderedPlainText(markdownCollapsed).includes("bullet one"),
+    tableChineseWidthSafe: [tableCollapsed, tableExpanded].every((lines, index) => lines.every((line) => piTui.visibleWidth(line) <= [80, 109][index]))
+      && [tableCollapsed, tableExpanded].every((lines) => renderedPlainText(lines).includes("测试") && renderedPlainText(lines).includes("粗体")),
     markdownCollapsedBounded: longMarkdownCollapsed.length <= 19 && renderedPlainText(longMarkdownCollapsed).includes("[truncated]") && !renderedPlainText(longMarkdownCollapsed).includes("MARKDOWN_EXPANDED_TAIL"),
     markdownExpandedComplete: renderedPlainText(longMarkdownExpanded).includes("MARKDOWN_EXPANDED_TAIL"),
     fencedLanguageRendered: renderedPlainText(fencedCollapsed).includes("apiVersion: v1") && renderedPlainText(fencedCollapsed).includes("kind: ConfigMap"),
@@ -2063,6 +2114,7 @@ async function subagentJsonPresentationProof(evidence) {
     status: failed.length === 0 ? "PASS" : "FAIL",
     assertions,
     failed,
+    renderCache,
     helper,
     overlayByWidth,
     consoleFormats,

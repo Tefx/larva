@@ -1617,6 +1617,8 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
   expanded: boolean;
   outputPad: number;
   theme: SubagentCallbackTheme;
+  // Pi invalidates on theme changes; keep the outer frame live for mutable theme callbacks.
+  private cachedBody?: { resultText: string; bodyWidth: number; expanded: boolean; lines: string[] };
 
   constructor(
     resultText: string,
@@ -1632,7 +1634,9 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     this.theme = theme;
   }
 
-  invalidate(): void {}
+  invalidate(): void {
+    this.cachedBody = undefined;
+  }
 
   render(width: number): string[] {
     const surfaceWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
@@ -1641,11 +1645,18 @@ class LarvaSubagentResultMessageView implements PiRenderableComponent {
     const color = executionStatusHeaderColor(this.executionStatus);
     const statusLabel = subagentResultThemeFg(this.theme, color, this.executionStatus);
     const header = `${statusLabel} larva-subagent-result`;
-    const presentation = presentSubagentResult(this.resultText);
-    const markdownTheme = liveMarkdownTheme();
-    const body = this.expanded
-      ? renderSubagentResultPresentationLines(presentation, bodyWidth, markdownTheme)
-      : collapsedSubagentResultPreviewLines(presentation, bodyWidth, markdownTheme);
+    let body = this.cachedBody?.resultText === this.resultText
+      && this.cachedBody.bodyWidth === bodyWidth
+      && this.cachedBody.expanded === this.expanded
+      ? this.cachedBody.lines : undefined;
+    if (body === undefined) {
+      const presentation = presentSubagentResult(this.resultText);
+      const markdownTheme = liveMarkdownTheme();
+      body = this.expanded
+        ? renderSubagentResultPresentationLines(presentation, bodyWidth, markdownTheme)
+        : collapsedSubagentResultPreviewLines(presentation, bodyWidth, markdownTheme);
+      this.cachedBody = { resultText: this.resultText, bodyWidth, expanded: this.expanded, lines: body };
+    }
     const surface = ["", header, ...body, ""].map((line) => subagentResultSurfaceLine(
       this.theme,
       this.executionStatus,
@@ -9531,17 +9542,21 @@ function terminalSafeFitLine(value: string, maxWidth: number): string {
 }
 
 function renderTextComponent(text: string, markdown?: string): PiRenderableText {
+  let cached: { width: number; lines: string[] } | undefined;
   return {
     text,
     markdown,
     format: markdown === undefined ? "plain_text" : "markdown",
-    invalidate: () => undefined,
+    invalidate: () => { cached = undefined; },
     render: (width: number): string[] => {
       const contentWidth = Number.isFinite(width) ? Math.max(1, Math.floor(width)) : 80;
+      if (cached?.width === contentWidth) return cached.lines;
       const lines = markdown === undefined
         ? renderRendererSafePlainLines(text, contentWidth)
         : renderMarkdownLines(markdown, contentWidth);
-      return lines.map((line) => terminalSafeFitLine(line, contentWidth));
+      const fitted = lines.map((line) => terminalSafeFitLine(line, contentWidth));
+      cached = { width: contentWidth, lines: fitted };
+      return fitted;
     },
   };
 }
