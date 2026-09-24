@@ -52,11 +52,16 @@ rl.on("line", async (line) => {
   const message = JSON.parse(line);
   if (message.type === "get_state") {
     await mkdir(sessionDir, { recursive: true });
-    await writeFile(sessionFile, "", "utf8");
+    if (!process.env.LARVA_TEST_SWITCH_RELEASE_FILE) await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "initial-native-session" }) + "\\n", "utf8");
     send({ id: message.id, success: true, data: { sessionFile } });
     return;
   }
   if (message.type === "switch_session") {
+    if (process.env.LARVA_TEST_SWITCH_RELEASE_FILE) {
+      await writeFile(join(sessionDir, "switch-entered"), "entered");
+      while (!existsSync(process.env.LARVA_TEST_SWITCH_RELEASE_FILE)) await new Promise((resolve) => setTimeout(resolve, 10));
+      await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "migrated-native-session" }) + "\\n" + JSON.stringify({ type: "message", id: "migrated-entry", message: { role: "assistant", content: [{ type: "text", text: "migrated excerpt" }] } }) + "\\n");
+    }
     send({ id: message.id, success: true, data: {} });
     return;
   }
@@ -204,7 +209,7 @@ async function waitForPresentationEntry(predicate, label) {
     if (entry) return entry;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  assert.fail(`timed out waiting for ${label}`);
+  assert.fail(`timed out waiting for ${label}: ${JSON.stringify(mod.subagentPresentationLogForTests().map((row) => ({status:row.status,session:row.presentation_session_id,task:row.task_prompt,events:row.timeline_events,diagnostic:row.presentation_diagnostic})))}`);
 }
 
 const committed = await mod.handlePersonaCommand("parent", ctx, pi);
@@ -237,6 +242,28 @@ assert.equal(finalSummary.task_id, runningSummary.task_id);
 assert.equal(finalSummary.last_status, "success");
 assert.ok(finalSummary.sequence > runningSummary.sequence);
 console.log("running allocation and busy resume: PASS");
+
+const switchRelease = join(runtimeDir, "switch-release");
+const switchEntered = join(sessionDir, "switch-entered");
+const resumeEnv = { ...env, LARVA_TEST_SWITCH_RELEASE_FILE: switchRelease };
+const beforeResumeBytes = mod.sessionTimelineReaderMetricsForTests().bytes;
+const resumePromise = mod.larva_subagent({ persona_id: "child", task: "resume after migration", task_id: finalResult.task_id }, { env: resumeEnv });
+try {
+  let entered = false;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (existsSync(switchEntered)) { entered = true; break; }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.equal(entered, true, "fake child must reach switch_session before presentation catch-up");
+  const pendingResume = mod.subagentPresentationLogForTests().find((row) => row.task_id === finalResult.task_id && row.status === "running");
+  assert.equal(pendingResume?.presentation_scan_ready, false);
+  assert.equal(mod.sessionTimelineReaderMetricsForTests().bytes, beforeResumeBytes, "resume must not scan before switch_session acknowledgement");
+} finally { await writeFile(switchRelease, "release"); }
+const migratedReceipt = await resumePromise;
+assert.equal(migratedReceipt.status, "accepted");
+const migrated = await waitForPresentationEntry((row) => row.task_id === finalResult.task_id && row.status === "success" && row.presentation_session_id === "migrated-native-session" && row.timeline_events?.some((item) => item.kind === "assistant" && item.text === "migrated excerpt"), "resume session identity after switch");
+assert.deepEqual(migrated.timeline_events.filter((item) => item.kind === "assistant").map((item) => item.text), ["migrated excerpt"]);
+console.log("resume switch_session migration before UI scan: PASS");
 
 const capturedTools = [];
 const capturedCommands = new Map();

@@ -1624,11 +1624,11 @@ Minimum panes:
    whitespace-only output gets a stable empty-result message. Console rendering
    resolves `getMarkdownTheme()` at render time rather than caching a static theme.
 4. Timeline: bounded chronological events; no hidden thinking content. Timeline
-   is optimized for human readability: natural-language assistant excerpts remain
-   visible, tool execution rows show bounded argument summaries and status, and
-   assistant deltas that only mirror tool-call argument JSON are suppressed by
-   default when the matching tool row is present. Raw/bounded tool details remain
-   in debug/metadata surfaces rather than duplicated as assistant prose.
+   is optimized for human readability: natural-language assistant excerpts come
+   from persisted assistant session entries, tool execution rows show bounded
+   argument summaries and RPC-owned status, and raw assistant RPC deltas never
+   enter Timeline. Raw/bounded tool details remain in debug/metadata surfaces
+   rather than duplicated as assistant prose.
 5. Metadata: adapter-local diagnostics and source evidence.
 
 The panes may use renderer-safe Markdown where useful, but all visible content
@@ -1685,6 +1685,13 @@ Persistent cache:
 - Persistent presentation cache is adapter-local UI continuity only. It is never
   orchestration authority, never a model-facing handle index, and never authority
   for model-facing tools or cancellation.
+
+### Assistant timeline catch-up
+
+The Output pane retains the bounded realtime assistant RPC preview (up to 4000 characters). Timeline assistant excerpts come only from complete, persisted assistant message entries in the exact child session; they may appear after the corresponding RPC tool row or terminal result has already arrived. Distinct session entries with identical text remain distinct. Tool rows and their status remain RPC-owned. When a persisted assistant entry identifies a tool call, the excerpt appears before that tool row even if read later. Unmatched excerpts occupy a separate historical block after current RPC tool rows, labeled with unknown relative tool order; the block preserves persisted assistant-entry order without claiming exact placement among tools. Hidden thinking and tool arguments never become Timeline assistant excerpts.
+
+Session-history catch-up is presentation-only and incremental. Neither stream handling nor terminal finalization reads or parses the child session in the parent process, and result callbacks never wait for the Timeline. The reader checks the Pi session header ID and accepts complete LF-delimited entries after new-session allocation or, for resumes, after native `switch_session` succeeds. Partial UTF-8/JSONL entries wait for completion. A finite snapshot is processed in bounded turns across active tasks; terminal catch-up includes bounded retries for session persistence lag, with no ongoing polling. Detected file replacement, observed truncation or changed header identity resets only session-derived UI excerpts. Malformed headers, session read errors and reader failures leave the child run, final result and bounded live preview intact and expose a bounded UI diagnostic. Clear, reload, parent session changes and UI-row eviction invalidate pending presentation results and release reader resources; they preserve the existing child abort and callback rules. No whole-prefix hash or durable cursor is used; same-inode edits that evade observed identity/size changes are outside this detection guarantee.
+
 
 ## Runtime state model
 Replace process-global sets with one active-run registry keyed by public

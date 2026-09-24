@@ -412,7 +412,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
           function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
           rl.on("line", async (line) => {
             const msg = JSON.parse(line);
-            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (msg.type === "get_state") { await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "fixture-streaming" }) + "\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
             else if (msg.type === "prompt") {
               send({ id: msg.id, success: true });
@@ -430,7 +430,8 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
         const { tools, ctx } = await registeredTools(env);
         await mod.commitPersona("ok", ctx, piBase);
         const result = await tools.find((tool) => tool.name === "larva_subagent").handler({ persona_id: "ok", task: "stream tool snapshots" });
-        const finalEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots"));
+        await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots"));
+        const finalEntry = await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.status === "success" && entry.task_prompt === "stream tool snapshots" && entry.timeline_events?.some((event) => event.kind === "assistant" && event.text.includes("session assistant excerpt only"))), 4000);
         const cacheData = JSON.parse(await readFile(cacheFile, "utf8"));
         const cachedEntry = cacheData.entries.find((entry) => entry.task_id === result.task_id);
         const overlayText = mod.renderSubagentPresentationOverlayForTests({ task_id: result.task_id, expanded: true });

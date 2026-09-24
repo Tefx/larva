@@ -1,5 +1,6 @@
 import { inspectSessionActivity } from "./activity.ts";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { Worker } from "node:worker_threads";
 import { createHash, randomBytes } from "node:crypto";
 import { Input as TuiInput, Key, Markdown, SelectList, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Focusable, type MarkdownTheme, type SelectItem } from "@earendil-works/pi-tui";
 import { access, appendFile, chmod, lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
@@ -297,7 +298,7 @@ type SubagentToolSnapshot = {
   error_preview?: string;
 };
 type SubagentTimelineEvent =
-  | { kind: "assistant"; text: string }
+  | { kind: "assistant"; text: string; session_id?: string; session_offset?: number; tool_call_ids?: string[]; placement?: "anchored" | "historical" }
   | { kind: "thinking_hidden" }
   | { kind: "tool"; toolCallId: string; snapshot: SubagentToolSnapshot }
   | { kind: "terminal"; status: SubagentPresentationStatus };
@@ -324,6 +325,10 @@ type SubagentPresentationLogEntry = {
   tool_snapshots?: SubagentToolSnapshot[];
   timeline_events?: SubagentTimelineEvent[];
   session_assistant_message_ids?: string[];
+  presentation_invocation?: number;
+  presentation_session_id?: string;
+  presentation_scan_ready?: boolean;
+  presentation_diagnostic?: string;
   active_tool_state?: SubagentActiveToolState;
   raw_rpc_events?: unknown[];
 };
@@ -715,6 +720,18 @@ let currentSubagentOverlayComponent: PiOverlayComponent | null = null;
 let subagentOverlayGeneration = 0;
 let subagentPresentationSequence = 0;
 let subagentUiResetGeneration = 0;
+let subagentInvocationSequence = 0;
+let sessionTimelineWorker: Worker | null = null;
+let sessionTimelineRetirement: Promise<void> | null = null;
+const sessionTimelineRequests = new Map<number, { path: string; generation: number; inFlight: boolean; dirty: boolean }>();
+const sessionTimelineSeen = new Map<number, Set<string>>();
+const sessionTimelineDeferred = new Set<number>();
+const sessionTimelineRetryTimers = new Set<ReturnType<typeof setTimeout>>();
+let sessionTimelineWorkerRestarts = 0;
+let sessionTimelineReadBytes = 0;
+let sessionTimelineParsedRecords = 0;
+let sessionTimelineWorkerContexts = 0;
+let sessionTimelineFailAfterResetForTests = false;
 let subagentPresentationCacheEnv: RuntimeEnv | null = null;
 let subagentPresentationCacheError: LarvaError | null = null;
 
@@ -1871,7 +1888,7 @@ function boundedSubagentToolSnapshots(snapshots: SubagentToolSnapshot[] | undefi
 function boundedSubagentTimelineEvents(events: SubagentTimelineEvent[] | undefined): SubagentTimelineEvent[] | undefined {
   if (events === undefined || events.length === 0) return undefined;
   return events.slice(-SUBAGENT_TIMELINE_EVENT_LIMIT).map((eventValue) => {
-    if (eventValue.kind === "assistant") return { kind: "assistant", text: boundedTimelineAssistantEvent(eventValue.text) };
+    if (eventValue.kind === "assistant") return { ...eventValue, text: boundedTimelineAssistantEvent(eventValue.text) };
     if (eventValue.kind === "tool") return { kind: "tool", toolCallId: boundedVisible(eventValue.toolCallId, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT), snapshot: boundedSubagentToolSnapshot(eventValue.snapshot) };
     if (eventValue.kind === "terminal") return { kind: "terminal", status: eventValue.status };
     return { kind: "thinking_hidden" };
@@ -2009,55 +2026,197 @@ function subagentThinkingHiddenLine(entry: SubagentPresentationLogEntry): string
   return null;
 }
 
+function separateHistoricalTimelineEvents(events: SubagentTimelineEvent[]): SubagentTimelineEvent[] {
+  const historical = events.filter((item) => item.kind === "assistant" && item.placement === "historical")
+    .sort((left, right) => (left.kind === "assistant" ? left.session_offset ?? 0 : 0) - (right.kind === "assistant" ? right.session_offset ?? 0 : 0));
+  if (historical.length === 0) return events;
+  const current = events.filter((item) => item.kind !== "assistant" || item.placement !== "historical");
+  const terminal = current.findIndex((item) => item.kind === "terminal");
+  current.splice(terminal < 0 ? current.length : terminal, 0, ...historical);
+  return current;
+}
+
 function timelineEventsForEntry(entry: SubagentPresentationLogEntry): SubagentTimelineEvent[] {
   if (entry.timeline_events !== undefined && entry.timeline_events.length > 0) return entry.timeline_events;
   const events: SubagentTimelineEvent[] = [];
-  if (typeof entry.live_assistant_preview === "string" && entry.live_assistant_preview.trim().length > 0) {
-    events.push({ kind: "assistant", text: entry.live_assistant_preview });
-  }
   if (subagentThinkingHiddenLine(entry) !== null) events.push({ kind: "thinking_hidden" });
   for (const snapshot of entry.tool_snapshots ?? []) events.push({ kind: "tool", toolCallId: snapshot.toolCallId, snapshot });
   return boundedSubagentTimelineEvents(events) ?? [];
 }
 
-function assistantTextFromSessionMessage(message: unknown): string | null {
-  if (!isRecord(message) || message.role !== "assistant" || !Array.isArray(message.content)) return null;
-  const textParts = message.content.flatMap((part) => isRecord(part) && part.type === "text" && typeof part.text === "string" ? [part.text] : []);
-  const text = rendererSafeMarkdownSource(textParts.join("\n")).trim();
-  return text.length > 0 ? boundedTimelineAssistantEvent(text) : null;
+// Session history is presentation-only. This bridge owns no file cursor: the lazy
+// Worker reads finite incremental snapshots and sends only bounded excerpts.
+function dropSessionTimelineInvocation(entry: SubagentPresentationLogEntry): void {
+  const invocation = entry.presentation_invocation;
+  if (invocation === undefined) return;
+  sessionTimelineRequests.delete(invocation);
+  sessionTimelineSeen.delete(invocation);
+  sessionTimelineDeferred.delete(invocation);
+  sessionTimelineWorker?.postMessage({ kind: "drop", invocation });
 }
 
-function ingestAssistantTimelineFromExactSession(entry: SubagentPresentationLogEntry): SubagentPresentationLogEntry {
-  if (entry.task_id === null) return entry;
-  let text: string;
+function retireSessionTimelineWorker(worker: Worker): Promise<void> {
+  if (sessionTimelineWorker === worker) sessionTimelineWorker = null;
+  const retired = worker.terminate().then(() => {}, () => {});
+  sessionTimelineRetirement = retired;
+  void retired.then(() => { if (sessionTimelineRetirement === retired) sessionTimelineRetirement = null; });
+  return retired;
+}
+
+function stopSessionTimelineWorker(): Promise<void> {
+  for (const timer of sessionTimelineRetryTimers) clearTimeout(timer);
+  sessionTimelineRetryTimers.clear();
+  sessionTimelineRequests.clear();
+  sessionTimelineSeen.clear();
+  sessionTimelineDeferred.clear();
+  const worker = sessionTimelineWorker;
+  sessionTimelineWorker = null;
+  const retirement = worker !== null ? retireSessionTimelineWorker(worker) : sessionTimelineRetirement ?? Promise.resolve();
+  sessionTimelineWorkerRestarts = 0;
+  sessionTimelineWorkerContexts = 0;
+  sessionTimelineFailAfterResetForTests = false;
+  return retirement;
+}
+
+function sessionTimelineEntry(invocation: number, generation: number, path: string): SubagentPresentationLogEntry | null {
+  if (generation !== subagentUiResetGeneration) return null;
+  return retainedSubagentPresentationLog.find((entry) => entry.presentation_invocation === invocation && entry.task_id === path) ?? null;
+}
+
+function failedSessionTimelineWorker(worker: Worker): void {
+  if (sessionTimelineWorker !== worker) return;
+  sessionTimelineWorkerContexts = 0;
+  void retireSessionTimelineWorker(worker);
+  const pending = [...sessionTimelineRequests];
+  sessionTimelineRequests.clear();
+  for (const [invocation, request] of pending) {
+    const entry = sessionTimelineEntry(invocation, request.generation, request.path);
+    if (entry !== null) entry.presentation_diagnostic = "Session timeline reader unavailable; live preview and child result remain available.";
+    if (sessionTimelineWorkerRestarts < 2 && entry !== null) {
+      sessionTimelineWorkerRestarts += 1;
+      const { generation, path } = request;
+      setImmediate(() => {
+        const current = sessionTimelineEntry(invocation, generation, path);
+        if (current !== null) requestSessionTimeline(current);
+      });
+    }
+  }
+  notifySubagentPresentationOverlay();
+}
+
+function ensureSessionTimelineWorker(): Worker {
+  if (sessionTimelineWorker !== null) return sessionTimelineWorker;
+  const worker = new Worker(new URL("./session-timeline-worker.mjs", import.meta.url));
+  sessionTimelineWorker = worker;
+  worker.on("error", () => failedSessionTimelineWorker(worker));
+  worker.on("exit", () => failedSessionTimelineWorker(worker));
+  worker.on("message", (message: unknown) => {
+    if (sessionTimelineWorker !== worker || !isRecord(message)) return;
+    if (typeof message.contextCount === "number") sessionTimelineWorkerContexts = message.contextCount;
+    if (typeof message.invocation !== "number") return;
+    const request = sessionTimelineRequests.get(message.invocation);
+    if (request === undefined || message.path !== request.path || message.generation !== request.generation) return;
+    sessionTimelineReadBytes += typeof message.bytesRead === "number" ? message.bytesRead : 0;
+    sessionTimelineParsedRecords += typeof message.recordsParsed === "number" ? message.recordsParsed : 0;
+    const entry = sessionTimelineEntry(message.invocation, request.generation, request.path);
+    if (entry === null) { sessionTimelineRequests.delete(message.invocation); worker.postMessage({ kind: "drop", invocation: message.invocation }); return; }
+    const sessionId = typeof message.sessionId === "string" ? message.sessionId : null;
+    const reset = message.reset === true || (sessionId !== null && entry.presentation_session_id !== undefined && entry.presentation_session_id !== sessionId);
+    const timeline = reset
+      ? (entry.timeline_events ?? []).filter((eventValue) => eventValue.kind !== "assistant")
+      : [...(entry.timeline_events ?? [])];
+    if (reset) sessionTimelineSeen.delete(message.invocation);
+    if (reset && sessionId === null) delete entry.presentation_session_id;
+    if (sessionId !== null) entry.presentation_session_id = sessionId;
+    const seen = sessionTimelineSeen.get(message.invocation) ?? new Set<string>();
+    sessionTimelineSeen.set(message.invocation, seen);
+    let changed = reset;
+    if (Array.isArray(message.excerpts)) for (const excerpt of message.excerpts) {
+      if (!isRecord(excerpt) || typeof excerpt.id !== "string" || typeof excerpt.text !== "string" || typeof excerpt.offset !== "number" || !Array.isArray(excerpt.toolCallIds) || seen.has(excerpt.id)) continue;
+      seen.add(excerpt.id);
+      if (seen.size > 256) seen.delete(seen.values().next().value);
+      const text = boundedTimelineAssistantEvent(rendererSafeMarkdownSource(excerpt.text).trim());
+      if (!text) continue;
+      const anchor = timeline.findIndex((eventValue) => eventValue.kind === "tool" && excerpt.toolCallIds.includes(eventValue.toolCallId));
+      // Unknown tool placement is kept in a separate ordered historical block
+      // after the RPC rows, rather than claiming an invented tool chronology.
+      const nextAssistant = timeline.findIndex((eventValue) => eventValue.kind === "assistant" && eventValue.placement === "anchored" && (eventValue.session_offset ?? Infinity) > excerpt.offset);
+      const place = anchor >= 0 ? (nextAssistant >= 0 ? Math.min(anchor, nextAssistant) : anchor) : timeline.length;
+      timeline.splice(place, 0, { kind: "assistant", text, session_id: excerpt.id, session_offset: excerpt.offset, tool_call_ids: excerpt.toolCallIds.filter((id): id is string => typeof id === "string").slice(0, 25), placement: anchor >= 0 ? "anchored" : "historical" });
+      changed = true;
+    }
+    if (typeof message.diagnostic === "string") { entry.presentation_diagnostic = boundedVisible(message.diagnostic, 160); changed = true; }
+    else if (typeof message.malformed === "number" && message.malformed > 0) { entry.presentation_diagnostic = `${message.malformed} malformed session records skipped in latest slice`; changed = true; }
+    if (changed) {
+      entry.timeline_events = boundedSubagentTimelineEvents(separateHistoricalTimelineEvents(timeline));
+      persistSubagentPresentationCache();
+      notifySubagentPresentationOverlay();
+    }
+    if (message.more === true) {
+      // Yield one turn so another task's already-enqueued slice runs first.
+      setImmediate(() => { if (sessionTimelineWorker === worker && sessionTimelineRequests.get(message.invocation) === request) worker.postMessage({ kind: "scan", path: request.path, invocation: message.invocation, generation: request.generation }); });
+    } else {
+      request.inFlight = false;
+      if (request.dirty) { request.dirty = false; requestSessionTimeline(entry); }
+    }
+  });
+  worker.unref(); // after registering listeners: an idle presentation reader must not keep Pi alive
+  return worker;
+}
+
+function requestSessionTimeline(entry: SubagentPresentationLogEntry): void {
+  if (entry.task_id === null || entry.presentation_invocation === undefined || entry.presentation_scan_ready === false) return;
+  const invocation = entry.presentation_invocation;
+  const generation = subagentUiResetGeneration;
+  const current = sessionTimelineEntry(invocation, generation, entry.task_id);
+  if (current === null) return;
+  entry = current;
+  const request = sessionTimelineRequests.get(invocation);
+  if (request?.inFlight) { request.dirty = true; return; }
+  if (sessionTimelineRetirement !== null) {
+    if (sessionTimelineDeferred.has(invocation)) return;
+    sessionTimelineDeferred.add(invocation);
+    const retired = sessionTimelineRetirement;
+    const path = entry.task_id;
+    void retired.then(() => {
+      sessionTimelineDeferred.delete(invocation);
+      const resumed = sessionTimelineEntry(invocation, generation, path);
+      if (resumed !== null) requestSessionTimeline(resumed);
+    });
+    return;
+  }
   try {
-    text = readFileSync(entry.task_id, "utf8");
+    const worker = ensureSessionTimelineWorker();
+    sessionTimelineRequests.set(invocation, { path: entry.task_id, generation, inFlight: true, dirty: false });
+    const testFailAfterReset = sessionTimelineFailAfterResetForTests;
+    sessionTimelineFailAfterResetForTests = false;
+    worker.postMessage({ kind: "scan", path: entry.task_id, invocation, generation, testFailAfterReset });
   } catch {
-    return entry;
+    entry.presentation_diagnostic = "Session timeline reader could not start; child result unaffected.";
   }
-  const seen = new Set(entry.session_assistant_message_ids ?? []);
-  let nextEntry = entry;
-  for (const line of text.split(/\r?\n/)) {
-    if (line.trim().length === 0) continue;
-    let frame: unknown;
-    try { frame = JSON.parse(line); } catch { continue; }
-    if (!isRecord(frame) || frame.type !== "message") continue;
-    const id = typeof frame.id === "string" && frame.id.length > 0 ? frame.id : `${typeof frame.timestamp === "string" ? frame.timestamp : "unknown"}:${line.length}`;
-    if (seen.has(id)) continue;
-    const assistantText = assistantTextFromSessionMessage(frame.message);
-    if (assistantText === null) continue;
-    seen.add(id);
-    nextEntry = { ...nextEntry, session_assistant_message_ids: Array.from(seen) };
-    nextEntry.timeline_events = appendSubagentTimelineEvent(nextEntry, { kind: "assistant", text: assistantText });
+}
+
+function retryTerminalSessionTimeline(entry: SubagentPresentationLogEntry): void {
+  requestSessionTimeline(entry);
+  for (const delay of [80, 300]) {
+    const timer = setTimeout(() => {
+      sessionTimelineRetryTimers.delete(timer);
+      if (entry.task_id !== null && entry.presentation_invocation !== undefined) {
+        const current = sessionTimelineEntry(entry.presentation_invocation, subagentUiResetGeneration, entry.task_id);
+        if (current !== null) requestSessionTimeline(current);
+      }
+    }, delay);
+    timer.unref();
+    sessionTimelineRetryTimers.add(timer);
   }
-  return nextEntry;
 }
 
 type NormalizedSubagentStreamEvent =
-  | { kind: "assistant_delta"; text: string }
+  | { kind: "assistant_delta"; text: string; tool_argument?: boolean }
   | { kind: "thinking_hidden" }
   | { kind: "tool"; toolCallId: string; name?: string; status: SubagentToolStatus; args_preview?: string; output_preview?: string; error_preview?: string }
-  | { kind: "terminal"; type: "agent_end" | "agent_settled" };
+  | { kind: "terminal"; type: "agent_end" | "agent_settled" }
+  | { kind: "message_boundary" };
 
 function subagentToolArgsPreviewFromFrameValue(value: unknown): string | undefined {
   if (typeof value === "string") return boundedToolArgsPreview(value);
@@ -2082,7 +2241,7 @@ function normalizeSubagentChildStreamEventForPresentation(frame: unknown, oversi
     const assistantEventChannel = typeof assistantMessageEvent?.channel === "string" ? assistantMessageEvent.channel : "";
     if (channel.startsWith("thinking") || assistantEventKind.startsWith("thinking") || assistantEventChannel.startsWith("thinking")) return { kind: "thinking_hidden" };
     const text = typeof assistantMessageEvent?.delta === "string" ? assistantMessageEvent.delta : typeof frame.text === "string" ? frame.text : "";
-    return text.length > 0 ? { kind: "assistant_delta", text: oversized ? "[oversized assistant update omitted]" : boundedAssistantPreview(text) } : null;
+    return text.length > 0 ? { kind: "assistant_delta", text: oversized ? "[oversized assistant update omitted]" : boundedAssistantPreview(text), tool_argument: assistantEventKind.startsWith("toolcall") || assistantEventKind.startsWith("tool_call") } : null;
   }
   if (frame.type === "tool_execution_start" || frame.type === "tool_execution_update" || frame.type === "tool_execution_end") {
     const toolCallId = typeof frame.toolCallId === "string" ? frame.toolCallId : typeof frame.tool_call_id === "string" ? frame.tool_call_id : "";
@@ -2098,6 +2257,7 @@ function normalizeSubagentChildStreamEventForPresentation(frame: unknown, oversi
       error_preview: oversized && typeof frame.error === "string" ? "[oversized tool error omitted]" : typeof frame.error === "string" ? boundedToolOutputPreview(frame.error) : undefined,
     };
   }
+  if (frame.type === "message_end") return { kind: "message_boundary" };
   if (frame.type === "agent_end" || frame.type === "agent_settled") return { kind: "terminal", type: frame.type };
   return null;
 }
@@ -2418,6 +2578,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     }
     for (const eventValue of timelineEvents) {
       if (eventValue.kind === "assistant") {
+        if (eventValue.placement === "historical") lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", "  session excerpt · tool order unknown"), contentWidth));
         lines.push(...this.timelineAssistantLines(eventValue.text, contentWidth));
       } else if (eventValue.kind === "thinking_hidden") {
         lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", "~ thinking hidden"), contentWidth));
@@ -2458,6 +2619,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       ...this.fieldLines("Error object", this.entry.error ? JSON.stringify(this.entry.error) : "null", contentWidth),
       ...this.fieldLines("Output mode", outputMode, contentWidth),
       ...this.fieldLines("Live stream", (this.entry.live_assistant_preview || (this.entry.timeline_events?.length ?? 0) > 0 || (this.entry.tool_snapshots?.length ?? 0) > 0) ? "process-local only; cache sanitizer drops live/timeline fields" : "not observed", contentWidth),
+      ...this.fieldLines("Session timeline", this.entry.presentation_diagnostic ?? "asynchronous persisted assistant excerpts", contentWidth),
       ...this.fieldLines("View-only", "no persona/model/tool-policy/session/recent-index/resume-authority mutation", contentWidth),
       ...(toolRefs.length > 0 ? ["", this.sectionLine("Debug tool IDs", contentWidth), ...toolRefs] : []),
     ];
@@ -3176,6 +3338,10 @@ function sanitizeSubagentPresentationCacheEntry(entry: SubagentPresentationLogEn
   delete sanitized.tool_snapshots;
   delete sanitized.timeline_events;
   delete sanitized.session_assistant_message_ids;
+  delete sanitized.presentation_invocation;
+  delete sanitized.presentation_session_id;
+  delete sanitized.presentation_scan_ready;
+  delete sanitized.presentation_diagnostic;
   delete sanitized.active_tool_state;
   delete sanitized.raw_rpc_events;
   delete sanitized.live_thinking_hidden;
@@ -8499,16 +8665,17 @@ function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry,
   subagentPresentationSequence += 1;
   const retained = withSubagentEntryTimestamp({ ...entry, sequence: subagentPresentationSequence });
   retainedSubagentPresentationLog.push(retained);
-  while (retainedSubagentPresentationLog.length > 25) retainedSubagentPresentationLog.shift();
+  while (retainedSubagentPresentationLog.length > 25) {
+    const evicted = retainedSubagentPresentationLog.shift();
+    if (evicted !== undefined) dropSessionTimelineInvocation(evicted);
+  }
   persistSubagentPresentationCache();
   notifySubagentPresentationOverlay();
   return retained;
 }
 
 function appendSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
-  const existingIndex = callId === undefined
-    ? -1
-    : retainedSubagentPresentationLog.findIndex((entry) => entry.call_id === callId && entry.status === "running");
+  const existingIndex = retainedSubagentPresentationLog.findIndex((entry) => entry.status === "running" && (callId !== undefined ? entry.call_id === callId : entry.task_id === taskId));
   const runningEntry: Omit<SubagentPresentationLogEntry, "sequence"> = {
     task_id: taskId,
     persona_id: personaId,
@@ -8518,18 +8685,26 @@ function appendSubagentPresentationRunning(taskId: string, personaId: string, in
     task_prompt: presentationTaskPrompt(input),
     phase: "waiting_for_child",
     call_id: callId,
+    presentation_invocation: ++subagentInvocationSequence,
+    presentation_scan_ready: presentationMode(input) !== "resume",
   };
   if (existingIndex >= 0) {
+    runningEntry.presentation_invocation = retainedSubagentPresentationLog[existingIndex].presentation_invocation ?? runningEntry.presentation_invocation;
     retainedSubagentPresentationLog[existingIndex] = touchSubagentEntryTimestamp({
       ...retainedSubagentPresentationLog[existingIndex],
       ...runningEntry,
     });
+    if (presentationMode(input) !== "resume") requestSessionTimeline(retainedSubagentPresentationLog[existingIndex]);
     persistSubagentPresentationCache();
     notifySubagentPresentationOverlay();
     return;
   }
   retainedSubagentPresentationLog.push(withSubagentEntryTimestamp({ ...runningEntry, sequence: 0 }));
-  while (retainedSubagentPresentationLog.length > 25) retainedSubagentPresentationLog.shift();
+  while (retainedSubagentPresentationLog.length > 25) {
+    const evicted = retainedSubagentPresentationLog.shift();
+    if (evicted !== undefined) dropSessionTimelineInvocation(evicted);
+  }
+  if (presentationMode(input) !== "resume") requestSessionTimeline(retainedSubagentPresentationLog.at(-1)!);
   persistSubagentPresentationCache();
   notifySubagentPresentationOverlay();
 }
@@ -8539,7 +8714,8 @@ function removePendingSubagentPresentationRunning(taskId: string): SubagentPrese
   for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
     const entry = retainedSubagentPresentationLog[index];
     if (entry.task_id === taskId && entry.status === "running") {
-      preserved = preserved ?? entry;
+      if (preserved === null) preserved = entry;
+      else dropSessionTimelineInvocation(entry);
       retainedSubagentPresentationLog.splice(index, 1);
     }
   }
@@ -8565,12 +8741,7 @@ function presentationTaskPrompt(input?: LarvaSubagentInput): string | undefined 
 function appendSubagentTimelineEvent(entry: SubagentPresentationLogEntry, eventValue: SubagentTimelineEvent): SubagentTimelineEvent[] {
   const timeline = [...(entry.timeline_events ?? [])];
   if (eventValue.kind === "assistant") {
-    const previous = timeline.at(-1);
-    if (previous?.kind === "assistant") {
-      timeline[timeline.length - 1] = { kind: "assistant", text: boundedTimelineAssistantEvent(`${previous.text}${eventValue.text}`) };
-    } else {
-      timeline.push({ kind: "assistant", text: boundedTimelineAssistantEvent(eventValue.text) });
-    }
+    timeline.push({ ...eventValue, text: boundedTimelineAssistantEvent(eventValue.text) });
   } else if (eventValue.kind === "tool") {
     const existingIndex = timeline.findIndex((timelineEvent) => timelineEvent.kind === "tool" && timelineEvent.toolCallId === eventValue.toolCallId);
     const next = { kind: "tool", toolCallId: boundedVisible(eventValue.toolCallId, SUBAGENT_TOOL_ARGS_PREVIEW_LIMIT), snapshot: boundedSubagentToolSnapshot(eventValue.snapshot) } satisfies SubagentTimelineEvent;
@@ -8591,11 +8762,11 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     || (taskId !== null && taskId !== undefined && entry.task_id === taskId && entry.status === "running")
   );
   if (index < 0) return;
-  let entry = ingestAssistantTimelineFromExactSession({ ...retainedSubagentPresentationLog[index] });
+  let entry = { ...retainedSubagentPresentationLog[index] };
   if (eventValue.kind === "assistant_delta") {
+    if (eventValue.tool_argument === true) return; // execution progress already counted; never present tool argument fragments as prose
     const next = `${entry.live_assistant_preview ?? ""}${eventValue.text}`;
     entry.live_assistant_preview = boundedAssistantPreview(next);
-    entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "assistant", text: eventValue.text });
   } else if (eventValue.kind === "thinking_hidden") {
     entry.live_thinking_hidden = true;
     entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "thinking_hidden" });
@@ -8613,10 +8784,26 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     entry.tool_snapshots = snapshots;
     entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "tool", toolCallId: eventValue.toolCallId, snapshot: nextSnapshot });
     entry.active_tool_state = eventValue.status === "running" ? { toolCallId: eventValue.toolCallId, name: eventValue.name, status: eventValue.status } : null;
+    // A persisted assistant entry may arrive before its RPC tool row. Once the
+    // tool is observed, anchor that excerpt without changing the RPC-owned status.
+    const ordered = [...(entry.timeline_events ?? [])];
+    const toolIndex = ordered.findIndex((item) => item.kind === "tool" && item.toolCallId === eventValue.toolCallId);
+    if (toolIndex >= 0) {
+      const matching = ordered.filter((item) => item.kind === "assistant" && item.placement === "historical" && item.tool_call_ids?.includes(eventValue.toolCallId));
+      for (const item of matching) {
+        ordered.splice(ordered.indexOf(item), 1);
+        if (item.kind === "assistant") item.placement = "anchored";
+      }
+      const target = ordered.findIndex((item) => item.kind === "tool" && item.toolCallId === eventValue.toolCallId);
+      ordered.splice(target, 0, ...matching);
+      entry.timeline_events = boundedSubagentTimelineEvents(separateHistoricalTimelineEvents(ordered));
+    }
   } else if (eventValue.kind === "terminal") {
     entry.phase = "agent_end";
   }
+  if (eventValue.kind === "message_boundary") { requestSessionTimeline(entry); return; }
   retainedSubagentPresentationLog[index] = touchSubagentEntryTimestamp(entry);
+  if (eventValue.kind === "tool" || eventValue.kind === "terminal") requestSessionTimeline(retainedSubagentPresentationLog[index]);
   persistSubagentPresentationCache();
   notifySubagentPresentationOverlay();
 }
@@ -8654,12 +8841,13 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
   if (callId !== undefined) {
     for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
       if (retainedSubagentPresentationLog[index].call_id === callId && retainedSubagentPresentationLog[index].status === "running") {
-        preserved = preserved ?? retainedSubagentPresentationLog[index];
+        if (preserved === null) preserved = retainedSubagentPresentationLog[index];
+        else dropSessionTimelineInvocation(retainedSubagentPresentationLog[index]);
         retainedSubagentPresentationLog.splice(index, 1);
       }
     }
   }
-  const preservedWithSessionExcerpts = preserved === null ? null : ingestAssistantTimelineFromExactSession(preserved);
+  const preservedWithSessionExcerpts = preserved;
   const statusEntry: Omit<SubagentPresentationLogEntry, "sequence"> = {
     task_id: result.task_id,
     persona_id: result.persona_id,
@@ -8676,13 +8864,17 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
     started_at: preservedWithSessionExcerpts?.started_at,
     tool_snapshots: boundedSubagentToolSnapshots(preservedWithSessionExcerpts?.tool_snapshots),
     timeline_events: boundedSubagentTimelineEvents(appendSubagentTimelineEvent({ timeline_events: preservedWithSessionExcerpts?.timeline_events } as SubagentPresentationLogEntry, { kind: "terminal", status: result.status })),
-    session_assistant_message_ids: preservedWithSessionExcerpts?.session_assistant_message_ids,
+    presentation_invocation: preservedWithSessionExcerpts?.presentation_invocation ?? ++subagentInvocationSequence,
+    presentation_session_id: preservedWithSessionExcerpts?.presentation_session_id,
+    presentation_scan_ready: preservedWithSessionExcerpts?.presentation_scan_ready,
+    presentation_diagnostic: preservedWithSessionExcerpts?.presentation_diagnostic,
     active_tool_state: null,
     startup_model: preservedWithSessionExcerpts?.startup_model,
     requested_thinking: preservedWithSessionExcerpts?.requested_thinking,
     startup_thinking: preservedWithSessionExcerpts?.startup_thinking,
   };
-  appendSubagentPresentationLog(statusEntry);
+  const terminalEntry = appendSubagentPresentationLog(statusEntry);
+  if (preservedWithSessionExcerpts !== null && preservedWithSessionExcerpts.presentation_scan_ready !== false) retryTerminalSessionTimeline(terminalEntry);
 }
 
 function parseSessionsLimit(input: unknown): number | LarvaError {
@@ -9336,7 +9528,10 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     else lines.push("  No final subagent output is available for this observed entry.");
     lines.push("  [Timeline]");
     for (const eventValue of timelineEventsForEntry(entry)) {
-      if (eventValue.kind === "assistant") lines.push(`  assistant: ${boundedTimelineAssistantEvent(eventValue.text)}`);
+      if (eventValue.kind === "assistant") {
+        if (eventValue.placement === "historical") lines.push("  session excerpt · tool order unknown");
+        lines.push(`  assistant: ${boundedTimelineAssistantEvent(eventValue.text)}`);
+      }
       else if (eventValue.kind === "thinking_hidden") lines.push("  assistant: thinking hidden");
       else if (eventValue.kind === "terminal") lines.push(`  terminal: ${eventValue.status}`);
       else {
@@ -9402,6 +9597,7 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
     retainedSubagentPresentationLog.length = 0;
     subagentPresentationSequence = 0;
     subagentUiResetGeneration += 1;
+    stopSessionTimelineWorker();
     clearSubagentPresentationCacheFile();
     closeSubagentPresentationOverlay();
     return clearedSubagentPresentationOverlay();
@@ -9458,10 +9654,37 @@ export function subagentPresentationLogForTests(): SubagentPresentationLogEntry[
   return retainedSubagentPresentationLog.map((entry) => ({ ...entry }));
 }
 
+export function sessionTimelineReaderMetricsForTests(): { bytes: number; records: number; active: boolean; inFlight: number; cursors: number; seen: number; workerContexts: number } {
+  return { bytes: sessionTimelineReadBytes, records: sessionTimelineParsedRecords, active: sessionTimelineWorker !== null, retiring: sessionTimelineRetirement !== null, inFlight: [...sessionTimelineRequests.values()].filter((item) => item.inFlight).length, deferred: sessionTimelineDeferred.size, cursors: sessionTimelineRequests.size, seen: sessionTimelineSeen.size, workerContexts: sessionTimelineWorkerContexts };
+}
+
+export function applySubagentStreamEventForTests(taskId: string, eventValue: NormalizedSubagentStreamEvent): void {
+  applyNormalizedSubagentStreamEvent(taskId, undefined, eventValue);
+}
+
+export function failSessionTimelineReaderForTests(): void {
+  if (sessionTimelineWorker !== null) failedSessionTimelineWorker(sessionTimelineWorker);
+}
+
+export async function awaitSessionTimelineDisposalForTests(): Promise<void> {
+  if (sessionTimelineRetirement !== null) await sessionTimelineRetirement;
+}
+
+export function failNextSessionTimelineResetReadForTests(): void {
+  sessionTimelineFailAfterResetForTests = true;
+}
+
+export function finishSubagentPresentationForTests(taskId: string): void {
+  recordSubagentPresentationResult(success(taskId, "test", "final output"));
+}
+
 export function resetSubagentPresentationStateForTests(): void {
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
   subagentUiResetGeneration += 1;
+  stopSessionTimelineWorker();
+  sessionTimelineReadBytes = 0;
+  sessionTimelineParsedRecords = 0;
   for (const record of new Set(activeSubagentRuns.values())) clearSubagentStallTimer(record);
   activeSubagentRuns.clear();
   subagentEventLog.length = 0;
@@ -9479,10 +9702,14 @@ export function recordSubagentPresentationEntryForTests(
 ): void {
   if (taskId !== null) {
     for (let index = retainedSubagentPresentationLog.length - 1; index >= 0; index -= 1) {
-      if (retainedSubagentPresentationLog[index].task_id === taskId) retainedSubagentPresentationLog.splice(index, 1);
+      if (retainedSubagentPresentationLog[index].task_id === taskId) {
+        dropSessionTimelineInvocation(retainedSubagentPresentationLog[index]);
+        retainedSubagentPresentationLog.splice(index, 1);
+      }
     }
   }
-  appendSubagentPresentationLog({ task_id: taskId, persona_id: personaId, status, ...metadata });
+  const entry = appendSubagentPresentationLog({ task_id: taskId, persona_id: personaId, status, presentation_invocation: ++subagentInvocationSequence, ...metadata });
+  if (entry.status === "running") requestSessionTimeline(entry);
 }
 
 export function isSubagentTaskBusyForTests(taskId: string): boolean {
@@ -10522,12 +10749,16 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
 }
 
 export async function resetExtensionUI(reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
-  await cleanupActivePersonaInvocationsForLifecycle(reason);
-  const activeChildrenReaped = await cleanupActiveSubagentRegistryForLifecycle(reason);
+  // Invalidate presentation before awaiting child abort/cleanup: late reader
+  // messages cannot cross into a replacement parent session during that wait.
+  subagentUiResetGeneration += 1;
+  const readerRetirement = stopSessionTimelineWorker();
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
-  subagentUiResetGeneration += 1;
   closeSubagentPresentationOverlay();
+  await cleanupActivePersonaInvocationsForLifecycle(reason);
+  const activeChildrenReaped = await cleanupActiveSubagentRegistryForLifecycle(reason);
+  await readerRetirement;
   return { status: "success", active_children_reaped: activeChildrenReaped, busy_cleared: true, overlay_closed: true, presentation_cleared: true };
 }
 
@@ -10814,7 +11045,18 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   if (canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
   const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, noProgressTimeoutMs, runtimeConfig.extension_sources, ctx?.abortSignal, {
-    onPhase: ctx?.onPhase,
+    onPhase: (phase, readyTaskId) => {
+      ctx?.onPhase?.(phase, readyTaskId);
+      // A resumed child's switch_session may migrate/rewrite the file. Start
+      // presentation only after that native acknowledgement, from a fresh cursor.
+      if (canonicalTaskId !== null && phase === "session_ready" && presentationGeneration === subagentUiResetGeneration) {
+        const entry = retainedSubagentPresentationLog.find((item) => item.task_id === canonicalTaskId && item.status === "running" && (ctx?.presentationCallId === undefined || item.call_id === ctx.presentationCallId));
+        if (entry !== undefined) {
+          entry.presentation_scan_ready = true;
+          requestSessionTimeline(entry);
+        }
+      }
+    },
     onTaskAllocated: (allocatedTaskId) => {
       if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
     },

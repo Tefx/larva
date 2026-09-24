@@ -280,6 +280,7 @@ async function runScenario(scenario) {
       await cp(EXTENSION_ENTRY, join(copyDir, "larva.ts"));
       await cp(join(EXTENSION_DIR, "activity.ts"), join(copyDir, "activity.ts"));
       await cp(join(EXTENSION_DIR, "child-rpc-frame-preload.mjs"), join(copyDir, "child-rpc-frame-preload.mjs"));
+      await cp(join(EXTENSION_DIR, "session-timeline-worker.mjs"), join(copyDir, "session-timeline-worker.mjs"));
       await cp(join(EXTENSION_DIR, "package.json"), join(copyDir, "package.json"));
       const { symlink } = await import("node:fs/promises");
       await symlink(join(EXTENSION_DIR, "node_modules"), join(copyDir, "node_modules"));

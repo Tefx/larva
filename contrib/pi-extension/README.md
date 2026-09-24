@@ -1761,10 +1761,10 @@ with two-space indent and syntax highlighting, malformed JSON remains plain text
 and whitespace-only output gets a stable empty-result message. Console rendering
 resolves the live Pi Markdown theme through `getMarkdownTheme()` at render time
 rather than caching a static theme. Timeline is the human-readable execution trace:
-it keeps natural-language assistant excerpts and tool execution rows, but default
-rendering suppresses assistant deltas that are only tool-call argument JSON when
-the corresponding tool row already summarizes the call. Raw/bounded tool
-arguments remain available through tool snapshots and debug/metadata surfaces.
+it keeps persisted natural-language assistant excerpts and RPC-owned tool rows.
+Assistant RPC deltas stay in the bounded Output preview and never enter Timeline.
+Raw/bounded tool arguments remain available through tool snapshots and
+debug/metadata surfaces.
 It is not timer polling. It can cancel the selected exact running child after
 confirmation, and mouse click input remains unsupported/no-op.
 
@@ -1788,6 +1788,13 @@ authority, not model-visible log streams, not PersonaSpec schema data, and
 not child-session sources of truth. Clearing the Console/cache with `--clear`
 must not delete child Pi session files, consume orchestration events, change
 exact-`task_id` rules, or mutate persona/model/tool-policy state.
+
+### Session-sourced assistant Timeline
+
+Output keeps the bounded realtime RPC assistant preview; Timeline assistant excerpts appear asynchronously from complete persisted assistant messages in the exact child session (up to 1200 characters per excerpt, 80 Timeline events). Identical text in different messages remains separate. Assistant excerpts with known tool-call IDs precede matching RPC tool rows. Unmatched excerpts form a separate historical block after current RPC tool rows, in persisted assistant-entry order, labeled with unknown relative tool order. RPC owns tool status. Hidden thinking and tool-call arguments are not shown as assistant Timeline prose. Terminal results and callbacks do not wait for session catch-up and continue to use the existing result/artifact delivery path. The reader validates the Pi session header ID and starts resumed catch-up only after native `switch_session` succeeds. Malformed headers, read errors and reader failures affect presentation only and leave the realtime preview and child outcome available. Clear, reload, session replacement and UI-row eviction discard pending UI catch-up without touching child session files; existing lifecycle child-abort rules continue to apply.
+
+The extension package includes `session-timeline-worker.mjs` beside `larva.ts` and `child-rpc-frame-preload.mjs`. A copied or installed extension must include that file so Timeline catch-up works; Pi's extension package manifest lists it in `files`. No persistent cursor or sidecar is written.
+
 
 ### Verification requirements
 
