@@ -502,12 +502,13 @@ async function cleanupNeutralRuntimeIsolation(evidence) {
   try {
     const mod = await import(pathToFileURL(extensionPath).href);
     if (typeof mod.resetExtensionUI === "function") await mod.resetExtensionUI("neutral-runtime-isolation-cleanup");
+    if (typeof mod.stopSessionTimelineWorkerForTests === "function") await mod.stopSessionTimelineWorkerForTests();
   } catch (error) {
     runtimeResetError = error?.message ?? String(error);
   }
   for (const socket of isolation.sockets) socket.destroy();
   if (isolation.server.listening) await new Promise((resolveClose) => isolation.server.close(resolveClose));
-  try { await rm(isolation.tempRoot, { recursive: true, force: true }); }
+  try { await rm(isolation.tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }); }
   catch (error) { rootRemovalError = error?.message ?? String(error); }
   let temporaryRootRemoved = false;
   try { await access(isolation.tempRoot); } catch { temporaryRootRemoved = true; }

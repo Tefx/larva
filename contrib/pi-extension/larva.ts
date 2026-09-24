@@ -2081,6 +2081,10 @@ function stopSessionTimelineWorker(): Promise<void> {
   return retirement;
 }
 
+export function stopSessionTimelineWorkerForTests(): Promise<void> {
+  return stopSessionTimelineWorker();
+}
+
 function sessionTimelineEntry(invocation: number, generation: number, path: string): SubagentPresentationLogEntry | null {
   if (generation !== subagentUiResetGeneration) return null;
   return retainedSubagentPresentationLog.find((entry) => entry.presentation_invocation === invocation && entry.task_id === path) ?? null;
