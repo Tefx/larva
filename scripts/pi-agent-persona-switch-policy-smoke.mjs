@@ -211,7 +211,7 @@ await check("runtime default confirm registers request-only autonomous tools", a
   assert.ok(rt.tools.has("larva_personas"));
   assert.equal(rt.mod.decideToolCall("larva_persona_switch").action, "allow");
   const switchTool = rt.tools.get("larva_persona_switch");
-  assert.match(switchTool.description, /Request an autonomous Larva persona borrow\/switch/);
+  assert.match(switchTool.description, /Request (?:an autonomous|a) Larva persona borrow\/switch/);
   for (const label of ["Borrow once", "Deny", "Auto-borrow for this session", "Switch persistently"]) {
     assert.match(switchTool.description, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }

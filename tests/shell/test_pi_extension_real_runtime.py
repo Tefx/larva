@@ -23,15 +23,22 @@ FAKE_LARVA_CLI = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 HOST_SETTINGS = Path.home() / ".pi" / "agent" / "settings.json"
 
 
-def _host_settings_fingerprint() -> tuple[int, str] | None:
+def _host_settings_fingerprint(*, create_if_missing: bool = False) -> tuple[int, str] | None:
     try:
         data = HOST_SETTINGS.read_bytes()
     except OSError:
-        return None
+        if not create_if_missing:
+            return None
+        try:
+            HOST_SETTINGS.parent.mkdir(parents=True, exist_ok=True)
+            HOST_SETTINGS.write_text("{}", encoding="utf-8")
+            data = HOST_SETTINGS.read_bytes()
+        except OSError:
+            return None
     return len(data), hashlib.sha256(data).hexdigest()
 
 
-HOST_SETTINGS_BASELINE = _host_settings_fingerprint()
+HOST_SETTINGS_BASELINE = _host_settings_fingerprint(create_if_missing=True)
 
 
 def _run_autocomplete_case(case: str, *, prefix: str | None = None) -> dict[str, Any]:

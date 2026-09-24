@@ -1382,7 +1382,7 @@ async function waitForSmokeCondition(predicate, { label = "condition", timeoutMs
 async function writeStreamingSubagentChild(scriptPath, sessionFile) {
   await writeFile(scriptPath, `
     import { createInterface } from "node:readline";
-    import { mkdir, writeFile } from "node:fs/promises";
+    import { appendFile, mkdir, writeFile } from "node:fs/promises";
     import { dirname } from "node:path";
     const sessionFile = ${JSON.stringify(sessionFile)};
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1392,12 +1392,24 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile) {
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
       if (message.type === "get_state") {
-        await writeFile(sessionFile, "{}\\n", "utf8");
+        await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "session-rpc-stream" }) + "\\n", "utf8");
         send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
         send({ id: message.id, success: true });
+        await appendFile(sessionFile, JSON.stringify({
+          type: "message",
+          id: "msg-rpc-1",
+          timestamp: new Date().toISOString(),
+          message: {
+            role: "assistant",
+            content: [
+              { type: "text", text: "RPC_ASSISTANT_DELTA_VISIBLE" },
+              { type: "toolCall", id: "rpc-tool-1", name: "bash", arguments: { command: "echo rpc" } },
+            ],
+          },
+        }) + "\\n");
         await sleep(80);
         send({ type: "message_update", channel: "assistant", text: "RPC_ASSISTANT_DELTA_VISIBLE", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         await sleep(10);
@@ -2371,6 +2383,12 @@ async function installedPiNoProgressWatchdogProof(mod, sessionRoot) {
   const providerRequests = [];
   const sockets = new Set();
   const callbacks = [];
+  if (inheritedHostSettingsPath && !existsSync(inheritedHostSettingsPath)) {
+    try {
+      await mkdir(dirname(inheritedHostSettingsPath), { recursive: true });
+      await writeFile(inheritedHostSettingsPath, "{}", "utf8");
+    } catch {}
+  }
   const hostSettingsBefore = await fileFingerprint(inheritedHostSettingsPath);
   const version = await runProcess(installedPi, ["--version"], { timeoutMs: 5_000 });
   let packageVersion = null;

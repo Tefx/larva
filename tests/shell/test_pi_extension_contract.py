@@ -4503,8 +4503,11 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
 
         const handoffHarness = await buildHarness({ LARVA_PI_AGENT_PERSONA_SWITCH: "auto", LARVA_PI_INITIAL_PERSONA_ID: "architect" });
         const longHandoff = "h".repeat(2500);
+        const validHandoff = "h".repeat(2000);
         const tool = handoffHarness.tools["larva_persona_switch"];
-        const bounded = await (tool.execute ?? tool.handler)("call-bounded", { persona_id: "python", reason: "implementation required", handoff: longHandoff }, undefined, undefined, handoffHarness.ctx);
+        const rejectedOversized = await (tool.execute ?? tool.handler)("call-rejected", { persona_id: "python", reason: "implementation required", handoff: longHandoff }, undefined, undefined, handoffHarness.ctx);
+        const rejectedEnvelope = handoffHarness.mod.getActiveEnvelope();
+        const bounded = await (tool.execute ?? tool.handler)("call-bounded", { persona_id: "python", reason: "implementation required", handoff: validHandoff }, undefined, undefined, handoffHarness.ctx);
         const boundedEnvelope = handoffHarness.mod.getActiveEnvelope();
         const audit = handoffHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit").at(-1);
 
@@ -4515,6 +4518,8 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
           invalidBudget,
           invalidBudgetEnvelope,
           invalidBudgetAudit: invalidBudgetHarness.sessionEntries.filter((entry) => entry.customType === "larva-agent-persona-switch-audit"),
+          rejectedOversized,
+          rejectedEnvelope,
           bounded,
           boundedEnvelope,
           auditHandoffLength: audit?.data?.handoff?.length ?? null,
@@ -4531,6 +4536,10 @@ def test_agent_persona_switch_invalid_input_audits_and_bounded_handoff_behavior(
     assert "max_switches_per_chain" in payload["invalidBudget"]["error"]["message"]
     assert payload["invalidBudgetEnvelope"]["persona_id"] == "architect"
     assert payload["invalidBudgetAudit"][-1]["data"]["committed"] is False
+    assert payload["rejectedOversized"]["status"] == "failed"
+    assert payload["rejectedOversized"]["error"]["code"] == "LARVA_BAD_INPUT"
+    assert "2000 Unicode code points" in payload["rejectedOversized"]["error"]["message"]
+    assert payload["rejectedEnvelope"]["persona_id"] == "architect"
     assert payload["bounded"]["status"] == "success"
     assert payload["boundedEnvelope"]["persona_id"] == "python"
     assert payload["auditHandoffLength"] == 2000

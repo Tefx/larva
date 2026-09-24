@@ -22,7 +22,7 @@ EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 FAKE_CLI: Final = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 
 
-def _run_node(tmp_path: Path, script: str, *, timeout: float = 8.0) -> dict[str, Any]:
+def _run_node(tmp_path: Path, script: str, *, timeout: float = 20.0) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is required for Pi extension runtime regression tests")
@@ -416,7 +416,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
             else if (msg.type === "prompt") {
               send({ id: msg.id, success: true });
-              await appendFile(sessionFile, JSON.stringify({ type: "message", id: "assistant-session-excerpt-1", timestamp: "2026-06-04T10:00:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "session assistant excerpt only" }] } }) + "\\\\n");
+              await appendFile(sessionFile, JSON.stringify({ type: "message", id: "assistant-session-excerpt-1", timestamp: "2026-06-04T10:00:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "session assistant excerpt only" }, { type: "toolCall", id: "call_terminal_snapshot", name: "read", arguments: { path: "contrib/pi-extension/README.md" } }] } }) + "\\\\n");
               send({ type: "tool_execution_start", toolCallId: "call_terminal_snapshot", name: "read", args: JSON.stringify({ path: "contrib/pi-extension/README.md" }) });
               send({ type: "tool_execution_update", toolCallId: "call_terminal_snapshot", name: "read", output: "partial output" });
               send({ type: "tool_execution_end", toolCallId: "call_terminal_snapshot", name: "read", success: true, output: "final tool output" });

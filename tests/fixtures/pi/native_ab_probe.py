@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -22,10 +23,11 @@ def run(argv: list[str], cwd: Path | None = None) -> dict[str, object]:
 def prepare(root: Path, worktree: Path) -> dict[str, object]:
     root.mkdir(parents=True, exist_ok=True)
     rows = []
+    uv_bin = shutil.which("uv") or "uv"
     for name in ("A", "B"):
-        rows.append(run(["uv", "venv", "--python", sys.executable, str(root / name)]))
-    rows.append(run(["uv", "pip", "install", "--python", str(root / "A/bin/python"), str(worktree)]))
-    rows.append(run(["uv", "pip", "install", "--python", str(root / "B/bin/python"), "maturin==1.15.0"]))
+        rows.append(run([uv_bin, "venv", "--python", sys.executable, str(root / name)]))
+    rows.append(run([uv_bin, "pip", "install", "--python", str(root / "A/bin/python"), str(worktree)]))
+    rows.append(run([uv_bin, "pip", "install", "--python", str(root / "B/bin/python"), "maturin==1.15.0"]))
     assert all(row["exit"] == 0 for row in rows), json.dumps(rows)
     for label in ("main", "child", "red", "no-main", "no-child"):
         crate = root / f"crate-{label}"

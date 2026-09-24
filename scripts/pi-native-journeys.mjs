@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
 import { mkdir, readFile, writeFile, stat, copyFile, symlink, utimes, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, CLI, CONTROL, createNativeFixture, NativeRpc, jsonLines, directory, alive, execute } from "./pi-native-support.mjs";
 const text = (payload) => payload.messages?.map((m) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n") ?? "";
@@ -402,7 +402,9 @@ async function runEnvironment(f, evidence) {
   const rust = await execute("rustup", ["which", "rustc"]);
   assert.equal(rust.code, 0, rust.stderr);
   const rustBin = rust.stdout.trim().replace(/\/rustc$/, "");
-  const cleanPath = `${rustBin}:${f.env.PATH}`;
+  const uvRun = await execute("which", ["uv"]);
+  const uvBin = uvRun.code === 0 ? dirname(uvRun.stdout.trim()) : "";
+  const cleanPath = [rustBin, uvBin, f.env.PATH].filter(Boolean).join(":");
   const prepareEnv = { ...f.env, PATH: cleanPath, UV_CACHE_DIR: join(f.root, "uv-cache"), CARGO_HOME: join(f.root, "cargo"), CARGO_TARGET_DIR: join(f.root, "target"), UV_PYTHON_DOWNLOADS: "never" };
   const preparation = await execute(python, [helper, "--prepare", ab, ROOT], { env: prepareEnv, timeout: 240000 });
   assert.equal(preparation.code, 0, preparation.stderr + preparation.stdout);

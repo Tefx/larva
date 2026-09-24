@@ -46,6 +46,10 @@ jobs:
         run: |
           uv sync --locked --python 3.12 --group dev
           npm --prefix contrib/pi-extension ci
+      - name: Prepare disposable runner host settings
+        run: |
+          mkdir -p "$HOME/.pi/agent"
+          echo '{}' > "$HOME/.pi/agent/settings.json"
       - name: Verify native-owned Python wheel and backend seam
         run: |
           env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
