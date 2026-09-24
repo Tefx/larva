@@ -4,7 +4,7 @@
 // requires: locked local native Pi 0.85.1; environment/tui also Python 3.12
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
-import { mkdir, readFile, writeFile, stat, copyFile, symlink, utimes, rm } from "node:fs/promises";
+import { mkdir, readFile, writeFile, stat, copyFile, symlink, utimes, rm, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, CLI, CONTROL, createNativeFixture, NativeRpc, jsonLines, directory, alive, execute } from "./pi-native-support.mjs";
@@ -457,11 +457,14 @@ async function runEnvironment(f, evidence) {
     await p.stop();
   }
   const backend = await jsonLines(join(ab, "backend.jsonl"));
-  for (const value of [join(ab, "A"), join(ab, "B"), null]) {
-    const matching = backend.filter((row) => row.virtualEnv === value);
+  const expectedA = join(ab, "A");
+  const realA = await realpath(expectedA).catch(() => expectedA);
+  for (const value of [expectedA, join(ab, "B"), null]) {
+    const realValue = value ? await realpath(value).catch(() => value) : null;
+    const matching = backend.filter((row) => row.virtualEnv === value || (realValue && row.virtualEnv === realValue));
     assert.ok(matching.some((row) => row.argv[0] === "resolve"));
     assert.ok(matching.some((row) => row.argv[0] === "list"));
-    assert.ok(matching.every((row) => row.prefix === join(ab, "A")));
+    assert.ok(matching.every((row) => row.prefix === expectedA || row.prefix === realA));
   }
   evidence.environment = { observations, backend, backendActivatedByExtension: false };
 }
