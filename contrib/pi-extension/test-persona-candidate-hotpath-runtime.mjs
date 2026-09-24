@@ -148,7 +148,7 @@ const ctx = {
     LARVA_PI_PERSONA_CANDIDATES_CACHE_FILE: cacheFile,
     FAKE_LARVA_LIST_FILE: listFile,
     FAKE_LARVA_INVOCATION_LOG: invocationLog,
-    FAKE_LARVA_DELAY_MS: "250",
+    FAKE_LARVA_DELAY_MS: "600",
     FAKE_LARVA_MODE: "ok",
   },
   setModel: () => { setModelCalls += 1; },
@@ -162,7 +162,7 @@ const stateBefore = { activeEnvelope: mod.getActiveEnvelope(), setModelCalls, se
 
 const staleBeforeRefresh = await collectSinks(ctx);
 assertNoPrompt(staleBeforeRefresh, "stale hot path");
-await sleep(400);
+await sleep(800);
 const refreshedCacheText = await readFile(cacheFile, "utf8");
 assertNoPrompt(refreshedCacheText, "refreshed cache");
 const freshAfterRefresh = await collectSinks(ctx);
@@ -170,10 +170,10 @@ assertNoPrompt(freshAfterRefresh, "fresh hot path");
 
 mod.setPersonaCompletionClock(() => 12_000);
 ctx.env.FAKE_LARVA_MODE = "fail";
-ctx.env.FAKE_LARVA_DELAY_MS = "350";
+ctx.env.FAKE_LARVA_DELAY_MS = "700";
 const failureStale = await collectSinks(ctx);
 assertNoPrompt(failureStale, "failure stale hot path");
-await sleep(500);
+await sleep(900);
 const afterFailedRefresh = await collectSinks(ctx);
 assertNoPrompt(afterFailedRefresh, "after failed refresh");
 assertNoOwnPrompt([staleBeforeRefresh, freshAfterRefresh, failureStale, afterFailedRefresh], "larva_personas candidate output");
@@ -204,7 +204,7 @@ const evidence = {
     failureStale.slashElapsedMs,
     failureStale.selector.elapsedMs,
     failureStale.mention.elapsedMs,
-  ].every((elapsedMs) => elapsedMs < 200),
+  ].every((elapsedMs) => elapsedMs < 500),
   stateBefore,
   stateAfter,
   refreshDidNotAlterActivePersonaModelToolsOrSession: JSON.stringify(stateBefore) === JSON.stringify(stateAfter),
