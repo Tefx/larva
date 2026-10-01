@@ -497,6 +497,7 @@ type PiApi = {
   streamFn?: unknown;
   compactAdapter?: LarvaCompactAdapter;
   getAllTools?: () => unknown[] | Promise<unknown[]>;
+  getActiveTools?: () => string[] | Promise<string[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
   registerShortcut?: (shortcut: string, options: { description?: string; handler: (ctx: PiShortcutContext) => void | Promise<void> }) => void;
@@ -523,10 +524,10 @@ type PiContext = PiApi & {
   modelRegistry?: ModelRegistry;
   model?: unknown;
   thinkingLevel?: unknown;
-  sessionManager?: { getEntries?: () => unknown[] };
+  sessionManager?: { getBranch?: () => unknown[] };
   session?: {
     entries?: unknown[];
-    getEntries?: () => unknown[];
+    getBranch?: () => unknown[];
     appendEntry?: (customType: string, data: Record<string, unknown>, options?: Record<string, unknown>) => unknown;
     addEntry?: (entry: unknown) => unknown;
     addCustomEntry?: (customType: string, data: Record<string, unknown>, options?: Record<string, unknown>) => unknown;
@@ -551,7 +552,7 @@ type SubagentCallbackSurface = {
   sendUserMessage?: (message: string, options?: Record<string, unknown>) => unknown | Promise<unknown>;
   appendEntry?: (customType: string, data: Record<string, unknown>) => unknown;
 };
-type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string>; piModel: unknown | null; requestedThinking: PiThinkingLevel | null; effectiveThinking: PiThinkingLevel | null };
+type ActiveState = { envelope: PersonaEnvelope | null; piModel: unknown | null; requestedThinking: PiThinkingLevel | null; effectiveThinking: PiThinkingLevel | null };
 type PersonaSwitchToolInput = { persona_id?: unknown; reason?: unknown; handoff?: unknown; continue_task?: unknown; max_switches_per_chain?: unknown };
 type AgentPersonaSwitchToolResult = {
   status: "success" | "failed";
@@ -635,7 +636,12 @@ const DEFAULT_MARKDOWN_THEME: MarkdownTheme = {
   codeBlockIndent: "  ",
 };
 let markdownThemeGetter: (() => MarkdownTheme) | null = null;
-const state: ActiveState = { envelope: null, activeTools: new Set<string>(), piModel: null, requestedThinking: null, effectiveThinking: null };
+const state: ActiveState = { envelope: null, piModel: null, requestedThinking: null, effectiveThinking: null };
+// Selected declarations include only tools Pi actually exposed, plus declarations
+// temporarily masked by Larva. They never contain the whole permitted registry.
+type ToolDeclarations = { selected: Set<string>; applied: Set<string>; known: Set<string>; present: Set<string> };
+let toolDeclarations: ToolDeclarations | null = null;
+let toolDeclarationsPersisted = false;
 
 type SubagentCallbackDeliveryState = "pending" | "delivered" | "suppressed" | "stale" | "failed";
 type SubagentOutputDeliveryStatus = "inline" | "artifactized" | "failed";
@@ -3626,6 +3632,10 @@ function resolveSubagentExtensionSource(source: unknown, configRealPath: string,
   if (codePointLength(source) > SUBAGENT_EXTENSION_SOURCE_CODE_POINT_LIMIT) {
     return subagentRuntimeConfigError("extension_sources entries must not exceed 4096 Unicode code points.");
   }
+  if (source.startsWith("builtin:")) {
+    if (["builtin:mcp", "builtin:codemode", "builtin:tool-search"].includes(source)) return source;
+    return subagentRuntimeConfigError("extension_sources supports only builtin:mcp, builtin:codemode, and builtin:tool-search built-in identifiers.");
+  }
   if (isRemoteSubagentExtensionSource(source)) return source;
   let candidate: string;
   if (source.startsWith("pi-agent:")) {
@@ -4611,19 +4621,15 @@ function isAgentPersonaSwitchMode(value: unknown): value is AgentPersonaSwitchMo
 }
 
 function sessionEntries(ctx: PiContext): unknown[] {
-  const manager = ctx.sessionManager;
-  const managerGetter = manager?.getEntries;
-  if (typeof managerGetter === "function") {
-    const entries = managerGetter.call(manager);
-    return Array.isArray(entries) ? entries : [];
+  // All-entry history includes abandoned branches and cannot supply authority.
+  const manager = ctx.sessionManager ?? ctx.session;
+  if (typeof manager?.getBranch === "function") {
+    const entries = manager.getBranch();
+    if (!Array.isArray(entries)) throw error("LARVA_BAD_INPUT", "Pi current branch is unavailable.");
+    return entries;
   }
-  const session = ctx.session;
-  const getter = session?.getEntries;
-  if (typeof getter === "function") {
-    const entries = getter.call(session);
-    return Array.isArray(entries) ? entries : [];
-  }
-  return Array.isArray(ctx.session?.entries) ? ctx.session.entries : [];
+  // Legacy, linear host contexts have no tree manager.
+  return ctx.sessionManager === undefined && Array.isArray(ctx.session?.entries) ? ctx.session.entries : [];
 }
 
 function sessionCustomData(entry: unknown, customType: string): Record<string, unknown> | null {
@@ -4791,25 +4797,135 @@ function applyAgentPersonaToolExposure(tools: string[]): string[] {
   return tools.filter((tool) => !agentTools.has(tool));
 }
 
-async function refreshActiveToolExposureForAgentPersonaMode(pi: PiApi, onlyWhenChanged = false): Promise<LarvaError | null> {
+function sameToolNames(left: Set<string>, right: Set<string>): boolean {
+  return left.size === right.size && [...left].every((name) => right.has(name));
+}
+
+function observeToolDeclarations(live: string[], registered: Set<string>): ToolDeclarations {
+  const applied = new Set(live);
+  const selected = new Set(toolDeclarations?.selected ?? live);
+  // Only an observable removal from our last applied loadout is a Pi disable.
+  // Our own masked tools were absent from that loadout and retain their intent.
+  const known = new Set([...toolDeclarations?.known ?? [], ...registered]);
+  const present = new Set(registered);
+  for (const name of toolDeclarations?.applied ?? []) {
+    // First registration after restore/disconnect cannot reveal a user disable.
+    if (registered.has(name) && toolDeclarations?.present.has(name) && !applied.has(name)) selected.delete(name);
+  }
+  for (const name of live) {
+    if (toolDeclarations?.known.has(name) && !toolDeclarations.present.has(name) && !selected.has(name)) {
+      // Pi auto-activates re-registered direct tools. Restore this branch's
+      // saved disable, not the registration default. Explicit later selection
+      // is observable once registration and our pruning have completed.
+      present.delete(name);
+    } else selected.add(name);
+  }
+  return { selected, applied, known, present };
+}
+
+function projectSelectedToolDeclarations(messages: unknown[], selected: string[], tools: unknown[]): unknown[] | null {
+  // Native Pi carries provider declarations on system messages. Work on those
+  // provider-independent fields; Pi still supplies schemas/exposure and applies
+  // its own codemode-only/hidden-declaration projection after context handlers.
+  if (!messages.some((message) => isRecord(message) && message.role === "system"
+    && (Array.isArray(message.toolsAdded) || Array.isArray(message.toolsRemoved)))) return null;
+  const active = new Set(selected);
+  const declared = new Set<string>();
+  for (const message of messages) {
+    if (!isRecord(message) || message.role !== "system") continue;
+    for (const tool of Array.isArray(message.toolsRemoved) ? message.toolsRemoved : []) {
+      const name = toolName(tool); if (name !== null) declared.delete(name);
+    }
+    for (const tool of Array.isArray(message.toolsAdded) ? message.toolsAdded : []) {
+      const name = toolName(tool); if (name !== null) declared.add(name);
+    }
+  }
+  const additions = tools.flatMap((tool) => {
+    if (!isRecord(tool) || typeof tool.name !== "string" || !active.has(tool.name) || declared.has(tool.name)
+      || typeof tool.description !== "string" || !isRecord(tool.parameters)) return [];
+    return [{ name: tool.name, description: tool.description, parameters: tool.parameters,
+      ...(tool.namespace !== undefined ? { namespace: tool.namespace } : {}),
+      ...(tool.annotations !== undefined ? { annotations: tool.annotations } : {}),
+    }];
+  });
+  let changed = additions.length > 0;
+  const projected = messages.map((message) => {
+    if (!isRecord(message) || message.role !== "system") return message;
+    const added = Array.isArray(message.toolsAdded) ? message.toolsAdded : [];
+    const removed = Array.isArray(message.toolsRemoved) ? message.toolsRemoved : [];
+    const toolsAdded = added.filter((tool) => active.has(toolName(tool) ?? ""));
+    const toolsRemoved = removed.filter((tool) => !active.has(toolName(tool) ?? ""));
+    if (added.length === toolsAdded.length && removed.length === toolsRemoved.length) return message;
+    changed = true;
+    const { toolsAdded: _added, toolsRemoved: _removed, ...rest } = message;
+    return { ...rest, ...(toolsAdded.length ? { toolsAdded } : {}), ...(toolsRemoved.length ? { toolsRemoved } : {}) };
+  });
+  if (additions.length > 0) {
+    const index = projected.findLastIndex((message) => isRecord(message) && message.role === "system");
+    const message = projected[index] as Record<string, unknown>;
+    projected[index] = { ...message, toolsAdded: [...Array.isArray(message.toolsAdded) ? message.toolsAdded : [], ...additions] };
+  }
+  return changed ? projected : null;
+}
+
+function storedToolDeclarations(ctx: PiContext): ToolDeclarations | null {
+  for (const entry of sessionEntries(ctx).slice().reverse()) {
+    const data = sessionCustomData(entry, "larva-tool-declarations");
+    if (data === null) continue;
+    if (!Array.isArray(data.selected) || !Array.isArray(data.applied) || !Array.isArray(data.known)
+      || [...data.selected, ...data.applied, ...data.known].some((name) => typeof name !== "string" || name.length === 0)) {
+      throw toolEnumerationFailed("Stored Larva tool declarations are invalid.");
+    }
+    return { selected: new Set(data.selected as string[]), applied: new Set(data.applied as string[]), known: new Set(data.known as string[]), present: new Set() };
+  }
+  return null;
+}
+
+function publishToolDeclarations(next: ToolDeclarations, pi: PiApi, ctx: PiContext = {}): void {
+  const changed = toolDeclarations === null || !sameToolNames(toolDeclarations.selected, next.selected)
+    || !sameToolNames(toolDeclarations.applied, next.applied) || !sameToolNames(toolDeclarations.known, next.known);
+  toolDeclarations = next;
+  // Pi already persists unmasked selection. Start an overlay only when Larva
+  // suppresses declarations; once present, keep it current, including clearing.
+  if (changed && (toolDeclarationsPersisted || !sameToolNames(next.selected, next.applied))) {
+    toolDeclarationsPersisted = true; // a throwing append may already have written
+    appendSessionCustomEntry(ctx, "larva-tool-declarations", { selected: [...next.selected], applied: [...next.applied], known: [...next.known] }, pi);
+  }
+}
+
+async function refreshActiveToolExposureForAgentPersonaMode(pi: PiApi, restoreAgentTools = false, ctx: PiContext = {}): Promise<LarvaError | null> {
+  const generation = instructionGeneration;
   try {
-    const baseline = await enumerateTools(pi);
-    const policyFiltered = state.envelope ? filterPolicyTools(baseline, state.envelope.tool_policy) : baseline;
-    const activeTools = applyAgentPersonaToolExposure(policyFiltered);
-    if (onlyWhenChanged && activeTools.length === state.activeTools.size && activeTools.every((tool) => state.activeTools.has(tool))) {
-      return null;
+    const registered = new Set(await enumerateTools(pi));
+    const live = await enumerateActiveTools(pi);
+    if (!instructionGenerationIsCurrent(generation)) return toolEnumerationFailed("Tool update belongs to a retired session.");
+    const next = observeToolDeclarations(live, registered);
+    if (restoreAgentTools && agentPersonaToolsAllowed()) {
+      for (const name of ["larva_persona_switch", "larva_personas"]) if (registered.has(name)) next.selected.add(name);
     }
-    let applied: boolean | void | undefined;
-    try {
-      applied = await pi.setActiveTools?.(activeTools);
-    } catch {
-      return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    const known = [...next.selected].filter((name) => registered.has(name));
+    const activeTools = applyAgentPersonaToolExposure(state.envelope ? filterPolicyTools(known, state.envelope.tool_policy) : known);
+    if (!sameToolNames(new Set(live), new Set(activeTools))) {
+      try {
+        if (await pi.setActiveTools?.(activeTools) === false) throw toolEnumerationFailed();
+        next.applied = new Set(await enumerateActiveTools(pi));
+      } catch {
+        // A rejecting setter may have mutated Pi. Reconcile before keeping our
+        // prior declaration intent; an uncertain rollback fences later calls.
+        if (instructionGenerationIsCurrent(generation)) {
+          try { if (await pi.setActiveTools?.(live) === false) instructionStateUncertain = true; }
+          catch { instructionStateUncertain = true; }
+        }
+        return toolEnumerationFailed("Pi active-tool update failed");
+      }
     }
-    if (applied === false) return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
-    state.activeTools = new Set(activeTools);
+    if (!instructionGenerationIsCurrent(generation)) return toolEnumerationFailed("Tool update belongs to a retired session.");
+    next.present = new Set(registered);
+    try { publishToolDeclarations(next, pi, ctx); }
+    catch { instructionStateUncertain = true; return toolEnumerationFailed("Larva tool-declaration persistence failed."); }
     return null;
   } catch (caught) {
-    return isLarvaError(caught) ? caught : error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    return isLarvaError(caught) ? caught : toolEnumerationFailed();
   }
 }
 
@@ -4844,10 +4960,12 @@ function registerLarvaAgentPersonaSwitchCommand(ctx: PiContext, pi: PiApi): void
       } else {
         return { ok: false, error: error("LARVA_BAD_INPUT", "Usage: /larva-mode manual|confirm|auto|free") };
       }
+      const wasManual = !agentPersonaToolsAllowed();
       setAgentPersonaSwitchMode(mode);
       appendSessionCustomEntry(runtimeCtx, "larva-agent-persona-switch-mode", { mode, source: "slash-command" }, pi);
       if (agentPersonaToolsAllowed()) registerAgentPersonaSwitchTools(runtimeCtx, pi);
-      const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi);
+      const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, wasManual, runtimeCtx);
+      rememberSessionInitialized(runtimeCtx);
       if (exposureError !== null) {
         await notify(runtimeCtx, `Larva agent persona self-switch mode updated but active tools failed: ${exposureError.code}: ${exposureError.message}`, "error");
         return { ok: false, mode, error: exposureError };
@@ -5510,7 +5628,8 @@ async function enumerateTools(pi: PiApi): Promise<string[]> {
     if (mode === "startup-tolerant" && isUnsupportedToolEnumerationSurface(caught)) return [];
     throw toolEnumerationFailed();
   }
-  return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
+  return tools.filter((tool) => !isRecord(tool) || tool.exposure !== "hidden")
+    .map((tool) => toolName(tool)).filter((name): name is string => name !== null);
 }
 
 async function safeToolEnumeration(pi: PiApi): Promise<unknown[]> {
@@ -5519,6 +5638,18 @@ async function safeToolEnumeration(pi: PiApi): Promise<unknown[]> {
   if (Array.isArray(tools)) return tools;
   if (toolEnumerationMode === "startup-tolerant" && tools === undefined) return [];
   throw toolEnumerationFailed();
+}
+
+async function enumerateActiveTools(pi: PiApi): Promise<string[]> {
+  if (typeof pi.getActiveTools !== "function") return [];
+  try {
+    const tools = await pi.getActiveTools();
+    if (Array.isArray(tools) && tools.every((name) => typeof name === "string" && name.length > 0)) return [...new Set(tools)];
+    if (toolEnumerationMode === "startup-tolerant" && tools === undefined) return [];
+  } catch (caught) {
+    if (toolEnumerationMode === "startup-tolerant" && isUnsupportedToolEnumerationSurface(caught)) return [];
+  }
+  throw toolEnumerationFailed("Pi active-tool enumeration failed.");
 }
 
 async function startupToolBaseline(pi: PiApi): Promise<string[]> {
@@ -5570,11 +5701,11 @@ async function commitPersonaInternal(
   try {
   const previousEnvelope = state.envelope;
   const previousInstructionUncertain = instructionStateUncertain;
-  const previousActiveTools = new Set(state.activeTools);
   const previousPiModel = state.piModel;
   const previousRequestedThinking = state.requestedThinking;
   const previousEffectiveThinking = isPiThinkingLevel(pi.getThinkingLevel?.()) ? pi.getThinkingLevel?.() as PiThinkingLevel : state.effectiveThinking;
   let rollbackTools: string[] | null = null;
+  let rollbackDeclarations = toolDeclarations;
   let modelUpdated = false;
   let thinkingUpdated = false;
   let activeToolsUpdated = false;
@@ -5590,9 +5721,7 @@ async function commitPersonaInternal(
     requireCurrentGeneration();
     const baseline = await toolBaseline(pi);
     requireCurrentGeneration();
-    rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
-    const activeTools = applyAgentPersonaToolExposure(filterPolicyTools(baseline, tool_policy));
     requireCurrentGeneration();
 
     if (applyModel && model !== null) {
@@ -5602,14 +5731,26 @@ async function commitPersonaInternal(
     requireCurrentGeneration();
     const effectiveThinking = requestedThinking === null ? previousEffectiveThinking : setPiThinking(pi, requestedThinking);
     thinkingUpdated = requestedThinking !== null;
+    // Model setters may await while Pi registers/loads tools. Snapshot the live
+    // declaration immediately before changing it, including for rollback.
+    rollbackTools = await enumerateActiveTools(pi);
+    const registered = new Set(baseline);
+    rollbackDeclarations = observeToolDeclarations(rollbackTools, registered);
+    const nextDeclarations: ToolDeclarations = {
+      selected: new Set(rollbackDeclarations.selected), applied: new Set<string>(),
+      known: new Set(rollbackDeclarations.known), present: new Set(registered),
+    };
+    const activeTools = applyAgentPersonaToolExposure(filterPolicyTools([...nextDeclarations.selected].filter((name) => registered.has(name)), tool_policy));
+    requireCurrentGeneration();
     let applied: boolean | void | undefined;
+    activeToolsUpdated = true; // a rejecting setter may already have changed Pi
     try {
       applied = await pi.setActiveTools?.(activeTools);
     } catch {
       throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
     }
     if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
-    activeToolsUpdated = true;
+    nextDeclarations.applied = new Set(await enumerateActiveTools(pi));
     requireCurrentGeneration();
 
     const envelope: PersonaEnvelope = {
@@ -5622,14 +5763,14 @@ async function commitPersonaInternal(
       ...(spec.compaction_prompt !== undefined ? { compaction_prompt: spec.compaction_prompt } : {}),
     };
     state.envelope = envelope;
-    state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
     if (model !== null) state.piModel = model;
     if (requestedThinking !== null) state.requestedThinking = requestedThinking;
     state.effectiveThinking = effectiveThinking;
-    if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
-    rememberSessionInitialized(ctx);
     await setStatus(ctx);
     requireCurrentGeneration();
+    publishToolDeclarations(nextDeclarations, pi, ctx);
+    if (sessionCommitSource !== null) appendActivePersonaCommitEntry(ctx, pi, envelope, sessionCommitSource);
+    rememberSessionInitialized(ctx);
     instructionStateUncertain = false;
     return { ok: true, envelope };
   } catch (caught) {
@@ -5648,9 +5789,13 @@ async function commitPersonaInternal(
       try { pi.setThinkingLevel?.(previousEffectiveThinking); } catch { rollbackFailed = true; }
     }
     if (!instructionGenerationIsCurrent(generation)) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona transition belongs to a retired session") };
+    if (rollbackDeclarations !== null) {
+      try { publishToolDeclarations(rollbackDeclarations, pi, ctx); }
+      catch { rollbackFailed = true; }
+    }
     instructionStateUncertain = previousInstructionUncertain || rollbackFailed;
     state.envelope = previousEnvelope; // previousEnvelope rollback preserves user-visible persona state.
-    state.activeTools = previousActiveTools;
+    toolDeclarations = rollbackDeclarations;
     state.piModel = previousPiModel;
     state.requestedThinking = previousRequestedThinking;
     state.effectiveThinking = previousEffectiveThinking;
@@ -5714,11 +5859,6 @@ export function filterPolicyTools(baseline: string[], policy: PiToolPolicy): str
 }
 
 export async function commitPersona(personaId: string, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaSwitchResult> {
-  // Contract trace for source-level policy tests: const baseline = await enumerateTools(pi)
-  // before const tool_policy = await loadPolicy; try/catch rollback uses
-  // await validateModel(spec, ctx, pi), await pi.setActiveTools?.(rollbackTools),
-  // throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed"),
-  // state.envelope = previousEnvelope, and state.activeTools = previousActiveTools.
   return commitPersonaWithOptions(personaId, ctx, pi, { sessionCommitSource: "api" });
 }
 
@@ -7045,10 +7185,12 @@ export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = 
     // Pi invokes hooks in extension load order. Sources explicitly loaded before
     // Larva may register tools in their own first-turn hook, so refresh once the
     // earlier hooks have run and only mutate Pi when the visible set changed.
-    if (state.envelope !== null && typeof pi.getAllTools === "function" && typeof pi.setActiveTools === "function") {
-      const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, true);
+    if (typeof pi.getAllTools === "function" && typeof pi.setActiveTools === "function") {
+      const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, false, runtimeCtx);
       if (exposureError !== null) {
+        runtimeCtx.abort?.();
         await notify(runtimeCtx, `Larva could not refresh tools registered before agent start: ${exposureError.code}: ${exposureError.message}`, "warning");
+        return null;
       }
     }
     return composePrompt();
@@ -7056,7 +7198,7 @@ export function before_agent_start(event: unknown, ctx?: PiContext, pi: PiApi = 
   if (terminal !== null) {
     return attemptPersonaLeaseRestore(runtimeCtx, lastPersonaLeasePi ?? pi, terminal).then(refreshLazyExtensionToolsAndCompose);
   }
-  if (state.envelope !== null && typeof pi.getAllTools === "function" && typeof pi.setActiveTools === "function") {
+  if (typeof pi.getAllTools === "function" && typeof pi.setActiveTools === "function") {
     return refreshLazyExtensionToolsAndCompose();
   }
   return composePrompt();
@@ -7066,18 +7208,20 @@ export function decideToolCall(tool: string): ToolPolicyDecision {
   if ((tool === "larva_persona_switch" || tool === "larva_personas") && !agentPersonaToolsAllowed()) {
     return { action: "deny", error: error("LARVA_AGENT_PERSONA_SWITCH_MANUAL", `Larva agent persona self-switch mode is manual; ${tool} is unavailable`) };
   }
-  if (!state.envelope || state.activeTools.has(tool)) return { action: "allow" };
+  if (admissionBlocked || instructionStateUncertain || restoreFailureState !== null) {
+    return { action: "deny", error: error("LARVA_TOOL_DENIED", "Larva persona state is unavailable; restore or select a persona before calling tools.") };
+  }
+  if (!state.envelope || filterPolicyTools([tool], state.envelope.tool_policy).length > 0) return { action: "allow" };
   return { action: "deny", error: error("LARVA_TOOL_DENIED", `Larva policy denied ${tool}`) };
 }
 
-export async function decideToolCallWithRefresh(tool: string, pi: PiApi): Promise<ToolPolicyDecision> {
+export async function decideToolCallWithRefresh(tool: string, pi: PiApi, ctx: PiContext = {}): Promise<ToolPolicyDecision> {
   const initial = decideToolCall(tool);
-  if (initial.action === "allow") return initial;
-  if (initial.error.code === "LARVA_AGENT_PERSONA_SWITCH_MANUAL") return initial;
-  if (!state.envelope) return initial;
-
-  const refreshError = await refreshActiveToolExposureForAgentPersonaMode(pi);
-  if (refreshError !== null) return initial;
+  if (initial.action === "deny" && initial.error.code === "LARVA_AGENT_PERSONA_SWITCH_MANUAL") return initial;
+  // Neither the declaration nor a cached permission set authorizes a call.
+  // Native Pi enforces registration/exposure/callability; Larva checks policy.
+  const refreshError = await refreshActiveToolExposureForAgentPersonaMode(pi, false, ctx);
+  if (refreshError !== null) return { action: "deny", error: refreshError };
   return decideToolCall(tool);
 }
 
@@ -11096,7 +11240,7 @@ function piSessionIdentity(ctx: PiContext): object | null {
 
 function sessionInitializationRestoreKey(ctx: PiContext): string {
   const stored = latestStoredActivePersonaCommit(ctx);
-  if (stored !== null) return `stored:${stored.personaId}:${stored.entryIndex}:${sessionHasModelChangeAfter(ctx, stored.entryIndex) ? "model-after" : "persona-model"}`;
+  if (stored !== null) return `stored:${stored.personaId}:${stored.specDigest}:${stored.entryIndex}:${latestStoredAgentPersonaSwitchMode(ctx) ?? "default"}:${sessionHasModelChangeAfter(ctx, stored.entryIndex) ? "model-after" : "persona-model"}`;
   const env = currentEnv(ctx);
   const explicitPersonaId = explicitStartupPersonaId(env);
   if (explicitPersonaId.length > 0) return `explicit:${explicitPersonaId}`;
@@ -11116,6 +11260,16 @@ async function ensureSessionInitialized(ctx: PiContext, pi: PiApi): Promise<void
   if (sessionIdentity !== null && initializedPiSessionRestoreKeys.get(sessionIdentity) === restoreKey) return;
   const generation = beginInstructionTransition();
   try {
+    // A new branch/session cannot retain the previous branch's policy or lease.
+    clearActivePersonaLease("session policy restoration", ctx, pi);
+    state.envelope = null;
+    state.piModel = ctx.model ?? null;
+    state.requestedThinking = null;
+    state.effectiveThinking = isPiThinkingLevel(pi.getThinkingLevel?.()) ? pi.getThinkingLevel?.() as PiThinkingLevel : null;
+    instructionStateUncertain = false;
+    toolDeclarationsPersisted = false;
+    toolDeclarations = storedToolDeclarations(ctx);
+    toolDeclarationsPersisted = toolDeclarations !== null;
     const initialization = initializeSession(ctx, pi);
     sessionInitializationPromise = initialization;
     await initialization;
@@ -11236,6 +11390,10 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       await notify(ctx, `Larva default persona unavailable: ${larvaError.code}: ${larvaError.message}`, "warning");
     }
   }
+  if (typeof pi.getActiveTools === "function") {
+    const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, false, ctx);
+    if (exposureError !== null) throw exposureError;
+  }
   await setStatus(ctx);
 }
 
@@ -11304,7 +11462,8 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     // Pi may reuse a cached module factory for new/resume/fork. Its new runtime
     // must load current session state, never inherit the previous envelope.
     state.envelope = null;
-    state.activeTools = new Set<string>();
+    toolDeclarations = null;
+    toolDeclarationsPersisted = false;
     state.piModel = null;
     state.requestedThinking = null;
     state.effectiveThinking = null;
@@ -11312,7 +11471,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     sessionInitializationPromise = null;
   }
   registerResolveSystemPromptListener(pi);
-  const instanceGeneration = instructionGeneration;
+  let instanceGeneration = instructionGeneration;
   if (firstResolverSetup) instructionReady = false;
   pi.registerFlag?.(LARVA_PERSONA_FLAG, { type: "string", description: "Optional Larva persona ID for this session" });
   pi.registerFlag?.(LARVA_AGENT_PERSONA_SWITCH_FLAG, { type: "string", description: "Larva agent persona switch mode: manual, confirm, auto, or free" });
@@ -11545,6 +11704,19 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
       endInstructionTransition(generation);
     }
   });
+  pi.on?.("session_tree", async (_payload: unknown, eventCtx?: PiContext) => {
+    if (!instructionGenerationIsCurrent(instanceGeneration)) return;
+    // Tree navigation keeps this extension runtime, but retires pending work
+    // from the branch it left. Pi has already restored its native loadout.
+    instanceGeneration = ++instructionGeneration;
+    instructionTransitionDepth = 0;
+    instructionReady = false;
+    sessionInitializationPromise = null;
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    const identity = piSessionIdentity(runtimeCtx);
+    if (identity !== null) initializedPiSessionRestoreKeys.delete(identity);
+    await ensureSessionInitialized(runtimeCtx, pi);
+  });
   pi.on?.("session_before_compact", async (payload: unknown, eventCtx?: PiContext) => {
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
@@ -11563,6 +11735,21 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     await ensureSessionInitialized(runtimeCtx, pi);
     return before_agent_start(payload, runtimeCtx, pi);
+  });
+  pi.on?.("context_with_system", async (event: unknown, eventCtx?: PiContext) => {
+    const generation = instructionGeneration;
+    const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
+    if (admissionBlocked || (state.envelope !== null && !instructionResolverAcceptsReads())) { runtimeCtx.abort?.(); return undefined; }
+    const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, false, runtimeCtx);
+    if (exposureError !== null) { runtimeCtx.abort?.(); throw exposureError; }
+    try {
+      const live = await enumerateActiveTools(pi);
+      const tools = await safeToolEnumeration(pi);
+      if (!instructionGenerationIsCurrent(generation)) { runtimeCtx.abort?.(); return undefined; }
+      if (!isRecord(event) || !Array.isArray(event.messages)) return undefined;
+      const messages = projectSelectedToolDeclarations(event.messages, live, tools);
+      return messages === null ? undefined : { messages };
+    } catch (caught) { runtimeCtx.abort?.(); throw caught; }
   });
   pi.on?.("before_provider_request", async (event: unknown, eventCtx?: PiContext) => before_provider_request(event, withRuntimeEnv(eventCtx ?? ctx, env)));
   pi.on?.("agent_end", async (payload: unknown, eventCtx?: PiContext) => {
@@ -11584,6 +11771,16 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
       return;
     }
     await attemptPersonaLeaseRestore(runtimeCtx, pi, terminal);
+  });
+  pi.on?.("tool_result", async (_payload: unknown, eventCtx?: PiContext) => {
+    // Search or another extension may activate tools during execution. Prune
+    // denied declarations before Pi's next request. Only previously declared
+    // tools masked by Larva may be restored; registration alone loads nothing.
+    const exposureError = await refreshActiveToolExposureForAgentPersonaMode(pi, false, withRuntimeEnv(eventCtx ?? ctx, env));
+    if (exposureError !== null) {
+      eventCtx?.abort?.();
+      throw exposureError;
+    }
   });
   pi.on?.("tool_call", async (payload: unknown) => {
     const name = isRecord(payload) && typeof payload.toolName === "string"

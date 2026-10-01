@@ -1,18 +1,26 @@
 // purpose: owned native Pi/loopback fixtures shared by acceptance journeys
 // usage: import { createNativeFixture, NativeRpc } from this module
 // effects: disposable files, loopback socket, exact owned process groups; no user config
-// requires: locked local Pi 0.85.1 and Node 26.7.0
+// requires: local Pi dependencies, or PI_BIN selecting an actual Pi CLI; Node with TS support
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile, stat } from "node:fs/promises";
+import { readFileSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 export const ROOT = fileURLToPath(new URL("../", import.meta.url));
 export const PACKAGE = join(ROOT, "contrib/pi-extension");
-export const CLI = join(PACKAGE, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
+export const CLI = realpathSync(process.env.PI_BIN || join(PACKAGE, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"));
+// Select the same real package for CLI, SDK imports, and the parent's child
+// launch identity. No version rejection, installation, or runtime adaptation.
+export const PI_PACKAGE_ROOT = dirname(dirname(dirname(CLI)));
+const piPackage = JSON.parse(readFileSync(join(PI_PACKAGE_ROOT, "package.json"), "utf8"));
+assert.equal(piPackage.name, "@earendil-works/pi-coding-agent");
+assert.equal(realpathSync(join(PI_PACKAGE_ROOT, piPackage.bin.pi)), CLI, "PI_BIN must select the real Pi package/bin, not a wrapper");
+export const PI_VERSION = piPackage.version;
 export const CONTROL = join(ROOT, "tests/fixtures/pi/native-controls.ts");
 export const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 export async function jsonLines(path) {
@@ -47,7 +55,7 @@ export class NativeRpc {
   frames = []; stderr = ""; closed = null; serial = 0; events = new EventEmitter();
   constructor(fixture, args = [], env = fixture.env) {
     this.fixture = fixture;
-    this.child = spawn(process.execPath, [CLI, "--mode", "rpc", "--offline", "--approve", "--no-skills", "--no-prompt-templates", "--session-dir", fixture.sessions, "-e", CONTROL, ...args], { env, cwd: fixture.cwd, detached: true, stdio: ["pipe", "pipe", "pipe"] });
+    this.child = spawn(process.execPath, [CLI, "--mode", "rpc", "--offline", "--approve", "--no-skills", "--no-prompt-templates", "--session-dir", fixture.sessions, ...(fixture.controlLast ? [...args, "-e", CONTROL] : ["-e", CONTROL, ...args])], { env, cwd: fixture.cwd, detached: true, stdio: ["pipe", "pipe", "pipe"] });
     fixture.parents.push(this);
     this.child.stdout.setEncoding("utf8"); this.child.stderr.setEncoding("utf8");
     let buffer = "";
@@ -119,7 +127,7 @@ export async function createNativeFixture() {
   });
   fixture.server.on("connection", (s) => { fixture.sockets.add(s); s.on("close", () => fixture.sockets.delete(s)); });
   await new Promise((resolve, reject) => { fixture.server.once("error", reject); fixture.server.listen(0, "127.0.0.1", resolve); });
-  fixture.settings = { defaultProjectTrust: "yes", theme: "dark", lastChangelogVersion: "0.85.1", packages: [PACKAGE], defaultProvider: "native-loopback", defaultModel: "origin", defaultThinkingLevel: "low", compaction: { enabled: false, reserveTokens: 512, keepRecentTokens: 512 }, retry: { enabled: false } };
+  fixture.settings = { defaultProjectTrust: "yes", theme: "dark", lastChangelogVersion: PI_VERSION, packages: [PACKAGE], defaultProvider: "native-loopback", defaultModel: "origin", defaultThinkingLevel: "low", compaction: { enabled: false, reserveTokens: 512, keepRecentTokens: 512 }, retry: { enabled: false } };
   await writeFile(join(fixture.agent, "settings.json"), JSON.stringify(fixture.settings));
   await writeFile(join(fixture.agent, "models.json"), JSON.stringify({ providers: { "native-loopback": { baseUrl: `http://127.0.0.1:${fixture.server.address().port}/v1`, api: "openai-completions", apiKey: "local-nonsecret", models: ["origin", "persona", "manual", "profile", "child"].map((id) => ({ id, name: id, reasoning: true, contextWindow: 32768, maxTokens: 2048 })) } } }));
   await writeFile(join(root, "model-map.json"), JSON.stringify({ models: { "openai/gpt-5.5": { provider: "native-loopback", model_id: "persona" } }, prefix_rules: [] }));
@@ -141,7 +149,7 @@ export async function createNativeFixture() {
       await parent.done; clearTimeout(timer);
     }
     const before = await fixture.inspect();
-    for (const pid of before.liveChildren) { try { process.kill(pid, "SIGKILL"); } catch {} }
+    for (const pid of before.liveChildren) { try { process.kill(-pid, "SIGKILL"); } catch { try { process.kill(pid, "SIGKILL"); } catch {} } }
     for (const socket of fixture.sockets) socket.destroy();
     await new Promise((resolve) => fixture.server.close(resolve));
     await rm(root, { recursive: true, force: true });

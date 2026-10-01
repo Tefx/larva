@@ -129,6 +129,7 @@ def _run_confirm_borrow_dialog_scenario(
         }};
         const pi = {{
           getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas"],
+          getActiveTools: async () => activeToolCalls.at(-1) ?? ["read", "bash", "larva_persona_switch", "larva_personas"],
           setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
           setModel: async (...args) => {{ setModelCalls.push(args); return true; }},
           appendEntry: (customType, data) => entries.push({{ customType, data }}),
@@ -283,6 +284,7 @@ def test_manual_mode_rejects_autonomous_tools_but_preserves_manual_slash_switch_
         }};
         const pi = {{
           getAllTools: async () => ["read", "larva_persona_switch", "larva_personas"],
+          getActiveTools: async () => ["read", "larva_persona_switch", "larva_personas"],
           setActiveTools: async () => true,
           setModel: async () => true,
           registerCommand: (name, options) => {{ commands[name] = options; }},
@@ -587,6 +589,7 @@ def test_agent_end_cancellation_restores_turn_scoped_persona_lease(tmp_path: Pat
         }};
         const pi = {{
           getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas"],
+          getActiveTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas"],
           setActiveTools: async () => true,
           setModel: async () => true,
           appendEntry: (customType, data) => entries.push({{ customType, data }}),

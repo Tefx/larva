@@ -11,13 +11,14 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLI, PI_PACKAGE_ROOT } from "./pi-native-support.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const EXTENSION_DIR = join(ROOT, "contrib", "pi-extension");
 const EXTENSION_ENTRY = join(EXTENSION_DIR, "larva.ts");
 const FAKE_CLI = join(ROOT, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
 const MODE_OBSERVER = join(ROOT, "tests", "fixtures", "pi", "mode-observer.ts");
-const PI_BIN = process.env.PI_BIN || join(EXTENSION_DIR, "node_modules/.bin/pi");
+const PI_BIN = CLI;
 const NODE_BIN = process.execPath;
 
 const SCENARIOS = [
@@ -40,7 +41,7 @@ const SCENARIOS = [
   "resume-unresolvable-explicit-fails",
   "resume-stored-restore-nonfatal",
   "parent-shutdown-active-child",
-  "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print", "native-capsule-aging", "native-capsule-removal", "native-installed-loading",
+  "native-mcp", "native-state", "native-children", "native-invocation", "native-consumers", "native-tui", "native-watchdog", "native-failures", "native-admission", "native-print", "native-capsule-aging", "native-capsule-removal", "native-installed-loading",
 ];
 
 function usage() {
@@ -434,7 +435,7 @@ async function runScenario(scenario) {
   } else if (scenario === "resume-stored-wins-unused-explicit" || scenario === "resume-unresolvable-explicit-fails") {
     await withScratch(async (scratch, loopback) => {
       await piInstall(scratch);
-      const { SessionManager } = await import(join(EXTENSION_DIR, "node_modules/@earendil-works/pi-coding-agent/dist/core/session-manager.js"));
+      const { SessionManager } = await import(join(PI_PACKAGE_ROOT, "dist/core/session-manager.js"));
       const manager = SessionManager.create(scratch.cwd, scratch.sessions);
       manager.appendMessage({ role: "user", content: "seed", timestamp: Date.now() });
       manager.appendMessage({

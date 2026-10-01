@@ -80,6 +80,7 @@ async function makeRuntime(name, env = {}, overrides = {}) {
   };
   const pi = {
     getAllTools: async () => ["read", "bash", "larva_persona_switch", "larva_personas", "larva_subagent_status"],
+    getActiveTools: async () => activeToolSets.at(-1) ?? ["read", "bash", "larva_persona_switch", "larva_personas", "larva_subagent_status"],
     setActiveTools: async (tools) => { activeToolSets.push(tools); return true; },
     setModel: async (model) => { modelSetCalls.push(model); return true; },
     registerCommand: (name, options) => { commands[name] = options; },

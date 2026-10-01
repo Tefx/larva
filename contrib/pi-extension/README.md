@@ -91,6 +91,58 @@ policy failures write `larva pi: <ERROR_CODE>: <message>` to stderr and exit `2`
 before the first prompt/model turn. Stored-persona restore failures stay
 nonfatal after successful explicit-ID preflight.
 
+### Native MCP and discovery
+
+Pi supplies MCP support. Remove a replacement extension such as
+`pi-mcp-adapter` to let native Pi read `mcp.json`; an extension registering `/mcp`
+replaces the native implementation. Larva adds no MCP wrapper/client.
+
+For Larva children, explicitly retain the native extensions while automatic
+extension discovery remains disabled:
+
+```json
+{
+  "schema_version": 1,
+  "extension_sources": ["builtin:mcp", "builtin:codemode", "builtin:tool-search"]
+}
+```
+
+Only those three exact `builtin:` identifiers are admitted and passed unchanged
+to Pi `-e`. Unsupported/malformed identifiers, surrounding whitespace, duplicates,
+over 32 sources or over 4096 code points per source fail before spawn with
+`LARVA_SUBAGENT_CONFIG_INVALID`. Existing readable local/relative/symlinked-config,
+`pi-agent:`, npm/git/http/ssh/git source behavior remains unchanged. Remote strings
+are passed through; Larva does not install or rewrite them.
+
+Configure servers in Pi's effective agent-directory `mcp.json` (normally
+`~/.pi/agent/mcp.json`) or trusted project `.pi/mcp.json`. Child capsules refer to
+the base agent resources, including `mcp.json`. Pi owns trust, credentials,
+connection lifetimes and exposure. Default MCP `codemode` and `deferred` exposure
+remain callable and searchable without immediate model declarations. `direct`
+exposure declares tools while active; `hidden` makes them unreachable.
+`defaultTools: ["+codemode", "+tool_search"]` enables discovery explicitly;
+Pi can also activate it for configured servers. `codemode.mode: "only"` remains
+Pi's declaration-hiding mechanism.
+
+Policy names are Pi's actual exact tool names: `mcp__<server>__<tool>` (using
+Pi's normalization), `codemode`, and `tool_search`. Resource access uses separate
+names `list_mcp_resources`, `list_mcp_resource_templates`, and `read_mcp_resource`;
+allowing an MCP tool or discovery tool does not implicitly allow resource tools.
+See Pi's installed `docs/mcp.md` and `docs/extensions.md` for its native contracts.
+
+The native MCP journey uses a local stdio fixture and deterministic loopback
+provider, with no external model calls or ambient servers:
+
+```bash
+PI_BIN=/absolute/path/to/pi node scripts/pi-native-journeys.mjs --scenario mcp --output /owned/path/mcp.json
+```
+
+`PI_BIN` selects the real Pi package/bin consistently for parent, fixture SDK
+imports and captured child launch identity. It does not upgrade dependencies or
+check a version allowlist. Native MCP observations used Node 26.10.0 / Pi 0.99.2;
+the repository development lock remains 0.85.1.
+
+
 ### Native runtime verification
 
 The original native observations used Node 26.7.0 / Pi 0.85.1 on macOS.
@@ -351,106 +403,79 @@ Contract verification cases for the implementation step:
   entry.
 
 ## Adapter-local tool policy
-
-Persona-specific Pi tool filtering is configured at the canonical path:
-
-```text
-~/.pi/larva/tool-policy.json
-```
-
-Set `LARVA_PI_TOOL_POLICY_FILE` to an absolute path to override the path.
-Resolution order is:
-
-1. If `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.
-2. Else use only `~/.pi/larva/tool-policy.json`; a missing file means empty
-   policy as today.
-
-The extension must not read legacy `~/.pi/tool-policy.json` implicitly. That old
-path is unsupported after operator migration. It is valid only when explicitly
-named with `LARVA_PI_TOOL_POLICY_FILE`, which preserves strict test/operator
-override behavior. The extension must not auto-migrate, rewrite, merge, or create
-user policy files, and there is no compatibility window or background migration
-daemon.
-
-Operator migration guidance:
-
-- If you still have `~/.pi/tool-policy.json`, move or copy its intended contents
-  once to `~/.pi/larva/tool-policy.json`, then remove the old file after
-  verifying the new canonical file is in use.
-- If you intentionally need the old path for a test, temporary rollout, or local
-  adapter experiment, set `LARVA_PI_TOOL_POLICY_FILE` to the absolute legacy path
-  (for example, the shell-expanded value of `$HOME/.pi/tool-policy.json`) so the
-  non-canonical path is explicit. Do not rely on the extension to discover it as
-  a fallback.
-- If both `~/.pi/larva/tool-policy.json` and `~/.pi/tool-policy.json` exist during
-  migration, treat that as an operator conflict for migration guidance or a
-  dedicated migration check: stop, report the two paths, and choose one policy
-  file manually. This is not runtime probing. The extension/runtime must not read
-  legacy `~/.pi/tool-policy.json` unless that exact file is explicitly named by
-  `LARVA_PI_TOOL_POLICY_FILE`; do not merge, overwrite, or infer precedence
-  between the two files at runtime.
-
-This file is adapter-local Larva-Pi configuration. It is not a canonical
-PersonaSpec field and does not change the meaning
-of PersonaSpec `capabilities` or `can_spawn`.
-
-Minimal shape:
+Persona-specific Pi permissions use `~/.pi/larva/tool-policy.json`. An absolute
+`LARVA_PI_TOOL_POLICY_FILE` selects only that file. Without the override, only the
+canonical path is read; a missing file means empty policy. Larva never probes
+legacy `~/.pi/tool-policy.json`, merges, rewrites, creates, or migrates policy
+files. To use an old file temporarily, name its absolute path explicitly; otherwise
+move its intended contents to the canonical path yourself. If both files exist
+during migration, report the conflict and choose the intended file manually;
+Larva still never probes or merges them.
 
 ```json
 {
   "personas": {
     "python-senior": {
-      "allow": ["read", "grep", "bash"],
+      "allow": ["read", "bash", "codemode", "tool_search", "mcp__docs__search"],
       "deny": ["write", "edit"]
-    },
-    "doc-reviewer": {
-      "allow": ["read", "grep"],
-      "deny": ["bash", "write", "edit"]
     }
   }
 }
 ```
 
-Policy rules:
+The top level contains exactly `personas`, an object. Only the active persona's
+entry is validated beyond that shape. It may contain only optional `allow` and
+`deny` arrays of non-empty strings; duplicates are ignored. Matching uses exact
+Pi tool names, without aliases, prefixes, wildcards, path rules or bash-command
+rules. Unknown names do not create tools. `deny` wins. A missing `allow` permits
+known tools minus deny; `allow: []` denies every tool. There is no `ask` action.
+This is adapter-local configuration, separate from PersonaSpec `capabilities`
+and `can_spawn`.
 
-- The top level must be an object with exactly one key, `personas`.
-- `personas` must be an object; an empty object is valid.
-- Persona keys are canonical PersonaSpec ids.
-- Only the active target persona entry is validated beyond top-level shape.
-- An active target entry may contain only optional `allow` and `deny` arrays of
-  non-empty strings.
-- Duplicate names inside one active target `allow` or `deny` array are ignored
-  after the first occurrence.
-- Matching is exact Pi tool-name matching only. Wildcards, path-level rules,
-  command-level bash rules, and project-level overrides are out of scope.
-- Tool names unknown to the current Pi runtime are ignored rather than rejected.
-- `deny` wins over `allow`; if `allow` is present, only listed existing tools are
-  allowed minus denied tools; if `allow` is absent, the current Pi tool baseline
-  is allowed minus denied tools.
-- There is no `ask` action.
+**Permission and declaration are separate.** Pi owns the live registry, exposure,
+active tools and branch-persisted discovery. Larva filters actual declarations by
+persona policy and self-switch mode. It remembers declarations it temporarily
+suppressed, so engineer → readonly → engineer and temporary borrow restoration
+recover the origin's tools. It never activates the entire permitted registry.
+Unloaded deferred/codemode tools remain undeclared; a search-loaded tool can be
+restored after a role mask because Pi actually declared it before the mask.
 
-At persona commit time, Larva snapshots the current Pi tool registry after exact
-policy filtering and calls `setActiveTools`. If a later `tool_call` would be
-denied only because the requested tool is missing from that snapshot, the Pi
-extension performs one generic refresh: it re-enumerates the current Pi tools,
-re-applies the active persona policy and agent-persona exposure filter, updates
-`setActiveTools`/`state.activeTools`, and re-checks the same exact tool name.
-Refresh is not run for manual agent persona self-switch denials. Refresh errors
-fail closed by preserving the original denial, and no package-specific aliases,
-wildcards, or tool-name special cases are introduced.
+Tools disabled before a restrictive role stay disabled. Larva observes removals
+from its last applied loadout and respects those explicit Pi disables. Minimal
+current-branch custom entries retain selection and previously registered names.
+Missing/hidden tools during asynchronous registration or native withdrawal do
+not count as user disables. Re-registration restores that branch's selection
+instead of accepting Pi's direct-tool activation defaults. Explicit selection
+after registration/pruning remains available. Reload, tree, resume and fork
+cannot borrow intent from abandoned branches. A `manual` →
+`confirm`/`auto`/`free` command restores Larva's self-switch availability, subject
+to persona permission, without enabling the permitted registry.
 
-Startup and switch behavior differ only for Pi builds that do not expose the tool
-enumeration surface. During initial startup, an absent or unsupported enumerator
-uses a startup-tolerant empty baseline so Pi can launch. If startup reaches
-active-tool update but `setActiveTools` fails, startup leaves no active persona
-committed and shows startup unavailable with `LARVA_TOOL_ENUMERATION_FAILED`.
-For `/larva-persona` switching, genuine `getAllTools` failures or active-tool
-update failures return `LARVA_TOOL_ENUMERATION_FAILED` and preserve the previous
-active persona/model/tool state.
+An explicit disable of an already Larva-masked tool can leave Pi's active set
+unchanged. Pi's public selection API and declaration transcript carry no separate
+intent for that no-op. Larva cannot infer it; select the intended loadout while
+the tool is available. During re-registration, saved branch selection wins over
+initial defaults; make an explicit override after registration/pruning.
 
-The launcher does not parse this file. It passes the policy path to the Pi
-extension, and the extension owns JSON readability, shape validation, and commit
-behavior for startup, `/larva-persona` switches, and child session startup.
+The common `tool_call` gate checks the committed exact policy independently of
+active-tool membership, including native nested codemode calls. An allowed
+undeclared deferred tool can be called from codemode; a denied tool stays denied
+even if another extension activates it. Pi enforces unknown, hidden, model-only
+and inactive-direct call restrictions. Larva does not replace Pi dispatch, search,
+or MCP clients. Discovery metadata may still list denied names; permission
+controls execution. Tool-result and before-agent-start hooks prune denied
+activation. The native `context_with_system` hook also filters Pi's outgoing
+system-message tool declarations after delayed MCP startup, restoring only
+selected declarations from Pi metadata. Pi still applies its exposure and
+codemode-only presentation afterward.
+
+An absent/unsupported startup enumerator retains the empty-baseline startup
+behavior. Genuine registry/active-set failures fail closed with
+`LARVA_TOOL_ENUMERATION_FAILED`. A failed persona commit restores persona,
+model/thinking, live Pi declarations and declaration intent. Uncertain rollback
+preserves the existing instruction failure fence. The launcher passes the policy
+path; the extension owns parsing and application for startup, explicit switches,
+and real children.
 
 ## Switching personas in Pi
 
@@ -514,46 +539,32 @@ larva: none
 ```
 
 ### Session persona restore
+Successful persistent persona commits append a versioned custom entry,
+`larva-active-persona-commit`, containing `persona_id`, diagnostic `spec_digest`,
+source and time. Temporary borrows do not replace the stored primary persona.
 
-Active persona selection is Pi-session-local adapter state. Successful persona
-commits append a versioned custom session entry, `larva-active-persona-commit`,
-containing the selected `persona_id`, current `spec_digest`, source, and commit
-time. This entry records the user's/session's active persona choice; it is not a
-PersonaSpec field, not a prompt block, and
-not a child-session sidecar.
+Initialization resolves an explicit startup id even on resume. A valid stored
+persona on the **current branch** then takes precedence over the explicit id;
+without one, initialization uses the explicit id, the configured default, or
+`larva:none`. A stored persona's unused explicit model is not validated. Restore
+uses the current registry definition, with a notice if its digest changed.
 
-Startup restore precedence is:
+Larva reconstructs persona and self-switch mode from
+`ctx.sessionManager.getBranch()`, never abandoned branches returned by
+`getEntries()`. `session_tree` retires old branch work, clears temporary leases
+and restores policy for the branch Pi entered. A branch without persona records
+uses fresh-session selection rules and cannot inherit the abandoned persona.
+Pi restores native declarations; Larva applies the branch's saved role masks and
+selection intent, including previously loaded tools and explicit disables.
+Reload, resume and fork follow the same branch restoration path.
 
-```text
-explicit --persona / LARVA_PI_INITIAL_PERSONA_ID
-  > latest larva-active-persona-commit in the Pi session
-  > no active persona
-```
-
-An explicit startup persona always wins over any stored session persona and writes
-a new commit entry after a successful commit. Session restore never directly
-mutates `state.envelope`; during the restore initialization pass it reruns the
-same commit pipeline as `/larva-persona` so prompt injection, model selection,
-tool policy, active tools, and status are reconstructed together. After that
-initialization pass, ordinary prompt turns reuse the in-memory active persona and
-must not rerun the commit pipeline merely because new session entries were
-appended. The restore guard is keyed by the startup persona or the latest stored
-active-persona entry's persona id, not by raw session entry count, so normal
-conversation turns do not clobber a later manual Pi model choice while
-branch/session changes whose latest stored persona id differs can still rehydrate
-the correct persona.
-The stored digest is diagnostic only: if the registry's current PersonaSpec
-digest differs, restore uses the current registry definition for the stored
-`persona_id`.
-
-If explicit startup persona commit fails, launcher startup remains fatal as
-documented above. If session restore fails because the stored persona is missing
-or current model/policy/tool activation fails, startup is non-fatal: the extension
-keeps no active persona, shows restore-unavailable status/notification, and does
-not silently claim the old persona. Restore does not recover one-turn
-self-switch guards, does not parse prompt blocks, does not scan JSONL history,
-and does not use adapter-local subagent presentation cache or `larva_subagent`
-task ids as authority.
+Ordinary prompt turns reuse the committed persona and preserve a later manual
+Pi model/thinking selection. A model-change entry after the branch's persona
+commit prevents restoration from overriding that selection. A failed explicit
+startup commit remains fatal. A stored-persona restore failure is nonfatal,
+shows unavailable status, and leaves the resolver unavailable without claiming
+stale persona authority. It does not recover leases, parse prompt blocks, scan
+JSONL files, or treat subagent presentation caches/task ids as persona authority.
 
 ### Agent persona self-switch
 

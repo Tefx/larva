@@ -1858,7 +1858,8 @@ def test_late_registered_tool_call_miss_refreshes_current_policy_baseline(tmp_pa
             }};
             const pi = {{
               getAllTools: async () => {{ getAllToolsCalls += 1; return currentTools; }},
-              setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+              getActiveTools: async () => currentTools,
+              setActiveTools: async (tools) => {{ currentTools = [...tools]; activeToolCalls.push(tools); return true; }},
               setModel: async () => true,
             }};
             const committed = await mod.commitPersona("ok", ctx, pi);
@@ -1879,7 +1880,7 @@ def test_late_registered_tool_call_miss_refreshes_current_policy_baseline(tmp_pa
     assert allowed["decision"] == {"action": "allow"}
     assert allowed["callsAfterCommit"] == 1
     assert allowed["getAllToolsCalls"] == 2
-    assert allowed["activeToolCalls"][-1] == ["read", "late_tool"]
+    assert allowed["activeToolCalls"] == [["read"]], "Allowed newly active tools need no Larva activation"
 
     denied = run_case(
         {"personas": {"ok": {"deny": ["danger_tool"]}}},
@@ -1908,8 +1909,8 @@ def test_late_registered_tool_call_miss_refreshes_current_policy_baseline(tmp_pa
     assert allowlist["activeToolCalls"][-1] == ["read"]
 
 
-def test_late_registered_tool_call_refresh_preserves_fast_path_failure_and_manual_guards(tmp_path: Path) -> None:
-    """Refresh-aware tool decisions stay cheap on hit and fail closed on guarded misses."""
+def test_live_tool_call_refresh_fails_closed_without_cached_permission_bypass(tmp_path: Path) -> None:
+    """Registry failures block even previously allowed tools; manual mode still wins."""
 
     fake_cli = tmp_path / "fake-larva-cli.mjs"
     fake_cli.write_text(
@@ -1957,6 +1958,7 @@ def test_late_registered_tool_call_refresh_preserves_fast_path_failure_and_manua
             if (phase === "fail") throw new Error("tool registry unavailable during refresh");
             return ["read", "larva_persona_switch", "larva_personas"];
           }},
+          getActiveTools: async () => activeToolCalls.at(-1) ?? ["read", "larva_persona_switch", "larva_personas"],
           setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
           setModel: async () => true,
           registerCommand: () => undefined,
@@ -1964,6 +1966,8 @@ def test_late_registered_tool_call_refresh_preserves_fast_path_failure_and_manua
           on: () => undefined,
         }};
         await mod.initializeExtension(ctx, pi);
+        const callsAfterInitialize = getAllToolsCalls;
+        const activeAfterInitialize = [...activeToolCalls];
         const committed = await mod.commitPersona("ok", ctx, pi);
         const callsAfterCommit = getAllToolsCalls;
         const activeBefore = activeToolCalls.length;
@@ -1978,6 +1982,8 @@ def test_late_registered_tool_call_refresh_preserves_fast_path_failure_and_manua
           fast,
           failClosed,
           manual,
+          callsAfterInitialize,
+          activeAfterInitialize,
           callsAfterCommit,
           callsAfterFast,
           callsAfterFailure,
@@ -1990,16 +1996,17 @@ def test_late_registered_tool_call_refresh_preserves_fast_path_failure_and_manua
 
     assert result["committed"]["ok"] is True
     assert result["fast"] == {"action": "allow"}
-    assert result["callsAfterCommit"] == 1
-    assert result["callsAfterFast"] == 1
+    assert result["activeAfterInitialize"] == [["read"]], "Manual startup prunes self-switch declarations before a model request"
+    assert result["callsAfterCommit"] == result["callsAfterInitialize"] + 1
+    assert result["callsAfterFast"] == result["callsAfterCommit"] + 1
     assert result["failClosed"]["action"] == "deny"
-    assert result["failClosed"]["error"]["code"] == "LARVA_TOOL_DENIED"
-    assert result["callsAfterFailure"] == 2
+    assert result["failClosed"]["error"]["code"] == "LARVA_TOOL_ENUMERATION_FAILED"
+    assert result["callsAfterFailure"] == result["callsAfterFast"] + 1
     assert result["manual"]["action"] == "deny"
     assert result["manual"]["error"]["code"] == "LARVA_AGENT_PERSONA_SWITCH_MANUAL"
-    assert result["getAllToolsCalls"] == 2
-    assert result["activeToolCalls"] == [["read"]]
-    assert result["activeBefore"] == 1
+    assert result["getAllToolsCalls"] == result["callsAfterFailure"]
+    assert result["activeToolCalls"] == [["read"], ["read"]]
+    assert result["activeBefore"] == 2
 
 
 def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_switch(tmp_path: Path) -> None:
@@ -2234,6 +2241,7 @@ def test_startup_registers_larva_tools_before_policy_baseline_filtering(tmp_path
         }};
         const pi = {{
           getAllTools: async () => [...registeredToolNames, "read", "bash"],
+          getActiveTools: async () => activeToolCalls.at(-1) ?? [...registeredToolNames, "read", "bash"],
           setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
           setModel: async () => true,
           registerCommand: () => undefined,
@@ -2305,6 +2313,7 @@ def test_persona_commit_prevalidates_then_sets_model_before_active_tools(tmp_pat
         }};
         const pi = {{
           getAllTools: async () => {{ calls.push(["getAllTools"]); return ["read", "bash"]; }},
+          getActiveTools: async () => ["read", "bash"],
           setModel: async () => {{ calls.push(["setModel"]); return true; }},
           setActiveTools: async (tools) => {{ calls.push(["setActiveTools", tools]); return true; }},
         }};
@@ -2451,6 +2460,11 @@ def test_subagent_runtime_config_resolves_allowlisted_extension_sources_and_reje
                         "../extensions/required-skill-router",
                         "pi-agent:npm/node_modules/pi-mcp-adapter",
                         "npm:probe-package@1.2.3",
+                        "git:github.com/example/probe@v1",
+                        "https://example.test/probe",
+                        "ssh://git@example.test/probe",
+                        "git://example.test/probe",
+                        "builtin:mcp", "builtin:codemode", "builtin:tool-search",
                 ],
             }
         ),
@@ -2492,6 +2506,11 @@ def test_subagent_runtime_config_resolves_allowlisted_extension_sources_and_reje
             str(relative_extension.resolve()),
             str(installed_package.resolve()),
             "npm:probe-package@1.2.3",
+            "git:github.com/example/probe@v1",
+            "https://example.test/probe",
+            "ssh://git@example.test/probe",
+            "git://example.test/probe",
+            "builtin:mcp", "builtin:codemode", "builtin:tool-search",
         ]
     }
     assert payload["invalid"] == {
@@ -2622,6 +2641,31 @@ def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_ke
     assert payload["result"]["status"] == "failed"
 
 
+def test_subagent_runtime_builtin_sources_are_exact_and_bounded(tmp_path: Path) -> None:
+    cases = [
+        ["builtin:"], ["builtin:llama.cpp"], ["builtin:tool_search"],
+        ["builtin:MCP"], ["builtin:mcp/extra"], ["builtin:codemode-deferred"],
+        [" builtin:mcp"], ["builtin:mcp "], ["builtin:mcp", "builtin:mcp"],
+        ["builtin:" + "x" * 4097], ["npm:example"] * 33,
+    ]
+    config = tmp_path / "subagent-runtime.json"
+    payload = _run_node(tmp_path, f"""
+        import {{ writeFileSync }} from "node:fs";
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{ LARVA_PI_SUBAGENT_CONFIG_FILE: {json.dumps(str(config))} }};
+        const invalid = {json.dumps(cases)}.map((extension_sources) => {{
+          writeFileSync(env.LARVA_PI_SUBAGENT_CONFIG_FILE, JSON.stringify({{ schema_version: 1, extension_sources }}));
+          return mod.loadSubagentRuntimeConfig(env);
+        }});
+        writeFileSync(env.LARVA_PI_SUBAGENT_CONFIG_FILE, JSON.stringify({{ schema_version: 1, extension_sources: ["builtin:mcp", "builtin:codemode", "builtin:tool-search"] }}));
+        const valid = mod.loadSubagentRuntimeConfig(env);
+        console.log(JSON.stringify({{ valid, invalid }}));
+    """)
+    assert payload["valid"]["extension_sources"] == ["builtin:mcp", "builtin:codemode", "builtin:tool-search"]
+    assert len(payload["invalid"]) == len(cases)
+    assert all(result["code"] == "LARVA_SUBAGENT_CONFIG_INVALID" for result in payload["invalid"])
+
+
 def test_subagent_runtime_config_docs_preserve_allowlist_and_tool_policy_boundaries() -> None:
     documents = (
         PI_EXTENSION_README.read_text(encoding="utf-8"),
@@ -2692,6 +2736,7 @@ def test_before_agent_start_refreshes_tools_registered_lazily_by_allowlisted_ext
         }};
         const pi = {{
           getAllTools: async () => [...registeredTools],
+          getActiveTools: async () => [...registeredTools],
           setActiveTools: async (tools) => {{ activeToolCalls.push([...tools]); return true; }},
           setModel: async () => true,
           registerTool: () => undefined,
@@ -2704,7 +2749,7 @@ def test_before_agent_start_refreshes_tools_registered_lazily_by_allowlisted_ext
         const prompt = await mod.before_agent_start({{ systemPrompt: "base" }}, ctx, pi);
         console.log(JSON.stringify({{
           beforeLazyRegistration,
-          afterLazyRegistration: activeToolCalls.at(-1) ?? [],
+          afterLazyRegistration: await pi.getActiveTools(),
           prompt,
         }}));
         """,
@@ -3386,15 +3431,20 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
           const sentRuntimeMessages = [];
           const confirmations = [];
           const selectCalls = [];
+          let liveTools = ["read", "bash", "larva_subagent"];
           const pi = {{
-            getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
-            setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
+            getAllTools: async () => [...new Set(["read", "bash", "larva_subagent", ...Object.keys(tools)])],
+            getActiveTools: async () => [...liveTools],
+            setActiveTools: async (names) => {{ liveTools = [...names]; activeToolCalls.push(names); return true; }},
             setModel: async (...args) => {{ modelCalls.push(args); return true; }},
             registerCommand: (nameOrCommand, maybeOptions) => {{
               if (typeof nameOrCommand === "string") commands[nameOrCommand] = maybeOptions;
               else commands[nameOrCommand.name] = nameOrCommand;
             }},
-            registerTool: (tool) => {{ tools[tool.name] = tool; }},
+            registerTool: (tool) => {{
+              if (!(tool.name in tools)) liveTools = [...new Set([...liveTools, tool.name])];
+              tools[tool.name] = tool;
+            }},
             registerFlag: () => undefined,
             getFlag: (name) => options.flags?.[name],
             on: (event, handler) => {{ handlers[event] = handler; }},
@@ -3426,7 +3476,7 @@ def _run_agent_persona_switch_harness(tmp_path: Path, scenario_body: str) -> dic
             mode: options.omitUi ? "print" : (envOverrides.LARVA_PI_INTERACTIVE_TUI === "0" ? "rpc" : "tui"),
             ui: options.omitUi ? undefined : ui,
             modelRegistry: {{ find: async (...args) => {{ modelCalls.push(["find", ...args]); return options.modelUnavailable ? null : {{ id: "model" }}; }} }},
-            sessionManager: options.omitSession ? undefined : {{ getEntries: () => sessionEntries }},
+            sessionManager: options.omitSession ? undefined : {{ getBranch: () => sessionEntries }},
             appendEntry: options.omitSession ? undefined : (customType, data) => sessionEntries.push({{ type: "custom", customType, data }}),
             session: options.omitSession ? undefined : session,
           }};
@@ -3792,10 +3842,12 @@ def test_active_persona_commit_writes_real_pi_session_manager_custom_entry_behav
         const statuses = [];
         const handlers = {{}};
         const commands = {{}};
+        let liveTools = ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"];
         const pi = {{
           appendEntry: (customType, data) => manager.appendCustomEntry(customType, data),
           getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
-          setActiveTools: async () => true,
+          getActiveTools: async () => [...liveTools],
+          setActiveTools: async (names) => {{ liveTools = [...names]; return true; }},
           setModel: async () => true,
           registerCommand: (nameOrCommand, maybeOptions) => {{
             if (typeof nameOrCommand === "string") commands[nameOrCommand] = maybeOptions;
@@ -3874,6 +3926,7 @@ def test_active_persona_session_restore_from_real_pi_session_manager_reopen_beha
         const pi = {{
           appendEntry: (customType, data) => reopened.appendCustomEntry(customType, data),
           getAllTools: async () => ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
+          getActiveTools: async () => activeToolCalls.at(-1) ?? ["read", "bash", "larva_subagent", "larva_persona_switch", "larva_personas"],
           setActiveTools: async (tools) => {{ activeToolCalls.push(tools); return true; }},
           setModel: async () => true,
           registerCommand: (nameOrCommand, maybeOptions) => {{
@@ -4097,7 +4150,7 @@ def test_agent_persona_switch_noarg_selector_persists_selected_mode_behavior(tmp
           result,
           selectCalls: harness.selectCalls,
           sessionEntries: harness.sessionEntries,
-          activeTools: harness.activeToolCalls.at(-1),
+          activeTools: await harness.pi.getActiveTools(),
           tools: Object.keys(harness.tools),
         }));
         """,

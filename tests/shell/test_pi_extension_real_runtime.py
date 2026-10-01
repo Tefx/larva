@@ -694,6 +694,7 @@ def test_agent_persona_switch_auto_borrow_agent_end_restores_origin_runtime(tmp_
 
         const pi = {{
           getAllTools: async () => ["read", "larva_persona_switch", "larva_personas"],
+          getActiveTools: async () => activeToolCalls.at(-1) ?? ["read", "larva_persona_switch", "larva_personas"],
           setActiveTools: async (activeTools) => {{ activeToolCalls.push(activeTools); return true; }},
           setModel: async () => true,
           registerCommand: () => undefined,
@@ -2099,6 +2100,14 @@ def test_native_pi_acceptance_matrix(scenario: str) -> None:
     payload = _run_native_acceptance(scenario)
     assert payload["scenario"] == scenario
     assert payload["pass"] is True
+
+
+@pytest.mark.skipif(not os.environ.get("PI_BIN"), reason="Select the actual native MCP CLI with PI_BIN")
+def test_native_mcp_permissions_discovery_and_actual_child() -> None:
+    payload = _run_native_acceptance("native-mcp")
+    assert payload["pass"] is True
+    assert payload["cleanup"]["liveChildren"] == []
+    assert payload["cleanup"]["capsules"] == []
 
 
 def test_native_tui_mode_observer_records_ctx_mode() -> None:

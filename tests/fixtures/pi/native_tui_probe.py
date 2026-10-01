@@ -3,7 +3,7 @@
 purpose: selector/shortcut/completion/mentions/console cancellation and theme persistence
 usage: python native_tui_probe.py NODE CLI CONTROL (scratch env supplied by Node driver)
 effects: one owned PTY process group at a time; scratch snapshots and terminal log
-requires: macOS PTY, Pi 0.85.1; deterministic loopback held-child provider
+requires: macOS PTY, native Pi; deterministic loopback held-child provider
 """
 from __future__ import annotations
 
@@ -147,6 +147,8 @@ def journey() -> dict:
         terminal.visible("Larva persona active: ok")
         terminal.command("/larva-mode confirm")
         terminal.command("/audit-model manual high")
+        before_borrow = terminal.snapshot()
+        assert {"read", "bash", "edit", "write"} <= set(before_borrow["activeTools"])
         settled_before = len(terminal.rows("settled"))
         offset = len(terminal.output)
         terminal.command("NATIVE_TUI_BORROW")
@@ -158,7 +160,11 @@ def journey() -> dict:
         assert confirmed["model"]["id"] == "manual"
         assert confirmed["thinking"] == "high"
         assert [e for e in confirmed["entries"] if e.get("customType") == "larva-active-persona-commit"][-1]["data"]["persona_id"] == "ok"
-        result["confirmation"] = {"fourChoicesRendered": True, "borrowOnceSelected": True, "originModelRestored": "manual", "originThinkingRestored": "high"}
+        borrowed_tools = terminal.rows("switch_loadout")[-1]["value"]["activeTools"]
+        assert "read" in borrowed_tools
+        assert not {"bash", "edit", "write"} & set(borrowed_tools)
+        assert {"read", "bash", "edit", "write"} <= set(confirmed["activeTools"])
+        result["confirmation"] = {"fourChoicesRendered": True, "borrowOnceSelected": True, "originModelRestored": "manual", "originThinkingRestored": "high", "borrowedTools": borrowed_tools, "restoredTools": confirmed["activeTools"]}
         # Native theme API persists into the same base settings directory.
         terminal.command("/audit-theme light")
         terminal.wait(lambda: terminal.rows("theme"), "theme API")

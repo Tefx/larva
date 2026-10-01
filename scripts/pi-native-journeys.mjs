@@ -7,7 +7,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { mkdir, readFile, writeFile, stat, copyFile, symlink, utimes, rm, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { ROOT, CLI, CONTROL, createNativeFixture, NativeRpc, jsonLines, directory, alive, execute } from "./pi-native-support.mjs";
+import { ROOT, CLI, PI_VERSION, CONTROL, createNativeFixture, NativeRpc, jsonLines, directory, alive, execute } from "./pi-native-support.mjs";
 const text = (payload) => payload.messages?.map((m) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n") ?? "";
 const toolResults = (frames, name) => frames.filter((f) => f.type === "tool_execution_end" && f.toolName === name).map((f) => f.result?.details ?? f.result);
 const commits = (snapshot) => snapshot.value.entries.filter((e) => e.customType === "larva-active-persona-commit");
@@ -644,6 +644,9 @@ async function runConsumers(f, evidence) {
 }
 
 async function runTui(f, evidence) {
+  const policy = join(f.root, "tui-tool-policy.json");
+  await writeFile(policy, JSON.stringify({ personas: { child: { allow: ["read", "larva_persona_switch", "larva_personas"] } } }));
+  f.env.LARVA_PI_TOOL_POLICY_FILE = policy;
   let emitted = false, borrowed = false;
   f.respond = (payload) => {
     const system = JSON.stringify(payload.messages?.filter((m) => m.role === "system" || m.role === "developer")) ?? "";
@@ -664,11 +667,290 @@ async function runTui(f, evidence) {
   for (const key of ["defaultProvider", "defaultModel", "defaultThinkingLevel"]) assert.equal(settings[key], f.settings[key]);
 }
 
+async function runMcp(f, evidence) {
+  // Native transport and native nested dispatch; the loopback provider only
+  // supplies deterministic calls. It never models or judges the expected result.
+  const builtin = ["builtin:mcp", "builtin:codemode", "builtin:tool-search"];
+  const entry = join(ROOT, "contrib/pi-extension/larva.ts");
+  const log = join(f.root, "mcp-effects.jsonl");
+  const prefix = "mcp__fixture__";
+  const name = (tool) => prefix + tool;
+  const config = { mcpServers: { fixture: { command: process.execPath, args: [join(ROOT, "tests/fixtures/pi/native-mcp-server.mjs"), log, "250"], exposure: "codemode", toolExposure: { direct: "direct", disabled: "direct", denied_direct: "direct", deferred: "deferred", denied_deferred: "deferred", hidden: "hidden", mutate: "direct", dynamic: "deferred" } } } };
+  await writeFile(join(f.agent, "mcp.json"), JSON.stringify(config));
+  const policyFile = join(f.root, "tool-policy.json");
+  const deniedNames = ["denied_direct", "denied_deferred", "denied_scripted"].map(name);
+  const policies = { ok: { deny: deniedNames }, child: { deny: deniedNames }, startup: { allow: ["read", "codemode", "tool_search", name("direct"), "unknown_tool"], deny: [name("direct")] } };
+  await writeFile(policyFile, JSON.stringify({ personas: policies }));
+  const env = { ...f.env, NATIVE_MCP_TEST: "1", LARVA_PI_TOOL_POLICY_FILE: policyFile, FAKE_LARVA_MODEL_startup: "openai/gpt-5.5" };
+  await writeFile(join(f.root, "subagent-runtime.json"), JSON.stringify({ schema_version: 1, extension_sources: [...builtin, join(ROOT, "tests/fixtures/pi/native-child-observer.ts")] }));
+  f.controlLast = true;
+  const nativeArgs = ["--no-extensions", ...builtin.flatMap((source) => ["-e", source]), "-e", entry];
+  let p = new NativeRpc(f, nativeArgs, env);
+  await p.command("get_state");
+  await p.command("prompt", { message: `/audit-wait-tool ${name("direct")}` });
+  f.respond = () => ({ text: "Native baseline." });
+  await p.prompt("branch before persona authority");
+  const initial = await p.snapshot();
+  const bareLeaf = initial.value.branch.at(-1).id;
+  const active = () => p.snapshot().then((s) => s.value.activeTools);
+  const activate = (tools) => p.command("prompt", { message: `/audit-tools ${JSON.stringify(tools)}` });
+  // An explicit Pi selection is the declaration baseline, never all registered.
+  await activate((await active()).filter((tool) => tool !== name("disabled")));
+  await p.command("prompt", { message: "/larva-persona ok" });
+  const invoke = async (calls, label = "native MCP call") => {
+    let next = 0;
+    const from = f.requests.length;
+    f.respond = () => next < calls.length ? { tools: [calls[next++]] } : { text: "Native operations observed." };
+    const frames = await p.prompt(label, 25000);
+    return { frames, requests: f.requests.slice(from), results: frames.filter((frame) => frame.type === "tool_execution_end") };
+  };
+  const declarations = (request) => request.payload.tools?.map((tool) => tool.function.name) ?? [];
+  const effects = async () => (await jsonLines(log)).filter((row) => row.event === "effect");
+  const script = (tool, value = "nested") => ({ name: "codemode", args: { code: `text(await tools.${tool}(${JSON.stringify(tool.startsWith("native_") ? {} : { value })}));` } });
+  const focusResume = process.env.NATIVE_MCP_FOCUS_RESUME === "1";
+  let turn, loadout;
+  if (!focusResume) {
+  const engineerBefore = declarations((await invoke([])).requests[0]);
+  for (const tool of ["bash", "edit", "write"]) assert.ok(engineerBefore.includes(tool));
+  await p.command("prompt", { message: "/larva-persona startup" });
+  const readonly = declarations((await invoke([])).requests[0]);
+  for (const tool of ["bash", "edit", "write"]) assert.ok(!readonly.includes(tool));
+  const maskedBefore = await p.snapshot();
+  await activate(maskedBefore.value.activeTools); // native no-op: write is already masked
+  const maskedAfter = await p.snapshot();
+  assert.deepEqual(maskedAfter.value.activeTools, maskedBefore.value.activeTools);
+  assert.equal(maskedAfter.value.entries.length, maskedBefore.value.entries.length, "Pi records no separate intent when an already inactive masked tool is disabled again");
+  evidence.maskedDisableObservability = { sameActiveSet: true, nativeEntriesAdded: 0 };
+  await p.command("prompt", { message: "/larva-persona ok" });
+  const engineerRestored = declarations((await invoke([])).requests[0]);
+  for (const tool of ["bash", "edit", "write"]) assert.ok(engineerRestored.includes(tool));
+  assert.ok(!engineerRestored.includes(name("scripted")) && !engineerRestored.includes(name("deferred")));
+  assert.ok(!engineerRestored.includes(name("disabled")));
+  await activate((await active()).filter((tool) => tool !== "write"));
+  await p.command("prompt", { message: "/larva-persona startup" });
+  await p.command("prompt", { message: "/larva-persona ok" });
+  const userDisabled = declarations((await invoke([])).requests[0]);
+  assert.ok(!userDisabled.includes("write"));
+  assert.ok(userDisabled.includes("bash") && userDisabled.includes("edit"));
+  await activate([...await active(), "write"]);
+  evidence.roleRoundtrip = { engineerBefore, readonly, engineerRestored, preDisabledWriteRemainsDisabled: userDisabled };
+  const beforeFailedSwitch = await p.snapshot();
+  await p.command("prompt", { message: "/larva-persona bad" });
+  const afterFailedSwitch = await p.snapshot();
+  assert.deepEqual(afterFailedSwitch.value.activeTools, beforeFailedSwitch.value.activeTools);
+  assert.deepEqual(afterFailedSwitch.value.entries.filter((e) => e.customType === "larva-active-persona-commit"), beforeFailedSwitch.value.entries.filter((e) => e.customType === "larva-active-persona-commit"));
+  const failedSwitchProbe = await invoke([script(name("denied_scripted"))]);
+  assert.ok(JSON.stringify(failedSwitchProbe.results).includes("LARVA_TOOL_DENIED"));
+  assert.ok(text(failedSwitchProbe.requests[0].payload).includes("You are fake persona ok."));
+  evidence.failedSwitch = { originalDeclarationsAndCommitPreserved: true, originPolicyAndInstructionsRemainEffective: true };
+  turn = await invoke([{ name: name("direct"), args: { value: "direct" } }]);
+  loadout = declarations(turn.requests[0]);
+  for (const absent of ["disabled", "deferred", "scripted", "hidden", ...deniedNames.map((n) => n.slice(prefix.length))]) assert.ok(!loadout.includes(name(absent)), `Unexpected bulk activation ${absent}`);
+  assert.ok(loadout.includes(name("direct")) && loadout.includes("codemode") && loadout.includes("tool_search"));
+  assert.equal((await effects()).at(-1).name, "direct");
+  turn = await invoke([script(name("scripted")), script(name("deferred")), script("native_codemode"), script("native_deferred")]);
+  assert.ok(turn.results.every((result) => !result.isError), JSON.stringify(turn.results));
+  assert.ok(!declarations(turn.requests[0]).includes(name("scripted")), "Allowed undeclared nested tool stays undeclared");
+  const resourceCalls = [
+    { name: "codemode", args: { code: 'text(await tools.list_mcp_resources({server:"fixture"}));' } },
+    { name: "codemode", args: { code: 'text(await tools.list_mcp_resource_templates({server:"fixture"}));' } },
+    { name: "codemode", args: { code: 'text(await tools.read_mcp_resource({server:"fixture",uri:"fixture://text"}));' } },
+  ];
+  turn = await invoke(resourceCalls);
+  assert.ok(turn.results.every((result) => !result.isError));
+  assert.equal((await jsonLines(log)).filter((row) => row.event === "resource_effect").length, 1);
+  turn = await invoke([{ name: "tool_search", args: { query: "mcp__fixture__deferred", limit: 1 } }, { name: name("deferred"), args: { value: "search-loaded" } }]);
+  assert.ok(declarations(turn.requests[1]).includes(name("deferred")), "Real provider declaration must change after search");
+  assert.equal((await effects()).at(-1).name, "deferred");
+  await p.command("prompt", { message: "/larva-persona startup" });
+  assert.ok(!(await active()).includes(name("deferred")));
+  await p.command("prompt", { message: "/larva-persona ok" });
+  const loadedRestored = declarations((await invoke([])).requests[0]);
+  assert.ok(loadedRestored.includes(name("deferred")), "Only the previously search-loaded deferred declaration returns");
+  assert.ok(!loadedRestored.includes(name("scripted")), "Unloaded deferred/codemode stays undeclared");
+  evidence.loadedDeferredRoundtrip = loadedRestored;
+  await activate([...await active(), "native_force_nested"]);
+  const beforeDenied = (await effects()).length;
+  for (const denied of deniedNames) {
+    // Direct denied target is forcibly active at tool_call time, distinguishing
+    // Larva's gate from Pi's unavailable-tool check before its pipeline.
+    let next = 0;
+    const from = p.frames.length;
+    await p.command("prompt", { message: `/audit-force-tool ${denied}` });
+    f.respond = () => next++ === 0 ? { tools: [{ name: denied, args: {} }] } : { text: "Denied target observed." };
+    await p.prompt("force denied active target", 25000);
+    assert.ok(JSON.stringify(p.frames.slice(from)).includes(`LARVA_TOOL_DENIED: Larva policy denied ${denied}`));
+    turn = await invoke([denied.endsWith("denied_direct")
+      ? { name: "codemode", args: { code: `text(await tools.native_force_nested({ target: ${JSON.stringify(denied)} }));` } }
+      : script(denied)]);
+    assert.ok(JSON.stringify(turn.results).includes(`LARVA_TOOL_DENIED: Larva policy denied ${denied}`), JSON.stringify(turn.results));
+  }
+  turn = await invoke([{ name: "tool_search", args: { query: name("denied_deferred"), limit: 1 } }, { name: name("denied_deferred"), args: {} }]);
+  assert.ok(!declarations(turn.requests[1]).includes(name("denied_deferred")), "Search cannot leave denied tools declared");
+  assert.equal((await effects()).length, beforeDenied, "Denied paths must never reach MCP server effects");
+  evidence.denied = { paths: "forced-active direct and nested for each exact denied target; search pruned", serverEffects: 0 };
+  await activate([...await active(), "native_model_only", name("hidden")]);
+  const beforeHidden = (await effects()).length;
+  turn = await invoke([script(name("hidden")), script("native_hidden"), script("native_model_only"), script("tool_search"), script(name("disabled"))]);
+  assert.ok(turn.results.every((result) => result.isError), "Native hidden/model-only/inactive-direct nested restrictions");
+  assert.equal((await effects()).length, beforeHidden);
+  // Missing allow admits known tools; explicit empty allow denies every call.
+  await p.command("prompt", { message: "/larva-persona startup" });
+  turn = await invoke([script(name("direct"))]);
+  assert.ok(JSON.stringify(turn.results).includes("not a function") || JSON.stringify(turn.results).includes("not found"), "Inactive direct target remains native-unavailable");
+  await activate([...await active(), name("direct")]);
+  let priority = true;
+  await p.command("prompt", { message: `/audit-force-tool ${name("direct")}` });
+  f.respond = () => priority ? (priority = false, { tools: [{ name: name("direct"), args: {} }] }) : { text: "Deny priority observed." };
+  const priorityFrom = p.frames.length;
+  await p.prompt("deny wins over the same allow entry");
+  assert.ok(JSON.stringify(p.frames.slice(priorityFrom)).includes(`LARVA_TOOL_DENIED: Larva policy denied ${name("direct")}`));
+  turn = await invoke([script(name("deferred"))]);
+  assert.ok(JSON.stringify(turn.results).includes("LARVA_TOOL_DENIED"));
+  turn = await invoke([resourceCalls[2]]);
+  assert.ok(JSON.stringify(turn.results).includes("LARVA_TOOL_DENIED: Larva policy denied read_mcp_resource"));
+  assert.equal((await jsonLines(log)).filter((row) => row.event === "resource_effect").length, 1, "Resource permission is a separate exact tool name");
+  policies.startup = { allow: [] };
+  await writeFile(policyFile, JSON.stringify({ personas: policies }));
+  await p.command("prompt", { message: "/larva-persona startup" });
+  let once = true;
+  await p.command("prompt", { message: `/audit-force-tool ${name("direct")}` });
+  f.respond = () => once ? (once = false, { tools: [{ name: name("direct"), args: {} }] }) : { text: "Empty allow observed." };
+  const emptyFrom = p.frames.length;
+  await p.prompt("empty allow forced call");
+  assert.ok(JSON.stringify(p.frames.slice(emptyFrom)).includes("LARVA_TOOL_DENIED"));
+  await p.command("prompt", { message: "/larva-persona ok" });
+  // Restore declarations Larva masked, never an unloaded allowed registry.
+  assert.ok((await active()).includes(name("direct")));
+  assert.ok(!(await active()).includes(name("scripted")));
+  await activate(["codemode", "tool_search", name("direct"), name("mutate"), "larva_persona_switch", "larva_personas", "larva_subagent"]);
+  for (const [value, exposure] of [["add", "deferred"], ["withdraw", "hidden"], ["return", "deferred"]]) {
+    await invoke([{ name: name("mutate"), args: { value } }]);
+    await p.command("prompt", { message: `/audit-wait-tool ${name("dynamic")} ${exposure}` });
+    const count = (await effects()).length;
+    turn = await invoke([script(name("dynamic"))]);
+    assert.equal((await effects()).length, count + (exposure === "hidden" ? 0 : 1));
+    assert.ok(!declarations(turn.requests[0]).includes(name("dynamic")));
+  }
+  await p.command("prompt", { message: "/larva-mode auto" });
+  turn = await invoke([{ name: "larva_persona_switch", args: { persona_id: "child", reason: "Native borrow and restore", continue_task: false } }, script(name("scripted"))]);
+  assert.ok(turn.results.some((result) => result.result?.details?.committed));
+  assert.ok((await p.snapshot()).value.branch.some((e) => e.customType === "larva-active-persona-commit" && e.data.persona_id === "ok"));
+  await p.command("prompt", { message: "/larva-mode manual" });
+  assert.ok(!(await active()).includes("larva_persona_switch"));
+  await p.command("prompt", { message: "/larva-mode free" });
+  assert.ok((await active()).includes("larva_persona_switch"), "manual -> free must restore Larva-owned tools only");
+  assert.ok(!(await active()).includes(name("disabled")));
+  } else {
+    // Focused reproduction: an origin declaration is masked by a readonly
+    // borrow, restored, then forked/resumed while MCP reconnects asynchronously.
+    policies.child = { allow: ["read", "codemode", "tool_search", name("scripted")] };
+    await writeFile(policyFile, JSON.stringify({ personas: policies }));
+    turn = await invoke([{ name: "tool_search", args: { query: name("deferred"), limit: 1 } }, script(name("deferred"), "focused-load")]);
+    assert.ok(turn.results.every((result) => !result.isError));
+    await p.command("prompt", { message: "/larva-mode auto" });
+    turn = await invoke([{ name: "larva_persona_switch", args: { persona_id: "child", reason: "Focused borrow restoration", continue_task: false } }]);
+    assert.ok(turn.results.some((result) => result.result?.details?.committed));
+    const borrowed = (await jsonLines(join(f.root, "observations.jsonl"))).filter((row) => row.event === "switch_loadout").at(-1).value.activeTools;
+    assert.ok(!borrowed.some((tool) => ["bash", "edit", "write", name("deferred")].includes(tool)));
+    turn = await invoke([], "focused origin restored");
+    loadout = declarations(turn.requests[0]);
+    for (const tool of ["read", "bash", "edit", "write", name("deferred")]) assert.ok(loadout.includes(tool));
+    assert.ok(!loadout.includes(name("disabled")) && !loadout.includes(name("scripted")));
+    evidence.borrowRestoration = { borrowed, restored: loadout };
+  }
+  const branch = await p.snapshot();
+  const personaLeaf = branch.value.branch.at(-1).id;
+  const branchTools = branch.value.activeTools;
+  if (!focusResume) {
+  policies.startup = { allow: ["read", "codemode", "tool_search"] };
+  await writeFile(policyFile, JSON.stringify({ personas: policies }));
+  await p.command("prompt", { message: "/larva-persona startup" });
+  await invoke([]);
+  const readonlyLeaf = (await p.snapshot()).value.branch.at(-1).id;
+  await p.command("prompt", { message: `/audit-tree ${personaLeaf}` });
+  assert.ok((await active()).includes(name("direct")), "Tree must restore the engineer branch's selection and permission");
+  await p.command("prompt", { message: `/audit-tree ${readonlyLeaf}` });
+  assert.ok(!(await active()).includes(name("direct")), "Unrelated branch must not inherit engineer declaration grants");
+  await p.command("prompt", { message: `/audit-tree ${bareLeaf}` });
+  f.respond = () => ({ text: "Branch without persona restored." });
+  await p.prompt("inspect cleared branch");
+  assert.ok(!JSON.stringify(f.requests.at(-1).payload).includes("You are fake persona ok."));
+  await p.command("prompt", { message: `/audit-tree ${personaLeaf}` });
+  await p.prompt("inspect persona branch restored");
+  assert.ok(JSON.stringify(f.requests.at(-1).payload).includes("You are fake persona ok."));
+  await p.command("prompt", { message: "/audit-reload" });
+  await p.prompt("after native reload");
+  assert.ok(JSON.stringify(f.requests.at(-1).payload).includes("You are fake persona ok."));
+  assert.ok(branchTools.every((tool) => (f.requests.at(-1).payload.tools ?? []).some((t) => t.function.name === tool)), "Reload preserves branch declarations through delayed MCP registration");
+  }
+  await p.command("prompt", { message: "/audit-fork" });
+  await p.prompt("after native fork");
+  const forked = await p.snapshot();
+  assert.ok(forked.value.session !== branch.value.session);
+  await p.stop();
+  p = new NativeRpc(f, [...nativeArgs, "--session", forked.value.session], env);
+  await p.command("get_state");
+  await p.prompt("after native resume");
+  assert.ok(JSON.stringify(f.requests.at(-1).payload).includes("You are fake persona ok."));
+  assert.ok(declarations(f.requests.at(-1)).includes(name("direct")));
+  assert.ok(!declarations(f.requests.at(-1)).includes(name("scripted")));
+  assert.ok(!declarations(f.requests.at(-1)).includes(name("disabled")), "Native branch restoration also preserves the pre-disabled direct tool");
+  if (focusResume) {
+    assert.ok(declarations(f.requests.at(-1)).includes(name("deferred")), "The previously loaded declaration survives delayed registration after resume");
+    for (const tool of ["bash", "edit", "write"]) assert.ok(declarations(f.requests.at(-1)).includes(tool));
+  }
+  evidence.branchRestoration = { ...(!focusResume ? { currentBranchOnly: true, reload: true } : {}), fork: true, resume: true };
+  if (!focusResume) {
+  // Pi's codemode-only projection owns declaration hiding, even for active direct tools.
+  f.settings.codemode = { mode: "only" };
+  await writeFile(join(f.agent, "settings.json"), JSON.stringify(f.settings));
+  await p.command("prompt", { message: "/audit-reload" });
+  turn = await invoke([script(name("direct"))]);
+  assert.ok(!declarations(turn.requests[0]).includes(name("direct")));
+  assert.ok(declarations(turn.requests[0]).includes("codemode"));
+  }
+  // Actual child uses the exact native trio, inherited isolated mcp.json, same
+  // Pi package/bin and the common Larva tool_call gate, not a fabricated receipt.
+  let parentIssued = false, childIssued = 0;
+  const from = p.frames.length;
+  f.respond = (payload) => {
+    if (text(payload).includes("NATIVE_MCP_CHILD") && !text(payload).includes("native-mcp-parent")) {
+      if (childIssued++ === 0) return { tools: [script(name("scripted"), "actual-child")] };
+      if (childIssued === 2) return { tools: [script(name("denied_scripted"), "child-denied")] };
+      return { text: "Actual child MCP completed." };
+    }
+    if (!parentIssued) { parentIssued = true; return { tools: [{ name: "codemode", args: { code: 'text(await tools.larva_subagent({ persona_id: "child", task: "NATIVE_MCP_CHILD" }));' } }] }; }
+    return { text: "Parent child observation." };
+  };
+  // codemode-only hides declaration but larva_subagent is still active/direct;
+  // use it from codemode so the native provider respects its declaration.
+  await p.prompt("native-mcp-parent", 25000);
+  const receipt = toolResults(p.frames.slice(from), "larva_subagent")[0];
+  assert.equal(receipt?.status, "accepted", JSON.stringify(receipt));
+  const callback = await waitCallback(p, from, receipt.task_id, 25000);
+  assert.equal(callback.status, "success");
+  await cleanChildren(f);
+  const logs = await jsonLines(log);
+  assert.ok(logs.some((row) => row.event === "effect" && row.args.value === "actual-child"));
+  assert.ok(!logs.some((row) => row.event === "effect" && row.name.startsWith("denied_")));
+  const childRequests = f.requests.filter((request) => text(request.payload).includes("NATIVE_MCP_CHILD") && !text(request.payload).includes("native-mcp-parent"));
+  assert.ok(childRequests.some((request) => text(request.payload).includes("LARVA_TOOL_DENIED: Larva policy denied mcp__fixture__denied_scripted")));
+  assert.ok(!declarations(childRequests[0]).includes(name("scripted")) && !declarations(childRequests[0]).includes(name("denied_scripted")));
+  const child = (await jsonLines(join(f.root, "children.jsonl"))).find((row) => row.event === "before_prompt");
+  assert.ok(builtin.every((source) => child.argv.includes(source)));
+  assert.ok(child.argv.includes(CLI));
+  evidence.mcp = { handshakePids: [...new Set(logs.filter((row) => row.event === "initialize").map((row) => row.pid))], effects: logs.filter((row) => row.event === "effect"), initialDeclarations: loadout, nativeNestedGate: (await jsonLines(join(f.root, "observations.jsonl"))).filter((row) => row.event === "gate_call" && row.value.parentToolCallId), child: { task: receipt.task_id, status: callback.status, argv: child.argv } };
+  await p.stop();
+  assert.ok(evidence.mcp.handshakePids.every((pid) => !alive(pid)), "Native shutdown must reap every owned MCP server, including reload/child connections");
+}
+
 export async function runJourney(scenario) {
   const f = await createNativeFixture();
-  const evidence = { scenario, modality: "actual native CLI + normal package loader + loopback provider", node: process.version, cli: CLI };
+  const evidence = { scenario, modality: "actual native CLI + normal package loader + loopback provider", node: process.version, piVersion: PI_VERSION, cli: CLI };
   try {
-    if (scenario === "state") await runState(f, evidence);
+    if (scenario === "mcp") await runMcp(f, evidence);
+    else if (scenario === "state") await runState(f, evidence);
     else if (scenario === "children") await runChildren(f, evidence);
     else if (scenario === "invocation") await runInvocation(f, evidence);
     else if (scenario === "environment") await runEnvironment(f, evidence);
@@ -687,6 +969,7 @@ export async function runJourney(scenario) {
     evidence.pass = true;
   } catch (error) { evidence.pass = false; evidence.error = error.stack; }
   finally {
+    if (scenario === "mcp") evidence.mcpOperations = await jsonLines(join(f.root, "mcp-effects.jsonl"));
     evidence.observations = await jsonLines(join(f.root, "observations.jsonl"));
     evidence.requests = f.requests;
     evidence.stderr = f.parents.map((p) => p.stderr);
