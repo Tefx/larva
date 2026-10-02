@@ -146015,11 +146015,11 @@ phases:
       remaining acceptance gaps; worktree cleanup follows after lifecycle reconciliation.'
 - id: release_0_8_3
   name: Publish Larva 0.8.3 and verify PyPI uvx delivery
-  status: in_progress
+  status: done
   steps:
   - id: release-0-8-3.publish-and-verify
     name: Prepare, publish and verify Larva 0.8.3
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - uv.lock\n    - src/larva/__init__.py\n\
       \    - .github/workflows/publish.yml\n    - scripts/mcp-release-smoke.py\n \
@@ -146095,3 +146095,28 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-02T02:50:21.302579Z'
+    done_at: '2026-10-02T03:07:11.588723+00:00'
+    evidence: 'Accepted release 0.8.3, exact owner devops-engineer. Changed only pyproject.toml,
+      uv.lock, src/larva/__init__.py version metadata; candidate 5f6defcefdb79b21b92ec081018729e28b2bbffb
+      integrated by fast-forward and published as v0.8.3. GitHub https://github.com/Tefx/larva/releases/tag/v0.8.3
+      published/not draft; matching Actions https://github.com/Tefx/larva/actions/runs/36958238121
+      exact headSha completed success, build + actual isolated wheel MCP smoke (Larva0.8.3/MCP1.30.0/13
+      tools) + trusted PyPI publish success. PyPI larva0.8.3 wheel/sdist observed.
+      Actual local command uvx --no-cache --default-index https://pypi.org/simple
+      --from larva==0.8.3 python -c ''<metadata/package-version assertions and subprocess
+      larva --help>'' downloaded 37 packages, asserted distribution/package0.8.3 and
+      CLI exit0; full exact command in artifacts/release-0.8.3/publication-summary.txt,
+      original output pypi-uvx-retry.log. Initial propagation miss retained; new simple-index
+      files observed before successful retry, no republish. Preparation uv lock --check,
+      focused invar guard src/larva/__init__.py, uv build, source/lock/wheel/sdist
+      version+entrypoint assertions, git diff --check passed; unchanged native proof
+      reused, no broad matrix rerun. Gaps: full commit-hook Invar failed missing fastapi
+      and was skipped for commit after focused pass; prior platformdirs.pytest_plugin/dependency-layout
+      baseline gaps remain, no full-suite claim. Parent independently read back release
+      and matching Actions; Orchestrator inspected publication summary and actual
+      smoke evidence. All effects reconciled, child terminal/no descendants, no unresolved
+      publication effects. uvx disposable environment and preparation builds removed.
+      Retain compact unique observations in artifacts/release-0.8.3 and prior artifacts/native-mcp;
+      release worktree has no remaining runtime consumer and is eligible for immediate
+      post-completion deletion. Published tag stays immutable; later main commit records
+      Plan completion only.'
