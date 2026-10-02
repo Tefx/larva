@@ -20,9 +20,15 @@ context: 'Deliver the accepted native-only Pi integration and bounded read-only 
   be diagnosed and corrected within the authorized repository boundary. Actual user
   installation/cutover, release/publish, Pi source changes, registry/schema changes,
   real credentials and external-model requests remain excluded. Completed Plan history
-  is immutable.'
-project_guidance: The accepted native-only integration behavior is described in design/pi-native-extension.md,
-  subject to the current user's Larva-independence and functional-testing decisions.
+  is immutable. Current explicit release authorization: phase release_0_8_3 may prepare
+  version 0.8.3, commit and push to Tefx/larva, create tag v0.8.3 and publish its
+  GitHub Release, use the existing Actions trusted-publishing workflow for PyPI project
+  larva, and verify local uvx retrieval from PyPI. Existing authentication may be
+  used without exposing secrets; unrelated host/global configuration, new credentials,
+  paid models and other targets remain excluded. This scoped authorization supersedes
+  earlier release/publish exclusions only for this release.'
+project_guidance: 'The accepted native-only integration behavior is described in design/pi-native-extension.md,
+  subject to the current user''s Larva-independence and functional-testing decisions.
   Larva-local contracts govern current validation; Opifex is neither an authority
   nor a required checkout or schema source. Remove contradictory active repository
   guidance and upstream references without changing existing PersonaSpec meaning,
@@ -40,13 +46,23 @@ project_guidance: The accepted native-only integration behavior is described in 
   reject a runtime by version, add compatibility probes/matrices or adapt speculatively.
   Remove exact global Pi 0.85.1 gates while preserving actual native functional observations;
   committed local dependency locks remain reproducible build inputs, without imposing
-  their version on the user's installed Pi. Record versions only as evidence context.
+  their version on the user''s installed Pi. Record versions only as evidence context.
   Invar Core/Shell rules apply. Source tokens, documentation phrases and coached fixture
   outputs are not behavioral proof. Real loader, runtime, TUI and persistence claims
   require matching observations; credential-free loopback proves protocol/state transitions
   only. Reuse applicable unchanged observations and execute changed or missing meaningful
   proof, with required fresh Invar. Completed evidence and historical design references
-  do not create new pending obligations.
+  do not create new pending obligations. Current explicit release authorization: phase
+  release_0_8_3 may prepare version 0.8.3, commit and push to Tefx/larva, create tag
+  v0.8.3 and publish its GitHub Release, use the existing Actions trusted-publishing
+  workflow for PyPI project larva, and verify local uvx retrieval from PyPI. Existing
+  authentication may be used without exposing secrets; unrelated host/global configuration,
+  new credentials, paid models and other targets remain excluded. This scoped authorization
+  supersedes earlier release/publish exclusions only for this release. Release verification
+  remains focused: reuse applicable prior native MCP and focused Invar evidence, preserve
+  the known full-Invar environment failure as a gap, and do not rerun broad native
+  matrices or add defensive test scope. Apply project Invar to relevant source changes
+  without treating unrelated baseline failures as green.'
 clipboard:
   author: vectl-orchestrator
   summary: User revoked pi-nunc notification; finish Plan and report locally
@@ -145997,3 +146013,83 @@ phases:
       XML/log observations,HANDOFF.md. Original worktree evidence paths superseded
       by retained basenames; duplicate logs/builds/probes eligible for cleanup. No
       remaining acceptance gaps; worktree cleanup follows after lifecycle reconciliation.'
+- id: release_0_8_3
+  name: Publish Larva 0.8.3 and verify PyPI uvx delivery
+  status: pending
+  steps:
+  - id: release-0-8-3.publish-and-verify
+    name: Prepare, publish and verify Larva 0.8.3
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - pyproject.toml\n    - uv.lock\n    - src/larva/__init__.py\n\
+      \    - .github/workflows/publish.yml\n    - scripts/mcp-release-smoke.py\n \
+      \ blocked_paths:\n    - plan.yaml\n    - .vectl/**\nDeliver: Version 0.8.3 of\
+      \ the current accepted Larva candidate as GitHub published release v0.8.3, successful\
+      \ existing Actions publication to PyPI project larva, and observed local uvx\
+      \ retrieval of that exact PyPI distribution plus working CLI entrypoint. Include\
+      \ concise release notes explaining the native MCP/tool-restoration changes.\
+      \ User explicitly requests one cohesive release step, including only necessary\
+      \ version/lock preparation, commit/push/tag/release, publication wait, verification\
+      \ and cleanup; no independent code-feature delivery, test ladder or gate node.\
+      \ Orchestrator owns the final release acceptance decision from returned evidence.\n\
+      Boundary: devops-engineer owns authorized release preparation and effects in\
+      \ /Users/tefx/Projects/larva, Git remote https://github.com/Tefx/larva.git (main),\
+      \ GitHub Tefx/larva releases and Actions, PyPI project larva through the existing\
+      \ publish workflow, and disposable local uvx verification. Use existing authentication\
+      \ opaquely; no secret export, new accounts, global/user configuration or installation\
+      \ changes, paid model requests, unrelated targets, forced push, tag rewriting\
+      \ or blind republishing. Preserve unrelated retained evidence and all completed\
+      \ Plan history. An extra worktree is not required merely for a version bump.\
+      \ Keep repository preparation reversible until publication; external tag/release/PyPI\
+      \ effects require readback and forward-recovery reconciliation and are never\
+      \ treated as undone by reverting a commit.\nAdmit: Inspect current version and\
+      \ remote release/tag/PyPI state before writes; reconcile collisions or prior\
+      \ effects before proceeding. Determine canonical distribution and exposed version\
+      \ consumers with the smallest check: pyproject metadata currently supplies the\
+      \ distribution version and package __version__ carries an explicit sync contract.\
+      \ Update only necessary release metadata/lock and version consumers; no product\
+      \ redesign. Use tracked existing workflow and smoke producer, not new release\
+      \ infrastructure. The GitHub release published event triggers Python 3.12 build,\
+      \ wheel MCP smoke, then trusted publication; reuse its successful artifact checks\
+      \ rather than duplicate MCP behavioral tests. Bind release/tag/workflow to the\
+      \ committed candidate; do not publish local uncommitted bytes.\nRecovery: On\
+      \ failure, inspect workflow and remote state, identify completed effects and\
+      \ retain minimum useful diagnostics before retry. Bounded Actions watch/checkpoints\
+      \ may wait for publication and PyPI availability; no shell sleep polling loops.\
+      \ A bounded observer timeout leaves this step unfinished and resumable, never\
+      \ accepted before real uvx retrieval. Retry only after a changed input or verified\
+      \ transient recovery; no manual upload or workflow bypass without reconciling\
+      \ the existing workflow gap and applicable authority. Stop on unresolved target/version/effect\
+      \ state and report it. Clean only owned disposable release outputs after their\
+      \ consumer ends; retain minimal unique observations and do not delete prior\
+      \ native evidence indiscriminately."
+    verification: 'Completion proof: record release commit/tag and published GitHub
+      Release URL, successful matching Actions build/smoke/publish run, and PyPI 0.8.3
+      availability. Execute local uvx with an explicit PyPI index and exact larva==0.8.3
+      requirement, without local wheel/repository source or a reused local-install
+      substitute; observe installed distribution metadata 0.8.3 and CLI help/version
+      startup. Select the smallest native command combination that proves both facts.
+      Workflow scripts/mcp-release-smoke.py must actually build/install and observe
+      its 13-tool MCP surface; successful workflow execution supplies this proof,
+      with no duplicate native runtime matrix. Inspect version consistency and lock
+      resolution as affected packaging contracts. Follow project Invar requirements
+      for changed source using focused checks and retain the known full-Invar environment/baseline
+      gap honestly; do not broaden to unrelated repair. Reuse applicable accepted
+      source/runtime observations, without claiming all historical checks passed.
+      Orchestrator accepts this scoped release only when the exact candidate is published,
+      all required release checks pass, local PyPI uvx retrieval/entrypoint proof
+      succeeds, and effects and cleanup are reconciled. Report commands/results, changed
+      paths, release/run links, observed distribution version, reused evidence applicability,
+      and remaining gaps. No separate acceptance node or publication-before-proof
+      completion.'
+    evidence_template: Files changed; release commit/tag and URL; Actions run and
+      build/smoke/publish results; exact PyPI uvx command, distribution version and
+      CLI result; applicable reused observations and gaps; effect reconciliation and
+      cleanup; Orchestrator final release acceptance.
+    refs:
+    - pyproject.toml
+    - uv.lock
+    - src/larva/__init__.py
+    - .github/workflows/publish.yml
+    - scripts/mcp-release-smoke.py
+    agent: devops-engineer
