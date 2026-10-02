@@ -146015,11 +146015,11 @@ phases:
       remaining acceptance gaps; worktree cleanup follows after lifecycle reconciliation.'
 - id: release_0_8_3
   name: Publish Larva 0.8.3 and verify PyPI uvx delivery
-  status: pending
+  status: in_progress
   steps:
   - id: release-0-8-3.publish-and-verify
     name: Prepare, publish and verify Larva 0.8.3
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - uv.lock\n    - src/larva/__init__.py\n\
       \    - .github/workflows/publish.yml\n    - scripts/mcp-release-smoke.py\n \
@@ -146093,3 +146093,5 @@ phases:
     - .github/workflows/publish.yml
     - scripts/mcp-release-smoke.py
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-02T02:50:21.302579Z'
