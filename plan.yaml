@@ -146122,11 +146122,11 @@ phases:
       Plan completion only.'
 - id: release_0_8_4
   name: Publish Larva 0.8.4 and verify latest PyPI uvx delivery
-  status: in_progress
+  status: done
   steps:
   - id: release-0-8-4.publish-and-verify
     name: Prepare, publish and verify Larva 0.8.4
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n\
@@ -146217,3 +146217,40 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-11T07:04:05.156866Z'
+    done_at: '2026-10-11T07:18:13.656504+00:00'
+    evidence: 'Published Larva 0.8.4. Changed only pyproject.toml, src/larva/__init__.py,
+      uv.lock version lines; no dependency drift. Candidate df86e3b1c43d82250c5f103ee70182daafa0a10c
+      retained at refs/retained/release-0-8-4/original, unchanged rebase and fast-forward
+      main; contains required ancestor 0de3248114541473711e14737f79958f84c3f595. devops-engineer
+      owned preparation and publication in same session. uv lock / uv lock --check
+      resolved 90 packages PASS; isolated uv sync --locked --group dev and project/package/lock/installed/Hatchling
+      metadata 0.8.4 PASS. invar sig/map/refs exit0; guard --changed PASS files_checked=1
+      (no core, CrossHair/property skipped); normal commit full Invar hook and protection
+      hook PASS without bypass. First 120s commit timeout reconciled no running writer,
+      600s retry succeeded. Initial preliminary metadata entry_points.txt read failed
+      because Hatchling omits it; corrected metadata check passed and real wheel entry
+      seam subsequently passed workflow. git diff --check PASS. Reused unchanged ancestor''s
+      25 runtime tests; no repeated behavior tests and no claim Invar covers TS. Ordinary
+      SHA:main push, annotated immutable v0.8.4 push, gh release create --verify-tag
+      succeeded. Tag object 9f0df6f9e7a8bcbfc8d36d09f1fd6251bc4e7705 peeled=df86e3b1c43d82250c5f103ee70182daafa0a10c.
+      Non-draft/non-prerelease https://github.com/Tefx/larva/releases/tag/v0.8.4 with
+      required Chinese notes. Matched release workflow https://github.com/Tefx/larva/actions/runs/38120718003
+      head=df86e3b1c43d82250c5f103ee70182daafa0a10c completed success; build, actual
+      Verify clean uvx MCP startup and tool list, trusted publish and every step success,
+      independently read back. gh run watch 38120718003 --repo Tefx/larva --exit-status
+      --interval 15 exit0. PyPI https://pypi.org/pypi/larva/0.8.4/json successful,
+      wheel+sdist uploaded. Actual command with task-owned TMPDIR/UV_CACHE_DIR/UV_TOOL_DIR
+      and UV_PYTHON_DOWNLOADS=never: uvx --no-cache --index-url https://pypi.org/simple
+      --from larva python -c ''import importlib.metadata, subprocess; v=importlib.metadata.version("larva");
+      print("PyPI resolved distribution version:", v, flush=True); assert v == "0.8.4";
+      r=subprocess.run(["larva", "--help"]); print("larva --help exit:", r.returncode,
+      flush=True); assert r.returncode == 0''. Exit0, installed 37 packages, observed
+      0.8.4 and CLI help exit0; unpinned, no local source/wheel/cache substitution.
+      Remote main/tag readback matching, no unknown effects or remaining worker processes.
+      No force/republication/manual upload/global changes/Telegram. Task env/cache/prep
+      logs deleted (worker measured +258MiB prep, +32KiB publication free-space change);
+      accepted source recoverable Git, remaining index/worktree eligible for immediate
+      Orchestrator cleanup. User artifacts untouched. Minimum execution observations
+      preserved here and stable URLs; temporary receipt no longer needed after consumption.
+      No remaining release acceptance gap; Plan completion and final main push/eligible
+      worktree cleanup follow serially.'
