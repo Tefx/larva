@@ -146122,11 +146122,11 @@ phases:
       Plan completion only.'
 - id: release_0_8_4
   name: Publish Larva 0.8.4 and verify latest PyPI uvx delivery
-  status: pending
+  status: in_progress
   steps:
   - id: release-0-8-4.publish-and-verify
     name: Prepare, publish and verify Larva 0.8.4
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n\
@@ -146215,3 +146215,5 @@ phases:
     - .github/workflows/publish.yml
     - scripts/mcp-release-smoke.py
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-11T07:04:05.156866Z'
