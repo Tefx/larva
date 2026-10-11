@@ -34,22 +34,33 @@ a registry field, and not controlled by persona prompt text.
 ## Routing decision guidance
 Follow host task-routing rules and existing ownership. An authorized, suitable
 executor completes its current deliverable, including path corrections, tests,
-formatting, and preparation cleanup. Remaining auxiliary operations do not by
-themselves justify choosing another persona.
+formatting, and preparation cleanup, avoiding gratuitous handoffs; this does not
+forbid initial delegation, independent read-only help, or separate tasks. Prefer
+directly completing simple tool operations as an efficiency preference, not an
+absolute prohibition on routing tools.
 
-- Use `larva_subagent` for independently deliverable subresults when the parent
-  retains subsequent coordination, or when independent review or parallel
-  exploration benefits from clean context. Put the route rationale at the top of
-  `larva_subagent.task`.
-- For autonomous `larva_persona_switch`/borrow, explain both why the active persona
-  is materially unsuitable for the coherent work being handed over and why
-  necessary session state would be costly or lossy to transfer. Having conversation
-  history alone is insufficient. Put this rationale and inspected persona evidence
-  in `larva_persona_switch.reason`.
+- Decide subagent delegation based on complete-task needs: clean context,
+  independent review, specialized domain division, parallel speedup, handoff
+  overhead, and parent coordination or integration needs. Subagent tasks may
+  own complete implementation or full steps, not merely auxiliary work, and are
+  not excluded from main-path tasks. Delegation does not require parent
+  incapability, quantitative speedup proofs, or extra route approvals. Parent
+  agents receive, integrate, and follow through on subagent deliverables.
+  Put the route rationale at the top of `larva_subagent.task`.
+- Conditions requiring active-persona unsuitability and session continuity apply
+  strictly to persona borrowing and switching (`larva_persona_switch`), never to
+  subagent delegation. For autonomous borrowing/switching, establish both that
+  the active persona is materially unsuitable for the work it would hand over and
+  that current conversation or runtime continuity is necessary because the
+  relevant state would be costly or lossy to transfer. Having conversation
+  history alone is insufficient. Explain the coherent work being handed over; do
+  not use switching as a temporary detour for auxiliary edits. Put this rationale
+  and inspected persona evidence in `larva_persona_switch.reason`.
 - Explicit user persona selections remain supported within host authority and
   runtime mode. A justified same-session borrow may return to the origin persona;
   it need not take over every remaining part of the user's request.
-- Use neither tool for deterministic tool-only work or a minor style mismatch.
+- Respect user bans, `can_spawn`, tool policy, role authority, and accepted owners
+  or claims, avoiding duplicate execution and uncoordinated overlapping writes.
 
 Normally omit `handoff` for a same-session switch. If needed, include only brief
 incremental notes or file references rather than repeating conversation history.
@@ -112,12 +123,20 @@ selection must fail without changing persona, model, or tool state. These
 cancellation paths are not additional visible choices.
 
 Confirmation dialogs support automatic timeout refusal:
-- Default timeout is 30 seconds (`30000` ms). In native interactive TUI, the dialog displays a live countdown timer.
+- Default timeout is 15 minutes (`900000` ms). In native interactive TUI, the dialog displays a live countdown timer.
 - If the user does not respond within the timeout, the dialog is dismissed and the borrow request is automatically denied without mutating persona, model, or tool state.
 - The timeout can be configured via `LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS` (or `LARVA_PI_PERSONA_SWITCH_CONFIRM_TIMEOUT_MS`) environment variable, or `--larva-agent-persona-switch-timeout` startup flag. Setting the timeout to `0` disables the countdown.
 
 If no confirmation UI is available, `confirm` follows the same fail-safe denial
 path without changing persona, model, or tool state.
+
+When a borrow request is denied by explicit user choice, times out, or fails because
+confirmation UI is unavailable, the runtime returns model-visible recovery guidance:
+the active persona is unchanged, the model must not automatically retry borrowing,
+and the task may continue under the current persona within existing authority or be
+delegated to an authorized subagent, unless the user explicitly cancelled the task,
+forbade delegation, or excluded the target persona. Other errors, such as restore
+failures or uncertain state, do not use this normal denial recovery guidance.
 
 ### `auto`
 
@@ -313,6 +332,7 @@ Borrow persona?
 
 The assistant wants to borrow {targetPersona} for this response.
 Current persona {originPersona} and current Pi model will be restored afterward.
+Deny rejects only this borrow request; the task may continue within existing authority.
 
 Reason:
 {shortReason}
@@ -447,9 +467,21 @@ origin persona, actual model, and thinking level after restoration.
 
 The runtime fixture `contrib/pi-extension/test-agent-persona-switch-policy-runtime.mjs`
 exercises omitted/empty input, trimmed text, 2000-code-point boundaries for ASCII,
-Chinese and emoji, over-limit and non-string rejection, state preservation, and
-actual continuation data/prompt delivery. Its prompt-token assertions establish
-projection only; they do not prove model routing decisions.
+Chinese and emoji, over-limit and non-string rejection, state preservation, default
+timeout capture, and actual continuation data/prompt delivery. Its prompt-token
+assertions establish projection only; they do not prove model routing decisions.
+
+Agent routing evaluations provide bounded observations under variable model
+conditions. For ordinary prompt changes, routing evaluations should not impose
+the same unique tool sequence or delegation trajectory on every run as a mechanical
+completion gate unless that exact behavior is an explicit requirement. Explicit
+user or product requirements, safety constraints, permission contracts, and
+explicitly mandated evaluations must still be verified appropriately; model
+variability does not excuse defects, permission violations, or skipping required
+evaluations. Mechanical acceptance continues to rely on explicit contracts, tool
+availability, schema validation, permissions, and state preservation. Scripted
+prompts or keyword presence must not be treated as proof of improved agent
+behavior.
 
 For routing behavior, inspect actual model tool-call traces with the same task,
 starting persona, permissions and available tools before and after a guidance

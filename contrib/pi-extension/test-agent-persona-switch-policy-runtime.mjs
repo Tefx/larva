@@ -170,6 +170,28 @@ await run("confirm mode auto-denies on timeout without mutating state", async ()
   assert.ok(runtime.auditEntries.some((e) => e.data?.approved === false && e.data?.denial_reason === "timeout"), "audit entry recorded denial_reason=timeout");
 });
 
+await run("confirm mode defaults to 900000ms timeout and passes it to UI", async () => {
+  let selectOpts = null;
+  const runtime = await makeRuntime("confirm-default-timeout", {
+    LARVA_PI_AGENT_PERSONA_SWITCH: "confirm",
+  }, {
+    mode: "tui",
+    ui: {
+      select: async (title, options, opts) => {
+        selectOpts = opts;
+        return "Deny";
+      },
+    },
+  });
+  const before = runtime.mod.getActiveEnvelope();
+  const result = await runtime.mod.larva_persona_switch({ persona_id: "target", reason: "testing default timeout" }, runtime.ctx, runtime.pi);
+  assert.equal(result.status, "failed");
+  assert.equal(result.error.code, "LARVA_BAD_INPUT");
+  assert.deepEqual(runtime.mod.getActiveEnvelope(), before, "persona state must remain unchanged after deny");
+  assert.ok(selectOpts, "select must receive options");
+  assert.equal(selectOpts.timeout, 900_000, "select must receive default 900000ms timeout");
+});
+
 await run("routing guidance projection in prompt and tool descriptions (structural only)", async () => {
   const runtime = await makeRuntime("routing-guidance", { LARVA_PI_AGENT_PERSONA_SWITCH: "auto" });
   await runtime.commands["larva-persona"].handler("origin", runtime.ctx);

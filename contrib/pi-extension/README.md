@@ -592,9 +592,11 @@ Mode behavior:
   rejected. Manual `/larva-persona <id>` remains available.
 - The default is `confirm`. The agent/runtime may request a temporary persona
   borrow. The borrow commits only after UI confirmation. Explicit `Deny`
-  refusal, Escape/Ctrl+C cancellation, timeout, or missing UI fails safely
-  without changing persona, model, or tool state. The normal approval is
-  "borrow once", not a persistent switch.
+  refusal, Escape/Ctrl+C cancellation, timeout (default: 15 minutes / 900000 ms),
+  or missing UI fails safely without changing persona, model, or tool state, and
+  returns model-visible recovery guidance so the active persona can continue or
+  delegate to an authorized subagent without automatically retrying the borrow.
+  The normal approval is "borrow once", not a persistent switch.
 - `auto` exposes the same tools and performs the same temporary borrow without UI
   confirmation. The extension records the persona and actual Pi model active
   immediately before the switch and restores both when the current assistant turn
@@ -603,16 +605,18 @@ Mode behavior:
 - `free` exposes the same tools and allows a persistent self-switch without
   automatic restore.
 
-Runtime guidance routes persona work by context need. Use `larva_persona_switch`
-when the next model call needs current conversation or runtime continuity, and
-put the route rationale plus inspected persona evidence in
-`larva_persona_switch.reason`. Use `larva_subagent` when the work benefits from
-clean context, such as independent review, second opinion, adversarial critique,
-parallelizable work, long-running async work, or a self-contained task with
-absolute paths and clear inputs; put the route rationale at the top of
-`larva_subagent.task`. Use neither tool for deterministic tool-only work or minor
-style mismatch. Do not ask the user for separate chat route approval; `confirm`
-mode owns runtime confirmation for persona borrows.
+Runtime guidance routes persona work by task need rather than rigid mechanical
+rules. A suitable executor should finish its assigned deliverable through necessary
+fixes, tests, and cleanup, avoiding gratuitous handoffs; simple tool operations are
+directly completed as an efficiency preference. Subagent delegation (`larva_subagent`)
+is decided by complete-task needs (clean context, independent review, specialized
+domain division, parallel speedup, handoff overhead, parent coordination) and may own
+full implementation steps. Autonomous persona borrowing/switching
+(`larva_persona_switch`) applies when the active persona is materially unsuitable
+and runtime conversation continuity is necessary; explicit user persona selections
+remain supported within host authority and runtime mode without imposing this
+dual-necessity threshold. For the full routing decision policy and prompt guidance,
+see [`../../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](../../docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md).
 
 `larva_personas` is bounded discovery metadata; it is not a prompt/spec catalogue
 injection surface. `larva_persona_switch` requires a non-empty `reason`; `handoff`
@@ -650,17 +654,20 @@ Any `confirm` UI must provide all four outcomes as visible text rows.
 
 - `Borrow once` creates a turn-scoped lease and restores the origin persona plus
   the actual pre-borrow Pi model at current assistant turn end.
-- `Deny` is the explicit refusal option and leaves persona, model, and tool state
-  unchanged.
+- `Deny` is the explicit refusal option; it rejects only this borrow request and
+  leaves persona, model, and tool state unchanged.
 - `Auto-borrow for this session` sets a session-local mode override to `auto` and
   creates the same turn-scoped lease for the current request. It is not persisted
   as a global preference.
 - `Switch persistently` is treated as a user manual switch, clears any active
   lease, and does not automatically restore.
 
-Escape, Ctrl+C, timeout, missing UI, or an unrecognized/no selection is a
-fail-safe denial path with the same no-state-change result as `Deny`; these paths
-are not additional visible choices.
+Escape, Ctrl+C, timeout (default 900000 ms, configurable via
+`LARVA_PI_AGENT_PERSONA_SWITCH_TIMEOUT_MS` or `--larva-agent-persona-switch-timeout`),
+missing UI, or an unrecognized/no selection is a fail-safe denial path with the same
+no-state-change result as `Deny`; these paths return model-visible recovery guidance
+to continue under the current persona or delegate to an authorized subagent without
+auto-retrying.
 
 Restore notices are emitted through status UI, event logs, or audit entries, not
 assistant chat-body text. Restore is attempted on success, failure, cancellation,
