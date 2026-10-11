@@ -146120,3 +146120,98 @@ phases:
       release worktree has no remaining runtime consumer and is eligible for immediate
       post-completion deletion. Published tag stays immutable; later main commit records
       Plan completion only.'
+- id: release_0_8_4
+  name: Publish Larva 0.8.4 and verify latest PyPI uvx delivery
+  status: pending
+  steps:
+  - id: release-0-8-4.publish-and-verify
+    name: Prepare, publish and verify Larva 0.8.4
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
+      \ uv.lock\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n\
+      release_target:\n  repository: /Users/tefx/Projects/larva\n  remote: https://github.com/Tefx/larva.git\n\
+      \  branch: main\n  required_ancestor: 0de3248114541473711e14737f79958f84c3f595\n\
+      \  version: 0.8.4\n  tag: v0.8.4\n  github: Tefx/larva\n  pypi_project: larva\n\
+      \  index: https://pypi.org/simple\n  workflow: .github/workflows/publish.yml\n\
+      \  smoke: scripts/mcp-release-smoke.py\nDeliver: Publish the accepted candidate\
+      \ including the required ancestor as non-draft GitHub release v0.8.4, successful\
+      \ matching Actions build/wheel MCP smoke/trusted PyPI publication, and actual\
+      \ local uvx resolution of unpinned larva from PyPI to distribution 0.8.4 with\
+      \ successful CLI help. Keep necessary version metadata and lock preparation,\
+      \ commit/push/tag/release, publication wait, observation and cleanup in this\
+      \ one explicitly requested release result. Chinese release notes must explain\
+      \ Pi borrowing confirmation changing from 30 seconds to 15 minutes; delegation\
+      \ guidance supporting independent context, parallel work and complete tasks;\
+      \ refusal, timeout or unavailable UI allowing continued originally authorized\
+      \ work or delegation; unchanged permissions and lifecycle. Orchestrator owns\
+      \ final acceptance, Plan lifecycle and Git durability; no separate gate.\nBoundary:\
+      \ devops-engineer owns release metadata preparation and authorized effects on\
+      \ the named Git remote/main, GitHub releases/Actions and PyPI project through\
+      \ the existing workflow, plus disposable local uvx observation. Orchestrator\
+      \ owns claim, isolated worktree and candidate integration. Owner may return\
+      \ its committed preparation candidate for integration and resume the same session\
+      \ for publication; preparation and external publication retain distinct effect/recovery\
+      \ boundaries within this one release delivery. Publish only the integrated committed\
+      \ candidate. Use existing approved authentication opaquely; no manual token\
+      \ handling, secrets, new accounts/spend, global installation/configuration changes,\
+      \ extra testing framework, Telegram, unrelated product changes or targets. Preserve\
+      \ user-owned artifacts/ without scanning or cleanup, and all completed Plan\
+      \ history.\nAdmit: Reconcile current version, main/remote, tag, GitHub release,\
+      \ Actions and PyPI state before writes; existing observations of 0.8.3 and absent\
+      \ 0.8.4 do not justify replay after uncertain effects. Synchronize only necessary\
+      \ distribution/package/lock version metadata. Existing release-published workflow\
+      \ supplies Python 3.12 build, isolated wheel MCP smoke and trusted PyPI publication;\
+      \ reuse it without adding infrastructure or duplicate runtime tests. The requested\
+      \ unpinned PyPI latest resolution is an observation, never an alternate publication\
+      \ source or candidate identity.\nRecovery: Version preparation is reversible\
+      \ before publication. After any possible external effect, inspect actual tag/release/workflow/PyPI\
+      \ state before retry, preserve minimum unique diagnostics and use authorized\
+      \ forward recovery. Never rewrite tags, force-push, blindly republish, manually\
+      \ upload or bypass the existing workflow. Use bounded Actions watch/checkpoints\
+      \ and availability observations; a timeout leaves the step unfinished/resumable,\
+      \ with no shell sleep polling. Retry only after a changed input or verified\
+      \ transient recovery. Stop on unresolved target/version/effect state. Clean\
+      \ only owned reconstructible outputs after consumers finish, retaining minimal\
+      \ unique observations outside protected user artifacts; a source revert does\
+      \ not undo publication."
+    verification: 'Acceptance requires consistent 0.8.4 pyproject/package/lock metadata
+      and lock resolution, release commit containing the required ancestor, immutable
+      tag pointing to that commit, published non-draft GitHub release with the required
+      Chinese notes, matching successful Actions run (build, actual existing wheel
+      MCP smoke and trusted publication), PyPI 0.8.4 availability, and successful
+      actual local uvx retrieval. Invoke uvx with explicit https://pypi.org/simple,
+      no cache or refresh, and --from larva with no version pin; from that environment
+      assert importlib.metadata.version("larva") == "0.8.4" and run larva --help successfully.
+      No local wheel/repository source, cached local install or pinned requirement
+      may substitute for this latest-PyPI observation. Record exact secret-free commands,
+      exit outcomes, observed metadata, release commit/tag, release URL and matching
+      Actions run identity/URL/head commit.
+
+      Reuse the applicable 25 passing runtime tests and diff check for the required
+      ancestor; version-only preparation does not require repeating behavior tests.
+      Run affected packaging/lock consistency and diff checks plus necessary repository-required
+      Invar checks; prior Invar PASS with files_checked=0 is not TypeScript coverage.
+      Reuse successful workflow wheel smoke rather than duplicating its tests. Preserve
+      known baseline gaps honestly; broaden only for changed evidence-affecting inputs.
+
+      Orchestrator judges this complete release result from current-candidate evidence
+      and applicable prior proof, accepts only when every required observation passes
+      and effects/cleanup are reconciled, then persists completion evidence and Plan
+      in Git. Candidate preparation alone, a published release alone or a successful
+      download without the metadata/CLI assertions does not complete the step. Retain
+      no reconstructible task output after its consumer ends; preserve protected user
+      artifacts and minimal unique observations. Report changed files, commands/results,
+      evidence applicability and gaps.'
+    evidence_template: Changed paths and integrated release commit/tag; Chinese release
+      notes and published URL; matching Actions URL/head/status/build/smoke/publication
+      outcomes; exact unpinned explicit-PyPI uvx command, observed metadata and CLI
+      exit; reused proof applicability, Invar scope/gaps; reconciled effects, cleanup
+      and Git/Plan durability.
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    - .github/workflows/publish.yml
+    - scripts/mcp-release-smoke.py
+    agent: devops-engineer
