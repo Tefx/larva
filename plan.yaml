@@ -146522,63 +146522,153 @@ phases:
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
       \    - artifacts/**\nrelease_target:\n  repository: /Users/tefx/Projects/larva\n\
       \  remote: https://github.com/Tefx/larva.git\n  branch: main\n  github: Tefx/larva\n\
-      \  pypi_project: larva\n  index: https://pypi.org/simple\n  workflow: .github/workflows/publish.yml\n\
-      \  smoke: scripts/mcp-release-smoke.py\nDeliver: Publish the accepted integrated\
-      \ repair/version candidate once through ordinary main push, immutable matching\
-      \ tag and non-draft GitHub release; observe matching release:published workflow\
-      \ wheel/sdist build, existing MCP smoke and trusted-publisher PyPI success.\
-      \ Chinese notes explain tool-result truth, bounded tail/follow UX, activity/lifecycle\
-      \ distinction and unchanged watchdog/callback/security boundaries; clearly state\
-      \ how users obtain the repaired native Pi package separately from Python backend.\
-      \ Verify published source-derived Pi package installed into isolated state actually\
-      \ executes repaired behavior and verify fresh unpinned PyPI larva retrieval\
-      \ resolves selected version with CLI help success.\nBoundary: Preserve user-owned\
-      \ artifacts/** without scanning or cleanup and completed Plan history. No global\
-      \ installation/upgrade or user Pi configuration changes, new credentials/accounts/spend,\
-      \ live-model requirement, multi-version matrix, new evaluation framework, or\
-      \ unrelated product changes. Orchestrator owns claims, worktrees, integration,\
-      \ lifecycle and acceptance. Use only isolated task-owned state and existing\
-      \ approved authentication opaquely; never transfer credential values or locations.\n\
-      Owner: devops-engineer owns external release effects only on the existing origin/GitHub/PyPI\
-      \ targets authorized by the current user's implement-and-release request. Orchestrator\
-      \ alone owns final integrated acceptance for this entire phase (repair, preparation\
-      \ and publication), Git durability and cleanup; no duplicate gate.\nAdmit: Reuse\
-      \ release_0_8_4 process and applicable unchanged observations, never old publication/version\
-      \ proof. Before any write, reconcile main/remote, candidate, selected version/tag,\
-      \ release, Actions and PyPI. Require Orchestrator's accepted integrated immutable\
-      \ commit containing both preceding deliveries and applicable complete offline\
-      \ regression evidence; never publish an unintegrated worktree candidate. No\
-      \ repository edits here. Use existing publish workflow and opaque approved credential\
-      \ handoff; no manual upload, npm publication or alternative target.\nRecovery:\
-      \ Inspect actual remote tag/release/workflow/PyPI state after any possible effect\
-      \ before retry. Never force-push, rewrite tags, blindly republish or bypass\
-      \ trusted publishing. Bounded workflow watch/checkpoints; timeout leaves resumable\
-      \ unfinished work, no shell sleep polling. Retry only changed inputs/verified\
-      \ transient recovery. Unknown effects or conflicting target stop writes. Repository\
-      \ revert cannot undo publication. Preserve minimal unique observations; release\
-      \ acceptance-only holds after final acceptance and clean task-owned reconstructible\
-      \ outputs."
-    verification: Require immutable tag and remote main/release commit binding, non-draft
-      GitHub release URL, matching successful Actions head/run URL with build/MCP-smoke/trusted-PyPI
-      publication, and PyPI selected-version wheel+sdist availability. In task-owned
-      isolated UV cache/tool/temp state retrieve unpinned --from larva via https://pypi.org/simple
-      with no-cache/refresh, assert importlib.metadata.version('larva') equals selected
-      version and larva --help succeeds; local source/wheel or pinned install cannot
-      substitute for this PyPI observation. Separately acquire published tag/release
-      source and verify actual isolated Pi installation/loader and repaired result
-      rendering from that delivery, not just version/file presence; reuse applicable
-      local behavioral evidence while proving the published/install seam. Record exact
-      commands, outcomes, commit/tag, URLs and delivery identity. Orchestrator makes
-      one final acceptance decision over all subagent_panel_release outcomes, complete
-      applicable offline inventory bound to final integrated candidate, required installed-Pi/native
-      observations, publication readbacks and reconciled effects/cleanup. Blocking
-      defect, failed necessary check or unknown required observation prevents acceptance.
-      No repeat of unchanged costly observations solely for report binding.
+      \  pypi_project: larva\n  index: https://pypi.org/simple\n  version: 0.8.5\n\
+      \  tag: v0.8.5\n  published_product_commit: 5165039d8e113e9246b2d6840e7bab9313ca9e7a\n\
+      \  workflow: .github/workflows/publish.yml\n  smoke: scripts/mcp-release-smoke.py\n\
+      \  acceptance_ci: .github/workflows/ci.yml\nDeliver: Finish verification and\
+      \ final acceptance of the already-published 0.8.5 repair; do not publish again.\
+      \ Retain the established non-draft GitHub release, immutable v0.8.5 tag/packages,\
+      \ matching successful build/MCP-smoke/trusted-PyPI publication, actual unpinned\
+      \ PyPI 0.8.5 retrieval/CLI-help proof, and published-source isolated Pi install/render\
+      \ proof. Retain Chinese release notes covering tool-result truth, bounded tail/follow\
+      \ UI, activity/lifecycle distinction, unchanged watchdog/callback/security boundaries\
+      \ and separate native Pi package acquisition.\nAfter the Orchestrator integrates\
+      \ and accepts the test-only streaming fixture repair, perform the ordinary authorized\
+      \ push of that integrated main advancement to the existing origin, with no new\
+      \ version/tag/release or package publication. Observe complete required CI on\
+      \ the resulting immutable main commit, including previously unexecuted Node/full-Invar\
+      \ stages. Judge released product commit and fixed-test main together through\
+      \ demonstrably unchanged product, package and lock inputs. Never require the\
+      \ immutable release tag to equal the advanced main or rewrite the original failed\
+      \ CI as successful.\nBoundary: devops-engineer retains the runtime/external\
+      \ observation responsibility on the named existing targets under the user's\
+      \ implement-and-release verification authorization. No repository edits here.\
+      \ Preserve user-owned artifacts/** without scanning/cleanup and all completed\
+      \ history. No republish, yank, tag/package rewrite, new version, manual upload,\
+      \ npm publication, force-push, alternate target, global installation/upgrade,\
+      \ user Pi configuration change, new credentials/accounts/spend, live model or\
+      \ new framework. Authentication remains opaque. Orchestrator owns claims, integration,\
+      \ Git durability, cleanup and the single final acceptance decision for all subagent_panel_release\
+      \ outcomes, including the new fixture producer; no additional gate.\nAdmit:\
+      \ Before any further external write, reconcile remote main, immutable release/tag/PyPI\
+      \ identities and completed Actions state. Preserve prior observed publication\
+      \ effects and valid install/PyPI evidence; successful publication is distinct\
+      \ from the failed independent push CI. Reuse their applicable evidence rather\
+      \ than repeat publication or unchanged expensive observations. The repair must\
+      \ be integrated and confirmed test-only, retaining product/package/lock inputs\
+      \ of published commit 5165039d8e113e9246b2d6840e7bab9313ca9e7a. The existing\
+      \ original failed push CI remains immutable evidence; the new run answers the\
+      \ corrected fixture/full-CI question.\nRecovery: Use bounded CI watch/checkpoints\
+      \ without shell sleep polling. Reconcile any possibly started push/run before\
+      \ retry; unknown effects stop writes. If synchronization repair exposes a genuine\
+      \ product defect or product/package/lock inputs differ, stop for the exact scope/acceptance\
+      \ boundary and Planner correction; do not silently publish a new patch or accept\
+      \ unchanged published bytes using changed product tests. A timeout leaves the\
+      \ consumer unfinished/resumable. Source revert cannot undo publication. Preserve\
+      \ minimal unique observations through final acceptance and clean only owned\
+      \ reconstructible outputs when their consumers finish."
+    verification: 'Retain observed release/tag binding to 5165039d8e113e9246b2d6840e7bab9313ca9e7a,
+      non-draft GitHub release URL, successful matching release workflow build/MCP-smoke/trusted
+      publication, non-yanked PyPI wheel/sdist and actual unpinned production-PyPI
+      0.8.5 version/help evidence. Retain actual published-source isolated Pi package/bin/install/loader
+      and repaired rendering proof. Preserve original failing push CI, including its
+      unexecuted stages, without fabricated historical success.
+
+      Before the ordinary test-only main push, establish that the integrated change
+      affects only admitted fixture/test files plus managed Plan/evidence and that
+      released product/package/lock inputs are unchanged; record the Git relationship
+      and applicability rationale for released-product evidence. Bind new complete
+      CI success to the resulting immutable main commit and actual run/head/URL. All
+      necessary stages, including retained contracts/Node regressions and full Invar,
+      must execute successfully with only already-authorized existing skips; a runner
+      success without those stages is insufficient.
+
+      Orchestrator''s final Delta acceptance consumes completed repair/preparation,
+      the tracked streaming-fixture repair and this same publication consumer: affected
+      requirements/direct dependencies, unresolved CI finding, touched lifetime/privacy
+      invariants, and complete applicable project-native offline inventory on the
+      integrated candidate, combining valid prior observations with new affected checks
+      and required full CI. Published product and advanced test-main bindings must
+      both remain explicit. Blocking defect, failed necessary check, unknown required
+      observation or unreconciled effect prevents acceptance. Report commands/results,
+      preserved/new evidence applicability, remote identities, cleanup and gaps; no
+      duplicate publication or unnecessary unchanged runtime replay.'
     refs:
     - .github/workflows/publish.yml
     - scripts/mcp-release-smoke.py
     - README.md
     - contrib/pi-extension/package.json
+    - .github/workflows/ci.yml
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
     depends_on:
     - subagent-panel.prepare-release
+    - subagent-panel.streaming-fixture-repair
     agent: devops-engineer
+  - id: subagent-panel.streaming-fixture-repair
+    name: Synchronize streaming fixture with persisted Timeline readiness
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - scripts/pi-extension-runtime-smoke.mjs\n    - tests/shell/test_pi_extension_subagent_ux.py\n\
+      \  blocked_paths:\n    - contrib/pi-extension/**\n    - pyproject.toml\n   \
+      \ - src/**\n    - uv.lock\n    - \"**/package.json\"\n    - \"**/package-lock.json\"\
+      \n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\nverification:\n  focused_scenario:\
+      \ subagent-log-selector-streaming\n  focused_test: tests/shell/test_pi_extension_subagent_ux.py\n\
+      \  worker_regression: contrib/pi-extension/test-session-timeline-worker.mjs\n\
+      \  ci_inventory: .github/workflows/ci.yml\nDeliver: Correct the existing streaming\
+      \ fixture's readiness synchronization and provide bounded discriminating diagnostics\
+      \ without modifying the published product. Before capturing the running Timeline,\
+      \ await the actual persisted assistant timeline event (kind assistant, session_id\
+      \ msg-rpc-1, expected RPC_ASSISTANT_DELTA_VISIBLE text), while retaining existing\
+      \ RPC preview/thinking/tool-success live-phase checks. If necessary, control\
+      \ child completion explicitly to preserve the running observation; longer sleeps\
+      \ are not a readiness proof. Preserve every original assertion, including all\
+      \ eight conjuncts of timelineIncludesAssistantAndGroupedTool, privacy/non-persistence,\
+      \ final output authority, selection, reset and lifetime/cancellation cleanup.\
+      \ Expose individual conjunct outcomes and bounded renderer-safe Timeline failure\
+      \ context without raw thinking, argument secrets or RPC payload leakage.\nAdd\
+      \ a meaningful deterministic controlled-delay counterexample through existing\
+      \ fixtures that permits RPC readiness before session Worker excerpt application,\
+      \ makes the old readiness criterion fail, and establishes that the corrected\
+      \ wait observes the actual persisted event before rendering. Do not mock away\
+      \ the Worker/render seam being claimed or introduce a new framework.\nBoundary:\
+      \ senior-engineer owns this cohesive test repair because independent RPC and\
+      \ session Worker timing, running observation lifetime and cleanup must be reconciled\
+      \ together; preserve prior diagnostic context. Only the two allowed files may\
+      \ change. Product source, versions/locks, workflow, published tag/packages and\
+      \ completed producer history remain unchanged. No global installation, user\
+      \ Pi configuration changes, real model, credentials/spend, unrelated cleanup\
+      \ or baseline lint expansion. Parent owns isolated worktree, integration, claims\
+      \ and acceptance.\nAdmit: Completed repair and preparation remain immutable.\
+      \ The same pending publication consumer needs this tracked fixture capability\
+      \ before final acceptance. Inspection establishes the current wait observes\
+      \ RPC mutation but not asynchronous persisted assistant readiness; the failed\
+      \ remote aggregate does not identify its false conjunct and does not establish\
+      \ a product regression. Prior local PASS cannot refute that remote failure.\
+      \ Preserve original failed observation and applicable unaffected evidence.\n\
+      Recovery: Reversible test-only repository correction. If the correctly synchronized\
+      \ scenario still fails, return discriminating cause/evidence before any product-scope\
+      \ expansion. Quiesce descendants and reconcile fixture cleanup on success, timeout\
+      \ and cancellation. No publication effects or new patch version are authorized\
+      \ here."
+    verification: Use existing locked project Python/dev and npm fixture setup from
+      .github/workflows/ci.yml; no dependency changes. Run node scripts/pi-extension-runtime-smoke.mjs
+      --scenario subagent-log-selector-streaming and affected UX regression tests,
+      including the deterministic delayed-session counterexample. Run applicable existing
+      session Worker catch-up/reset/termination regressions and required Invar plus
+      git diff --check. Preserve original assertions and prove the new wait's relationship
+      to the actual persisted event; report bounded conjunct diagnostics if it fails.
+      Reuse applicable unchanged observations instead of full inventory replays for
+      freshness. Report exact commands/outcomes, changed paths, asynchronous seam
+      evidence, cleanup and gaps. Orchestrator performs focused source/contract review
+      and integrates only the test-only candidate; final remote CI observation belongs
+      to the existing dependent consumer.
+    refs:
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - contrib/pi-extension/test-session-timeline-worker.mjs
+    - .github/workflows/ci.yml
+    - INVAR.md
+    depends_on:
+    - subagent-panel.prepare-release
+    agent: senior-engineer
