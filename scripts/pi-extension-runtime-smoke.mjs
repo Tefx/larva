@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { existsSync, realpathSync, readFileSync } from "node:fs";
-import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -1386,16 +1386,47 @@ async function waitForSmokeCondition(predicate, { label = "condition", timeoutMs
   throw new Error(`timed out waiting for ${label}`);
 }
 
-async function writeStreamingSubagentChild(scriptPath, sessionFile) {
+function streamingTimelineConjuncts(plain) {
+  return {
+    assistantPresent: plain.includes("RPC_ASSISTANT_DELTA_VISIBLE"),
+    oneGroupedToolRow: (plain.match(/↳/g) ?? []).length === 1,
+    internalToolIdHidden: !plain.includes("rpc-tool-1"),
+    toolNamePresent: plain.includes("bash"),
+    commandPresent: plain.includes('command="echo rpc"'),
+    heavyContentOmitted: plain.includes("content=<omitted>"),
+    finalToolOutputPresent: plain.includes("RPC_TOOL_OUTPUT_FINAL"),
+    toolSuccessPresent: plain.includes("success"),
+  };
+}
+
+function streamingTimelineContext(plain) {
+  const safe = plain.split("\n").filter((line) => !/^│\s+│█?$/.test(line)).join("\n").replace(
+    /THINKING_SECRET_SHOULD_NOT_RENDER|RAW_ARG_SECRET_SHOULD_NOT_RENDER|RAW_RPC_FRAME_SECRET/g,
+    "[fixture secret redacted]",
+  ).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, "");
+  const points = Array.from(safe);
+  const notice = "\n[diagnostic context truncated]";
+  return points.length <= 2400 ? safe : points.slice(0, 2400 - notice.length).join("") + notice;
+}
+
+async function writeStreamingSubagentChild(scriptPath, sessionFile, gates) {
   await writeFile(scriptPath, `
     import { createInterface } from "node:readline";
-    import { appendFile, mkdir, writeFile } from "node:fs/promises";
+    import { access, appendFile, mkdir, writeFile } from "node:fs/promises";
     import { dirname } from "node:path";
     const sessionFile = ${JSON.stringify(sessionFile)};
-    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const gates = ${JSON.stringify(gates)};
+    const waitForGate = async (path) => {
+      while (true) {
+        try { await access(path); return; }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    };
     await mkdir(dirname(sessionFile), { recursive: true });
     const rl = createInterface({ input: process.stdin });
     const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+    rl.on("close", () => process.exit(0)); // Parent timeout/cancellation must not orphan a gated child.
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
       if (message.type === "get_state") {
@@ -1416,16 +1447,17 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile) {
               { type: "toolCall", id: "rpc-tool-1", name: "bash", arguments: { command: "echo rpc" } },
             ],
           },
-        }) + "\\n");
-        await sleep(80);
+        })); // Intentionally incomplete JSONL: the real Worker must not emit an excerpt yet.
+        await waitForGate(gates.stream);
         send({ type: "message_update", channel: "assistant", text: "RPC_ASSISTANT_DELTA_VISIBLE", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
-        await sleep(10);
         send({ type: "message_update", channel: "thinking_delta", text: "THINKING_SECRET_SHOULD_NOT_RENDER" });
-        await sleep(10);
         send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", toolName: "bash", args: { command: "echo rpc", content: "RAW_ARG_SECRET_SHOULD_NOT_RENDER" }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "tool_execution_update", toolCallId: "rpc-tool-1", toolName: "bash", partialResult: { content: [{ type: "text", text: "RPC_TOOL_OUTPUT_CHUNK" }] }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "tool_execution_end", toolCallId: "rpc-tool-1", toolName: "bash", isError: false, result: { content: [{ type: "text", text: "RPC_TOOL_OUTPUT_FINAL" }] }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
-        await sleep(180);
+        await waitForGate(gates.excerpt);
+        await appendFile(sessionFile, "\\n");
+        send({ type: "message_end" }); // Request real incremental session catch-up.
+        await waitForGate(gates.terminal);
         send({ type: "agent_end" });
       } else if (message.type === "get_last_assistant_text") {
         send({ id: message.id, success: true, data: { text: "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" } });
@@ -1443,9 +1475,12 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const cacheFile = join(sessionRoot, "subagent-presentation-log.json");
   const childScript = join(sessionRoot, "streaming-child.mjs");
   const sessionFile = join(sessionRoot, "child-sessions", "rpc-stream.jsonl");
-  await writeStreamingSubagentChild(childScript, sessionFile);
+  const gates = Object.fromEntries(["stream", "excerpt", "terminal"].map((name) => [name, join(sessionRoot, `${name}.ready`)]));
+  await writeStreamingSubagentChild(childScript, sessionFile, gates);
   mod.resetSubagentPresentationStateForTests();
+  await mod.awaitSessionTimelineDisposalForTests();
 
+  try {
   const env = runtimeEnv({
     HOME: sessionRoot,
     LARVA_PI_CHILD_SESSION_DIR: join(sessionRoot, "child-sessions"),
@@ -1509,6 +1544,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const commandResult = await command.handler("", { env: { ...env, LARVA_PI_INTERACTIVE_TUI: "1" }, modelRegistry: ctx.modelRegistry, ui: commandUi, mode: "tui", hasUI: true });
   if (component === null || commandResult?.ok !== true) throw new Error("subagent log overlay did not open during RPC stream proof");
   const rendersBeforeLive = requestRenderEvents.length;
+  await writeFile(gates.stream, "");
   const liveEntry = await waitForSmokeCondition(
     () => mod.subagentPresentationLogForTests().find((entry) =>
       entry.call_id === "rpc-stream-call"
@@ -1520,9 +1556,47 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const rendersAfterLive = requestRenderEvents.length;
   const outputDuringPlain = renderedPlainText(component.render(100));
   component.handleInput?.("4");
+  const persistedAssistantEntry = () => mod.subagentPresentationLogForTests().find((entry) =>
+    entry.call_id === "rpc-stream-call" && entry.timeline_events?.some((event) =>
+      event.kind === "assistant" && event.session_id === "msg-rpc-1"
+      && event.text.includes("RPC_ASSISTANT_DELTA_VISIBLE")));
+  let readinessSettled = false;
+  const readiness = waitForSmokeCondition(persistedAssistantEntry, { label: "persisted assistant Timeline excerpt" })
+    .then((entry) => { readinessSettled = true; return { entry }; }, (error) => { readinessSettled = true; return { error }; });
+  const partialSize = (await stat(sessionFile)).size;
+  const metricsBeforeRelease = await waitForSmokeCondition(() => {
+    const metrics = mod.sessionTimelineReaderMetricsForTests();
+    return metrics.active && metrics.bytes >= partialSize && metrics.inFlight === 0 ? metrics : null;
+  }, { label: "real Worker read the incomplete assistant record" });
+  const beforeExcerptPlain = renderedPlainText(component.render(100));
+  const beforeConjuncts = streamingTimelineConjuncts(beforeExcerptPlain);
+  const waitPendingBeforeRelease = !readinessSettled;
+  await writeFile(gates.excerpt, "");
+  const ready = await readiness;
+  if (ready.error) {
+    const plain = renderedPlainText(component.render(100));
+    throw new Error(`${ready.error.message}\n${JSON.stringify({
+      conjuncts: streamingTimelineConjuncts(plain),
+      context: streamingTimelineContext(plain),
+      reader: mod.sessionTimelineReaderMetricsForTests(),
+    })}`);
+  }
+  const timelineReadyEntry = ready.entry;
   const timelineDuringPlain = renderedPlainText(component.render(100));
+  const timelineConjuncts = streamingTimelineConjuncts(timelineDuringPlain);
+  const delayedExcerpt = {
+    realWorkerReadIncompleteRecord: metricsBeforeRelease.bytes >= partialSize && metricsBeforeRelease.records > 0,
+    oldRpcWaitReadyWithoutExcerpt: liveEntry.status === "running" && !beforeConjuncts.assistantPresent,
+    oldTimelineAssertionFalse: !Object.values(beforeConjuncts).every(Boolean),
+    newWaitPendingBeforeRelease: waitPendingBeforeRelease,
+    actualPersistedEventObserved: persistedAssistantEntry() !== undefined,
+    timelineCapturedWhileRunning: timelineReadyEntry.status === "running",
+    metricsBeforeRelease,
+    beforeConjuncts,
+  };
   const cacheDuringLive = JSON.parse(await readFile(cacheFile, "utf8"));
   const cacheDuringLiveText = JSON.stringify(cacheDuringLive);
+  await writeFile(gates.terminal, "");
   const result = await execution;
   const finalEntry = await waitForSmokeCondition(
     () => mod.subagentPresentationLogForTests().find((entry) => entry.call_id === "rpc-stream-call" && entry.status === "success"),
@@ -1532,15 +1606,19 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   component.handleInput?.("3");
   const outputAfterFinalPlain = renderedPlainText(component.render(100));
   const finalCacheText = JSON.stringify(JSON.parse(await readFile(cacheFile, "utf8")));
-  const combinedVisible = [outputDuringPlain, timelineDuringPlain, timelineAfterFinalPlain, outputAfterFinalPlain].join("\n");
+  const combinedVisible = [outputDuringPlain, beforeExcerptPlain, timelineDuringPlain, timelineAfterFinalPlain, outputAfterFinalPlain].join("\n");
   const currentAfterFinal = mod.currentSubagentOverlayForTests();
   const resetResult = await mod.resetExtensionUI("subagent-log-selector-streaming-smoke");
   const afterReset = mod.larva_subagent_log("/tmp/does-not-exist.jsonl");
 
-  const toolRowCount = (timelineDuringPlain.match(/↳/g) ?? []).length;
-  const toolIdCount = (timelineDuringPlain.match(/rpc-tool-1/g) ?? []).length;
   return {
     status: "PASS",
+    delayedExcerpt,
+    timelineDiagnostic: {
+      conjuncts: timelineConjuncts,
+      context: streamingTimelineContext(timelineDuringPlain),
+      beforeContext: streamingTimelineContext(beforeExcerptPlain),
+    },
     sessionRoot,
     cacheFile,
     path_exercised: [
@@ -1568,7 +1646,7 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
       childRpcEventsDroveOverlayRenderRequest: rendersAfterLive > rendersBeforeLive,
       assistantDeltaRenderedFromRpc: outputDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE"),
       thinkingContentHidden: !combinedVisible.includes("THINKING_SECRET_SHOULD_NOT_RENDER") && combinedVisible.includes("thinking hidden"),
-      timelineIncludesAssistantAndGroupedTool: timelineDuringPlain.includes("RPC_ASSISTANT_DELTA_VISIBLE") && toolRowCount === 1 && toolIdCount === 0 && timelineDuringPlain.includes("bash") && timelineDuringPlain.includes('command="echo rpc"') && timelineDuringPlain.includes("content=<omitted>") && timelineDuringPlain.includes("RPC_TOOL_OUTPUT_FINAL") && timelineDuringPlain.includes("success"),
+      timelineIncludesAssistantAndGroupedTool: Object.values(timelineConjuncts).every(Boolean),
       rawPayloadNeverRenderedOrPersisted: !combinedVisible.includes("RAW_RPC_FRAME_SECRET") && !combinedVisible.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER") && !cacheDuringLiveText.includes("RAW_RPC_FRAME_SECRET") && !cacheDuringLiveText.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER") && !finalCacheText.includes("RAW_RPC_FRAME_SECRET") && !finalCacheText.includes("RAW_ARG_SECRET_SHOULD_NOT_RENDER"),
       liveStateNotPersisted: !cacheDuringLiveText.includes("RPC_ASSISTANT_DELTA_VISIBLE") && !cacheDuringLiveText.includes("RPC_TOOL_OUTPUT_FINAL"),
       finalOutputAuthorityPreserved: finalEntry?.result_text === "FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT" && outputAfterFinalPlain.includes("FINAL_RPC_AUTHORITY_FROM_GET_LAST_ASSISTANT_TEXT"),
@@ -1576,6 +1654,12 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
       resetCleanupClosedAndCleared: resetResult.overlay_closed === true && resetResult.presentation_cleared === true && afterReset.details?.error?.code === "LARVA_SUBAGENT_LOG_NOT_OBSERVED" && terminalWrites.at(-1) === "\x1b[?1006l\x1b[?1000l",
     },
   };
+  } finally {
+    // The existing lifecycle reset aborts/reaps children on success, timeout or error.
+    await mod.resetExtensionUI("streaming-fixture-finally");
+    await mod.awaitSessionTimelineDisposalForTests();
+    await rm(sessionRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  }
 }
 
 async function subagentLogSelectorStreamingExpectedRed(evidence) {
@@ -1724,6 +1808,11 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   };
   const actualChildRpcPipeline = await runSubagentLogSelectorStreamingRpcPipelineProof(mod);
   assertions.R12_childRpcPipeline = actualChildRpcPipeline.assertions;
+  assertions.R13_persistedTimelineReadiness = Object.fromEntries([
+    "realWorkerReadIncompleteRecord", "oldRpcWaitReadyWithoutExcerpt",
+    "oldTimelineAssertionFalse", "newWaitPendingBeforeRelease",
+    "actualPersistedEventObserved", "timelineCapturedWhileRunning",
+  ].map((key) => [key, actualChildRpcPipeline.delayedExcerpt[key]]));
   const flattened = Object.values(assertions).flatMap((group) => Object.values(group));
   evidence.runtime.subagentLogSelectorStreaming = {
     status: flattened.every(Boolean) ? "PASS" : "EXPECTED_RED",

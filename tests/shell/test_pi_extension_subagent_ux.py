@@ -3323,11 +3323,12 @@ def _run_runtime_smoke_allow_expected_red(scenario: str) -> tuple[dict[str, Any]
     return json.loads(completed.stdout), completed.returncode, completed.stderr
 
 
-def _subagent_selector_streaming_payload() -> dict[str, Any]:
+def _subagent_selector_streaming_payload(*, with_proof: bool = False) -> dict[str, Any]:
     payload, _returncode, _stderr = _run_runtime_smoke_allow_expected_red(
         "subagent-log-selector-streaming"
     )
-    return payload["runtime"]["subagentLogSelectorStreaming"]["assertions"]
+    proof = payload["runtime"]["subagentLogSelectorStreaming"]
+    return proof if with_proof else proof["assertions"]
 
 
 _ASYNC_SUBAGENT_CONTRACT_CACHE: dict[str, Any] | None = None
@@ -3399,7 +3400,8 @@ def test_expected_red_larva_subagent_log_selector_modes_ordering_and_task_id_arg
 def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> None:
     """Expected-red R3-R8: live process state, cache sanitizer, events, bounds."""
 
-    assertions = _subagent_selector_streaming_payload()
+    proof = _subagent_selector_streaming_payload(with_proof=True)
+    assertions = proof["assertions"]
 
     assert assertions["R3_processLocalLiveState_cacheSanitizer"] == {
         "liveAssistantPreviewNotPersisted": True,
@@ -3438,7 +3440,39 @@ def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> 
         "finalOutputAuthorityPreserved": True,
         "activeTabAndSelectionPreservedAcrossRefresh": True,
         "resetCleanupClosedAndCleared": True,
+    }, json.dumps(proof["actualChildRpcPipeline"]["timelineDiagnostic"], ensure_ascii=False)
+
+
+def test_streaming_timeline_waits_for_real_worker_persisted_excerpt() -> None:
+    """An incomplete persisted line keeps real Worker/render behind RPC readiness."""
+    proof = _subagent_selector_streaming_payload(with_proof=True)["actualChildRpcPipeline"]
+    delay = proof["delayedExcerpt"]
+    expected_parts = {
+        "assistantPresent", "oneGroupedToolRow", "internalToolIdHidden", "toolNamePresent",
+        "commandPresent", "heavyContentOmitted", "finalToolOutputPresent", "toolSuccessPresent",
     }
+    assert set(delay["beforeConjuncts"]) == expected_parts
+    assert delay["beforeConjuncts"] == {
+        part: part != "assistantPresent" for part in expected_parts
+    }, json.dumps(proof["timelineDiagnostic"], ensure_ascii=False)
+    for check in (
+        "realWorkerReadIncompleteRecord", "oldRpcWaitReadyWithoutExcerpt",
+        "oldTimelineAssertionFalse", "newWaitPendingBeforeRelease",
+        "actualPersistedEventObserved", "timelineCapturedWhileRunning",
+    ):
+        assert delay[check] is True, json.dumps(delay, ensure_ascii=False)
+    assert proof["timelineDiagnostic"]["conjuncts"] == {
+        part: True for part in expected_parts
+    }
+    context = proof["timelineDiagnostic"]["context"]
+    assert len(context) <= 2400
+    assert "RPC_ASSISTANT_DELTA_VISIBLE" in context
+    assert not any(ord(char) < 32 and char not in "\n\t" or ord(char) == 127 for char in context)
+    for secret in (
+        "THINKING_SECRET_SHOULD_NOT_RENDER", "RAW_ARG_SECRET_SHOULD_NOT_RENDER",
+        "RAW_RPC_FRAME_SECRET",
+    ):
+        assert secret not in context
 
 
 def test_expected_red_larva_subagent_log_chrome_mouse_and_tall_terminal_frame() -> None:
