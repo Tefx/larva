@@ -146607,7 +146607,7 @@ phases:
     agent: devops-engineer
   - id: subagent-panel.streaming-fixture-repair
     name: Synchronize streaming fixture with persisted Timeline readiness
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - scripts/pi-extension-runtime-smoke.mjs\n    - tests/shell/test_pi_extension_subagent_ux.py\n\
       \  blocked_paths:\n    - contrib/pi-extension/**\n    - pyproject.toml\n   \
@@ -146672,3 +146672,5 @@ phases:
     depends_on:
     - subagent-panel.prepare-release
     agent: senior-engineer
+    claimed_by: senior-engineer
+    claimed_at: '2026-10-12T22:23:36.061088Z'
