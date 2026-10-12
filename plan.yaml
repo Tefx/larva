@@ -146256,7 +146256,7 @@ phases:
       worktree cleanup follow serially.'
 - id: subagent_panel_release
   name: Repair native subagent panel and publish next patch
-  status: in_progress
+  status: done
   steps:
   - id: subagent-panel.repair
     name: Repair native event presentation, live tail and timeline follow
@@ -146517,7 +146517,7 @@ phases:
       step.
   - id: subagent-panel.publish-and-verify
     name: Publish integrated patch and verify GitHub, PyPI and installed Pi payload
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
       \    - artifacts/**\nrelease_target:\n  repository: /Users/tefx/Projects/larva\n\
@@ -146607,6 +146607,28 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-12T23:08:28.879615Z'
+    done_at: '2026-10-12T23:33:48.129468+00:00'
+    evidence: Final Orchestrator Delta acceptance satisfied. Releasedproduct immutable5165039d8e113e9246b2d6840e7bab9313ca9e7a/v0.8.5
+      https://github.com/Tefx/larva/releases/tag/v0.8.5 non-draft; releaseworkflow
+      https://github.com/Tefx/larva/actions/runs/38312944875 success actualbuild/existing13toolMCPsmoke/trustedPyPI
+      wheel+sdist nonyanked. Freshunpin uvx--no-cache --index-url https://pypi.org/simple
+      --from larva resolved0.8.5 metadata+CLIhelp0; publishedGitHubtagsource isolatedPiinstall->realchildnativeevent/snapshot/render
+      passed bothsuccess/failure/deliveredcallbacks andcleaned. Parent inspected rawreport/stage/installation
+      observations. OriginalfailedCI38312904643 preservedfailure, macOS15arm64, historicalfalseconjunctunknown;
+      acceptedrealWorkercontrolledfixturefix30964f0a changesonly2testfiles, product/package/locks
+      identical torelease. Exactadvancedmain f1f93b919ab2c181fb432e7c7e994856914c51fc
+      ordinarypushed/readback; completeCI https://github.com/Tefx/larva/actions/runs/38320707936
+      exacthead success:115schema+26seam+76native/1existing skip+291contracts/1existing
+      skip; all23Node failure-propagatingloop andcapabilitygate completed; fullInvar42files0errors5warnings/doctestPASS/CrossHairverifiedexistingreportedskips/properties11of11
+      1100examples. No necessarystages skipped; -q doesnotnameindividualpytestskips,
+      unchangedgates/counts preserved. Parent finalacceptance combines repair/preparation/fixture
+      source+localproof with publishedinstall/unpin andfullremoteCI; no unresolvedmaterial
+      requirement. No republish/yank/tagrewrite; allremotejobs/effects knownterminal.
+      Canonical publication evidence migrated unchanged fromtasktmp to .vectl/evidence/subagent-panel-release/publication/{publication-evidence.md,test-main-verification.md,rawlogs/json};
+      originalfailure preserved. Tasktemporarysource/deps/cache alreadyremoved, temporaryevidenceduplicate
+      deleted measuredfree+929792bytes; noactiveworktrees/watch, userartifactsuntouched.
+      Finalphase/GitPlan durability follows; testedproduct andadvancedmain identities
+      explicitlydistinct.
   - id: subagent-panel.streaming-fixture-repair
     name: Synchronize streaming fixture with persisted Timeline readiness
     status: done
