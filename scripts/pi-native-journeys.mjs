@@ -798,6 +798,7 @@ async function runMcp(f, evidence) {
   await p.command("prompt", { message: "/larva-persona startup" });
   const beforeUnavailable = (await effects()).length;
   turn = await invoke([script(name("direct"))]);
+  assert.equal(turn.results.length, 1, "The native codemode invocation must produce its result");
   assert.ok(turn.results.every(result => result.isError), "Inactive direct target must fail through native dispatch");
   assert.ok(!JSON.stringify(turn.results).includes("LARVA_TOOL_DENIED"), "Native unavailability precedes Larva policy");
   assert.equal((await effects()).length, beforeUnavailable, "Inactive direct target cannot reach server effects");
