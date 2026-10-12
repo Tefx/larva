@@ -146517,7 +146517,7 @@ phases:
       step.
   - id: subagent-panel.publish-and-verify
     name: Publish integrated patch and verify GitHub, PyPI and installed Pi payload
-    status: claimed
+    status: pending
     description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
       \    - artifacts/**\nrelease_target:\n  repository: /Users/tefx/Projects/larva\n\
@@ -146582,5 +146582,3 @@ phases:
     depends_on:
     - subagent-panel.prepare-release
     agent: devops-engineer
-    claimed_by: devops-engineer
-    claimed_at: '2026-10-12T21:46:15.023067Z'
