@@ -146260,7 +146260,7 @@ phases:
   steps:
   - id: subagent-panel.repair
     name: Repair native event presentation, live tail and timeline follow
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - tests/shell/test_pi*.py\n\
       \    - tests/fixtures/pi/**\n    - scripts/pi*.mjs\n    - README.md\n    - design/pi-native-extension.md\n\
@@ -146401,6 +146401,29 @@ phases:
     agent: senior-engineer
     claimed_by: senior-engineer
     claimed_at: '2026-10-12T21:04:37.469414Z'
+    done_at: '2026-10-12T21:30:58.034286+00:00'
+    evidence: Implemented by exact senior-engineer; independently inspected native
+      normalization/projection/snapshots/tail/timeline/activity/callback, regressions/docs
+      and CI corrections. Quiescent final candidate6a9d95f591310a701166122d66ff4f349056c088
+      retained refs/retained/subagent-panel-repair/accepted-candidate; Plan-only rebase
+      from original retained2f96 to postclaimbasis488ada46 changed no behavior inputs.
+      Integration HEAD checked basis, ancestor checked, fast-forwarded exact candidate
+      and verified HEAD. No Plan/package/lock diff or pending tracked changes; no
+      task processes. Evidence canonical .vectl/evidence/subagent-panel-release/repair/repair-evidence.md
+      with original reports/logs migrated unchanged beside it for release consumer.
+      Required inventory covered by applicable original487 passing Python observations
+      plus specific recovery of all13 failures (including authorized removal of obsolete
+      prompt-token-only test), focused17pass, final panel6pass, CI/selector/nativeMCP24pass,
+      all23 Node runners via22initial+sessions-helper recovery. Real installed Pi1.1
+      panel both native success/failure RPC->snapshot->TUI and isolated CI Pi1.1 actual
+      MCP effects/permissions/child verified; backend native recovery passed. Full
+      locked project Invar passed42files0errors5warnings/doctest/CrossHair verified
+      with existing skips/properties11of11 1100examples. Broad Ruff still baseline
+      failures; actual base comparison proves0introduced diagnostics. Original failed
+      runs preserved as failed, no claim fresh complete or remote CI green. All current
+      material requirements supported; no independent gate required by plan. Release
+      work remains downstream. Acceptance-only worktree/env cleanup follows; Git retains
+      source and minimal observations retained for release.
   - id: subagent-panel.prepare-release
     name: Prepare patch metadata and prove native Pi delivery
     status: pending
