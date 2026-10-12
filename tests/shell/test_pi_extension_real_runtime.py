@@ -69,7 +69,10 @@ def test_native_panel_tool_event_ingestion_to_snapshot_and_render(tmp_path: Path
     """Selected actual Pi emits native tool events; no model or transport stub."""
     report = tmp_path / "native-panel.json"
     completed = subprocess.run(
-        ["node", str(ROOT / "scripts/pi-native-journeys.mjs"), "--scenario", "panel", "--output", str(report)],
+        [
+            "node", str(ROOT / "scripts/pi-native-journeys.mjs"),
+            "--scenario", "panel", "--output", str(report),
+        ],
         cwd=ROOT,
         check=False,
         capture_output=True,
@@ -80,7 +83,9 @@ def test_native_panel_tool_event_ingestion_to_snapshot_and_render(tmp_path: Path
     payload = json.loads(report.read_text())
     assert payload["piVersion"]
     assert payload["pass"] is True
-    assert [case["snapshot"]["status"] for case in payload["panel"]["cases"]] == ["success", "failed"]
+    assert [case["snapshot"]["status"] for case in payload["panel"]["cases"]] == [
+        "success", "failed",
+    ]
     assert all(case["callbackDelivery"] == "delivered" for case in payload["panel"]["cases"])
     assert payload["cleanup"]["liveChildren"] == []
     assert payload["cleanup"]["capsules"] == []

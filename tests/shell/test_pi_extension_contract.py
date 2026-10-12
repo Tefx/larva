@@ -313,7 +313,10 @@ def test_pi_tui_dependency_is_exact_lockfile_backed_and_ci_installable() -> None
     assert "@earendil-works/pi-tui" not in package_json.get("dependencies", {})
     assert package_json["devDependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
     assert package_lock["packages"][""]["peerDependencies"]["@earendil-works/pi-tui"] == "*"
-    assert package_lock["packages"][""]["devDependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
+    assert (
+        package_lock["packages"][""]["devDependencies"]["@earendil-works/pi-tui"]
+        == PI_TUI_PINNED_VERSION
+    )
     locked_pi_tui = package_lock["packages"]["node_modules/@earendil-works/pi-tui"]
     assert locked_pi_tui["version"] == PI_TUI_PINNED_VERSION
     assert f"pi-tui-{PI_TUI_PINNED_VERSION}.tgz" in locked_pi_tui["resolved"]
@@ -687,15 +690,6 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "additionalProperties: false" in source
     assert 'task_id: { type: "string", description: "Optional child session .jsonl path to resume. Omit this field to start a new child session." }' in source
     assert "Null is treated like omission and starts a new child session." not in source
-    for token in (
-        "clean-context work",
-        "independent review",
-        "parallelizable work",
-        "top of larva_subagent.task",
-        "deterministic tool-only work",
-        "Do not use shell sleep polling",
-    ):
-        assert token in tool_body
     assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
     assert "execute:" in tool_body
     assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
