@@ -1,11 +1,11 @@
 // purpose: native loader/SDK/provider/session journeys for acceptance, without test loader
-// usage: node scripts/pi-native-journeys.mjs --scenario state|children|invocation|environment|tui
+// usage: node scripts/pi-native-journeys.mjs --scenario state|children|invocation|environment|tui|installed-panel
 // effects: disposable Pi processes, sessions, loopback provider and scoped tool fixtures
-// requires: locked local native Pi 0.85.1; environment/tui also Python 3.12
+// requires: locked development deps; PI_BIN selects real native Pi; environment/tui also Python 3.12
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
 import { mkdir, readFile, writeFile, stat, copyFile, symlink, utimes, rm, realpath } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ROOT, CLI, PI_VERSION, CONTROL, createNativeFixture, NativeRpc, jsonLines, directory, alive, execute } from "./pi-native-support.mjs";
 const text = (payload) => payload.messages?.map((m) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n") ?? "";
@@ -949,7 +949,41 @@ async function runMcp(f, evidence) {
   assert.ok(evidence.mcp.handshakePids.every((pid) => !alive(pid)), "Native shutdown must reap every owned MCP server, including reload/child connections");
 }
 
-async function runPanel(f, evidence) {
+async function runInstalledPanel(f, evidence) {
+  // Use the manifest's actual delivery payload, not an unrelated checkout.
+  const source = join(ROOT, "contrib/pi-extension");
+  const packed = await execute("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", f.root], { cwd: source });
+  assert.equal(packed.code, 0, packed.stderr);
+  const [manifest] = JSON.parse(packed.stdout);
+  const extracted = await execute("tar", ["-xzf", join(f.root, manifest.filename), "-C", f.root]);
+  assert.equal(extracted.code, 0, extracted.stderr);
+  const copy = join(f.root, "package");
+  const pkg = JSON.parse(await readFile(join(copy, "package.json"), "utf8"));
+  const pythonVersion = /__version__ = "([^"]+)"/.exec(await readFile(join(ROOT, "src/larva/__init__.py"), "utf8"))[1];
+  assert.equal(pkg.version, pythonVersion);
+  for (const name of pkg.files) assert.ok(manifest.files.some(file => file.path === name), `missing delivery file ${name}`);
+  await writeFile(join(f.agent, "settings.json"), JSON.stringify({ ...f.settings, packages: [] }));
+  const install = await execute(process.execPath, [CLI, "install", copy], { env: f.env, cwd: f.cwd });
+  assert.equal(install.code, 0, install.stderr);
+  const settings = JSON.parse(await readFile(join(f.agent, "settings.json"), "utf8"));
+  assert.deepEqual(settings.packages.map(source => resolve(f.agent, source)), [copy]);
+  const control = await execute(process.execPath, [CLI, "-p", "--offline", "--approve", "--larva-persona", "ok", "Installed release control"], { env: f.env, cwd: f.cwd });
+  assert.equal(control.code, 0, control.stderr);
+  assert.equal(f.requests.length, 1, "installed package must pass actual loader/persona admission");
+  // Node's headless parent renderer needs the development TUI import; native Pi
+  // loads the unpacked payload above without node_modules through host mapping.
+  await symlink(join(source, "node_modules"), join(copy, "node_modules"));
+  evidence.delivery = { source, version: pkg.version, files: manifest.files.map(file => file.path), packed: { command: packed.command, args: packed.args, code: packed.code }, install, settingsPackages: settings.packages, loader: control };
+  const installedEntry = await realpath(join(copy, "larva.ts"));
+  await runPanel(f, evidence, installedEntry);
+  const traces = await jsonLines(join(f.root, "child-trace.jsonl"));
+  const launches = traces.filter(row => row.event === "child_spawn");
+  assert.equal(launches.length, 2);
+  for (const launch of launches) assert.ok(launch.args.includes(installedEntry), "child must load the installed release entry");
+  evidence.delivery.childLaunches = launches;
+}
+
+async function runPanel(f, evidence, entry = join(ROOT, "contrib/pi-extension/larva.ts")) {
   // Exercise the real selected Pi child, its native tool events and Larva's full
   // ingestion path. Only the parent API surface is headless; no transport stub.
   const savedArgv = process.argv;
@@ -959,7 +993,7 @@ async function runPanel(f, evidence) {
   process.argv = [process.execPath, CLI];
   process.env = { ...env };
   process.chdir(f.cwd);
-  const mod = await import(pathToFileURL(join(ROOT, "contrib/pi-extension/larva.ts")).href);
+  const mod = await import(pathToFileURL(entry).href);
   const callbacks = [];
   const ctx = { env, mode: "rpc", hasUI: false, ui: { setStatus() {} }, modelRegistry: { find: (provider, id) => ({ provider, id }) }, sendMessage: async message => { callbacks.push(message); } };
   const pi = { on() {}, registerTool() {}, registerCommand() {}, getAllTools: () => ["read", "bash", "larva_subagent"], setActiveTools: () => true, setModel: () => true, getThinkingLevel: () => "off", setThinkingLevel() {} };
@@ -1048,7 +1082,8 @@ export async function runJourney(scenario) {
   const f = await createNativeFixture();
   const evidence = { scenario, modality: "actual native CLI + normal package loader + loopback provider", node: process.version, piVersion: PI_VERSION, cli: CLI };
   try {
-    if (scenario === "panel") await runPanel(f, evidence);
+    if (scenario === "installed-panel") await runInstalledPanel(f, evidence);
+    else if (scenario === "panel") await runPanel(f, evidence);
     else if (scenario === "mcp") await runMcp(f, evidence);
     else if (scenario === "state") await runState(f, evidence);
     else if (scenario === "children") await runChildren(f, evidence);

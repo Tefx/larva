@@ -1,6 +1,6 @@
 {
   "name": "@larva/pi-extension",
-  "version": "0.0.0",
+  "version": "0.8.5",
   "private": true,
   "type": "module",
   "keywords": ["pi-package"],

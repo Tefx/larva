@@ -2,6 +2,24 @@
 
 ## Native Pi package
 
+Release 0.8.5 keeps this package separate from the Python wheel. Upgrading the
+Python backend alone does not update these extension files; install this release's
+source directory with `pi install` and restart Pi. See the
+[Chinese release notes](../../scripts/release-notes-0.8.5.md).
+
+The release delivery check uses the manifest's local packed payload and isolated
+agent state, then executes the native panel assertions from that installed entry:
+
+```bash
+PI_BIN=/absolute/path/to/real/pi/cli.js node scripts/pi-native-journeys.mjs --scenario installed-panel --output /owned/path/installed-panel.json
+```
+
+Run from the repository root after `npm --prefix contrib/pi-extension ci`.
+The installation and child loader use the selected real Pi; the parent panel API
+is headless with the locked development TUI renderer. The loopback provider
+replaces only model service input. No npm publication or global settings change
+is performed.
+
 This directory is the Larva extension package for native Pi. Install it
 into a Pi agent directory, bind the Larva CLI, and start `pi` from a normal
 project shell. [The accepted native design](../../design/pi-native-extension.md)
