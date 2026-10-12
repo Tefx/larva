@@ -146264,11 +146264,20 @@ phases:
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - tests/shell/test_pi*.py\n\
       \    - tests/fixtures/pi/**\n    - scripts/pi*.mjs\n    - README.md\n    - design/pi-native-extension.md\n\
+      \    - .github/workflows/ci.yml\n    - tests/shell/test_repo_local_ci_gate.py\n\
       \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\nverification_inventory:\n\
       \  - .github/workflows/ci.yml\n  - tests/shell/test_pi_extension_subagent_ux.py\n\
       \  - tests/shell/test_pi_extension_real_runtime.py\n  - tests/shell/test_pi_subagent_activity.py\n\
-      \  - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs\nDeliver: Implement\
-      \ the user-accepted subagent panel repair as one complete transport/normalizer/snapshot/overlay\
+      \  - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs\n\naccepted_ci_verification:\n\
+      \  full_invar_argv:\n    - env\n    - -u\n    - VIRTUAL_ENV\n    - -u\n    -\
+      \ UV_PROJECT_ENVIRONMENT\n    - -u\n    - PYTHONPATH\n    - UV_PYTHON_DOWNLOADS=never\n\
+      \    - uv\n    - run\n    - --locked\n    - --python\n    - \"3.12\"\n    -\
+      \ --group\n    - dev\n    - invar\n    - guard\n    - --all\n  native_mcp_selector:\
+      \ LARVA_TEST_NATIVE_MCP_PI_BIN\n  native_mcp_fixture_package: \"@earendil-works/pi-coding-agent\"\
+      \n  native_mcp_fixture_version: \"1.1.0\"\n  native_mcp_fixture_path_example:\
+      \ .venv/native-pi\n  retained_checkout_pi_version: \"0.85.1\"\n  ci_contract_test:\
+      \ tests/shell/test_repo_local_ci_gate.py\n\nDeliver: Implement the user-accepted\
+      \ subagent panel repair as one complete transport/normalizer/snapshot/overlay\
       \ result with meaningful regression tests and operator documentation.\n1. Native\
       \ tool start/update/end consume toolCallId/toolName/args; update reads partialResult;\
       \ end reads result and isError. Boolean true means failed, false means success;\
@@ -146329,7 +146338,30 @@ phases:
       \ tests without constraining supported installed Pi versions.\nRecovery: Reversible\
       \ repository correction in isolated worktree; ordinary fixes stay here. Quiesce\
       \ descendants and reconcile task-owned effects before returning candidate. Missing\
-      \ evidence leaves this step unfinished; no lifecycle weakening."
+      \ evidence leaves this step unfinished; no lifecycle weakening.\nAccepted CI\
+      \ correction within this unfinished delivery: The Orchestrator independently\
+      \ accepted the following equivalent verification-environment repairs under the\
+      \ original implement-and-release authorization; product meaning and every original\
+      \ acceptance obligation remain unchanged.\nA. Run the mandatory full Invar scan\
+      \ in the existing locked project environment rather than standalone uvx. Mixed\
+      \ standalone pytest/platformdirs metadata and project site-packages caused plugin\
+      \ import failure; the project-environment full scan has already demonstrated\
+      \ successful static/doctest/CrossHair/property execution. Retain --all, failure\
+      \ propagation and existing contract behavior; disable no plugin or contract\
+      \ and change no dependencies. Preserve documented existing CrossHair skips without\
+      \ introducing new skips.\nB. Prepare Pi 1.1.0 with non-global npm in disposable\
+      \ runner-local state under an existing excluded path, such as .venv/native-pi.\
+      \ Only the native-MCP pytest case consumes the explicit LARVA_TEST_NATIVE_MCP_PI_BIN\
+      \ selector for that package's real CLI, with package/bin identity verification.\
+      \ Keep checkout Pi 0.85.1 lock/build/bin identity checks and all other native\
+      \ checks bound to the checkout. Preserve actual MCP server effects, permission\
+      \ checks and child dispatch. This is an isolated test fixture choice: no runtime\
+      \ version gate, automatic upgrade, compatibility probe/matrix, new global installation,\
+      \ skip, empty-result substitute, weakened assertion or cross-version builtin\
+      \ injection.\nUpdate the mechanical CI contract and meaningful rejection counterexamples\
+      \ accordingly. These corrections and their affected verification belong to the\
+      \ same senior-engineer result; no broader baseline lint remediation or unrelated\
+      \ CI changes are authorized."
     verification: 'Run meaningful native-shape behavior regressions for every Deliver
       obligation, including required isolated ingestion-to-render and installed Pi
       1.1.0 observation. Use existing locked Python dev and npm fixtures: CI documents
@@ -146346,7 +146378,18 @@ phases:
       demonstrably applicable prior observations with affected-scope runs; changed
       source/dependencies/configuration invalidate affected evidence only. No missing/failed
       necessary requirement can be marked accepted. Report exact commands, observed
-      outcomes, applicability and gaps.'
+      outcomes, applicability and gaps.
+
+      For the accepted CI corrections, execute the structured full_invar_argv in the
+      locked project environment with the full scan and mandatory failure propagation;
+      report static, doctest, CrossHair and property outcomes and existing skips accurately.
+      Verify the updated mechanical CI command/selector contract with retained negative
+      counterexamples, then exercise the native-MCP case using the explicit isolated
+      package CLI with real server effects, permissions and child dispatch. Prove
+      other native checks and checkout package/bin identity remain unchanged. Reuse
+      applicable prior observations for unchanged behavior; changed workflow/selector
+      evidence requires affected-scope verification. No version-based product admission
+      or assertion weakening is permitted.'
     refs:
     - contrib/pi-extension/larva.ts
     - contrib/pi-extension/README.md
@@ -146354,6 +146397,7 @@ phases:
     - tests/shell/test_pi_extension_subagent_ux.py
     - .github/workflows/ci.yml
     - INVAR.md
+    - tests/shell/test_repo_local_ci_gate.py
     agent: senior-engineer
   - id: subagent-panel.prepare-release
     name: Prepare patch metadata and prove native Pi delivery
