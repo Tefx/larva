@@ -146607,7 +146607,7 @@ phases:
     agent: devops-engineer
   - id: subagent-panel.streaming-fixture-repair
     name: Synchronize streaming fixture with persisted Timeline readiness
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - scripts/pi-extension-runtime-smoke.mjs\n    - tests/shell/test_pi_extension_subagent_ux.py\n\
       \  blocked_paths:\n    - contrib/pi-extension/**\n    - pyproject.toml\n   \
@@ -146674,3 +146674,21 @@ phases:
     agent: senior-engineer
     claimed_by: senior-engineer
     claimed_at: '2026-10-12T22:23:36.061088Z'
+    done_at: '2026-10-12T23:08:06.743485+00:00'
+    evidence: Exact senior-engineer candidate30964f0a5f608f7985c13412ecd8998a7a8cac53
+      independently reviewed full2filediff and actual controlled-delay evidence. RPC
+      live checks retained; awaitactualpersisted msg-rpc-1 plus explicit childterminal
+      gate. RealWorker reads incompleteJSONL314bytes1record while originalRPCready;
+      beforeexcerpt assistantfalse/other7true/newwaitpending then newline+message_end
+      givesactualevent/all8true while running. Original9R12 assertions preserved,
+      newdiagnostics boundedredacted, finallylifecycle reset/Workerdispose/rootcleanup;
+      no producthooks/mock seam. FocusedCLI0, finalcandidate4pytestPASS52deselected,
+      existingWorker catchup/reset/terminationPASS, fullInvar42files0errors5warnings/doctest/CrossHair
+      existingreportedskips/properties11of11 1100examples. Ruff499baseline=current0new;
+      normalhooks/syntax/diffcheck passed. Currentrepoonlytwoadmittedtestfileschanged
+      vsbase, no product/versions/locks/tag changes. Originalremote failedconjunct
+      remainsunknown; newcausalproof doesnotrewritehistory. Candidate retainedrefs/retained/subagent-panel-streaming-fixture/accepted-candidate.
+      integrationbasis3d645a65 checked, ancestorchecked, ffexactcandidate+HEADverified.
+      Unique report/logs/rawevidence migrated .vectl/evidence/subagent-panel-release/streaming-fixture/RESULT.md;
+      prior paths historical. Processes quiescent; cleanup follows acceptance. RequirednewfullremoteCI
+      remains SAMEpublicationconsumer; publication0.8.5effects mustnotrepeat.
