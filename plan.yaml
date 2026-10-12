@@ -146426,7 +146426,7 @@ phases:
       source and minimal observations retained for release.
   - id: subagent-panel.prepare-release
     name: Prepare patch metadata and prove native Pi delivery
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n    - contrib/pi-extension/package.json\n    - contrib/pi-extension/package-lock.json\n\
@@ -146493,6 +146493,28 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-12T21:31:34.643309Z'
+    done_at: '2026-10-12T21:45:48.799785+00:00'
+    evidence: Exact owner devops-engineer candidate e57034ed371a27b25c6353ebc24e927eabd68ddf
+      independently reviewed all8filediffs and installed-panel source/observations.
+      Version0.8.5/tagv0.8.5 observed free via read-only tags,paginated releases,PyPI;
+      publication must reconcile again. Python/__version__/uvlock/privatePi package+rootlock
+      synchronized, underlying dependency locks unchanged. uv lock--check/build wheel+sdist/existing
+      mcp-release-smoke actual isolated wheel Larva0.8.5 MCP1.30 all13tools passed;
+      separate installed metadata/__version__0.8.5 pass. Actual Pi1.1 installed-panel
+      npm-pack manifest->isolated real pi install/loader before node_modules symlink->both
+      actual children installedentry->native partial/isError/results/snapshots/TUI/delivered
+      callbacks passed, cleanup nochildren/capsules providerclosed rootremoved. Headless
+      parent/devTUI and loopback-provider limitations explicit; no live-model claim.
+      Source inspected, no product repair changes; original repair offlineinventory/fullInvar
+      retained applicable, changedmetadata Invar and script syntax/diff checks passed.
+      Canonical migrated unchanged report/logs/raw observations .vectl/evidence/subagent-panel-release/preparation/preparation-evidence.md
+      and installed-panel.json. Original runner failures retained. Candidate retainedref
+      refs/retained/subagent-panel-prepare-release/accepted-candidate; integrationbasisdf74f2c1
+      verified, ancestor checked and exactcandidate fastforwarded; HEAD verified.
+      No remote write yet. Publication notes scripts/release-notes-0.8.5.md. Child
+      cleaned reproducible environments actualfree+839471104bytes; parent cleanup
+      remaining worktree after acceptance. Ready for separately authorized publication
+      step.
   - id: subagent-panel.publish-and-verify
     name: Publish integrated patch and verify GitHub, PyPI and installed Pi payload
     status: pending
