@@ -146254,3 +146254,238 @@ phases:
       preserved here and stable URLs; temporary receipt no longer needed after consumption.
       No remaining release acceptance gap; Plan completion and final main push/eligible
       worktree cleanup follow serially.'
+- id: subagent_panel_release
+  name: Repair native subagent panel and publish next patch
+  status: pending
+  steps:
+  - id: subagent-panel.repair
+    name: Repair native event presentation, live tail and timeline follow
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - tests/shell/test_pi*.py\n\
+      \    - tests/fixtures/pi/**\n    - scripts/pi*.mjs\n    - README.md\n    - design/pi-native-extension.md\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\nverification_inventory:\n\
+      \  - .github/workflows/ci.yml\n  - tests/shell/test_pi_extension_subagent_ux.py\n\
+      \  - tests/shell/test_pi_extension_real_runtime.py\n  - tests/shell/test_pi_subagent_activity.py\n\
+      \  - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs\nDeliver: Implement\
+      \ the user-accepted subagent panel repair as one complete transport/normalizer/snapshot/overlay\
+      \ result with meaningful regression tests and operator documentation.\n1. Native\
+      \ tool start/update/end consume toolCallId/toolName/args; update reads partialResult;\
+      \ end reads result and isError. Boolean true means failed, false means success;\
+      \ absent/nonboolean isError means ended with unknown result only in panel tool\
+      \ state, never a new public task lifecycle state. No valid callId means no row.\
+      \ Malformed result cannot override valid isError. Remove native-event assumptions\
+      \ about success/output/error; retain RPC-command success semantics.\n2. Extract\
+      \ ordered content text only, renderer-safe and bounded to 1200 Unicode code\
+      \ points INCLUDING omission notices. Never serialize details/arbitrary objects\
+      \ or image base64. Distinguish nontext, truncation and oversized omissions.\
+      \ Failure uses error_preview, others output_preview. Repeated partials replace\
+      \ the same callId row in place. End replaces partial with final result; no text\
+      \ clears stale partial. Thinking/tool-argument fragments remain hidden; no wider\
+      \ sensitive-data persistence.\n3. Repair childRpcProjection jointly with normalization:\
+      \ oversized projection preserves native isError/result/partialResult, emits\
+      \ only bounded omission notice, retains existing oversized metadata and transport\
+      \ limits. No fabricated success from presentation status, extra file reads or\
+      \ large-output copies.\n4. Only running live_assistant_preview retains newest\
+      \ 4000 code points INCLUDING earlier-content-omitted marker; one oversized delta\
+      \ also retains tail. Do not globally change helper semantics used by other consumers;\
+      \ final result, artifacts, callbacks and historical timeline remain unchanged.\n\
+      5. Timeline opens at tail and follows updates; user scrolling upward pauses\
+      \ following and preserves position. End or returning to bottom resumes. Paused\
+      \ view signals new activity, including in-place tool updates. Follow state is\
+      \ overlay-local, neither persisted nor configured.\n6. Fixed panel region shows\
+      \ most recent child activity category and reception time. Repeated thinking/argument\
+      \ deltas refresh time without body. Distinguish tool end, agent_end, agent_settled,\
+      \ Larva terminal snapshot and actual callback_delivery; missing callback record\
+      \ remains unknown. Show Pi existing retry/compaction start/end bounded summaries;\
+      \ these newly displayed events must not automatically become watchdog recognized\
+      \ progress. Preserve watchdog, cancellation, settlement and callback semantics.\
+      \ Commit stays an ordinary tool and never completes a task.\n7. Replace stale\
+      \ success/output native-event fixtures. Cover success/failure; multiple partial\
+      \ updates in one row; missing optional fields and missing/wrong-type isError;\
+      \ mixed/nontext/empty text; final clearing; long Unicode/control characters;\
+      \ oversized failure, original budgets and no details/base64 leaks; 4000+ accumulated\
+      \ and single-delta tail; timeline follow/pause/resume/in-place updates; hidden\
+      \ thinking refresh; running after commit; agent_end not settled/delivered; unchanged\
+      \ watchdog behavior. Include an isolated ingestion -> normalizer -> snapshot\
+      \ -> render end-to-end fixture using existing facilities. Observe actual installed\
+      \ Pi 1.1.0 native event contract in isolation; record version as context, not\
+      \ runtime admission/version rejection. No real model required.\nBoundary: Preserve\
+      \ user-owned artifacts/** without scanning or cleanup and completed Plan history.\
+      \ No global installation/upgrade or user Pi configuration changes, new credentials/accounts/spend,\
+      \ live-model requirement, multi-version matrix, new evaluation framework, or\
+      \ unrelated product changes. Orchestrator owns claims, worktrees, integration,\
+      \ lifecycle and acceptance. Use only isolated task-owned state and existing\
+      \ approved authentication opaquely; never transfer credential values or locations.\n\
+      Owner: senior-engineer owns the complete correction and its tests/docs because\
+      \ transport loss/projection, asynchronous presentation transitions and non-persistent\
+      \ overlay state must jointly preserve persisted timeline, watchdog and callback\
+      \ truth. Normal host-extension engineering was considered; these coupled lifetime/lossless-history\
+      \ boundaries justify this owner without Principal or separate helper steps.\n\
+      Admit: Accepted user instruction to implement the panel repair and publish;\
+      \ repository local contracts remain authoritative. Release preparation consumes\
+      \ integrated fix and its evidence. Use installed Pi source/types and isolated\
+      \ native observation for host semantics; locked package dependencies reproduce\
+      \ tests without constraining supported installed Pi versions.\nRecovery: Reversible\
+      \ repository correction in isolated worktree; ordinary fixes stay here. Quiesce\
+      \ descendants and reconcile task-owned effects before returning candidate. Missing\
+      \ evidence leaves this step unfinished; no lifecycle weakening."
+    verification: 'Run meaningful native-shape behavior regressions for every Deliver
+      obligation, including required isolated ingestion-to-render and installed Pi
+      1.1.0 observation. Use existing locked Python dev and npm fixtures: CI documents
+      uv sync --locked --python 3.12 --group dev, npm --prefix contrib/pi-extension
+      ci, Node 26.7.0, explicit checkout PI_BIN/LARVA_TEST_PI_CODING_AGENT, and env
+      -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never
+      wrappers. Equivalent invocations within same contract are allowed; record actual
+      versions and isolation, no global changes. Run Invar per repository instructions
+      (sig/map/refs and guard); Invar is not TypeScript behavior proof. Orchestrator
+      completion includes focused source/contract review of budgets, projection, presentation-only
+      states and unchanged watchdog/settlement boundaries plus discriminating tests.
+      Final integrated acceptance must cover the complete applicable project-native
+      offline inventory (CI, pytest and relevant existing Node/runtime checks), combining
+      demonstrably applicable prior observations with affected-scope runs; changed
+      source/dependencies/configuration invalidate affected evidence only. No missing/failed
+      necessary requirement can be marked accepted. Report exact commands, observed
+      outcomes, applicability and gaps.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - contrib/pi-extension/package.json
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - .github/workflows/ci.yml
+    - INVAR.md
+    agent: senior-engineer
+  - id: subagent-panel.prepare-release
+    name: Prepare patch metadata and prove native Pi delivery
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
+      \ uv.lock\n    - contrib/pi-extension/package.json\n    - contrib/pi-extension/package-lock.json\n\
+      \    - contrib/pi-extension/README.md\n    - README.md\n    - scripts/**\n \
+      \   - tests/shell/test_pi*.py\n    - .github/workflows/publish.yml\n  blocked_paths:\n\
+      \    - plan.yaml\n    - .vectl/**\n    - artifacts/**\nrelease_target:\n  repository:\
+      \ /Users/tefx/Projects/larva\n  remote: https://github.com/Tefx/larva.git\n\
+      \  branch: main\n  proposed_version: 0.8.5\n  github: Tefx/larva\n  pypi_project:\
+      \ larva\n  workflow: .github/workflows/publish.yml\nDeliver: Prepare a release-ready\
+      \ integrated repair, consistent next-patch Python metadata/lock and Chinese\
+      \ release notes plus reproducible proof that the actual Pi delivery/install\
+      \ path contains and executes the fix. Consumer is the separate external publication\
+      \ step. Reconcile GitHub tags/releases and PyPI versions read-only before fixing\
+      \ version (0.8.5 if free; if conflicting select the next free patch only after\
+      \ establishing actual state, never overwrite). Record selected version/tag and\
+      \ accepted integrated commit for publication.\nAdmit: Inspect existing install/delivery\
+      \ relationship before packaging changes. README documents native pi install\
+      \ of contrib/pi-extension as a separate normal Pi package with LARVA_CLI_ARGV_JSON\
+      \ backend; its package.json declares larva.ts/activity.ts/preload/timeline-worker\
+      \ files. Python wheel force-include currently only opencode is not proof of\
+      \ a missing Pi payload and does not authorize gratuitous bundling or npm publication.\
+      \ Verify release-source Pi package installation in isolated agent state through\
+      \ the real Pi loader, and run discriminating repaired native-event/render behavior\
+      \ from that installed delivery, not only Python metadata/file existence or an\
+      \ unrelated checkout. Preserve package/bin identity checks. Keep any necessary\
+      \ tracked delivery check/producer here, reusing existing fixtures; do not create\
+      \ a new framework.\nBoundary: Preserve user-owned artifacts/** without scanning\
+      \ or cleanup and completed Plan history. No global installation/upgrade or user\
+      \ Pi configuration changes, new credentials/accounts/spend, live-model requirement,\
+      \ multi-version matrix, new evaluation framework, or unrelated product changes.\
+      \ Orchestrator owns claims, worktrees, integration, lifecycle and acceptance.\
+      \ Use only isolated task-owned state and existing approved authentication opaquely;\
+      \ never transfer credential values or locations.\nOwner: devops-engineer owns\
+      \ release metadata, delivery preparation, checks and docs; senior-engineer remains\
+      \ defect owner for panel behavior. Parent integrates preparation before external\
+      \ publication. This step has repository effects only; remote reads are allowed,\
+      \ push/tag/release/upload are not.\nRecovery: Preparation is reversible; stop\
+      \ on unreconciled version/target state. Return committed candidate and applicable\
+      \ proof; retain only unique observations needed by publication/acceptance, clean\
+      \ disposable environments when consumers finish. Product defect requiring repair\
+      \ after predecessor completion follows normal immutable-history repair through\
+      \ Planner, never silently changes completed step."
+    verification: Verify consistent selected pyproject/package/lock/installed metadata
+      and lock resolution; build with existing tracked build/smoke facilities. Exercise
+      actual isolated native Pi package install/loader from the integrated release
+      source and repaired native-event/render seam, preserving real user's settings.
+      Supply command/result and artifact-source relationship to publication. Final
+      integrated offline inventory and Invar coverage may reuse applicable repair
+      evidence; add affected packaging/delivery checks and diff check. Orchestrator
+      judges complete candidate ready before admitting external effects; missing installed-payload
+      behavioral proof blocks publication. Record selected free patch version/tag,
+      integrated candidate, release notes, commands/outcomes, evidence applicability
+      and remaining gaps.
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    - README.md
+    - contrib/pi-extension/package.json
+    - .github/workflows/publish.yml
+    - scripts/mcp-release-smoke.py
+    depends_on:
+    - subagent-panel.repair
+    agent: devops-engineer
+  - id: subagent-panel.publish-and-verify
+    name: Publish integrated patch and verify GitHub, PyPI and installed Pi payload
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
+      scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
+      \    - artifacts/**\nrelease_target:\n  repository: /Users/tefx/Projects/larva\n\
+      \  remote: https://github.com/Tefx/larva.git\n  branch: main\n  github: Tefx/larva\n\
+      \  pypi_project: larva\n  index: https://pypi.org/simple\n  workflow: .github/workflows/publish.yml\n\
+      \  smoke: scripts/mcp-release-smoke.py\nDeliver: Publish the accepted integrated\
+      \ repair/version candidate once through ordinary main push, immutable matching\
+      \ tag and non-draft GitHub release; observe matching release:published workflow\
+      \ wheel/sdist build, existing MCP smoke and trusted-publisher PyPI success.\
+      \ Chinese notes explain tool-result truth, bounded tail/follow UX, activity/lifecycle\
+      \ distinction and unchanged watchdog/callback/security boundaries; clearly state\
+      \ how users obtain the repaired native Pi package separately from Python backend.\
+      \ Verify published source-derived Pi package installed into isolated state actually\
+      \ executes repaired behavior and verify fresh unpinned PyPI larva retrieval\
+      \ resolves selected version with CLI help success.\nBoundary: Preserve user-owned\
+      \ artifacts/** without scanning or cleanup and completed Plan history. No global\
+      \ installation/upgrade or user Pi configuration changes, new credentials/accounts/spend,\
+      \ live-model requirement, multi-version matrix, new evaluation framework, or\
+      \ unrelated product changes. Orchestrator owns claims, worktrees, integration,\
+      \ lifecycle and acceptance. Use only isolated task-owned state and existing\
+      \ approved authentication opaquely; never transfer credential values or locations.\n\
+      Owner: devops-engineer owns external release effects only on the existing origin/GitHub/PyPI\
+      \ targets authorized by the current user's implement-and-release request. Orchestrator\
+      \ alone owns final integrated acceptance for this entire phase (repair, preparation\
+      \ and publication), Git durability and cleanup; no duplicate gate.\nAdmit: Reuse\
+      \ release_0_8_4 process and applicable unchanged observations, never old publication/version\
+      \ proof. Before any write, reconcile main/remote, candidate, selected version/tag,\
+      \ release, Actions and PyPI. Require Orchestrator's accepted integrated immutable\
+      \ commit containing both preceding deliveries and applicable complete offline\
+      \ regression evidence; never publish an unintegrated worktree candidate. No\
+      \ repository edits here. Use existing publish workflow and opaque approved credential\
+      \ handoff; no manual upload, npm publication or alternative target.\nRecovery:\
+      \ Inspect actual remote tag/release/workflow/PyPI state after any possible effect\
+      \ before retry. Never force-push, rewrite tags, blindly republish or bypass\
+      \ trusted publishing. Bounded workflow watch/checkpoints; timeout leaves resumable\
+      \ unfinished work, no shell sleep polling. Retry only changed inputs/verified\
+      \ transient recovery. Unknown effects or conflicting target stop writes. Repository\
+      \ revert cannot undo publication. Preserve minimal unique observations; release\
+      \ acceptance-only holds after final acceptance and clean task-owned reconstructible\
+      \ outputs."
+    verification: Require immutable tag and remote main/release commit binding, non-draft
+      GitHub release URL, matching successful Actions head/run URL with build/MCP-smoke/trusted-PyPI
+      publication, and PyPI selected-version wheel+sdist availability. In task-owned
+      isolated UV cache/tool/temp state retrieve unpinned --from larva via https://pypi.org/simple
+      with no-cache/refresh, assert importlib.metadata.version('larva') equals selected
+      version and larva --help succeeds; local source/wheel or pinned install cannot
+      substitute for this PyPI observation. Separately acquire published tag/release
+      source and verify actual isolated Pi installation/loader and repaired result
+      rendering from that delivery, not just version/file presence; reuse applicable
+      local behavioral evidence while proving the published/install seam. Record exact
+      commands, outcomes, commit/tag, URLs and delivery identity. Orchestrator makes
+      one final acceptance decision over all subagent_panel_release outcomes, complete
+      applicable offline inventory bound to final integrated candidate, required installed-Pi/native
+      observations, publication readbacks and reconciled effects/cleanup. Blocking
+      defect, failed necessary check or unknown required observation prevents acceptance.
+      No repeat of unchanged costly observations solely for report binding.
+    refs:
+    - .github/workflows/publish.yml
+    - scripts/mcp-release-smoke.py
+    - README.md
+    - contrib/pi-extension/package.json
+    depends_on:
+    - subagent-panel.prepare-release
+    agent: devops-engineer
