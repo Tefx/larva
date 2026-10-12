@@ -146426,7 +146426,7 @@ phases:
       source and minimal observations retained for release.
   - id: subagent-panel.prepare-release
     name: Prepare patch metadata and prove native Pi delivery
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n    - contrib/pi-extension/package.json\n    - contrib/pi-extension/package-lock.json\n\
@@ -146491,6 +146491,8 @@ phases:
     depends_on:
     - subagent-panel.repair
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-12T21:31:34.643309Z'
   - id: subagent-panel.publish-and-verify
     name: Publish integrated patch and verify GitHub, PyPI and installed Pi payload
     status: pending
