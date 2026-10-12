@@ -38,6 +38,11 @@ NATIVE_TESTS = {
 }
 PYTHON_SETUP = "uv sync --locked --python 3.12 --group dev"
 NODE_SETUP = "npm --prefix contrib/pi-extension ci"
+NATIVE_MCP_SETUP = (
+    "npm install --prefix .venv/native-pi --no-save --package-lock=false "
+    "@earendil-works/pi-coding-agent@1.1.0"
+)
+FULL_INVAR = "uv run --locked --python 3.12 --group dev invar guard --all"
 
 
 def _workflow() -> dict:
@@ -68,6 +73,13 @@ def _assert_ci_contract(workflow: dict) -> None:
             node_action = next(i for i, s in enumerate(steps) if s.get("uses") == "actions/setup-node@v4")
             node_install = next(i for i, s in enumerate(steps) if NODE_SETUP in _commands(s))
             assert node_action < node_install
+            mcp_installs = [
+                i for i, step in enumerate(steps) if NATIVE_MCP_SETUP in _commands(step)
+            ]
+            assert len(mcp_installs) == 1
+            mcp_install = mcp_installs[0]
+            assert node_action < mcp_install
+            assert python_install <= mcp_install
         selected[job_id] = set()
         for index, step in enumerate(steps):
             assert not step.get("continue-on-error", False)
@@ -89,6 +101,8 @@ def _assert_ci_contract(workflow: dict) -> None:
                     selected[job_id].update(files)
                     if job_id == "pi-native-runtime":
                         assert node_install < index
+                        if "tests/shell/test_pi_extension_real_runtime.py" in files:
+                            assert mcp_install < index
                 if "node" in tokens or "for f in contrib/pi-extension/test-*.mjs" in command:
                     assert job_id == "pi-native-runtime" and node_install < index
         # No credentials or retired upstream inputs can be hidden in env/expressions.
@@ -101,11 +115,14 @@ def _assert_ci_contract(workflow: dict) -> None:
     )
     assert 'for f in contrib/pi-extension/test-*.mjs; do node "$f"; done' in native_commands
     assert "node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates" in native_commands
-    assert "uvx --python 3.12 invar-tools==1.20.3 guard --all" in native_commands
+    assert FULL_INVAR in native_commands
     env = jobs["pi-native-runtime"]["env"]
     for key, suffix in {
         "PI_BIN": "contrib/pi-extension/node_modules/.bin/pi",
-        "LARVA_TEST_PI_CODING_AGENT": "contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent",
+        "LARVA_TEST_PI_CODING_AGENT": (
+            "contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent"
+        ),
+        "LARVA_TEST_NATIVE_MCP_PI_BIN": ".venv/native-pi/node_modules/.bin/pi",
     }.items():
         assert env[key] == "${{ github.workspace }}/" + suffix
 
@@ -114,10 +131,17 @@ def test_ci_runs_local_contracts_and_native_inventory_with_locked_setup() -> Non
     _assert_ci_contract(_workflow())
 
 
-def test_ci_runner_local_launch_executes_declared_package(tmp_path: Path) -> None:
+@pytest.mark.parametrize("selector", ["PI_BIN", "LARVA_TEST_NATIVE_MCP_PI_BIN"])
+def test_ci_runner_local_launch_executes_declared_package(
+    tmp_path: Path, selector: str,
+) -> None:
     env_config = _workflow()["jobs"]["pi-native-runtime"]["env"]
-    binary = Path(env_config["PI_BIN"].replace("${{ github.workspace }}", str(ROOT)))
-    package_root = Path(env_config["LARVA_TEST_PI_CODING_AGENT"].replace("${{ github.workspace }}", str(ROOT)))
+    binary = Path(env_config[selector].replace("${{ github.workspace }}", str(ROOT)))
+    package_root = (
+        Path(env_config["LARVA_TEST_PI_CODING_AGENT"].replace("${{ github.workspace }}", str(ROOT)))
+        if selector == "PI_BIN"
+        else binary.parent.parent / "@earendil-works/pi-coding-agent"
+    )
     package = json.loads((package_root / "package.json").read_text())
     assert package["name"] == "@earendil-works/pi-coding-agent"
     assert binary.resolve(strict=True) == (package_root / package["bin"]["pi"]).resolve(strict=True)
@@ -132,6 +156,8 @@ def test_ci_runner_local_launch_executes_declared_package(tmp_path: Path) -> Non
     "missing_schema", "missing_native", "setup_after_use", "soft_failure",
     "conditional_gate", "external_checkout", "global_install", "wrong_launch_path",
     "masked_failure", "missing_dependency_edge", "nonblocking_shell",
+    "missing_mcp_fixture", "wrong_mcp_fixture", "wrong_mcp_launch_path",
+    "mcp_setup_after_use", "partial_invar_scan", "standalone_invar",
 ])
 def test_ci_rejects_dropped_checks_and_external_or_nonblocking_prerequisites(defect: str) -> None:
     workflow = deepcopy(_workflow())
@@ -163,5 +189,25 @@ def test_ci_rejects_dropped_checks_and_external_or_nonblocking_prerequisites(def
         native["needs"] = []
     elif defect == "nonblocking_shell":
         native["steps"][-1]["shell"] = "bash {0}"
+    elif defect in {"missing_mcp_fixture", "wrong_mcp_fixture"}:
+        replacement = "" if defect == "missing_mcp_fixture" else NATIVE_MCP_SETUP.replace(
+            "@1.1.0", "@0.85.1",
+        )
+        for step in native["steps"]:
+            if "run" in step:
+                step["run"] = step["run"].replace(NATIVE_MCP_SETUP, replacement)
+    elif defect == "wrong_mcp_launch_path":
+        native["env"]["LARVA_TEST_NATIVE_MCP_PI_BIN"] = native["env"]["PI_BIN"]
+    elif defect == "mcp_setup_after_use":
+        for step in native["steps"]:
+            if "run" in step:
+                step["run"] = step["run"].replace(NATIVE_MCP_SETUP, "")
+        native["steps"].append({"run": NATIVE_MCP_SETUP})
+    elif defect == "partial_invar_scan":
+        native["steps"][-1]["run"] = native["steps"][-1]["run"].replace("--all", "--changed")
+    elif defect == "standalone_invar":
+        native["steps"][-1]["run"] = native["steps"][-1]["run"].replace(
+            FULL_INVAR, "uvx --python 3.12 invar-tools==1.20.3 guard --all",
+        )
     with pytest.raises(AssertionError):
         _assert_ci_contract(workflow)

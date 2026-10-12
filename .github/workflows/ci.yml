@@ -33,6 +33,7 @@ jobs:
     env:
       PI_BIN: ${{ github.workspace }}/contrib/pi-extension/node_modules/.bin/pi
       LARVA_TEST_PI_CODING_AGENT: ${{ github.workspace }}/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent
+      LARVA_TEST_NATIVE_MCP_PI_BIN: ${{ github.workspace }}/.venv/native-pi/node_modules/.bin/pi
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,6 +47,7 @@ jobs:
         run: |
           uv sync --locked --python 3.12 --group dev
           npm --prefix contrib/pi-extension ci
+          npm install --prefix .venv/native-pi --no-save --package-lock=false @earendil-works/pi-coding-agent@1.1.0
       - name: Prepare disposable runner host settings
         run: |
           mkdir -p "$HOME/.pi/agent"
@@ -72,4 +74,4 @@ jobs:
       - name: Verify pinned full Invar scan
         run: |
           env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
-            uvx --python 3.12 invar-tools==1.20.3 guard --all
+            uv run --locked --python 3.12 --group dev invar guard --all

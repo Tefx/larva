@@ -2085,6 +2085,14 @@ NATIVE_ACCEPTANCE = ROOT / "scripts" / "pi-native-acceptance.mjs"
 def _run_native_acceptance(scenario: str, timeout: float = 300.0) -> dict[str, Any]:
     node = shutil.which("node")
     assert node is not None, "node is required for native Pi acceptance"
+    env = {
+        k: v for k, v in os.environ.items()
+        if k not in {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"}
+    }
+    if scenario == "native-mcp":
+        selected = env.get("LARVA_TEST_NATIVE_MCP_PI_BIN")
+        assert selected, "Set LARVA_TEST_NATIVE_MCP_PI_BIN for the isolated native MCP fixture"
+        env["PI_BIN"] = selected
     completed = subprocess.run(
         [node, str(NATIVE_ACCEPTANCE), "--scenario", scenario],
         check=False,
@@ -2092,7 +2100,7 @@ def _run_native_acceptance(scenario: str, timeout: float = 300.0) -> dict[str, A
         text=True,
         timeout=timeout,
         cwd=ROOT,
-        env={k: v for k, v in os.environ.items() if k not in {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"}},
+        env=env,
     )
     assert completed.returncode == 0, (
         f"native scenario {scenario} failed\nstdout={completed.stdout}\nstderr={completed.stderr}"
@@ -2131,12 +2139,50 @@ def test_native_pi_acceptance_matrix(scenario: str) -> None:
     assert payload["pass"] is True
 
 
-@pytest.mark.skipif(not os.environ.get("PI_BIN"), reason="Select the actual native MCP CLI with PI_BIN")
 def test_native_mcp_permissions_discovery_and_actual_child() -> None:
     payload = _run_native_acceptance("native-mcp")
     assert payload["pass"] is True
     assert payload["cleanup"]["liveChildren"] == []
     assert payload["cleanup"]["capsules"] == []
+
+
+@pytest.mark.parametrize("scenario", ["native-mcp", "native-state"])
+def test_native_mcp_selector_is_case_local(
+    monkeypatch: pytest.MonkeyPatch, scenario: str,
+) -> None:
+    """Verify invocation wiring only; native effects use the real scenario test."""
+    checkout = "/fixture/checkout/node_modules/.bin/pi"
+    native_mcp = "/fixture/native/node_modules/.bin/pi"
+    package = "/fixture/checkout/node_modules/@earendil-works/pi-coding-agent"
+    monkeypatch.setenv("PI_BIN", checkout)
+    monkeypatch.setenv("LARVA_TEST_NATIVE_MCP_PI_BIN", native_mcp)
+    monkeypatch.setenv("LARVA_TEST_PI_CODING_AGENT", package)
+    observed = {}
+
+    def capture(command, **kwargs):
+        observed.update(command=command, env=kwargs["env"])
+        return subprocess.CompletedProcess(
+            command, 0, stdout=json.dumps({"scenario": scenario}), stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", capture)
+    assert _run_native_acceptance(scenario) == {"scenario": scenario}
+    assert observed["command"][-2:] == ["--scenario", scenario]
+    assert observed["env"]["PI_BIN"] == (native_mcp if scenario == "native-mcp" else checkout)
+    assert observed["env"]["LARVA_TEST_PI_CODING_AGENT"] == package
+
+
+def test_native_mcp_missing_selector_fails_before_launch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LARVA_TEST_NATIVE_MCP_PI_BIN", raising=False)
+
+    def unexpected_launch(*args, **kwargs):
+        raise AssertionError("Native MCP must not borrow an implicit CLI")
+
+    monkeypatch.setattr(subprocess, "run", unexpected_launch)
+    with pytest.raises(AssertionError, match="Set LARVA_TEST_NATIVE_MCP_PI_BIN"):
+        _run_native_acceptance("native-mcp")
 
 
 def test_native_tui_mode_observer_records_ctx_mode() -> None:
