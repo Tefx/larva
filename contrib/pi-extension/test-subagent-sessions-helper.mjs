@@ -272,6 +272,9 @@ await mod.initializeExtension(ctx, {
   registerTool: (tool) => capturedTools.push(tool),
   registerCommand: (name, command) => capturedCommands.set(name, command),
 });
+// Initialization restores a native session; select a parent after that boundary
+// before testing onUpdate failure handling rather than failing parent admission.
+assert.equal((await mod.handlePersonaCommand("parent", ctx, pi)).ok, true);
 const subagentTool = capturedTools.find((tool) => tool.name === "larva_subagent");
 let callbackSawLogBeforeThrow = false;
 const executeResult = await subagentTool.execute("call-id-proof", { persona_id: "child", task: "onUpdate may throw" }, undefined, (update) => {
@@ -279,7 +282,7 @@ const executeResult = await subagentTool.execute("call-id-proof", { persona_id: 
   callbackSawLogBeforeThrow ||= log.some((entry) => entry.call_id === "call-id-proof" && entry.phase === update.details.phase);
   throw new Error("presentation callback failed");
 }, ctx);
-assert.equal(executeResult.status, "accepted");
+assert.equal(executeResult.status, "accepted", JSON.stringify(executeResult));
 assert.equal(callbackSawLogBeforeThrow, true);
 await waitForPresentationEntry((entry) => entry.call_id === "call-id-proof" && entry.status === "success" && entry.phase === "success", "call-id-proof terminal log");
 const noUpdateResult = await subagentTool.execute("call-id-no-update", { persona_id: "child", task: "no update callback" }, undefined, undefined, ctx);
@@ -293,6 +296,7 @@ assert.equal(commandResult.details.selected_task_id, executeResult.task_id);
 assert.equal(commandResult.view_only, true);
 const headlessCommands = new Map();
 await mod.initializeExtension({ env, modelRegistry: ctx.modelRegistry }, { ...pi, registerTool: () => undefined, registerCommand: (name, command) => headlessCommands.set(name, command) });
+assert.equal((await mod.handlePersonaCommand("parent", ctx, pi)).ok, true);
 const headlessExactResult = await headlessCommands.get("larva-subagent").handler(executeResult.task_id);
 assert.equal(headlessExactResult.ok, true);
 assert.equal(headlessExactResult.details.selected_task_id, executeResult.task_id);

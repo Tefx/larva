@@ -98,6 +98,13 @@ rl.on("line", async (line) => {
     send({ id: message.id, type: "response", command: "prompt", success: true, data: {} });
     if (scenario === "oversized-tool") {
       send({ type: "tool_execution_start", toolCallId: "tool-big", toolName: "read", args: { path: "/tmp/proof", content: huge(${JSON.stringify(RAW_TOOL_PREFIX)}) } });
+    } else if (scenario.startsWith("oversized-tool-")) {
+      send({ type: "tool_execution_start", toolCallId: "tool-native-big", toolName: "bash", args: { command: "git commit -m ordinary" } });
+      send({ type: "tool_execution_update", toolCallId: "tool-native-big", toolName: "bash", partialResult: { content: [{ type: "text", text: huge(${JSON.stringify(RAW_TOOL_PREFIX)} + ":partial") }, { type: "image", data: "RAW_BASE64_MUST_NOT_ESCAPE" }], details: { secret: "RAW_DETAILS_MUST_NOT_ESCAPE" } } });
+      send({ type: "tool_execution_end", toolCallId: "tool-native-big", toolName: "bash",
+        ...(scenario === "oversized-tool-unknown" ? { isError: { bad: "x".repeat(1_220_000) } } : { isError: scenario === "oversized-tool-failure" }),
+        result: scenario === "oversized-tool-clearing" ? { content: [] } : { content: [{ type: "text", text: huge(${JSON.stringify(RAW_TOOL_PREFIX)} + ":final") }, { type: "image", data: "RAW_BASE64_MUST_NOT_ESCAPE" }], details: { secret: "RAW_DETAILS_MUST_NOT_ESCAPE" } },
+      });
     } else if (scenario === "oversized-assistant") {
       send({ type: "message_update", channel: "assistant", assistantMessageEvent: { delta: huge(${JSON.stringify(RAW_ASSISTANT_PREFIX)}) }, message: huge("RAW_FULL_ASSISTANT_PARTIAL") });
     } else if (scenario === "oversized-thinking") {
@@ -142,7 +149,7 @@ function assertNoRawPayloadEscaped(mod, traceFrames, currentTaskId) {
   const events = mod.larva_subagent_events({ task_ids: [currentTaskId], limit: 100 }).details;
   const status = mod.larva_subagent_status({ task_id: currentTaskId });
   const publicJson = JSON.stringify({ traceFrames, presentation, events, status });
-  for (const marker of [RAW_FINAL_PREFIX, RAW_TOOL_PREFIX, RAW_ASSISTANT_PREFIX, RAW_THINKING_PREFIX, "RAW_FULL_ASSISTANT_PARTIAL", "RAW_FULL_THINKING_PARTIAL", "RAW_LATE_PARTIAL"]) {
+  for (const marker of [RAW_FINAL_PREFIX, RAW_TOOL_PREFIX, RAW_ASSISTANT_PREFIX, RAW_THINKING_PREFIX, "RAW_FULL_ASSISTANT_PARTIAL", "RAW_FULL_THINKING_PARTIAL", "RAW_LATE_PARTIAL", "RAW_BASE64_MUST_NOT_ESCAPE", "RAW_DETAILS_MUST_NOT_ESCAPE"]) {
     if (publicJson.includes(marker)) {
       const at = publicJson.indexOf(marker);
       throw new Error(`raw oversized payload escaped bounded state: ${marker}: ${publicJson.slice(Math.max(0, at - 140), at + marker.length + 140)}`);
@@ -224,6 +231,38 @@ async function main() {
     for (const scenario of ["oversized-tool", "oversized-assistant", "oversized-thinking"]) {
       const result = await runScenario(mod, base, scenario);
       assertSeparatedTerminalState(result, "inline");
+    }
+
+    for (const scenario of ["oversized-tool-success", "oversized-tool-failure", "oversized-tool-unknown", "oversized-tool-clearing"]) {
+      const result = await runScenario(mod, base, scenario);
+      assertSeparatedTerminalState(result, "inline");
+      const projections = result.outboundFrames.map(row => row.frame).filter(frame => frame.oversized && frame.type.startsWith("tool_execution_"));
+      const partial = projections.find(frame => frame.type === "tool_execution_update");
+      assert.deepEqual(partial.partialResult.content, [{ type: "text", text: "[oversized tool result omitted]" }]);
+      assert.ok(partial.oversized.encoded_bytes > RPC_LIMIT);
+      assert.equal(partial.oversized.limit, RPC_LIMIT);
+      const end = projections.find(frame => frame.type === "tool_execution_end");
+      if (scenario !== "oversized-tool-clearing") {
+        assert.deepEqual(end.result.content, [{ type: "text", text: "[oversized tool result omitted]" }]);
+        assert.equal(end.isError, scenario === "oversized-tool-unknown" ? undefined : scenario === "oversized-tool-failure");
+        assert.equal(end.success, undefined, "native tool result never fabricates RPC success");
+        assert.equal(end.output, undefined);
+        assert.equal(end.error, undefined);
+      }
+      const entry = mod.subagentPresentationLogForTests().find(row => row.task_id === result.accepted.task_id);
+      assert.equal(entry.tool_snapshots.length, 1);
+      const snapshot = entry.tool_snapshots[0];
+      assert.equal(snapshot.status, scenario === "oversized-tool-failure" ? "failed" : scenario === "oversized-tool-unknown" ? "unknown" : "success");
+      assert.equal(entry.timeline_events.filter(event => event.kind === "tool").length, 1);
+      assert.equal(entry.active_tool_state, null);
+      const preview = scenario === "oversized-tool-failure" ? snapshot.error_preview : snapshot.output_preview;
+      assert.equal(preview, scenario === "oversized-tool-clearing" ? undefined : "[oversized tool result omitted]");
+      if (preview) assert.ok(Array.from(preview).length <= 1200);
+      const rendered = mod.renderSubagentPresentationOverlayForTests({ task_id: result.accepted.task_id, expanded: true });
+      assert.ok(rendered.includes(snapshot.status === "unknown" ? "ended (result unknown)" : snapshot.status));
+      if (preview) assert.ok(rendered.includes(preview), "ingested projected native result reaches renderer");
+      else assert.ok(!rendered.includes("[oversized tool result omitted]"), "empty end clears old partial in render too");
+      assert.ok(!result.outboundFrames.some(row => row.frame.type === "tool_execution_end" && row.frame.result?.details), "projection drops result details");
     }
 
     const finalResult = await runScenario(mod, base, "oversized-final");

@@ -392,6 +392,23 @@ autocomplete, mentions, status, Subagent Console and log rendering behavior in
 supported modes. Confirm mode without a usable confirmation interface still
 refuses safely.
 
+The Subagent Console consumes Pi's native tool event fields (`toolCallId`,
+`toolName`, `args`, `partialResult`, `result`, boolean `isError`). Tool outcomes are
+presentation-only; missing/invalid `isError` ends the tool row with unknown result
+and cannot create a public task lifecycle state. Result previews contain ordered
+text and bounded omission notices, never result details or images. The live Output
+preview retains a 4000-code-point newest tail; final output/artifact/callback and
+persisted assistant history keep their existing ownership.
+
+Timeline follow/pause state is overlay-local. Fixed activity/time and callback
+rows distinguish Pi activity from Larva terminal snapshots and actual callback
+delivery. Retry/compaction display adds no watchdog progress category. See the
+[Console operator contract](../contrib/pi-extension/README.md#larva-subagent-console)
+for budgets, navigation and missing-record behavior. Native event admission and
+rendering require an ingestion-to-render regression and an isolated observation of
+the installed Pi's actual events; dependency locks and Invar scans supply no
+TypeScript behavior proof.
+
 Normal package discovery can change extension hook ordering relative to explicit
 CLI extensions. Test the existing consumers' actual contracts: one primary
 persona overlay, retention of non-Larva system content, effective tool-call

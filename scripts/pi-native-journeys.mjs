@@ -796,8 +796,11 @@ async function runMcp(f, evidence) {
   assert.equal((await effects()).length, beforeHidden);
   // Missing allow admits known tools; explicit empty allow denies every call.
   await p.command("prompt", { message: "/larva-persona startup" });
+  const beforeUnavailable = (await effects()).length;
   turn = await invoke([script(name("direct"))]);
-  assert.ok(JSON.stringify(turn.results).includes("not a function") || JSON.stringify(turn.results).includes("not found"), "Inactive direct target remains native-unavailable");
+  assert.ok(turn.results.every(result => result.isError), "Inactive direct target must fail through native dispatch");
+  assert.ok(!JSON.stringify(turn.results).includes("LARVA_TOOL_DENIED"), "Native unavailability precedes Larva policy");
+  assert.equal((await effects()).length, beforeUnavailable, "Inactive direct target cannot reach server effects");
   await activate([...await active(), name("direct")]);
   let priority = true;
   await p.command("prompt", { message: `/audit-force-tool ${name("direct")}` });
@@ -945,11 +948,107 @@ async function runMcp(f, evidence) {
   assert.ok(evidence.mcp.handshakePids.every((pid) => !alive(pid)), "Native shutdown must reap every owned MCP server, including reload/child connections");
 }
 
+async function runPanel(f, evidence) {
+  // Exercise the real selected Pi child, its native tool events and Larva's full
+  // ingestion path. Only the parent API surface is headless; no transport stub.
+  const savedArgv = process.argv;
+  const savedEnv = process.env;
+  const savedCwd = process.cwd();
+  const env = { ...f.env, NATIVE_PANEL_TEST: "1" };
+  process.argv = [process.execPath, CLI];
+  process.env = { ...env };
+  process.chdir(f.cwd);
+  const mod = await import(pathToFileURL(join(ROOT, "contrib/pi-extension/larva.ts")).href);
+  const callbacks = [];
+  const ctx = { env, mode: "rpc", hasUI: false, ui: { setStatus() {} }, modelRegistry: { find: (provider, id) => ({ provider, id }) }, sendMessage: async message => { callbacks.push(message); } };
+  const pi = { on() {}, registerTool() {}, registerCommand() {}, getAllTools: () => ["read", "bash", "larva_subagent"], setActiveTools: () => true, setModel: () => true, getThinkingLevel: () => "off", setThinkingLevel() {} };
+  f.respond = payload => {
+    const fail = text(payload).includes("NATIVE_PANEL_FAILURE");
+    return payload.messages.some(message => message.role === "tool")
+      ? { text: fail ? "FINAL_NATIVE_PANEL_FAILURE" : "FINAL_NATIVE_PANEL_SUCCESS" }
+      : { tools: [{ name: "native_panel", args: { fail } }] };
+  };
+  const until = async predicate => {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const value = await predicate();
+      if (value) return value;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    throw new Error("Missing native panel snapshot");
+  };
+  const cases = [];
+  try {
+    await mod.initializeExtension(ctx, pi);
+    assert.equal((await mod.commitPersona("ok", ctx, pi)).ok, true);
+    for (const fail of [false, true]) {
+      const task = fail ? "NATIVE_PANEL_FAILURE" : "NATIVE_PANEL_SUCCESS";
+      const receipt = await mod.larva_subagent({ persona_id: "child", task }, ctx);
+      assert.equal(receipt.status, "accepted", JSON.stringify(receipt));
+      const entry = () => mod.subagentPresentationLogForTests().find(row => row.task_id === receipt.task_id);
+      const partials = [];
+      for (const preview of ["native partial A", "native partial B"]) {
+        const row = await until(() => entry()?.tool_snapshots?.find(row => row.output_preview === preview));
+        assert.equal(entry().status, "running");
+        assert.equal(entry().tool_snapshots.length, 1);
+        assert.equal(entry().timeline_events.filter(event => event.kind === "tool").length, 1);
+        partials.push({ ...row });
+      }
+      const callback = await until(() => callbacks.find(row => row.details?.task_id === receipt.task_id));
+      await until(async () => (await mod.larva_subagent_status({ task_id: receipt.task_id }, ctx)).details.runs[0]?.callback_delivery === "delivered");
+      const row = entry();
+      const snapshot = row.tool_snapshots[0];
+      assert.equal(snapshot.status, fail ? "failed" : "success");
+      if (fail) {
+        assert.equal(snapshot.output_preview, undefined);
+        assert.ok(snapshot.error_preview.includes("native panel tool failed"));
+      } else {
+        assert.equal(snapshot.error_preview, undefined);
+        assert.equal(snapshot.output_preview, "native final text [nontext tool content omitted]");
+      }
+      assert.equal(row.last_child_activity.category, "agent_settled");
+      assert.equal(row.status, "success", "tool failure does not rewrite final child execution status");
+      const component = new mod.SubagentPresentationLogOverlay({ entry: row, generation: 1, maxBoxLines: 24 });
+      component.handleInput("4");
+      const rendered = component.render(120).join("\n");
+      const raw = mod.renderSubagentPresentationOverlayForTests({ task_id: receipt.task_id, expanded: true });
+      assert.ok(rendered.includes("Activity: agent_settled"));
+      assert.ok(rendered.includes("callback_delivery: delivered"));
+      assert.ok(raw.includes(fail ? "native panel tool failed" : "native final text"));
+      for (const secret of ["PANEL_DETAILS_PRIVATE", "PANEL_BASE64_PRIVATE"]) assert.ok(!JSON.stringify({ row, rendered, raw }).includes(secret));
+      component.dispose();
+      const frames = (await jsonLines(join(f.root, "panel-events.jsonl"))).filter(event => event.session === receipt.task_id).map(event => event.frame);
+      const start = frames.find(frame => frame.type === "tool_execution_start");
+      const updates = frames.filter(frame => frame.type === "tool_execution_update");
+      const end = frames.find(frame => frame.type === "tool_execution_end");
+      assert.equal(start.toolName, "native_panel");
+      assert.equal(typeof start.toolCallId, "string");
+      assert.deepEqual(start.args, { fail });
+      assert.equal(updates.length, 2);
+      assert.deepEqual(updates.map(frame => frame.partialResult.content[0].text), ["native partial A", "native partial B"]);
+      assert.equal(end.isError, fail);
+      assert.ok(Array.isArray(end.result.content));
+      assert.equal(end.success, undefined); assert.equal(end.output, undefined);
+      cases.push({ task_id: receipt.task_id, partials, nativeFrames: frames, snapshot, activity: row.last_child_activity, execution: row.status, callbackDelivery: "delivered", rendered });
+      assert.equal(callback.details.execution_status, "success");
+    }
+    await cleanChildren(f);
+    evidence.panel = { boundary: "actual child CLI native events -> RPC -> normalizer -> snapshots -> Pi TUI render", cases };
+  } finally {
+    await mod.resetExtensionUI("native-panel-cleanup");
+    await mod.awaitSessionTimelineDisposalForTests();
+    process.argv = savedArgv;
+    process.env = savedEnv;
+    process.chdir(savedCwd);
+  }
+}
+
 export async function runJourney(scenario) {
   const f = await createNativeFixture();
   const evidence = { scenario, modality: "actual native CLI + normal package loader + loopback provider", node: process.version, piVersion: PI_VERSION, cli: CLI };
   try {
-    if (scenario === "mcp") await runMcp(f, evidence);
+    if (scenario === "panel") await runPanel(f, evidence);
+    else if (scenario === "mcp") await runMcp(f, evidence);
     else if (scenario === "state") await runState(f, evidence);
     else if (scenario === "children") await runChildren(f, evidence);
     else if (scenario === "invocation") await runInvocation(f, evidence);

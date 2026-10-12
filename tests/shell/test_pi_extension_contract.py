@@ -309,8 +309,11 @@ def test_pi_tui_dependency_is_exact_lockfile_backed_and_ci_installable() -> None
 
     assert package_json["pi"]["extensions"] == ["./larva.ts"]
     assert package_json["devDependencies"]["@earendil-works/pi-coding-agent"] == "0.85.1"
-    assert package_json["dependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
-    assert package_lock["packages"][""]["dependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
+    assert package_json["peerDependencies"]["@earendil-works/pi-tui"] == "*"
+    assert "@earendil-works/pi-tui" not in package_json.get("dependencies", {})
+    assert package_json["devDependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
+    assert package_lock["packages"][""]["peerDependencies"]["@earendil-works/pi-tui"] == "*"
+    assert package_lock["packages"][""]["devDependencies"]["@earendil-works/pi-tui"] == PI_TUI_PINNED_VERSION
     locked_pi_tui = package_lock["packages"]["node_modules/@earendil-works/pi-tui"]
     assert locked_pi_tui["version"] == PI_TUI_PINNED_VERSION
     assert f"pi-tui-{PI_TUI_PINNED_VERSION}.tgz" in locked_pi_tui["resolved"]

@@ -1783,7 +1783,41 @@ it keeps persisted natural-language assistant excerpts and RPC-owned tool rows.
 Assistant RPC deltas stay in the bounded Output preview and never enter Timeline.
 Raw/bounded tool arguments remain available through tool snapshots and
 debug/metadata surfaces.
-It is not timer polling. It can cancel the selected exact running child after
+
+While a child runs, Output retains the newest 4000 Unicode code points, including
+an earlier-content-omitted marker when needed. This applies to accumulated updates
+and a single large delta. It does not truncate the terminal result, artifact or
+callback path, or replace persisted assistant history.
+
+Timeline opens at the tail and follows new activity. Scrolling upward pauses
+following and preserves the current offset. A paused footer signals new activity,
+including an update to an existing tool row; End or scrolling back to the bottom
+resumes following. This state belongs to that overlay instance and is neither
+saved nor configurable.
+
+Native tool rows correlate by `toolCallId` and use `toolName`/`args` on start,
+`partialResult` on update, and `result`/`isError` on end. Each partial replaces the
+same row's preview. An end replaces the partial even when its final content has no
+text. Only boolean `isError` determines tool success or failure; missing or invalid
+values display an ended tool with unknown result. RPC command responses keep their
+separate `success` meaning. Tool previews admit ordered content text only, with a
+1200-code-point total budget including truncation/nontext/oversized notices. They
+never serialize result `details`, arbitrary objects or image base64. Oversized
+frames keep native `isError` and bounded `result`/`partialResult` omission content
+alongside the existing byte-limit metadata.
+
+Two fixed rows show the most recent child activity category and local reception
+time, the Larva task status, and actual `callback_delivery` (unknown without a
+matching current runtime invocation). A resumed child shares its task path; a
+historical row cannot borrow the newer invocation's delivery record. Repeated thinking and tool-argument updates refresh activity time
+without exposing their bodies. Tool end, `agent_end`, `agent_settled`, Larva's
+terminal snapshot and callback delivery remain separate observations. Retry and
+compaction start/end events contribute bounded Timeline summaries without
+resetting the no-progress watchdog. A commit remains an ordinary tool operation.
+Activity, live previews and tool/Timeline snapshots remain process-local and are
+dropped by the cache sanitizer.
+
+The Console uses event-driven updates, not timer polling. It can cancel the selected exact running child after
 confirmation, and mouse click input remains unsupported/no-op.
 
 User-facing mode matrix:

@@ -65,6 +65,29 @@ def _run_autocomplete_runtime_case(case: str, *, prefix: str | None = None) -> d
     return json.loads(completed.stdout)
 
 
+def test_native_panel_tool_event_ingestion_to_snapshot_and_render(tmp_path: Path) -> None:
+    """Selected actual Pi emits native tool events; no model or transport stub."""
+    report = tmp_path / "native-panel.json"
+    completed = subprocess.run(
+        ["node", str(ROOT / "scripts/pi-native-journeys.mjs"), "--scenario", "panel", "--output", str(report)],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=50,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = json.loads(report.read_text())
+    assert payload["piVersion"]
+    assert payload["pass"] is True
+    assert [case["snapshot"]["status"] for case in payload["panel"]["cases"]] == ["success", "failed"]
+    assert all(case["callbackDelivery"] == "delivered" for case in payload["panel"]["cases"])
+    assert payload["cleanup"]["liveChildren"] == []
+    assert payload["cleanup"]["capsules"] == []
+    assert payload["cleanup"]["providerClosed"] is True
+    assert payload["cleanup"]["rootRemoved"] is True
+
+
 def test_autocomplete_substring_case_and_prefix_first_stable_order_runtime() -> None:
     payload = _run_autocomplete_runtime_case("substring-case-ordering", prefix="DEV")
 
@@ -1341,6 +1364,7 @@ def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:
     assertions = payload["runtime"]["assertions"]
     assert assertions == {"blockTrue": True, "nonEmptyReason": True}
     result = payload["runtime"]["toolCallResult"]
+    assert payload["runtime"]["allowedReadResult"] is None
     assert result["block"] is True
     assert isinstance(result["reason"], str) and result["reason"]
 

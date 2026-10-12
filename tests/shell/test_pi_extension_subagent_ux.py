@@ -391,6 +391,331 @@ def test_larva_subagent_long_output_artifact_callback_manifest_and_short_inline_
     }, payload
 
 
+def test_native_panel_tool_results_and_hidden_activity(tmp_path: Path) -> None:
+    """Native result admission, replacement, bounded text and presentation-only state."""
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r'''
+        const { default: assert } = await import("node:assert/strict");
+        await registeredTools();
+        const task = join(childRoot, "panel.jsonl");
+        mod.recordSubagentPresentationEntryForTests(task, "child", "running", { presentation_scan_ready: false });
+        const entry = () => mod.subagentPresentationLogForTests().find(row => row.task_id === task);
+        const ingest = frame => {
+          const event = mod.normalizeSubagentChildStreamEventForTests(frame);
+          if (event) mod.applySubagentStreamEventForTests(task, event);
+          return event;
+        };
+        const snap = () => entry().tool_snapshots.find(row => row.toolCallId === "tool-1");
+        ingest({ type: "tool_execution_start", toolCallId: "tool-1", toolName: "bash", args: { command: "git commit -m ordinary-tool" } });
+        const result = text => ({ content: [{ type: "text", text }], details: { secret: "DETAILS_SECRET" } });
+        ingest({ type: "tool_execution_update", toolCallId: "tool-1", partialResult: result("partial A") });
+        assert.equal(snap().output_preview, "partial A");
+        ingest({ type: "tool_execution_update", toolCallId: "tool-1", partialResult: result("partial B") });
+        assert.equal(snap().output_preview, "partial B");
+        assert.equal(entry().timeline_events.filter(row => row.kind === "tool").length, 1);
+        ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: true, success: true, result: result("failure text") });
+        assert.equal(snap().status, "failed");
+        assert.equal(snap().error_preview, "failure text");
+        assert.equal(snap().output_preview, undefined);
+        assert.equal(entry().active_tool_state, null);
+        assert.equal(entry().status, "running", "a commit tool does not complete the task");
+        assert.equal(entry().last_child_activity.category, "tool_execution_end");
+        ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: false, success: false, error: "stale legacy error", result: result("committed") });
+        assert.equal(snap().status, "success");
+        assert.equal(snap().output_preview, "committed");
+        assert.equal(snap().error_preview, undefined);
+        for (const badResult of [undefined, null, { content: {} }, { content: [] }, { content: [{ type: "text", text: "" }] }]) {
+          ingest({ type: "tool_execution_update", toolCallId: "tool-1", partialResult: result("stale partial") });
+          ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: true, result: badResult });
+          assert.equal(snap().status, "failed", "malformed content cannot override valid isError");
+          assert.equal(snap().output_preview, undefined);
+          assert.equal(snap().error_preview, undefined);
+        }
+        const unknownStatuses = [];
+        for (const badIsError of [undefined, null, "false", 0, {}, []]) {
+          ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: badIsError, success: true, result: result("ended text") });
+          unknownStatuses.push(snap().status);
+          assert.equal(snap().status, "unknown");
+          assert.equal(snap().output_preview, "ended text");
+          assert.equal(entry().active_tool_state, null);
+          assert.equal(entry().status, "running");
+        }
+        const count = entry().tool_snapshots.length;
+        for (const id of [undefined, "", "  ", "\u001b[31m", 3, {}, []]) {
+          assert.equal(ingest({ type: "tool_execution_end", toolCallId: id, tool_call_id: "alias", isError: false }), null);
+        }
+        assert.equal(entry().tool_snapshots.length, count);
+        ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: false, result: {
+          content: [{ type: "text", text: "first" }, { type: "image", data: "BASE64_SECRET" }, { type: "text", text: "second" }], details: { secret: "DETAILS_SECRET" }
+        } });
+        assert.equal(snap().output_preview, "first second [nontext tool content omitted]");
+        ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: false, result: { content: [{ type: "image", data: "BASE64_SECRET" }] } });
+        assert.equal(snap().output_preview, "[nontext tool content omitted]");
+        ingest({ type: "tool_execution_end", toolCallId: "tool-1", isError: true, result: {
+          content: [{ type: "text", text: "\u001b[31m汉🙂\u0000\t" + "🙂".repeat(2000) }, { type: "image", data: "BASE64_SECRET" }], details: { secret: "DETAILS_SECRET" }
+        } });
+        assert.equal(Array.from(snap().error_preview).length, 1200);
+        assert.ok(snap().error_preview.includes("[truncated]"));
+        assert.ok(snap().error_preview.endsWith("[nontext tool content omitted]"));
+        assert.ok(!/[\u0000-\u001f\u007f-\u009f]/u.test(snap().error_preview));
+        const firstThinking = ingest({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "THINKING_SECRET" } });
+        const time1 = entry().last_child_activity.received_at;
+        await sleep(10);
+        ingest({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "THINKING_SECRET" } });
+        assert.equal(entry().last_child_activity.category, "thinking_hidden");
+        assert.notEqual(entry().last_child_activity.received_at, time1);
+        assert.equal(entry().timeline_events.filter(row => row.kind === "thinking_hidden").length, 1);
+        ingest({ type: "message_update", assistantMessageEvent: { type: "toolcall_delta", delta: "ARG_FRAGMENT_SECRET" } });
+        assert.equal(entry().last_child_activity.category, "tool_arguments_hidden");
+        assert.equal(entry().live_assistant_preview, undefined);
+        const blankArgs = ingest({ type: "message_update", assistantMessageEvent: { type: "toolcall_delta", delta: "   " } });
+        assert.equal(blankArgs.text, "", "short blank normalized fragments are not progress");
+        const longArgs = ingest({ type: "message_update", assistantMessageEvent: { type: "toolcall_delta", delta: " ".repeat(5000) } });
+        assert.ok(longArgs.text.length > 0, "keep the previous bounded-normalization progress decision for oversized fragments");
+        assert.equal(entry().live_assistant_preview, undefined);
+        ingest({ type: "auto_retry_start", attempt: 1, maxAttempts: 3, errorMessage: "x".repeat(1000), details: { secret: "DETAILS_SECRET" } });
+        assert.ok(Array.from(entry().last_child_activity.summary).length <= 240);
+        ingest({ type: "compaction_end", reason: "overflow", aborted: false, willRetry: true, result: { summary: "COMPACTION_BODY_SECRET" } });
+        assert.equal(entry().last_child_activity.category, "compaction_end");
+        ingest({ type: "agent_end" });
+        assert.equal(entry().phase, "agent_end");
+        assert.equal(entry().status, "running");
+        ingest({ type: "agent_settled" });
+        assert.equal(entry().phase, "agent_settled");
+        assert.equal(entry().status, "running", "Larva terminal snapshot owns task status");
+        const rendered = mod.renderSubagentPresentationOverlayForTests({ task_id: task, expanded: true });
+        assert.ok(rendered.includes("callback_delivery: unknown"));
+        const json = JSON.stringify({ entry: entry(), rendered });
+        for (const secret of ["DETAILS_SECRET", "BASE64_SECRET", "THINKING_SECRET", "ARG_FRAGMENT_SECRET", "COMPACTION_BODY_SECRET"]) assert.ok(!json.includes(secret), secret);
+        console.log(JSON.stringify({ unknownStatuses, toolRows: count, budget: Array.from(snap().error_preview ?? snap().output_preview).length, firstThinking }));
+        await mod.resetExtensionUI("native-panel-test");
+        ''',
+    )
+    assert payload["unknownStatuses"] == ["unknown"] * 6
+    assert payload["toolRows"] == 1
+    assert payload["budget"] == 1200
+
+
+def test_native_panel_live_tail_preserves_latest_unicode_without_history_changes(tmp_path: Path) -> None:
+    """A single large delta and accumulated deltas both retain the bounded newest tail."""
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r'''
+        const { default: assert } = await import("node:assert/strict");
+        await registeredTools();
+        const task = join(childRoot, "tail.jsonl");
+        const history = [{ kind: "assistant", text: "persisted historical excerpt", session_id: "session", session_offset: 1 }];
+        mod.recordSubagentPresentationEntryForTests(task, "child", "running", { timeline_events: history, presentation_scan_ready: false });
+        const entry = () => mod.subagentPresentationLogForTests().find(row => row.task_id === task);
+        const delta = text => mod.applySubagentStreamEventForTests(task, mod.normalizeSubagentChildStreamEventForTests({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: text } }));
+        delta("OLD_PREFIX" + "α".repeat(2000));
+        delta("β".repeat(2000));
+        delta("γ".repeat(2000) + "LATEST🙂");
+        assert.equal(Array.from(entry().live_assistant_preview).length, 4000);
+        assert.ok(entry().live_assistant_preview.startsWith("[earlier assistant content omitted]"));
+        assert.ok(entry().live_assistant_preview.endsWith("LATEST🙂"));
+        assert.ok(!entry().live_assistant_preview.includes("OLD_PREFIX"));
+        delta("🙂".repeat(9000) + "SINGLE_DELTA_TAIL");
+        assert.equal(Array.from(entry().live_assistant_preview).length, 4000);
+        assert.ok(entry().live_assistant_preview.endsWith("SINGLE_DELTA_TAIL"));
+        assert.deepEqual(entry().timeline_events, history);
+        const output = mod.renderSubagentPresentationOverlayForTests({ task_id: task, expanded: true });
+        assert.ok(output.includes("SINGLE_DELTA_TAIL"));
+        assert.ok(output.includes("persisted historical excerpt"));
+        mod.recordSubagentPresentationEntryForTests(task, "child", "success", { result_text: "FINAL_SOURCE" + "Ω".repeat(6000) + "FINAL_END" });
+        delta("AFTER_TERMINAL_DELTA");
+        assert.ok(entry().result_text.endsWith("FINAL_END"));
+        assert.ok(!entry().live_assistant_preview?.includes("AFTER_TERMINAL_DELTA"));
+        console.log(JSON.stringify({ liveLimit: 4000, finalLength: Array.from(entry().result_text).length }));
+        await mod.resetExtensionUI("tail-test");
+        ''',
+    )
+    assert payload["liveLimit"] == 4000
+    assert payload["finalLength"] > 6000
+
+
+def test_native_panel_timeline_follows_pauses_and_signals_in_place_updates(tmp_path: Path) -> None:
+    """Follow state belongs to one overlay; paused content survives row updates."""
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r'''
+        const { default: assert } = await import("node:assert/strict");
+        const { visibleWidth } = piTuiRequire("@earendil-works/pi-tui");
+        const cache = join(tmpRoot, "follow-cache.json");
+        await registeredTools(baseEnv({ LARVA_PI_SUBAGENT_LOG_FILE: cache }));
+        const task = join(childRoot, "follow.jsonl");
+        mod.recordSubagentPresentationEntryForTests(task, "child", "running", { presentation_scan_ready: false });
+        const entry = () => mod.subagentPresentationLogForTests().find(row => row.task_id === task);
+        const ingest = frame => mod.applySubagentStreamEventForTests(task, mod.normalizeSubagentChildStreamEventForTests(frame));
+        for (let i = 0; i < 45; i++) ingest({ type: "tool_execution_start", toolCallId: `row-${i}`, toolName: `tool_${i}` });
+        const overlay = new mod.SubagentPresentationLogOverlay({ entry: entry(), generation: 1, maxBoxLines: 20 });
+        overlay.handleInput("4");
+        const render = () => overlay.render(120);
+        assert.ok(render().join("\n").includes("tool_44"));
+        assert.ok(!render().join("\n").includes("tool_0()"));
+        overlay.handleInput("\u001b[5~");
+        assert.ok(render().join("\n").includes("Paused"));
+        const before = render().slice(4, -3);
+        ingest({ type: "tool_execution_start", toolCallId: "row-45", toolName: "tool_45" });
+        overlay.refreshFromPresentationLog();
+        assert.deepEqual(render().slice(4, -3), before);
+        assert.ok(render().join("\n").includes("new activity"));
+        overlay.handleInput("\u001b[4~");
+        assert.ok(render().join("\n").includes("Following tail"));
+        assert.ok(render().join("\n").includes("tool_45"));
+        overlay.handleInput("\u001b[A");
+        render();
+        const eventCount = entry().timeline_events.length;
+        ingest({ type: "tool_execution_update", toolCallId: "row-0", partialResult: { content: [{ type: "text", text: "in-place unseen update" }] } });
+        assert.equal(entry().timeline_events.length, eventCount);
+        overlay.refreshFromPresentationLog();
+        assert.ok(render().join("\n").includes("new activity"));
+        assert.ok(render().join("\n").includes("Activity: tool_execution_update"));
+        overlay.handleInput("\u001b[4~"); render();
+        overlay.handleInput("\u001b[A"); render();
+        overlay.handleInput("\u001b[B");
+        assert.ok(render().join("\n").includes("Following tail"));
+        overlay.handleInput("\u001b[1~");
+        assert.ok(render().join("\n").includes("tool_0()"));
+        const reopened = new mod.SubagentPresentationLogOverlay({ entry: entry(), generation: 2, maxBoxLines: 20 });
+        reopened.handleInput("4");
+        assert.ok(reopened.render(120).join("\n").includes("tool_45"));
+        for (const width of [20, 44, 80, 120]) for (const line of reopened.render(width)) assert.ok(visibleWidth(line) <= width);
+        const { readFile } = await import("node:fs/promises");
+        const cached = JSON.parse(await readFile(cache, "utf8")).entries.find(row => row.task_id === task);
+        assert.ok(!("last_child_activity" in cached));
+        assert.ok(!("timelineFollowing" in cached));
+        const compact = new mod.SubagentPresentationLogOverlay({ entry: entry(), generation: 3, maxBoxLines: 6 });
+        assert.equal(compact.render(44).length, 8, "minimum frame fits the two fixed rows and one viewport line");
+        compact.dispose();
+        overlay.dispose(); reopened.dispose();
+        console.log(JSON.stringify({ eventCount, overlayLocal: true }));
+        await mod.resetExtensionUI("follow-test");
+        ''',
+    )
+    assert payload["eventCount"] == 46
+    assert payload["overlayLocal"] is True
+
+
+def test_native_panel_rpc_agent_end_settlement_and_callback_remain_distinct(tmp_path: Path) -> None:
+    """Ingestion/render observes native tool failure without completing a run at agent_end."""
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r'''
+        const { default: assert } = await import("node:assert/strict");
+        const childBin = join(tmpRoot, "native-modern-stream.mjs");
+        await writeFile(childBin, `#!/usr/bin/env node
+          import { createInterface } from "node:readline";
+          import { mkdir, writeFile } from "node:fs/promises";
+          import { join } from "node:path";
+          import { pathToFileURL } from "node:url";
+          const mod = await import(pathToFileURL(process.env.LARVA_PI_EXTENSION_ENTRY).href);
+          mod.installChildRpcFrameWriterForTests(process.env);
+          const root = process.argv[process.argv.length - 1];
+          await mkdir(root, { recursive: true });
+          const sessionFile = join(root, "native-modern.jsonl");
+          const send = frame => process.stdout.write(JSON.stringify(frame) + "\\n");
+          const response = (msg, data = {}) => send({ type: "response", command: msg.type, id: msg.id, success: true, data });
+          createInterface({ input: process.stdin }).on("line", async line => {
+            const msg = JSON.parse(line);
+            if (msg.type === "get_state") {
+              await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "modern" }) + "\\n");
+              const [provider, id] = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/");
+              response(msg, { sessionFile, model: { provider, id }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING });
+            } else if (msg.type === "prompt") {
+              response(msg);
+              setTimeout(() => {
+                send({ type: "tool_execution_start", toolCallId: "commit", toolName: "bash", args: { command: "git commit -m ordinary" } });
+                send({ type: "tool_execution_update", toolCallId: "commit", partialResult: { content: [{ type: "text", text: "partial A" }] } });
+                send({ type: "tool_execution_update", toolCallId: "commit", partialResult: { content: [{ type: "text", text: "partial B" }] } });
+                send({ type: "tool_execution_end", toolCallId: "commit", isError: true, result: { content: [{ type: "text", text: "native failure text" }], details: { private: "DETAILS_SECRET" } } });
+              }, 10);
+              setTimeout(() => send({ type: "agent_end", messages: [], willRetry: false }), 120);
+              setTimeout(() => send({ type: "agent_settled", aborted: false }), 400);
+            } else if (msg.type === "get_last_assistant_text") {
+              setTimeout(() => { response(msg, { text: "final child source" }); }, 250);
+            } else if (msg.type === "abort") { response(msg); process.exit(0); }
+          });
+        `, { mode: 0o755 });
+        const callbacks = [];
+        const env = baseEnv({ LARVA_PI_REAL_BIN: childBin, LARVA_PI_EXTENSION_ENTRY: repoRoot + "/contrib/pi-extension/larva.ts", LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "0" });
+        const commands = new Map();
+        const { tools, ctx } = await registeredTools(env, {
+          sendMessage: async message => { callbacks.push(message); },
+          registerCommand: (name, command) => commands.set(name, command),
+        });
+        await mod.commitPersona("ok", ctx, piBase);
+        const receipt = await tools.find(tool => tool.name === "larva_subagent").handler({ persona_id: "child", task: "native phases" });
+        assert.equal(receipt.status, "accepted");
+        let panel, closePanel, repaintFailures = 0;
+        ctx.ui.custom = factory => new Promise(resolve => {
+          closePanel = resolve;
+          panel = factory({ requestRender() {
+            if (callbacks.length > 0 && repaintFailures === 0) { repaintFailures++; throw new Error("fixture repaint failure after delivery"); }
+          } }, {}, {}, resolve);
+        });
+        const panelPromise = commands.get("larva-subagent").handler(receipt.task_id, ctx);
+        assert.ok(await waitFor(() => panel, 1000, 5));
+        const entry = () => mod.subagentPresentationLogForTests().find(row => row.task_id === receipt.task_id);
+        assert.ok(await waitFor(() => entry()?.phase === "agent_end", 3000, 5));
+        const beforeSettle = await mod.larva_subagent_status({ task_id: receipt.task_id }, ctx);
+        assert.equal(beforeSettle.details.runs[0].result_pending, true);
+        assert.equal(beforeSettle.details.runs[0].status, "running");
+        assert.equal(beforeSettle.details.runs[0].callback_delivery, "pending");
+        assert.equal(callbacks.length, 0);
+        assert.equal(entry().tool_snapshots.length, 1);
+        assert.equal(entry().timeline_events.filter(row => row.kind === "tool").length, 1);
+        assert.equal(entry().tool_snapshots[0].status, "failed");
+        assert.equal(entry().tool_snapshots[0].output_preview, undefined);
+        assert.equal(entry().tool_snapshots[0].error_preview, "native failure text");
+        const overlay = new mod.SubagentPresentationLogOverlay({ entry: entry(), generation: 1, maxBoxLines: 20 });
+        overlay.handleInput("4");
+        const text = overlay.render(120).join("\n");
+        assert.ok(text.includes("Activity: agent_end"));
+        assert.ok(text.includes("callback_delivery: pending"));
+        assert.ok(text.includes("native failure text"));
+        assert.ok(!text.includes("partial B"));
+        assert.ok(!text.includes("DETAILS_SECRET"));
+        assert.ok(await waitFor(() => entry()?.phase === "agent_settled", 2000, 5));
+        assert.equal(entry().status, "running", "settlement precedes Larva's terminal output snapshot");
+        overlay.refreshFromPresentationLog();
+        assert.ok(overlay.render(120).join("\n").includes("Activity: agent_settled"));
+        assert.equal(callbacks.length, 0);
+        assert.ok(await waitFor(() => callbacks.length === 1, 3000, 5));
+        const final = await mod.larva_subagent_status({ task_id: receipt.task_id }, ctx);
+        assert.equal(final.details.runs[0].status, "success");
+        assert.equal(final.details.runs[0].callback_delivery, "delivered");
+        assert.equal(repaintFailures, 1, "exercise the real overlay notification after delivery");
+        panel.dispose(); closePanel(null); await panelPromise;
+        overlay.refreshFromPresentationLog();
+        assert.ok(overlay.render(120).join("\n").includes("Larva: success"));
+        assert.ok(overlay.render(120).join("\n").includes("callback_delivery: delivered"));
+        const historical = new mod.SubagentPresentationLogOverlay({
+          entry: { ...entry(), presentation_invocation: -1 }, generation: 0, maxBoxLines: 20,
+        });
+        assert.ok(historical.render(120).join("\n").includes("callback_delivery: unknown"), "session-path reuse cannot attribute a newer callback to an older invocation");
+        historical.dispose();
+        const unrelatedCall = new mod.SubagentPresentationLogOverlay({
+          entry: { ...entry(), call_id: "older-history-call" }, generation: 0, maxBoxLines: 20,
+        });
+        assert.ok(unrelatedCall.render(120).join("\n").includes("callback_delivery: unknown"));
+        unrelatedCall.dispose();
+        assert.equal(callbacks[0].details.result_text, "final child source");
+        overlay.dispose();
+        await mod.resetExtensionUI("modern-panel-test");
+        await mod.awaitSessionTimelineDisposalForTests();
+        console.log(JSON.stringify({ receipt: receipt.status, terminal: final.details.runs[0].status, callbacks: callbacks.length }));
+        ''',
+        timeout=25,
+    )
+    assert payload == {"receipt": "accepted", "terminal": "success", "callbacks": 1}
+
+
 def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_path: Path) -> None:
     """Same-process terminal entries retain bounded Timeline assistant/tool snapshots without cache persistence."""
 
@@ -417,9 +742,9 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             else if (msg.type === "prompt") {
               send({ id: msg.id, success: true });
               await appendFile(sessionFile, JSON.stringify({ type: "message", id: "assistant-session-excerpt-1", timestamp: "2026-06-04T10:00:00.000Z", message: { role: "assistant", content: [{ type: "text", text: "session assistant excerpt only" }, { type: "toolCall", id: "call_terminal_snapshot", name: "read", arguments: { path: "contrib/pi-extension/README.md" } }] } }) + "\\\\n");
-              send({ type: "tool_execution_start", toolCallId: "call_terminal_snapshot", name: "read", args: JSON.stringify({ path: "contrib/pi-extension/README.md" }) });
-              send({ type: "tool_execution_update", toolCallId: "call_terminal_snapshot", name: "read", output: "partial output" });
-              send({ type: "tool_execution_end", toolCallId: "call_terminal_snapshot", name: "read", success: true, output: "final tool output" });
+              send({ type: "tool_execution_start", toolCallId: "call_terminal_snapshot", toolName: "read", args: { path: "contrib/pi-extension/README.md" } });
+              send({ type: "tool_execution_update", toolCallId: "call_terminal_snapshot", toolName: "read", partialResult: { content: [{ type: "text", text: "partial output" }], details: {} } });
+              send({ type: "tool_execution_end", toolCallId: "call_terminal_snapshot", toolName: "read", isError: false, result: { content: [{ type: "text", text: "final tool output" }], details: {} } });
               setTimeout(() => send({ type: "agent_end" }), 5);
             }
             else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "final child output" } }); setTimeout(() => process.exit(0), 1); }
@@ -3612,14 +3937,15 @@ def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) ->
                       : { type: "status", state: "still-alive", delay };
                   later(delay, frame);
                 }
+                for (const [delay, type] of [[300, "auto_retry_start"], [550, "auto_retry_end"], [700, "compaction_start"], [950, "compaction_end"], [1100, "summarization_retry_finished"]]) later(delay, { type, success: true, reason: "threshold" });
                 setTimeout(() => process.stderr.write("watchdog diagnostic noise\\\\n"), 60);
               } else if (scenario === "recovery") {
-                later(1500, { type: "message_update", channel: "assistant", assistantMessageEvent: { delta: "recognized progress" } });
+                later(1500, { type: "message_update", assistantMessageEvent: { type: "toolcall_delta", delta: "hidden argument fragment" } });
               } else if (scenario === "continuing") {
                 later(400, { type: "message_update", channel: "thinking", assistantMessageEvent: { delta: "" } });
-                later(800, { type: "tool_execution_start", toolCallId: "tool-1", name: "bounded-work" });
-                later(1200, { type: "tool_execution_update", toolCallId: "tool-1", name: "bounded-work", output: "step" });
-                later(1600, { type: "tool_execution_end", toolCallId: "tool-1", name: "bounded-work", success: true });
+                later(800, { type: "tool_execution_start", toolCallId: "tool-1", toolName: "bounded-work" });
+                later(1200, { type: "tool_execution_update", toolCallId: "tool-1", toolName: "bounded-work", partialResult: { content: [{ type: "text", text: "step" }] } });
+                later(1600, { type: "tool_execution_end", toolCallId: "tool-1", toolName: "bounded-work", isError: false, result: { content: [] } });
                 later(2000, { type: "message_update", channel: "assistant", assistantMessageEvent: { delta: "still progressing" } });
                 later(2200, { type: "agent_end" });
               } else if (scenario === "longer-silent") {
@@ -3750,6 +4076,7 @@ def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) ->
           undefined,
           observerCase.ctx,
         );
+        const observerStarted = performance.now();
         const observerReads = [];
         for (let index = 0; index < 5; index += 1) {
           await sleep(35);
@@ -3760,6 +4087,8 @@ def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) ->
           observerReads.push({ phase: status?.phase ?? null, waitTimedOut: waitResult.details?.timed_out ?? null, selectTimedOut: selectResult.details?.timed_out ?? null, eventCount: events.length });
         }
         const observerTerminal = await terminalRow(observerCase, observerReceipt.task_id);
+        const observerElapsed = performance.now() - observerStarted;
+        const observerPresentation = mod.subagentPresentationLogForTests().find(row => row.task_id === observerReceipt.task_id);
         await sleep(80);
         const observerEvents = await taskEvents(observerCase, observerReceipt.task_id);
         const observerDiagnostics = mod.subagentActiveRunDiagnosticsForTests().find((row) => row.task_id === observerReceipt.task_id) ?? null;
@@ -3875,6 +4204,8 @@ def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) ->
             callbackCount: observerCallbackCount,
             transcript: observerTranscript,
             sessionPreserved: observerSessionPreserved,
+            elapsedMs: observerElapsed,
+            activityCategories: observerPresentation.timeline_events.filter(row => row.kind === "activity").map(row => row.category),
           },
           recovery: {
             firstWarning,
@@ -3964,6 +4295,11 @@ def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) ->
     observer = payload["observer"]
     assert observer["receiptStatus"] == "accepted"
     assert observer["warningCount"] == 1
+    assert observer["elapsedMs"] < 180000, "newly displayed retry/compaction events cannot reset watchdog"
+    assert observer["activityCategories"] == [
+        "auto_retry_start", "auto_retry_end", "compaction_start", "compaction_end",
+        "summarization_retry_finished",
+    ]
     assert observer["phases"].index("waiting_for_child") < observer["phases"].index("stall_suspected")
     assert observer["terminal"]["status"] == "cancelled"
     assert observer["terminal"]["error"]["code"] == "LARVA_CHILD_CANCELLED"

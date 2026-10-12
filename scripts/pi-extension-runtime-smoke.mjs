@@ -148,6 +148,8 @@ async function collectPiTuiDependencyEvidence(evidence) {
     packageJsonExists: false,
     lockfileExists: false,
     packageJsonVersion: null,
+    hostPeer: null,
+    lockfileHostPeer: null,
     lockfileRootDependency: null,
     lockfileVersion: null,
     installedVersion: null,
@@ -163,7 +165,8 @@ async function collectPiTuiDependencyEvidence(evidence) {
   try {
     const packageJson = await readJsonFile(piExtensionPackageJson);
     dependency.packageJsonExists = true;
-    dependency.packageJsonVersion = packageJson.dependencies?.["@earendil-works/pi-tui"] ?? null;
+    dependency.packageJsonVersion = packageJson.devDependencies?.["@earendil-works/pi-tui"] ?? null;
+    dependency.hostPeer = packageJson.peerDependencies?.["@earendil-works/pi-tui"] ?? null;
   } catch (error) {
     dependency.errors.push(`package.json: ${error?.message ?? String(error)}`);
   }
@@ -172,7 +175,8 @@ async function collectPiTuiDependencyEvidence(evidence) {
     const lockfile = await readJsonFile(piExtensionLockfile);
     dependency.lockfileExists = true;
     dependency.lockfileVersion = lockfile.packages?.["node_modules/@earendil-works/pi-tui"]?.version ?? null;
-    dependency.lockfileRootDependency = lockfile.packages?.[""]?.dependencies?.["@earendil-works/pi-tui"] ?? null;
+    dependency.lockfileRootDependency = lockfile.packages?.[""]?.devDependencies?.["@earendil-works/pi-tui"] ?? null;
+    dependency.lockfileHostPeer = lockfile.packages?.[""]?.peerDependencies?.["@earendil-works/pi-tui"] ?? null;
   } catch (error) {
     dependency.errors.push(`package-lock.json: ${error?.message ?? String(error)}`);
   }
@@ -200,7 +204,9 @@ async function collectPiTuiDependencyEvidence(evidence) {
     dependency.errors.push(`direct import: ${error?.message ?? String(error)}`);
   }
 
-  dependency.exactPinned = dependency.packageJsonVersion === pinnedPiTuiVersion
+  // This checks the checkout build fixture, never the selected host Pi version.
+  dependency.exactPinned = dependency.hostPeer === "*" && dependency.lockfileHostPeer === "*"
+    && dependency.packageJsonVersion === pinnedPiTuiVersion
     && dependency.lockfileRootDependency === pinnedPiTuiVersion
     && dependency.lockfileVersion === pinnedPiTuiVersion
     && dependency.installedVersion === pinnedPiTuiVersion;
@@ -702,7 +708,7 @@ async function runPiFatalStartup(evidence, args) {
   return evidence.rpc;
 }
 
-async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = {} } = {}) {
+async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = {}, toolNames = ["read"] } = {}) {
   const mod = await import(pathToFileURL(extensionPath).href);
   const registeredTools = [];
   evidence.runtime.registeredCommandNames = [];
@@ -726,7 +732,7 @@ async function runtimeHarness(evidence, { initialPersona = "ok", envOverrides = 
     hasUI: true,
   };
   const pi = {
-    getAllTools: async () => ["read"],
+    getAllTools: async () => toolNames,
     setActiveTools: async () => true,
     setModel: async () => true,
     registerCommand: (name) => {
@@ -1416,9 +1422,9 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile) {
         await sleep(10);
         send({ type: "message_update", channel: "thinking_delta", text: "THINKING_SECRET_SHOULD_NOT_RENDER" });
         await sleep(10);
-        send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", name: "bash", arguments: { command: "echo rpc", content: "RAW_ARG_SECRET_SHOULD_NOT_RENDER" }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
-        send({ type: "tool_execution_update", toolCallId: "rpc-tool-1", name: "bash", output: "RPC_TOOL_OUTPUT_CHUNK", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
-        send({ type: "tool_execution_end", toolCallId: "rpc-tool-1", name: "bash", success: true, output: "RPC_TOOL_OUTPUT_FINAL", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", toolName: "bash", args: { command: "echo rpc", content: "RAW_ARG_SECRET_SHOULD_NOT_RENDER" }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        send({ type: "tool_execution_update", toolCallId: "rpc-tool-1", toolName: "bash", partialResult: { content: [{ type: "text", text: "RPC_TOOL_OUTPUT_CHUNK" }] }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
+        send({ type: "tool_execution_end", toolCallId: "rpc-tool-1", toolName: "bash", isError: false, result: { content: [{ type: "text", text: "RPC_TOOL_OUTPUT_FINAL" }] }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         await sleep(180);
         send({ type: "agent_end" });
       } else if (message.type === "get_last_assistant_text") {
@@ -3316,7 +3322,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     const assertions = {
       consolePaneSummaryObserved: summaryTab.plain.includes("● 1 Summary") && summaryTab.plain.includes("Status") && summaryTab.plain.includes("running"),
       consolePanePromptObserved: promptTab.plain.includes("● 2 Prompt") && promptTab.plain.includes("Initial Prompt") && promptTab.plain.includes("PROMPT_START"),
-      consolePaneOutputObserved: outputTab.plain.includes("● 3 Output") && outputTab.plain.includes("ASSISTANT_OUTPUT_START") && outputTab.plain.includes("thinking hidden"),
+      consolePaneOutputObserved: outputTab.plain.includes("● 3 Output") && outputTab.plain.includes("[earlier assistant content omitted]") && outputTab.plain.includes("assistant body") && outputTab.plain.includes("thinking hidden"),
       consolePaneTimelineObserved: timelineTab.plain.includes("● 4 Timeline") && timelineTab.plain.includes("Timeline") && timelineTab.plain.includes("bash") && timelineTab.plain.includes("preview: output"),
       consolePaneMetadataObserved: metadataTab.plain.includes("● 5 Metadata") && metadataTab.plain.includes("Metadata") && /sequence/i.test(metadataTab.plain),
       exactSelectedCancelRouteRegistered: commands.has("larva-subagent"),
@@ -5289,8 +5295,13 @@ async function main() {
         && freshMissingBeforePrompt.details?.result_pending === true,
     };
   } else if (scenario === "tool-call-block") {
-    await runtimeHarness(evidence);
+    // Capabilities do not imply a tool allowlist. Exercise an explicit policy
+    // rather than relying on the retired capabilities.tools fixture meaning.
+    const policy = join(runtimeIsolation.tempRoot, "tool-call-block-policy.json");
+    await writeFile(policy, JSON.stringify({ personas: { ok: { deny: ["bash"] } } }));
+    await runtimeHarness(evidence, { envOverrides: { LARVA_PI_TOOL_POLICY_FILE: policy }, toolNames: ["read", "bash"] });
     const result = await evidence.runtime.toolCallHandler?.({ toolName: "bash" });
+    evidence.runtime.allowedReadResult = await evidence.runtime.toolCallHandler?.({ toolName: "read" }) ?? null;
     evidence.runtime.toolCallResult = result;
     evidence.runtime.assertions = {
       blockTrue: result?.block === true,

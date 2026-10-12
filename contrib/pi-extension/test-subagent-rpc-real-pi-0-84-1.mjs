@@ -158,7 +158,7 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       }, 10_500);
     }
     send({ id: message.id, type: "response", command: "prompt", success: true, data: {} });
-    if (scenario === "inline") send({ type: "tool_execution_end", toolCallId: "huge-tool", toolName: "read", success: true, output: huge(${JSON.stringify(RAW_HISTORY)}) });
+    if (scenario === "inline") send({ type: "tool_execution_end", toolCallId: "huge-tool", toolName: "read", isError: false, result: { content: [{ type: "text", text: huge(${JSON.stringify(RAW_HISTORY)}) }], details: {} } });
     if (scenario === "retry") send({ type: "agent_end", willRetry: true, messages: [{ role: "assistant", content: [{ type: "text", text: "retry" }], stopReason: "error", errorMessage: "retry failure", diagnostics: [{ type: "provider_transport_failure" }] }] });
     if (scenario === "failure") {
       send({ type: "agent_end", willRetry: false, messages: [{ role: "assistant", content: [{ type: "text", text: "failed" }], stopReason: "error", errorMessage: "bounded provider failure", diagnostics: [{ type: "provider_transport_failure" }] }] });
