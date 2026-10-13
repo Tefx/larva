@@ -26,7 +26,18 @@ context: 'Deliver the accepted native-only Pi integration and bounded read-only 
   larva, and verify local uvx retrieval from PyPI. Existing authentication may be
   used without exposing secrets; unrelated host/global configuration, new credentials,
   paid models and other targets remain excluded. This scoped authorization supersedes
-  earlier release/publish exclusions only for this release.'
+  earlier release/publish exclusions only for this release. Current explicit next-patch
+  release authorization: subagent_panel_patch_release may prepare the accepted Timeline
+  repair for the next free patch (expected 0.8.6 after local/remote tags, GitHub and
+  production PyPI reconciliation), ordinarily push existing origin https://github.com/Tefx/larva.git
+  main, create its new immutable tag and GitHub Release and use the existing trusted
+  PyPI workflow. This phase-scoped authorization supersedes earlier publication exclusions
+  for this delivery only. Preserve v0.8.5 at 5165039d8e113e9246b2d6840e7bab9313ca9e7a.
+  No force-push, yank, tag/package replacement, npm publication, global installation/configuration,
+  user Pi changes, new credentials/accounts/spend or real-model calls. Fresh complete
+  remote CI, production availability, truly fresh isolated-cache unpinned uvx latest
+  resolution plus actual larva --help and published Pi install/native delivery proof
+  are required; Python backend and Pi extension delivery remain separate.'
 project_guidance: 'The accepted native-only integration behavior is described in design/pi-native-extension.md,
   subject to the current user''s Larva-independence and functional-testing decisions.
   Larva-local contracts govern current validation; Opifex is neither an authority
@@ -62,7 +73,18 @@ project_guidance: 'The accepted native-only integration behavior is described in
   remains focused: reuse applicable prior native MCP and focused Invar evidence, preserve
   the known full-Invar environment failure as a gap, and do not rerun broad native
   matrices or add defensive test scope. Apply project Invar to relevant source changes
-  without treating unrelated baseline failures as green.'
+  without treating unrelated baseline failures as green. Current explicit next-patch
+  release authorization: subagent_panel_patch_release may prepare the accepted Timeline
+  repair for the next free patch (expected 0.8.6 after local/remote tags, GitHub and
+  production PyPI reconciliation), ordinarily push existing origin https://github.com/Tefx/larva.git
+  main, create its new immutable tag and GitHub Release and use the existing trusted
+  PyPI workflow. This phase-scoped authorization supersedes earlier publication exclusions
+  for this delivery only. Preserve v0.8.5 at 5165039d8e113e9246b2d6840e7bab9313ca9e7a.
+  No force-push, yank, tag/package replacement, npm publication, global installation/configuration,
+  user Pi changes, new credentials/accounts/spend or real-model calls. Fresh complete
+  remote CI, production availability, truly fresh isolated-cache unpinned uvx latest
+  resolution plus actual larva --help and published Pi install/native delivery proof
+  are required; Python backend and Pi extension delivery remain separate.'
 clipboard:
   author: vectl-orchestrator
   summary: User revoked pi-nunc notification; finish Plan and report locally
@@ -146846,3 +146868,175 @@ phases:
       changes. Cleanup follows lifecycle completion: retain smallest original/corrected
       observations for parent acceptance audit; remove worktree/envs and redundant
       scratch after reconciliation.'
+- id: subagent_panel_patch_release
+  name: Publish Timeline repair next patch and verify latest delivery
+  status: pending
+  depends_on:
+  - subagent_panel_live_regression
+  steps:
+  - id: subagent-panel.patch-prepare
+    name: Prepare reconciled patch metadata and installed Timeline delivery
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
+      \ uv.lock\n    - contrib/pi-extension/package.json\n    - contrib/pi-extension/package-lock.json\n\
+      \    - contrib/pi-extension/README.md\n    - README.md\n    - scripts/**\n \
+      \   - tests/shell/test_pi*.py\n    - tests/fixtures/pi/**\n  blocked_paths:\n\
+      \    - plan.yaml\n    - .vectl/**\n    - artifacts/**\nrelease_target:\n  repository:\
+      \ /Users/tefx/Projects/larva\n  remote: https://github.com/Tefx/larva.git\n\
+      \  branch: main\n  github: Tefx/larva\n  pypi_project: larva\n  index: https://pypi.org/simple\n\
+      \  workflow: .github/workflows/publish.yml\n  expected_patch: 0.8.6\nverification_environment:\n\
+      \  python_setup_argv: [uv, sync, --locked, --python, '3.12', --group, dev]\n\
+      \  npm_setup_argv: [npm, --prefix, contrib/pi-extension, ci]\n  environment_unset:\
+      \ [VIRTUAL_ENV, UV_PROJECT_ENVIRONMENT, PYTHONPATH]\n  environment: {UV_PYTHON_DOWNLOADS:\
+      \ never}\n  invar_argv: [uv, run, --locked, --python, '3.12', --group, dev,\
+      \ invar, guard, --all]\n  native_context: 'Observed Pi 1.2.0 / Node 26.10.0;\
+      \ record actual versions, preserve package/bin identity, no version admission'\n\
+      verification_inventory:\n  - .github/workflows/ci.yml\n  - scripts/mcp-release-smoke.py\n\
+      \  - scripts/pi-native-journeys.mjs\n\nDeliver: A release-ready next-patch candidate\
+      \ containing accepted Timeline wheel/resize/arrival-retention repair, consistent\
+      \ Python and private Pi metadata/locks, accurate Chinese release notes, and\
+      \ executable existing delivery checks needed by the external publication consumer.\
+      \ Reconcile local and remote main/tags, GitHub Releases and production PyPI\
+      \ read-only before selecting next patch, expected 0.8.6; never overwrite conflicts.\
+      \ Explain separate Python backend and native Pi extension installation, wheel\
+      \ routing, resize and arrival-order retention; do not claim these defects are\
+      \ the sole cause of all observed sessions. Preserve existing package layout\
+      \ and dependency locks except necessary version conventions.\nUse existing installed-panel\
+      \ and panel-navigation mechanisms. Ensure the published-source consumer can\
+      \ exercise real isolated Pi install/loader and native fullscreen wheel/up/down\
+      \ once per input, 42-to-14 shrink with reachable newest rows, fresh crossing-80\
+      \ arrival retention through Worker catch-up, pause/update/End and bottom resume\
+      \ from the installed payload. Extend the existing tracked runner minimally only\
+      \ if needed to bind that seam; no temporary material acceptance logic or new\
+      \ framework. Python build/wheel/backend proof cannot substitute for installed\
+      \ Pi proof.\nBoundary: devops-engineer owns release preparation and effects\
+      \ in their separate transactions; its registered release/CI/artifact/reconciliation\
+      \ capabilities fit this settled delivery. No product-behavior redesign. Orchestrator\
+      \ owns integration and acceptance. Preserve completed history, v0.8.5 and all\
+      \ existing packages/tags; never scan/change/clean user artifacts. No force-push,\
+      \ yank, replacement, npm publication, global/user Pi install or configuration,\
+      \ new credentials/accounts/spend, real model calls, new framework or matrix.\
+      \ Existing authentication only through opaque host handoff, with no secret values\
+      \ or locations in evidence.\nAdmit: Accepted source 807b90b19f620b836ad695283b80043f9cb850a8\
+      \ and completed Timeline repair evidence; current main contains this source.\
+      \ Reuse applicable source proof and complete offline inventory observations,\
+      \ adding affected metadata/build/delivery checks and required Invar. Earlier\
+      \ 0.8.5 publication evidence supplies mechanism only, never current release\
+      \ success. Consumer is publish-and-verify; preparation has repository and isolated\
+      \ fixture effects only, no push/tag/release/upload.\nRecovery: Reversible worktree\
+      \ correction; keep normal preparation/check fixes with this owner. Reconcile\
+      \ descendants and retain minimum unique observations, then clean reproducible\
+      \ owned state after consumers finish. Product defects outside release preparation\
+      \ require normal immutable-history repair; do not silently alter completed scope."
+    verification: Reconcile next free patch read-only; prove consistent metadata/locks,
+      build wheel/sdist and existing MCP smoke, affected packaging and installed Pi/native
+      runner behavior. Run project Invar and relevant sig/map/refs, diff check. Full
+      applicable offline inventory may combine unchanged accepted source observations
+      and affected runs; record command outcomes and limitations honestly. Orchestrator
+      reviews candidate, Chinese notes, proof applicability and publication readiness;
+      missing tracked published-seam check must be delivered here.
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/README.md
+    - .github/workflows/ci.yml
+    - .github/workflows/publish.yml
+    - scripts/mcp-release-smoke.py
+    - scripts/pi-native-journeys.mjs
+    - INVAR.md
+    agent: devops-engineer
+  - id: subagent-panel.patch-publish-and-verify
+    name: Publish patch and prove remote CI, fresh uvx latest and installed Pi behavior
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
+      scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - artifacts/**\n\
+      release_target:\n  repository: /Users/tefx/Projects/larva\n  remote: https://github.com/Tefx/larva.git\n\
+      \  branch: main\n  github: Tefx/larva\n  pypi_project: larva\n  index: https://pypi.org/simple\n\
+      \  workflow: .github/workflows/publish.yml\n  expected_patch: 0.8.6\nverification_environment:\n\
+      \  python_setup_argv: [uv, sync, --locked, --python, '3.12', --group, dev]\n\
+      \  npm_setup_argv: [npm, --prefix, contrib/pi-extension, ci]\n  environment_unset:\
+      \ [VIRTUAL_ENV, UV_PROJECT_ENVIRONMENT, PYTHONPATH]\n  environment: {UV_PYTHON_DOWNLOADS:\
+      \ never}\n  invar_argv: [uv, run, --locked, --python, '3.12', --group, dev,\
+      \ invar, guard, --all]\n  native_context: 'Observed Pi 1.2.0 / Node 26.10.0;\
+      \ record actual versions, preserve package/bin identity, no version admission'\n\
+      verification_inventory:\n  - .github/workflows/ci.yml\n  - scripts/mcp-release-smoke.py\n\
+      \  - scripts/pi-native-journeys.mjs\n\nDeliver: Ordinary main push and new immutable\
+      \ tag/GitHub Release for the integrated accepted candidate, existing trusted\
+      \ publication to production PyPI, complete successful remote CI, and fresh installed\
+      \ delivery observations. Bind candidate/version/tag at admission and independently\
+      \ read back each effect. Wait for all required remote CI jobs (including full\
+      \ Invar) and release workflow success tied to that candidate; publication workflow\
+      \ success alone is insufficient. Report remote main/tag, release, workflow and\
+      \ non-yanked production distributions.\nMandatory fresh latest-resolution observation:\
+      \ use genuinely fresh isolated task-owned cache/tool/HOME state, production\
+      \ index and UNPINNED --from larva, read actual installed distribution version\
+      \ and execute its real larva --help successfully. No local wheel/source, pinned\
+      \ requirement or PyPI JSON-only substitute. Resolve the released latest patch;\
+      \ if production latest has changed, reconcile identity and report actual state\
+      \ rather than silently accepting another release.\nAcquire actual published\
+      \ immutable GitHub source, use its native Pi package through isolated real pi\
+      \ install/loader, and execute the tracked installed-payload checks for native\
+      \ wheel/up/down, shrink and crossing-80 Worker arrival retention/pause/End.\
+      \ Preserve actual package/bin identity. Establish the published-byte seam with\
+      \ focused fresh observations; reuse unaffected source proof without replaying\
+      \ broad matrices. Report Python PyPI/backend delivery separately from the GitHub-source\
+      \ Pi package; no npm publish or actual user-session upgrade claim.\nBoundary:\
+      \ devops-engineer owns release preparation and effects in their separate transactions;\
+      \ its registered release/CI/artifact/reconciliation capabilities fit this settled\
+      \ delivery. No product-behavior redesign. Orchestrator owns integration and\
+      \ acceptance. Preserve completed history, v0.8.5 and all existing packages/tags;\
+      \ never scan/change/clean user artifacts. No force-push, yank, replacement,\
+      \ npm publication, global/user Pi install or configuration, new credentials/accounts/spend,\
+      \ real model calls, new framework or matrix. Existing authentication only through\
+      \ opaque host handoff, with no secret values or locations in evidence.\nAdmit:\
+      \ Orchestrator-accepted preparation, immutable integrated candidate and tracked\
+      \ Chinese notes. Reconcile actual local/remote refs, releases, Actions and PyPI\
+      \ immediately before writes; ordinary fast-forward only. Use existing origin/main,\
+      \ GitHub Tefx/larva, production larva and tracked trusted workflow exclusively.\
+      \ Latest is an explicitly requested observation target, never a substitute publication\
+      \ producer.\nRecovery: Owner handles ordinary propagation and bounded tool waits\
+      \ until fresh unpinned retrieval resolves real latest; no shell sleep polling.\
+      \ Before retrying any effect, reconcile whether it already occurred and consume\
+      \ existing matching effects instead of duplicating. No deletion/yank/tag rewrite\
+      \ is authorized rollback; stop with observed state if a material conflict cannot\
+      \ safely resolve. Clean isolated fixtures/caches and quiesce descendants after\
+      \ preserving minimum acceptance evidence. Repository repair cannot occur in\
+      \ this runtime-only step.\nFinal acceptance: Orchestrator makes the single integrated\
+      \ release acceptance decision on this step, consuming accepted preparation,\
+      \ applicable full project-native offline inventory and source review, new complete\
+      \ remote CI, successful trusted publication, production availability, fresh\
+      \ unpinned CLI proof and published installed Pi native behavior. Bind evidence\
+      \ to final candidate and record applicability of unchanged observations; changed\
+      \ inputs require affected proof. Missing/failed necessary checks or unreconciled\
+      \ effects prevent acceptance. No extra gate or self-approval by deployment owner."
+    verification: Record bound integrated commit/version/tag, reconciled before/after
+      effects and exact secret-safe commands. Require complete successful candidate
+      remote CI and trusted publication, production non-yanked artifacts, truly fresh
+      isolated unpinned uvx --from larva resolving released latest with actual CLI
+      --help, and published-source installed native wheel/resize/cap80 observations.
+      Orchestrator judges full integrated requirement/inventory coverage plus applicability
+      of source evidence, separate Python/Pi delivery, all effects reconciled and
+      cleanup. JSON availability, pinned install, metadata or headless-only navigation
+      cannot replace required observations.
+    evidence_template: Candidate/version/tag; changes/effects and reconciliation;
+      remote CI and publication URLs/outcomes; production availability; fresh unpinned
+      resolved version and CLI result; published installed Pi provenance/native observations;
+      reused offline coverage and invalidation analysis; cleanup; gaps; Orchestrator
+      final acceptance.
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/README.md
+    - .github/workflows/ci.yml
+    - .github/workflows/publish.yml
+    - scripts/mcp-release-smoke.py
+    - scripts/pi-native-journeys.mjs
+    - INVAR.md
+    depends_on:
+    - subagent-panel.patch-prepare
+    agent: devops-engineer
