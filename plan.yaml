@@ -146876,7 +146876,7 @@ phases:
   steps:
   - id: subagent-panel.patch-prepare
     name: Prepare reconciled patch metadata and installed Timeline delivery
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n    - contrib/pi-extension/package.json\n    - contrib/pi-extension/package-lock.json\n\
@@ -146950,6 +146950,26 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-13T10:10:12.428557Z'
+    done_at: '2026-10-13T10:29:25.053392+00:00'
+    evidence: Accepted exact candidate f4dd846480e329c1eb19f2e0c69af3c7656c6cb6, retained
+      refs/vectl/retained/subagent-panel-patch-prepare; no-op rebase on integration_basis
+      e3e32689b80571cf0be31838ceed987edec8ee62 then compare-and-fast-forward verified.
+      Orchestrator reviewed full ten-file diff, Chinese notes, publication workflow,
+      native installed/source-selection reports and canonical wheel MCP command outcome.
+      Metadata/root locks consistently0.8.6 no dependency/product changes. Read-only
+      remote main c38d855a ancestor; GH/PyPI latest0.8.5 no0.8.6 at prep observation,
+      immutable v0.8.5=5165039. Source-root installed-panel tracks actual extracted
+      entry into native fullscreen/regular wheel/arrows,42->14,Worker counts21/42/63/80/80,pause/End/bottom;
+      distinct-source regression1pass78deselected, packaging26pass, build canonical
+      tracked-source sdist/wheel pass, MCP0.8.6/MCP1.30/13tools pass, full Invar0errors5existingwarnings+documented
+      skips, sig/map/refs/syntax/diff/hooks pass. Rejected initial node_modules-contaminated
+      worktree sdist; canonical git-archive build3.2MiB preserves existing layout,
+      remote clean publish workflow unaffected. Evidence .vectl/evidence/subagent-panel-patch-release/preparation/{evidence.md,installed-panel.json,source-selection.json,*.log};
+      complete offline-inventory reuse/applicability and exact commands there. All
+      fixture processes reconciled dead, trackedclean no protected changes/effects.
+      Hold worktree .venv/node_modules only for successor published-source proof;
+      release at successor check completion. Publication/latestuvx/complete remoteCI
+      remain separate unexecuted consumer obligations.
   - id: subagent-panel.patch-publish-and-verify
     name: Publish patch and prove remote CI, fresh uvx latest and installed Pi behavior
     status: pending
