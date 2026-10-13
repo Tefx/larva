@@ -146718,13 +146718,13 @@ phases:
       remains SAMEpublicationconsumer; publication0.8.5effects mustnotrepeat.
 - id: subagent_panel_live_regression
   name: Repair fresh live Timeline navigation and retention
-  status: pending
+  status: in_progress
   depends_on:
   - subagent_panel_release
   steps:
   - id: subagent-panel.live-regression-repair
     name: Repair native Timeline wheel, resize and recent-event retention
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - scripts/pi*.mjs\n  \
       \  - tests/shell/test_pi*.py\n    - tests/fixtures/pi/**\n    - design/pi-native-extension.md\n\
@@ -146816,3 +146816,5 @@ phases:
     - .github/workflows/ci.yml
     - INVAR.md
     agent: senior-engineer
+    claimed_by: senior-engineer
+    claimed_at: '2026-10-13T08:48:20.419197Z'
