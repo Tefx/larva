@@ -37,7 +37,8 @@ async function runtimeModule(t) {
   const modulePath = join(root, "larva-runtime.ts");
   const source = await import("node:fs/promises").then((fs) => fs.readFile(sourcePath, "utf8"));
   await writeFile(modulePath, source, "utf8");
-  await import("node:fs/promises").then(fs => fs.copyFile(join(dirname(sourcePath), "activity.ts"), join(root, "activity.ts")));
+  const fs = await import("node:fs/promises");
+  for (const name of ["activity.ts", "session-timeline-worker.mjs"]) await fs.copyFile(join(dirname(sourcePath), name), join(root, name));
   return { root, mod: await import(pathToFileURL(modulePath).href) };
 }
 
