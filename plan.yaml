@@ -146718,13 +146718,13 @@ phases:
       remains SAMEpublicationconsumer; publication0.8.5effects mustnotrepeat.
 - id: subagent_panel_live_regression
   name: Repair fresh live Timeline navigation and retention
-  status: in_progress
+  status: done
   depends_on:
   - subagent_panel_release
   steps:
   - id: subagent-panel.live-regression-repair
     name: Repair native Timeline wheel, resize and recent-event retention
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - scripts/pi*.mjs\n  \
       \  - tests/shell/test_pi*.py\n    - tests/fixtures/pi/**\n    - design/pi-native-extension.md\n\
@@ -146818,3 +146818,31 @@ phases:
     agent: senior-engineer
     claimed_by: senior-engineer
     claimed_at: '2026-10-13T08:48:20.419197Z'
+    done_at: '2026-10-13T09:47:34.438597+00:00'
+    evidence: 'Accepted and fast-forward integrated exact candidate 807b90b19f620b836ad695283b80043f9cb850a8
+      from base/integration_basis dc901321c5092d3be017196cdd622d5db411bd5a; retained
+      original ref refs/vectl/retained/subagent-panel-live-regression. Owner senior-engineer,
+      no other writer. Orchestrator inspected all 8-file actual diff and native observation
+      records, preserved old display ordering assertions at display seam while storage
+      now arrival-order, confirmed no managed/protected changes, clean worktree and
+      scoped processes absent. Fullscreen normalized wheel once; regular raw SGR preserved;
+      current render-time height; retention80 before display grouping. Actual Pi1.2.0
+      Node26.10 native PTY/host+real Worker: fullscreen/regular wheel/up/down one
+      action each,42->14 gives11lines/4viewport newestMSG017 reachable, fresh100messages+5tools
+      counts21/42/63/80/80 retains tool4+m99; pause signal+End and bottom resume.
+      Both native hosts exited0/dead; zero provider requests. Canonical evidence .vectl/evidence/subagent-panel-live-regression/verification/native-corrected.json;
+      original diagnosis and failed observations retained separately, no sole现场cause
+      claim. Exact commands/inventory/failures/applicability in .vectl/evidence/subagent-panel-live-regression/evidence.md
+      (original report paths migrate per acceptance note). Current UX57 covered by
+      original56pass1fail plus final2pass recovery without double-count; Worker+4
+      affected Node runners exit0; runtime5pass; native1pass; full locked Python3.12
+      dev Invar guard --all exit0 static0errors5existingwarnings doctest/properties
+      pass existing CrossHair skips; sig/map/refs/Ruff/syntax/diff/hooks pass. Broader
+      contracts189pass1setupfailure missing unchanged CI-only Pi fixture remains recorded
+      failed; reuse unchanged original success f1f93b91 CI38320707936 (only Plan changed
+      to base), alongside affected executions for complete applicable offline inventory;
+      no new remote CI/full-version matrix claim. No blocking defects or required
+      proof gaps in scoped repair. No publication/install/global settings/user artifacts
+      changes. Cleanup follows lifecycle completion: retain smallest original/corrected
+      observations for parent acceptance audit; remove worktree/envs and redundant
+      scratch after reconciliation.'
