@@ -132,10 +132,11 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
 def _runtime_extension_copy(tmp_path: Path, appended_exports: str) -> Path:
     extension = tmp_path / "larva-pi-runtime-test.ts"
     extension.write_text(_source() + "\n" + textwrap.dedent(appended_exports), encoding="utf-8")
-    (tmp_path / "activity.ts").write_text(
-        (ROOT / "contrib/pi-extension/activity.ts").read_text(encoding="utf-8"),
-        encoding="utf-8",
-    )
+    for name in ("activity.ts", "session-timeline-worker.mjs"):
+        (tmp_path / name).write_text(
+            (ROOT / "contrib/pi-extension" / name).read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
     return extension
 
 

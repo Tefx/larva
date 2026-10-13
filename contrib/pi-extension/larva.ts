@@ -1,4 +1,5 @@
 import { inspectSessionActivity } from "./activity.ts";
+import { assistantMessageExcerpt } from "./session-timeline-worker.mjs";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { Worker } from "node:worker_threads";
 import { createHash, randomBytes } from "node:crypto";
@@ -300,7 +301,7 @@ type SubagentToolSnapshot = {
   error_preview?: string;
 };
 type SubagentTimelineEvent =
-  | { kind: "assistant"; text: string; session_id?: string; session_offset?: number; tool_call_ids?: string[]; placement?: "anchored" | "historical" }
+  | { kind: "assistant"; text: string; stream_id?: number; message_key?: string; session_id?: string; session_offset?: number; tool_call_ids?: string[]; placement?: "anchored" | "historical" }
   | { kind: "thinking_hidden" }
   | { kind: "tool"; toolCallId: string; snapshot: SubagentToolSnapshot }
   | { kind: "terminal"; status: SubagentPresentationStatus }
@@ -321,6 +322,8 @@ type SubagentPresentationLogEntry = {
   started_at?: string;
   updated_at?: string;
   live_assistant_preview?: string;
+  live_assistant_current?: { id: number; text: string };
+  live_assistant_sequence?: number;
   live_thinking_hidden?: boolean;
   last_child_activity?: SubagentChildActivity;
   startup_model?: string;
@@ -1869,11 +1872,11 @@ function boundedAssistantPreview(value: string): string {
   return boundedRendererSafeText(value, SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT);
 }
 
-function boundedLiveAssistantTail(value: string): string {
+function boundedLiveAssistantTail(value: string, limit = SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT): string {
   const points = Array.from(rendererSafeMarkdownSource(value));
-  if (points.length <= SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT) return points.join("");
+  if (points.length <= limit) return points.join("");
   const marker = "[earlier assistant content omitted]\n";
-  return marker + points.slice(-(SUBAGENT_LIVE_ASSISTANT_PREVIEW_LIMIT - Array.from(marker).length)).join("");
+  return marker + points.slice(-(limit - Array.from(marker).length)).join("");
 }
 
 function boundedTimelineAssistantEvent(value: string): string {
@@ -2066,6 +2069,28 @@ function separateHistoricalTimelineEvents(events: SubagentTimelineEvent[]): Suba
   return current;
 }
 
+function reconcileSubagentAssistantTimeline(events: SubagentTimelineEvent[]): SubagentTimelineEvent[] {
+  const removed = new Set<number>();
+  const pending = new Map<string, number[]>(), persisted = new Map<string, number[]>();
+  events.forEach((row, index) => {
+    if (row.kind !== "assistant" || row.message_key === undefined) return;
+    const target = row.session_id === undefined && row.stream_id !== undefined ? pending
+      : row.session_id !== undefined && row.stream_id === undefined ? persisted : null;
+    if (target !== null) target.set(row.message_key, [...(target.get(row.message_key) ?? []), index]);
+  });
+  for (const [key, live] of pending) {
+    const saved = persisted.get(key);
+    // Ambiguous/missing native identity leaves both observations intact. Never
+    // delete a message because its bounded display text resembles another one.
+    if (live.length !== 1 || saved?.length !== 1) continue;
+    const source = events[saved[0]], provisional = events[live[0]];
+    if (source.kind !== "assistant" || provisional.kind !== "assistant") continue;
+    events[live[0]] = { ...source, stream_id: provisional.stream_id, placement: undefined };
+    removed.add(saved[0]);
+  }
+  return events.filter((_, index) => !removed.has(index));
+}
+
 function timelineEventsForEntry(entry: SubagentPresentationLogEntry): SubagentTimelineEvent[] {
   if (entry.timeline_events !== undefined && entry.timeline_events.length > 0) return separateHistoricalTimelineEvents(entry.timeline_events);
   const events: SubagentTimelineEvent[] = [];
@@ -2162,7 +2187,10 @@ function ensureSessionTimelineWorker(): Worker {
     const timeline = reset
       ? (entry.timeline_events ?? []).filter((eventValue) => eventValue.kind !== "assistant")
       : [...(entry.timeline_events ?? [])];
-    if (reset) sessionTimelineSeen.delete(message.invocation);
+    if (reset) {
+      sessionTimelineSeen.delete(message.invocation);
+      delete entry.live_assistant_current;
+    }
     if (reset && sessionId === null) delete entry.presentation_session_id;
     if (sessionId !== null) entry.presentation_session_id = sessionId;
     const seen = sessionTimelineSeen.get(message.invocation) ?? new Set<string>();
@@ -2177,13 +2205,13 @@ function ensureSessionTimelineWorker(): Worker {
       const anchor = timeline.findIndex((eventValue) => eventValue.kind === "tool" && excerpt.toolCallIds.includes(eventValue.toolCallId));
       // A newly observed excerpt is recent even when its display placement is
       // historical. Bound arrival order before constructing the display groups.
-      timeline.push({ kind: "assistant", text, session_id: excerpt.id, session_offset: excerpt.offset, tool_call_ids: excerpt.toolCallIds.filter((id): id is string => typeof id === "string").slice(0, 25), placement: anchor >= 0 ? "anchored" : "historical" });
+      timeline.push({ kind: "assistant", text, message_key: typeof excerpt.messageKey === "string" ? excerpt.messageKey : undefined, session_id: excerpt.id, session_offset: excerpt.offset, tool_call_ids: excerpt.toolCallIds.filter((id): id is string => typeof id === "string").slice(0, 25), placement: anchor >= 0 ? "anchored" : "historical" });
       changed = true;
     }
     if (typeof message.diagnostic === "string") { entry.presentation_diagnostic = boundedVisible(message.diagnostic, 160); changed = true; }
     else if (typeof message.malformed === "number" && message.malformed > 0) { entry.presentation_diagnostic = `${message.malformed} malformed session records skipped in latest slice`; changed = true; }
     if (changed) {
-      entry.timeline_events = boundedSubagentTimelineEvents(timeline);
+      entry.timeline_events = boundedSubagentTimelineEvents(reconcileSubagentAssistantTimeline(timeline));
       persistSubagentPresentationCache();
       notifySubagentPresentationOverlay();
     }
@@ -2246,13 +2274,15 @@ function retryTerminalSessionTimeline(entry: SubagentPresentationLogEntry): void
   }
 }
 
+type SubagentAssistantExcerpt = { text: string; toolCallIds: string[]; messageKey?: string };
 type NormalizedSubagentStreamEvent =
+  | { kind: "assistant_start" }
   | { kind: "assistant_delta"; text: string; tool_argument?: boolean }
   | { kind: "thinking_hidden" }
   | { kind: "tool"; toolCallId: string; name?: string; status: SubagentToolStatus; stage?: "start" | "update" | "end"; args_preview?: string; output_preview?: string; error_preview?: string }
   | { kind: "terminal"; type: "agent_end" | "agent_settled" }
   | { kind: "activity"; category: string; summary: string }
-  | { kind: "message_boundary" };
+  | { kind: "message_boundary"; assistant?: SubagentAssistantExcerpt };
 
 function subagentToolArgsPreviewFromFrameValue(value: unknown): string | undefined {
   if (typeof value === "string") return boundedToolArgsPreview(value);
@@ -2299,6 +2329,7 @@ function subagentChildActivityFields(frame: Record<string, unknown>, oversized: 
 function normalizeSubagentChildStreamEventForPresentation(frame: unknown, oversized = false): NormalizedSubagentStreamEvent | null {
   if (!isRecord(frame) || typeof frame.type !== "string") return null;
   oversized = oversized || isRecord(frame.oversized);
+  if (frame.type === "message_start" && isRecord(frame.message) && frame.message.role === "assistant") return { kind: "assistant_start" };
   if (frame.type === "message_update") {
     const assistantMessageEvent = isRecord(frame.assistantMessageEvent) ? frame.assistantMessageEvent : null;
     const channel = typeof frame.channel === "string" ? frame.channel : typeof frame.kind === "string" ? frame.kind : "assistant";
@@ -2334,7 +2365,18 @@ function normalizeSubagentChildStreamEventForPresentation(frame: unknown, oversi
     const summary = Object.entries(subagentChildActivityFields(frame, oversized)).map(([key, value]) => `${key}=${value}`).join(" ");
     return { kind: "activity", category: frame.type, summary: boundedPresentationPreview(summary || (oversized ? "[oversized activity omitted]" : "observed"), 240) };
   }
-  if (frame.type === "message_end") return { kind: "message_boundary" };
+  if (frame.type === "message_end") {
+    const excerpt = assistantMessageExcerpt(frame.message);
+    // The child bounds oversized native records before transport; this private
+    // projection retains only the same bounded excerpt and opaque identity.
+    const projected = oversized && isRecord(frame.assistant_excerpt) ? frame.assistant_excerpt : null;
+    const assistant: SubagentAssistantExcerpt | undefined = excerpt ?? (projected !== null
+      && typeof projected.text === "string" && Array.isArray(projected.toolCallIds)
+      && projected.toolCallIds.every((id) => typeof id === "string")
+      && (projected.messageKey === undefined || typeof projected.messageKey === "string" && /^[a-f0-9]{64}$/.test(projected.messageKey))
+      ? { text: boundedTimelineAssistantEvent(projected.text), toolCallIds: projected.toolCallIds.slice(0, 25).map((id) => boundedVisible(id, 160)), messageKey: projected.messageKey } : undefined);
+    return { kind: "message_boundary", ...(assistant === undefined ? {} : { assistant }) };
+  }
   if (frame.type === "agent_end" || frame.type === "agent_settled") return { kind: "terminal", type: frame.type };
   return null;
 }
@@ -2682,6 +2724,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     }
     for (const eventValue of timelineEvents) {
       if (eventValue.kind === "assistant") {
+        if (eventValue.stream_id !== undefined && eventValue.session_id === undefined) lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", "  live assistant · persistence pending"), contentWidth));
         if (eventValue.placement === "historical") lines.push(overlayTruncateLine(selectorThemeFg(this.theme, "dim", "  session excerpt · tool order unknown"), contentWidth));
         lines.push(...this.timelineAssistantLines(eventValue.text, contentWidth));
       } else if (eventValue.kind === "thinking_hidden") {
@@ -3471,6 +3514,8 @@ function touchSubagentEntryTimestamp(entry: SubagentPresentationLogEntry): Subag
 function sanitizeSubagentPresentationCacheEntry(entry: SubagentPresentationLogEntry, config: SubagentPresentationCacheConfig): SubagentPresentationLogEntry {
   const sanitized: SubagentPresentationLogEntry = withSubagentEntryTimestamp(entry);
   delete sanitized.live_assistant_preview;
+  delete sanitized.live_assistant_current;
+  delete sanitized.live_assistant_sequence;
   delete sanitized.tool_snapshots;
   delete sanitized.timeline_events;
   delete sanitized.session_assistant_message_ids;
@@ -8101,6 +8146,9 @@ function childRpcProjection(frame: Record<string, unknown>, encodedBytes: number
   if (projection?.kind === "activity") {
     return { type: frame.type, ...subagentChildActivityFields(frame, true), oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: frame.type } };
   }
+  if (projection?.kind === "message_boundary" && projection.assistant !== undefined) {
+    return { type: frame.type, assistant_excerpt: projection.assistant, oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: frame.type } };
+  }
   return { type: typeof frame.type === "string" ? frame.type : "oversized_notification", oversized: { encoded_bytes: encodedBytes, limit: CHILD_RPC_JSONL_MAX_BYTES, frame_type: typeof frame.type === "string" ? frame.type : null } };
 }
 
@@ -9054,11 +9102,37 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     : eventValue.kind === "activity" ? eventValue.category
     : eventValue.kind === "assistant_delta" && eventValue.tool_argument ? "tool_arguments_hidden" : eventValue.kind;
   entry.last_child_activity = { category, received_at: timestampNow(), ...(eventValue.kind === "activity" ? { summary: eventValue.summary } : {}) };
-  if (eventValue.kind === "assistant_delta") {
+  if (eventValue.kind === "assistant_start" && entry.status === "running") {
+    entry.live_assistant_sequence = (entry.live_assistant_sequence ?? 0) + 1;
+    entry.live_assistant_current = { id: entry.live_assistant_sequence, text: "" };
+  } else if (eventValue.kind === "assistant_delta") {
     if (eventValue.tool_argument !== true && entry.status === "running") {
       const next = `${entry.live_assistant_preview ?? ""}${eventValue.text}`;
       entry.live_assistant_preview = boundedLiveAssistantTail(next);
+      const current = entry.live_assistant_current ?? { id: (entry.live_assistant_sequence ?? 0) + 1, text: "" };
+      entry.live_assistant_sequence = current.id;
+      entry.live_assistant_current = { id: current.id, text: boundedLiveAssistantTail(current.text + eventValue.text, SUBAGENT_TIMELINE_ASSISTANT_EVENT_LIMIT) };
+      if (entry.live_assistant_current.text.trim()) {
+        const timeline = [...(entry.timeline_events ?? [])];
+        const row = timeline.findIndex((item) => item.kind === "assistant" && item.stream_id === current.id);
+        const live: SubagentTimelineEvent = { kind: "assistant", stream_id: current.id, text: entry.live_assistant_current.text };
+        if (row >= 0) timeline[row] = live;
+        else timeline.push(live);
+        entry.timeline_events = boundedSubagentTimelineEvents(timeline);
+      }
     }
+  } else if (eventValue.kind === "message_boundary") {
+    const current = entry.live_assistant_current;
+    if (current !== undefined && eventValue.assistant !== undefined) {
+      const timeline = [...(entry.timeline_events ?? [])];
+      const row = timeline.findIndex((item) => item.kind === "assistant" && item.stream_id === current.id);
+      if (row >= 0) {
+        if (eventValue.assistant.text) timeline[row] = { kind: "assistant", stream_id: current.id, text: eventValue.assistant.text, message_key: eventValue.assistant.messageKey, tool_call_ids: eventValue.assistant.toolCallIds };
+        else timeline.splice(row, 1); // the authoritative final message removed the text
+        entry.timeline_events = boundedSubagentTimelineEvents(reconcileSubagentAssistantTimeline(timeline));
+      }
+    }
+    delete entry.live_assistant_current;
   } else if (eventValue.kind === "thinking_hidden") {
     entry.live_thinking_hidden = true;
     entry.timeline_events = appendSubagentTimelineEvent(entry, { kind: "thinking_hidden" });
@@ -9091,9 +9165,8 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
   } else if (eventValue.kind === "activity") {
     entry.timeline_events = appendSubagentTimelineEvent(entry, eventValue);
   }
-  if (eventValue.kind === "message_boundary") requestSessionTimeline(entry);
   retainedSubagentPresentationLog[index] = touchSubagentEntryTimestamp(entry);
-  if (eventValue.kind === "tool" || eventValue.kind === "terminal") requestSessionTimeline(retainedSubagentPresentationLog[index]);
+  if (eventValue.kind === "message_boundary" || eventValue.kind === "tool" || eventValue.kind === "terminal") requestSessionTimeline(retainedSubagentPresentationLog[index]);
   persistSubagentPresentationCache();
   notifySubagentPresentationOverlay();
 }
@@ -9822,6 +9895,7 @@ function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry
     lines.push("  [Timeline]");
     for (const eventValue of timelineEventsForEntry(entry)) {
       if (eventValue.kind === "assistant") {
+        if (eventValue.stream_id !== undefined && eventValue.session_id === undefined) lines.push("  live assistant · persistence pending");
         if (eventValue.placement === "historical") lines.push("  session excerpt · tool order unknown");
         lines.push(`  assistant: ${boundedTimelineAssistantEvent(eventValue.text)}`);
       }

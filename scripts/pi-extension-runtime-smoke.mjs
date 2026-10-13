@@ -1436,21 +1436,21 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile, gates) {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
         send({ id: message.id, success: true });
+        const assistantMessage = {
+          role: "assistant", timestamp: 1733234402000,
+          content: [
+            { type: "text", text: "RPC_ASSISTANT_DELTA_VISIBLE" },
+            { type: "toolCall", id: "rpc-tool-1", name: "bash", arguments: { command: "echo rpc" } },
+          ],
+        };
         await appendFile(sessionFile, JSON.stringify({
-          type: "message",
-          id: "msg-rpc-1",
-          timestamp: new Date().toISOString(),
-          message: {
-            role: "assistant",
-            content: [
-              { type: "text", text: "RPC_ASSISTANT_DELTA_VISIBLE" },
-              { type: "toolCall", id: "rpc-tool-1", name: "bash", arguments: { command: "echo rpc" } },
-            ],
-          },
+          type: "message", id: "msg-rpc-1", timestamp: new Date().toISOString(), message: assistantMessage,
         })); // Intentionally incomplete JSONL: the real Worker must not emit an excerpt yet.
         await waitForGate(gates.stream);
+        send({ type: "message_start", message: { role: "assistant", content: [], timestamp: assistantMessage.timestamp } });
         send({ type: "message_update", channel: "assistant", text: "RPC_ASSISTANT_DELTA_VISIBLE", raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "message_update", channel: "thinking_delta", text: "THINKING_SECRET_SHOULD_NOT_RENDER" });
+        send({ type: "message_end", message: assistantMessage });
         send({ type: "tool_execution_start", toolCallId: "rpc-tool-1", toolName: "bash", args: { command: "echo rpc", content: "RAW_ARG_SECRET_SHOULD_NOT_RENDER" }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "tool_execution_update", toolCallId: "rpc-tool-1", toolName: "bash", partialResult: { content: [{ type: "text", text: "RPC_TOOL_OUTPUT_CHUNK" }] }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
         send({ type: "tool_execution_end", toolCallId: "rpc-tool-1", toolName: "bash", isError: false, result: { content: [{ type: "text", text: "RPC_TOOL_OUTPUT_FINAL" }] }, raw_payload_secret: "RAW_RPC_FRAME_SECRET" });
@@ -1586,9 +1586,10 @@ async function runSubagentLogSelectorStreamingRpcPipelineProof(mod) {
   const timelineConjuncts = streamingTimelineConjuncts(timelineDuringPlain);
   const delayedExcerpt = {
     realWorkerReadIncompleteRecord: metricsBeforeRelease.bytes >= partialSize && metricsBeforeRelease.records > 0,
-    oldRpcWaitReadyWithoutExcerpt: liveEntry.status === "running" && !beforeConjuncts.assistantPresent,
-    oldTimelineAssertionFalse: !Object.values(beforeConjuncts).every(Boolean),
-    newWaitPendingBeforeRelease: waitPendingBeforeRelease,
+    liveVisibleBeforePersistence: liveEntry.status === "running" && beforeConjuncts.assistantPresent,
+    liveTimelineCompleteBeforePersistence: Object.values(beforeConjuncts).every(Boolean),
+    persistedWaitPendingBeforeRelease: waitPendingBeforeRelease,
+    reconciledWithoutDuplicate: timelineReadyEntry.timeline_events.filter(event => event.kind === "assistant").length === 1,
     actualPersistedEventObserved: persistedAssistantEntry() !== undefined,
     timelineCapturedWhileRunning: timelineReadyEntry.status === "running",
     metricsBeforeRelease,
@@ -1809,8 +1810,8 @@ async function subagentLogSelectorStreamingExpectedRed(evidence) {
   const actualChildRpcPipeline = await runSubagentLogSelectorStreamingRpcPipelineProof(mod);
   assertions.R12_childRpcPipeline = actualChildRpcPipeline.assertions;
   assertions.R13_persistedTimelineReadiness = Object.fromEntries([
-    "realWorkerReadIncompleteRecord", "oldRpcWaitReadyWithoutExcerpt",
-    "oldTimelineAssertionFalse", "newWaitPendingBeforeRelease",
+    "realWorkerReadIncompleteRecord", "liveVisibleBeforePersistence",
+    "liveTimelineCompleteBeforePersistence", "persistedWaitPendingBeforeRelease", "reconciledWithoutDuplicate",
     "actualPersistedEventObserved", "timelineCapturedWhileRunning",
   ].map((key) => [key, actualChildRpcPipeline.delayedExcerpt[key]]));
   const flattened = Object.values(assertions).flatMap((group) => Object.values(group));

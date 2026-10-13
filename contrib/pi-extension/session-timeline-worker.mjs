@@ -2,6 +2,7 @@
 import { parentPort } from "node:worker_threads";
 import { open, stat } from "node:fs/promises";
 import { TextDecoder } from "node:util";
+import { createHash } from "node:crypto";
 
 const SLICE = 512 * 1024;
 const contexts = new Map();
@@ -23,6 +24,36 @@ function bounded(value, limit) {
     count += 1;
   }
   return result;
+}
+
+// Shared by native message_end ingestion and this reader. The final native
+// message carries no persisted entry ID. Correlate its timestamp, route/response
+// identity and ordered visible blocks, never an arbitrary preview-text match.
+// Thinking bodies and tool arguments are neither returned nor used as identity.
+export function assistantMessageExcerpt(message) {
+  if (!isObject(message) || message.role !== "assistant" || !Array.isArray(message.content)) return;
+  const identity = typeof message.timestamp === "number" && Number.isFinite(message.timestamp)
+    ? createHash("sha256").update(JSON.stringify([message.timestamp, message.api, message.provider, message.model, message.responseId]))
+    : null;
+  let text = "", points = 0;
+  const toolCallIds = [];
+  for (let index = 0; index < message.content.length; index++) {
+    const part = message.content[index];
+    if (!isObject(part)) continue;
+    if (part.type === "text" && typeof part.text === "string") {
+      identity?.update(`\ntext:${index}:${part.text.length}:`).update(part.text);
+      if (points < 1200) {
+        if (text) { text += "\n"; points += 1; }
+        const excerpt = bounded(part.text, 1200 - points);
+        text += excerpt;
+        points += Array.from(excerpt).length;
+      }
+    } else if (part.type === "toolCall" && typeof part.id === "string") {
+      identity?.update(`\ntool:${index}:${part.id.length}:`).update(part.id);
+      if (toolCallIds.length < 25) toolCallIds.push(bounded(part.id, 160));
+    }
+  }
+  return { text: text.trim(), toolCallIds, messageKey: identity?.digest("hex") };
 }
 
 async function scan({ path, invocation, generation, testFailAfterReset = false }) {
@@ -84,22 +115,11 @@ async function scan({ path, invocation, generation, testFailAfterReset = false }
         if (cursor.sessionId === null || frame?.type !== "message" || !isObject(frame.message) || frame.message.role !== "assistant" || !Array.isArray(frame.message.content)) continue;
         const id = typeof frame.id === "string" && frame.id.length > 0 && frame.id.length <= 160 ? frame.id : `offset:${position}`;
         if (cursor.seen.has(id)) continue;
-        let text = "", points = 0;
-        const toolCallIds = [];
-        for (const part of frame.message.content) {
-          if (!isObject(part)) continue;
-          if (part.type === "text" && typeof part.text === "string" && points < 1200) {
-            if (text) { text += "\n"; points += 1; }
-            const excerpt = bounded(part.text, 1200 - points);
-            text += excerpt;
-            points += Array.from(excerpt).length;
-          } else if (part.type === "toolCall" && typeof part.id === "string" && toolCallIds.length < 25) toolCallIds.push(bounded(part.id, 160));
-        }
-        text = text.trim();
-        if (!text) continue;
+        const excerpt = assistantMessageExcerpt(frame.message);
+        if (!excerpt?.text) continue;
         cursor.seen.add(id);
         if (cursor.seen.size > 256) cursor.seen.delete(cursor.seen.values().next().value);
-        excerpts.push({ id, offset: position, text, toolCallIds });
+        excerpts.push({ id, offset: position, ...excerpt });
         if (excerpts.length > 80) excerpts.shift();
       } catch { malformed += 1; if (!cursor.headerChecked) { cursor.headerChecked = true; diagnostic = "Malformed Pi session header; assistant excerpts unavailable."; } }
     }
@@ -120,7 +140,7 @@ async function scan({ path, invocation, generation, testFailAfterReset = false }
 
 // Serialize requests so two sessions cannot monopolize the reader or race one cursor.
 let tail = Promise.resolve();
-parentPort.on("message", (message) => {
+parentPort?.on("message", (message) => {
   if (message?.kind === "drop") { tail = tail.then(() => { contexts.delete(message.invocation); parentPort.postMessage({ kind: "dropped", contextCount: contexts.size }); }); return; }
   if (message?.kind !== "scan" || typeof message.path !== "string" || typeof message.invocation !== "number") return;
   tail = tail.then(() => scan(message)).catch(() => {});

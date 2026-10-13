@@ -22,7 +22,7 @@ JSON.parse = (...args) => { if (typeof args[0] === "string" && args[0].includes(
 const entry = (id) => mod.subagentPresentationLogForTests().find((row) => row.task_id === id);
 const assistants = (id) => entry(id)?.timeline_events?.filter((row) => row.kind === "assistant") ?? [];
 const header = (id) => JSON.stringify({ type: "session", version: 3, id }) + "\n";
-const line = (id, text, toolCallIds = []) => JSON.stringify({ type: "message", id, message: { role: "assistant", content: [{ type: "text", text }, ...toolCallIds.map((toolId) => ({ type: "toolCall", id: toolId, name: "read", arguments: {} }))] } }) + "\n";
+const line = (id, text, toolCallIds = [], metadata = {}) => JSON.stringify({ type: "message", id, message: { role: "assistant", content: [{ type: "text", text }, ...toolCallIds.map((toolId) => ({ type: "toolCall", id: toolId, name: "read", arguments: {} }))], ...metadata } }) + "\n";
 async function until(predicate, label, ms = 20000) {
   const end = performance.now() + ms;
   while (!predicate()) {
@@ -63,14 +63,20 @@ try {
   mod.recordSubagentPresentationEntryForTests(first, "test", "running");
   mod.recordSubagentPresentationEntryForTests(second, "test", "running");
   mod.recordSubagentPresentationEntryForTests(small, "test", "running");
+  const streamOnly = join(dir, "stream-only.jsonl");
+  await writeFile(streamOnly, header("stream-only"));
+  mod.recordSubagentPresentationEntryForTests(streamOnly, "test", "running");
   const highRateStart = performance.now();
-  for (let n = 0; n < 2500; n++) mod.applySubagentStreamEventForTests(first, { kind: "assistant_delta", text: "p" });
+  for (let n = 0; n < 2500; n++) mod.applySubagentStreamEventForTests(streamOnly, { kind: "assistant_delta", text: "p" });
   const highRateMs = performance.now() - highRateStart;
-  assert.equal(assistants(first).length, 0, "RPC text must stay out of Timeline");
+  assert.equal(assistants(streamOnly).length, 1, "RPC chunks update one visible live Timeline row");
+  assert.equal(Array.from(assistants(streamOnly)[0].text).length, 1200);
+  assert.ok(assistants(streamOnly)[0].text.startsWith("[earlier assistant content omitted]"));
   assert.equal(parentSessionReads, 0, "stream path must not synchronously read session files on parent");
   assert.equal(parentSessionParses, 0, "stream path must not parse session records on parent");
-  mod.applySubagentStreamEventForTests(first, { kind: "assistant_delta", text: '{"path":"secret"}', tool_argument: true });
-  assert.ok(!entry(first).live_assistant_preview.includes("secret"), "tool arguments must stay out of assistant preview");
+  mod.applySubagentStreamEventForTests(streamOnly, { kind: "assistant_delta", text: '{"path":"secret"}', tool_argument: true });
+  assert.ok(!entry(streamOnly).live_assistant_preview.includes("secret"), "tool arguments must stay out of assistant preview");
+  assert.ok(!JSON.stringify(assistants(streamOnly)).includes("secret"));
   previous = performance.now();
   const ticker = setInterval(tick, 5);
   await until(() => assistants(small).length === 1, "small task fair slice");
@@ -79,13 +85,89 @@ try {
   clearInterval(ticker);
   assert.equal(input.getValue().length, echoCount);
   assert.deepEqual(assistants(first).map((row) => row.text), ["same", "same"]);
-  assert.ok(entry(first).live_assistant_preview.length <= 4000);
+  assert.ok(entry(streamOnly).live_assistant_preview.length <= 4000);
   const initial = mod.sessionTimelineReaderMetricsForTests();
   assert.ok(initial.bytes >= 46 * 1024 * 1024 && initial.bytes < 48 * 1024 * 1024);
   mod.applySubagentStreamEventForTests(first, { kind: "message_boundary" });
   await until(() => mod.sessionTimelineReaderMetricsForTests().inFlight === 0, "unchanged scan");
   assert.deepEqual(mod.sessionTimelineReaderMetricsForTests().bytes, initial.bytes, "no reread of unchanged file");
   assert.deepEqual(mod.sessionTimelineReaderMetricsForTests().records, initial.records, "no reparse of unchanged file");
+
+  // Native boundaries provide the final identity. A real Worker may lag several
+  // messages or read the persisted entry before its message_end reaches RPC.
+  const streamed = join(dir, "streamed.jsonl");
+  await writeFile(streamed, header("streamed") + line("history", "same visible text", [], { timestamp: 1 }));
+  mod.recordSubagentPresentationEntryForTests(streamed, "test", "running");
+  await until(() => assistants(streamed).length === 1, "stream history");
+  const ingest = frame => {
+    const normalized = mod.normalizeSubagentChildStreamEventForTests(frame);
+    if (normalized) mod.applySubagentStreamEventForTests(streamed, normalized);
+  };
+  const start = () => ingest({ type: "message_start", message: { role: "assistant", content: [] } });
+  const delta = text => ingest({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: text } });
+  const end = (text, timestamp, tools = []) => ingest({ type: "message_end", message: JSON.parse(line("ignored", text, tools, { timestamp })).message });
+  start();
+  ingest({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "THINKING_PRIVATE" } });
+  delta("OLD_PREFIX" + "🙂".repeat(1500));
+  ingest({ type: "message_update", assistantMessageEvent: { type: "toolcall_delta", delta: "TOOL_ARGS_PRIVATE" } });
+  const firstStreamId = assistants(streamed).at(-1).stream_id;
+  delta("LATEST_STREAM_TAIL");
+  assert.equal(assistants(streamed).length, 2);
+  assert.equal(assistants(streamed).at(-1).stream_id, firstStreamId);
+  assert.ok(assistants(streamed).at(-1).text.endsWith("LATEST_STREAM_TAIL"));
+  assert.equal(Array.from(assistants(streamed).at(-1).text).length, 1200);
+  assert.ok(displayTimeline(streamed).includes("LATEST_STREAM_TAIL"));
+  assert.ok(!JSON.stringify(entry(streamed)).includes("THINKING_PRIVATE"));
+  assert.ok(!JSON.stringify(entry(streamed)).includes("TOOL_ARGS_PRIVATE"));
+  end("same visible text", 2, ["stream-tool"]);
+  mod.applySubagentStreamEventForTests(streamed, { kind: "tool", toolCallId: "stream-tool", name: "read", status: "running" });
+  start(); delta("same visible text"); end("same visible text", 3);
+  assert.equal(assistants(streamed).length, 3, "identical text in separate native messages remains distinct during lag");
+  await appendFile(streamed, line("saved-first", "same visible text", ["stream-tool"], { timestamp: 2 }) + line("saved-second", "same visible text", [], { timestamp: 3 }));
+  mod.applySubagentStreamEventForTests(streamed, { kind: "message_boundary" });
+  await until(() => assistants(streamed).some(row => row.session_id === "saved-second"), "lagged live reconciliation");
+  assert.equal(assistants(streamed).length, 3, "persisted counterparts replace the live rows, without swallowing history");
+  assert.deepEqual(entry(streamed).timeline_events.filter(row => row.kind !== "thinking_hidden").map(row => row.kind === "assistant" ? row.session_id : row.toolCallId), ["history", "saved-first", "stream-tool", "saved-second"]);
+  assert.equal(assistants(streamed).find(row => row.session_id === "saved-first").stream_id, firstStreamId);
+
+  start(); delta("worker-first");
+  await appendFile(streamed, line("saved-third", "worker-first", [], { timestamp: 4 }));
+  mod.applySubagentStreamEventForTests(streamed, { kind: "tool", toolCallId: "scan-trigger", name: "read", status: "success" });
+  await until(() => assistants(streamed).some(row => row.session_id === "saved-third"), "Worker before native boundary");
+  end("worker-first", 4);
+  assert.equal(assistants(streamed).filter(row => row.text === "worker-first").length, 1);
+  assert.ok(assistants(streamed).find(row => row.session_id === "saved-third").stream_id !== undefined);
+
+  // Missing native identity cannot authorize text-only deletion.
+  start(); delta("uncorrelated"); end("uncorrelated", undefined);
+  await appendFile(streamed, line("unknown-identity", "uncorrelated"));
+  mod.applySubagentStreamEventForTests(streamed, { kind: "message_boundary" });
+  await until(() => assistants(streamed).some(row => row.session_id === "unknown-identity"), "unknown identity");
+  assert.equal(assistants(streamed).filter(row => row.text === "uncorrelated").length, 2);
+  assert.ok(displayTimeline(streamed).includes("persistence pending"));
+  for (let n = 0; n < 2; n++) { start(); delta("ambiguous native identity"); end("ambiguous native identity", 5); }
+  await appendFile(streamed, line("ambiguous-a", "ambiguous native identity", [], { timestamp: 5 }) + line("ambiguous-b", "ambiguous native identity", [], { timestamp: 5 }));
+  mod.applySubagentStreamEventForTests(streamed, { kind: "message_boundary" });
+  await until(() => assistants(streamed).some(row => row.session_id === "ambiguous-b"), "ambiguous identity");
+  assert.equal(assistants(streamed).filter(row => row.text === "ambiguous native identity").length, 4, "ambiguous native observations cannot authorize deletion");
+
+  start(); delta("CURRENT_BEFORE_CAP");
+  for (let n = 0; n < 85; n++) mod.applySubagentStreamEventForTests(streamed, { kind: "tool", toolCallId: `cap-${n}`, status: "running" });
+  delta("CURRENT_AFTER_CAP");
+  assert.equal(entry(streamed).timeline_events.length, 80);
+  assert.ok(assistants(streamed).at(-1).text.includes("CURRENT_AFTER_CAP"), "eviction cannot freeze the current message");
+  const streamReplacement = join(dir, "stream-replaced.jsonl");
+  await writeFile(streamReplacement, header("stream-replaced"));
+  await rename(streamReplacement, streamed);
+  mod.applySubagentStreamEventForTests(streamed, { kind: "message_boundary" });
+  await until(() => entry(streamed).presentation_session_id === "stream-replaced", "live reset");
+  assert.equal(assistants(streamed).length, 0, "reset discards provisional and persisted rows together");
+  delta("AFTER_RESET");
+  assert.equal(assistants(streamed).length, 1);
+  assert.equal(assistants(streamed)[0].text, "AFTER_RESET");
+  mod.recordSubagentPresentationEntryForTests(streamed, "test", "running");
+  await until(() => mod.sessionTimelineReaderMetricsForTests().inFlight === 0, "new invocation");
+  assert.equal(assistants(streamed).length, 0, "no provisional row crosses an invocation");
 
   const utf8 = Buffer.from(line("utf", "a\n雪❄️"));
   const split = utf8.indexOf(Buffer.from("雪")) + 1;
@@ -166,7 +248,8 @@ try {
   mod.recordSubagentPresentationEntryForTests(invalidHeader, "test", "running");
   mod.applySubagentStreamEventForTests(invalidHeader, { kind: "assistant_delta", text: "preview intact" });
   await until(() => entry(invalidHeader).presentation_diagnostic?.includes("session header"), "invalid session identity diagnostic");
-  assert.equal(assistants(invalidHeader).length, 0);
+  assert.equal(assistants(invalidHeader).length, 1, "invalid persistence does not hide the independent live observation");
+  assert.equal(assistants(invalidHeader)[0].session_id, undefined);
   assert.ok(entry(invalidHeader).live_assistant_preview.includes("preview intact"));
 
   const finalStart = performance.now();

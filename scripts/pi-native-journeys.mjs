@@ -1021,11 +1021,22 @@ async function runPanel(f, evidence, entry = join(ROOT, "contrib/pi-extension/la
   const callbacks = [];
   const ctx = { env, mode: "rpc", hasUI: false, ui: { setStatus() {} }, modelRegistry: { find: (provider, id) => ({ provider, id }) }, sendMessage: async message => { callbacks.push(message); } };
   const pi = { on() {}, registerTool() {}, registerCommand() {}, getAllTools: () => ["read", "bash", "larva_subagent"], setActiveTools: () => true, setModel: () => true, getThinkingLevel: () => "off", setThinkingLevel() {} };
+  const streams = [];
   f.respond = payload => {
     const fail = text(payload).includes("NATIVE_PANEL_FAILURE");
-    return payload.messages.some(message => message.role === "tool")
-      ? { text: fail ? "FINAL_NATIVE_PANEL_FAILURE" : "FINAL_NATIVE_PANEL_SUCCESS" }
-      : { tools: [{ name: "native_panel", args: { fail } }] };
+    const final = payload.messages.some(message => message.role === "tool");
+    let releaseChunk, releaseEnd;
+    const chunkGate = new Promise(resolve => { releaseChunk = resolve; });
+    const endGate = new Promise(resolve => { releaseEnd = resolve; });
+    const first = `${final ? "FINAL" : "LIVE"}_NATIVE_PANEL_${fail ? "FAILURE" : "SUCCESS"}\n`;
+    const latest = `LATEST_NATIVE_${fail ? "FAILURE" : "SUCCESS"}_${final ? "FINAL" : "TOOL"}`;
+    streams.push({ first, latest, final, releaseChunk, releaseEnd });
+    return { ...(final ? {} : { tools: [{ name: "native_panel", args: { fail } }] }), chunks: (async function* () {
+      yield first;
+      await chunkGate;
+      yield "🙂".repeat(1800) + latest;
+      await endGate;
+    })() };
   };
   const until = async predicate => {
     const deadline = Date.now() + 15000;
@@ -1042,9 +1053,33 @@ async function runPanel(f, evidence, entry = join(ROOT, "contrib/pi-extension/la
     assert.equal((await mod.commitPersona("ok", ctx, pi)).ok, true);
     for (const fail of [false, true]) {
       const task = fail ? "NATIVE_PANEL_FAILURE" : "NATIVE_PANEL_SUCCESS";
+      const streamFrom = streams.length;
       const receipt = await mod.larva_subagent({ persona_id: "child", task }, ctx);
       assert.equal(receipt.status, "accepted", JSON.stringify(receipt));
       const entry = () => mod.subagentPresentationLogForTests().find(row => row.task_id === receipt.task_id);
+      const streaming = [];
+      const observeStream = async (index) => {
+        const stream = await until(() => streams[streamFrom + index]);
+        const assistants = () => entry()?.timeline_events?.filter(row => row.kind === "assistant") ?? [];
+        const live = await until(() => assistants().find(row => row.text.includes(stream.first.trim()) && row.session_id === undefined));
+        assert.equal(entry().status, "running");
+        const persistedBefore = (await jsonLines(receipt.task_id)).filter(row => row.type === "message" && row.message?.role === "assistant");
+        assert.equal(persistedBefore.length, index, "native Pi has not persisted the generating message");
+        const component = new mod.SubagentPresentationLogOverlay({ entry: entry(), generation: index + 1, maxBoxLines: 24 });
+        component.handleInput("4");
+        assert.ok(component.render(120).join("\n").includes(stream.first.trim()), "actual RPC text is visible before native message_end/persistence");
+        stream.releaseChunk();
+        const updated = await until(() => assistants().find(row => row.stream_id === live.stream_id && row.text.endsWith(stream.latest)));
+        assert.equal(assistants().length, index + 1, "multiple native chunks update one row per message");
+        assert.equal(Array.from(updated.text).length, 1200);
+        component.refreshFromPresentationLog();
+        assert.ok(component.render(120).join("\n").includes(stream.latest), "long generation continues showing the newest tail");
+        assert.equal((await jsonLines(receipt.task_id)).filter(row => row.type === "message" && row.message?.role === "assistant").length, index);
+        streaming.push({ streamId: live.stream_id, persistedBefore: persistedBefore.length, firstVisible: true, updatedInPlace: true, latestVisible: true, livePoints: Array.from(updated.text).length });
+        component.dispose();
+        stream.releaseEnd();
+      };
+      await observeStream(0);
       const partials = [];
       for (const preview of ["native partial A", "native partial B"]) {
         const row = await until(() => entry()?.tool_snapshots?.find(row => row.output_preview === preview));
@@ -1053,9 +1088,17 @@ async function runPanel(f, evidence, entry = join(ROOT, "contrib/pi-extension/la
         assert.equal(entry().timeline_events.filter(event => event.kind === "tool").length, 1);
         partials.push({ ...row });
       }
+      await observeStream(1);
       const callback = await until(() => callbacks.find(row => row.details?.task_id === receipt.task_id));
       await until(async () => (await mod.larva_subagent_status({ task_id: receipt.task_id }, ctx)).details.runs[0]?.callback_delivery === "delivered");
+      await until(() => entry()?.timeline_events?.filter(row => row.kind === "assistant" && row.session_id !== undefined).length === 2);
       const row = entry();
+      const assistants = row.timeline_events.filter(event => event.kind === "assistant");
+      const persisted = (await jsonLines(receipt.task_id)).filter(row => row.type === "message" && row.message?.role === "assistant");
+      assert.equal(assistants.length, 2, "Worker replaces both native live messages without duplication");
+      assert.deepEqual(assistants.map(row => row.session_id), persisted.map(row => row.id));
+      assert.deepEqual(assistants.map(row => row.stream_id), streaming.map(row => row.streamId));
+      assert.deepEqual(row.timeline_events.map(row => row.kind), ["assistant", "tool", "assistant", "terminal"], "native tool chronology survives reconciliation");
       const snapshot = row.tool_snapshots[0];
       assert.equal(snapshot.status, fail ? "failed" : "success");
       if (fail) {
@@ -1088,12 +1131,13 @@ async function runPanel(f, evidence, entry = join(ROOT, "contrib/pi-extension/la
       assert.equal(end.isError, fail);
       assert.ok(Array.isArray(end.result.content));
       assert.equal(end.success, undefined); assert.equal(end.output, undefined);
-      cases.push({ task_id: receipt.task_id, partials, nativeFrames: frames, snapshot, activity: row.last_child_activity, execution: row.status, callbackDelivery: "delivered", rendered });
+      cases.push({ task_id: receipt.task_id, partials, streaming, persistedAssistantIds: persisted.map(row => row.id), reconciledAssistantIds: assistants.map(row => row.session_id), nativeFrames: frames, snapshot, activity: row.last_child_activity, execution: row.status, callbackDelivery: "delivered", rendered });
       assert.equal(callback.details.execution_status, "success");
     }
     await cleanChildren(f);
     evidence.panel = { boundary: "actual child CLI native events -> RPC -> normalizer -> snapshots -> Pi TUI render", cases };
   } finally {
+    for (const stream of streams) { stream.releaseChunk(); stream.releaseEnd(); }
     await mod.resetExtensionUI("native-panel-cleanup");
     await mod.awaitSessionTimelineDisposalForTests();
     process.argv = savedArgv;

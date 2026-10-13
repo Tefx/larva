@@ -18,6 +18,7 @@ try {
   const entry = join(root, "larva.ts");
   await writeFile(entry, source + "\nexport { resolvePiCommandPrefix };\n");
   await symlink(join(packageDir, "activity.ts"), join(root, "activity.ts"));
+  await symlink(join(packageDir, "session-timeline-worker.mjs"), join(root, "session-timeline-worker.mjs"));
   const cli = join(packageDir, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
   const alias = join(root, "pi");
   await symlink(cli, alias);

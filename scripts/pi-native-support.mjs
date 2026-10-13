@@ -123,7 +123,12 @@ export async function createNativeFixture() {
     if (answer.hold) return;
     const delta = answer.tools ? { role: "assistant", tool_calls: answer.tools.map((tool, index) => ({ index, id: `call-${fixture.requests.length}-${index}`, type: "function", function: { name: tool.name, arguments: JSON.stringify(tool.args) } })) } : { role: "assistant", content: answer.text ?? "Protocol response." };
     const chunk = (delta, finish_reason) => `data: ${JSON.stringify({ id: "native", object: "chat.completion.chunk", created: 0, model: payload.model, choices: [{ index: 0, delta, finish_reason }] })}\n\n`;
-    response.end(chunk(delta, null) + chunk({}, answer.tools ? "tool_calls" : "stop") + "data: [DONE]\n\n");
+    if (answer.chunks) {
+      response.write(chunk({ role: "assistant" }, null));
+      for await (const content of answer.chunks) response.write(chunk({ content }, null));
+      if (answer.tools) response.write(chunk(delta, null));
+      response.end(chunk({}, answer.tools ? "tool_calls" : "stop") + "data: [DONE]\n\n");
+    } else response.end(chunk(delta, null) + chunk({}, answer.tools ? "tool_calls" : "stop") + "data: [DONE]\n\n");
   });
   fixture.server.on("connection", (s) => { fixture.sockets.add(s); s.on("close", () => fixture.sockets.delete(s)); });
   await new Promise((resolve, reject) => { fixture.server.once("error", reject); fixture.server.listen(0, "127.0.0.1", resolve); });

@@ -603,7 +603,11 @@ def test_native_panel_live_tail_preserves_latest_unicode_without_history_changes
         delta("🙂".repeat(9000) + "SINGLE_DELTA_TAIL");
         assert.equal(Array.from(entry().live_assistant_preview).length, 4000);
         assert.ok(entry().live_assistant_preview.endsWith("SINGLE_DELTA_TAIL"));
-        assert.deepEqual(entry().timeline_events, history);
+        assert.deepEqual(entry().timeline_events.filter(row => row.session_id !== undefined), history);
+        const liveRows = entry().timeline_events.filter(row => row.stream_id !== undefined);
+        assert.equal(liveRows.length, 1);
+        assert.equal(Array.from(liveRows[0].text).length, 1200);
+        assert.ok(liveRows[0].text.endsWith("SINGLE_DELTA_TAIL"));
         const output = mod.renderSubagentPresentationOverlayForTests({
           task_id: task, expanded: true,
         });
@@ -2160,7 +2164,11 @@ def test_larva_subagent_presentation_log_overlay_rows_details_and_reset(tmp_path
         );
         const commandResult = await commandResults[0];
         const afterSessions = JSON.stringify(mod.larva_subagent_sessions({ limit: 10 }).details.sessions);
+        // Clear the durable presentation cache as the user-facing clear action
+        // does; the process-local test reset intentionally permits cache reload.
+        mod.larva_subagent_log({ clear: true });
         mod.resetSubagentPresentationStateForTests();
+        await mod.awaitSessionTimelineDisposalForTests();
         const overlayStateKeys = ["rendered", "outputTab", "promptTab", "eventsTab", "eventsDebugTab", "eventsDebugOffTab", "metadataTab", "afterLeft", "afterRight", "afterDigitOne", "longInitial", "afterWheelDown", "afterWheelUp", "afterDown", "afterPageDown", "afterHome", "afterLiveDown", "afterLiveUp", "afterLivePageDown", "afterLiveHome", "emptyOutputTab"];
         const smallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 24 } } });
         const tallHeightComponent = new mod.SubagentPresentationLogOverlay({ entry: commandResult.details.entries[0], generation: 1, tui: { terminal: { rows: 60 } } });
@@ -3535,8 +3543,8 @@ def test_expected_red_larva_subagent_log_streaming_cache_events_and_bounds() -> 
     }, json.dumps(proof["actualChildRpcPipeline"]["timelineDiagnostic"], ensure_ascii=False)
 
 
-def test_streaming_timeline_waits_for_real_worker_persisted_excerpt() -> None:
-    """An incomplete persisted line keeps real Worker/render behind RPC readiness."""
+def test_streaming_timeline_visible_before_real_worker_persisted_excerpt() -> None:
+    """Live RPC prose renders before a complete persisted line and reconciles once."""
     proof = _subagent_selector_streaming_payload(with_proof=True)["actualChildRpcPipeline"]
     delay = proof["delayedExcerpt"]
     expected_parts = {
@@ -3545,11 +3553,11 @@ def test_streaming_timeline_waits_for_real_worker_persisted_excerpt() -> None:
     }
     assert set(delay["beforeConjuncts"]) == expected_parts
     assert delay["beforeConjuncts"] == {
-        part: part != "assistantPresent" for part in expected_parts
+        part: True for part in expected_parts
     }, json.dumps(proof["timelineDiagnostic"], ensure_ascii=False)
     for check in (
-        "realWorkerReadIncompleteRecord", "oldRpcWaitReadyWithoutExcerpt",
-        "oldTimelineAssertionFalse", "newWaitPendingBeforeRelease",
+        "realWorkerReadIncompleteRecord", "liveVisibleBeforePersistence",
+        "liveTimelineCompleteBeforePersistence", "persistedWaitPendingBeforeRelease", "reconciledWithoutDuplicate",
         "actualPersistedEventObserved", "timelineCapturedWhileRunning",
     ):
         assert delay[check] is True, json.dumps(delay, ensure_ascii=False)
