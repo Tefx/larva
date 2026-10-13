@@ -708,6 +708,97 @@ def test_native_panel_timeline_follows_pauses_and_signals_in_place_updates(tmp_p
     assert payload["overlayLocal"] is True
 
 
+def test_native_panel_normalized_mouse_and_resize_keep_navigation_bounded(tmp_path: Path) -> None:
+    """Exercise normalized and raw paths once, including a previously fitting pane."""
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r'''
+        const { default: assert } = await import("node:assert/strict");
+        const task = join(childRoot, "resize.jsonl");
+        mod.recordSubagentPresentationEntryForTests(task, "child", "running", {
+          presentation_scan_ready: false,
+          timeline_events: Array.from({ length: 18 }, (_, i) => ({
+            kind: "assistant", text: `MSG_${i}`, session_id: `m${i}`,
+          })),
+        });
+        const terminal = { rows: 42, write: () => undefined };
+        const overlay = new mod.SubagentPresentationLogOverlay({
+          entry: mod.subagentPresentationLogForTests().find(row => row.task_id === task),
+          generation: 1, tui: { terminal, requestRender: () => undefined },
+        });
+        overlay.handleInput("4");
+        assert.ok(overlay.render(120).join("\n").includes("MSG_17"));
+        assert.equal(overlay.lastMaxOffsets.timeline, 0);
+        terminal.rows = 14;
+        const resized = overlay.render(120);
+        assert.ok(resized.length <= Math.min(Math.floor(14 * .9), 14 - 2));
+        assert.ok(resized.join("\n").includes("MSG_17"));
+        assert.ok(overlay.lastMaxOffsets.timeline > 0);
+        const tail = overlay.scrollOffsets.timeline;
+        assert.deepEqual(overlay.handleMouse({ type: "wheel", wheelDelta: -3 }), {
+          handled: true, render: false,
+        });
+        overlay.render(120);
+        assert.equal(overlay.scrollOffsets.timeline, tail - 3);
+        assert.equal(overlay.timelineFollowing, false);
+        overlay.handleMouse({ type: "wheel", wheelDelta: 3 });
+        overlay.render(120);
+        assert.equal(overlay.scrollOffsets.timeline, tail);
+        assert.equal(overlay.timelineFollowing, true);
+        overlay.handleInput("\x1b[<64;20;7M"); overlay.render(120);
+        assert.equal(overlay.scrollOffsets.timeline, tail - 3);
+        overlay.handleInput("\x1b[<65;20;7M"); overlay.render(120);
+        assert.equal(overlay.scrollOffsets.timeline, tail);
+        for (const event of [
+          { type: "click" }, { type: "press" }, { type: "release" },
+          { type: "wheel" }, { type: "wheel", wheelDelta: NaN },
+        ]) assert.equal(overlay.handleMouse(event), undefined);
+        assert.equal(overlay.scrollOffsets.timeline, tail);
+        overlay.handleInput("\x1b[A"); overlay.render(120);
+        assert.equal(overlay.scrollOffsets.timeline, tail - 1);
+        overlay.handleInput("\x1b[B"); overlay.render(120);
+        assert.equal(overlay.scrollOffsets.timeline, tail);
+        terminal.rows = 42;
+        assert.ok(overlay.render(120).join("\n").includes("MSG_0"));
+        assert.equal(overlay.lastMaxOffsets.timeline, 0);
+        overlay.dispose();
+        const explicit = new mod.SubagentPresentationLogOverlay({
+          entry: mod.subagentPresentationLogForTests().find(row => row.task_id === task),
+          generation: 2, maxBoxLines: 80, tui: { terminal },
+        });
+        terminal.rows = 14;
+        assert.ok(explicit.render(120).length <= 12, "explicit preference cannot exceed host height");
+        explicit.dispose();
+        for (const name of ["second", "third"]) mod.recordSubagentPresentationEntryForTests(
+          join(childRoot, `${name}.jsonl`), "child", "running", { presentation_scan_ready: false },
+        );
+        let cancellations = 0;
+        const selector = new mod.SubagentPresentationLogOverlay({
+          entry: mod.subagentPresentationLogForTests().find(row => row.task_id === task),
+          generation: 3, initialMode: "selector", onCancelSelected: () => { cancellations++; },
+        });
+        selector.render(120);
+        const cursor = selector.selectorCursorIndex;
+        assert.ok(cursor > 0);
+        selector.handleMouse({ type: "wheel", wheelDelta: -1 }); selector.render(120);
+        assert.equal(selector.selectorCursorIndex, cursor - 1);
+        assert.equal(selector.handleMouse({ type: "click" }), undefined);
+        assert.equal(selector.selectorCursorIndex, cursor - 1);
+        selector.handleInput("c"); selector.render(120);
+        assert.ok(selector.cancelConfirmTaskId);
+        selector.handleMouse({ type: "wheel", wheelDelta: 1 }); selector.render(120);
+        assert.equal(selector.selectorCursorIndex, cursor - 1, "confirmation blocks wheel navigation");
+        assert.equal(cancellations, 0, "mouse never confirms cancellation");
+        selector.handleInput("n"); selector.dispose();
+        console.log(JSON.stringify({ tail, resizedLines: resized.length }));
+        await mod.resetExtensionUI("resize-test");
+        ''',
+    )
+    assert payload["tail"] > 0
+    assert payload["resizedLines"] <= 12
+
+
 def test_native_panel_rpc_agent_end_settlement_and_callback_remain_distinct(tmp_path: Path) -> None:
     """Ingestion/render observes native tool failure without completing a run at agent_end."""
     payload = _run_node(
@@ -928,7 +1019,8 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             activeToolStateCleared: finalEntry?.active_tool_state === null,
             toolSnapshotCount: finalEntry?.tool_snapshots?.length ?? 0,
             toolSnapshot: finalEntry?.tool_snapshots?.[0] ?? null,
-            timelineKinds: finalEntry?.timeline_events?.map((event) => event.kind) ?? [],
+            // Stored arrival order depends on Worker/RPC scheduling; display order is checked below.
+            timelineKinds: finalEntry?.timeline_events?.map((event) => event.kind).sort() ?? [],
           },
           overlayTimelineUseful: overlayText.includes("[Timeline]") && overlayText.includes("assistant:") && overlayText.includes("session assistant excerpt only") && overlayText.includes("read") && overlayText.includes("final tool output"),
           overlayTimelineOrdered: overlayText.indexOf("session assistant excerpt only") >= 0 && overlayText.indexOf("session assistant excerpt only") < overlayText.indexOf("read"),
@@ -957,7 +1049,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
             "args_preview": '{"path":"contrib/pi-extension/README.md"}',
             "output_preview": "final tool output",
         },
-        "timelineKinds": ["assistant", "tool", "terminal"],
+        "timelineKinds": ["assistant", "terminal", "tool"],
     }
     assert payload["overlayTimelineUseful"] is True
     assert payload["overlayTimelineOrdered"] is True

@@ -204,6 +204,141 @@ def journey() -> dict:
     return result
 
 
+def panel_journey() -> list[dict]:
+    """Actual host routing/render, distinct fresh messages and asynchronous Worker ingestion."""
+    results = []
+    for mode in ("fullscreen", "regular"):
+        terminal = Terminal(["--no-extensions", "--tui-mode", mode])
+        case = {"mode": mode, "pid": terminal.proc.pid, "actions": [], "batches": []}
+        results.append(case)
+        try:
+            terminal.wait(lambda: terminal.rows("session_start"), "panel startup")
+            terminal.command("/audit-panel stream")
+            terminal.wait(lambda: terminal.rows("panel_created"), "fresh stream panel")
+            task = terminal.rows("panel_created")[-1]["value"]["task"]
+
+            def frame() -> dict:
+                return terminal.rows("panel_render")[-1]["value"]
+
+            def action(label: str, data: str, expected: int | None = None) -> dict:
+                before = frame()
+                counts = {name: len(terminal.rows(name)) for name in ("panel_input", "panel_mouse")}
+                start = len(terminal.output)
+                terminal.send(data)
+                terminal.wait(lambda: any(len(terminal.rows(name)) > count for name, count in counts.items()), label + " dispatch")
+                dispatched = [row for name, count in counts.items() for row in terminal.rows(name)[count:]]
+                assert len(dispatched) == 1, (label, dispatched)
+                row = dispatched[0]
+                if "wheel" in label:
+                    assert row["event"] == ("panel_mouse" if mode == "fullscreen" else "panel_input"), row
+                    if mode == "fullscreen":
+                        assert row["value"]["event"]["type"] == "wheel", row
+                        assert row["value"]["result"]["handled"] is True, row
+                        expected = row["value"]["event"]["wheelDelta"]
+                if expected is not None:
+                    target = before["offsets"]["timeline"] + expected
+                    terminal.wait(lambda: frame()["offsets"]["timeline"] == target, label + " single scroll")
+                    assert row["value"]["after"]["offsets"]["timeline"] == target, row
+                else:
+                    terminal.wait(lambda: frame()["following"], label + " follows")
+                after = frame()
+                observation = {"case": label, "dispatch": row, "before": before, "after": after, "nativeMarkers": re.findall(r"MSG_\d+", terminal.output[start:])}
+                case["actions"].append(observation)
+                return after
+
+            def close_panel() -> None:
+                ended = len(terminal.rows("ui_prompt_end"))
+                terminal.send("q")
+                terminal.wait(lambda: len(terminal.rows("ui_prompt_end")) > ended, "panel close acknowledged")
+
+            terminal.send("4")
+            for batch in range(1, 6):
+                if batch == 5:
+                    terminal.send("\x1b[1~")
+                    terminal.wait(lambda: not frame()["following"] and frame()["offsets"]["timeline"] == 0, "pause before new messages")
+                start = len(terminal.output)
+                terminal.send("v")
+                terminal.wait(lambda: len(terminal.rows("panel_batch")) >= batch or terminal.rows("panel_error"), "Worker batch")
+                assert not terminal.rows("panel_error"), terminal.rows("panel_error")
+                observed = terminal.rows("panel_batch")[-1]["value"]
+                assert observed["task"] == task
+                assert observed["retained"] == min(80, batch * 21), observed
+                assert f"tool_{batch - 1}" in observed["tools"], observed
+                assert f"m{batch * 20 - 1}" in observed["messages"], observed
+                assert observed["worker"]["inFlight"] == 0, observed
+                marker = f"MSG_{batch * 20 - 1:03}"
+                if batch == 5:
+                    terminal.wait(lambda: frame()["newActivity"] and not frame()["following"], "paused activity signal")
+                    assert marker not in frame()["markers"], frame()
+                    terminal.visible("new activity", start)
+                    action("End after updates", "\x1b[4~")
+                    terminal.wait(lambda: marker in frame()["markers"], "End reaches latest message")
+                    terminal.visible(marker, start)
+                else:
+                    terminal.wait(lambda: marker in frame()["markers"] and frame()["following"], "newest rendered message")
+                    terminal.visible(marker, start)
+                case["batches"].append({**observed, "render": frame()})
+                if batch == 2:
+                    action("up", "\x1b[A", -1)
+                    action("down", "\x1b[B", 1)
+                    action("wheel-up", "\x1b[<64;20;15M", -3)
+                    action("wheel-down", "\x1b[<65;20;15M", 3)
+            # Returning to the bottom with an ordinary arrow resumes following.
+            action("up before bottom", "\x1b[A", -1)
+            assert action("down to bottom", "\x1b[B", 1)["following"] is True
+            before_click = frame()
+            raw = len(terminal.rows("panel_raw"))
+            terminal.send("\x1b[<0;20;15M\x1b[<0;20;15m")
+            terminal.wait(lambda: len(terminal.rows("panel_raw")) > raw, "click delivered")
+            terminal.pump(.15)
+            assert frame()["offsets"] == before_click["offsets"]
+            close_panel()
+            terminal.command("/audit-panel short")
+            terminal.wait(lambda: len(terminal.rows("panel_created")) == 2, "short pane")
+            terminal.send("4")
+            terminal.wait(lambda: frame()["rows"] == 42 and "MSG_017" in frame()["markers"], "fitting short pane")
+            assert frame()["max"]["timeline"] == 0, frame()
+            start = len(terminal.output)
+            fcntl.ioctl(terminal.master, termios.TIOCSWINSZ, struct.pack("HHHH", 14, 140, 0, 0))
+            os.kill(terminal.proc.pid, signal.SIGWINCH)
+            terminal.wait(lambda: frame()["rows"] == 14, "42 to 14 actual resize")
+            shrunk = frame()
+            assert shrunk["lineCount"] <= min(int(14 * .9), 14 - 2), shrunk
+            assert shrunk["viewport"] == shrunk["lineCount"] - 7, shrunk
+            assert shrunk["max"]["timeline"] > 0 and "MSG_017" in shrunk["markers"], shrunk
+            terminal.visible("MSG_017", start)
+            case["shrink"] = {"beforeRows": 42, "after": shrunk, "nativeMarkers": re.findall(r"MSG_\d+", terminal.output[start:])}
+            action("shrink-up", "\x1b[A", -1)
+            action("shrink-down", "\x1b[B", 1)
+            action("shrink-wheel-up", "\x1b[<64;20;7M", -3)
+            action("shrink-wheel-down", "\x1b[<65;20;7M", 3)
+            close_panel()
+            fcntl.ioctl(terminal.master, termios.TIOCSWINSZ, struct.pack("HHHH", 42, 140, 0, 0))
+            os.kill(terminal.proc.pid, signal.SIGWINCH)
+            terminal.command("/audit-panel output")
+            terminal.wait(lambda: len(terminal.rows("panel_created")) == 3, "single-message Output pane")
+            terminal.send("3")
+            terminal.wait(lambda: frame()["max"]["output"] > 0, "Output overflow")
+            start = len(terminal.output)
+            terminal.send("f")
+            terminal.wait(lambda: frame()["outputTailRetained"], "Output delta retained")
+            assert "OUTPUT_LATEST" not in frame()["markers"], "Output still needs explicit navigation"
+            terminal.send("\x1b[4~")
+            terminal.wait(lambda: "OUTPUT_LATEST" in frame()["markers"], "Output End")
+            terminal.visible("OUTPUT_LATEST", start)
+            case["output"] = {"tailRetained": True, "EndRender": frame()}
+            close_panel()
+        finally:
+            if len(terminal.rows("ui_prompt_start")) > len(terminal.rows("ui_prompt_end")):
+                close_panel()
+            terminal.close()
+            case["exit"] = terminal.proc.returncode
+            case["cleanup"] = terminal.rows("panel_cleanup")
+        assert case["exit"] == 0, {key: case[key] for key in ("mode", "pid", "exit", "cleanup")}
+        assert case["cleanup"] and case["cleanup"][-1]["value"]["active"] is False, case["cleanup"]
+    return results
+
+
 def admission(cases: list[dict]) -> list[dict]:
     results = []
     for case in cases:
@@ -224,4 +359,7 @@ def admission(cases: list[dict]) -> list[dict]:
 
 if __name__ == "__main__":
     assert "NATIVE_AUDIT_ROOT" in os.environ, "requires an owned native fixture root"
-    print(json.dumps(admission(json.loads(sys.argv[5])) if len(sys.argv) > 4 and sys.argv[4] == "--admission" else journey()))
+    if len(sys.argv) > 4 and sys.argv[4] == "--panel":
+        print(json.dumps(panel_journey()))
+    else:
+        print(json.dumps(admission(json.loads(sys.argv[5])) if len(sys.argv) > 4 and sys.argv[4] == "--admission" else journey()))

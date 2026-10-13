@@ -93,6 +93,28 @@ def test_native_panel_tool_event_ingestion_to_snapshot_and_render(tmp_path: Path
     assert payload["cleanup"]["rootRemoved"] is True
 
 
+def test_native_panel_live_navigation_through_fullscreen_host_and_worker(tmp_path: Path) -> None:
+    """Native mouse/render and fresh crossing-80 ingestion; the CI native selector is explicit."""
+    native = os.environ.get("LARVA_TEST_NATIVE_MCP_PI_BIN")
+    assert native, "Set LARVA_TEST_NATIVE_MCP_PI_BIN to the actual native host package/bin"
+    report = tmp_path / "panel-navigation.json"
+    completed = subprocess.run(
+        ["node", str(ROOT / "scripts/pi-native-journeys.mjs"),
+         "--scenario", "panel-navigation", "--output", str(report)],
+        cwd=ROOT, env={**os.environ, "PI_BIN": native},
+        check=False, capture_output=True, text=True, timeout=140,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = json.loads(report.read_text())
+    assert payload["pass"] is True
+    assert payload["requests"] == []
+    assert [case["mode"] for case in payload["panelNavigation"]] == ["fullscreen", "regular"]
+    assert all(case["exit"] == 0 for case in payload["panelNavigation"])
+    assert all(case["batches"][-1]["retained"] == 80 for case in payload["panelNavigation"])
+    assert all(not row["alive"] for row in payload["nativeProcesses"])
+    assert payload["cleanup"]["rootRemoved"] is True
+
+
 def test_autocomplete_substring_case_and_prefix_first_stable_order_runtime() -> None:
     payload = _run_autocomplete_runtime_case("substring-case-ordering", prefix="DEV")
 

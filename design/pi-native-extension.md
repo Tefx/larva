@@ -400,6 +400,14 @@ text and bounded omission notices, never result details or images. The live Outp
 preview retains a 4000-code-point newest tail; final output/artifact/callback and
 persisted assistant history keep their existing ownership.
 
+Timeline keeps its existing 80-event budget in observed arrival order; display
+anchoring and the separate unanchored session-excerpt block do not determine
+which events survive. Worker catch-up must retain newly observed tools and
+messages in a fresh continuous task. The Console recalculates its viewport from
+current terminal rows, including after shrink. Fullscreen Pi routes normalized
+wheel events through `handleMouse`; regular-mode raw SGR input remains supported.
+Each input performs one navigation action, and clicks do not select or cancel.
+
 Timeline follow/pause state is overlay-local. Fixed activity/time and callback
 rows distinguish Pi activity from Larva terminal snapshots and actual callback
 delivery. Retry/compaction display adds no watchdog progress category. See the

@@ -450,7 +450,9 @@ type ToolDefinition<Input, Output> = {
   renderResult?: (result: Output, options?: { expanded?: boolean; input?: Input }) => PiRenderableComponent;
 };
 type PiRenderableComponent = { render: (width: number) => string[]; invalidate?: () => void };
-type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string) => void; dispose?: () => void };
+type PiMouseEvent = { type: string; wheelDelta?: number };
+type PiMouseEventResult = { handled?: boolean; render?: boolean };
+type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string) => void; handleMouse?: (event: PiMouseEvent) => PiMouseEventResult | undefined; dispose?: () => void };
 type PiKeybindings = { matches?: (data: string, keybindingId: string) => boolean };
 type PiOverlayHandle = { focus?: () => void };
 type PiShortcutContext = PiContext & { isIdle?: () => boolean };
@@ -2046,17 +2048,26 @@ function subagentThinkingHiddenLine(entry: SubagentPresentationLogEntry): string
 }
 
 function separateHistoricalTimelineEvents(events: SubagentTimelineEvent[]): SubagentTimelineEvent[] {
-  const historical = events.filter((item) => item.kind === "assistant" && item.placement === "historical")
+  // Retention owns observed arrival order. Group only this display projection;
+  // moving excerpts in retained storage can make slice(-80) evict recent RPC rows.
+  const excerpts = events.filter((item) => item.kind === "assistant" && item.placement !== undefined)
     .sort((left, right) => (left.kind === "assistant" ? left.session_offset ?? 0 : 0) - (right.kind === "assistant" ? right.session_offset ?? 0 : 0));
-  if (historical.length === 0) return events;
-  const current = events.filter((item) => item.kind !== "assistant" || item.placement !== "historical");
+  if (excerpts.length === 0) return events;
+  const current = events.filter((item) => item.kind !== "assistant" || item.placement === undefined);
+  const historical: SubagentTimelineEvent[] = [];
+  for (const excerpt of excerpts) {
+    if (excerpt.kind !== "assistant") continue;
+    const anchor = current.findIndex((item) => item.kind === "tool" && excerpt.tool_call_ids?.includes(item.toolCallId));
+    if (anchor >= 0) current.splice(anchor, 0, { ...excerpt, placement: "anchored" });
+    else historical.push({ ...excerpt, placement: "historical" });
+  }
   const terminal = current.findIndex((item) => item.kind === "terminal");
   current.splice(terminal < 0 ? current.length : terminal, 0, ...historical);
   return current;
 }
 
 function timelineEventsForEntry(entry: SubagentPresentationLogEntry): SubagentTimelineEvent[] {
-  if (entry.timeline_events !== undefined && entry.timeline_events.length > 0) return entry.timeline_events;
+  if (entry.timeline_events !== undefined && entry.timeline_events.length > 0) return separateHistoricalTimelineEvents(entry.timeline_events);
   const events: SubagentTimelineEvent[] = [];
   if (typeof entry.live_assistant_preview === "string" && entry.live_assistant_preview.trim().length > 0) {
     events.push({ kind: "assistant", text: entry.live_assistant_preview });
@@ -2164,17 +2175,15 @@ function ensureSessionTimelineWorker(): Worker {
       const text = boundedTimelineAssistantEvent(rendererSafeMarkdownSource(excerpt.text).trim());
       if (!text) continue;
       const anchor = timeline.findIndex((eventValue) => eventValue.kind === "tool" && excerpt.toolCallIds.includes(eventValue.toolCallId));
-      // Unknown tool placement is kept in a separate ordered historical block
-      // after the RPC rows, rather than claiming an invented tool chronology.
-      const nextAssistant = timeline.findIndex((eventValue) => eventValue.kind === "assistant" && eventValue.placement === "anchored" && (eventValue.session_offset ?? Infinity) > excerpt.offset);
-      const place = anchor >= 0 ? (nextAssistant >= 0 ? Math.min(anchor, nextAssistant) : anchor) : timeline.length;
-      timeline.splice(place, 0, { kind: "assistant", text, session_id: excerpt.id, session_offset: excerpt.offset, tool_call_ids: excerpt.toolCallIds.filter((id): id is string => typeof id === "string").slice(0, 25), placement: anchor >= 0 ? "anchored" : "historical" });
+      // A newly observed excerpt is recent even when its display placement is
+      // historical. Bound arrival order before constructing the display groups.
+      timeline.push({ kind: "assistant", text, session_id: excerpt.id, session_offset: excerpt.offset, tool_call_ids: excerpt.toolCallIds.filter((id): id is string => typeof id === "string").slice(0, 25), placement: anchor >= 0 ? "anchored" : "historical" });
       changed = true;
     }
     if (typeof message.diagnostic === "string") { entry.presentation_diagnostic = boundedVisible(message.diagnostic, 160); changed = true; }
     else if (typeof message.malformed === "number" && message.malformed > 0) { entry.presentation_diagnostic = `${message.malformed} malformed session records skipped in latest slice`; changed = true; }
     if (changed) {
-      entry.timeline_events = boundedSubagentTimelineEvents(separateHistoricalTimelineEvents(timeline));
+      entry.timeline_events = boundedSubagentTimelineEvents(timeline);
       persistSubagentPresentationCache();
       notifySubagentPresentationOverlay();
     }
@@ -2351,11 +2360,14 @@ function subagentCallbackDeliveryForDisplay(entry: SubagentPresentationLogEntry)
 }
 
 function subagentOverlaySurfaceLineCount(tui?: PiTui, explicitMaxBoxLines?: number): number {
-  if (typeof explicitMaxBoxLines === "number" && Number.isFinite(explicitMaxBoxLines)) return Math.max(8, Math.floor(explicitMaxBoxLines));
   const rows = selectorTerminalRows(tui);
-  if (rows === null) return SUBAGENT_OVERLAY_FALLBACK_SURFACE_LINES;
-  const shadowAwareBudget = Math.floor(rows * 0.9) - 1;
-  return selectorClamp(shadowAwareBudget, SUBAGENT_OVERLAY_MIN_SURFACE_LINES, SUBAGENT_OVERLAY_MAX_SURFACE_LINES);
+  const preferred = typeof explicitMaxBoxLines === "number" && Number.isFinite(explicitMaxBoxLines)
+    ? Math.max(8, Math.floor(explicitMaxBoxLines))
+    : rows === null ? SUBAGENT_OVERLAY_FALLBACK_SURFACE_LINES
+      : selectorClamp(Math.floor(rows * 0.9) - 1, SUBAGENT_OVERLAY_MIN_SURFACE_LINES, SUBAGENT_OVERLAY_MAX_SURFACE_LINES);
+  // Match the host's 90% maxHeight and one-row margins, including the shadow.
+  // The preferred minimum must not force clipped content on a short terminal.
+  return rows === null ? preferred : Math.min(preferred, Math.max(8, Math.min(Math.floor(rows * 0.9) - 1, rows - 2)));
 }
 
 export class SubagentPresentationLogOverlay implements PiOverlayComponent {
@@ -2379,7 +2391,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   private readonly tui?: PiTui;
   private readonly done?: (result: unknown) => void;
   private readonly onCancelSelected?: (taskId: string) => Promise<LarvaSubagentCancelResult>;
-  private readonly maxBoxLines: number;
+  private readonly maxBoxLines?: number;
   private readonly maxWidth: number;
   private lastRenderedViewportLines = 1;
   private cancelInFlight = false;
@@ -2396,7 +2408,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.tui = options.tui;
     this.done = options.done;
     this.onCancelSelected = options.onCancelSelected;
-    this.maxBoxLines = subagentOverlaySurfaceLineCount(options.tui, options.maxBoxLines);
+    this.maxBoxLines = options.maxBoxLines;
     this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? Number.MAX_SAFE_INTEGER));
     this.selectorMode = options.initialMode === "selector";
     this.alignSelectorCursorToSelection(true);
@@ -2438,7 +2450,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
   }
 
   private viewportLines(withShadow = false): number {
-    return Math.max(1, this.maxBoxLines - (withShadow ? 7 : 6));
+    return Math.max(1, subagentOverlaySurfaceLineCount(this.tui, this.maxBoxLines) - (withShadow ? 7 : 6));
   }
 
   private requestRender(): void {
@@ -2875,6 +2887,14 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
       selectorFullBorderRow("╰", "─".repeat(Math.max(0, boxWidth - 2)), "╯", withShadow),
     ];
     return withShadow ? [...rows, selectorShadowLine(boxWidth)] : rows;
+  }
+
+  handleMouse(event: PiMouseEvent): PiMouseEventResult | undefined {
+    if (event.type !== "wheel" || typeof event.wheelDelta !== "number" || !Number.isFinite(event.wheelDelta)) return undefined;
+    // Fullscreen Pi consumes SGR input and dispatches logical wheel lines here.
+    // Regular Pi still uses handleInput's raw path. Never replay raw input here.
+    if (this.cancelConfirmTaskId === null) this.scrollBy(event.wheelDelta);
+    return { handled: true, render: false }; // scrollBy requests a render on change
   }
 
   handleInput(data: string): void {
@@ -9064,18 +9084,8 @@ function applyNormalizedSubagentStreamEvent(taskId: string | null | undefined, c
     entry.active_tool_state = eventValue.status === "running" ? { toolCallId: eventValue.toolCallId, name: eventValue.name, status: eventValue.status } : null;
     // A persisted assistant entry may arrive before its RPC tool row. Once the
     // tool is observed, anchor that excerpt without changing the RPC-owned status.
-    const ordered = [...(entry.timeline_events ?? [])];
-    const toolIndex = ordered.findIndex((item) => item.kind === "tool" && item.toolCallId === eventValue.toolCallId);
-    if (toolIndex >= 0) {
-      const matching = ordered.filter((item) => item.kind === "assistant" && item.placement === "historical" && item.tool_call_ids?.includes(eventValue.toolCallId));
-      for (const item of matching) {
-        ordered.splice(ordered.indexOf(item), 1);
-        if (item.kind === "assistant") item.placement = "anchored";
-      }
-      const target = ordered.findIndex((item) => item.kind === "tool" && item.toolCallId === eventValue.toolCallId);
-      ordered.splice(target, 0, ...matching);
-      entry.timeline_events = boundedSubagentTimelineEvents(separateHistoricalTimelineEvents(ordered));
-    }
+    entry.timeline_events = entry.timeline_events.map((item) => item.kind === "assistant" && item.placement === "historical" && item.tool_call_ids?.includes(eventValue.toolCallId)
+      ? { ...item, placement: "anchored" } : item);
   } else if (eventValue.kind === "terminal") {
     entry.phase = eventValue.type;
   } else if (eventValue.kind === "activity") {

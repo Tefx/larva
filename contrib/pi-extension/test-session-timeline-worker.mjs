@@ -30,6 +30,13 @@ async function until(predicate, label, ms = 20000) {
     await new Promise((resolve) => setTimeout(resolve, 15));
   }
 }
+function displayTimeline(id) {
+  const component = new mod.SubagentPresentationLogOverlay({ entry: entry(id), generation: 1, maxBoxLines: 300 });
+  try {
+    component.handleInput("4"); component.handleInput("d");
+    return component.render(140).join("\n");
+  } finally { component.dispose(); }
+}
 try {
   mod.resetSubagentPresentationStateForTests();
   const first = join(dir, "first.jsonl"), second = join(dir, "second.jsonl"), small = join(dir, "small.jsonl");
@@ -98,7 +105,9 @@ try {
   mod.applySubagentStreamEventForTests(first, { kind: "tool", toolCallId: "tool-1", name: "read", status: "success" });
   await until(() => assistants(first).some((row) => row.text === "before completed tool"), "delayed backfill");
   const timeline = entry(first).timeline_events;
-  assert.ok(timeline.findIndex((row) => row.text === "before completed tool") < timeline.findIndex((row) => row.kind === "tool" && row.toolCallId === "tool-1"));
+  const completedDisplay = displayTimeline(first);
+  assert.ok(completedDisplay.includes("before completed tool") && completedDisplay.includes("tool-1"));
+  assert.ok(completedDisplay.indexOf("before completed tool") < completedDisplay.indexOf("tool-1"));
   assert.equal(timeline.find((row) => row.kind === "tool" && row.toolCallId === "tool-1").snapshot.status, "success");
   assert.ok(assistants(first).find((row) => row.text === "same")?.placement === "historical");
   await appendFile(first, line("future-msg", "before future tool", ["future-tool"]));
@@ -107,7 +116,9 @@ try {
   mod.applySubagentStreamEventForTests(first, { kind: "tool", toolCallId: "future-tool", name: "read", status: "running" });
   const futureTimeline = entry(first).timeline_events;
   assert.equal(futureTimeline.find((row) => row.text === "before future tool").placement, "anchored");
-  assert.ok(futureTimeline.findIndex((row) => row.text === "before future tool") < futureTimeline.findIndex((row) => row.kind === "tool" && row.toolCallId === "future-tool"));
+  const futureDisplay = displayTimeline(first);
+  assert.ok(futureDisplay.includes("before future tool") && futureDisplay.includes("future-tool"));
+  assert.ok(futureDisplay.indexOf("before future tool") < futureDisplay.indexOf("future-tool"));
 
   const twoTurns = join(dir, "two-turns.jsonl");
   await writeFile(twoTurns, header("two-turns") + line("turn-a", "turn A", ["call-a"]) + line("turn-b", "turn B", ["call-b"]) + line("turn-c", "final C"));
@@ -116,7 +127,29 @@ try {
   await until(() => assistants(twoTurns).length === 3, "two-turn delayed backfill");
   mod.finishSubagentPresentationForTests(twoTurns);
   const twoTurnEvents = entry(twoTurns).timeline_events;
-  assert.deepEqual(twoTurnEvents.map((item) => item.kind === "assistant" ? item.text : item.kind === "tool" ? item.toolCallId : item.kind), ["turn A", "call-a", "turn B", "call-b", "final C", "terminal"]);
+  assert.deepEqual(twoTurnEvents.map((item) => item.kind === "assistant" ? item.text : item.kind === "tool" ? item.toolCallId : item.kind), ["call-a", "call-b", "turn A", "turn B", "final C", "terminal"], "storage retains arrival order, independent of grouping");
+  const twoTurnDisplay = displayTimeline(twoTurns);
+  const displayPositions = ["turn A", "call-a", "turn B", "call-b", "final C", "✓ success"].map(text => twoTurnDisplay.indexOf(text));
+  assert.ok(displayPositions.every((position, index) => position >= 0 && (index === 0 || position > displayPositions[index - 1])), "display still anchors each excerpt before its tool and terminal");
+
+  // Fresh live tasks reach the boundary through repeated asynchronous catch-ups;
+  // these are distinct messages, not one truncated assistant delta or old history.
+  const fresh = join(dir, "fresh-continuous.jsonl");
+  await writeFile(fresh, header("fresh-continuous"));
+  mod.recordSubagentPresentationEntryForTests(fresh, "test", "running");
+  for (let batch = 0; batch < 5; batch++) {
+    const toolCallId = `recent-${batch}`;
+    mod.applySubagentStreamEventForTests(fresh, { kind: "tool", toolCallId, name: `recent_tool_${batch}`, status: "running" });
+    await appendFile(fresh, Array.from({ length: 20 }, (_, index) => line(`fresh-${batch * 20 + index}`, `FRESH_${batch * 20 + index}`)).join(""));
+    mod.applySubagentStreamEventForTests(fresh, { kind: "message_boundary" });
+    await until(() => assistants(fresh).some(row => row.session_id === `fresh-${batch * 20 + 19}`) && mod.sessionTimelineReaderMetricsForTests().inFlight === 0, `fresh catch-up ${batch}`);
+    assert.equal(entry(fresh).timeline_events.length, Math.min(80, (batch + 1) * 21));
+    assert.ok(entry(fresh).timeline_events.some(row => row.kind === "tool" && row.toolCallId === toolCallId), `catch-up ${batch} must not evict the newest tool`);
+    const displayed = displayTimeline(fresh);
+    assert.ok(displayed.includes(`recent_tool_${batch}()`));
+    assert.ok(displayed.includes(`FRESH_${batch * 20 + 19}`));
+  }
+  assert.ok(!entry(fresh).timeline_events.some(row => row.session_id === "fresh-0"), "old events really leave the unchanged 80-event budget");
   const renderedTurns = mod.renderSubagentPresentationOverlayForTests({ task_id: twoTurns, expanded: true });
   assert.ok(renderedTurns.includes("session excerpt · tool order unknown"), renderedTurns.slice(0, 2400));
   assert.ok(renderedTurns.indexOf("turn A") < renderedTurns.indexOf("turn B") && renderedTurns.indexOf("turn B") < renderedTurns.indexOf("final C"), "rendered assistant order must agree with persisted session order");
@@ -143,7 +176,9 @@ try {
   await appendFile(second, line("late", "terminal persistence lag"));
   await until(() => assistants(second).some((row) => row.text === "terminal persistence lag"), "bounded terminal retry");
   assert.equal(entry(second).result_text, "final output");
-  assert.equal(entry(second).timeline_events.at(-1).kind, "terminal");
+  const terminalDisplay = displayTimeline(second);
+  assert.ok(terminalDisplay.includes("✓ success"));
+  assert.ok(terminalDisplay.indexOf("terminal persistence lag") < terminalDisplay.indexOf("✓ success"), "late persistence stays before the terminal in display order");
 
   await appendFile(first, "{malformed\n");
   mod.applySubagentStreamEventForTests(first, { kind: "message_boundary" });

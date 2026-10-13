@@ -122,6 +122,23 @@ async function runState(f, evidence) {
   evidence.globalDefaults = Object.fromEntries(["defaultProvider", "defaultModel", "defaultThinkingLevel"].map((k) => [k, globals[k]]));
   await resumed.stop();
 }
+async function runPanelNavigation(f, evidence) {
+  f.env.NATIVE_PANEL_NAVIGATION = "1";
+  f.env.NATIVE_PANEL_EXTENSION = join(ROOT, "contrib/pi-extension/larva.ts");
+  f.respond = () => { throw new Error("Panel navigation must not call a provider"); };
+  const result = await execute(join(ROOT, ".venv/bin/python"), [join(ROOT, "tests/fixtures/pi/native_tui_probe.py"), process.execPath, CLI, CONTROL, "--panel"], { env: f.env, timeout: 120000 });
+  evidence.terminalRun = { command: result.command, args: result.args, pid: result.pid, code: result.code, signal: result.signal, timedOut: result.timedOut, stderr: result.stderr };
+  evidence.terminals = await Promise.all((await directory(f.root)).filter(name => name.startsWith("terminal-")).map(async name => ({ name, output: await readFile(join(f.root, name), "utf8") })));
+  const pids = [...new Set((await jsonLines(join(f.root, "observations.jsonl"))).filter(row => row.event === "session_start").map(row => row.pid))];
+  // A Python timeout/failure must not leave its separately grouped native hosts.
+  for (const pid of pids.filter(alive)) { try { process.kill(-pid, "SIGKILL"); } catch {} }
+  evidence.nativeProcesses = pids.map(pid => ({ pid, alive: alive(pid) }));
+  assert.equal(result.code, 0, result.stderr + result.stdout);
+  assert.equal(f.requests.length, 0, "no model requests, including during cleanup");
+  evidence.panelNavigation = JSON.parse(result.stdout);
+  assert.ok(evidence.nativeProcesses.every(row => !row.alive));
+}
+
 async function startTask(f, p, task, taskId, extra = {}) {
   let emitted = false;
   f.respond = (payload) => {
@@ -1082,7 +1099,8 @@ export async function runJourney(scenario) {
   const f = await createNativeFixture();
   const evidence = { scenario, modality: "actual native CLI + normal package loader + loopback provider", node: process.version, piVersion: PI_VERSION, cli: CLI };
   try {
-    if (scenario === "installed-panel") await runInstalledPanel(f, evidence);
+    if (scenario === "panel-navigation") await runPanelNavigation(f, evidence);
+    else if (scenario === "installed-panel") await runInstalledPanel(f, evidence);
     else if (scenario === "panel") await runPanel(f, evidence);
     else if (scenario === "mcp") await runMcp(f, evidence);
     else if (scenario === "state") await runState(f, evidence);
