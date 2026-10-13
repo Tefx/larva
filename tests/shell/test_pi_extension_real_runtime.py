@@ -115,6 +115,48 @@ def test_native_panel_live_navigation_through_fullscreen_host_and_worker(tmp_pat
     assert payload["cleanup"]["rootRemoved"] is True
 
 
+def test_installed_panel_navigation_uses_selected_source_payload(tmp_path: Path) -> None:
+    """A distinct source manifest must reach install, child launch and native navigation."""
+    native = os.environ.get("LARVA_TEST_NATIVE_MCP_PI_BIN")
+    assert native, "Select the actual native Pi package/bin"
+    source = tmp_path / "source"
+    package = source / "contrib/pi-extension"
+    package.mkdir(parents=True)
+    manifest = json.loads((EXTENSION.parent / "package.json").read_text())
+    manifest["version"] = "0.0.0-fixture"
+    for name in manifest["files"]:
+        shutil.copyfile(EXTENSION.parent / name, package / name)
+    (package / "package.json").write_text(json.dumps(manifest))
+    (package / "node_modules").symlink_to(EXTENSION.parent / "node_modules")
+    metadata = source / "src/larva"
+    metadata.mkdir(parents=True)
+    (metadata / "__init__.py").write_text('__version__ = "0.0.0-fixture"\n')
+    report = tmp_path / "installed-panel.json"
+    completed = subprocess.run(
+        ["node", str(ROOT / "scripts/pi-native-journeys.mjs"),
+         "--scenario", "installed-panel", "--source-root", str(source),
+         "--output", str(report)],
+        cwd=ROOT, env={**os.environ, "PI_BIN": native},
+        check=False, capture_output=True, text=True, timeout=180,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = json.loads(report.read_text())
+    assert payload["pass"] is True
+    assert payload["delivery"]["source"] == str(package)
+    assert payload["delivery"]["version"] == "0.0.0-fixture"
+    installed = Path(payload["navigationEntry"])
+    assert installed != EXTENSION
+    assert installed.parent.name == "package"
+    assert all(str(installed) in row["args"] for row in payload["delivery"]["childLaunches"])
+    assert [case["mode"] for case in payload["panelNavigation"]] == ["fullscreen", "regular"]
+    assert all(case["exit"] == 0 for case in payload["panelNavigation"])
+    assert all(case["batches"][-1]["retained"] == 80 for case in payload["panelNavigation"])
+    assert all(not row["alive"] for row in payload["nativeProcesses"])
+    assert payload["cleanup"]["liveChildren"] == []
+    assert payload["cleanup"]["capsules"] == []
+    assert payload["cleanup"]["rootRemoved"] is True
+
+
 def test_autocomplete_substring_case_and_prefix_first_stable_order_runtime() -> None:
     payload = _run_autocomplete_runtime_case("substring-case-ordering", prefix="DEV")
 

@@ -241,6 +241,11 @@ behavior, target refresh semantics, and failure handling.
 
 ### Native Pi extension
 
+[0.8.6 release notes](scripts/release-notes-0.8.6.md) describe the Timeline wheel,
+resize and arrival-order retention repair. Python backend and Pi extension
+installation are separate; upgrading the Python package does not update Pi's
+installed extension. Use the matching release source and restart Pi.
+
 Install `contrib/pi-extension` as a normal Pi package and bind the Larva
 CLI with `LARVA_CLI_ARGV_JSON`. Native flags are `--larva-persona` and
 `--larva-agent-persona-switch`. Main preferences persist in Pi's real agent

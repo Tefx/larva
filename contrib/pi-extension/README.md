@@ -2,22 +2,26 @@
 
 ## Native Pi package
 
-Release 0.8.5 keeps this package separate from the Python wheel. Upgrading the
+Release 0.8.6 keeps this package separate from the Python wheel. Upgrading the
 Python backend alone does not update these extension files; install this release's
 source directory with `pi install` and restart Pi. See the
-[Chinese release notes](../../scripts/release-notes-0.8.5.md).
+[Chinese release notes](../../scripts/release-notes-0.8.6.md).
 
 The release delivery check uses the manifest's local packed payload and isolated
 agent state, then executes the native panel assertions from that installed entry:
 
 ```bash
-PI_BIN=/absolute/path/to/real/pi/cli.js node scripts/pi-native-journeys.mjs --scenario installed-panel --output /owned/path/installed-panel.json
+PI_BIN=/absolute/path/to/real/pi/cli.js node scripts/pi-native-journeys.mjs --scenario installed-panel --source-root /absolute/path/to/release-source --output /owned/path/installed-panel.json
 ```
 
 Run from the repository root after `npm --prefix contrib/pi-extension ci`.
-The installation and child loader use the selected real Pi; the parent panel API
-is headless with the locked development TUI renderer. The loopback provider
-replaces only model service input. No npm publication or global settings change
+`--source-root` selects the independently reconciled release tag/commit checkout;
+omit it to check this checkout. The installation and child loader use the selected
+real Pi; the tool-event parent API is headless with the development TUI renderer.
+Native fullscreen/regular PTY navigation then executes the same installed entry,
+including wheel/arrows, 42-to-14 resize, crossing-80 Worker arrival retention and
+pause/End/bottom resume. The loopback provider replaces only model service input;
+navigation issues no model requests. No npm publication or global settings change
 is performed.
 
 This directory is the Larva extension package for native Pi. Install it

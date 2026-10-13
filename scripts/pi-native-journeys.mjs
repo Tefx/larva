@@ -1,5 +1,5 @@
 // purpose: native loader/SDK/provider/session journeys for acceptance, without test loader
-// usage: node scripts/pi-native-journeys.mjs --scenario state|children|invocation|environment|tui|installed-panel
+// usage: node scripts/pi-native-journeys.mjs --scenario installed-panel [--source-root release-checkout] [--output report.json]
 // effects: disposable Pi processes, sessions, loopback provider and scoped tool fixtures
 // requires: locked development deps; PI_BIN selects real native Pi; environment/tui also Python 3.12
 import assert from "node:assert/strict";
@@ -122,9 +122,11 @@ async function runState(f, evidence) {
   evidence.globalDefaults = Object.fromEntries(["defaultProvider", "defaultModel", "defaultThinkingLevel"].map((k) => [k, globals[k]]));
   await resumed.stop();
 }
-async function runPanelNavigation(f, evidence) {
+async function runPanelNavigation(f, evidence, entry = join(ROOT, "contrib/pi-extension/larva.ts")) {
   f.env.NATIVE_PANEL_NAVIGATION = "1";
-  f.env.NATIVE_PANEL_EXTENSION = join(ROOT, "contrib/pi-extension/larva.ts");
+  f.env.NATIVE_PANEL_EXTENSION = await realpath(entry);
+  evidence.navigationEntry = f.env.NATIVE_PANEL_EXTENSION;
+  const requestCount = f.requests.length;
   f.respond = () => { throw new Error("Panel navigation must not call a provider"); };
   const result = await execute(join(ROOT, ".venv/bin/python"), [join(ROOT, "tests/fixtures/pi/native_tui_probe.py"), process.execPath, CLI, CONTROL, "--panel"], { env: f.env, timeout: 120000 });
   evidence.terminalRun = { command: result.command, args: result.args, pid: result.pid, code: result.code, signal: result.signal, timedOut: result.timedOut, stderr: result.stderr };
@@ -134,7 +136,7 @@ async function runPanelNavigation(f, evidence) {
   for (const pid of pids.filter(alive)) { try { process.kill(-pid, "SIGKILL"); } catch {} }
   evidence.nativeProcesses = pids.map(pid => ({ pid, alive: alive(pid) }));
   assert.equal(result.code, 0, result.stderr + result.stdout);
-  assert.equal(f.requests.length, 0, "no model requests, including during cleanup");
+  assert.equal(f.requests.length, requestCount, "navigation must not issue model requests, including during cleanup");
   evidence.panelNavigation = JSON.parse(result.stdout);
   assert.ok(evidence.nativeProcesses.every(row => !row.alive));
 }
@@ -967,8 +969,11 @@ async function runMcp(f, evidence) {
 }
 
 async function runInstalledPanel(f, evidence) {
-  // Use the manifest's actual delivery payload, not an unrelated checkout.
-  const source = join(ROOT, "contrib/pi-extension");
+  // Publication consumers select an immutable GitHub source checkout.
+  // Pack that manifest payload; tracked fixture logic stays in this checkout.
+  const sourceArg = process.argv.indexOf("--source-root");
+  const sourceRoot = sourceArg < 0 ? ROOT : resolve(process.argv[sourceArg + 1]);
+  const source = join(sourceRoot, "contrib/pi-extension");
   const packed = await execute("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", f.root], { cwd: source });
   assert.equal(packed.code, 0, packed.stderr);
   const [manifest] = JSON.parse(packed.stdout);
@@ -976,7 +981,7 @@ async function runInstalledPanel(f, evidence) {
   assert.equal(extracted.code, 0, extracted.stderr);
   const copy = join(f.root, "package");
   const pkg = JSON.parse(await readFile(join(copy, "package.json"), "utf8"));
-  const pythonVersion = /__version__ = "([^"]+)"/.exec(await readFile(join(ROOT, "src/larva/__init__.py"), "utf8"))[1];
+  const pythonVersion = /__version__ = "([^"]+)"/.exec(await readFile(join(sourceRoot, "src/larva/__init__.py"), "utf8"))[1];
   assert.equal(pkg.version, pythonVersion);
   for (const name of pkg.files) assert.ok(manifest.files.some(file => file.path === name), `missing delivery file ${name}`);
   await writeFile(join(f.agent, "settings.json"), JSON.stringify({ ...f.settings, packages: [] }));
@@ -998,6 +1003,8 @@ async function runInstalledPanel(f, evidence) {
   assert.equal(launches.length, 2);
   for (const launch of launches) assert.ok(launch.args.includes(installedEntry), "child must load the installed release entry");
   evidence.delivery.childLaunches = launches;
+  await runPanelNavigation(f, evidence, installedEntry);
+  assert.equal(evidence.navigationEntry, installedEntry, "native navigation must execute the installed payload");
 }
 
 async function runPanel(f, evidence, entry = join(ROOT, "contrib/pi-extension/larva.ts")) {
