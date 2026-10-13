@@ -146870,7 +146870,7 @@ phases:
       scratch after reconciliation.'
 - id: subagent_panel_patch_release
   name: Publish Timeline repair next patch and verify latest delivery
-  status: in_progress
+  status: done
   depends_on:
   - subagent_panel_live_regression
   steps:
@@ -146972,7 +146972,7 @@ phases:
       remain separate unexecuted consumer obligations.
   - id: subagent-panel.patch-publish-and-verify
     name: Publish patch and prove remote CI, fresh uvx latest and installed Pi behavior
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - artifacts/**\n\
       release_target:\n  repository: /Users/tefx/Projects/larva\n  remote: https://github.com/Tefx/larva.git\n\
@@ -147064,3 +147064,28 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-13T10:29:34.637765Z'
+    done_at: '2026-10-13T11:19:44.825486+00:00'
+    evidence: 'Final integrated release acceptance: exact candidate b08e7cb07fcaead087c46108f1d42fe46f596e5d
+      ordinary-pushed main and immutable v0.8.6; GH https://github.com/Tefx/larva/releases/tag/v0.8.6
+      published; v0.8.5 remains5165039d8e113e9246b2d6840e7bab9313ca9e7a. Parent inspected
+      exact target/job records/raw CI summaries, installed native observations, fresh
+      uvx version/help, production nonyanked wheel/sdist and remote refs; trackedclean
+      no unknown effects/processes. CI38383941096 exactSHA complete both jobs success:
+      schema115pass,backend26pass,runtime78pass1skip,retained292pass1skip,all23Node+capability-gates,fullInvar42files11properties1100examples.
+      Trusted publish38388417435 exactSHA build+publish success; productionPyPI latest0.8.6
+      nonyanked wheel/sdist. Fresh env-i production-index UNPINNED uvx --from larva
+      actual larva --help exit0 and installed metadata0.8.6 from same isolated cache;
+      initial fresh attempt0.8.5 recorded failed required-version assertion, second
+      entirely empty state after Simple-index observation succeeded, no pinned/localwheel/oldcache
+      substitute. Actual GitHub v0.8.6 archive boundb08e7cb downloaded; tracked installed-panel
+      --source-root exercised actual extracted installed entry in realPi1.2 fullscreen/regular
+      PTY, wheel/arrows once,42->14 viewport4,newestrows,Worker21/42/63/80/80 latestm99/tool4,pauseEnd/bottomresume;
+      allhosts/children dead/providerclosed/rootremoved. No real model/npm/global/userPi
+      changes. Separate PythonPyPI and GH-source Pi delivery, no usersession upgrade
+      claim. Canonical .vectl/evidence/subagent-panel-patch-release/publication/{evidence.md,ci-final.json,ci-run.log,publish-final.json,published-installed-panel.json,fresh-uvx-version-final.json,fresh-uvx-help-final.txt,pypi-release.json};
+      exact commands/recovery/applicability there. Preparation/source evidence reused
+      only unchanged inputs; all required fresh external observations now present.
+      Child connection/watch error reconciled actualCIgreen, not replayed. Cleanup
+      removed publication source/caches/HOME, observed755638272bytes freed; prep worktree
+      consumer now finished, Orchestrator deletes after completion. Plan-only lifecycle
+      commit to be pushed separately without moving tag or republishing.'
