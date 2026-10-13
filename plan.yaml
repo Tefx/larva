@@ -146972,7 +146972,7 @@ phases:
       remain separate unexecuted consumer obligations.
   - id: subagent-panel.patch-publish-and-verify
     name: Publish patch and prove remote CI, fresh uvx latest and installed Pi behavior
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - artifacts/**\n\
       release_target:\n  repository: /Users/tefx/Projects/larva\n  remote: https://github.com/Tefx/larva.git\n\
@@ -147062,3 +147062,5 @@ phases:
     depends_on:
     - subagent-panel.patch-prepare
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-13T10:29:34.637765Z'
