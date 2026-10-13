@@ -146870,13 +146870,13 @@ phases:
       scratch after reconciliation.'
 - id: subagent_panel_patch_release
   name: Publish Timeline repair next patch and verify latest delivery
-  status: pending
+  status: in_progress
   depends_on:
   - subagent_panel_live_regression
   steps:
   - id: subagent-panel.patch-prepare
     name: Prepare reconciled patch metadata and installed Timeline delivery
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n    - contrib/pi-extension/package.json\n    - contrib/pi-extension/package-lock.json\n\
@@ -146948,6 +146948,8 @@ phases:
     - scripts/pi-native-journeys.mjs
     - INVAR.md
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-13T10:10:12.428557Z'
   - id: subagent-panel.patch-publish-and-verify
     name: Publish patch and prove remote CI, fresh uvx latest and installed Pi behavior
     status: pending
