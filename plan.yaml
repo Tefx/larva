@@ -146716,3 +146716,103 @@ phases:
       Unique report/logs/rawevidence migrated .vectl/evidence/subagent-panel-release/streaming-fixture/RESULT.md;
       prior paths historical. Processes quiescent; cleanup follows acceptance. RequirednewfullremoteCI
       remains SAMEpublicationconsumer; publication0.8.5effects mustnotrepeat.
+- id: subagent_panel_live_regression
+  name: Repair fresh live Timeline navigation and retention
+  status: pending
+  depends_on:
+  - subagent_panel_release
+  steps:
+  - id: subagent-panel.live-regression-repair
+    name: Repair native Timeline wheel, resize and recent-event retention
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - scripts/pi*.mjs\n  \
+      \  - tests/shell/test_pi*.py\n    - tests/fixtures/pi/**\n    - design/pi-native-extension.md\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\nverification_inventory:\n\
+      \  - .github/workflows/ci.yml\n  - tests/shell/test_pi_extension_subagent_ux.py\n\
+      \  - tests/shell/test_pi_extension_real_runtime.py\n  - contrib/pi-extension/test-session-timeline-worker.mjs\n\
+      \  - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs\nverification_environment:\n\
+      \  python_setup_argv: [uv, sync, --locked, --python, '3.12', --group, dev]\n\
+      \  npm_setup_argv: [npm, --prefix, contrib/pi-extension, ci]\n  node_context:\
+      \ '26.7.0 in current CI; record actual version'\n  environment_unset: [VIRTUAL_ENV,\
+      \ UV_PROJECT_ENVIRONMENT, PYTHONPATH]\n  environment: {UV_PYTHON_DOWNLOADS:\
+      \ never}\n  full_invar_argv: [uv, run, --locked, --python, '3.12', --group,\
+      \ dev, invar, guard, --all]\n  native_host_context: 'Pi 1.2.0 fullscreen tui-alt-screen;\
+      \ version is observation context, not runtime admission'\nDeliver: Fresh subagent\
+      \ live Timeline continues displaying the newest events across its existing 80-event\
+      \ retention boundary. Native fullscreen wheel and up/down navigate the visible\
+      \ Timeline, including after terminal shrink; upward navigation pauses following,\
+      \ paused activity is signaled, and End or returning to bottom resumes following.\
+      \ Preserve single-message Output and assistant excerpt prefix behavior, existing\
+      \ retention budgets, privacy, watchdog recognized-progress semantics, callback\
+      \ truth, selection and reset.\nRepair the three reproduced interacting defects:\
+      \ fullscreen host consumes raw SGR wheel and dispatches normalized handleMouse\
+      \ while the overlay only handles raw input; construction-time height remains\
+      \ stale after 42-to-14-row shrink and prevents reaching clipped rows; Worker\
+      \ catch-up display grouping places unanchored assistant excerpts after RPC events\
+      \ and the subsequent 80-event slice prematurely evicts the newest tool event,\
+      \ even in fresh tasks. Normalized mouse handling without duplicate raw handling,\
+      \ render-time viewport bounded by host available height, and recency retention\
+      \ before display grouping are suggested private corrections for the owner to\
+      \ verify, not fixed implementation prescriptions. Do not enlarge retention or\
+      \ broaden Output behavior.\nBoundary: senior-engineer owns this complete source/types,\
+      \ meaningful regressions, existing native fixture and necessary documentation\
+      \ repair. Explicit owner selection preserves the retained diagnosis of stream\
+      \ ordering coupled with viewport/input state. Reversible repository work and\
+      \ isolated native fixture effects only; no publication, tag/package replacement,\
+      \ global installation/configuration, real model calls, credentials/spend, extra\
+      \ framework or version matrix. Published 0.8.5 tag/packages and all DONE history\
+      \ remain immutable. Do not inspect or change user-owned artifacts. Orchestrator\
+      \ owns worktree, integration, claims, lifecycle and final acceptance.\nAdmit:\
+      \ Completed subagent_panel_release is an immutable predecessor, not an acceptance\
+      \ claim for this regression repair. Independent retained observations establish\
+      \ wheel dispatch loss, stale viewport on shrink and newest tool eviction after\
+      \ Worker catch-up. Reuse diagnosis and applicable unaffected evidence; extend\
+      \ existing tests/fixture rather than adding an independent harness. Material\
+      \ native verification logic must be tracked and tested before being used as\
+      \ acceptance proof.\nRecovery: Keep compatible fixes and verification failures\
+      \ on this step. Quiesce native processes and descendants and reconcile task-owned\
+      \ fixture state on success, failure or cancellation. Preserve original diagnostic\
+      \ observations through acceptance, then retain minimal unique evidence and clean\
+      \ eligible task-owned state. Missing native proof or a failed necessary requirement\
+      \ leaves completion pending; no headless-only substitution or weakened assertion."
+    verification: 'Run meaningful behavior regressions through existing tests and
+      native fixtures for all three defects and preserved boundaries. Required new
+      observation on the corrected candidate: actual native Pi fullscreen host wheel
+      and up/down routing with one action per input; shrink from 42 to 14 rows with
+      visible bounded viewport and reachable newest rows; a continuous fresh task
+      crossing 80 events with newest tools and messages retained through asynchronous
+      Worker catch-up; pause during updates then End follow. Exercise actual host
+      input dispatch/render and Worker ingestion seams without real model calls; headless
+      snapshots alone cannot prove these requirements. Retain discriminating regression
+      counterexamples and native observations rather than self-reported PASS. Run
+      affected UX/Worker/retention/lifecycle checks, required full Invar with the
+      declared isolated locked Python/dev setup, Invar sig/map/refs as applicable,
+      and git diff --check. Existing CI defines reproducible offline inventory and
+      fixture/package-bin identity semantics; do not copy CI''s disposable HOME setup
+      into the real user environment. Use checkout-local npm lock setup for existing
+      checks and isolated native host fixture for the observed fullscreen seam, recording
+      actual versions without runtime version gates or global installation. Orchestrator
+      completion includes focused source/contract review and the single final integrated
+      acceptance decision for this regression outcome: all material Deliver requirements
+      and the complete applicable project-native offline inventory must be covered
+      on the integrated candidate by applicable unchanged observations plus affected-scope
+      execution. New native regression observations are required; unchanged unrelated
+      checks need not replay merely for freshness. Report exact commands, outcomes,
+      applicability, native evidence, cleanup and gaps. Any blocking defect, failed
+      necessary check or unproven required behavior prevents acceptance. No separate
+      gate or publication step.'
+    evidence_template: Candidate and integrated target; changed paths; commands and
+      observed outcomes; native fullscreen wheel/up-down, shrink, fresh crossing-80
+      Worker catch-up and pause/End evidence; preserved invariants; applicable offline
+      inventory coverage/reuse; source review and Orchestrator acceptance; reconciled
+      processes/retained evidence; gaps.
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/session-timeline-worker.mjs
+    - contrib/pi-extension/test-session-timeline-worker.mjs
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - .github/workflows/ci.yml
+    - INVAR.md
+    agent: senior-engineer
