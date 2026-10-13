@@ -293,7 +293,12 @@ async function runCapsuleRemoval(f, evidence) {
     await writeFile(fault, JSON.stringify({ operation, code, path: capsule }));
     // Actual cancellation invokes Larva cleanup; inject only its OS operation.
     let cancel = true;
-    f.respond = () => cancel ? (cancel = false, { tools: [{ name: "larva_subagent_cancel", args: { task_id: task.receipt.task_id, reason: "Exercise native cleanup filesystem failure" } }] }) : { text: "Cancellation observed." };
+    // Parent settlement does not prove the accepted child's provider request
+    // arrived. A late child request must remain held and cannot consume the
+    // one parent cancellation response.
+    f.respond = payload => text(payload).includes("HOLD_REMOVAL_NATIVE_CHILD") && !text(payload).includes("native-driver-start")
+      ? { hold: true }
+      : cancel ? (cancel = false, { tools: [{ name: "larva_subagent_cancel", args: { task_id: task.receipt.task_id, reason: "Exercise native cleanup filesystem failure" } }] }) : { text: "Cancellation observed." };
     const cancelled = toolResults(await p.prompt("Cancel the held native child"), "larva_subagent_cancel")[0];
     const terminal = cancelled.status === "cancelling" ? await waitCallback(p, task.from, task.receipt.task_id) : cancelled;
     assert.equal(terminal.status, "cancelled");
