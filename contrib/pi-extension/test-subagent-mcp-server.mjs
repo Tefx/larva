@@ -147,6 +147,11 @@ const send = message => process.stdout.write(JSON.stringify(message)+'\\n');
 createInterface({input:process.stdin}).on('line', async line => {
  const m=JSON.parse(line);
  if(m.type==='get_state') {
+  if (m.id === 'state-1') {
+   if (process.env.FIXTURE_RPC_STARTUP === 'never') return;
+   if (process.env.FIXTURE_RPC_STARTUP === 'exit') process.exit(23);
+   if (process.env.FIXTURE_RPC_STARTUP === 'delayed') await new Promise(resolve => setTimeout(resolve, 10500));
+  }
   await mkdir(sessionDir,{recursive:true});
   await writeFile(sessionFile, JSON.stringify({type:'session',version:3,id:'fixture-'+process.pid,cwd:root})+'\\n'+JSON.stringify({type:'message',id:'call-entry',timestamp:'2026-01-01T00:00:00Z',message:{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'read',arguments:{path:'fixture'}}]}})+'\\n'+JSON.stringify({type:'message',id:'result-entry',timestamp:'2026-01-01T00:00:01Z',message:{role:'toolResult',toolCallId:'call-1',toolName:'read',content:[{type:'text',text:'fixture content'}]}})+'\\n');
   send({id:m.id,success:true,data:{sessionFile}});
@@ -186,6 +191,52 @@ createInterface({input:process.stdin}).on('line', async line => {
     const nativeHeadless = await runtime.larva_subagent({persona_id:'child',task:'no native parent'}, {env});
     assert.equal(nativeHeadless.error.code,'LARVA_NO_ACTIVE_PERSONA');
   } finally { await runtime.resetExtensionUI('test_cleanup'); }
+  const delayed = client({FIXTURE_RPC_STARTUP:'delayed'});
+  const delayedRun = await delayed.tool('larva_subagent', {persona_id:'child',task:'delayed readiness',wait_for_completion:true});
+  assert.equal(delayedRun.isError, false, JSON.stringify(delayedRun));
+  const delayedOutput = Object.values(delayedRun.details.terminal_outputs)[0];
+  assert.equal(delayedOutput.status, 'success');
+  assert.equal(delayedOutput.result_text, 'output parent=');
+  await delayed.close();
+  await assertReaped();
+  console.log('initial readiness delayed 10,500 ms exceeds ordinary RPC timeout and succeeds: PASS');
+
+  try {
+    runtime.setChildRpcStartupReadyTimeoutForTests(200);
+    const timedOut = await runtime.larva_subagent({persona_id:'child',task:'no readiness response'}, {
+      env:{...env,FIXTURE_RPC_STARTUP:'never'},externalHostCanSpawn:true,
+    });
+    assert.equal(timedOut.error?.code, 'LARVA_CHILD_PROTOCOL_FAILED', JSON.stringify(timedOut));
+    for (const field of ['id=state-1','type=get_state','stage=startup_readiness','first_frame_received=false','child_state=running','elapsed_ms=']) {
+      assert.ok(timedOut.error.message.includes(field), timedOut.error.message);
+    }
+    const trace = (await readFile(env.LARVA_PI_CHILD_RPC_TRACE_FILE,'utf8')).trim().split('\n').map(JSON.parse);
+    const timeout = trace.find(entry => entry.event === 'rpc_timeout' && entry.id === 'state-1');
+    assert.ok(timeout, 'startup timeout trace missing');
+    assert.equal(timeout.command_type, 'get_state');
+    assert.equal(timeout.stage, 'startup_readiness');
+    assert.equal(timeout.timeout_ms, 200);
+    assert.equal(timeout.first_frame_received, false);
+    assert.equal(timeout.frame_sequence, 0);
+    assert.equal(timeout.rpc_ready, false);
+    assert.equal(timeout.child_state, 'running');
+    assert.equal(timeout.exit_code, null);
+    assert.equal(timeout.signal, null);
+    assert.ok(Number.isInteger(timeout.pid) && timeout.pid > 0);
+    assert.ok(timeout.elapsed_ms >= 200);
+    await assertReaped();
+  } finally { await runtime.resetExtensionUI('test_cleanup'); }
+  console.log('bounded startup timeout reports command, stage and child state; trace and capsule cleanup: PASS');
+
+  try {
+    const exited = await runtime.larva_subagent({persona_id:'child',task:'exit before readiness'}, {
+      env:{...env,FIXTURE_RPC_STARTUP:'exit'},externalHostCanSpawn:true,
+    });
+    assert.equal(exited.error?.code, 'LARVA_CHILD_START_FAILED', JSON.stringify(exited));
+    await assertReaped();
+  } finally { await runtime.resetExtensionUI('test_cleanup'); }
+  console.log('pre-readiness child exit fails closed and reaps capsule: PASS');
+
   // Codex copies regular files and directories, omitting symlinks. No sibling
   // extension or node_modules can satisfy imports in this isolated cache.
   const cachedPlugin = join(root, 'cache', 'larva-subagent');

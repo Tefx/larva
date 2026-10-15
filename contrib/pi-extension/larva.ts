@@ -790,6 +790,8 @@ const SUBAGENT_COLLAPSED_RESULT_PREVIEW_LINE_LIMIT = 16;
 const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
 const CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000;
+const CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000;
+let childRpcStartupReadyTimeoutOverrideForTests: number | null = null;
 // Pi acknowledges a prompt only after input and before_agent_start extension preflight.
 const CHILD_RPC_PROMPT_PREFLIGHT_TIMEOUT_MS = 60_000;
 const CHILD_RPC_FRAME_PRELOAD_FILENAME = "child-rpc-frame-preload.mjs";
@@ -10062,7 +10064,12 @@ export function finishSubagentPresentationForTests(taskId: string): void {
   recordSubagentPresentationResult(success(taskId, "test", "final output"));
 }
 
+export function setChildRpcStartupReadyTimeoutForTests(timeoutMs: number | null): void {
+  childRpcStartupReadyTimeoutOverrideForTests = timeoutMs;
+}
+
 export function resetSubagentPresentationStateForTests(): void {
+  childRpcStartupReadyTimeoutOverrideForTests = null;
   retainedSubagentPresentationLog.length = 0;
   subagentPresentationSequence = 0;
   subagentUiResetGeneration += 1;
@@ -10723,6 +10730,7 @@ export function decodeChildRpcJsonlChunksForTests(chunks: Uint8Array[]): { recor
 }
 
 class RpcClient {
+  private readonly startedAtMs = Date.now();
   private readonly pending = new Map<string, (value: unknown | LarvaError) => void>();
   private readonly pendingCommandTypes = new Map<string, string | null>();
   private readonly child: ChildProcessWithoutNullStreams;
@@ -10897,7 +10905,13 @@ class RpcClient {
         if (!this.closed && this.rpcReady) settle(this.stdoutClosedError());
       };
       const timer = setTimeout(() => {
-        settle(error("LARVA_CHILD_PROTOCOL_FAILED", `Child RPC command timed out after ${timeoutMs} ms.`));
+        const commandType = typeof body.type === "string" ? body.type : "unknown";
+        const stage = this.rpcReady ? (this.diagnosticContext?.().phase ?? "post_readiness") : "startup_readiness";
+        const firstFrameReceived = this.frameSequence > 0;
+        const childState = this.child.exitCode !== null ? `exited(${this.child.exitCode})` : this.child.signalCode !== null ? `signaled(${this.child.signalCode})` : "running";
+        const elapsedMs = Math.max(0, Date.now() - this.startedAtMs);
+        void traceChildRpc(this.traceEnv, "rpc_timeout", { pid: this.child.pid ?? null, id, command_type: commandType, stage, timeout_ms: timeoutMs, elapsed_ms: elapsedMs, first_frame_received: firstFrameReceived, frame_sequence: this.frameSequence, rpc_ready: this.rpcReady, child_state: childState, exit_code: this.child.exitCode, signal: this.child.signalCode });
+        settle(error("LARVA_CHILD_PROTOCOL_FAILED", `Child RPC command timed out after ${timeoutMs} ms (id=${id}, type=${commandType}, stage=${stage}, first_frame_received=${firstFrameReceived}, child_state=${childState}, elapsed_ms=${elapsedMs}).`));
       }, timeoutMs);
       this.pending.set(id, (value) => {
         this.rpcReady = true;
@@ -11156,6 +11170,7 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
 }
 
 export async function resetExtensionUI(reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
+  childRpcStartupReadyTimeoutOverrideForTests = null;
   // Invalidate presentation before awaiting child abort/cleanup: late reader
   // messages cannot cross into a replacement parent session during that wait.
   subagentUiResetGeneration += 1;
@@ -11328,8 +11343,9 @@ async function runChildSequence(
   const sequencePromise = (async (): Promise<LarvaSubagentResult> => {
     const isResume = taskId !== null;
     if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
+    const startupReadyTimeoutMs = childRpcStartupReadyTimeoutOverrideForTests ?? CHILD_RPC_STARTUP_READY_TIMEOUT_MS;
     if (taskId) {
-      const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId });
+      const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId }, startupReadyTimeoutMs);
       if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
       if (!isSuccessResponse(switched) || (switched as { data?: { cancelled?: unknown } }).data?.cancelled === true) {
         return await finishSubagentRunEarly(activeRecord, failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed.")));
@@ -11337,7 +11353,7 @@ async function runChildSequence(
       touchSubagentRun(activeRecord, "session_ready", "accepted");
       lifecycle.onPhase?.("session_ready", taskId);
     } else {
-      const stateResult = await rpc.command("state-1", { type: "get_state" });
+      const stateResult = await rpc.command("state-1", { type: "get_state" }, startupReadyTimeoutMs);
       if (abortPromise !== null) return terminalResultFromSnapshot(await abortPromise);
       if (isLarvaError(stateResult)) return await finishSubagentRunEarly(activeRecord, failed(null, personaId, stateResult));
       if (!rpc.hasFrameCapability()) {

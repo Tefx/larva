@@ -1875,6 +1875,29 @@ before spawn. Runtime/protocol failures, cancellation, timeout, and successful
 shutdown remove owned capsules while retaining existing child session history.
 [Native evidence](../verification/pi-native-delivery/README.md) records these
 terminal paths separately from controlled transport fault injection.
+
+
+### Child RPC readiness and timeout diagnostics
+
+Child Pi initial RPC readiness has a separate 60-second window
+(`CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000`): fresh `get_state` (`state-1`)
+and resumed `switch_session` (`switch-1`) use it after spawn. Subsequent ordinary
+RPC commands, including route-state checks, `set_model`, `set_thinking_level`,
+and final-text collection, retain the 10-second
+`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` default. Prompt preflight retains its
+separate 60-second window. These windows do not extend the no-progress watchdog
+or observer deadlines.
+
+RPC timeout errors report `id`, `type`, `stage`, `first_frame_received`,
+`child_state`, and `elapsed_ms` (time since the RPC client was created).
+Before readiness, `stage=startup_readiness`; afterward it identifies the current
+run phase, falling back to `post_readiness` when no context exists.
+With `LARVA_PI_CHILD_RPC_TRACE_FILE` enabled, the `rpc_timeout` event records
+`pid`, `id`, `command_type` (the error's `type`), `stage`, `timeout_ms`,
+`elapsed_ms`, `first_frame_received`, `frame_sequence`, `rpc_ready`,
+`child_state`, `exit_code`, and `signal`. The child state is `running`,
+`exited(code)`, or `signaled(signal)`.
+
 ## Trace-file proof instrumentation
 
 `LARVA_PI_CHILD_RPC_TRACE_FILE` is available for runtime proof probes only. Trace
