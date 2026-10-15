@@ -148032,7 +148032,7 @@ phases:
   - id: pi-subagent-mcp-managed-install-and-routing.acceptance-gate
     name: Gate review and integrated acceptance for Pi Managed Installer resolution
       and Strategy B routing
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_managed_install_and_routing\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -148081,3 +148081,5 @@ phases:
     depends_on:
     - pi-subagent-mcp-managed-install-and-routing.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-15T15:49:09.008545Z'
