@@ -147089,3 +147089,204 @@ phases:
       removed publication source/caches/HOME, observed755638272bytes freed; prep worktree
       consumer now finished, Orchestrator deletes after completion. Plan-only lifecycle
       commit to be pushed separately without moving tag or republishing.'
+- id: pi_subagent_mcp_codex_plugin
+  name: Cross-harness Pi subagent MCP server and Codex plugin
+  status: pending
+  gate: Terminal gate pi-subagent-mcp.acceptance-gate verifies that the cross-harness
+    stdio MCP server and Codex plugin wrapper drive real Pi RPC subagents through
+    contrib/pi-extension/larva.ts without regressing native Pi extension behavior
+    or colliding with the existing Python larva registry MCP server.
+  context: 'Authority: user-accepted architecture for cross-harness Pi-driven larva_subagent
+    execution via a stateful Node.js stdio MCP server (contrib/pi-extension/subagent-mcp-server.mjs)
+    and a thin Codex plugin wrapper (contrib/codex-plugin/), keeping the existing
+    Python registry MCP server (src/larva/shell/mcp_server.py) unchanged and orthogonal.
+    Reuse contrib/pi-extension/larva.ts child Pi RPC orchestration, model-map resolution,
+    thinking isolation, private settings capsules, watchdog, and activity reader with
+    three minimal boundary extensions: external-host Pi CLI script resolution validated
+    by inspectPiCliScript, direct external-host can_spawn admission with optional
+    parent_persona_id whitelist enforcement, and an in-memory callbackSurface outbox
+    that attaches terminal child output to larva_subagent_wait, larva_subagent_select,
+    and optional wait_for_completion responses.'
+  steps:
+  - id: pi-subagent-mcp.runtime-and-server
+    name: Deliver external-host larva.ts seams and stdio Pi subagent MCP server
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - tests/shell/test_pi_*.py\n\
+      \    - tests/fixtures/pi/**\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
+      \    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\
+      \nDeliver:\n- Extend contrib/pi-extension/larva.ts with three minimal external-host\
+      \ seams while keeping existing native Pi extension behavior and contracts intact:\n\
+      \  1. External-host Pi CLI script resolution: when nativePiCommandPrefix is\
+      \ null (because the current Node process is the MCP server rather than Pi CLI),\
+      \ allow resolvePiCommandPrefix(env) to resolve an explicit env.LARVA_PI_CLI_SCRIPT\
+      \ (or discovered real pi executable script path on PATH / configured location),\
+      \ validate it through the existing inspectPiCliScript(script) package/bin identity\
+      \ check (@earendil-works/pi-coding-agent and bin.pi match), and return [realpathSync(process.execPath),\
+      \ inspection.actual]. Invalid or unverified scripts fail closed with LARVA_CHILD_START_FAILED.\n\
+      \  2. External-host can_spawn admission without a fake headless parent session:\
+      \ support ctx.externalHostCanSpawn (default true when invoked from the MCP server\
+      \ without parent_persona_id) and optional input.parent_persona_id (or env.LARVA_MCP_PARENT_PERSONA).\
+      \ When parent_persona_id is omitted in external-host mode, admit spawning any\
+      \ valid resolved target persona; when parent_persona_id is supplied, resolve\
+      \ that parent persona via resolvePersona and enforce its can_spawn boolean/string[]\
+      \ whitelist, propagating LARVA_PI_PARENT_PERSONA_ID to the child environment.\n\
+      \  3. Callback outbox integration: preserve the existing callbackSurface seam\
+      \ on larva_subagent(input, ctx) so an external host can capture the terminal\
+      \ callback payload (result_text, child_output_truncated, child_output_preview,\
+      \ full_output_artifact, error, callback_id, completed_at, and formatted message)\
+      \ and mark callback_delivery as \"delivered\".\n- Implement contrib/pi-extension/subagent-mcp-server.mjs\
+      \ as a self-contained Node.js stdio MCP server (using zero extra npm runtime\
+      \ dependencies beyond committed contrib/pi-extensionlocks) that exposes nine\
+      \ tools orthogonal to the existing Python larva registry MCP server:\n  - larva_personas(query?,\
+      \ limit?)\n  - larva_subagent(persona_id, task, task_id?, no_progress_timeout_ms?,\
+      \ parent_persona_id?, wait_for_completion?)\n  - larva_subagent_wait(task_ids,\
+      \ return_when?, timeout_ms?)\n  - larva_subagent_select(task_ids, timeout_ms?)\n\
+      \  - larva_subagent_status(task_id?, limit?)\n  - larva_subagent_events(since_sequence?,\
+      \ task_ids?, limit?)\n  - larva_subagent_sessions(limit?)\n  - larva_subagent_cancel(task_id,\
+      \ reason)\n  - larva_subagent_activity(task_id/session_path, limit?, cursor?,\
+      \ tool_call_id?, segment_part?, offset?, length?, ...)\n- Enrich MCP responses\
+      \ for larva_subagent_wait and larva_subagent_select so every ready terminal\
+      \ task includes its captured outbox output (result_text, child_output_truncated,\
+      \ full_output_artifact, and formatted callback message) directly in the MCP\
+      \ tool response. Support wait_for_completion: true on larva_subagent to await\
+      \ completion and return the terminal output in one tool call while defaulting\
+      \ wait_for_completion: false to preserve immediate accepted receipts for parallel\
+      \ fan-out.\n- Include subagent-mcp-server.mjs in contrib/pi-extension/package.json\
+      \ files array and wire process lifecycle cleanup (stdin close/end, SIGTERM,\
+      \ SIGINT) to resetExtensionUI(\"mcp_shutdown\") so all active child Pi processes\
+      \ and temporary ~/.pi/larva/runtime/child-* capsules are reaped on client disconnect.\n\
+      - Addcontrib/pi-extension/test-subagent-mcp-server.mjs (and any needed Python\
+      \ contract tests) exercising stdio JSON-RPC initialize, tools/list (verifying\
+      \ zero tool-name collision with LARVA_MCP_TOOLS in src/larva/shell/mcp_contract.py),\
+      \ single subagent wait_for_completion, parallel fan-out + larva_subagent_wait\
+      \ output delivery, parent_persona_id can_spawn enforcement, larva_subagent_activity\
+      \ inspection, larva_subagent_cancel, and disconnect child/capsule cleanup.\n\
+      \nBoundary:\n- node-typescript-engineer owns the complete TypeScript/Node implementation,\
+      \ package manifest update, and behavioral tests under contrib/pi-extension/**\
+      \ and tests/shell/test_pi_*.py.\n- Do not modify src/larva/shell/mcp_server.py,\
+      \ src/larva/shell/mcp_contract.py, or src/larva/core/**. Do not add runtime\
+      \ Pi version gates or global system changes.\n\nAdmit:\n- Existing contrib/pi-extension/test-*.mjs\
+      \ and tests/shell/test_pi_*.py must remain green alongside the new MCP server\
+      \ regression suite.\n- Use controlled child Pi RPC fixtures (and isolated real\
+      \ Pi smoke where applicable) without live external LLM spend.\n\nRecovery:\n\
+      - Reap all spawned child Pi processes and remove disposable test directories\
+      \ and capsule roots in finally blocks on success, failure, or cancellation."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0, proving external-host Pi CLI validation, optional parent_persona_id
+      can_spawn enforcement, async accepted + wait/select terminal output attachment,
+      synchronous wait_for_completion=true, activity read, cancel, zero tool-name
+      overlap with Python LARVA_MCP_TOOLS, and stdin-close child/capsule cleanup.
+
+      - Run `bash -c ''set -euo pipefail; export LARVA_TEST_PI_CODING_AGENT="$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent";
+      for f in contrib/pi-extension/test-*.mjs; do node "$f"; done''` -> all Node
+      extension tests pass without regression.
+
+      - Run `node scripts/pi-guard-checks.mjs tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_contract.py` -> passes.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/activity.ts
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - src/larva/shell/mcp_contract.py
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp.codex-plugin-and-docs
+    name: Deliver Codex plugin bundle, routing skill, documentation, and contract
+      tests
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/codex-plugin/**\n    - contrib/pi-extension/README.md\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - docs/reference/INTERFACES.md\n\
+      \    - README.md\n    - tests/shell/test_codex_plugin_contract.py\n  blocked_paths:\n\
+      \    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n    - contracts/**\n\
+      \    - src/larva/core/**\n\nDeliver:\n- Create the native Codex plugin package\
+      \ under contrib/codex-plugin/:\n  1. contrib/codex-plugin/.codex-plugin/plugin.json:\
+      \ valid Codex plugin manifest declaring name (\"larva-subagent\"), version,\
+      \ description, skills (\"./skills/\"), mcpServers (\"./.mcp.json\"), and interface\
+      \ metadata/assets.\n  2. contrib/codex-plugin/.mcp.json: stdio MCP server configuration\
+      \ launching contrib/pi-extension/subagent-mcp-server.mjs with tool_timeout_sec:\
+      \ 3600 and explicit env_vars allowlist (PATH, HOME, USER, LOGNAME, SHELL, TMPDIR,\
+      \ XDG_CONFIG_HOME, XDG_DATA_HOME, XDG_CACHE_HOME, PI_CODING_AGENT_DIR, LARVA_CLI_ARGV_JSON,\
+      \ LARVA_PI_CLI_SCRIPT, LARVA_PI_MODEL_MAP_FILE, LARVA_PI_SUBAGENT_CONFIG_FILE,\
+      \ LARVA_PI_CHILD_SESSION_DIR, LARVA_MCP_PARENT_PERSONA, plus standard provider\
+      \ API key and proxy variables).\n  3. contrib/codex-plugin/skills/larva-subagent/SKILL.md:\
+      \ concise routing instructions for Codex explaining how to discover personas\
+      \ with larva_personas, when to use wait_for_completion=true (single delegated\
+      \ task) versus wait_for_completion=false + larva_subagent_wait/select (parallel\
+      \ fan-out), how to resume a child session via exact task_id, and how to inspect\
+      \ tool activity via larva_subagent_activity without shell sleep polling.\n \
+      \ 4. contrib/codex-plugin/README.md: installation and configuration guide covering\
+      \ both direct cross-harness MCP setup (~/.codex/config.toml, Claude Code, Cursor,\
+      \ OpenCode) and Codex plugin installation, plus the capability division between\
+      \ larva mcp (registry CRUD) and larva-pi-subagent (runtime child Pi orchestration).\n\
+      - Update contrib/pi-extension/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,\
+      \ and docs/reference/INTERFACES.md to document the cross-harness subagent MCP\
+      \ server, external-host seams, outbox output delivery in wait/select, and relationship\
+      \ to the Python registry MCP server.\n- Add tests/shell/test_codex_plugin_contract.py\
+      \ verifying plugin.json/.mcp.json schema and path resolution, required env_vars\
+      \ forwarding list, SKILL.md structure, and end-to-end stdio launch of the configured\
+      \ MCP command from contrib/codex-plugin/.mcp.json.\n\nBoundary:\n- node-typescript-engineer\
+      \ owns the plugin bundle, documentation updates, and contract test suite.\n\
+      - Do not mutate the user's live ~/.codex/config.toml or ~/.codex/plugins/ during\
+      \ repository tests; verify plugin manifest and MCP server startup in isolated\
+      \ test fixtures.\n\nAdmit:\n- Consumes contrib/pi-extension/subagent-mcp-server.mjs\
+      \ delivered by pi-subagent-mcp.runtime-and-server.\n\nRecovery:\n- Clean up\
+      \ any spawned MCP test subprocesses on exit; leave user ~/.codex untouched."
+    verification: '- Run `node scripts/pi-guard-checks.mjs tests/shell/test_codex_plugin_contract.py`
+      -> passes all manifest, env_vars, skill, and live stdio MCP handshake checks.
+
+      - Run `uv run --locked --python 3.12 --group dev invar guard --all` -> passes
+      with 0 errors.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/INTERFACES.md
+    - tests/shell/test_opencode_plugin_contract.py
+    depends_on:
+    - pi-subagent-mcp.runtime-and-server
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp.acceptance-gate
+    name: Gate review and integrated acceptance for cross-harness Pi subagent MCP
+      and Codex plugin
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase pi_subagent_mcp_codex_plugin\
+      \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
+      \nBoundary:\n- gate-reviewer is strictly read-only (no_repo_change). Inspects\
+      \ integrated source diffs, test adequacy, documentation parity, and verification\
+      \ evidence from pi-subagent-mcp.runtime-and-server and pi-subagent-mcp.codex-plugin-and-docs.\n\
+      \nAdmit:\n- Included producer outcomes: pi-subagent-mcp.runtime-and-server and\
+      \ pi-subagent-mcp.codex-plugin-and-docs.\n- Verify:\n  1. External-host Pi CLI\
+      \ script resolution still enforces inspectPiCliScript package/bin identity and\
+      \ fails closed on invalid scripts.\n  2. External-host can_spawn admits default\
+      \ tool calls without a fake parent session while enforcing parent_persona_id\
+      \ whitelists when supplied.\n  3. Outbox callback capture delivers bounded child\
+      \ output (and full_output_artifact metadata when truncated) through larva_subagent_wait,\
+      \ larva_subagent_select, and wait_for_completion=true without breaking native\
+      \ Pi extension push callbacks.\n  4. Client disconnect (stdin close / SIGTERM)\
+      \ reaps active child Pi processes and removes temporary capsules.\n  5. Zero\
+      \ tool-name collision with existing Python larva registry MCP (LARVA_MCP_TOOLS),\
+      \ and contrib/codex-plugin bundle (.codex-plugin/plugin.json, .mcp.json, skills/larva-subagent/SKILL.md)\
+      \ is complete and verified.\n  6. Applicable project-native Node/Python regression\
+      \ suites and fresh full Invar guard pass on the integrated candidate.\n\nRecovery:\n\
+      - If a material defect or proof gap is found, report exact findings with file/line\
+      \ citations so Orchestrator can route a single cohesive repair before Delta\
+      \ gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks as needed (`git diff --check`, targeted Node/pytest verification, and
+      fresh Invar guard observation binding) on the immutable candidate commit.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/INTERFACES.md
+    - src/larva/shell/mcp_contract.py
+    depends_on:
+    - pi-subagent-mcp.codex-plugin-and-docs
+    agent: gate-reviewer
