@@ -147698,7 +147698,7 @@ phases:
       - contrib/pi-extension/README.md'
 - id: pi_subagent_mcp_lazy_runtime
   name: Lazy-load larva.ts runtime in subagent MCP server on first tool call
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-mcp-lazy-runtime.acceptance-gate verifies lazy larva.ts
     loading on first valid tools/call, no-op fast shutdown when larva.ts was never
     loaded, byte parity with contrib/codex-plugin/subagent-mcp-server.mjs, and passing
@@ -147800,7 +147800,7 @@ phases:
       - contrib/codex-plugin/README.md#result-delivery-and-lifecycle'
   - id: pi-subagent-mcp-lazy-runtime.acceptance-gate
     name: Gate review and integrated acceptance for lazy MCP runtime loading
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_lazy_runtime\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -147838,3 +147838,42 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-15T12:55:55.750585Z'
+    done_at: '2026-10-15T12:58:13.417548+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:e9c7fd8783887023cf7c1873d461e17a1bc8351d (integrating producer
+      commit 2427257da4f262f9a7a0d43f20f04f6e92a094af)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T12-56-34-985Z_01a13fa2-c7a8-77b1-9d77-88fc4eda1179.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_mcp_lazy_runtime], findings=[], warnings=[],
+      requirements 3/3 PROVEN (req-1-lazy-runtime-import-on-first-validated-tool-call,
+      req-2-fast-idle-shutdown-and-active-runtime-cleanup, req-3-byte-parity-and-regression-verification)
+
+
+      Verification:
+
+      - Run: `python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate3-binding-NpcyDv/binding.json /tmp/larva-gate3-binding-NpcyDv/gate-report.json`
+      -> exit 0 (`{"valid":true,"binding_checked":true,"kind":"gate","schema_version":"gate.report.v2","evidence_disposition":"POSITIVE_GATE_EVIDENCE","errors":[]}`).
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (14/14
+      assertions passed).
+
+      - Run: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed).
+
+      - Run: `git status --short && git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/subagent-mcp-server.mjs
+
+      - contrib/codex-plugin/subagent-mcp-server.mjs'
