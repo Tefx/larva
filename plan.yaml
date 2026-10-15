@@ -147595,7 +147595,7 @@ phases:
   - id: pi-subagent-mcp-self-contained.acceptance-gate
     name: Gate review and integrated acceptance for self-contained Codex plugin and
       headless MCP remediation
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_self_contained_plugin\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -147640,3 +147640,5 @@ phases:
     depends_on:
     - pi-subagent-mcp-self-contained.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-15T12:04:15.349606Z'
