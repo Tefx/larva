@@ -10447,7 +10447,17 @@ function resolvePiCommandPrefix(_env: RuntimeEnv): string[] | LarvaError {
   const explicit = env.LARVA_PI_CLI_SCRIPT ?? env.LARVA_PI_REAL_BIN;
   const candidates = explicit !== undefined ? [explicit] : (env.PATH ?? "").split(process.platform === "win32" ? ";" : ":").filter(isAbsolute).map((directory) => join(directory, "pi"));
   for (const script of candidates) {
-    const inspection = inspectPiCliScript(script);
+    let inspection = inspectPiCliScript(script);
+    if (!inspection.ok && explicit === undefined) {
+      try {
+        const realScript = realpathSync(script);
+        const agentDir = dirname(dirname(realScript));
+        const version = readFileSync(join(agentDir, "install", "current-version"), "utf8").trim();
+        if (/^[0-9A-Za-z._+-]+$/.test(version) && version !== "." && version !== "..") {
+          inspection = inspectPiCliScript(join(agentDir, "install", "releases", version, "node_modules", ".bin", "pi"));
+        }
+      } catch { /* Missing or invalid managed installations are not launch identities. */ }
+    }
     if (!inspection.ok) continue;
     try {
       accessSync(process.execPath, constants.X_OK);

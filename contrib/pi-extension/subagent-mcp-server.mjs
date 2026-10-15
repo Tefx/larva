@@ -36,13 +36,13 @@ const ids = { type: 'array', items: string, minItems: 1, maxItems: 25, uniqueIte
 const timeout = integer(0, 86400000);
 const definitions = [
   ['larva_personas', 'List resolved persona candidates.', { query: { type: 'string' }, limit: integer(1, 25) }],
-  ['larva_subagent', 'Spawn or resume a Pi child. Default returns an accepted receipt; wait_for_completion returns terminal output.', { persona_id: string, task: string, task_id: string, no_progress_timeout_ms: integer(120000, 86400000), parent_persona_id: string, wait_for_completion: { type: 'boolean' } }, ['persona_id', 'task']],
-  ['larva_subagent_wait', 'Wait for exact observed handles and return captured terminal output for ready tasks.', { task_ids: ids, return_when: { enum: ['all', 'any', 'first_error'] }, timeout_ms: timeout }, ['task_ids']],
-  ['larva_subagent_select', 'Wait for any exact observed handle and return captured terminal output.', { task_ids: ids, timeout_ms: timeout }, ['task_ids']],
+  ['larva_subagent', 'Spawn or resume an isolated Larva Pi child session when Larva-specific capabilities are requested: persona model-map routing, persistent .jsonl session resume, can_spawn policy, or larva_subagent_activity inspection. Hosts with built-in subagents should use those by default. Returns an exact .jsonl task_id handle for use only with larva_subagent_* tools. Default returns an accepted receipt; wait_for_completion returns terminal output.', { persona_id: string, task: string, task_id: string, no_progress_timeout_ms: integer(120000, 86400000), parent_persona_id: string, wait_for_completion: { type: 'boolean' } }, ['persona_id', 'task']],
+  ['larva_subagent_wait', 'Wait only on exact .jsonl task_id handles returned by larva_subagent, never handles from other agent tools; return captured terminal output for ready tasks.', { task_ids: ids, return_when: { enum: ['all', 'any', 'first_error'] }, timeout_ms: timeout }, ['task_ids']],
+  ['larva_subagent_select', 'Wait for any exact .jsonl task_id handle returned by larva_subagent, never handles from other agent tools; return captured terminal output.', { task_ids: ids, timeout_ms: timeout }, ['task_ids']],
   ['larva_subagent_status', 'Inspect process-local runs and startup failures.', { task_id: string, limit: integer(1, 25) }],
   ['larva_subagent_events', 'Inspect ordered process-local lifecycle events.', { since_sequence: integer(0, Number.MAX_SAFE_INTEGER), task_ids: ids, limit: integer(1, 100) }],
   ['larva_subagent_sessions', 'List recent process-local child sessions.', { limit: integer(1, 25) }],
-  ['larva_subagent_cancel', 'Cancel an exact observed child handle.', { task_id: string, reason: string }, ['task_id', 'reason']],
+  ['larva_subagent_cancel', 'Cancel only an exact .jsonl task_id handle returned by larva_subagent, never handles from other agent tools.', { task_id: string, reason: string }, ['task_id', 'reason']],
   ['larva_subagent_activity', 'Read recorded tool activity from an exact child session JSONL path.', { task_id: string, session_path: string, limit: integer(1, 20), cursor: string, tool_name: string, since_timestamp: string, until_timestamp: string, tool_call_id: string, disambiguation_index: integer(0, Number.MAX_SAFE_INTEGER), entry_id: string, segment_part: { enum: ['args', 'result'] }, result_index: integer(0, Number.MAX_SAFE_INTEGER), offset: integer(0, Number.MAX_SAFE_INTEGER), length: integer(1, 4000), source_version: string }],
 ];
 const tools = definitions.map(([name, description, properties, required = []]) => ({ name, description, inputSchema: { type: 'object', properties, required, additionalProperties: false } }));
@@ -50,7 +50,7 @@ const shutdownController = new AbortController();
 const disconnected = new Promise(resolve => shutdownController.signal.addEventListener('abort', resolve, { once: true }));
 const home = process.env.HOME || homedir();
 const pathEntries = (process.env.PATH ?? '').split(delimiter);
-for (const directory of [join(home, '.local/bin'), '/opt/homebrew/bin', '/usr/local/bin']) {
+for (const directory of [join(home, '.local/bin'), join(home, '.pi/agent/bin'), '/opt/homebrew/bin', '/usr/local/bin']) {
   if (existsSync(directory) && !pathEntries.includes(directory)) pathEntries.push(directory);
 }
 const ctx = { env: { ...process.env, PATH: pathEntries.join(delimiter) }, externalHostCanSpawn: true, abortSignal: shutdownController.signal };

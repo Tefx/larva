@@ -1,13 +1,13 @@
 {
   "name": "larva-subagent",
   "version": "0.8.7",
-  "description": "Delegate persona-scoped work to isolated Pi child sessions from Codex.",
+  "description": "On-demand bridge to Larva Pi child sessions for Larva-specific capabilities alongside Codex's default native subagents.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Larva Subagents",
     "shortDescription": "Persona routing and Pi child orchestration",
-    "longDescription": "Discover Larva personas, delegate work to Pi children, and retrieve terminal results from Codex.",
+    "longDescription": "Use Codex native subagents by default; opt into Larva Pi child sessions for persona model-map routing, persistent session resume, can_spawn policy, or activity inspection through this on-demand bridge.",
     "category": "Developer Tools",
     "composerIcon": "./assets/larva.svg",
     "logo": "./assets/larva.svg"

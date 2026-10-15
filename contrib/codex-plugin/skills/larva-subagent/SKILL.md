@@ -5,9 +5,24 @@ description: Discover Larva personas and delegate self-contained work to Pi chil
 
 # Larva subagent routing
 
-Use this skill when delegation benefits from a specialist, clean context, or
-parallel work. Retain integration responsibility and respect the user's scope,
-effect permissions, and any parent persona's `can_spawn` policy.
+## When to use Larva vs. native Codex subagents
+
+1. **Default to Codex native subagents:** Use Codex's built-in `spawn_agent`,
+   `wait`, `send_input`, and `close_agent` for ordinary subagent delegation.
+2. **Opt-in / capability-driven `larva_subagent`:** Use it only when the user
+   explicitly requests `larva` / `larva_subagent` / `pi` subagents, or when
+   the task requires Larva-specific capabilities: `model-map.json` cross-provider
+   routing, persistent `.jsonl` child session resume across turns/processes,
+   `can_spawn` parent whitelist enforcement, or `larva_subagent_activity`
+   inspection.
+3. **Strict handle separation:** Pass `larva_subagent` `.jsonl` `task_id`
+   handles only to `larva_subagent_wait`, `larva_subagent_select`,
+   `larva_subagent_cancel`, `larva_subagent_activity`, or `larva_subagent`
+   (resume)—never to Codex's `wait`, `send_input`, or `close_agent`.
+   Never pass Codex `agent_id` handles to `larva_subagent_*` tools.
+
+Retain integration responsibility and respect the user's scope, effect
+permissions, and any parent persona's `can_spawn` policy.
 
 ## Discover and delegate
 

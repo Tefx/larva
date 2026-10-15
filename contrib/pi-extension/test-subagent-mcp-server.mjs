@@ -305,6 +305,68 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.equal(Object.values(fallbackFound.details.terminal_outputs)[0].status,'success');
   await fallback.close();
   console.log('explicit CLI identity rejection and PATH discovery validation: PASS');
+  await rm(join(fallbackBin, 'pi'));
+
+  // A managed launcher is a shell wrapper, not the package's bin.pi entry.
+  const agent = join(root, '.pi', 'agent');
+  const managedLauncher = join(agent, 'bin', 'pi');
+  const currentVersion = join(agent, 'install', 'current-version');
+  const release = join(agent, 'install', 'releases', '1.2.0', 'node_modules');
+  const managedPath = join(root, 'managed-path');
+  await mkdir(join(agent, 'bin'), {recursive:true});
+  await mkdir(join(release, '.bin'), {recursive:true});
+  await mkdir(managedPath);
+  await writeFile(managedLauncher, '#!/bin/sh\nexit 99\n');
+  await writeFile(currentVersion, '1.2.0\n');
+  const releasePackage = join(release, '@earendil-works', 'pi-coding-agent');
+  await cp(pkg, releasePackage, {recursive:true});
+  await symlink(join(releasePackage, 'cli.mjs'), join(release, '.bin', 'pi'));
+  await symlink(managedLauncher, join(managedPath, 'pi'));
+  const managed = client({LARVA_PI_CLI_SCRIPT:undefined, LARVA_PI_REAL_BIN:undefined, PATH:managedPath});
+  const managedRun = await managed.tool('larva_subagent', {persona_id:'child',task:'managed release',wait_for_completion:true});
+  assert.equal(managedRun.isError, false, JSON.stringify(managedRun));
+  assert.equal(Object.values(managedRun.details.terminal_outputs)[0].status, 'success');
+  await managed.close();
+
+  // Exercise the additional agent/bin GUI fallback without the local/bin alias.
+  const managedFallback = client({LARVA_PI_CLI_SCRIPT:undefined, LARVA_PI_REAL_BIN:undefined, PATH:join(root,'absent-bin')});
+  const managedFallbackRun = await managedFallback.tool('larva_subagent', {persona_id:'child',task:'managed fallback',wait_for_completion:true});
+  assert.equal(Object.values(managedFallbackRun.details.terminal_outputs)[0].status, 'success');
+  await managedFallback.close();
+
+  // Direct runtime admission keeps rejection tests independent of machine PATH
+  // fallbacks. A valid PATH must never rescue an invalid explicit override.
+  const managedEnv = {...env, LARVA_PI_CLI_SCRIPT:undefined, LARVA_PI_REAL_BIN:undefined, PATH:managedPath};
+  async function rejectManaged(overrides = {}) {
+    try {
+      const result = await runtime.larva_subagent(
+        {persona_id:'child',task:'must not launch'},
+        {env:{...managedEnv,...overrides}, externalHostCanSpawn:true},
+      );
+      assert.equal(result.error?.code, 'LARVA_CHILD_START_FAILED', JSON.stringify(result));
+    } finally { await runtime.resetExtensionUI('test_cleanup'); }
+  }
+  await rejectManaged({LARVA_PI_CLI_SCRIPT:managedLauncher});
+  await rejectManaged({LARVA_PI_REAL_BIN:managedLauncher});
+  await rejectManaged({LARVA_PI_CLI_SCRIPT:cli, LARVA_PI_REAL_BIN:piScript});
+  // Dot and traversal tokens would reach a valid bin without token validation.
+  await symlink(release, join(agent, 'install', 'releases', 'node_modules'));
+  await symlink(release, join(agent, 'install', 'node_modules'));
+  for (const version of ['', '.', '..', '../releases/1.2.0', '1.2.0/extra', '1.2.0 missing', 'absent']) {
+    await writeFile(currentVersion, version);
+    await rejectManaged();
+  }
+  await writeFile(currentVersion, '1.2.0');
+  const releaseManifest = join(releasePackage, 'package.json');
+  const validManifest = JSON.parse(await readFile(releaseManifest, 'utf8'));
+  await writeFile(releaseManifest, JSON.stringify({...validManifest, name:'impostor'}));
+  await rejectManaged();
+  await writeFile(releaseManifest, JSON.stringify({...validManifest, bin:{pi:'other.mjs'}}));
+  await rejectManaged();
+  await writeFile(releaseManifest, JSON.stringify(validManifest));
+  await rm(currentVersion);
+  await rejectManaged();
+  console.log('managed installer PATH and agent/bin fallback discovery; strict explicit overrides, invalid versions and release identities: PASS');
   for (const signal of ['SIGTERM','SIGINT']) {
     const c = client();
     await c.tool('larva_subagent',{persona_id:'child',task:'hang until signal'});

@@ -239,6 +239,24 @@ behavior, target refresh semantics, and failure handling.
 
 ## Cross-harness Pi subagents and Codex plugin
 
+The MCP tool descriptions are harness-neutral: hosts with built-in subagents
+use those by default. The Codex plugin adds Strategy B routing guidance: use
+native `spawn_agent` / `wait` / `send_input` / `close_agent` for ordinary
+delegation; opt into Larva for an explicit Larva/Pi request or persona
+`model-map.json` cross-provider routing, persistent `.jsonl` resume,
+`can_spawn` parent policy, or `larva_subagent_activity` inspection.
+Keep handles separate: Larva `.jsonl` `task_id` values belong only to Larva
+subagent tools (including resume); native agent IDs belong to native tools.
+
+Without an explicit CLI override, PATH discovery supports the Pi Managed
+Installer: `~/.local/bin/pi` may point to `~/.pi/agent/bin/pi`; Larva reads
+`~/.pi/agent/install/current-version` and verifies the selected release's
+package name and `bin.pi` identity before launching its JavaScript entry.
+`LARVA_PI_CLI_SCRIPT` (or `LARVA_PI_REAL_BIN`) overrides discovery strictly:
+it must identify the real package bin script, never a shell launcher, and an
+invalid override fails closed without managed indirection or PATH fallback.
+Native Pi continues using its captured package/bin identity.
+
 Codex, Claude Code, Cursor, and OpenCode can delegate work to Pi children through
 `contrib/pi-extension/subagent-mcp-server.mjs`. The
 [Codex plugin bundle and setup guide](contrib/codex-plugin/README.md) includes

@@ -165,10 +165,28 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
     assert by_id[1]["result"]["serverInfo"]["name"] == "larva-pi-subagent"
     definitions = by_id[2]["result"]["tools"]
     assert len(definitions) == 9
+    # tools/list is the deployed, harness-neutral description contract.
+    descriptions = {tool["name"]: tool["description"] for tool in definitions}
+    for description in descriptions.values():
+        assert "codex" not in description.lower()
+        assert "spawn_agent" not in description.lower()
+    for name in ("larva_subagent", "larva_subagent_wait",
+                 "larva_subagent_select", "larva_subagent_cancel"):
+        assert ".jsonl" in descriptions[name]
+        assert "task_id" in descriptions[name]
     schemas = {tool["name"]: tool["inputSchema"] for tool in definitions}
     assert set(schemas) == TOOLS
 
     skill = (PLUGIN / "skills/larva-subagent/SKILL.md").read_text()
+    # These text checks pin the installed guidance, not model routing judgment.
+    assert "## When to use Larva vs. native Codex subagents" in skill
+    assert "Default to Codex native subagents" in skill
+    assert all(f"`{name}`" in skill for name in (
+        "spawn_agent", "wait", "send_input", "close_agent", "larva_subagent",
+        "model-map.json", "can_spawn", "larva_subagent_activity",
+    ))
+    assert "Strict handle separation" in skill
+    assert "Never pass Codex `agent_id` handles to `larva_subagent_*` tools" in skill
     frontmatter = re.match(r"\A---\n(.*?)\n---\n", skill, re.DOTALL)
     assert frontmatter is not None
     metadata = yaml.safe_load(frontmatter.group(1))

@@ -6,6 +6,24 @@ skill and presentation assets; direct MCP configuration needs no plugin.
 
 ## Prerequisites and capability boundary
 
+The MCP tool descriptions are harness-neutral: hosts with built-in subagents
+use those by default. The Codex plugin adds Strategy B routing guidance: use
+native `spawn_agent` / `wait` / `send_input` / `close_agent` for ordinary
+delegation; opt into Larva for an explicit Larva/Pi request or persona
+`model-map.json` cross-provider routing, persistent `.jsonl` resume,
+`can_spawn` parent policy, or `larva_subagent_activity` inspection.
+Keep handles separate: Larva `.jsonl` `task_id` values belong only to Larva
+subagent tools (including resume); native agent IDs belong to native tools.
+
+Without an explicit CLI override, PATH discovery supports the Pi Managed
+Installer: `~/.local/bin/pi` may point to `~/.pi/agent/bin/pi`; Larva reads
+`~/.pi/agent/install/current-version` and verifies the selected release's
+package name and `bin.pi` identity before launching its JavaScript entry.
+`LARVA_PI_CLI_SCRIPT` (or `LARVA_PI_REAL_BIN`) overrides discovery strictly:
+it must identify the real package bin script, never a shell launcher, and an
+invalid override fails closed without managed indirection or PATH fallback.
+Native Pi continues using its captured package/bin identity.
+
 The plugin bundles its runtime as regular files and runs from Codex's cache
 without `node_modules`, a sibling Pi extension checkout, or edits to `.mcp.json`.
 Use Node with native TypeScript and `node:module.registerHooks` support.
@@ -50,7 +68,9 @@ LARVA_CLI_ARGV_JSON = '["/absolute/path/to/larva-cli"]'
 LARVA_PI_CLI_SCRIPT = "/absolute/path/to/pi/package/dist/cli.js"
 ```
 
-Use your actual Pi package bin path; the example is a placeholder. The bundle's
+The CLI override is optional for PATH or Managed Installer discovery; omit its
+example line to use automatic discovery. Otherwise use your actual Pi package
+bin path; the example is a placeholder. The bundle's
 [`.mcp.json`](.mcp.json) contains the fuller provider/proxy allowlist; copy
 additional entries for your provider. Never put API key values in the bundle.
 An allowlist forwards existing values; it does not obtain credentials.

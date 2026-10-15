@@ -2,6 +2,24 @@
 
 ## Cross-harness subagent MCP
 
+The MCP tool descriptions are harness-neutral: hosts with built-in subagents
+use those by default. The Codex plugin adds Strategy B routing guidance: use
+native `spawn_agent` / `wait` / `send_input` / `close_agent` for ordinary
+delegation; opt into Larva for an explicit Larva/Pi request or persona
+`model-map.json` cross-provider routing, persistent `.jsonl` resume,
+`can_spawn` parent policy, or `larva_subagent_activity` inspection.
+Keep handles separate: Larva `.jsonl` `task_id` values belong only to Larva
+subagent tools (including resume); native agent IDs belong to native tools.
+
+Without an explicit CLI override, PATH discovery supports the Pi Managed
+Installer: `~/.local/bin/pi` may point to `~/.pi/agent/bin/pi`; Larva reads
+`~/.pi/agent/install/current-version` and verifies the selected release's
+package name and `bin.pi` identity before launching its JavaScript entry.
+`LARVA_PI_CLI_SCRIPT` (or `LARVA_PI_REAL_BIN`) overrides discovery strictly:
+it must identify the real package bin script, never a shell launcher, and an
+invalid override fails closed without managed indirection or PATH fallback.
+Native Pi continues using its captured package/bin identity.
+
 `node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`
 exposes the same child runtime over stdio to Codex, Claude Code, Cursor, and
 OpenCode. The [Codex plugin and direct MCP setup guide](../codex-plugin/README.md)
@@ -31,7 +49,8 @@ The marketplace resolves `contrib/codex-plugin/`; its five regular runtime files
 run from the plugin cache without `node_modules` or a sibling Pi extension.
 The bundled `.mcp.json` runs `node ./subagent-mcp-server.mjs` with `cwd: "."`.
 Pi and the Python Larva CLI remain separate installations. The MCP host appends
-existing `~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin` to PATH
+existing `~/.local/bin`, `~/.pi/agent/bin`, `/opt/homebrew/bin`, and
+`/usr/local/bin` to PATH
 without overriding explicit prefixes. External-host runs skip TUI presentation
 and timeline workers; native Pi presentation is unchanged.
 
