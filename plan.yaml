@@ -147110,7 +147110,7 @@ phases:
   steps:
   - id: pi-subagent-mcp.runtime-and-server
     name: Deliver external-host larva.ts seams and stdio Pi subagent MCP server
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - tests/shell/test_pi_*.py\n\
       \    - tests/fixtures/pi/**\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
@@ -147196,6 +147196,49 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-15T06:41:33.671775Z'
+    done_at: '2026-10-15T07:20:35.142065+00:00'
+    evidence: 'Artifact:
+
+      - Commit: d65d66498e38f138c39beb042a5c9939533b604d (retained ref: refs/vectl/candidates/pi-subagent-mcp.runtime-and-server)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T06-44-08-308Z_01a13e4d-cbf4-7097-9dd8-5e58051152b5.jsonl)
+
+      - Files: contrib/pi-extension/larva.ts, contrib/pi-extension/subagent-mcp-server.mjs,
+      contrib/pi-extension/package.json, contrib/pi-extension/test-subagent-mcp-server.mjs,
+      contrib/pi-extension/README.md, contrib/pi-extension/test-persona-candidate-hotpath-runtime.mjs
+
+
+      Verification:
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (stdio
+      initialize, framed ping, tools/list 9 tools with zero overlap against LARVA_MCP_TOOLS,
+      external-host default admission, single-call wait_for_completion=true outbox,
+      parent_persona_id can_spawn boolean/whitelist and LARVA_MCP_PARENT_PERSONA enforcement,
+      parallel fan-out + wait/select terminal_outputs attachment, status/events/sessions,
+      activity inspection, resume outbox replacement, truncated callback preview +
+      full_output_artifact, cancel, stdin disconnect and SIGTERM/SIGINT child/capsule
+      reaping, explicit CLI identity fail-closed rejection and PATH discovery validation).
+
+      - Run: `bash -c ''set -euo pipefail; export LARVA_TEST_PI_CODING_AGENT="$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent";
+      for f in contrib/pi-extension/test-*.mjs; do node "$f"; done''` -> exit 0 (all
+      24 Node extension test files passed).
+
+      - Run: `node scripts/pi-guard-checks.mjs tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_contract.py` -> exit 0 (passed, 42 files checked,
+      0 errors, doctest passed, crosshair verified, property_tests 11/11 passed).
+
+      - Run: `git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - None (controlled Pi RPC fixture used for deterministic tests without live
+      provider spend).
+
+
+      Spec link:
+
+      - contrib/pi-extension/README.md#external-host-pi-subagent-mcp-server'
   - id: pi-subagent-mcp.codex-plugin-and-docs
     name: Deliver Codex plugin bundle, routing skill, documentation, and contract
       tests
