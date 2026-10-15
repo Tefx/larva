@@ -148127,7 +148127,7 @@ phases:
       - contrib/pi-extension/README.md#cross-harness-subagent-mcp'
 - id: pi_subagent_startup_readiness_timeout
   name: Separate child Pi initial RPC readiness timeout and enrich timeout diagnostics
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-startup-readiness-timeout.acceptance-gate verifies
     CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000 separation from CHILD_RPC_COMMAND_TIMEOUT_MS
     = 10_000, timeout diagnostics in error message and RPC trace, >10s delayed readiness
@@ -148255,7 +148255,7 @@ phases:
   - id: pi-subagent-startup-readiness-timeout.acceptance-gate
     name: Gate review and integrated acceptance for child Pi initial RPC readiness
       timeout and diagnostics
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_startup_readiness_timeout`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -148297,3 +148297,44 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-15T16:17:09.898920Z'
+    done_at: '2026-10-15T16:20:21.516493+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:c11e1fcb4185dfd87a946a42ed52e2cca0b1711f (integrating producer
+      commit 28d8db3c588b53377b3b83ac8ac8741e0e12a38e)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T16-17-49-840Z_01a1405b-0710-729d-9428-f39882863ef7.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_startup_readiness_timeout], findings=[],
+      requirements 3/3 PROVEN (req-1-independent-startup-readiness-timeout-60s, req-2-enriched-rpc-timeout-diagnostics-and-trace,
+      req-3-delayed-readiness-and-bounded-failure-tests-and-parity)
+
+
+      Verification:
+
+      - Run: `python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate5-binding-0I2yoM/binding.json /tmp/larva-gate5-binding-0I2yoM/gate-report.json`
+      -> exit 0 (`{"valid":true,"binding_checked":true,"kind":"gate","schema_version":"gate.report.v2","evidence_disposition":"POSITIVE_GATE_EVIDENCE","errors":[]}`).
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (18/18
+      check groups passed).
+
+      - Run: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed).
+
+      - Run: `git status --short && git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/README.md#child-rpc-readiness-and-timeout-diagnostics
+
+      - contrib/codex-plugin/README.md#child-rpc-readiness-and-timeout-diagnostics
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-readiness-and-timeout-diagnostics'
