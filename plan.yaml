@@ -147091,7 +147091,7 @@ phases:
       commit to be pushed separately without moving tag or republishing.'
 - id: pi_subagent_mcp_codex_plugin
   name: Cross-harness Pi subagent MCP server and Codex plugin
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-mcp.acceptance-gate verifies that the cross-harness
     stdio MCP server and Codex plugin wrapper drive real Pi RPC subagents through
     contrib/pi-extension/larva.ts without regressing native Pi extension behavior
@@ -147344,7 +147344,7 @@ phases:
   - id: pi-subagent-mcp.acceptance-gate
     name: Gate review and integrated acceptance for cross-harness Pi subagent MCP
       and Codex plugin
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_codex_plugin\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -147382,3 +147382,56 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-15T07:37:02.333454Z'
+    done_at: '2026-10-15T07:52:27.577400+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:bf25cbcda65f9a92ee32166810a87763a2c8ec54 (integrating producer
+      commits d65d66498e38f138c39beb042a5c9939533b604d and 66bb1f774fe6fd771484fce60d561b3c979fd4e1)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T07-38-18-854Z_01a13e7f-6563-72f4-83de-4a6b18d5a929.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_mcp_codex_plugin], findings=[], requirements
+      6/6 PROVEN (req-1-external-host-pi-cli-script-resolution, req-2-external-host-can-spawn-and-parent-whitelist,
+      req-3-outbox-callback-capture-and-wait-select-delivery, req-4-client-disconnect-and-signal-cleanup,
+      req-5-zero-tool-collision-and-codex-plugin-bundle, req-6-regression-and-invar-guard-verification)
+
+
+      Verification:
+
+      - Run: `python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate-binding-9VyAx2/binding.json /tmp/larva-gate-binding-9VyAx2/gate-report.json`
+      -> exit 0 (`{"valid":true,"binding_checked":true,"kind":"gate","schema_version":"gate.report.v2","evidence_disposition":"POSITIVE_GATE_EVIDENCE","errors":[]}`).
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (all
+      11 external-host stdio MCP runtime assertions passed).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (2 passed).
+
+      - Run: `node scripts/pi-guard-checks.mjs tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_contract.py tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (passed, 42 files checked, 0 errors, doctest passed, crosshair verified,
+      property_tests 12/12 passed).
+
+      - Run: `uv run --locked --python 3.12 --group dev invar guard --all` -> exit
+      0 (passed, 42 files checked, 0 errors).
+
+      - Run: `git status --short` and `git diff --check` -> exit 0 (empty output).
+
+
+      Gaps:
+
+      - Live external LLM provider spend and interactive Codex desktop UI installation
+      are outside repository test scope.
+
+
+      Spec link:
+
+      - contrib/pi-extension/README.md#external-host-pi-subagent-mcp-server
+
+      - contrib/codex-plugin/README.md
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#cross-harness-stdio-host
+
+      - docs/reference/INTERFACES.md#mcp-surface'
