@@ -148338,3 +148338,139 @@ phases:
       - contrib/codex-plugin/README.md#child-rpc-readiness-and-timeout-diagnostics
 
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-readiness-and-timeout-diagnostics'
+- id: pi_subagent_mcp_docs_completion
+  name: Complete documentation and READMEs for Codex plugin and general-harness Pi
+    subagent MCP
+  status: pending
+  gate: Terminal gate pi-subagent-mcp-docs-completion.acceptance-gate verifies documentation
+    completeness, accuracy, cross-file consistency across README.md, contrib/codex-plugin/README.md,
+    contrib/pi-extension/README.md, docs/README.md, docs/guides/USER_GUIDE.md, docs/guides/USAGE.md,
+    docs/reference/INTERFACES.md, and docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+    and passing contract checks.
+  context: 'Authority: user-requested completion and structuring of operator/user/agent
+    documentation and READMEs for both Codex (Plugin + Strategy B) and general MCP
+    harnesses (subagent-mcp-server.mjs).'
+  depends_on:
+  - pi_subagent_startup_readiness_timeout
+  steps:
+  - id: pi-subagent-mcp-docs-completion.deliver
+    name: Complete and structure Codex plugin and general-harness Pi subagent MCP
+      documentation and READMEs
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - README.md\n    - contrib/codex-plugin/README.md\n \
+      \   - contrib/pi-extension/README.md\n    - docs/README.md\n    - docs/guides/USER_GUIDE.md\n\
+      \    - docs/guides/USAGE.md\n    - docs/reference/INTERFACES.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n\
+      \    - tests/shell/test_codex_plugin_contract.py\n  blocked_paths:\n    - plan.yaml\n\
+      \    - .vectl/**\n    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n\
+      \    - src/larva/shell/mcp*.py\n\nDeliver:\n1. `README.md`:\n   - In `### MCP`\
+      \ (under `## Interfaces`), clarify the two orthogonal MCP servers: `larva mcp`\
+      \ (13 registry CRUD/variant tools) and `node contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ (9 cross-harness Pi subagent runtime tools).\n   - In `## Cross-harness Pi\
+      \ subagents and Codex plugin`, clearly structure into two subsections: **Codex\
+      \ plugin (Marketplace install & Strategy B routing)** (`codex plugin marketplace\
+      \ add /path/to/larva` + `codex plugin add larva-subagent@larva`, native `spawn_agent`\
+      \ default vs opt-in/capability-driven `larva_subagent`, strict handle separation)\
+      \ and **General MCP harnesses (Claude Code, Cursor, OpenCode, and stdio hosts)**\
+      \ (harness-neutral tool surface, automatic Pi Managed Installer / `PATH` and\
+      \ `settings.json` discovery, lazy on-demand `larva.ts` loading, 60s startup\
+      \ readiness window, `wait_for_completion: true` vs parallel fan-out `wait`/`select`\
+      \ `terminal_outputs`, `parent_persona_id` / `LARVA_MCP_PARENT_PERSONA`, and\
+      \ `larva_subagent_activity`).\n2. `contrib/codex-plugin/README.md` & `contrib/pi-extension/README.md`:\n\
+      \   - Refine and organize `contrib/codex-plugin/README.md` and `contrib/pi-extension/README.md`\
+      \ so the distinction and setup steps for (a) **Codex Plugin** (self-contained\
+      \ cache execution, Strategy B routing with native `spawn_agent`, plugin refresh\
+      \ commands) and (b) **General MCP Harnesses** (Claude Code `.mcp.json`, Cursor\
+      \ `.cursor/mcp.json`, OpenCode `opencode.json`, direct Codex `config.toml`,\
+      \ environment variables, and tool usage workflows) are clear and non-repetitive.\n\
+      3. `docs/README.md`, `docs/guides/USER_GUIDE.md`, and `docs/guides/USAGE.md`:\n\
+      \   - In `docs/README.md`, add `../contrib/codex-plugin/README.md` and `../contrib/pi-extension/README.md`\
+      \ to the documentation map.\n   - In `docs/guides/USER_GUIDE.md`, update `##\
+      \ 14. MCP surface` to present both the Python registry MCP (`larva mcp`) and\
+      \ the Node cross-harness Pi subagent MCP (`subagent-mcp-server.mjs`), and add\
+      \ a dedicated section covering **Cross-harness Pi subagents and Codex plugin**\
+      \ (Codex marketplace install & Strategy B routing, general harness MCP configuration,\
+      \ automatic Pi Managed Installer discovery, and the 9 runtime tools).\n   -\
+      \ In `docs/guides/USAGE.md`, update `### Primary: MCP Server` to document both\
+      \ MCP servers and add `### Workflow E: Cross-harness Pi subagents (Codex and\
+      \ general MCP harnesses)` under `## 9. Common Workflows` showing single-task\
+      \ `wait_for_completion: true`, parallel fan-out + `larva_subagent_wait`/`select`\
+      \ (`terminal_outputs`), exact `.jsonl` `task_id` resume, `larva_subagent_activity`,\
+      \ and handle isolation.\n4. `docs/reference/INTERFACES.md` and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`:\n\
+      \   - Ensure clean organization, accurate cross-links, and complete coverage\
+      \ of the 60s startup readiness window (`CHILD_RPC_STARTUP_READY_TIMEOUT_MS`),\
+      \ 10s ordinary RPC command default (`CHILD_RPC_COMMAND_TIMEOUT_MS`), 5s model-map\
+      \ switch override (`MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS`), and layered routing\
+      \ descriptions.\n\nBoundary:\n- `node-typescript-engineer` owns documentation\
+      \ and README updates plus any accompanying contract test assertions within `allowed_paths`.\n\
+      - Do not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not\
+      \ mutate user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- Python\
+      \ Codex plugin contract tests, Node MCP server test suite, and git diff check\
+      \ pass.\n\nRecovery:\n- Revert uncommitted documentation edits or reconcile\
+      \ failing contract assertions within `allowed_paths`; reap any spawned child\
+      \ processes on test exit."
+    verification: '- Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - README.md
+    - contrib/codex-plugin/README.md
+    - contrib/pi-extension/README.md
+    - docs/README.md
+    - docs/guides/USER_GUIDE.md
+    - docs/guides/USAGE.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp-docs-completion.acceptance-gate
+    name: Gate review and integrated acceptance for Codex plugin and general-harness
+      Pi subagent MCP documentation
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `pi_subagent_mcp_docs_completion`\
+      \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
+      \nBoundary:\n- `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects\
+      \ integrated documentation diffs, cross-file consistency, and verification evidence\
+      \ from `pi-subagent-mcp-docs-completion.deliver`.\n\nAdmit:\n- Included producer\
+      \ outcome: `pi-subagent-mcp-docs-completion.deliver` (building on `pi_subagent_startup_readiness_timeout`).\n\
+      - Verify:\n  1. `README.md` clearly distinguishes `larva mcp` (13 registry CRUD/variant\
+      \ tools) from `node contrib/pi-extension/subagent-mcp-server.mjs` (9 cross-harness\
+      \ Pi subagent runtime tools) and structures `## Cross-harness Pi subagents and\
+      \ Codex plugin` into Codex plugin (Marketplace install & Strategy B routing)\
+      \ and General MCP harnesses subsections.\n  2. `contrib/codex-plugin/README.md`\
+      \ and `contrib/pi-extension/README.md` clearly and non-repetitively cover Codex\
+      \ Plugin vs General MCP Harnesses setup, environment variables, and tool usage\
+      \ workflows.\n  3. `docs/README.md` links `../contrib/codex-plugin/README.md`\
+      \ and `../contrib/pi-extension/README.md`; `docs/guides/USER_GUIDE.md` documents\
+      \ both MCP surfaces and adds the dedicated Cross-harness Pi subagents and Codex\
+      \ plugin section; `docs/guides/USAGE.md` documents both MCP servers and adds\
+      \ `### Workflow E: Cross-harness Pi subagents (Codex and general MCP harnesses)`.\n\
+      \  4. `docs/reference/INTERFACES.md` and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`\
+      \ accurately cross-link and cover `CHILD_RPC_STARTUP_READY_TIMEOUT_MS` (60s),\
+      \ `CHILD_RPC_COMMAND_TIMEOUT_MS` (10s), `MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS`\
+      \ (5s), and layered routing descriptions; contract checks (`.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, `node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `git diff --check`) pass.\n\nRecovery:\n- If a material defect or documentation/contract\
+      \ gap is found, report exact findings with file/line citations so Orchestrator\
+      \ can route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`.venv/bin/python -m pytest
+      -q tests/shell/test_codex_plugin_contract.py`, `node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      and `git diff --check`).'
+    refs:
+    - README.md
+    - contrib/codex-plugin/README.md
+    - contrib/pi-extension/README.md
+    - docs/README.md
+    - docs/guides/USER_GUIDE.md
+    - docs/guides/USAGE.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - pi-subagent-mcp-docs-completion.deliver
+    agent: gate-reviewer
