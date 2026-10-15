@@ -147242,7 +147242,7 @@ phases:
   - id: pi-subagent-mcp.codex-plugin-and-docs
     name: Deliver Codex plugin bundle, routing skill, documentation, and contract
       tests
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/codex-plugin/**\n    - contrib/pi-extension/README.md\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - docs/reference/INTERFACES.md\n\
@@ -147296,6 +147296,8 @@ phases:
     depends_on:
     - pi-subagent-mcp.runtime-and-server
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-15T07:21:33.047226Z'
   - id: pi-subagent-mcp.acceptance-gate
     name: Gate review and integrated acceptance for cross-harness Pi subagent MCP
       and Codex plugin
