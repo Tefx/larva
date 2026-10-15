@@ -147800,7 +147800,7 @@ phases:
       - contrib/codex-plugin/README.md#result-delivery-and-lifecycle'
   - id: pi-subagent-mcp-lazy-runtime.acceptance-gate
     name: Gate review and integrated acceptance for lazy MCP runtime loading
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_lazy_runtime\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -147836,3 +147836,5 @@ phases:
     depends_on:
     - pi-subagent-mcp-lazy-runtime.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-15T12:55:55.750585Z'
