@@ -27,7 +27,8 @@ registerHooks({
     }
   },
 });
-const runtime = await import('./larva.ts');
+let runtimePromise;
+const getRuntime = () => (runtimePromise ??= import('./larva.ts'));
 
 const string = { type: 'string', minLength: 1 };
 const integer = (minimum, maximum) => ({ type: 'integer', minimum, maximum });
@@ -90,6 +91,7 @@ async function callTool(name, args) {
   if (!args || typeof args !== 'object' || Array.isArray(args)) return badInput('arguments must be an object.');
   const schema = tool.inputSchema;
   if (schema.required.some(key => !Object.hasOwn(args, key)) || Object.entries(args).some(([key, value]) => !Object.hasOwn(schema.properties, key) || !validValue(value, schema.properties[key]))) return badInput('Arguments do not match the tool input schema.');
+  const runtime = await getRuntime();
   if (name === 'larva_subagent') {
     let release;
     const slot = { payload: null, delivered: new Promise(resolve => { release = resolve; }) };
@@ -121,7 +123,9 @@ let stopping;
 function shutdown() {
   if (!stopping) {
     shutdownController.abort();
-    stopping = runtime.resetExtensionUI('mcp_shutdown').then(() => { process.exitCode = 0; });
+    stopping = (runtimePromise
+      ? runtimePromise.then(runtime => runtime.resetExtensionUI('mcp_shutdown'))
+      : Promise.resolve()).then(() => { process.exitCode = 0; });
   }
   return stopping;
 }

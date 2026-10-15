@@ -1364,7 +1364,11 @@ window; resumed runs replace the prior output for that handle. These outputs
 belong to this MCP server process and disappear on restart. Activity inspection
 can still read historical session files.
 
-Closing client stdin, SIGTERM or SIGINT calls `resetExtensionUI("mcp_shutdown")`
+The server loads `larva.ts` on demand after the first tool call passes tool lookup
+and input schema validation. Initialization, ping, discovery and rejected calls do
+not load the runtime; sessions with no validated tool call exit on EOF without
+loading it. Once loading has started, closing client stdin, SIGTERM or SIGINT
+awaits the runtime and calls `resetExtensionUI("mcp_shutdown")`
 to cancel active runs, reap child processes and remove their private runtime
 capsules. Session JSONL files and final output artifacts remain available at their
 reported paths. Run `node contrib/pi-extension/test-subagent-mcp-server.mjs` for

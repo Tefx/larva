@@ -82,6 +82,45 @@ async function assertReaped() {
   }
 }
 try {
+  // Discovery and rejected calls must work even without the runtime or dependencies.
+  const idleDir = join(root, 'server-only');
+  await mkdir(idleDir);
+  await cp(join(packageDir, 'subagent-mcp-server.mjs'), join(idleDir, 'subagent-mcp-server.mjs'));
+  assert.deepEqual(await readdir(idleDir), ['subagent-mcp-server.mjs']);
+  const idle = client({}, idleDir);
+  assert.equal((await idle.request('initialize')).result.serverInfo.name, 'larva-pi-subagent');
+  idle.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
+  assert.deepEqual((await idle.request('ping')).result, {});
+  assert.equal((await idle.request('tools/list')).result.tools.length, 9);
+  const unknown = await idle.request('tools/call', { name: 'unknown', arguments: {} });
+  assert.equal(unknown.error.code, -32602);
+  for (const args of [[], { task: 'missing persona' }, { persona_id: 'child', task: 'run', unknown: true }, { persona_id: 'child', task: 1 }]) {
+    const invalid = await idle.tool('larva_subagent', args);
+    assert.equal(invalid.isError, true);
+    assert.equal(invalid.details.error.code, 'LARVA_BAD_INPUT');
+  }
+  await idle.close();
+  console.log('server-only initialize, notification, ping, tools/list, rejected calls and idle EOF: PASS');
+
+  // Observe import and reset at the actual module boundary. Real child/capsule
+  // cleanup is exercised separately below with the production runtime.
+  const lifecycleFile = join(idleDir, 'lifecycle.jsonl');
+  await writeFile(join(idleDir, 'larva.ts'), `
+import { appendFile } from 'node:fs/promises';
+const record = value => appendFile(${JSON.stringify(lifecycleFile)}, JSON.stringify(value)+'\\n');
+await record('loaded');
+export function larva_subagent_sessions() { return { content: [], details: { sessions: [] } }; }
+export async function resetExtensionUI(reason) { await record(reason); }
+`);
+  const lazy = client({}, idleDir);
+  await lazy.request('initialize');
+  assert.equal(existsSync(lifecycleFile), false);
+  await Promise.all([lazy.tool('larva_subagent_sessions'), lazy.tool('larva_subagent_sessions')]);
+  assert.deepEqual((await readFile(lifecycleFile, 'utf8')).trim().split('\n').map(JSON.parse), ['loaded']);
+  await lazy.close();
+  assert.deepEqual((await readFile(lifecycleFile, 'utf8')).trim().split('\n').map(JSON.parse), ['loaded', 'mcp_shutdown']);
+  console.log('first validated call imports once; EOF awaits resetExtensionUI(mcp_shutdown): PASS');
+
   await mkdir(env.PI_CODING_AGENT_DIR, { recursive: true });
   await symlink(join(root, 'absent-target'), join(env.PI_CODING_AGENT_DIR, 'dangling'));
   const cli = join(root, 'larva-cli.mjs');

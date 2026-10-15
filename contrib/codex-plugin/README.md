@@ -143,6 +143,11 @@ edit your live `~/.codex/config.toml` or `~/.codex/plugins/`.
 
 ## Result delivery and lifecycle
 
+The server loads `larva.ts` only after a tool call passes tool lookup and input
+schema validation. Initialization, ping, discovery and rejected calls leave the
+runtime unloaded. Idle EOF exits without importing it; after loading starts,
+shutdown awaits `resetExtensionUI("mcp_shutdown")` to reap children and capsules.
+
 For one task, `larva_subagent(wait_for_completion: true)` returns terminal
 results in `structuredContent.terminal_outputs` keyed by exact task ID.
 For parallel work, use `wait_for_completion: false` (the default), preserve the
