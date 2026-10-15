@@ -147344,7 +147344,7 @@ phases:
   - id: pi-subagent-mcp.acceptance-gate
     name: Gate review and integrated acceptance for cross-harness Pi subagent MCP
       and Codex plugin
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_codex_plugin\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -147380,3 +147380,5 @@ phases:
     depends_on:
     - pi-subagent-mcp.codex-plugin-and-docs
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-15T07:37:02.333454Z'
