@@ -147894,7 +147894,7 @@ phases:
   - id: pi-subagent-mcp-managed-install-and-routing.deliver
     name: Implement Pi Managed Installer resolution and Strategy B layered routing
       descriptions
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - README.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n   \
@@ -147986,6 +147986,49 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-15T15:40:18.685551Z'
+    done_at: '2026-10-15T15:48:35.578849+00:00'
+    evidence: 'Artifact:
+
+      - Commit: d9afaa4770e07a206062ca4768e1c96d2b7be47b (retained ref: refs/vectl/candidates/pi-subagent-mcp-managed-install-and-routing.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T15-42-17-929Z_01a1403a-7f48-768c-a18f-6d024fb29c60.jsonl)
+
+      - Files: contrib/pi-extension/larva.ts, contrib/pi-extension/subagent-mcp-server.mjs,
+      contrib/codex-plugin/larva.ts, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/codex-plugin/.codex-plugin/plugin.json, contrib/codex-plugin/skills/larva-subagent/SKILL.md,
+      contrib/codex-plugin/README.md, contrib/pi-extension/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      docs/reference/INTERFACES.md, README.md, contrib/pi-extension/test-subagent-mcp-server.mjs,
+      tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (15/15
+      assertions passed, including managed installer PATH and `~/.pi/agent/bin` fallback
+      discovery, strict explicit overrides, invalid version tokens, and release identity
+      verification).
+
+      - Run: `node contrib/pi-extension/test-native-launch-context.mjs` -> exit 0
+      (6/6 passed).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed in 1.07s, including harness-neutral MCP tool descriptions,
+      Codex-specific Strategy B SKILL.md guidance, and SHA-256 byte parity across
+      all 5 runtime files).
+
+      - Run: `git diff --check && git status --short` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/codex-plugin/skills/larva-subagent/SKILL.md
+
+      - contrib/pi-extension/README.md#cross-harness-subagent-mcp'
   - id: pi-subagent-mcp-managed-install-and-routing.acceptance-gate
     name: Gate review and integrated acceptance for Pi Managed Installer resolution
       and Strategy B routing
