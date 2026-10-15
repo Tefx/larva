@@ -10,7 +10,8 @@
 
 ### Primary: MCP Server
 
-Prefer MCP for programmatic access. Start the stdio server with `larva mcp`.
+Prefer MCP for programmatic access. Two independent stdio servers have distinct
+responsibilities. Start the Python registry server with `larva mcp`.
 This release line uses MCP Python SDK 1.x (`mcp>=1.20,<2`); MCP 2.x requires a
 future server-integration migration before the upper bound can be removed. The
 release gate installs the built wheel through clean `uvx`, initializes the stdio
@@ -45,6 +46,16 @@ larva_component_show
 For every PersonaSpec input, forbidden legacy vocabulary is `tools` and
 `side_effect_policy`. Unknown top-level fields, including `variant`, are rejected
 as non-canonical. Pass `variant` as an operation parameter, never inside `spec`.
+
+The Node runtime server is separate:
+`node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`.
+It exposes nine cross-harness Pi subagent tools:
+`larva_personas`, `larva_subagent`, `larva_subagent_wait`,
+`larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
+`larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
+It discovers resolved personas and runs children without registry mutation.
+Configure either or both servers. See [Workflow E](#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses)
+and the [adapter setup guide](../../contrib/codex-plugin/README.md).
 
 ### Fallback: CLI
 
@@ -444,6 +455,122 @@ on runtime cache miss or expiry, no raw placeholder leakage, and fail-closed
 behavior when no prompt can be resolved. Runtime cache fallback is not registry
 storage state and never repairs registry files. Adding or deleting a persona id
 changes the OpenCode agent list and requires restarting `larva opencode`.
+
+### Workflow E: Cross-harness Pi subagents (Codex and general MCP harnesses)
+
+Configure the Node stdio server using the
+[adapter guide](../../contrib/codex-plugin/README.md#direct-mcp-configuration).
+For Codex Marketplace installation, use `codex plugin marketplace add /path/to/larva`
+then `codex plugin add larva-subagent@larva`. General MCP hosts use the same nine
+runtime tools without the Codex routing skill.
+
+The following array contains example MCP `tools/call` params, in workflow order.
+Select a registered persona from discovery; replace the persona IDs as needed.
+The two async spawns return their own exact absolute `.jsonl` `task_id` values:
+the paths below are placeholders for those receipts, never IDs to fabricate.
+
+```json
+[
+  {
+    "name": "larva_personas",
+    "arguments": {
+      "query": "typescript",
+      "limit": 5
+    }
+  },
+  {
+    "name": "larva_subagent",
+    "arguments": {
+      "persona_id": "node-typescript-engineer",
+      "task": "Explain the CLI entry point.",
+      "wait_for_completion": true
+    }
+  },
+  {
+    "name": "larva_subagent",
+    "arguments": {
+      "persona_id": "node-typescript-engineer",
+      "task": "Inspect CLI argument handling without edits.",
+      "wait_for_completion": false
+    }
+  },
+  {
+    "name": "larva_subagent",
+    "arguments": {
+      "persona_id": "node-typescript-engineer",
+      "task": "Inspect CLI error handling without edits.",
+      "wait_for_completion": false
+    }
+  },
+  {
+    "name": "larva_subagent_wait",
+    "arguments": {
+      "task_ids": [
+        "/absolute/sessions/args.jsonl",
+        "/absolute/sessions/errors.jsonl"
+      ],
+      "return_when": "all",
+      "timeout_ms": 60000
+    }
+  },
+  {
+    "name": "larva_subagent_select",
+    "arguments": {
+      "task_ids": [
+        "/absolute/sessions/args.jsonl",
+        "/absolute/sessions/errors.jsonl"
+      ],
+      "timeout_ms": 60000
+    }
+  },
+  {
+    "name": "larva_subagent",
+    "arguments": {
+      "persona_id": "node-typescript-engineer",
+      "task": "Continue with a summary of the argument findings.",
+      "task_id": "/absolute/sessions/args.jsonl",
+      "wait_for_completion": true
+    }
+  },
+  {
+    "name": "larva_subagent_activity",
+    "arguments": {
+      "task_id": "/absolute/sessions/args.jsonl",
+      "limit": 5
+    }
+  }
+]
+```
+
+1. Discover resolved persona candidates with `larva_personas`.
+2. Use `wait_for_completion: true` for a single task's terminal result.
+3. For parallel fan-out, send independent spawns with `false` (the default);
+   preserve each accepted receipt's exact `task_id`. Choose `wait` for all/any/
+   first error or `select` for the first ready task. Both MCP results expose
+   `structuredContent.terminal_outputs`, keyed by ready task ID, plus snapshots
+   and captured callback text. The wait and select examples are alternatives;
+   an observer timeout can return no terminal outputs.
+4. Resume a completed or safely reconciled historical session by passing its
+   exact `.jsonl` `task_id` with `persona_id` and a continuation `task`.
+   Read recorded tools through `larva_subagent_activity`; activity is historical
+   evidence and cannot prove that a run is active or accepted.
+
+The external host supplies spawn authority by default. Per-call
+`parent_persona_id` takes precedence over `LARVA_MCP_PARENT_PERSONA` and
+enforces the resolved parent's `can_spawn` boolean/whitelist.
+Keep the MCP connection open: disconnect aborts active children; restart loses
+observer/outbox state. Captured terminal output retains the latest 25 completed
+tasks and is non-consuming. Historical session files remain available for resume
+and activity inspection. Host call deadlines, observer timeouts, initial child
+RPC readiness (60 seconds), ordinary RPC commands (10 seconds), model-map child
+switches (5 seconds), and the no-progress watchdog are separate controls.
+
+**Codex Strategy B:** default to native `spawn_agent` / `wait` / `send_input` /
+`close_agent`. Opt into Larva for explicit Larva/Pi requests or needed
+`model-map.json` cross-provider routing, persistent resume, `can_spawn` parent
+policy, or activity inspection. Pass Larva `.jsonl` `task_id` only to Larva tools,
+including resume; pass native Codex `agent_id` only to native tools.
+Never mix handles or use shell sleep polling.
 
 ---
 

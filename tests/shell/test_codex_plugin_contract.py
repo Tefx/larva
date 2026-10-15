@@ -211,3 +211,31 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
     wait = next(c["arguments"] for c in calls if c["name"] == "larva_subagent_wait")
     activity = next(c["arguments"] for c in calls if c["name"] == "larva_subagent_activity")
     assert wait["task_ids"] == [resume["task_id"]] == [activity["task_id"]]
+
+    # The operator workflow uses the real advertised schemas, so renamed keys,
+    # wrong types, and invalid wait modes in runnable examples fail here.
+    usage = (ROOT / "docs/guides/USAGE.md").read_text()
+    workflow = usage.split("### Workflow E:", 1)[1].split("\n## ", 1)[0]
+    example = re.search(r"```json\n(.*?)\n```", workflow, re.DOTALL)
+    assert example is not None
+    workflow_calls = json.loads(example.group(1))
+    for call in workflow_calls:
+        jsonschema.validate(call["arguments"], schemas[call["name"]])
+    fanout = [call["arguments"] for call in workflow_calls
+              if call["name"] == "larva_subagent"
+              and call["arguments"].get("wait_for_completion") is False]
+    waits = [call["arguments"] for call in workflow_calls
+             if call["name"] in {"larva_subagent_wait", "larva_subagent_select"}]
+    assert len(fanout) == 2
+    assert len(waits) == 2
+    assert waits[0]["task_ids"] == waits[1]["task_ids"]
+    assert len(waits[0]["task_ids"]) == len(fanout)
+    continuation = next(call["arguments"] for call in workflow_calls
+                        if call["name"] == "larva_subagent"
+                        and "task_id" in call["arguments"])
+    inspection = next(call["arguments"] for call in workflow_calls
+                      if call["name"] == "larva_subagent_activity")
+    assert continuation["task_id"] in waits[0]["task_ids"]
+    assert inspection["task_id"] == continuation["task_id"]
+    assert all(Path(task_id).is_absolute() and task_id.endswith(".jsonl")
+               for task_id in waits[0]["task_ids"])

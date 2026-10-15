@@ -119,6 +119,10 @@ Important behavior:
 
 ### MCP
 
+Larva supplies two orthogonal stdio MCP servers with distinct tool names.
+The Python `larva mcp` server provides 13 PersonaSpec registry CRUD, validation,
+resolve and variant tools:
+
 ```text
 larva_validate(spec)                    -> ValidationReport
 larva_register(spec, variant?)          -> {id, registered}
@@ -154,6 +158,14 @@ Larva currently uses the MCP Python SDK 1.x `mcp.server.fastmcp` API and declare
 package installers must not resolve MCP 2.x for this release line. The publish
 workflow builds the wheel, installs it through a clean `uvx --from <wheel>`
 process, initializes MCP, and verifies the 13-tool list before upload.
+
+The Node.js server `node contrib/pi-extension/subagent-mcp-server.mjs`
+provides nine cross-harness Pi subagent runtime tools:
+`larva_personas`, `larva_subagent`, `larva_subagent_wait`,
+`larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
+`larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
+It discovers personas through the CLI and does not mutate the registry.
+Configure either server or both; see [cross-harness setup](#cross-harness-pi-subagents-and-codex-plugin).
 
 ### CLI
 
@@ -239,44 +251,84 @@ behavior, target refresh semantics, and failure handling.
 
 ## Cross-harness Pi subagents and Codex plugin
 
-The MCP tool descriptions are harness-neutral: hosts with built-in subagents
-use those by default. The Codex plugin adds Strategy B routing guidance: use
-native `spawn_agent` / `wait` / `send_input` / `close_agent` for ordinary
-delegation; opt into Larva for an explicit Larva/Pi request or persona
-`model-map.json` cross-provider routing, persistent `.jsonl` resume,
-`can_spawn` parent policy, or `larva_subagent_activity` inspection.
-Keep handles separate: Larva `.jsonl` `task_id` values belong only to Larva
-subagent tools (including resume); native agent IDs belong to native tools.
+### Codex plugin (Marketplace install and Strategy B routing)
 
-Without an explicit CLI override, PATH discovery supports the Pi Managed
-Installer: `~/.local/bin/pi` may point to `~/.pi/agent/bin/pi`; Larva reads
-`~/.pi/agent/install/current-version` and verifies the selected release's
-package name and `bin.pi` identity before launching its JavaScript entry.
-`LARVA_PI_CLI_SCRIPT` (or `LARVA_PI_REAL_BIN`) overrides discovery strictly:
-it must identify the real package bin script, never a shell launcher, and an
-invalid override fails closed without managed indirection or PATH fallback.
-Native Pi continues using its captured package/bin identity.
-
-Codex, Claude Code, Cursor, and OpenCode can delegate work to Pi children through
-`contrib/pi-extension/subagent-mcp-server.mjs`. The
-[Codex plugin bundle and setup guide](contrib/codex-plugin/README.md) includes
-direct MCP configuration, a native Codex manifest, and a routing skill.
-Its `larva-pi-subagent` server supplies nine runtime tools, independently of
-the Python `larva mcp` registry CRUD server. Use blocking
-`wait_for_completion: true` for one task, or asynchronous receipts plus
-wait/select for parallel work; MCP results include process-local
-`terminal_outputs`. Configure `LARVA_PI_CLI_SCRIPT` for the real Pi entry and
-optionally `LARVA_MCP_PARENT_PERSONA` (or per-call `parent_persona_id`) to
-enforce parent spawn policy. Install the self-contained plugin directly:
+Install from the local marketplace without editing configuration:
 
 ```sh
 codex plugin marketplace add /path/to/larva
 codex plugin add larva-subagent@larva
 ```
 
-The plugin runs from Codex's cache without `node_modules`, a sibling extension,
-or manual `.mcp.json` path editing. Install Pi and the Python Larva CLI separately;
-see the setup guide for executable discovery and the verification boundary.
+Codex caches a self-contained bundle and runs `node ./subagent-mcp-server.mjs`
+from its root, without `node_modules` or sibling directories. Pi and the Python
+Larva CLI are separate installations. After updating the checkout, refresh the
+plugin cache:
+
+```sh
+codex plugin remove larva-subagent@larva && codex plugin add larva-subagent@larva
+```
+
+Strategy B coexists with Codex native subagents: use `spawn_agent` / `wait` /
+`send_input` / `close_agent` by default. Opt into `larva_subagent` for explicit
+Larva/Pi requests or persona `model-map.json` cross-provider routing, persistent
+`.jsonl` session resume, a parent's `can_spawn` whitelist, or
+`larva_subagent_activity` inspection. Keep handles strictly separate:
+Larva's exact `.jsonl` `task_id` belongs only to Larva tools (including resume);
+Codex `agent_id` belongs only to native tools.
+
+### General MCP harnesses (Claude Code, Cursor, OpenCode, and stdio hosts)
+
+Tool descriptions are harness-neutral; hosts with built-in subagents use those
+by default. Any MCP stdio host can configure this command (use an absolute path):
+
+```json
+{
+  "mcpServers": {
+    "larva-pi-subagent": {
+      "command": "node",
+      "args": ["/absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs"]
+    }
+  }
+}
+```
+
+The [adapter setup guide](contrib/codex-plugin/README.md#direct-mcp-configuration)
+provides Codex TOML, Claude Code `.mcp.json`, Cursor `.cursor/mcp.json`, and
+OpenCode `opencode.json` formats, credential forwarding, and host deadlines.
+
+Larva CLI discovery checks settings (including `~/.pi/agent/settings.json`
+`larva.cliPath`), then `~/.local/bin/larva`, then `PATH`; an explicit
+`LARVA_CLI_ARGV_JSON` overrides this. Pi discovery supports the Managed Installer:
+`~/.local/bin/pi` → `~/.pi/agent/bin/pi` →
+`~/.pi/agent/install/current-version` →
+`~/.pi/agent/install/releases/<ver>/node_modules/.bin/pi`.
+`inspectPiCliScript` verifies package and `bin.pi` identity.
+The host appends existing `~/.local/bin`, `~/.pi/agent/bin`, `/opt/homebrew/bin`
+and `/usr/local/bin` to `PATH`. An explicit `LARVA_PI_CLI_SCRIPT` must be a
+real package bin script; invalid overrides fail closed without discovery fallback.
+
+The server lazily loads `larva.ts` on the first validated `tools/call`;
+initialize/list/ping and rejected calls leave it unloaded (about 42 MB idle RSS
+in an observed local run, varying by platform and Node build).
+Initial child RPC readiness uses
+`CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000` (60 seconds);
+ordinary RPC commands default to
+`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` (10 seconds).
+Model-map child switches explicitly override this with
+`MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000` (5 seconds).
+These differ from host, observer and no-progress deadlines.
+
+Use `larva_subagent(wait_for_completion: true)` for one task. For parallel
+fan-out, accept receipts with the default `false`, then call
+`larva_subagent_wait` / `larva_subagent_select` using exact `task_id` values.
+MCP responses include process-local `terminal_outputs`; disconnect aborts active
+children and restart loses the observer/outbox state. Resume an exact historical
+`.jsonl` path with a continuation task after reconciling uncertain effects.
+Optional per-call `parent_persona_id` takes precedence over
+`LARVA_MCP_PARENT_PERSONA` and enforces the resolved parent's `can_spawn`.
+See the [Pi extension guide](contrib/pi-extension/README.md#external-host-pi-subagent-mcp-server)
+for lifecycle details.
 
 ## Pi Coding Agent integration
 

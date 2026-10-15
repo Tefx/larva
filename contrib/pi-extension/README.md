@@ -18,7 +18,13 @@ package name and `bin.pi` identity before launching its JavaScript entry.
 `LARVA_PI_CLI_SCRIPT` (or `LARVA_PI_REAL_BIN`) overrides discovery strictly:
 it must identify the real package bin script, never a shell launcher, and an
 invalid override fails closed without managed indirection or PATH fallback.
+`inspectPiCliScript` validates the selected
+`~/.pi/agent/install/releases/<ver>/node_modules/.bin/pi` package entry.
 Native Pi continues using its captured package/bin identity.
+Larva CLI resolution uses an explicit `LARVA_CLI_ARGV_JSON`, otherwise settings
+(including `~/.pi/agent/settings.json` `larva.cliPath`), then `~/.local/bin/larva`
+and `PATH`. The later [external-host section](#external-host-pi-subagent-mcp-server)
+details the protocol and lifecycle; the linked setup guide supplies host configs.
 
 `node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`
 exposes the same child runtime over stdio to Codex, Claude Code, Cursor, and
@@ -27,9 +33,9 @@ covers installation, explicit environment forwarding, and host tool timeouts.
 This server is orthogonal to Python `larva mcp` (persona registry CRUD); it
 provides nine child-runtime tools, not registry mutation.
 
-External hosts use `LARVA_PI_CLI_SCRIPT` to identify the verified Pi package
-bin script. The server supplies `externalHostCanSpawn: true`; optional
-`parent_persona_id` per call, or `LARVA_MCP_PARENT_PERSONA` as fallback, enforces
+External hosts can discover Pi automatically or set `LARVA_PI_CLI_SCRIPT`
+to the verified Pi package bin script. The server supplies
+`externalHostCanSpawn: true`; optional `parent_persona_id` per call, or `LARVA_MCP_PARENT_PERSONA` as fallback, enforces
 that resolved parent's `can_spawn` without changing native Pi parent rules.
 Use `wait_for_completion: true` for one delegated task, or accepted receipts
 plus wait/select for parallel work. MCP wait/select results add
@@ -48,6 +54,8 @@ codex plugin add larva-subagent@larva
 The marketplace resolves `contrib/codex-plugin/`; its five regular runtime files
 run from the plugin cache without `node_modules` or a sibling Pi extension.
 The bundled `.mcp.json` runs `node ./subagent-mcp-server.mjs` with `cwd: "."`.
+After updating the checkout, refresh the plugin cache with
+`codex plugin remove larva-subagent@larva && codex plugin add larva-subagent@larva`.
 Pi and the Python Larva CLI remain separate installations. The MCP host appends
 existing `~/.local/bin`, `~/.pi/agent/bin`, `/opt/homebrew/bin`, and
 `/usr/local/bin` to PATH
@@ -1342,8 +1350,10 @@ must be reported as unsupported or blocked rather than as live support.
 
 Run `node /absolute/path/to/contrib/pi-extension/subagent-mcp-server.mjs` from
 an MCP client's stdio server configuration. Use Node with native TypeScript
-support (the checkout tests use Node 26) and the extension's installed dependencies.
-No additional MCP npm package is required. This server exposes nine tools:
+support and `node:module.registerHooks` (the checkout tests use Node 26).
+The headless host needs neither local `node_modules` nor an additional MCP npm
+package; Pi and the Python Larva CLI must be installed separately.
+This server exposes nine tools:
 `larva_personas`, `larva_subagent`, `larva_subagent_wait`,
 `larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
 `larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
@@ -1383,9 +1393,10 @@ window; resumed runs replace the prior output for that handle. These outputs
 belong to this MCP server process and disappear on restart. Activity inspection
 can still read historical session files.
 
-The server loads `larva.ts` on demand after the first tool call passes tool lookup
-and input schema validation. Initialization, ping, discovery and rejected calls do
-not load the runtime; sessions with no validated tool call exit on EOF without
+The server loads `larva.ts` on demand after the first `tools/call` passes tool
+lookup and input schema validation (about 42 MB idle RSS observed locally,
+varying by platform and Node build). Initialization, ping, `tools/list` and
+rejected calls do not load the runtime; sessions with no validated tool call exit on EOF without
 loading it. Once loading has started, closing client stdin, SIGTERM or SIGINT
 awaits the runtime and calls `resetExtensionUI("mcp_shutdown")`
 to cancel active runs, reap child processes and remove their private runtime
@@ -1708,8 +1719,10 @@ Child Pi initial RPC readiness has a separate 60-second window
 and resumed `switch_session` (`switch-1`) use it after spawn. Subsequent ordinary
 RPC commands, including route-state checks, `set_model`, `set_thinking_level`,
 and final-text collection, retain the 10-second
-`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` default. Prompt preflight retains its
-separate 60-second window. These windows do not extend the no-progress watchdog
+`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` default. Model-map child route switches
+explicitly use the 5-second `MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000`
+override for their state/model/thinking commands and rollback. Prompt preflight
+retains its separate 60-second window. These windows do not extend the no-progress watchdog
 or observer deadlines.
 
 RPC timeout errors report `id`, `type`, `stage`, `first_frame_received`,

@@ -61,7 +61,7 @@ it must identify the real package bin script, never a shell launcher, and an
 invalid override fails closed without managed indirection or PATH fallback.
 Native Pi continues using its captured package/bin identity.
 
-The Python `larva mcp` server owns the registry tools below. Separately,
+The Python `larva mcp` server owns the 13 registry tools below. Separately,
 `node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`
 provides cross-harness Pi orchestration:
 
@@ -74,7 +74,22 @@ provides cross-harness Pi orchestration:
 These nine runtime tools do not mutate the persona registry. The external host
 supplies `externalHostCanSpawn`; optional per-call `parent_persona_id` or
 fallback `LARVA_MCP_PARENT_PERSONA` constrains spawn through resolved
-`can_spawn`. `LARVA_PI_CLI_SCRIPT` identifies the real Pi package bin script.
+`can_spawn`. Pi discovery is automatic unless an override is supplied;
+`LARVA_PI_CLI_SCRIPT` must identify the real Pi package bin script.
+`inspectPiCliScript` validates the selected managed release at
+`~/.pi/agent/install/releases/<ver>/node_modules/.bin/pi`.
+Larva CLI discovery uses explicit `LARVA_CLI_ARGV_JSON`, otherwise settings
+(including `~/.pi/agent/settings.json` `larva.cliPath`), then `~/.local/bin/larva`
+and `PATH`.
+
+The first validated `tools/call` lazily imports `larva.ts`; initialize, ping,
+tools/list and rejected calls leave it unloaded. Initial child RPC readiness
+uses `CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000`; ordinary commands default to
+`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000`. Model-map child route switches override
+that with `MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000`, including rollback.
+See [RPC timeout diagnostics](PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-readiness-and-timeout-diagnostics)
+for `rpc_timeout` trace fields; these windows do not extend observer or watchdog
+deadlines.
 
 MCP wait/select return process-local `terminal_outputs` in structured content
 in addition to readiness; `wait_for_completion: true` on subagent returns the
@@ -100,6 +115,12 @@ existing `~/.local/bin`, `~/.pi/agent/bin`, `/opt/homebrew/bin`, and
 `/usr/local/bin` to PATH
 without overriding explicit prefixes. External-host runs skip TUI presentation
 and timeline workers; native Pi presentation is unchanged.
+
+After a checkout update, refresh the cached plugin with
+`codex plugin remove larva-subagent@larva && codex plugin add larva-subagent@larva`.
+Resume a persistent session with the exact `.jsonl` `task_id`, `persona_id` and
+continuation `task`; `larva_subagent_activity` reads recorded tools at that path
+without proving current lifecycle state.
 
 Primary registry MCP tools:
 

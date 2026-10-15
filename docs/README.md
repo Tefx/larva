@@ -8,6 +8,11 @@ project documentation lives here by category.
 - `guides/USER_GUIDE.md` — human-oriented walkthrough
 - `guides/USAGE.md` — agent/operator usage notes
 
+## Adapter guides
+
+- [Codex plugin and general MCP harness setup](../contrib/codex-plugin/README.md) — Marketplace install, Strategy B routing, and direct stdio configuration.
+- [Pi extension](../contrib/pi-extension/README.md) — native Pi integration and external-host subagent lifecycle.
+
 ## Reference
 
 - [`reference/ARCHITECTURE.md`](reference/ARCHITECTURE.md)

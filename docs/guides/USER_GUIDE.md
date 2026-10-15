@@ -380,6 +380,9 @@ updated = update("code-reviewer", {"model": "openai/gpt-5.5-pro"})
 
 ## 14. MCP surface
 
+The Python `larva mcp` stdio server provides these 13 registry CRUD, validation,
+resolve and variant tools:
+
 ```text
 larva_validate(spec)
 larva_register(spec, variant?)
@@ -403,6 +406,15 @@ larva_assemble
 larva_component_list
 larva_component_show
 ```
+
+The separate Node.js server
+`node contrib/pi-extension/subagent-mcp-server.mjs` exposes nine cross-harness
+Pi runtime tools:
+`larva_personas`, `larva_subagent`, `larva_subagent_wait`,
+`larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
+`larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
+These discover personas and manage child sessions without registry mutation.
+Configure both servers when you need both capabilities; see section 17.
 
 ## 15. Web UI and plugin
 
@@ -525,7 +537,59 @@ compatibility aliases. The full target policy is documented in
 This is Pi adapter-local behavior only: it does not change the local PersonaSpec
 contract, and the model never receives a direct `commitPersona` tool.
 
-## 17. Troubleshooting
+## 17. Cross-harness Pi subagents and Codex plugin
+
+Install the self-contained Codex Marketplace plugin without editing paths:
+
+```sh
+codex plugin marketplace add /path/to/larva
+codex plugin add larva-subagent@larva
+```
+
+Codex runs `node ./subagent-mcp-server.mjs` from its cached plugin root without
+`node_modules` or a sibling checkout. After a checkout update, refresh with
+`codex plugin remove larva-subagent@larva && codex plugin add larva-subagent@larva`.
+
+Strategy B keeps native `spawn_agent` / `wait` / `send_input` / `close_agent`
+as the default. Choose `larva_subagent` for explicit Larva/Pi requests or needed
+`model-map.json` cross-provider routing, persistent session resume, a parent's
+`can_spawn` whitelist, or `larva_subagent_activity` inspection.
+Larva `.jsonl` `task_id` and Codex `agent_id` handles must stay in their own tools.
+
+General MCP harnesses need no Codex plugin. Configure `node` with the absolute
+`contrib/pi-extension/subagent-mcp-server.mjs` path as a stdio server.
+The [adapter guide](../../contrib/codex-plugin/README.md#direct-mcp-configuration)
+has Claude Code `.mcp.json`, Cursor `.cursor/mcp.json`, OpenCode
+`opencode.json`, and Codex TOML examples, with credential forwarding guidance.
+Install the Python Larva CLI and Pi separately.
+
+Larva CLI discovery uses settings (including `~/.pi/agent/settings.json`
+`larva.cliPath`), then `~/.local/bin/larva`, then `PATH`, unless overridden
+by `LARVA_CLI_ARGV_JSON`. Pi Managed Installer discovery follows
+`~/.local/bin/pi` → `~/.pi/agent/bin/pi`, reads
+`~/.pi/agent/install/current-version`, and verifies
+`~/.pi/agent/install/releases/<ver>/node_modules/.bin/pi` through
+`inspectPiCliScript`. An explicit `LARVA_PI_CLI_SCRIPT` must identify the real
+package bin script and fails closed if invalid.
+
+Initialization, ping and `tools/list` leave `larva.ts` unloaded; the first validated
+`tools/call` loads it lazily (about 42 MB idle RSS observed locally, environment-dependent).
+Child startup readiness has a 60-second window; ordinary RPC commands default
+to 10 seconds, with a 5-second override for model-map child switches.
+
+Start with `larva_personas`, then use `larva_subagent(wait_for_completion: true)`
+for one task. For fan-out, spawn with `false` (default), collect exact receipt
+`task_id` values, and call `larva_subagent_wait` or `larva_subagent_select`.
+MCP responses include `terminal_outputs`. Resume with the same exact session
+`.jsonl` path and a continuation task; inspect recorded tools with
+`larva_subagent_activity`. Optional `parent_persona_id`, falling back to
+`LARVA_MCP_PARENT_PERSONA`, enforces the resolved parent's `can_spawn`.
+Disconnect aborts active children; observer state and the 25-result outbox do
+not survive server restart. See [Workflow E](USAGE.md#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses)
+for concrete calls and the [runtime reference](../reference/PI_EXTENSION_ASYNC_SUBAGENTS.md)
+for lifecycle and timeout diagnostics.
+
+## 18. Troubleshooting
 
 ### `INVALID_PERSONA_ID`
 
@@ -591,7 +655,7 @@ You tried to delete the only remaining variant. Delete the base persona instead.
 `variant` is registry-local metadata. Pass it as a CLI/MCP/API parameter, not as
 a key inside PersonaSpec JSON.
 
-## 18. Design notes worth remembering
+## 19. Design notes worth remembering
 
 - larva is the local registry/admission/projection authority for registered
   persona instances, not the canonical PersonaSpec contract authority or runtime
@@ -603,7 +667,7 @@ a key inside PersonaSpec JSON.
 - `variant` and `_registry` are not PersonaSpec fields
 - no hidden mutable state is applied to personas between calls except explicit registry operations
 
-## 19. Recommended reading order
+## 20. Recommended reading order
 
 1. `../../README.md`
 2. `USER_GUIDE.md`

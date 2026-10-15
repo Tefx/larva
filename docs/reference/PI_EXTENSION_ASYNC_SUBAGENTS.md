@@ -42,8 +42,13 @@ Cursor and OpenCode can use this runtime independently of the Python
 `contrib/codex-plugin/` bundles the manifest, MCP configuration, assets, and
 routing skill; see its [setup guide](../../contrib/codex-plugin/README.md).
 
-External launch uses `LARVA_PI_CLI_SCRIPT` for a verified Pi package bin script
-when the parent process is not Pi. The server passes
+External launch can discover Pi automatically or use `LARVA_PI_CLI_SCRIPT`
+for a verified Pi package bin script when the parent process is not Pi.
+`inspectPiCliScript` verifies the Managed Installer release entry at
+`~/.pi/agent/install/releases/<ver>/node_modules/.bin/pi`.
+Larva CLI discovery uses `LARVA_CLI_ARGV_JSON` when explicit; otherwise it checks
+settings (including `~/.pi/agent/settings.json` `larva.cliPath`), then
+`~/.local/bin/larva`, then `PATH`. The server passes
 `externalHostCanSpawn: true` to the runtime. A per-call `parent_persona_id`
 takes precedence over `LARVA_MCP_PARENT_PERSONA`; if supplied, the resolved
 parent must permit the requested child through `can_spawn`. With neither
@@ -65,6 +70,13 @@ existing `~/.local/bin`, `~/.pi/agent/bin`, `/opt/homebrew/bin`, and
 `/usr/local/bin` to PATH
 without overriding explicit prefixes. External-host runs skip TUI presentation
 and timeline workers; native Pi presentation is unchanged.
+
+The first validated `tools/call` lazily imports `larva.ts`; initialize, ping,
+tools/list and rejected calls leave it unloaded (about 42 MB idle RSS observed
+locally, depending on platform and Node build). Idle EOF exits without loading;
+once loading starts, shutdown awaits `resetExtensionUI("mcp_shutdown")`.
+After updating the checkout, refresh the Codex cached bundle with
+`codex plugin remove larva-subagent@larva && codex plugin add larva-subagent@larva`.
 
 ### MCP output delivery
 
@@ -1884,8 +1896,10 @@ Child Pi initial RPC readiness has a separate 60-second window
 and resumed `switch_session` (`switch-1`) use it after spawn. Subsequent ordinary
 RPC commands, including route-state checks, `set_model`, `set_thinking_level`,
 and final-text collection, retain the 10-second
-`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` default. Prompt preflight retains its
-separate 60-second window. These windows do not extend the no-progress watchdog
+`CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` default. Model-map child route switches
+explicitly use the 5-second `MODEL_MAP_CHILD_SWITCH_TIMEOUT_MS = 5_000`
+override for their state/model/thinking commands and rollback. Prompt preflight
+retains its separate 60-second window. These windows do not extend the no-progress watchdog
 or observer deadlines.
 
 RPC timeout errors report `id`, `type`, `stage`, `first_frame_received`,
