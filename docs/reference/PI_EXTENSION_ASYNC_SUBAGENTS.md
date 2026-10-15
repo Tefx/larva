@@ -32,6 +32,21 @@ parent must permit the requested child through `can_spawn`. With neither
 parent selector, the external host grants spawn authority. Native active
 persona enforcement is unchanged.
 
+Install the self-contained Codex plugin without configuration edits:
+
+```sh
+codex plugin marketplace add /path/to/larva
+codex plugin add larva-subagent@larva
+```
+
+The marketplace resolves `contrib/codex-plugin/`; its five regular runtime files
+run from the plugin cache without `node_modules` or a sibling Pi extension.
+The bundled `.mcp.json` runs `node ./subagent-mcp-server.mjs` with `cwd: "."`.
+Pi and the Python Larva CLI remain separate installations. The MCP host appends
+existing `~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin` to PATH
+without overriding explicit prefixes. External-host runs skip TUI presentation
+and timeline workers; native Pi presentation is unchanged.
+
 ### MCP output delivery
 
 Native Pi wait/select return readiness and rely on push callbacks for output.

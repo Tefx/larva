@@ -3,7 +3,7 @@
     "larva-pi-subagent": {
       "command": "node",
       "args": [
-        "../pi-extension/subagent-mcp-server.mjs"
+        "./subagent-mcp-server.mjs"
       ],
       "cwd": ".",
       "tool_timeout_sec": 3600,

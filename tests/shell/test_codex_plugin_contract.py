@@ -6,6 +6,7 @@ No check installs a plugin or inherits provider credentials.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -82,8 +83,36 @@ def test_manifest_and_mcp_config() -> None:
     })
     assert REQUIRED_ENV <= set(server["env_vars"])
     script = (PLUGIN / server["cwd"] / server["args"][0]).resolve()
-    assert script == ROOT / "contrib/pi-extension/subagent-mcp-server.mjs"
+    assert server["args"] == ["./subagent-mcp-server.mjs"]
+    assert script == PLUGIN / "subagent-mcp-server.mjs"
     assert script.is_file()
+
+
+def test_marketplace_and_runtime_parity() -> None:
+    """The local marketplace resolves a self-contained, byte-identical runtime."""
+    marketplace = json.loads((ROOT / ".agents/plugins/marketplace.json").read_text())
+    jsonschema.validate(marketplace, {
+        "type": "object", "additionalProperties": False,
+        "required": ["name", "interface", "plugins"],
+        "properties": {
+            "name": {"const": "larva"},
+            "interface": {"const": {"displayName": "Larva"}},
+            "plugins": {"const": [{
+                "name": "larva-subagent",
+                "source": {"source": "local", "path": "./contrib/codex-plugin"},
+                "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+                "category": "Productivity",
+            }]},
+        },
+    })
+    assert (ROOT / marketplace["plugins"][0]["source"]["path"]).resolve() == PLUGIN
+    for name in ("subagent-mcp-server.mjs", "larva.ts", "activity.ts",
+                 "child-rpc-frame-preload.mjs", "session-timeline-worker.mjs"):
+        bundled = PLUGIN / name
+        assert bundled.is_file() and not bundled.is_symlink()
+        assert hashlib.sha256(bundled.read_bytes()).digest() == hashlib.sha256(
+            (ROOT / "contrib/pi-extension" / name).read_bytes()
+        ).digest(), name
 
 
 def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
@@ -105,10 +134,17 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
         {"jsonrpc": "2.0", "method": "notifications/initialized"},
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
     ]
+    # Match Codex's regular-file-only cache copy, without the source sibling.
+    cached = tmp_path / "cache" / "larva-subagent"
+    shutil.copytree(PLUGIN, cached, ignore=lambda directory, names: [
+        name for name in names if (Path(directory) / name).is_symlink()
+    ])
+    assert not (cached / "node_modules").exists()
+    assert not (cached.parent / "pi-extension").exists()
     # communicate closes stdin after writing: this exercises the real EOF cleanup.
     # No tools/call is sent, so no registry, provider, or child launch is needed.
     process = subprocess.Popen(
-        [node, *server["args"]], cwd=PLUGIN / server["cwd"], env=env,
+        [node, *server["args"]], cwd=cached / server["cwd"], env=env,
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True,
     )

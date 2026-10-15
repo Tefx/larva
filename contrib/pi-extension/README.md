@@ -20,6 +20,21 @@ metadata. The outbox retains 25 completed results, is process-local and
 non-consuming, and disappears on restart. Disconnect aborts active children.
 Native Pi still uses its push callback; native wait/select remain readiness-only.
 
+Install the self-contained Codex plugin without configuration edits:
+
+```sh
+codex plugin marketplace add /path/to/larva
+codex plugin add larva-subagent@larva
+```
+
+The marketplace resolves `contrib/codex-plugin/`; its five regular runtime files
+run from the plugin cache without `node_modules` or a sibling Pi extension.
+The bundled `.mcp.json` runs `node ./subagent-mcp-server.mjs` with `cwd: "."`.
+Pi and the Python Larva CLI remain separate installations. The MCP host appends
+existing `~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin` to PATH
+without overriding explicit prefixes. External-host runs skip TUI presentation
+and timeline workers; native Pi presentation is unchanged.
+
 ## Native Pi package
 
 Release 0.8.6 keeps this package separate from the Python wheel. Upgrading the

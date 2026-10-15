@@ -1,6 +1,33 @@
 #!/usr/bin/env node
 // Stdio host for the Pi subagent runtime. Stdout is reserved for JSON-RPC.
-import * as runtime from './larva.ts';
+import { registerHooks } from 'node:module';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { delimiter, join } from 'node:path';
+
+// Native Pi keeps its static TUI import. Only this headless entry point supplies
+// a fallback, and only when normal package resolution fails.
+const headlessTui = `
+const unavailable = () => { throw new Error("Terminal UI is unavailable in the MCP host"); };
+export class Input { constructor() { unavailable(); } }
+export class Markdown extends Input {}
+export class SelectList extends Input {}
+export const Key = {};
+export const matchesKey = unavailable;
+export const truncateToWidth = unavailable;
+export const visibleWidth = unavailable;
+export const wrapTextWithAnsi = unavailable;
+`;
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    try { return nextResolve(specifier, context); }
+    catch (error) {
+      if (specifier !== '@earendil-works/pi-tui' || error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+      return { shortCircuit: true, url: 'data:text/javascript,' + encodeURIComponent(headlessTui) };
+    }
+  },
+});
+const runtime = await import('./larva.ts');
 
 const string = { type: 'string', minLength: 1 };
 const integer = (minimum, maximum) => ({ type: 'integer', minimum, maximum });
@@ -20,7 +47,12 @@ const definitions = [
 const tools = definitions.map(([name, description, properties, required = []]) => ({ name, description, inputSchema: { type: 'object', properties, required, additionalProperties: false } }));
 const shutdownController = new AbortController();
 const disconnected = new Promise(resolve => shutdownController.signal.addEventListener('abort', resolve, { once: true }));
-const ctx = { env: process.env, externalHostCanSpawn: true, abortSignal: shutdownController.signal };
+const home = process.env.HOME || homedir();
+const pathEntries = (process.env.PATH ?? '').split(delimiter);
+for (const directory of [join(home, '.local/bin'), '/opt/homebrew/bin', '/usr/local/bin']) {
+  if (existsSync(directory) && !pathEntries.includes(directory)) pathEntries.push(directory);
+}
+const ctx = { env: { ...process.env, PATH: pathEntries.join(delimiter) }, externalHostCanSpawn: true, abortSignal: shutdownController.signal };
 // Bound retained output to the same recent-terminal window as the runtime.
 const outbox = new Map();
 function remember(taskId, slot) {

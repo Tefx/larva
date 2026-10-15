@@ -6,11 +6,11 @@ skill and presentation assets; direct MCP configuration needs no plugin.
 
 ## Prerequisites and capability boundary
 
-Keep a Larva checkout available and install its extension dependencies:
-
-```sh
-npm --prefix /absolute/path/to/larva/contrib/pi-extension ci
-```
+The plugin bundles its runtime as regular files and runs from Codex's cache
+without `node_modules`, a sibling Pi extension checkout, or edits to `.mcp.json`.
+Use Node with native TypeScript and `node:module.registerHooks` support.
+The headless entry point supplies a TUI fallback only if normal package
+resolution cannot find `@earendil-works/pi-tui`; native Pi keeps its TUI import.
 
 Install the Python Larva CLI and Pi separately. The checkout lock records Pi
 0.85.1 as build context; installed versions are not rejected by version number.
@@ -115,39 +115,28 @@ This is the supported Codex compatibility layout:
 `.codex-plugin/plugin.json`, `.mcp.json`, `skills/`, and `assets/`.
 See [OpenAI's packaging guide](https://developers.openai.com/plugins/build/plugins).
 
-**The plugin depends on the separate Pi extension checkout.** Its source MCP
-configuration uses `cwd: "."` (resolved from the plugin root by Codex) and
-`../pi-extension/subagent-mcp-server.mjs`. Codex copies installed plugins to a
-cache without that sibling directory. Before installing, stage a copy of
-`contrib/codex-plugin/` in a local marketplace and change the staged
-`.mcp.json` server's `args[0]` to the absolute runtime script in your retained
-checkout. Keep `cwd: "."`, `env_vars`, and the 3600-second timeout. Set the
-CLI/Pi paths in the launching environment or staged server `env` as above.
-Copying only the unmodified plugin directory is insufficient.
+The repository includes `.agents/plugins/marketplace.json`, pointing to
+`contrib/codex-plugin/`. Install directly without staging or configuration edits:
 
-For example, put the prepared copy at `plugins/larva-subagent/` inside a
-marketplace root, then add `.agents/plugins/marketplace.json` in that root:
-
-```json
-{
-  "name": "local-larva",
-  "interface": {"displayName": "Local Larva"},
-  "plugins": [{
-    "name": "larva-subagent",
-    "source": {"source": "local", "path": "./plugins/larva-subagent"},
-    "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
-    "category": "Productivity"
-  }]
-}
+```sh
+codex plugin marketplace add /path/to/larva
+codex plugin add larva-subagent@larva
 ```
 
-Register that root with `codex plugin marketplace add /absolute/marketplace-root`
-on clients supporting the command. Restart the desktop client, select the local
-marketplace in the plugin directory, and install Larva Subagents. Start a new
-conversation and verify that the skill and nine runtime tools appear. Refresh
-the staged copy and reinstall/refresh after updates. If your client lacks local
-plugins, use the direct MCP configuration instead. Configure only one runtime
-connection to avoid splitting process-local task handles across duplicate servers.
+Codex copies the self-contained plugin into its cache. The MCP configuration
+runs `node ./subagent-mcp-server.mjs` with `cwd: "."` at that cached plugin root.
+The five bundled runtime files are byte-identical to the Pi extension sources;
+no `node_modules` or `../pi-extension` is needed. Pi and the Python Larva CLI
+remain separately installed executables. Configure their paths and credentials
+in the launching environment as above. The MCP host appends existing
+`~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin` to PATH, preserving
+explicit PATH prefix precedence. External-host runs skip TUI presentation and
+timeline workers; dangling base-agent symlinks are ignored when creating capsules.
+
+Restart the desktop client, start a new conversation, and verify that the skill
+and nine runtime tools appear. Refresh/reinstall the plugin after updates.
+If your client lacks local plugins, use direct MCP configuration instead.
+Configure only one runtime connection to avoid splitting process-local handles.
 
 These are operator instructions; repository checks never install a plugin or
 edit your live `~/.codex/config.toml` or `~/.codex/plugins/`.
@@ -177,6 +166,9 @@ effects before retrying or resuming uncertain work.
 
 `tests/shell/test_codex_plugin_contract.py` checks manifest/config structure,
 resource paths, environment forwarding declarations, skill frontmatter, and a
-real stdio initialize/tools-list/EOF shutdown. It does not prove Codex UI
+regular-file-only cache startup without dependencies, runtime SHA-256 parity,
+marketplace resolution, and real stdio initialize/tools-list/EOF shutdown.
+The Pi runtime test also executes a child through the isolated cached plugin
+with a controlled Pi RPC fixture. These checks do not prove Codex UI
 installation, routing judgment, credential forwarding by every host, or live
 provider execution. Runtime child behavior has separate Pi integration tests.

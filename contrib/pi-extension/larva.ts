@@ -708,6 +708,7 @@ type ActiveSubagentRun = {
   input: LarvaSubagentInput;
   presentation_call_id?: string;
   presentation_generation: number;
+  presentation_enabled: boolean;
   background_task: Promise<void> | null;
   cancel_task: Promise<SubagentTerminalSnapshot> | null;
   route_generation: number;
@@ -8554,7 +8555,7 @@ function appendSubagentRunSnapshot(record: ActiveSubagentRun, status: LarvaSubag
   appendSubagentEvent(snapshot, kind);
 }
 
-function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId: string, taskId: string | null, ctx?: PiContext & { presentationCallId?: string; callbackSurface?: SubagentCallbackSurface }): ActiveSubagentRun {
+function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId: string, taskId: string | null, ctx?: PiContext & { presentationCallId?: string; callbackSurface?: SubagentCallbackSurface; externalHostCanSpawn?: boolean }): ActiveSubagentRun {
   const now = timestampNow();
   const record: ActiveSubagentRun = {
     private_key: taskId ?? newSubagentPrivateKey(),
@@ -8593,6 +8594,7 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     input,
     presentation_call_id: ctx?.presentationCallId,
     presentation_generation: subagentUiResetGeneration,
+    presentation_enabled: ctx?.externalHostCanSpawn === undefined,
     background_task: null,
     cancel_task: null,
     route_generation: activeModelMapProfile === null ? 0 : modelMapRouteGeneration,
@@ -8982,7 +8984,7 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   });
   appendSubagentRunSnapshot(record, terminal.status);
   if (record.task_id === null && terminal.status === "failed" && terminal.error !== null) appendSubagentStartupFailure(record, terminal.error);
-  if (record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
+  if (record.presentation_enabled && record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
   if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because the model-facing terminal control path already returned the terminal result."));
   else void deliverSubagentResultCallback(record).catch((caught) => {
     const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
@@ -9267,7 +9269,7 @@ function recentSessionsFromPresentationLog(limit: number): RecentSubagentSession
   return sessions;
 }
 
-export function larva_subagent_sessions(input?: unknown): LarvaSubagentSessionsResult {
+export function larva_subagent_sessions(input?: unknown, ctx?: { externalHostCanSpawn?: boolean }): LarvaSubagentSessionsResult {
   const limit = parseSessionsLimit(input);
   if (isLarvaError(limit)) {
     return {
@@ -9276,7 +9278,17 @@ export function larva_subagent_sessions(input?: unknown): LarvaSubagentSessionsR
       isError: true,
     };
   }
-  const sessions = recentSessionsFromPresentationLog(limit);
+  // Headless runs have no presentation entries. Reuse bounded lifecycle events
+  // for recent handles rather than starting a timeline worker just for listing.
+  const sessions = ctx?.externalHostCanSpawn === undefined ? recentSessionsFromPresentationLog(limit) : (() => {
+    const recent = new Map<string, RecentSubagentSession>();
+    for (const event of [...subagentEventLog].reverse()) {
+      if (event.task_id === null || recent.has(event.task_id)) continue;
+      recent.set(event.task_id, { task_id: event.task_id, persona_id: event.persona_id, last_status: event.status, sequence: event.sequence });
+      if (recent.size >= limit) break;
+    }
+    return [...recent.values()];
+  })();
   const summary = sessions.length === 0
     ? "Recent Larva subagent sessions: none"
     : `Recent Larva subagent sessions: ${sessions.map((session) => `${session.sequence}:${session.persona_id}:${session.last_status}`).join(", ")}`;
@@ -10409,6 +10421,7 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
       for (const name of readdirSync(baseAgent)) {
         if (name === "settings.json") continue;
         const source = join(baseAgent, name);
+        if (!existsSync(source)) continue;
         symlinkSync(realpathSync(source), join(capsuleAgent, name), statSync(source).isDirectory() ? "dir" : "file");
       }
     }
@@ -11367,7 +11380,7 @@ async function runChildSequence(
 }
 
 export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext & { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void; presentationCallId?: string; callbackSurface?: SubagentCallbackSurface; externalHostCanSpawn?: boolean }): Promise<LarvaSubagentResult> {
-  const presentationGeneration = subagentUiResetGeneration;
+  const presentationGeneration = ctx?.externalHostCanSpawn === undefined ? subagentUiResetGeneration : null;
   const parsed = validateInput(input);
   if ("status" in parsed) {
     if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(parsed, input, ctx?.presentationCallId);
@@ -11446,7 +11459,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     return result;
   }
   const record = createSubagentRun(input, env, personaId, canonicalTaskId, ctx);
-  if (canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
+  if (presentationGeneration !== null && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
   const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, noProgressTimeoutMs, runtimeConfig.extension_sources, ctx?.abortSignal, {
     onPhase: (phase, readyTaskId) => {

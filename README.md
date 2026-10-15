@@ -249,8 +249,16 @@ the Python `larva mcp` registry CRUD server. Use blocking
 wait/select for parallel work; MCP results include process-local
 `terminal_outputs`. Configure `LARVA_PI_CLI_SCRIPT` for the real Pi entry and
 optionally `LARVA_MCP_PARENT_PERSONA` (or per-call `parent_persona_id`) to
-enforce parent spawn policy. See the setup guide for the plugin's external
-checkout dependency and installation boundary.
+enforce parent spawn policy. Install the self-contained plugin directly:
+
+```sh
+codex plugin marketplace add /path/to/larva
+codex plugin add larva-subagent@larva
+```
+
+The plugin runs from Codex's cache without `node_modules`, a sibling extension,
+or manual `.mcp.json` path editing. Install Pi and the Python Larva CLI separately;
+see the setup guide for executable discovery and the verification boundary.
 
 ## Pi Coding Agent integration
 

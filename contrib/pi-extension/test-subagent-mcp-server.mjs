@@ -4,8 +4,8 @@
 // requires: Node with native TypeScript support and locked extension dependencies
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink } from 'node:fs/promises';
-import { existsSync, realpathSync } from 'node:fs';
+import { cp, mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink } from 'node:fs/promises';
+import { existsSync, realpathSync, lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,8 +16,8 @@ const root = realpathSync(await mkdtemp(join(tmpdir(), 'larva-mcp-')));
 const clients = [];
 const env = { ...process.env, HOME: root, PI_CODING_AGENT_DIR: join(root, 'base-agent'), LARVA_PI_CHILD_SESSION_DIR: join(root, 'sessions'), LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: '1', LARVA_PI_CHILD_RPC_TRACE_FILE: join(root, 'trace.jsonl') };
 for (const key of Object.keys(env)) if (key.startsWith('LARVA_') && !['LARVA_PI_CHILD_SESSION_DIR', 'LARVA_PI_CHILD_RPC_LEGACY_FALLBACK', 'LARVA_PI_CHILD_RPC_TRACE_FILE'].includes(key)) delete env[key];
-function client(overrides = {}) {
-  const child = spawn(process.execPath, [join(packageDir, 'subagent-mcp-server.mjs')], { env: { ...env, ...overrides }, stdio: ['pipe', 'pipe', 'pipe'] });
+function client(overrides = {}, runtimeDir = packageDir) {
+  const child = spawn(process.execPath, [join(runtimeDir, 'subagent-mcp-server.mjs')], { env: { ...env, ...overrides }, stdio: ['pipe', 'pipe', 'pipe'] });
   let sequence = 0, buffer = Buffer.alloc(0), stderr = '';
   const pending = new Map();
   child.stderr.on('data', data => { stderr += data; });
@@ -83,6 +83,7 @@ async function assertReaped() {
 }
 try {
   await mkdir(env.PI_CODING_AGENT_DIR, { recursive: true });
+  await symlink(join(root, 'absent-target'), join(env.PI_CODING_AGENT_DIR, 'dangling'));
   const cli = join(root, 'larva-cli.mjs');
   await writeFile(cli, `
 const command = process.argv[2], id = process.argv[3];
@@ -126,9 +127,42 @@ createInterface({input:process.stdin}).on('line', async line => {
     assert.equal(disabled.error.code,'LARVA_SPAWN_NOT_ALLOWED');
     const malformedParent = await runtime.larva_subagent({persona_id:'child',task:'invalid',parent_persona_id:null}, {env,externalHostCanSpawn:true});
     assert.equal(malformedParent.error.code,'LARVA_BAD_INPUT');
+    assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
+    let delivered;
+    const completion = new Promise(resolve => { delivered = resolve; });
+    const external = await runtime.larva_subagent({persona_id:'child',task:'headless capsule'}, {
+      env, externalHostCanSpawn:true, callbackSurface:{sendMessage:delivered},
+    });
+    assert.equal(external.status, 'accepted', JSON.stringify(external));
+    const terminal = await completion;
+    assert.equal(terminal.details.status, 'success');
+    assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
+    assert.equal(runtime.larva_subagent_sessions({}, {externalHostCanSpawn:true}).details.sessions[0].task_id, external.task_id);
+    const resumedExternal = await runtime.larva_subagent({persona_id:'child',task:'headless resume',task_id:external.task_id}, {
+      env, externalHostCanSpawn:true,
+    });
+    assert.equal(resumedExternal.status, 'accepted');
+    await runtime.larva_subagent_wait({task_ids:[external.task_id],timeout_ms:10000});
+    assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
     const nativeHeadless = await runtime.larva_subagent({persona_id:'child',task:'no native parent'}, {env});
     assert.equal(nativeHeadless.error.code,'LARVA_NO_ACTIVE_PERSONA');
   } finally { await runtime.resetExtensionUI('test_cleanup'); }
+  // Codex copies regular files and directories, omitting symlinks. No sibling
+  // extension or node_modules can satisfy imports in this isolated cache.
+  const cachedPlugin = join(root, 'cache', 'larva-subagent');
+  await cp(join(packageDir, '../codex-plugin'), cachedPlugin, {
+    recursive:true, filter:source => !lstatSync(source).isSymbolicLink(),
+  });
+  assert.equal(existsSync(join(cachedPlugin, 'node_modules')), false);
+  assert.equal(existsSync(join(cachedPlugin, '../pi-extension')), false);
+  const cached = client({}, cachedPlugin);
+  assert.equal((await cached.request('initialize')).result.serverInfo.name, 'larva-pi-subagent');
+  assert.equal((await cached.request('tools/list')).result.tools.length, 9);
+  const cachedRun = await cached.tool('larva_subagent', {persona_id:'child',task:'cached plugin',wait_for_completion:true});
+  assert.equal(cachedRun.isError, false, JSON.stringify(cachedRun));
+  assert.equal(Object.values(cachedRun.details.terminal_outputs)[0].result_text, 'output parent=');
+  await cached.close();
+  console.log('regular-file-only plugin cache without node_modules or sibling extension, dangling capsule symlink, headless presentation: PASS');
   const c = client();
   assert.equal((await c.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: {name:'fixture',version:'1'} })).result.serverInfo.name, 'larva-pi-subagent');
   c.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
@@ -217,10 +251,20 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.equal(mismatch.details.error.code, 'LARVA_CHILD_START_FAILED');
   await binMismatch.close();
   const pathDir = join(root,'bin'); await mkdir(pathDir); await symlink(piScript,join(pathDir,'pi'));
+  const fallbackBin = join(root, '.local', 'bin');
+  await mkdir(fallbackBin, {recursive:true});
+  // A bad fallback pi must not shadow a valid explicit PATH prefix.
+  await symlink(cli, join(fallbackBin, 'pi'));
   const discovered = client({ LARVA_PI_CLI_SCRIPT: undefined, LARVA_PI_REAL_BIN: undefined, PATH: pathDir });
   const found = await discovered.tool('larva_subagent',{persona_id:'child',task:'discovered',wait_for_completion:true});
   assert.equal(Object.values(found.details.terminal_outputs)[0].status,'success');
   await discovered.close();
+  await rm(join(fallbackBin, 'pi'));
+  await symlink(piScript, join(fallbackBin, 'pi'));
+  const fallback = client({LARVA_PI_CLI_SCRIPT:undefined, LARVA_PI_REAL_BIN:undefined, PATH:join(root,'absent-bin')});
+  const fallbackFound = await fallback.tool('larva_subagent',{persona_id:'child',task:'GUI PATH fallback',wait_for_completion:true});
+  assert.equal(Object.values(fallbackFound.details.terminal_outputs)[0].status,'success');
+  await fallback.close();
   console.log('explicit CLI identity rejection and PATH discovery validation: PASS');
   for (const signal of ['SIGTERM','SIGINT']) {
     const c = client();
