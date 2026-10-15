@@ -1,5 +1,25 @@
 # Larva Pi extension
 
+## Cross-harness subagent MCP
+
+`node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`
+exposes the same child runtime over stdio to Codex, Claude Code, Cursor, and
+OpenCode. The [Codex plugin and direct MCP setup guide](../codex-plugin/README.md)
+covers installation, explicit environment forwarding, and host tool timeouts.
+This server is orthogonal to Python `larva mcp` (persona registry CRUD); it
+provides nine child-runtime tools, not registry mutation.
+
+External hosts use `LARVA_PI_CLI_SCRIPT` to identify the verified Pi package
+bin script. The server supplies `externalHostCanSpawn: true`; optional
+`parent_persona_id` per call, or `LARVA_MCP_PARENT_PERSONA` as fallback, enforces
+that resolved parent's `can_spawn` without changing native Pi parent rules.
+Use `wait_for_completion: true` for one delegated task, or accepted receipts
+plus wait/select for parallel work. MCP wait/select results add
+`terminal_outputs` to structured content, with captured result text and artifact
+metadata. The outbox retains 25 completed results, is process-local and
+non-consuming, and disappears on restart. Disconnect aborts active children.
+Native Pi still uses its push callback; native wait/select remain readiness-only.
+
 ## Native Pi package
 
 Release 0.8.6 keeps this package separate from the Python wheel. Upgrading the

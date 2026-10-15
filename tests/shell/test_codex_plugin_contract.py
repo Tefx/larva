@@ -1,0 +1,159 @@
+"""Codex package structure and real stdio configuration contract.
+
+Skill examples are validated as tool inputs, not as evidence of routing judgment.
+No check installs a plugin or inherits provider credentials.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+from pathlib import Path
+from xml.etree import ElementTree
+
+import jsonschema
+import yaml
+
+ROOT = Path(__file__).resolve().parents[2]
+PLUGIN = ROOT / "contrib/codex-plugin"
+REQUIRED_ENV = {
+    "PATH", "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR",
+    "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "PI_CODING_AGENT_DIR",
+    "LARVA_CLI_ARGV_JSON", "LARVA_PI_CLI_SCRIPT", "LARVA_PI_MODEL_MAP_FILE",
+    "LARVA_PI_SUBAGENT_CONFIG_FILE", "LARVA_PI_CHILD_SESSION_DIR",
+    "LARVA_MCP_PARENT_PERSONA",
+    "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+}
+TOOLS = {
+    "larva_personas", "larva_subagent", "larva_subagent_wait",
+    "larva_subagent_select", "larva_subagent_status", "larva_subagent_events",
+    "larva_subagent_sessions", "larva_subagent_cancel", "larva_subagent_activity",
+}
+
+
+def test_manifest_and_mcp_config() -> None:
+    """Pin required host fields and resolve paths from the plugin root."""
+    manifest = json.loads((PLUGIN / ".codex-plugin/plugin.json").read_text())
+    jsonschema.validate(manifest, {
+        "type": "object",
+        "required": ["name", "version", "description", "skills", "mcpServers", "interface"],
+        "properties": {
+            "name": {"const": "larva-subagent"},
+            "version": {"const": "0.8.7"},
+            "description": {"type": "string", "minLength": 1},
+            "skills": {"const": "./skills/"},
+            "mcpServers": {"const": "./.mcp.json"},
+            "interface": {
+                "type": "object",
+                "required": ["displayName", "shortDescription", "composerIcon", "logo"],
+                "additionalProperties": {"type": "string", "minLength": 1},
+            },
+        },
+    })
+    assert (PLUGIN / manifest["skills"] / "larva-subagent/SKILL.md").is_file()
+    for key in ("composerIcon", "logo"):
+        asset = manifest["interface"][key]
+        assert asset.startswith("./assets/")
+        assert ElementTree.parse(PLUGIN / asset).getroot().tag == (
+            "{http://www.w3.org/2000/svg}svg"
+        )
+    config = json.loads((PLUGIN / manifest["mcpServers"]).read_text())
+    assert set(config) == {"mcpServers"}
+    assert set(config["mcpServers"]) == {"larva-pi-subagent"}
+    server = config["mcpServers"]["larva-pi-subagent"]
+    jsonschema.validate(server, {
+        "type": "object",
+        "required": ["command", "args", "cwd", "tool_timeout_sec", "env_vars"],
+        "additionalProperties": False,
+        "properties": {
+            "command": {"const": "node"},
+            "args": {"type": "array", "minItems": 1, "maxItems": 1,
+                     "items": {"type": "string"}},
+            "cwd": {"const": "."},
+            "tool_timeout_sec": {"const": 3600},
+            "env_vars": {"type": "array", "uniqueItems": True,
+                         "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
+        },
+    })
+    assert REQUIRED_ENV <= set(server["env_vars"])
+    script = (PLUGIN / server["cwd"] / server["args"][0]).resolve()
+    assert script == ROOT / "contrib/pi-extension/subagent-mcp-server.mjs"
+    assert script.is_file()
+
+
+def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
+    """Launch the declared command, check nine tools, validate skill calls, reap."""
+    server = json.loads((PLUGIN / ".mcp.json").read_text())["mcpServers"]["larva-pi-subagent"]
+    node = shutil.which(server["command"])
+    assert node is not None, "Node is required for the configured runtime"
+    env = {"PATH": os.path.dirname(node)}
+    for name in ("HOME", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME",
+                 "XDG_CACHE_HOME", "PI_CODING_AGENT_DIR", "LARVA_PI_CHILD_SESSION_DIR"):
+        path = tmp_path / name.lower()
+        path.mkdir()
+        env[name] = str(path)
+    requests = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2024-11-05", "capabilities": {},
+            "clientInfo": {"name": "codex-plugin-contract", "version": "1"},
+        }},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+    ]
+    # communicate closes stdin after writing: this exercises the real EOF cleanup.
+    # No tools/call is sent, so no registry, provider, or child launch is needed.
+    process = subprocess.Popen(
+        [node, *server["args"]], cwd=PLUGIN / server["cwd"], env=env,
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        stdout, stderr = process.communicate(
+            "\n".join(json.dumps(item) for item in requests) + "\n", timeout=30,
+        )
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.communicate()
+    assert process.returncode == 0, stderr
+    replies = [json.loads(line) for line in stdout.splitlines()]
+    assert len(replies) == 2, stdout
+    by_id = {reply["id"]: reply for reply in replies}
+    assert by_id[1]["result"]["protocolVersion"] == "2024-11-05"
+    assert by_id[1]["result"]["capabilities"] == {"tools": {}}
+    assert by_id[1]["result"]["serverInfo"]["name"] == "larva-pi-subagent"
+    definitions = by_id[2]["result"]["tools"]
+    assert len(definitions) == 9
+    schemas = {tool["name"]: tool["inputSchema"] for tool in definitions}
+    assert set(schemas) == TOOLS
+
+    skill = (PLUGIN / "skills/larva-subagent/SKILL.md").read_text()
+    frontmatter = re.match(r"\A---\n(.*?)\n---\n", skill, re.DOTALL)
+    assert frontmatter is not None
+    metadata = yaml.safe_load(frontmatter.group(1))
+    jsonschema.validate(metadata, {
+        "type": "object", "required": ["name", "description"],
+        "additionalProperties": False,
+        "properties": {"name": {"const": "larva-subagent"},
+                       "description": {"type": "string", "minLength": 1}},
+    })
+    examples = re.search(r"```json\n(.*?)\n```", skill, re.DOTALL)
+    assert examples is not None
+    calls = json.loads(examples.group(1))
+    assert {call["name"] for call in calls} == {
+        "larva_personas", "larva_subagent", "larva_subagent_wait",
+        "larva_subagent_select", "larva_subagent_activity",
+    }
+    for call in calls:
+        jsonschema.validate(call["arguments"], schemas[call["name"]])
+    spawns = [c["arguments"] for c in calls if c["name"] == "larva_subagent"]
+    assert {c["wait_for_completion"] for c in spawns} == {True, False}
+    resume = next(c for c in spawns if "task_id" in c)
+    wait = next(c["arguments"] for c in calls if c["name"] == "larva_subagent_wait")
+    activity = next(c["arguments"] for c in calls if c["name"] == "larva_subagent_activity")
+    assert wait["task_ids"] == [resume["task_id"]] == [activity["task_id"]]

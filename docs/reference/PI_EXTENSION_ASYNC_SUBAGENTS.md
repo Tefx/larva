@@ -10,8 +10,50 @@ This document defines the Larva Pi extension behavior for persona default state,
 async/background subagents, targeted cancellation, result callbacks, and the
 unified subagent control surface.
 
-It covers only the Pi adapter under `contrib/pi-extension`. It does not change
-canonical PersonaSpec contracts or Larva-local schema semantics.
+It covers the Pi adapter under `contrib/pi-extension`, including its external
+stdio MCP host. It does not change canonical PersonaSpec contracts or
+Larva-local schema semantics.
+
+## Cross-harness stdio host
+
+`contrib/pi-extension/subagent-mcp-server.mjs` exposes nine runtime tools over
+stdio: personas, subagent, wait, select, status, events, sessions, cancel, and
+activity (with their `larva_` / `larva_subagent_` names). Codex, Claude Code,
+Cursor and OpenCode can use this runtime independently of the Python
+`larva mcp` registry CRUD server. The Codex package at
+`contrib/codex-plugin/` bundles the manifest, MCP configuration, assets, and
+routing skill; see its [setup guide](../../contrib/codex-plugin/README.md).
+
+External launch uses `LARVA_PI_CLI_SCRIPT` for a verified Pi package bin script
+when the parent process is not Pi. The server passes
+`externalHostCanSpawn: true` to the runtime. A per-call `parent_persona_id`
+takes precedence over `LARVA_MCP_PARENT_PERSONA`; if supplied, the resolved
+parent must permit the requested child through `can_spawn`. With neither
+parent selector, the external host grants spawn authority. Native active
+persona enforcement is unchanged.
+
+### MCP output delivery
+
+Native Pi wait/select return readiness and rely on push callbacks for output.
+The stdio host captures those callbacks into a process-local outbox and adds
+`terminal_outputs`, keyed by exact task ID, to wait/select structured content
+and includes callback messages in text content. Each payload carries
+`result_text`, `child_output_truncated`, and nullable `full_output_artifact`.
+It retains up to 25 completed outputs; reads do not consume them.
+
+`larva_subagent(wait_for_completion: true)` waits and returns the same enriched
+terminal result for a single child. The default `false` returns an accepted
+receipt; use bounded wait/select calls for parallel fan-out. A timed-out wait
+may have an empty outbox. Do not shell sleep poll or treat activity recordings
+as lifecycle authority. Resume with the exact session JSONL `task_id` and a
+continuation task after reconciling any uncertain prior effects.
+
+All child authority and outputs belong to this server process. EOF/signals
+abort active runs; restart loses observers and outbox, without discovering old
+runs from disk. Host tool deadlines (bundle: 3600 seconds), observer
+`timeout_ms`, and the child no-progress watchdog remain independent. Configure
+credentials and the explicit environment allowlist in the host, never in
+committed assets.
 
 ## Source evidence
 

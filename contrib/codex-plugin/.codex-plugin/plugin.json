@@ -1,0 +1,15 @@
+{
+  "name": "larva-subagent",
+  "version": "0.8.7",
+  "description": "Delegate persona-scoped work to isolated Pi child sessions from Codex.",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Larva Subagents",
+    "shortDescription": "Persona routing and Pi child orchestration",
+    "longDescription": "Discover Larva personas, delegate work to Pi children, and retrieve terminal results from Codex.",
+    "category": "Developer Tools",
+    "composerIcon": "./assets/larva.svg",
+    "logo": "./assets/larva.svg"
+  }
+}

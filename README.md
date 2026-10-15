@@ -237,6 +237,21 @@ deleting persona ids still requires restarting `larva opencode` so OpenCode can
 see the new agent list. See `contrib/opencode-plugin/README.md` for current
 behavior, target refresh semantics, and failure handling.
 
+## Cross-harness Pi subagents and Codex plugin
+
+Codex, Claude Code, Cursor, and OpenCode can delegate work to Pi children through
+`contrib/pi-extension/subagent-mcp-server.mjs`. The
+[Codex plugin bundle and setup guide](contrib/codex-plugin/README.md) includes
+direct MCP configuration, a native Codex manifest, and a routing skill.
+Its `larva-pi-subagent` server supplies nine runtime tools, independently of
+the Python `larva mcp` registry CRUD server. Use blocking
+`wait_for_completion: true` for one task, or asynchronous receipts plus
+wait/select for parallel work; MCP results include process-local
+`terminal_outputs`. Configure `LARVA_PI_CLI_SCRIPT` for the real Pi entry and
+optionally `LARVA_MCP_PARENT_PERSONA` (or per-call `parent_persona_id`) to
+enforce parent spawn policy. See the setup guide for the plugin's external
+checkout dependency and installation boundary.
+
 ## Pi Coding Agent integration
 
 ### Native Pi extension

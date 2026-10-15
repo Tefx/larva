@@ -1,0 +1,57 @@
+{
+  "mcpServers": {
+    "larva-pi-subagent": {
+      "command": "node",
+      "args": [
+        "../pi-extension/subagent-mcp-server.mjs"
+      ],
+      "cwd": ".",
+      "tool_timeout_sec": 3600,
+      "env_vars": [
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "SHELL",
+        "TMPDIR",
+        "XDG_CONFIG_HOME",
+        "XDG_DATA_HOME",
+        "XDG_CACHE_HOME",
+        "PI_CODING_AGENT_DIR",
+        "LARVA_CLI_ARGV_JSON",
+        "LARVA_PI_CLI_SCRIPT",
+        "LARVA_PI_MODEL_MAP_FILE",
+        "LARVA_PI_SUBAGENT_CONFIG_FILE",
+        "LARVA_PI_CHILD_SESSION_DIR",
+        "LARVA_MCP_PARENT_PERSONA",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_OAUTH_TOKEN",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GROQ_API_KEY",
+        "CEREBRAS_API_KEY",
+        "XAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "MISTRAL_API_KEY",
+        "AWS_PROFILE",
+        "AWS_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_CLOUD_LOCATION",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "no_proxy"
+      ]
+    }
+  }
+}

@@ -43,7 +43,31 @@ checks through their own configuration and model registry lookups.
 
 ## MCP Surface
 
-Primary MCP tools:
+The Python `larva mcp` server owns the registry tools below. Separately,
+`node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`
+provides cross-harness Pi orchestration:
+
+- `larva_personas`
+- `larva_subagent`
+- `larva_subagent_wait`, `larva_subagent_select`
+- `larva_subagent_status`, `larva_subagent_events`, `larva_subagent_sessions`
+- `larva_subagent_cancel`, `larva_subagent_activity`
+
+These nine runtime tools do not mutate the persona registry. The external host
+supplies `externalHostCanSpawn`; optional per-call `parent_persona_id` or
+fallback `LARVA_MCP_PARENT_PERSONA` constrains spawn through resolved
+`can_spawn`. `LARVA_PI_CLI_SCRIPT` identifies the real Pi package bin script.
+
+MCP wait/select return process-local `terminal_outputs` in structured content
+in addition to readiness; `wait_for_completion: true` on subagent returns the
+same terminal delivery for one task. Default asynchronous receipts support
+fan-out. Native Pi callback/readiness behavior is unchanged. The outbox retains
+25 completed results and disconnect aborts active children; it is not durable
+cross-server orchestration state. See the
+[async runtime reference](PI_EXTENSION_ASYNC_SUBAGENTS.md#cross-harness-stdio-host)
+and [Codex plugin/setup guide](../../contrib/codex-plugin/README.md).
+
+Primary registry MCP tools:
 
 - `larva_validate(spec)`
 - `larva_register(spec, variant?)`
