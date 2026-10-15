@@ -147242,7 +147242,7 @@ phases:
   - id: pi-subagent-mcp.codex-plugin-and-docs
     name: Deliver Codex plugin bundle, routing skill, documentation, and contract
       tests
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/codex-plugin/**\n    - contrib/pi-extension/README.md\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - docs/reference/INTERFACES.md\n\
@@ -147298,6 +147298,49 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-15T07:21:33.047226Z'
+    done_at: '2026-10-15T07:35:48.601298+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 66bb1f774fe6fd771484fce60d561b3c979fd4e1 (retained ref: refs/vectl/candidates/pi-subagent-mcp.codex-plugin-and-docs)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T07-23-28-889Z_01a13e71-d0f8-721b-8221-eab42d936f87.jsonl)
+
+      - Files: contrib/codex-plugin/.codex-plugin/plugin.json, contrib/codex-plugin/.mcp.json,
+      contrib/codex-plugin/assets/larva.svg, contrib/codex-plugin/skills/larva-subagent/SKILL.md,
+      contrib/codex-plugin/README.md, contrib/pi-extension/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      docs/reference/INTERFACES.md, README.md, tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: `node scripts/pi-guard-checks.mjs tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (passed, 42 files checked, 0 errors, doctest passed).
+
+      - Run: `uv run --locked --python 3.12 --group dev invar guard --all` -> exit
+      0 (passed, 42 files checked, 0 errors, doctest passed).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (2 passed in 0.37s).
+
+      - Run: `git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - Codex desktop UI installation and live LLM provider execution are documented
+      as operator boundaries; repository contract tests verify manifest/config schemas,
+      resource resolution, env_vars allowlist, skill frontmatter/tool-call schema
+      validity, and live stdio MCP handshake/EOF shutdown in an isolated environment
+      without mutating ~/.codex.
+
+
+      Spec link:
+
+      - contrib/codex-plugin/README.md
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#cross-harness-stdio-host
+
+      - docs/reference/INTERFACES.md#mcp-surface'
   - id: pi-subagent-mcp.acceptance-gate
     name: Gate review and integrated acceptance for cross-harness Pi subagent MCP
       and Codex plugin
