@@ -148125,3 +148125,134 @@ phases:
       - contrib/codex-plugin/skills/larva-subagent/SKILL.md
 
       - contrib/pi-extension/README.md#cross-harness-subagent-mcp'
+- id: pi_subagent_startup_readiness_timeout
+  name: Separate child Pi initial RPC readiness timeout and enrich timeout diagnostics
+  status: pending
+  gate: Terminal gate pi-subagent-startup-readiness-timeout.acceptance-gate verifies
+    CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000 separation from CHILD_RPC_COMMAND_TIMEOUT_MS
+    = 10_000, timeout diagnostics in error message and RPC trace, >10s delayed readiness
+    and bounded timeout/exit cleanup tests, and byte parity between contrib/pi-extension/
+    and contrib/codex-plugin/.
+  context: 'Authority: user-requested separation of child Pi initial RPC readiness
+    timeout (CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000) from ordinary RPC command
+    timeout (CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000) and enriched RPC timeout diagnostics.'
+  depends_on:
+  - pi_subagent_mcp_managed_install_and_routing
+  steps:
+  - id: pi-subagent-startup-readiness-timeout.deliver
+    name: Implement child Pi initial RPC readiness timeout separation and enriched
+      timeout diagnostics
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \    - tests/shell/test_pi_*.py\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
+      \    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\
+      \nDeliver:\n1. Independent startup readiness timeout (`CHILD_RPC_STARTUP_READY_TIMEOUT_MS\
+      \ = 60_000`) in `contrib/pi-extension/larva.ts`:\n   - Define `const CHILD_RPC_STARTUP_READY_TIMEOUT_MS\
+      \ = 60_000;` alongside `CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` and `CHILD_RPC_PROMPT_PREFLIGHT_TIMEOUT_MS\
+      \ = 60_000`.\n   - In `runChildSequence`, pass the startup readiness timeout\
+      \ (default `CHILD_RPC_STARTUP_READY_TIMEOUT_MS`, with an optional `setChildRpcStartupReadyTimeoutForTests(ms:\
+      \ number | null)` helper for fast bounded-timeout unit tests) to the initial\
+      \ readiness RPC command after child spawn (`rpc.command(\"state-1\", { type:\
+      \ \"get_state\" }, startupReadyTimeoutMs)` on fresh runs and `rpc.command(\"\
+      switch-1\", { type: \"switch_session\", sessionPath: taskId }, startupReadyTimeoutMs)`\
+      \ on resumed runs), while keeping `CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000` for\
+      \ subsequent ordinary RPC commands (`route-state-*`, `set_model`, `set_thinking_level`,\
+      \ `last-1`).\n2. Enriched timeout diagnostics in `RpcClient.command` (`contrib/pi-extension/larva.ts`):\n\
+      \   - Track `startedAtMs = Date.now()` in `RpcClient`.\n   - On RPC command\
+      \ timeout, compute `commandType` (`body.type` or `\"unknown\"`), `stage` (`this.rpcReady\
+      \ ? (this.diagnosticContext?.().phase ?? \"post_readiness\") : \"startup_readiness\"\
+      `), `firstFrameReceived` (`this.frameSequence > 0`), `childState` (`this.child.exitCode\
+      \ !== null ? \"exited(\" + this.child.exitCode + \")\" : this.child.signalCode\
+      \ !== null ? \"signaled(\" + this.child.signalCode + \")\" : \"running\"`),\
+      \ and `elapsedMs` (`Math.max(0, Date.now() - this.startedAtMs)`).\n   - Emit\
+      \ `traceChildRpc(this.traceEnv, \"rpc_timeout\", { pid: this.child.pid ?? null,\
+      \ id, command_type: commandType, stage, timeout_ms: timeoutMs, elapsed_ms: elapsedMs,\
+      \ first_frame_received: firstFrameReceived, frame_sequence: this.frameSequence,\
+      \ rpc_ready: this.rpcReady, child_state: childState, exit_code: this.child.exitCode,\
+      \ signal: this.child.signalCode })`.\n   - Include those diagnostic fields in\
+      \ the returned `LARVA_CHILD_PROTOCOL_FAILED` message: `Child RPC command timed\
+      \ out after ${timeoutMs} ms (id=${id}, type=${commandType}, stage=${stage},\
+      \ first_frame_received=${firstFrameReceived}, child_state=${childState}, elapsed_ms=${elapsedMs}).`\n\
+      3. Synchronize `contrib/codex-plugin/larva.ts` byte-for-byte with `contrib/pi-extension/larva.ts`\
+      \ and update `contrib/pi-extension/README.md`, `contrib/codex-plugin/README.md`,\
+      \ and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`.\n4. Add regression tests\
+      \ in `contrib/pi-extension/test-subagent-mcp-server.mjs`:\n   - Delayed readiness\
+      \ test (>10s): simulate a child Pi process that delays its initial `get_state`\
+      \ (`state-1`) response by >10,000 ms (e.g. 10,500 ms, exceeding `CHILD_RPC_COMMAND_TIMEOUT_MS\
+      \ = 10_000` but within `CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000`), and verify\
+      \ `larva_subagent` succeeds and returns the expected terminal output.\n   -\
+      \ Startup timeout & pre-readiness exit tests: verify that a child that never\
+      \ responds to `state-1` fails with `LARVA_CHILD_PROTOCOL_FAILED` containing\
+      \ `id=state-1`, `type=get_state`, `stage=startup_readiness`, `first_frame_received=false`,\
+      \ `child_state=running`, and `elapsed_ms=`, emits an `rpc_timeout` trace entry,\
+      \ and reaps the child process and capsule; and verify that a child that exits\
+      \ before readiness fails closed and reaps its capsule.\n\nBoundary:\n- `node-typescript-engineer`\
+      \ owns the startup readiness timeout constant/helper, `RpcClient.command` timeout\
+      \ diagnostics and trace emission, `contrib/codex-plugin/larva.ts` byte parity\
+      \ sync, documentation updates, and regression tests within `allowed_paths`.\n\
+      - Do not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not\
+      \ mutate user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- Node MCP\
+      \ server test suite, Python Codex plugin contract tests, and git diff check\
+      \ pass.\n\nRecovery:\n- Reap spawned child processes and remove temporary test\
+      \ directories on exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-startup-readiness-timeout.acceptance-gate
+    name: Gate review and integrated acceptance for child Pi initial RPC readiness
+      timeout and diagnostics
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `pi_subagent_startup_readiness_timeout`\
+      \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
+      \nBoundary:\n- `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects\
+      \ integrated source diffs, test adequacy, byte parity between `contrib/pi-extension/`\
+      \ and `contrib/codex-plugin/`, and verification evidence from `pi-subagent-startup-readiness-timeout.deliver`.\n\
+      \nAdmit:\n- Included producer outcome: `pi-subagent-startup-readiness-timeout.deliver`\
+      \ (building on `pi_subagent_mcp_managed_install_and_routing`).\n- Verify:\n\
+      \  1. `CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000` is separated from `CHILD_RPC_COMMAND_TIMEOUT_MS\
+      \ = 10_000` in `contrib/pi-extension/larva.ts` and passed to initial readiness\
+      \ commands (`state-1` `get_state` on fresh runs and `switch-1` `switch_session`\
+      \ on resumed runs) while subsequent ordinary RPC commands retain `CHILD_RPC_COMMAND_TIMEOUT_MS\
+      \ = 10_000`.\n  2. Enriched timeout diagnostics (`id`, `type`, `stage`, `first_frame_received`,\
+      \ `child_state`, `elapsed_ms`) are emitted in both the `LARVA_CHILD_PROTOCOL_FAILED`\
+      \ timeout error message and the `rpc_timeout` RPC trace event.\n  3. The >10s\
+      \ delayed readiness test and bounded startup-timeout / pre-readiness-exit cleanup\
+      \ tests in `contrib/pi-extension/test-subagent-mcp-server.mjs` pass and verify\
+      \ child process and capsule reaping.\n  4. Byte parity holds between `contrib/pi-extension/`\
+      \ and `contrib/codex-plugin/` runtime files, documentation is updated in `contrib/pi-extension/README.md`,\
+      \ `contrib/codex-plugin/README.md`, and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`,\
+      \ and `tests/shell/test_codex_plugin_contract.py` and `git diff --check` pass.\n\
+      \nRecovery:\n- If a material defect or proof gap is found, report exact findings\
+      \ with file/line citations so Orchestrator can route a single cohesive repair\
+      \ before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`, and
+      `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - pi-subagent-startup-readiness-timeout.deliver
+    agent: gate-reviewer
