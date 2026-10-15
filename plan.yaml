@@ -147877,3 +147877,162 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs
 
       - contrib/codex-plugin/subagent-mcp-server.mjs'
+- id: pi_subagent_mcp_managed_install_and_routing
+  name: Pi Managed Installer resolution and harness-neutral / Codex-plugin Strategy
+    B routing
+  status: pending
+  gate: Terminal gate pi-subagent-mcp-managed-install-and-routing.acceptance-gate
+    verifies Pi Managed Installer resolution, harness-neutral MCP descriptions vs
+    Codex-specific Strategy B skill guidance, 5-file byte parity, and clean regression
+    checks.
+  context: 'Authority: user-requested Pi Managed Installer (~/.pi/agent/install/current-version)
+    resolution and Strategy B layered routing descriptions (harness-neutral MCP tool
+    descriptions + Codex-specific plugin/skill routing).'
+  depends_on:
+  - pi_subagent_mcp_lazy_runtime
+  steps:
+  - id: pi-subagent-mcp-managed-install-and-routing.deliver
+    name: Implement Pi Managed Installer resolution and Strategy B layered routing
+      descriptions
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - README.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n   \
+      \ - docs/reference/INTERFACES.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. Pi Managed Installer resolution in contrib/pi-extension/larva.ts\
+      \ (`resolvePiCommandPrefix`) & contrib/pi-extension/subagent-mcp-server.mjs:\n\
+      \   - In `resolvePiCommandPrefix(env)`: when resolving a candidate script (when\
+      \ `explicit` `LARVA_PI_CLI_SCRIPT` / `LARVA_PI_REAL_BIN` is undefined), if direct\
+      \ `inspectPiCliScript(script)` fails because `script` is a Pi Managed Installer\
+      \ launcher (`~/.local/bin/pi` -> `~/.pi/agent/bin/pi`), check `<pi_agent_dir>/install/current-version`\
+      \ (where `pi_agent_dir = dirname(dirname(realpathSync(script)))`), validate\
+      \ the version token (`/^[0-9A-Za-z._+-]+$/` and not `.` or `..`), and inspect\
+      \ `<pi_agent_dir>/install/releases/<version>/node_modules/.bin/pi` via `inspectPiCliScript(...)`.\
+      \ Also include `<baseAgentDir>/install/current-version` -> `<baseAgentDir>/install/releases/<version>/node_modules/.bin/pi`\
+      \ as a fallback candidate when `explicit === undefined` and `env.PI_CODING_AGENT_DIR`\
+      \ / `env.LARVA_PI_BASE_AGENT_DIR` is not explicitly overriding `baseAgent` in\
+      \ a unit test (or resolve through `PATH` candidates including `~/.pi/agent/bin/pi`).\
+      \ Keep explicit `LARVA_PI_CLI_SCRIPT` / `LARVA_PI_REAL_BIN` strict and fail-closed\
+      \ without fallback, and preserve `test-native-launch-context.mjs` isolation\
+      \ when `env.PATH` is unset.\n   - In `contrib/pi-extension/subagent-mcp-server.mjs`,\
+      \ include `join(home, '.pi/agent/bin')` in the fallback `PATH` directories alongside\
+      \ `join(home, '.local/bin')`, `'/opt/homebrew/bin'`, and `'/usr/local/bin'`.\n\
+      2. Strategy B layered descriptions (harness-neutral MCP server vs Codex-specific\
+      \ plugin/skill):\n   - Harness-neutral MCP layer (`contrib/pi-extension/subagent-mcp-server.mjs`):\
+      \ Update tool `description` strings so `larva_subagent` states that it spawns\
+      \ or resumes an isolated Larva Pi child session when Larva-specific capabilities\
+      \ (persona model-map routing, persistent `.jsonl` session resume, `can_spawn`\
+      \ policy, or `larva_subagent_activity` inspection) are requested and that hosts\
+      \ with built-in subagents should use their built-in subagents by default; and\
+      \ `larva_subagent` / `larva_subagent_wait` / `larva_subagent_select` / `larva_subagent_cancel`\
+      \ state that they operate only on exact `.jsonl` `task_id` handles returned\
+      \ by `larva_subagent` (never mixing handles with other agent tools). Do not\
+      \ hardcode `Codex` or `spawn_agent` in `subagent-mcp-server.mjs`.\n   - Codex\
+      \ plugin layer (`contrib/codex-plugin/.codex-plugin/plugin.json` and `contrib/codex-plugin/skills/larva-subagent/SKILL.md`):\
+      \ Update `plugin.json` and `SKILL.md` (`## When to use Larva vs. native Codex\
+      \ subagents`) to specify Strategy B: use Codex's native `spawn_agent` / `wait`\
+      \ / `send_input` / `close_agent` by default for ordinary delegation; use `larva_subagent`\
+      \ only when the user explicitly requests `larva` / `larva_subagent` / `pi` subagents\
+      \ or when Larva-specific capabilities (`model-map.json` cross-provider routing,\
+      \ `.jsonl` persistent session resume, `can_spawn` whitelist enforcement, or\
+      \ `larva_subagent_activity` inspection) are needed; and never pass `larva_subagent`\
+      \ `.jsonl` `task_id` handles to Codex's `wait`/`send_input`/`close_agent` or\
+      \ pass Codex `agent_id` handles to `larva_subagent_*`.\n   - Synchronize all\
+      \ 5 runtime files in `contrib/codex-plugin/` byte-for-byte with `contrib/pi-extension/`,\
+      \ and update `contrib/codex-plugin/README.md`, `contrib/pi-extension/README.md`,\
+      \ `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, `docs/reference/INTERFACES.md`,\
+      \ and `README.md`.\n3. Extend tests (`contrib/pi-extension/test-subagent-mcp-server.mjs`\
+      \ and `tests/shell/test_codex_plugin_contract.py`):\n   - Test Pi Managed Installer\
+      \ layout (`~/.local/bin/pi` -> `~/.pi/agent/bin/pi` shell wrapper + `~/.pi/agent/install/current-version`\
+      \ + `~/.pi/agent/install/releases/<ver>/node_modules/.bin/pi`) automatic discovery\
+      \ and package/bin identity verification without `LARVA_PI_CLI_SCRIPT`;\n   -\
+      \ Test that `subagent-mcp-server.mjs` tool descriptions are harness-neutral\
+      \ (do not contain `Codex` or `spawn_agent`) and mention exact `.jsonl` `task_id`\
+      \ handle isolation;\n   - Test that `contrib/codex-plugin/skills/larva-subagent/SKILL.md`\
+      \ documents Strategy B (`spawn_agent` default vs opt-in/capability-driven `larva_subagent`\
+      \ and handle separation) and that all 5 runtime files remain byte-identical.\n\
+      \nBoundary:\n- node-typescript-engineer owns the Pi Managed Installer discovery\
+      \ logic, harness-neutral MCP descriptions, Codex-specific Strategy B plugin/skill\
+      \ routing docs, 5-file byte parity sync, and regression tests within allowed_paths.\n\
+      - Do not modify src/larva/core/** or src/larva/shell/mcp*.py, and do not mutate\
+      \ user ~/.codex or ~/.pi state during tests.\n\nAdmit:\n- Node MCP server test\
+      \ suite, native launch context test suite, Python Codex plugin contract tests,\
+      \ and git diff check pass.\n\nRecovery:\n- Reap spawned child processes and\
+      \ remove temporary test directories on exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/.codex-plugin/plugin.json
+    - contrib/codex-plugin/skills/larva-subagent/SKILL.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/INTERFACES.md
+    - README.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp-managed-install-and-routing.acceptance-gate
+    name: Gate review and integrated acceptance for Pi Managed Installer resolution
+      and Strategy B routing
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase pi_subagent_mcp_managed_install_and_routing\
+      \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
+      \nBoundary:\n- gate-reviewer is strictly read-only (no_repo_change). Inspects\
+      \ integrated source diffs, test adequacy, 5-file byte parity, and verification\
+      \ evidence from pi-subagent-mcp-managed-install-and-routing.deliver.\n\nAdmit:\n\
+      - Included producer outcome: pi-subagent-mcp-managed-install-and-routing.deliver\
+      \ (building on pi_subagent_mcp_lazy_runtime).\n- Verify:\n  1. Pi Managed Installer\
+      \ resolution in `contrib/pi-extension/larva.ts` (`resolvePiCommandPrefix`) and\
+      \ `contrib/pi-extension/subagent-mcp-server.mjs` resolves `<pi_agent_dir>/install/current-version`\
+      \ -> `<pi_agent_dir>/install/releases/<version>/node_modules/.bin/pi` with version\
+      \ token validation (`/^[0-9A-Za-z._+-]+$/`, not `.` or `..`), preserves strict\
+      \ fail-closed behavior for explicit `LARVA_PI_CLI_SCRIPT` / `LARVA_PI_REAL_BIN`,\
+      \ and preserves `test-native-launch-context.mjs` isolation when `env.PATH` is\
+      \ unset.\n  2. `contrib/pi-extension/subagent-mcp-server.mjs` tool descriptions\
+      \ are harness-neutral (no hardcoded `Codex` or `spawn_agent`), state when `larva_subagent`\
+      \ should be used vs host built-in subagents, and require exact `.jsonl` `task_id`\
+      \ handle isolation across `larva_subagent`, `larva_subagent_wait`, `larva_subagent_select`,\
+      \ and `larva_subagent_cancel`.\n  3. `contrib/codex-plugin/.codex-plugin/plugin.json`,\
+      \ `contrib/codex-plugin/skills/larva-subagent/SKILL.md`, and documentation files\
+      \ specify Strategy B (`spawn_agent` default vs opt-in/capability-driven `larva_subagent`\
+      \ and handle separation), and all 5 runtime files in `contrib/codex-plugin/`\
+      \ remain byte-identical to `contrib/pi-extension/`.\n  4. Automated tests in\
+      \ `contrib/pi-extension/test-subagent-mcp-server.mjs`, `contrib/pi-extension/test-native-launch-context.mjs`,\
+      \ and `tests/shell/test_codex_plugin_contract.py` pass alongside `git diff --check`.\n\
+      \nRecovery:\n- If a material defect or proof gap is found, report exact findings\
+      \ with file/line citations so Orchestrator can route a single cohesive repair\
+      \ before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/.codex-plugin/plugin.json
+    - contrib/codex-plugin/skills/larva-subagent/SKILL.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/INTERFACES.md
+    - README.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - pi-subagent-mcp-managed-install-and-routing.deliver
+    agent: gate-reviewer
