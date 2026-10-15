@@ -148341,7 +148341,7 @@ phases:
 - id: pi_subagent_mcp_docs_completion
   name: Complete documentation and READMEs for Codex plugin and general-harness Pi
     subagent MCP
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-mcp-docs-completion.acceptance-gate verifies documentation
     completeness, accuracy, cross-file consistency across README.md, contrib/codex-plugin/README.md,
     contrib/pi-extension/README.md, docs/README.md, docs/guides/USER_GUIDE.md, docs/guides/USAGE.md,
@@ -148469,7 +148469,7 @@ phases:
   - id: pi-subagent-mcp-docs-completion.acceptance-gate
     name: Gate review and integrated acceptance for Codex plugin and general-harness
       Pi subagent MCP documentation
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_mcp_docs_completion`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -148516,3 +148516,43 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-15T18:05:30.846087Z'
+    done_at: '2026-10-15T18:07:52.246827+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:864205e7e13566b70f9b6ca9a19c970c402c0967 (integrating producer
+      commit c8acc7bbc2a779a22f807a9f03ae019090649847)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T18-06-16-361Z_01a140be-4f28-76db-b463-153ddb9785b7.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_mcp_docs_completion], findings=[],
+      warnings=[], requirements 3/3 PROVEN (req-1-readme-and-adapter-guides-codex-vs-general-harness-structure,
+      req-2-docs-map-user-guide-and-usage-workflow-e-coverage, req-3-reference-alignment-and-contract-test-verification)
+
+
+      Verification:
+
+      - Run: `python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate6-binding-h88vNU/binding.json /tmp/larva-gate6-binding-h88vNU/gate-report.json`
+      -> exit 0 (`{"valid":true,"binding_checked":true,"kind":"gate","schema_version":"gate.report.v2","evidence_disposition":"POSITIVE_GATE_EVIDENCE","errors":[]}`).
+
+      - Run: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed).
+
+      - Run: `git status --short && git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - README.md#cross-harness-pi-subagents-and-codex-plugin
+
+      - contrib/codex-plugin/README.md
+
+      - docs/guides/USER_GUIDE.md#17-cross-harness-pi-subagents-and-codex-plugin
+
+      - docs/guides/USAGE.md#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses'
