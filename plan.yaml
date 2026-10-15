@@ -148127,7 +148127,7 @@ phases:
       - contrib/pi-extension/README.md#cross-harness-subagent-mcp'
 - id: pi_subagent_startup_readiness_timeout
   name: Separate child Pi initial RPC readiness timeout and enrich timeout diagnostics
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-startup-readiness-timeout.acceptance-gate verifies
     CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000 separation from CHILD_RPC_COMMAND_TIMEOUT_MS
     = 10_000, timeout diagnostics in error message and RPC trace, >10s delayed readiness
@@ -148142,7 +148142,7 @@ phases:
   - id: pi-subagent-startup-readiness-timeout.deliver
     name: Implement child Pi initial RPC readiness timeout separation and enriched
       timeout diagnostics
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -148213,6 +148213,8 @@ phases:
     - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-15T16:10:20.822119Z'
   - id: pi-subagent-startup-readiness-timeout.acceptance-gate
     name: Gate review and integrated acceptance for child Pi initial RPC readiness
       timeout and diagnostics
