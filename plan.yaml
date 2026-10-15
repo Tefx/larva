@@ -147880,7 +147880,7 @@ phases:
 - id: pi_subagent_mcp_managed_install_and_routing
   name: Pi Managed Installer resolution and harness-neutral / Codex-plugin Strategy
     B routing
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-mcp-managed-install-and-routing.acceptance-gate
     verifies Pi Managed Installer resolution, harness-neutral MCP descriptions vs
     Codex-specific Strategy B skill guidance, 5-file byte parity, and clean regression
@@ -148032,7 +148032,7 @@ phases:
   - id: pi-subagent-mcp-managed-install-and-routing.acceptance-gate
     name: Gate review and integrated acceptance for Pi Managed Installer resolution
       and Strategy B routing
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_managed_install_and_routing\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -148083,3 +148083,45 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-15T15:49:09.008545Z'
+    done_at: '2026-10-15T15:56:24.359300+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:dc75597f9ed856972ac3c8db1e2261173fc41e91 (integrating producer
+      commit d9afaa4770e07a206062ca4768e1c96d2b7be47b)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T15-52-05-863Z_01a14043-77e6-727f-b51a-cb23578c34a3.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_mcp_managed_install_and_routing], findings=[],
+      warnings=[], requirements 3/3 PROVEN (req-1-pi-managed-installer-discovery-and-strict-override,
+      req-2-harness-neutral-mcp-and-codex-strategy-b-layered-routing, req-3-byte-parity-and-regression-verification)
+
+
+      Verification:
+
+      - Run: `python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate4-binding-VlrdAU/binding.json /tmp/larva-gate4-binding-VlrdAU/gate-report.json`
+      -> exit 0 (`{"valid":true,"binding_checked":true,"kind":"gate","schema_version":"gate.report.v2","evidence_disposition":"POSITIVE_GATE_EVIDENCE","errors":[]}`).
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (15/15
+      check groups passed).
+
+      - Run: `node contrib/pi-extension/test-native-launch-context.mjs` -> exit 0
+      (6/6 passed).
+
+      - Run: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed).
+
+      - Run: `git status --short && git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/codex-plugin/skills/larva-subagent/SKILL.md
+
+      - contrib/pi-extension/README.md#cross-harness-subagent-mcp'
