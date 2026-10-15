@@ -147880,7 +147880,7 @@ phases:
 - id: pi_subagent_mcp_managed_install_and_routing
   name: Pi Managed Installer resolution and harness-neutral / Codex-plugin Strategy
     B routing
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-mcp-managed-install-and-routing.acceptance-gate
     verifies Pi Managed Installer resolution, harness-neutral MCP descriptions vs
     Codex-specific Strategy B skill guidance, 5-file byte parity, and clean regression
@@ -147894,7 +147894,7 @@ phases:
   - id: pi-subagent-mcp-managed-install-and-routing.deliver
     name: Implement Pi Managed Installer resolution and Strategy B layered routing
       descriptions
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - README.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n   \
@@ -147984,6 +147984,8 @@ phases:
     - README.md
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-15T15:40:18.685551Z'
   - id: pi-subagent-mcp-managed-install-and-routing.acceptance-gate
     name: Gate review and integrated acceptance for Pi Managed Installer resolution
       and Strategy B routing
