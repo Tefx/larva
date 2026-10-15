@@ -147712,7 +147712,7 @@ phases:
   - id: pi-subagent-mcp-lazy-runtime.deliver
     name: Lazy-load larva.ts on first validated tools/call and fast-shutdown idle
       MCP sessions
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/subagent-mcp-server.mjs\n    -\
       \ contrib/pi-extension/test-subagent-mcp-server.mjs\n    - contrib/pi-extension/README.md\n\
@@ -147763,6 +147763,41 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-15T12:52:05.836120Z'
+    done_at: '2026-10-15T12:55:25.568683+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 2427257da4f262f9a7a0d43f20f04f6e92a094af (retained ref: refs/vectl/candidates/pi-subagent-mcp-lazy-runtime.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T12-52-50-419Z_01a13f9f-5a73-7324-aa28-2dfb59e72291.jsonl)
+
+      - Files: contrib/pi-extension/subagent-mcp-server.mjs, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/pi-extension/test-subagent-mcp-server.mjs, contrib/pi-extension/README.md,
+      contrib/codex-plugin/README.md
+
+
+      Verification:
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (14/14
+      assertions passed, including server-only directory without larva.ts handling
+      initialize, ping, tools/list, rejected calls and idle EOF, plus single import
+      on first validated tools/call and resetExtensionUI("mcp_shutdown") on EOF).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed in 0.39s, including SHA-256 byte parity check `05b658cb276aa67f066984fbcdc775d9a0417b6b51acff50933aa74fcef592a5`).
+
+      - Run: `git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/README.md#external-host-pi-subagent-mcp-server
+
+      - contrib/codex-plugin/README.md#result-delivery-and-lifecycle'
   - id: pi-subagent-mcp-lazy-runtime.acceptance-gate
     name: Gate review and integrated acceptance for lazy MCP runtime loading
     status: pending
