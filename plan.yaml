@@ -147696,3 +147696,106 @@ phases:
       - contrib/codex-plugin/README.md
 
       - contrib/pi-extension/README.md'
+- id: pi_subagent_mcp_lazy_runtime
+  name: Lazy-load larva.ts runtime in subagent MCP server on first tool call
+  status: pending
+  gate: Terminal gate pi-subagent-mcp-lazy-runtime.acceptance-gate verifies lazy larva.ts
+    loading on first valid tools/call, no-op fast shutdown when larva.ts was never
+    loaded, byte parity with contrib/codex-plugin/subagent-mcp-server.mjs, and passing
+    verification checks.
+  context: 'Authority: user-requested optimization to lazy-load ./larva.ts on demand
+    in subagent-mcp-server.mjs so MCP handshake, ping, tools/list, and idle shutdown
+    do not compile or load larva.ts until a validated tools/call executes.'
+  depends_on:
+  - pi_subagent_mcp_self_contained_plugin
+  steps:
+  - id: pi-subagent-mcp-lazy-runtime.deliver
+    name: Lazy-load larva.ts on first validated tools/call and fast-shutdown idle
+      MCP sessions
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/subagent-mcp-server.mjs\n    -\
+      \ contrib/pi-extension/test-subagent-mcp-server.mjs\n    - contrib/pi-extension/README.md\n\
+      \    - contrib/codex-plugin/subagent-mcp-server.mjs\n    - contrib/codex-plugin/README.md\n\
+      \    - tests/shell/test_codex_plugin_contract.py\n  blocked_paths:\n    - plan.yaml\n\
+      \    - .vectl/**\n    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n\
+      \    - src/larva/shell/mcp*.py\n\nDeliver:\n1. Lazy on-demand runtime loading\
+      \ in subagent-mcp-server.mjs:\n   - In contrib/pi-extension/subagent-mcp-server.mjs\
+      \ (synchronized byte-for-byte to contrib/codex-plugin/subagent-mcp-server.mjs),\
+      \ replace the eager top-level `const runtime = await import('./larva.ts');`\
+      \ with lazy on-demand loading (`let runtimePromise; const getRuntime = () =>\
+      \ (runtimePromise ??= import('./larva.ts'));`) invoked only inside `callTool`\
+      \ after tool lookup and input schema validation succeed.\n2. Fast no-op shutdown\
+      \ when runtime was never loaded:\n   - In `shutdown()`, only await `resetExtensionUI('mcp_shutdown')`\
+      \ if `runtimePromise` was actually initiated (e.g., `stopping = (runtimePromise\
+      \ ? runtimePromise.then(r => r.resetExtensionUI('mcp_shutdown')) : Promise.resolve()).then(()\
+      \ => { process.exitCode = 0; });`), so an idle MCP session that only handled\
+      \ `initialize`, `ping`, `tools/list`, or schema-rejected `tools/call` exits\
+      \ immediately on disconnect without compiling or loading `larva.ts`.\n3. Regression\
+      \ tests and documentation parity:\n   - Extend contrib/pi-extension/test-subagent-mcp-server.mjs\
+      \ and/or tests/shell/test_codex_plugin_contract.py to prove that an MCP session\
+      \ handling `initialize`, `ping`, `tools/list`, and invalid-argument `tools/call`\
+      \ rejected before runtime load does not load `larva.ts` or require `@earendil-works/pi-tui`\
+      \ (e.g., in an isolated directory containing only `subagent-mcp-server.mjs`\
+      \ without `larva.ts`), while valid `tools/call` loads `larva.ts` on demand and\
+      \ preserves byte parity between contrib/pi-extension/subagent-mcp-server.mjs\
+      \ and contrib/codex-plugin/subagent-mcp-server.mjs.\n\nBoundary:\n- node-typescript-engineer\
+      \ owns the MCP host lazy-loading change, synchronized Codex plugin copy, and\
+      \ regression tests within allowed_paths.\n- Do not modify src/larva/core/**\
+      \ or src/larva/shell/mcp*.py, and do not mutate user ~/.codex state during tests.\n\
+      \nAdmit:\n- Node MCP server test suite, Python Codex plugin contract tests,\
+      \ and git diff check pass.\n\nRecovery:\n- Reap spawned child processes and\
+      \ remove temporary test directories on exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/codex-plugin/README.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp-lazy-runtime.acceptance-gate
+    name: Gate review and integrated acceptance for lazy MCP runtime loading
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase pi_subagent_mcp_lazy_runtime\
+      \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
+      \nBoundary:\n- gate-reviewer is strictly read-only (no_repo_change). Inspects\
+      \ integrated source diffs, test adequacy, byte parity, and verification evidence\
+      \ from pi-subagent-mcp-lazy-runtime.deliver.\n\nAdmit:\n- Included producer\
+      \ outcome: pi-subagent-mcp-lazy-runtime.deliver (building on pi_subagent_mcp_self_contained_plugin).\n\
+      - Verify:\n  1. contrib/pi-extension/subagent-mcp-server.mjs replaces eager\
+      \ top-level `await import('./larva.ts')` with lazy on-demand loading invoked\
+      \ only when `tools/call` executes a validated tool call.\n  2. `shutdown()`\
+      \ skips importing/initializing `larva.ts` when `runtimePromise` was never initiated,\
+      \ only awaiting `resetExtensionUI('mcp_shutdown')` when the runtime was loaded.\n\
+      \  3. Automated tests prove that `initialize`, `ping`, `tools/list`, and schema-rejected\
+      \ `tools/call` succeed and shut down cleanly without loading `larva.ts`, while\
+      \ valid `tools/call` loads `larva.ts` on demand.\n  4. Byte-for-byte parity\
+      \ between contrib/pi-extension/subagent-mcp-server.mjs and contrib/codex-plugin/subagent-mcp-server.mjs\
+      \ is preserved, and verification checks (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`,\
+      \ `git diff --check`) pass.\n\nRecovery:\n- If a material defect or proof gap\
+      \ is found, report exact findings with file/line citations so Orchestrator can\
+      \ route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`, and
+      `git diff --check`).'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/codex-plugin/README.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - pi-subagent-mcp-lazy-runtime.deliver
+    agent: gate-reviewer
