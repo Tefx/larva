@@ -148255,7 +148255,7 @@ phases:
   - id: pi-subagent-startup-readiness-timeout.acceptance-gate
     name: Gate review and integrated acceptance for child Pi initial RPC readiness
       timeout and diagnostics
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_startup_readiness_timeout`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -148295,3 +148295,5 @@ phases:
     depends_on:
     - pi-subagent-startup-readiness-timeout.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-15T16:17:09.898920Z'
