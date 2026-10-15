@@ -147454,7 +147454,7 @@ phases:
   - id: pi-subagent-mcp-self-contained.deliver
     name: Deliver headless MCP static-import hook, PATH/capsule hardening, self-contained
       Codex plugin, and marketplace manifest
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - .agents/plugins/marketplace.json\n    - contrib/pi-extension/**\n\
       \    - contrib/codex-plugin/**\n    - README.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n\
@@ -147537,6 +147537,61 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-15T11:48:09.432303Z'
+    done_at: '2026-10-15T12:03:45.709867+00:00'
+    evidence: 'Artifact:
+
+      - Commit: d7f5cd5b3342301dac980bb1729608cc29a36690 (retained ref: refs/vectl/candidates/pi-subagent-mcp-self-contained.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T11-49-23-122Z_01a13f65-4231-723d-97f9-de37c3ac7ba6.jsonl)
+
+      - Files: .agents/plugins/marketplace.json, contrib/pi-extension/subagent-mcp-server.mjs,
+      contrib/pi-extension/larva.ts, contrib/pi-extension/test-subagent-mcp-server.mjs,
+      contrib/codex-plugin/.mcp.json, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/codex-plugin/larva.ts, contrib/codex-plugin/activity.ts, contrib/codex-plugin/child-rpc-frame-preload.mjs,
+      contrib/codex-plugin/session-timeline-worker.mjs, contrib/codex-plugin/README.md,
+      contrib/pi-extension/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      docs/reference/INTERFACES.md, README.md, tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (12/12
+      assertions passed, including regular-file-only plugin cache execution without
+      node_modules or ../pi-extension, dangling capsule symlink resilience, headless
+      presentation suppression, and PATH fallback discovery).
+
+      - Run: `bash -c ''set -euo pipefail; export LARVA_TEST_PI_CODING_AGENT="$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent";
+      for f in contrib/pi-extension/test-*.mjs; do node "$f"; done''` -> exit 0 (all
+      24 Node extension test files passed).
+
+      - Run: `node scripts/pi-guard-checks.mjs tests/shell/test_codex_plugin_contract.py
+      tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_contract.py`
+      -> exit 0 (status passed, 0 errors, doctest passed, crosshair verified, property_tests
+      11/11 passed).
+
+      - Run: `uv run --locked --python 3.12 --group dev invar guard --all` -> exit
+      0 (status passed, 42 files checked, 0 errors, doctest passed, crosshair verified,
+      property_tests 12/12 passed).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py` -> exit 0 (60 passed in 99.41s).
+
+      - Run: `git diff --check` -> exit 0.
+
+
+      Gaps:
+
+      - Interactive Codex desktop UI installation and live LLM provider spend remain
+      outside repository test scope.
+
+
+      Spec link:
+
+      - contrib/codex-plugin/README.md
+
+      - contrib/pi-extension/README.md
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#cross-harness-stdio-host'
   - id: pi-subagent-mcp-self-contained.acceptance-gate
     name: Gate review and integrated acceptance for self-contained Codex plugin and
       headless MCP remediation
