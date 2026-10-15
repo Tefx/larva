@@ -147437,7 +147437,7 @@ phases:
       - docs/reference/INTERFACES.md#mcp-surface'
 - id: pi_subagent_mcp_self_contained_plugin
   name: Self-contained Codex plugin and headless MCP static-import remediation
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-mcp-self-contained.acceptance-gate verifies headless
     @earendil-works/pi-tui static-import decoupling via registerHooks, standard binary
     PATH fallback, external-host presentation/capsule hardening, self-contained contrib/codex-plugin
@@ -147454,7 +147454,7 @@ phases:
   - id: pi-subagent-mcp-self-contained.deliver
     name: Deliver headless MCP static-import hook, PATH/capsule hardening, self-contained
       Codex plugin, and marketplace manifest
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - .agents/plugins/marketplace.json\n    - contrib/pi-extension/**\n\
       \    - contrib/codex-plugin/**\n    - README.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n\
@@ -147535,6 +147535,8 @@ phases:
     - tests/shell/test_codex_plugin_contract.py
     - tests/shell/test_pi_extension_subagent_ux.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-15T11:48:09.432303Z'
   - id: pi-subagent-mcp-self-contained.acceptance-gate
     name: Gate review and integrated acceptance for self-contained Codex plugin and
       headless MCP remediation
