@@ -148356,7 +148356,7 @@ phases:
   - id: pi-subagent-mcp-docs-completion.deliver
     name: Complete and structure Codex plugin and general-harness Pi subagent MCP
       documentation and READMEs
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - README.md\n    - contrib/codex-plugin/README.md\n \
       \   - contrib/pi-extension/README.md\n    - docs/README.md\n    - docs/guides/USER_GUIDE.md\n\
@@ -148428,6 +148428,44 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-15T17:55:02.422057Z'
+    done_at: '2026-10-15T18:05:11.388263+00:00'
+    evidence: 'Artifact:
+
+      - Commit: c8acc7bbc2a779a22f807a9f03ae019090649847 (retained ref: refs/vectl/candidates/pi-subagent-mcp-docs-completion.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T17-56-10-733Z_01a140b5-116d-7272-9a51-f990b70fc09a.jsonl)
+
+      - Files: README.md, contrib/codex-plugin/README.md, contrib/pi-extension/README.md,
+      docs/README.md, docs/guides/USER_GUIDE.md, docs/guides/USAGE.md, docs/reference/INTERFACES.md,
+      docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md, tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed in 0.63s, including schema validation of Workflow E examples
+      in docs/guides/USAGE.md against advertised MCP tool schemas).
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (18/18
+      check groups passed).
+
+      - Run: `git diff --check && git status --short` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - README.md#cross-harness-pi-subagents-and-codex-plugin
+
+      - contrib/codex-plugin/README.md
+
+      - docs/guides/USER_GUIDE.md#17-cross-harness-pi-subagents-and-codex-plugin
+
+      - docs/guides/USAGE.md#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses'
   - id: pi-subagent-mcp-docs-completion.acceptance-gate
     name: Gate review and integrated acceptance for Codex plugin and general-harness
       Pi subagent MCP documentation
