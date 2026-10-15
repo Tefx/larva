@@ -148341,7 +148341,7 @@ phases:
 - id: pi_subagent_mcp_docs_completion
   name: Complete documentation and READMEs for Codex plugin and general-harness Pi
     subagent MCP
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-mcp-docs-completion.acceptance-gate verifies documentation
     completeness, accuracy, cross-file consistency across README.md, contrib/codex-plugin/README.md,
     contrib/pi-extension/README.md, docs/README.md, docs/guides/USER_GUIDE.md, docs/guides/USAGE.md,
@@ -148356,7 +148356,7 @@ phases:
   - id: pi-subagent-mcp-docs-completion.deliver
     name: Complete and structure Codex plugin and general-harness Pi subagent MCP
       documentation and READMEs
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - README.md\n    - contrib/codex-plugin/README.md\n \
       \   - contrib/pi-extension/README.md\n    - docs/README.md\n    - docs/guides/USER_GUIDE.md\n\
@@ -148426,6 +148426,8 @@ phases:
     - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-15T17:55:02.422057Z'
   - id: pi-subagent-mcp-docs-completion.acceptance-gate
     name: Gate review and integrated acceptance for Codex plugin and general-harness
       Pi subagent MCP documentation
