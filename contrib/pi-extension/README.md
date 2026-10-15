@@ -1284,6 +1284,58 @@ behavior. `node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gat
 records runtime hard-gate provenance; mock-only or unavailable Pi/TUI evidence
 must be reported as unsupported or blocked rather than as live support.
 
+## External-host Pi subagent MCP server
+
+Run `node /absolute/path/to/contrib/pi-extension/subagent-mcp-server.mjs` from
+an MCP client's stdio server configuration. Use Node with native TypeScript
+support (the checkout tests use Node 26) and the extension's installed dependencies.
+No additional MCP npm package is required. This server exposes nine tools:
+`larva_personas`, `larva_subagent`, `larva_subagent_wait`,
+`larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
+`larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
+Their names do not overlap the Python registry MCP server's tools; both servers
+can be configured together. JSON-RPC supports newline-delimited JSON and legacy
+`Content-Length` frames; responses use the request's framing. Stdout carries only
+protocol messages.
+
+Set `LARVA_PI_CLI_SCRIPT` to the absolute installed Pi `bin.pi` script, or expose
+its `pi` executable on `PATH`. `LARVA_PI_REAL_BIN` is also accepted as a configured
+script location when `LARVA_PI_CLI_SCRIPT` is absent. Resolution follows symlinks
+and verifies the package name `@earendil-works/pi-coding-agent` and exact `bin.pi`
+identity before launching it with the current Node executable. An explicit
+invalid script fails with `LARVA_CHILD_START_FAILED` without falling back to PATH.
+Native Pi extension invocation continues using its captured native launch identity.
+The usual Larva CLI, persona registry, model routing and child capsule settings
+still apply.
+
+External hosts do not need a synthetic parent Pi session. Omit `parent_persona_id`
+to admit any valid resolved target persona, or supply it on `larva_subagent` to
+resolve and enforce that parent's `can_spawn` boolean/whitelist. The optional
+`LARVA_MCP_PARENT_PERSONA` environment setting supplies a default parent ID.
+An admitted parent's ID reaches the child as `LARVA_PI_PARENT_PERSONA_ID`.
+The native extension's active-parent authority checks remain unchanged.
+
+`larva_subagent` defaults to an immediate accepted receipt for parallel fan-out.
+Use `wait_for_completion: true` for a single call that waits for terminal output.
+For fan-out, pass exact receipt `task_id` handles to `larva_subagent_wait` or
+`larva_subagent_select`. Their MCP responses add `terminal_outputs`, keyed by
+ready task ID, under both `details` and `structuredContent`. Each output contains
+`result_text`, `child_output_truncated`, the formatted callback `message`,
+`callback_id`, `completed_at`, and terminal error metadata. Truncated output also
+includes `child_output_preview` and `full_output_artifact`; read the artifact for
+the complete output. Callback capture marks runtime `callback_delivery` as
+`delivered`. Output retention follows the runtime's recent 25 terminal-task
+window; resumed runs replace the prior output for that handle. These outputs
+belong to this MCP server process and disappear on restart. Activity inspection
+can still read historical session files.
+
+Closing client stdin, SIGTERM or SIGINT calls `resetExtensionUI("mcp_shutdown")`
+to cancel active runs, reap child processes and remove their private runtime
+capsules. Session JSONL files and final output artifacts remain available at their
+reported paths. Run `node contrib/pi-extension/test-subagent-mcp-server.mjs` for
+isolated stdio/runtime tests using a controlled Pi RPC fixture; these tests do not
+claim live provider behavior.
+
 ## Read-only historical activity
 
 `larva_subagent_activity({session_path: "/absolute/history.jsonl", limit: 5})`

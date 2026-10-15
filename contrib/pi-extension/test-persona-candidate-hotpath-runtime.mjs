@@ -162,7 +162,14 @@ const stateBefore = { activeEnvelope: mod.getActiveEnvelope(), setModelCalls, se
 
 const staleBeforeRefresh = await collectSinks(ctx);
 assertNoPrompt(staleBeforeRefresh, "stale hot path");
-await sleep(800);
+// Observe refresh completion instead of assuming process startup plus the
+// fixture's 600ms delay fits inside 800ms on a loaded host.
+const refreshDeadline = Date.now() + 10_000;
+while (Date.now() < refreshDeadline) {
+  const cache = JSON.parse(await readFile(cacheFile, "utf8"));
+  if (cache.fetched_at_ms === 6_000 && cache.candidates.some((item) => item.id === "fresh-public")) break;
+  await sleep(25);
+}
 const refreshedCacheText = await readFile(cacheFile, "utf8");
 assertNoPrompt(refreshedCacheText, "refreshed cache");
 const freshAfterRefresh = await collectSinks(ctx);
