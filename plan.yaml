@@ -147437,7 +147437,7 @@ phases:
       - docs/reference/INTERFACES.md#mcp-surface'
 - id: pi_subagent_mcp_self_contained_plugin
   name: Self-contained Codex plugin and headless MCP static-import remediation
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-mcp-self-contained.acceptance-gate verifies headless
     @earendil-works/pi-tui static-import decoupling via registerHooks, standard binary
     PATH fallback, external-host presentation/capsule hardening, self-contained contrib/codex-plugin
@@ -147595,7 +147595,7 @@ phases:
   - id: pi-subagent-mcp-self-contained.acceptance-gate
     name: Gate review and integrated acceptance for self-contained Codex plugin and
       headless MCP remediation
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase pi_subagent_mcp_self_contained_plugin\
       \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
@@ -147642,3 +147642,57 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-15T12:04:15.349606Z'
+    done_at: '2026-10-15T12:07:58.061086+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:24450e332dbf5515bdf1700e3c80b73e50e6e461 (integrating producer
+      commit d7f5cd5b3342301dac980bb1729608cc29a36690)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-15T12-05-20-222Z_01a13f73-dcde-752a-9e56-5ae4c3c4e02d.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_mcp_self_contained_plugin], findings=[],
+      requirements 5/5 PROVEN (req-1-headless-pi-tui-static-import-decoupling, req-2-mcp-host-standard-path-fallback,
+      req-3-external-host-presentation-skip-and-capsule-symlink-hardening, req-4-self-contained-codex-plugin-parity-and-marketplace,
+      req-5-regression-and-invar-guard-verification)
+
+
+      Verification:
+
+      - Run: `python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate2-binding-BLMo3z/binding.json /tmp/larva-gate2-binding-BLMo3z/gate-report.json`
+      -> exit 0 (`{"valid":true,"binding_checked":true,"kind":"gate","schema_version":"gate.report.v2","evidence_disposition":"POSITIVE_GATE_EVIDENCE","errors":[]}`).
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (all
+      12 assertions passed, including regular-file-only cached plugin child completion
+      without node_modules or ../pi-extension, dangling capsule symlink resilience,
+      empty headless presentation logs, retained session discovery, and PATH fallback
+      discovery).
+
+      - Run: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed).
+
+      - Reused applicable producer verification on unchanged evidence-affecting inputs
+      (`git diff --exit-code d7f5cd5b3342301dac980bb1729608cc29a36690..24450e332dbf5515bdf1700e3c80b73e50e6e461
+      -- . '':!plan.yaml''` exit 0): all 24 Node extension tests passed, `node scripts/pi-guard-checks.mjs`
+      passed (0 errors, 11/11 property tests), `uv run --locked --python 3.12 --group
+      dev invar guard --all` passed (42 files checked, 0 errors, 12/12 property tests),
+      and `pytest -q tests/shell/test_codex_plugin_contract.py tests/shell/test_pi_extension_subagent_ux.py`
+      passed (60 passed).
+
+      - Run: `git status --short && git diff --check` -> exit 0 (empty output).
+
+
+      Gaps:
+
+      - Live external LLM provider spend and interactive Codex desktop UI installation
+      remain outside repository test scope.
+
+
+      Spec link:
+
+      - .agents/plugins/marketplace.json
+
+      - contrib/codex-plugin/README.md
+
+      - contrib/pi-extension/README.md'
