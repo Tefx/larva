@@ -147435,3 +147435,151 @@ phases:
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#cross-harness-stdio-host
 
       - docs/reference/INTERFACES.md#mcp-surface'
+- id: pi_subagent_mcp_self_contained_plugin
+  name: Self-contained Codex plugin and headless MCP static-import remediation
+  status: pending
+  gate: Terminal gate pi-subagent-mcp-self-contained.acceptance-gate verifies headless
+    @earendil-works/pi-tui static-import decoupling via registerHooks, standard binary
+    PATH fallback, external-host presentation/capsule hardening, self-contained contrib/codex-plugin
+    runtime bundle with .agents/plugins/marketplace.json, and green regression/Invar
+    checks.
+  context: 'Authority: user-accepted remediation to make contrib/codex-plugin/ directly
+    installable via Codex plugin marketplace (`codex plugin marketplace add <repo>`
+    + `codex plugin add larva-subagent@larva`) and make subagent-mcp-server.mjs executable
+    in isolated plugin cache directories without node_modules or ../pi-extension relative
+    imports.'
+  depends_on:
+  - pi_subagent_mcp_codex_plugin
+  steps:
+  - id: pi-subagent-mcp-self-contained.deliver
+    name: Deliver headless MCP static-import hook, PATH/capsule hardening, self-contained
+      Codex plugin, and marketplace manifest
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - .agents/plugins/marketplace.json\n    - contrib/pi-extension/**\n\
+      \    - contrib/codex-plugin/**\n    - README.md\n    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n\
+      \    - docs/reference/INTERFACES.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \    - tests/shell/test_pi_*.py\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
+      \    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\
+      \nDeliver:\n1. Decouple @earendil-works/pi-tui static import in subagent-mcp-server.mjs:\n\
+      \   - Keep `import { ... } from \"@earendil-works/pi-tui\"` in contrib/pi-extension/larva.ts\
+      \ unchanged (preserving native Pi TUI and test_pi_extension_subagent_ux.py static\
+      \ assertions).\n   - In subagent-mcp-server.mjs, before `await import(\"./larva.ts\"\
+      )`, register a node:module `registerHooks({ resolve })` hook that delegates\
+      \ to `nextResolve(specifier, context)` first and, on `ERR_MODULE_NOT_FOUND`\
+      \ for `@earendil-works/pi-tui`, short-circuits to an inline headless ESM data-URL\
+      \ export so subagent-mcp-server.mjs starts cleanly with zero node_modules.\n\
+      2. Append standard binary fallback paths in subagent-mcp-server.mjs:\n   - When\
+      \ building ctx.env in subagent-mcp-server.mjs, append existing standard binary\
+      \ directories (`$HOME/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`) deduplicated\
+      \ to the tail of PATH (preserving explicit PATH prefix precedence and leaving\
+      \ larva.ts's resolvePiCommandPrefix / autoDiscoverLarvaCli unit-test isolation\
+      \ untouched).\n3. Skip TUI presentation/timeline worker in external-host MCP\
+      \ mode & harden createChildPiCapsule in larva.ts:\n   - In larva_subagent, when\
+      \ `ctx?.externalHostCanSpawn !== undefined`, do not invoke recordSubagentPresentationRunning\
+      \ or recordSubagentPresentationResult (avoiding unnecessary session-timeline-worker.mjs\
+      \ Worker threads and presentation cache work in headless MCP mode).\n   - In\
+      \ createChildPiCapsule, skip broken/dangling symlinks in baseAgent (`if (!existsSync(source))\
+      \ continue;` before `realpathSync(source)` / `statSync(source)`).\n4. Make contrib/codex-plugin/\
+      \ self-contained and add .agents/plugins/marketplace.json:\n   - Copy the 5\
+      \ pure-builtin runtime files (subagent-mcp-server.mjs, larva.ts, activity.ts,\
+      \ child-rpc-frame-preload.mjs, session-timeline-worker.mjs) as regular files\
+      \ into contrib/codex-plugin/ (since Codex's plugin installer skips symlinks\
+      \ and copies only the plugin root to ~/.codex/plugins/cache/...).\n   - Update\
+      \ contrib/codex-plugin/.mcp.json to `\"args\": [\"./subagent-mcp-server.mjs\"\
+      ]`.\n   - Add .agents/plugins/marketplace.json at the repository root declaring\
+      \ marketplace `\"larva\"` with local plugin `\"larva-subagent\"` at `\"./contrib/codex-plugin\"\
+      `.\n   - Update contrib/codex-plugin/README.md, contrib/pi-extension/README.md,\
+      \ docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md, docs/reference/INTERFACES.md,\
+      \ and README.md to document direct zero-edit plugin installation (`codex plugin\
+      \ marketplace add <repo>` + `codex plugin add larva-subagent@larva`) and remove\
+      \ obsolete manual staging/absolute-path rewrite instructions.\n5. Extend tests\
+      \ (contrib/pi-extension/test-subagent-mcp-server.mjs and tests/shell/test_codex_plugin_contract.py):\n\
+      \   - Verify copying contrib/codex-plugin/ alone to an isolated temporary directory\
+      \ (with no node_modules and no ../pi-extension) and running `node ./subagent-mcp-server.mjs`\
+      \ succeeds for initialize, tools/list, and subagent execution;\n   - Verify\
+      \ SHA-256 byte parity between the 5 runtime files in contrib/codex-plugin/ and\
+      \ contrib/pi-extension/;\n   - Verify .agents/plugins/marketplace.json schema\
+      \ and path resolution;\n   - Verify createChildPiCapsule succeeds when baseAgent\
+      \ contains a dangling symlink, and external-host larva_subagent does not record\
+      \ TUI presentation entries.\n\nBoundary:\n- node-typescript-engineer owns the\
+      \ runtime/plugin changes, documentation updates, and regression tests within\
+      \ allowed_paths.\n- Do not modify src/larva/core/** or src/larva/shell/mcp*.py,\
+      \ and do not mutate user ~/.codex state during tests.\n\nAdmit:\n- Existing\
+      \ Node extension test suite, Python Pi/Codex contract tests, and Invar guard\
+      \ checks pass alongside the new self-contained plugin and headless MCP assertions.\n\
+      \nRecovery:\n- Reap spawned child processes and remove temporary test directories/capsules\
+      \ on exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `bash -c ''set -euo pipefail; export LARVA_TEST_PI_CODING_AGENT="$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent";
+      for f in contrib/pi-extension/test-*.mjs; do node "$f"; done''` -> exits 0.
+
+      - Run `node scripts/pi-guard-checks.mjs tests/shell/test_codex_plugin_contract.py
+      tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_contract.py`
+      -> exits 0.
+
+      - Run `uv run --locked --python 3.12 --group dev invar guard --all` -> exits
+      0.'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/codex-plugin/.mcp.json
+    - contrib/codex-plugin/README.md
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/INTERFACES.md
+    - README.md
+    - tests/shell/test_codex_plugin_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp-self-contained.acceptance-gate
+    name: Gate review and integrated acceptance for self-contained Codex plugin and
+      headless MCP remediation
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase pi_subagent_mcp_self_contained_plugin\
+      \ over the integrated candidate commit on feat/pi-subagent-mcp-and-codex-plugin.\n\
+      \nBoundary:\n- gate-reviewer is strictly read-only (no_repo_change). Inspects\
+      \ integrated source diffs, test adequacy, documentation parity, and verification\
+      \ evidence from pi-subagent-mcp-self-contained.deliver.\n\nAdmit:\n- Included\
+      \ producer outcome: pi-subagent-mcp-self-contained.deliver (and prior baseline\
+      \ pi_subagent_mcp_codex_plugin).\n- Verify:\n  1. subagent-mcp-server.mjs decouples\
+      \ @earendil-works/pi-tui via node:module registerHooks fallback on ERR_MODULE_NOT_FOUND\
+      \ while keeping larva.ts static import intact for native Pi TUI and test_pi_extension_subagent_ux.py.\n\
+      \  2. subagent-mcp-server.mjs appends standard binary fallback directories ($HOME/.local/bin,\
+      \ /opt/homebrew/bin, /usr/local/bin) deduplicated to the tail of ctx.env.PATH\
+      \ without altering unit-test isolation of resolvePiCommandPrefix / autoDiscoverLarvaCli.\n\
+      \  3. External-host MCP mode (ctx?.externalHostCanSpawn !== undefined) skips\
+      \ recordSubagentPresentationRunning / recordSubagentPresentationResult, and\
+      \ createChildPiCapsule skips dangling symlinks in baseAgent before realpathSync/statSync.\n\
+      \  4. contrib/codex-plugin/ contains byte-identical regular-file copies of the\
+      \ 5 runtime files, .mcp.json uses \"./subagent-mcp-server.mjs\", .agents/plugins/marketplace.json\
+      \ is valid, standalone cache-copy execution without node_modules or ../pi-extension\
+      \ passes end-to-end, and documentation reflects direct marketplace installation.\n\
+      \  5. Applicable Node/Python regression suites and fresh Invar guard checks\
+      \ pass on the integrated candidate.\n\nRecovery:\n- If a material defect or\
+      \ proof gap is found, report exact findings with file/line citations so Orchestrator\
+      \ can route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node scripts/pi-guard-checks.mjs tests/shell/test_codex_plugin_contract.py
+      tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_contract.py`,
+      `uv run --locked --python 3.12 --group dev invar guard --all`, and `git diff
+      --check`).'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/.mcp.json
+    - contrib/codex-plugin/README.md
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - docs/reference/INTERFACES.md
+    - README.md
+    - tests/shell/test_codex_plugin_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    depends_on:
+    - pi-subagent-mcp-self-contained.deliver
+    agent: gate-reviewer
