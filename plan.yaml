@@ -148556,3 +148556,121 @@ phases:
       - docs/guides/USER_GUIDE.md#17-cross-harness-pi-subagents-and-codex-plugin
 
       - docs/guides/USAGE.md#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses'
+- id: pi_subagent_mcp_code_hygiene_fixes
+  name: Resolve code-hygiene SHOULD_FIX findings in larva.ts and subagent-mcp-server.mjs
+  status: pending
+  gate: Terminal gate pi-subagent-mcp-code-hygiene-fixes.acceptance-gate verifies
+    all 3 SHOULD_FIX items, presentationGeneration consistency, regression tests,
+    and byte parity across contrib/pi-extension/ and contrib/codex-plugin/.
+  context: 'Authority: code-hygiene audit SHOULD_FIX findings in contrib/pi-extension/larva.ts
+    and contrib/pi-extension/subagent-mcp-server.mjs plus byte-parity synchronization
+    with contrib/codex-plugin/.'
+  depends_on:
+  - pi_subagent_mcp_docs_completion
+  steps:
+  - id: pi-subagent-mcp-code-hygiene-fixes.deliver
+    name: Resolve code-hygiene SHOULD_FIX findings in larva.ts and subagent-mcp-server.mjs
+      and extend regression tests
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/larva.ts\n    - contrib/pi-extension/subagent-mcp-server.mjs\n\
+      \    - contrib/pi-extension/test-subagent-mcp-server.mjs\n    - contrib/codex-plugin/larva.ts\n\
+      \    - contrib/codex-plugin/subagent-mcp-server.mjs\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. `parent_persona_id` & `LARVA_MCP_PARENT_PERSONA` normalization\
+      \ and consistency in `contrib/pi-extension/larva.ts`:\n   - In `larva_subagent`\
+      \ (`ctx?.externalHostCanSpawn !== undefined` branch):\n     - Treat empty/whitespace-only\
+      \ `env.LARVA_MCP_PARENT_PERSONA` as unset (`normalizeString(env.LARVA_MCP_PARENT_PERSONA)\
+      \ ?? undefined`).\n     - Validate `input.parent_persona_id` when supplied (`input.parent_persona_id\
+      \ !== undefined`) via `normalizeString(input.parent_persona_id)`; if `null`,\
+      \ fail with `LARVA_BAD_INPUT: parent_persona_id must be a non-empty string.`.\n\
+      \     - Pass the trimmed `normalizedParentId` (not raw untrimmed `parentId`)\
+      \ to `resolvePersona(normalizedParentId, { env })` and `env.LARVA_PI_PARENT_PERSONA_ID\
+      \ = normalizedParentId`.\n   - Align line 11488 (`if (presentationGeneration\
+      \ === subagentUiResetGeneration && canonicalTaskId !== null) recordSubagentPresentationRunning(...)`)\
+      \ with the rest of `larva_subagent`.\n   - In `resolvePiCommandPrefix(env: RuntimeEnv)`,\
+      \ rename parameter `_env` to `env` and remove the redundant `const env = _env;`\
+      \ line.\n2. JSON-RPC `id` and `arguments: null` handling in `contrib/pi-extension/subagent-mcp-server.mjs`:\n\
+      \   - In `dispatch(message, framed)`: compute `const id = typeof message?.id\
+      \ === 'string' || typeof message?.id === 'number' ? message.id : null;` so `-32600\
+      \ Invalid Request` responses never echo a non-string/non-number/non-null `id`\
+      \ (such as `{}` or `[]`).\n   - In `case 'tools/call'`: pass `message.params?.arguments\
+      \ === undefined ? {} : message.params.arguments` to `callTool` so an explicit\
+      \ `arguments: null` is rejected with `LARVA_BAD_INPUT: arguments must be an\
+      \ object.` while omitted `arguments` still defaults to `{}`.\n3. Synchronize\
+      \ `contrib/codex-plugin/larva.ts` and `contrib/codex-plugin/subagent-mcp-server.mjs`\
+      \ byte-for-byte with `contrib/pi-extension/`.\n4. Extend `contrib/pi-extension/test-subagent-mcp-server.mjs`:\n\
+      \   - Test `invalid` JSON-RPC `id` (e.g. `id: {}`) returns `-32600` with `id:\
+      \ null`;\n   - Test `tools/call` with explicit `arguments: null` returns `isError:\
+      \ true` (`LARVA_BAD_INPUT`), while omitted `arguments` succeeds for `larva_subagent_sessions`;\n\
+      \   - Test `parent_persona_id: \"  parent  \"` trims whitespace before resolving\
+      \ and setting `LARVA_PI_PARENT_PERSONA_ID=\"parent\"`, and `LARVA_MCP_PARENT_PERSONA:\
+      \ \"\"` (empty string) is treated as unset rather than failing with `LARVA_BAD_INPUT`.\n\
+      \nBoundary:\n- `node-typescript-engineer` owns implementation, byte-parity synchronization\
+      \ between `contrib/pi-extension/` and `contrib/codex-plugin/`, and test coverage\
+      \ within `allowed_paths`.\n- Do not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`,\
+      \ and do not mutate user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n\
+      - Node MCP server test suite, native launch context test suite, Python Codex\
+      \ plugin contract tests, and git diff check pass.\n\nRecovery:\n- Revert uncommitted\
+      \ edits or reconcile failing assertions within `allowed_paths`; reap any spawned\
+      \ child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-mcp-code-hygiene-fixes.acceptance-gate
+    name: Gate review and integrated acceptance for code-hygiene SHOULD_FIX fixes
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `pi_subagent_mcp_code_hygiene_fixes`\
+      \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
+      \nBoundary:\n- `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects\
+      \ integrated code/test diffs, byte parity across `contrib/pi-extension/` and\
+      \ `contrib/codex-plugin/`, and verification evidence from `pi-subagent-mcp-code-hygiene-fixes.deliver`.\n\
+      \nAdmit:\n- Included producer outcome: `pi-subagent-mcp-code-hygiene-fixes.deliver`\
+      \ (building on `pi_subagent_mcp_docs_completion`).\n- Verify:\n  1. `contrib/pi-extension/larva.ts`\
+      \ normalizes `env.LARVA_MCP_PARENT_PERSONA` (treating empty/whitespace-only\
+      \ as unset), validates `input.parent_persona_id` via `normalizeString` when\
+      \ supplied, passes trimmed `normalizedParentId` to `resolvePersona` and `env.LARVA_PI_PARENT_PERSONA_ID`,\
+      \ guards line 11488 `recordSubagentPresentationRunning` with `presentationGeneration\
+      \ === subagentUiResetGeneration`, and cleans up `resolvePiCommandPrefix(env:\
+      \ RuntimeEnv)`.\n  2. `contrib/pi-extension/subagent-mcp-server.mjs` coerces\
+      \ non-string/non-number JSON-RPC `id` to `null` on `-32600 Invalid Request`\
+      \ responses and rejects explicit `arguments: null` on `tools/call` with `LARVA_BAD_INPUT:\
+      \ arguments must be an object.` while preserving `{}` default when `arguments`\
+      \ is omitted.\n  3. `contrib/codex-plugin/larva.ts` and `contrib/codex-plugin/subagent-mcp-server.mjs`\
+      \ match `contrib/pi-extension/` byte-for-byte, and `contrib/pi-extension/test-subagent-mcp-server.mjs`\
+      \ covers all three regressions.\n  4. Verification checks (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, `git diff --check`)\
+      \ pass on the immutable integrated commit.\n\nRecovery:\n- If a material defect\
+      \ or parity/test gap is found, report exact findings with file/line citations\
+      \ so Orchestrator can route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - pi-subagent-mcp-code-hygiene-fixes.deliver
+    agent: gate-reviewer
