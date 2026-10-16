@@ -1778,7 +1778,7 @@ Persistent cache:
 
 The Output pane retains the bounded realtime assistant RPC preview (up to 4000 characters). Timeline assistant excerpts come only from complete, persisted assistant message entries in the exact child session; they may appear after the corresponding RPC tool row or terminal result has already arrived. Distinct session entries with identical text remain distinct. Tool rows and their status remain RPC-owned. When a persisted assistant entry identifies a tool call, the excerpt appears before that tool row even if read later. Unmatched excerpts occupy a separate historical block after current RPC tool rows, labeled with unknown relative tool order; the block preserves persisted assistant-entry order without claiming exact placement among tools. Hidden thinking and tool arguments never become Timeline assistant excerpts.
 
-Session-history catch-up is presentation-only and incremental. Neither stream handling nor terminal finalization reads or parses the child session in the parent process, and result callbacks never wait for the Timeline. The reader checks the Pi session header ID and accepts complete LF-delimited entries after new-session allocation or, for resumes, after native `switch_session` succeeds. Partial UTF-8/JSONL entries wait for completion. A finite snapshot is processed in bounded turns across active tasks; terminal catch-up includes bounded retries for session persistence lag, with no ongoing polling. Detected file replacement, observed truncation or changed header identity resets only session-derived UI excerpts. Malformed headers, session read errors and reader failures leave the child run, final result and bounded live preview intact and expose a bounded UI diagnostic. Clear, reload, parent session changes and UI-row eviction invalidate pending presentation results and release reader resources; they preserve the existing child abort and callback rules. No whole-prefix hash or durable cursor is used; same-inode edits that evade observed identity/size changes are outside this detection guarantee.
+Session-history catch-up is presentation-only and incremental. Neither stream handling nor terminal finalization reads or parses the child session in the parent process, and result callbacks never wait for the Timeline. The reader checks the Pi session header ID and accepts complete LF-delimited entries after new-session allocation or, for resumes, after native `switch_session` succeeds. Partial UTF-8/JSONL entries wait for completion. A finite snapshot is processed in bounded turns across active tasks; terminal catch-up includes bounded retries for session persistence lag, with no ongoing polling. Detected file replacement, observed truncation or changed header identity resets only session-derived UI excerpts. Malformed headers, session read errors and reader failures leave the child run, final result and bounded live preview intact and expose a bounded UI diagnostic. Clear, parent session changes and UI-row eviction invalidate pending presentation results and release reader resources. Native `/reload` retires the old reader and resumes scans from retained rows in the replacement module, preserving live children and rebinding callbacks. No whole-prefix hash or durable cursor is used; same-inode edits that evade observed identity/size changes are outside this detection guarantee.
 
 
 ## Runtime state model
@@ -1848,7 +1848,21 @@ continuity only and must not mutate terminal state, event history, active-run
 authority, or watchdog timing.
 
 ## Session lifecycle rules
-On parent session shutdown, reload, new session, resume, or fork:
+Pi's native `/reload` emits `session_shutdown({ reason: "reload" })`,
+replaces the extension module, then emits `session_start({ reason: "reload" })`.
+Larva transfers live subagent Maps, Sets, presentation rows and counters through
+`globalThis[Symbol.for("larva.pi.subagent.shared-state.v1")]` only when the
+shutdown explicitly marks a pending handoff. Independent imports start fresh.
+Children continue running with the same task handles, event cursors and watchdogs.
+Shutdown closes the old overlay, retires its Timeline worker and drops its UI
+contexts; startup rebinds active and pending-terminal callbacks to the new Pi
+surface, resumes Timeline scans and restores the count-only indicator.
+Results arriving in the handoff gap remain pending until rebinding; old stream
+readers refresh the replacement overlay and route scans to the new worker.
+This is same-process continuity, with no restart recovery or durable registry.
+
+On parent session-ending shutdown (`quit`, `new`, `resume`, `fork`, or an
+unspecified reason), and on the legacy direct synthetic `reload` event:
 
 - mark active callbacks stale,
 - abort every non-terminal child run using the same child RPC abort path as
@@ -1862,8 +1876,8 @@ Before a background result callback is sent, the extension must verify that the
 parent session identity still matches the acceptance-time identity and that the
 callback was not already delivered or suppressed.
 
-Lifecycle preservation does not make cached rows authoritative. After reload or
-process exit, cached presentation rows may be displayed for human continuity, but
+Lifecycle preservation does not make cached rows authoritative. After process
+exit, cached presentation rows may be displayed for human continuity, but
 `status`, `events`, `wait`, `select`, cancellation, and the background indicator
 must still rely only on process-local observed runtime state.
 
@@ -1999,9 +2013,13 @@ Implementation is not complete until these gates pass:
 10. Unit/integration test: the interactive status indicator shows only aggregate
    non-terminal subagent counts, updates without timer polling, and never exposes
    task text or controls.
-11. Lifecycle test: reload/new/resume/fork/quit abort active children, mark
-    callbacks stale, append per-task lifecycle events, update the status
-    indicator, and do not send into a stale Pi context.
+11. Lifecycle test: native reload preserves a running child across fresh module
+    imports, restores the indicator and delivers exactly one callback through the
+    new Pi surface, including results that finish during handoff.
+    `node contrib/pi-extension/test-subagent-reload-handoff.mjs` exercises this
+    sequence with a controlled RPC child. New/resume/fork/quit still abort and
+    reap active children and capsules, mark callbacks stale and never send into a
+    stale Pi context.
 12. Non-TUI test: RPC command fallbacks and print/json unavailable errors match
     the mode matrix.
 13. Runtime smoke: during parent streaming, `/larva-subagent` executes as an

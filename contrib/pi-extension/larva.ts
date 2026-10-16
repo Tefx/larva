@@ -722,25 +722,65 @@ type ActiveSubagentRun = {
   requested_thinking: PiThinkingLevel | null;
   startup_thinking: PiThinkingLevel | null;
 };
-const activeSubagentRuns: Map<string, ActiveSubagentRun> = new Map();
+const LARVA_SUBAGENT_SHARED_STATE_SYMBOL = Symbol.for("larva.pi.subagent.shared-state.v1");
+type SharedSubagentRuntimeState = {
+  activeSubagentRuns: Map<string, ActiveSubagentRun>;
+  activeSubagentChildren: Set<{ child: ChildProcessWithoutNullStreams; env: RuntimeEnv }>;
+  subagentEventLog: LarvaSubagentEvent[];
+  subagentStartupFailureLog: LarvaSubagentStartupFailure[];
+  subagentEventWaiters: Set<() => void>;
+  subagentBackgroundIndicatorContexts: Set<PiContext>;
+  retainedSubagentPresentationLog: SubagentPresentationLogEntry[];
+  subagentEventSequence: number;
+  subagentStartupSequence: number;
+  subagentPresentationSequence: number;
+  subagentUiResetGeneration: number;
+  subagentInvocationSequence: number;
+  reloadPendingHandoff: boolean;
+  notifyOverlay: (() => void) | null;
+  requestTimeline: ((entry: SubagentPresentationLogEntry) => void) | null;
+};
+const subagentGlobal = globalThis as Record<symbol, SharedSubagentRuntimeState | undefined>;
+const previousSubagentState = subagentGlobal[LARVA_SUBAGENT_SHARED_STATE_SYMBOL];
+// Only an explicit Pi reload transfers live ownership. Independent imports
+// (including isolated test cases) start with fresh registries.
+const sharedSubagentState: SharedSubagentRuntimeState = previousSubagentState?.reloadPendingHandoff === true
+  ? previousSubagentState
+  : {
+    activeSubagentRuns: new Map(),
+    activeSubagentChildren: new Set(),
+    subagentEventLog: [],
+    subagentStartupFailureLog: [],
+    subagentEventWaiters: new Set(),
+    subagentBackgroundIndicatorContexts: new Set(),
+    retainedSubagentPresentationLog: [],
+    subagentEventSequence: 0,
+    subagentStartupSequence: 0,
+    subagentPresentationSequence: 0,
+    subagentUiResetGeneration: 0,
+    subagentInvocationSequence: 0,
+    reloadPendingHandoff: false,
+    notifyOverlay: null,
+    requestTimeline: null,
+  };
+subagentGlobal[LARVA_SUBAGENT_SHARED_STATE_SYMBOL] = sharedSubagentState;
+const {
+  activeSubagentRuns, activeSubagentChildren, subagentEventLog,
+  subagentStartupFailureLog, subagentEventWaiters,
+  subagentBackgroundIndicatorContexts, retainedSubagentPresentationLog,
+} = sharedSubagentState;
 let activeModelMapProfile: ActiveModelMapProfile | null = null;
 let modelMapRouteGeneration = 0;
 let modelMapSwitchTail: Promise<void> = Promise.resolve();
 const SUBAGENT_EVENT_RETENTION_LIMIT = 1000;
-const subagentEventLog: LarvaSubagentEvent[] = [];
-const subagentStartupFailureLog: LarvaSubagentStartupFailure[] = [];
-const subagentEventWaiters = new Set<() => void>();
-let subagentEventSequence = 0;
-const subagentBackgroundIndicatorContexts = new Set<PiContext>();
-let subagentStartupSequence = 0;
-const retainedSubagentPresentationLog: SubagentPresentationLogEntry[] = [];
-const activeSubagentChildren: Set<{ child: ChildProcessWithoutNullStreams; env: RuntimeEnv }> = new Set();
 let currentSubagentOverlay: { entry: SubagentPresentationLogEntry; text: string; generation: number } | null = null;
 let currentSubagentOverlayComponent: PiOverlayComponent | null = null;
 let subagentOverlayGeneration = 0;
-let subagentPresentationSequence = 0;
-let subagentUiResetGeneration = 0;
-let subagentInvocationSequence = 0;
+sharedSubagentState.notifyOverlay = () => {
+  if (currentSubagentOverlayComponent instanceof SubagentPresentationLogOverlay) {
+    currentSubagentOverlayComponent.refreshFromPresentationLog();
+  }
+};
 let sessionTimelineWorker: Worker | null = null;
 let sessionTimelineRetirement: Promise<void> | null = null;
 const sessionTimelineRequests = new Map<number, { path: string; generation: number; inFlight: boolean; dirty: boolean }>();
@@ -2155,7 +2195,7 @@ export function stopSessionTimelineWorkerForTests(): Promise<void> {
 }
 
 function sessionTimelineEntry(invocation: number, generation: number, path: string): SubagentPresentationLogEntry | null {
-  if (generation !== subagentUiResetGeneration) return null;
+  if (generation !== sharedSubagentState.subagentUiResetGeneration) return null;
   return retainedSubagentPresentationLog.find((entry) => entry.presentation_invocation === invocation && entry.task_id === path) ?? null;
 }
 
@@ -2242,9 +2282,17 @@ function ensureSessionTimelineWorker(): Worker {
 }
 
 function requestSessionTimeline(entry: SubagentPresentationLogEntry): void {
+  sharedSubagentState.requestTimeline?.(entry);
+}
+
+// Old stream readers retain their module closures after reload. Route scans to
+// the replacement module instead of resurrecting the retired timeline worker.
+sharedSubagentState.requestTimeline = requestLocalSessionTimeline;
+function requestLocalSessionTimeline(entry: SubagentPresentationLogEntry): void {
+  if (sharedSubagentState.reloadPendingHandoff) return;
   if (entry.task_id === null || entry.presentation_invocation === undefined || entry.presentation_scan_ready === false) return;
   const invocation = entry.presentation_invocation;
-  const generation = subagentUiResetGeneration;
+  const generation = sharedSubagentState.subagentUiResetGeneration;
   const current = sessionTimelineEntry(invocation, generation, entry.task_id);
   if (current === null) return;
   entry = current;
@@ -2279,7 +2327,7 @@ function retryTerminalSessionTimeline(entry: SubagentPresentationLogEntry): void
     const timer = setTimeout(() => {
       sessionTimelineRetryTimers.delete(timer);
       if (entry.task_id !== null && entry.presentation_invocation !== undefined) {
-        const current = sessionTimelineEntry(entry.presentation_invocation, subagentUiResetGeneration, entry.task_id);
+        const current = sessionTimelineEntry(entry.presentation_invocation, sharedSubagentState.subagentUiResetGeneration, entry.task_id);
         if (current !== null) requestSessionTimeline(current);
       }
     }, delay);
@@ -3575,7 +3623,7 @@ function loadSubagentPresentationCache(env: RuntimeEnv): void {
     if (!isRecord(parsed) || parsed.version !== 1 || !Array.isArray(parsed.entries)) return;
     const entries = prunedSubagentPresentationEntries(parsed.entries.filter(isRecord).map((entry) => sanitizeSubagentPresentationCacheEntry({ ...entry } as SubagentPresentationLogEntry, config)), config);
     retainedSubagentPresentationLog.push(...entries);
-    subagentPresentationSequence = Math.max(subagentPresentationSequence, ...entries.map((entry) => typeof entry.sequence === "number" ? entry.sequence : 0), 0);
+    sharedSubagentState.subagentPresentationSequence = Math.max(sharedSubagentState.subagentPresentationSequence, ...entries.map((entry) => typeof entry.sequence === "number" ? entry.sequence : 0), 0);
     if (entries.length !== parsed.entries.length) persistSubagentPresentationCache();
   } catch {
     // Malformed cache content is treated as empty UI cache, not as shared data loss.
@@ -8387,8 +8435,8 @@ function subagentCallbackMessage(snapshot: SubagentTerminalSnapshot, resultText:
 }
 
 function newSubagentPrivateKey(): string {
-  subagentStartupSequence += 1;
-  return `startup:${Date.now()}:${subagentStartupSequence}`;
+  sharedSubagentState.subagentStartupSequence += 1;
+  return `startup:${Date.now()}:${sharedSubagentState.subagentStartupSequence}`;
 }
 
 function isSubagentRunActive(record: ActiveSubagentRun): boolean {
@@ -8406,13 +8454,13 @@ function notifySubagentEventWaiters(): void {
 }
 
 function highestSubagentEventSequence(): number {
-  return subagentEventSequence;
+  return sharedSubagentState.subagentEventSequence;
 }
 
 function subagentEventFromSnapshot(snapshot: LarvaSubagentRunSnapshot, kind: LarvaSubagentEventKind): LarvaSubagentEvent {
-  subagentEventSequence += 1;
+  sharedSubagentState.subagentEventSequence += 1;
   return {
-    sequence: subagentEventSequence,
+    sequence: sharedSubagentState.subagentEventSequence,
     task_id: snapshot.task_id,
     kind,
     status: snapshot.status,
@@ -8442,11 +8490,11 @@ function appendSubagentEvent(snapshot: LarvaSubagentRunSnapshot, kind: LarvaSuba
 }
 
 function appendSubagentStartupFailure(record: ActiveSubagentRun, larvaError: LarvaError): void {
-  subagentEventSequence += 1;
+  sharedSubagentState.subagentEventSequence += 1;
   const boundedCallId = record.presentation_call_id === undefined ? "" : sanitizedStartupDiagnostic(record.presentation_call_id);
   const boundedErrorMessage = sanitizedStartupDiagnostic(larvaError.message);
   subagentStartupFailureLog.push({
-    sequence: subagentEventSequence,
+    sequence: sharedSubagentState.subagentEventSequence,
     startup_id: record.private_key,
     call_id: boundedCallId.length === 0 ? null : boundedCallId,
     persona_id: record.persona_id,
@@ -8606,7 +8654,7 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     status_history: [],
     input,
     presentation_call_id: ctx?.presentationCallId,
-    presentation_generation: subagentUiResetGeneration,
+    presentation_generation: sharedSubagentState.subagentUiResetGeneration,
     presentation_enabled: ctx?.externalHostCanSpawn === undefined,
     background_task: null,
     cancel_task: null,
@@ -8909,13 +8957,17 @@ export function larvaSubagentResultCallbackDelivery(content: string, details: Re
 }
 
 async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise<void> {
-  if (record.callback_delivery !== "pending" || record.terminal_snapshot === null) return;
+  if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.terminal_snapshot === null) return;
   if (!parentSessionStillCurrent(record)) {
     setSubagentCallbackDelivery(record, "stale");
     return;
   }
-  const ctx = record.callback_ctx;
+  const surface = record.callback_surface;
   const payload = await callbackPayloadFromRun(record);
+  // Payload reads can yield across shutdown; defer delivery until the new
+  // runtime has rebound the callback and UI surfaces.
+  if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.callback_surface !== surface) return;
+  const ctx = record.callback_ctx;
   const callback = larvaSubagentResultCallbackDelivery(payload.message as string, payload);
   if (typeof record.callback_surface.sendMessage === "function") {
     try {
@@ -8997,7 +9049,7 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   });
   appendSubagentRunSnapshot(record, terminal.status);
   if (record.task_id === null && terminal.status === "failed" && terminal.error !== null) appendSubagentStartupFailure(record, terminal.error);
-  if (record.presentation_enabled && record.presentation_generation === subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
+  if (record.presentation_enabled && record.presentation_generation === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
   if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because the model-facing terminal control path already returned the terminal result."));
   else void deliverSubagentResultCallback(record).catch((caught) => {
     const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
@@ -9009,8 +9061,8 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
 }
 
 function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry, "sequence">): SubagentPresentationLogEntry {
-  subagentPresentationSequence += 1;
-  const retained = withSubagentEntryTimestamp({ ...entry, sequence: subagentPresentationSequence });
+  sharedSubagentState.subagentPresentationSequence += 1;
+  const retained = withSubagentEntryTimestamp({ ...entry, sequence: sharedSubagentState.subagentPresentationSequence });
   retainedSubagentPresentationLog.push(retained);
   while (retainedSubagentPresentationLog.length > 25) {
     const evicted = retainedSubagentPresentationLog.shift();
@@ -9032,7 +9084,7 @@ function appendSubagentPresentationRunning(taskId: string, personaId: string, in
     task_prompt: presentationTaskPrompt(input),
     phase: "waiting_for_child",
     call_id: callId,
-    presentation_invocation: ++subagentInvocationSequence,
+    presentation_invocation: ++sharedSubagentState.subagentInvocationSequence,
     presentation_scan_ready: presentationMode(input) !== "resume",
   };
   if (existingIndex >= 0) {
@@ -9242,7 +9294,7 @@ function recordSubagentPresentationResult(result: LarvaSubagentResult, input?: L
     started_at: preservedWithSessionExcerpts?.started_at,
     tool_snapshots: boundedSubagentToolSnapshots(preservedWithSessionExcerpts?.tool_snapshots),
     timeline_events: boundedSubagentTimelineEvents(appendSubagentTimelineEvent({ timeline_events: preservedWithSessionExcerpts?.timeline_events } as SubagentPresentationLogEntry, { kind: "terminal", status: result.status })),
-    presentation_invocation: preservedWithSessionExcerpts?.presentation_invocation ?? ++subagentInvocationSequence,
+    presentation_invocation: preservedWithSessionExcerpts?.presentation_invocation ?? ++sharedSubagentState.subagentInvocationSequence,
     presentation_session_id: preservedWithSessionExcerpts?.presentation_session_id,
     presentation_scan_ready: preservedWithSessionExcerpts?.presentation_scan_ready,
     presentation_diagnostic: preservedWithSessionExcerpts?.presentation_diagnostic,
@@ -9885,9 +9937,7 @@ function refreshedSubagentOverlayEntry(selection: SubagentOverlaySelection): Sub
 }
 
 function notifySubagentPresentationOverlay(): void {
-  if (currentSubagentOverlayComponent instanceof SubagentPresentationLogOverlay) {
-    currentSubagentOverlayComponent.refreshFromPresentationLog();
-  }
+  sharedSubagentState.notifyOverlay?.();
 }
 
 function renderSubagentPresentationOverlay(entries: SubagentPresentationLogEntry[], expanded: boolean, generation: number, mode: "detail" | "selector" = "detail"): string {
@@ -9988,8 +10038,8 @@ export function larva_subagent_log(input?: unknown): LarvaSubagentOverlayResult 
   const options = parseOverlayOptions(input);
   if (options.clear) {
     retainedSubagentPresentationLog.length = 0;
-    subagentPresentationSequence = 0;
-    subagentUiResetGeneration += 1;
+    sharedSubagentState.subagentPresentationSequence = 0;
+    sharedSubagentState.subagentUiResetGeneration += 1;
     stopSessionTimelineWorker();
     clearSubagentPresentationCacheFile();
     closeSubagentPresentationOverlay();
@@ -10082,15 +10132,15 @@ export function setChildRpcStartupReadyTimeoutForTests(timeoutMs: number | null)
 export function resetSubagentPresentationStateForTests(): void {
   childRpcStartupReadyTimeoutOverrideForTests = null;
   retainedSubagentPresentationLog.length = 0;
-  subagentPresentationSequence = 0;
-  subagentUiResetGeneration += 1;
+  sharedSubagentState.subagentPresentationSequence = 0;
+  sharedSubagentState.subagentUiResetGeneration += 1;
   stopSessionTimelineWorker();
   sessionTimelineReadBytes = 0;
   sessionTimelineParsedRecords = 0;
   for (const record of new Set(activeSubagentRuns.values())) clearSubagentStallTimer(record);
   activeSubagentRuns.clear();
   subagentEventLog.length = 0;
-  subagentEventSequence = 0;
+  sharedSubagentState.subagentEventSequence = 0;
   notifySubagentEventWaiters();
   updateSubagentBackgroundIndicator();
   closeSubagentPresentationOverlay();
@@ -10110,7 +10160,7 @@ export function recordSubagentPresentationEntryForTests(
       }
     }
   }
-  const entry = appendSubagentPresentationLog({ task_id: taskId, persona_id: personaId, status, presentation_invocation: ++subagentInvocationSequence, ...metadata });
+  const entry = appendSubagentPresentationLog({ task_id: taskId, persona_id: personaId, status, presentation_invocation: ++sharedSubagentState.subagentInvocationSequence, ...metadata });
   if (entry.status === "running") requestSessionTimeline(entry);
 }
 
@@ -11180,13 +11230,14 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
 }
 
 export async function resetExtensionUI(reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
+  sharedSubagentState.reloadPendingHandoff = false;
   childRpcStartupReadyTimeoutOverrideForTests = null;
   // Invalidate presentation before awaiting child abort/cleanup: late reader
   // messages cannot cross into a replacement parent session during that wait.
-  subagentUiResetGeneration += 1;
+  sharedSubagentState.subagentUiResetGeneration += 1;
   const readerRetirement = stopSessionTimelineWorker();
   retainedSubagentPresentationLog.length = 0;
-  subagentPresentationSequence = 0;
+  sharedSubagentState.subagentPresentationSequence = 0;
   closeSubagentPresentationOverlay();
   await cleanupActivePersonaInvocationsForLifecycle(reason);
   const activeChildrenReaped = await cleanupActiveSubagentRegistryForLifecycle(reason);
@@ -11416,10 +11467,10 @@ async function runChildSequence(
 }
 
 export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext & { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void; presentationCallId?: string; callbackSurface?: SubagentCallbackSurface; externalHostCanSpawn?: boolean }): Promise<LarvaSubagentResult> {
-  const presentationGeneration = ctx?.externalHostCanSpawn === undefined ? subagentUiResetGeneration : null;
+  const presentationGeneration = ctx?.externalHostCanSpawn === undefined ? sharedSubagentState.subagentUiResetGeneration : null;
   const parsed = validateInput(input);
   if ("status" in parsed) {
-    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(parsed, input, ctx?.presentationCallId);
+    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(parsed, input, ctx?.presentationCallId);
     return parsed; // public task_id: null on bad input pre-session failures
   }
   const { personaId, task, taskId, noProgressTimeoutMs } = parsed;
@@ -11438,13 +11489,13 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   }
   if (isLarvaError(lexicallyValidTaskId)) {
     const result = failed(null, personaId, lexicallyValidTaskId);
-    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
   const root = await childSessionRoot(env);
   if (isLarvaError(root)) {
     const result = failed(null, personaId, root);
-    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
 
@@ -11453,7 +11504,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     const validated = await validateTaskId(lexicallyValidTaskId, root);
     if (isLarvaError(validated)) {
       const result = failed(null, personaId, validated);
-      if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+      if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
       return result;
     }
     canonicalTaskId = validated;
@@ -11482,29 +11533,29 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   } else authorityError = canSpawn(state.envelope, personaId);
   if (authorityError) {
     const result = failed(null, personaId, authorityError);
-    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
   if (canonicalTaskId !== null && subagentTaskIdBusyInRegistry(canonicalTaskId)) {
     const result = failed(canonicalTaskId, personaId, error("LARVA_SESSION_BUSY", "Child session is already being resumed."));
-    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
   const runtimeConfig = loadSubagentRuntimeConfig(env);
   if (isLarvaError(runtimeConfig)) {
     const result = failed(canonicalTaskId, personaId, runtimeConfig);
-    if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
     return result;
   }
   const record = createSubagentRun(input, env, personaId, canonicalTaskId, ctx);
-  if (presentationGeneration === subagentUiResetGeneration && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
+  if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
   const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, noProgressTimeoutMs, runtimeConfig.extension_sources, ctx?.abortSignal, {
     onPhase: (phase, readyTaskId) => {
       ctx?.onPhase?.(phase, readyTaskId);
       // A resumed child's switch_session may migrate/rewrite the file. Start
       // presentation only after that native acknowledgement, from a fresh cursor.
-      if (canonicalTaskId !== null && phase === "session_ready" && presentationGeneration === subagentUiResetGeneration) {
+      if (canonicalTaskId !== null && phase === "session_ready" && presentationGeneration === sharedSubagentState.subagentUiResetGeneration) {
         const entry = retainedSubagentPresentationLog.find((item) => item.task_id === canonicalTaskId && item.status === "running" && (ctx?.presentationCallId === undefined || item.call_id === ctx.presentationCallId));
         if (entry !== undefined) {
           entry.presentation_scan_ready = true;
@@ -11513,10 +11564,10 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
       }
     },
     onTaskAllocated: (allocatedTaskId) => {
-      if (presentationGeneration === subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
+      if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
     },
     onStreamEvent: (eventValue, streamedTaskId) => {
-      if (presentationGeneration === subagentUiResetGeneration) applyNormalizedSubagentStreamEvent(streamedTaskId, ctx?.presentationCallId, eventValue);
+      if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) applyNormalizedSubagentStreamEvent(streamedTaskId, ctx?.presentationCallId, eventValue);
     },
   }, record);
   if (result.status !== "accepted") return result;
@@ -11822,10 +11873,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     execute: (_toolCallId, input, signal, onUpdate, toolCtx) => {
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
       const callId = typeof _toolCallId === "string" && _toolCallId.length > 0 ? _toolCallId : undefined;
-      const executeGeneration = subagentUiResetGeneration;
+      const executeGeneration = sharedSubagentState.subagentUiResetGeneration;
       let toolUpdateActive = true;
       const emitProgress = (phase: string, taskId?: string | null): void => {
-        if (executeGeneration === subagentUiResetGeneration) upsertSubagentPresentationProgress(input, phase, taskId, callId);
+        if (executeGeneration === sharedSubagentState.subagentUiResetGeneration) upsertSubagentPresentationProgress(input, phase, taskId, callId);
         if (toolUpdateActive) safelyEmitSubagentUpdate(onUpdate, progressUpdate(input, phase, taskId));
       };
       emitProgress("starting");
@@ -11994,14 +12045,37 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   registerAgentPersonaSwitchTools(ctx, pi);
   const initialRuntimeCtx = withRuntimeEnv(ctx, env);
   if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi);
-  pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
+  pi.on?.("session_start", async (payload: unknown, eventCtx?: PiContext) => {
     if (!instructionGenerationIsCurrent(instanceGeneration)) return;
     const generation = beginInstructionTransition();
     try {
       const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
       registerSubagentBackgroundIndicatorContext(runtimeCtx);
       registerLarvaPersonaAutocompleteProvider(runtimeCtx);
-      await resetExtensionUI("session_start");
+      const isReloadHandoff = (isRecord(payload) && payload.reason === "reload") || sharedSubagentState.reloadPendingHandoff;
+      if (isReloadHandoff) {
+        sharedSubagentState.reloadPendingHandoff = false;
+        for (const record of new Set(activeSubagentRuns.values())) {
+          if (!isSubagentRunActive(record) && record.callback_delivery !== "pending") continue;
+          record.callback_ctx = runtimeCtx;
+          record.callback_surface = callbackSurfaceFrom(runtimeCtx, pi);
+          record.parent_session_identity = piSessionIdentity(runtimeCtx);
+          record.presentation_generation = sharedSubagentState.subagentUiResetGeneration;
+          if (record.terminal_snapshot !== null && record.callback_delivery === "pending") {
+            void deliverSubagentResultCallback(record).catch((caught) => {
+              const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
+              void traceChildRpc(record.env, "callback_delivery_failed", { task_id: record.task_id, code: diagnostic.code, message_preview: boundedTracePreview(diagnostic.message) });
+              setSubagentCallbackDelivery(record, "failed", diagnostic);
+            });
+          }
+        }
+        for (const entry of retainedSubagentPresentationLog) {
+          if (entry.status === "running" && entry.presentation_scan_ready !== false) requestSessionTimeline(entry);
+        }
+        updateSubagentBackgroundIndicator(runtimeCtx);
+      } else {
+        await resetExtensionUI("session_start");
+      }
       if (!instructionGenerationIsCurrent(generation)) return;
       await ensureSessionInitialized(runtimeCtx, pi);
     } finally {
@@ -12025,9 +12099,16 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
     return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
   });
-  pi.on?.("session_shutdown", (payload: unknown) => {
+  pi.on?.("session_shutdown", async (payload: unknown) => {
     if (!instructionGenerationIsCurrent(instanceGeneration)) return;
     invalidateInstructionResolver();
+    if (isRecord(payload) && payload.reason === "reload") {
+      sharedSubagentState.reloadPendingHandoff = true;
+      closeSubagentPresentationOverlay();
+      subagentBackgroundIndicatorContexts.clear();
+      await stopSessionTimelineWorker();
+      return;
+    }
     const reason = isRecord(payload) && typeof payload.reason === "string" ? payload.reason : "session_shutdown";
     return resetExtensionUI(reason);
   });

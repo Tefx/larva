@@ -2007,9 +2007,29 @@ not child-session sources of truth. Clearing the Console/cache with `--clear`
 must not delete child Pi session files, consume orchestration events, change
 exact-`task_id` rules, or mutate persona/model/tool-policy state.
 
+### Native `/reload` subagent handoff
+
+Pi's `session_shutdown` and `session_start` events with `reason: "reload"`
+preserve live subagents in the same process. A pending handoff transfers the
+registry, child processes, event cursors, watchdogs and presentation log across
+fresh module loads through `globalThis`. Startup rebinds pending callbacks to
+the new Pi context, restores the `🤖 N` indicator and resumes Timeline scans.
+The old overlay closes and its Timeline worker retires; old stream readers
+refresh the replacement overlay. Results finishing between shutdown and startup
+wait for the new callback surface.
+
+Session-ending shutdown (`quit`, `new`, `resume`, `fork`, or unspecified)
+still aborts and reaps children and capsules, invalidates callbacks and clears
+the live presentation log. The legacy direct synthetic `reload` event also
+performs full teardown. Independent imports without a pending handoff start
+with fresh state. Process restarts do not recover live runs from the UI cache.
+
+Run `node contrib/pi-extension/test-subagent-reload-handoff.mjs` for the
+controlled RPC lifecycle regression (no live provider calls).
+
 ### Session-sourced assistant Timeline
 
-Output keeps its bounded 4000-character realtime RPC assistant tail. Timeline also displays one live assistant row per native message, updated in place from text deltas even when thinking or tool events are present. Live rows keep the newest 1200 code points with an omission marker; completed excerpts keep the existing bounded prefix. The Timeline retains at most 80 events. Native `message_start`/`message_end` boundaries keep sequential messages separate. The asynchronous Worker replaces a live row with its persisted counterpart in the same chronological position, using the finalized native message's timestamp, route/response identity and ordered visible blocks. Identical text in different messages remains separate. Missing or ambiguous identity leaves observations intact, with unconfirmed live rows labeled `persistence pending`; display-text resemblance never authorizes deletion. Persisted-only assistant excerpts with known tool-call IDs precede matching RPC tool rows. Unmatched persisted excerpts form a separate historical block after current RPC rows, in persisted assistant-entry order, labeled with unknown relative tool order. RPC owns tool status. Hidden thinking and tool-call arguments are not shown as assistant Timeline prose. Terminal results and callbacks do not wait for session catch-up and continue to use the existing result/artifact delivery path. The reader validates the Pi session header ID and starts resumed catch-up only after native `switch_session` succeeds. Malformed headers, read errors and reader failures affect presentation only and leave the realtime preview and child outcome available. Clear, reload, session replacement and UI-row eviction discard pending UI catch-up without touching child session files; existing lifecycle child-abort rules continue to apply.
+Output keeps its bounded 4000-character realtime RPC assistant tail. Timeline also displays one live assistant row per native message, updated in place from text deltas even when thinking or tool events are present. Live rows keep the newest 1200 code points with an omission marker; completed excerpts keep the existing bounded prefix. The Timeline retains at most 80 events. Native `message_start`/`message_end` boundaries keep sequential messages separate. The asynchronous Worker replaces a live row with its persisted counterpart in the same chronological position, using the finalized native message's timestamp, route/response identity and ordered visible blocks. Identical text in different messages remains separate. Missing or ambiguous identity leaves observations intact, with unconfirmed live rows labeled `persistence pending`; display-text resemblance never authorizes deletion. Persisted-only assistant excerpts with known tool-call IDs precede matching RPC tool rows. Unmatched persisted excerpts form a separate historical block after current RPC rows, in persisted assistant-entry order, labeled with unknown relative tool order. RPC owns tool status. Hidden thinking and tool-call arguments are not shown as assistant Timeline prose. Terminal results and callbacks do not wait for session catch-up and continue to use the existing result/artifact delivery path. The reader validates the Pi session header ID and starts resumed catch-up only after native `switch_session` succeeds. Malformed headers, read errors and reader failures affect presentation only and leave the realtime preview and child outcome available. Clear, session replacement and UI-row eviction discard pending UI catch-up without touching child session files. Native `/reload` retires the old worker and resumes scans from the retained rows in the replacement module; it preserves live children and rebinds callbacks.
 
 The extension package includes `session-timeline-worker.mjs` beside `larva.ts` and `child-rpc-frame-preload.mjs`. A copied or installed extension must include that file so Timeline catch-up works; Pi's extension package manifest lists it in `files`. No persistent cursor or sidecar is written.
 

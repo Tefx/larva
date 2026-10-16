@@ -22,6 +22,22 @@ EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
 FAKE_CLI: Final = ROOT / "tests" / "fixtures" / "pi" / "fake-larva-cli.mjs"
 
 
+def test_subagent_reload_handoff() -> None:
+    """Fresh extension imports retain live children only during a reload handoff."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension runtime regression tests")
+    completed = subprocess.run(
+        [node, str(ROOT / "contrib/pi-extension/test-subagent-reload-handoff.mjs")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
 def _run_node(tmp_path: Path, script: str, *, timeout: float = 20.0) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
