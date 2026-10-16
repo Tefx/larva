@@ -148761,7 +148761,7 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs'
 - id: pi_subagent_panel_fullscreen_mouse_fix
   name: Preserve Pi fullscreen mouse tracking across subagent overlay open and close
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate verifies
     fullscreen mouse reporting preservation across subagent overlay open/close, BorderedScrollableText.handleMouse
     support, byte parity with contrib/codex-plugin/larva.ts, and passing unit + native
@@ -148868,7 +148868,7 @@ phases:
   - id: pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate
     name: Gate review and integrated acceptance for Pi fullscreen mouse-reporting
       preservation
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_panel_fullscreen_mouse_fix`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -148911,3 +148911,43 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-16T16:20:06.956281Z'
+    done_at: '2026-10-16T16:22:23.947732+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:0669311378bc6587b3111b08a9edc0ab75e74340 (integrating producer
+      commits 915b8824ecc18c0fe943f7099202f4a45c519554 and 33c7e433378b8857e138f22dbf6bcdd7c7bb9948)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T16-20-49-075Z_01a14584-1f30-7624-919b-748d36a869fc.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_panel_fullscreen_mouse_fix], findings=[],
+      warnings=[], requirements 3/3 PROVEN (req-1-fullscreen-mouse-reporting-preserved-on-overlay-open-and-close,
+      req-2-bordered-scrollable-text-handle-mouse-and-native-rpc-timer, req-3-byte-parity-and-unit-plus-native-pty-verification)
+
+
+      Verification:
+
+      - Run: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate8-binding-g0kWyC/binding.json /tmp/larva-gate8-binding-g0kWyC/gate-report.json
+      -> exit 0 (POSITIVE_GATE_EVIDENCE).
+
+      - Run: .venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py
+      tests/shell/test_pi_extension_subagent_ux.py -k "test_overlay_mouse_reporting_respects_tui_ownership
+      or codex" -> exit 0 (4 passed).
+
+      - Reused applicable producer verification on unchanged evidence-affecting inputs:
+      61 passed in full test_pi_extension_subagent_ux.py + test_codex_plugin_contract.py
+      suite, and node scripts/pi-native-journeys.mjs --scenario panel-navigation exited
+      0.
+
+      - Run: git status --short && git diff --check -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/larva.ts'
