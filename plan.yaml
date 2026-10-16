@@ -149199,3 +149199,249 @@ phases:
       - contrib/pi-extension/README.md#native-reload-subagent-handoff
 
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules'
+- id: pi_subagent_code_hygiene_audit
+  name: Code-hygiene audit and remediation for Pi subagent MCP, Codex plugin, and
+    reload/mouse fixes
+  status: pending
+  gate: Terminal gate pi-subagent-code-hygiene.acceptance-gate verifies that all admitted
+    MUST_FIX and worthwhile SHOULD_FIX findings from structural-auditor and pathway-auditor
+    are resolved, the 5 runtime files in contrib/codex-plugin/ match contrib/pi-extension/
+    byte-for-byte, and all verification suites pass.
+  context: 'Authority: user requirement to add a code-hygiene phase running structural-auditor
+    and pathway-auditor in parallel followed by a single writable remediation-and-verification
+    step and terminal gate over the feat/pi-subagent-mcp-and-codex-plugin changes.'
+  depends_on:
+  - pi_subagent_reload_hot_handoff
+  steps:
+  - id: pi-subagent-code-hygiene.structural-audit
+    name: Parallel breadth structural audit of Pi subagent MCP, Codex plugin, and
+      reload/mouse changes
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      [REQUIRES_SKILL: code-hygiene]
+
+
+      Deliver:
+
+      - Read-only breadth structural audit report over the `feat/pi-subagent-mcp-and-codex-plugin`
+      changes (`contrib/pi-extension/larva.ts`, `contrib/pi-extension/subagent-mcp-server.mjs`,
+      `contrib/pi-extension/test-subagent-mcp-server.mjs`, `contrib/pi-extension/test-subagent-reload-handoff.mjs`,
+      `contrib/codex-plugin/**`, `.agents/plugins/marketplace.json`, `tests/shell/test_codex_plugin_contract.py`,
+      `tests/shell/test_pi_extension_subagent_ux.py`, `tests/fixtures/pi/native_tui_probe.py`).
+
+      - Inspect for cross-file duplication (excluding intentional byte-mirrored runtime
+      files between `contrib/pi-extension/` and `contrib/codex-plugin/` enforced by
+      contract), missed stdlib/repo reuse, unnecessary abstractions, non-orthogonal
+      interfaces, dead parameters, and duplicated test scaffolding.
+
+      - Classify every finding as `MUST_FIX`, `SHOULD_FIX`, or `ACCEPTABLE` with exact
+      `path:line` evidence and a concrete simplification recommendation.
+
+
+      Boundary:
+
+      - `structural-auditor` is strictly read-only (`no_repo_change`). Do not edit
+      repository files or mutate user `~/.codex` or `~/.pi` state.
+
+
+      Admit:
+
+      - Every finding cites exact `path:line` evidence, classifies severity (`MUST_FIX`,
+      `SHOULD_FIX`, `ACCEPTABLE`), and accounts for the contract-mandated 5-file byte
+      mirror between `contrib/pi-extension/` and `contrib/codex-plugin/`.
+
+      - Consumed by `pi-subagent-code-hygiene.remediate-and-verify`.
+
+
+      Recovery:
+
+      - Re-inspect source files if any citation or consumer boundary is ambiguous;
+      do not modify tracked files.'
+    verification: '- Verify read-only execution (`git status --short` and `git diff
+      --check` exit 0 with no tracked modifications).
+
+      - Record complete categorized findings (`MUST_FIX`, `SHOULD_FIX`, `ACCEPTABLE`)
+      with exact `path:line` citations in step completion evidence.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - contrib/codex-plugin/README.md
+    - .agents/plugins/marketplace.json
+    - tests/shell/test_codex_plugin_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/fixtures/pi/native_tui_probe.py
+    agent: structural-auditor
+  - id: pi-subagent-code-hygiene.pathway-audit
+    name: Parallel depth pathway audit of Pi subagent MCP, reload handoff, and fullscreen
+      mouse pathways
+    status: pending
+    description: 'step_type: verification
+
+      repo_change_policy: no_repo_change
+
+
+      [REQUIRES_SKILL: code-hygiene]
+
+
+      Deliver:
+
+      - Read-only depth execution-pathway audit report over the `feat/pi-subagent-mcp-and-codex-plugin`
+      changes (`contrib/pi-extension/larva.ts`, `contrib/pi-extension/subagent-mcp-server.mjs`,
+      `contrib/pi-extension/test-subagent-mcp-server.mjs`, `contrib/pi-extension/test-subagent-reload-handoff.mjs`,
+      `contrib/codex-plugin/**`, `tests/shell/test_codex_plugin_contract.py`, `tests/shell/test_pi_extension_subagent_ux.py`,
+      `tests/fixtures/pi/native_tui_probe.py`).
+
+      - Trace end-to-end execution pathways for wiring completeness, cross-branch
+      invariants, external-host MCP / `/reload` hot handoff / fullscreen mouse tracking
+      / startup readiness edge cases, vacuous test oracles, and deletion consumer
+      safety.
+
+      - Classify every finding as `MUST_FIX`, `SHOULD_FIX`, or `ACCEPTABLE` with exact
+      `path:line` evidence and a concrete remediation recommendation.
+
+
+      Boundary:
+
+      - `pathway-auditor` is strictly read-only (`no_repo_change`). Do not edit repository
+      files or mutate user `~/.codex` or `~/.pi` state.
+
+
+      Admit:
+
+      - Every finding cites exact `path:line` evidence, classifies severity (`MUST_FIX`,
+      `SHOULD_FIX`, `ACCEPTABLE`), and verifies consumer safety for any proposed symbol
+      or branch removal.
+
+      - Consumed by `pi-subagent-code-hygiene.remediate-and-verify`.
+
+
+      Recovery:
+
+      - Re-trace call chains if any cross-branch invariant or caller relationship
+      is ambiguous; do not modify tracked files.'
+    verification: '- Verify read-only execution (`git status --short` and `git diff
+      --check` exit 0 with no tracked modifications).
+
+      - Record complete categorized findings (`MUST_FIX`, `SHOULD_FIX`, `ACCEPTABLE`)
+      with exact `path:line` citations in step completion evidence.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - contrib/codex-plugin/README.md
+    - .agents/plugins/marketplace.json
+    - tests/shell/test_codex_plugin_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/fixtures/pi/native_tui_probe.py
+    agent: pathway-auditor
+  - id: pi-subagent-code-hygiene.remediate-and-verify
+    name: Remediate admitted code-hygiene findings, sync Codex plugin mirror, and
+      verify
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - .agents/plugins/marketplace.json\n    - contrib/pi-extension/**\n\
+      \    - contrib/codex-plugin/**\n    - README.md\n    - docs/**\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \    - tests/shell/test_pi_*.py\n    - tests/fixtures/pi/**\n  blocked_paths:\n\
+      \    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n    - contracts/**\n\
+      \    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n[REQUIRES_SKILL:\
+      \ code-hygiene]\n\nDeliver:\n1. Consolidate and resolve all admitted `MUST_FIX`\
+      \ and worthwhile `SHOULD_FIX` findings from `pi-subagent-code-hygiene.structural-audit`\
+      \ and `pi-subagent-code-hygiene.pathway-audit` (filtering out any proposed deletion\
+      \ or signature change that would break consumer safety or accepted contracts).\
+      \ If both audits report zero admitted `MUST_FIX` / worthwhile `SHOULD_FIX` items,\
+      \ document the disposition of each audited item and verify the clean state without\
+      \ gratuitous churn.\n2. Synchronize the 5 runtime files in `contrib/codex-plugin/`\
+      \ (`larva.ts`, `subagent-mcp-server.mjs`, `session-timeline.mjs`, `session-timeline-worker.mjs`,\
+      \ `package.json`) byte-for-byte with `contrib/pi-extension/`.\n3. Run full verification\
+      \ across the MCP server, `/reload` hot handoff, native launch context, and Codex\
+      \ plugin contract suites.\n\nBoundary:\n- `node-typescript-engineer` owns code-hygiene\
+      \ remediation, byte-parity synchronization between `contrib/pi-extension/` and\
+      \ `contrib/codex-plugin/`, and test/doc updates within `allowed_paths`.\n- Do\
+      \ not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not mutate\
+      \ user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- Consumes audit\
+      \ reports from `pi-subagent-code-hygiene.structural-audit` and `pi-subagent-code-hygiene.pathway-audit`.\n\
+      - `node contrib/pi-extension/test-subagent-mcp-server.mjs`, `node contrib/pi-extension/test-subagent-reload-handoff.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`\
+      \ pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile failing assertions\
+      \ within `allowed_paths`; reap any spawned child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-subagent-reload-handoff.mjs` -> exits
+      0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - contrib/codex-plugin/README.md
+    - .agents/plugins/marketplace.json
+    - tests/shell/test_codex_plugin_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/fixtures/pi/native_tui_probe.py
+    depends_on:
+    - pi-subagent-code-hygiene.structural-audit
+    - pi-subagent-code-hygiene.pathway-audit
+    agent: node-typescript-engineer
+  - id: pi-subagent-code-hygiene.acceptance-gate
+    name: Terminal acceptance gate for Pi subagent code-hygiene audit and remediation
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `pi_subagent_code_hygiene_audit`\
+      \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
+      \nBoundary:\n- `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects\
+      \ audit dispositions, integrated code/test/doc diffs, 5-file byte parity between\
+      \ `contrib/pi-extension/` and `contrib/codex-plugin/`, and verification evidence\
+      \ from `pi-subagent-code-hygiene.remediate-and-verify`.\n\nAdmit:\n- Included\
+      \ producer outcomes: `pi-subagent-code-hygiene.structural-audit`, `pi-subagent-code-hygiene.pathway-audit`,\
+      \ and `pi-subagent-code-hygiene.remediate-and-verify` (building on `pi_subagent_reload_hot_handoff`).\n\
+      - Verify:\n  1. All admitted `MUST_FIX` and worthwhile `SHOULD_FIX` findings\
+      \ from `pi-subagent-code-hygiene.structural-audit` and `pi-subagent-code-hygiene.pathway-audit`\
+      \ are resolved (or explicitly accounted for with consumer-safety evidence) without\
+      \ regressions.\n  2. The 5 mirrored runtime files in `contrib/codex-plugin/`\
+      \ (`larva.ts`, `subagent-mcp-server.mjs`, `session-timeline.mjs`, `session-timeline-worker.mjs`,\
+      \ `package.json`) match `contrib/pi-extension/` byte-for-byte.\n  3. All required\
+      \ verification commands (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-subagent-reload-handoff.mjs`, `node contrib/pi-extension/test-native-launch-context.mjs`,\
+      \ `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`,\
+      \ `git diff --check`) pass on the immutable integrated commit.\n\nRecovery:\n\
+      - If an admitted audit finding remains unresolved or a regression/parity gap\
+      \ is found, report exact findings with `path:line` citations so Orchestrator\
+      \ can route a cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm audit evidence, remediation disposition, 5-file byte
+      parity, and read-only verification checks on the immutable integrated candidate
+      commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`, `node contrib/pi-extension/test-subagent-reload-handoff.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - contrib/codex-plugin/README.md
+    - .agents/plugins/marketplace.json
+    - tests/shell/test_codex_plugin_contract.py
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/fixtures/pi/native_tui_probe.py
+    depends_on:
+    - pi-subagent-code-hygiene.remediate-and-verify
+    agent: gate-reviewer
