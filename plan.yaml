@@ -149398,7 +149398,7 @@ phases:
   - id: pi-subagent-code-hygiene.remediate-and-verify
     name: Remediate admitted code-hygiene findings, sync Codex plugin mirror, and
       verify
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - .agents/plugins/marketplace.json\n    - contrib/pi-extension/**\n\
       \    - contrib/codex-plugin/**\n    - README.md\n    - docs/**\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -149455,6 +149455,41 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-16T19:01:15.521002Z'
+    done_at: '2026-10-16T19:11:07.849649+00:00'
+    evidence: "Artifact:\n- Commit: 6675c048ea1d4deebe7f5973b1776ac6b3e580d4 (retained\
+      \ ref: refs/vectl/candidates/pi-subagent-code-hygiene.remediate-and-verify)\n\
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T19-02-40-899Z_01a14618-5002-76a7-8ddf-2d18cfb658cb.jsonl)\n\
+      - Files: contrib/pi-extension/larva.ts, contrib/pi-extension/subagent-mcp-server.mjs,\
+      \ contrib/codex-plugin/larva.ts, contrib/codex-plugin/subagent-mcp-server.mjs,\
+      \ contrib/pi-extension/test-subagent-mcp-server.mjs, contrib/pi-extension/test-subagent-reload-handoff.mjs\n\
+      - Frozen Finding Ledger Closure (10/10 closed):\n  - P1 (larva.ts:12120-12133,\
+      \ 11251-11254; test-subagent-reload-handoff.mjs:136-149): Failed reload handoff\
+      \ permits subsequent teardown and clears reloadPendingHandoff.\n  - P2 (larva.ts:8774-8785,\
+      \ 8970-9023; test-subagent-reload-handoff.mjs:150-177): pruneTerminalSubagentRuns\
+      \ excludes pending callbacks and prunes after delivery settles.\n  - P3 (larva.ts:10601-10604,\
+      \ 11394-11406; test-subagent-mcp-server.mjs:147-155, 228-246): startChild and\
+      \ runChildSequence fence against pre-spawn cancellation/terminalization and\
+      \ reap late children.\n  - S1 (larva.ts:368-372, 8475; test-subagent-mcp-server.mjs:214-218,\
+      \ 364-372): LarvaSubagentEvent includes persona_id for external-host larva_subagent_sessions.\n\
+      \  - P4 (subagent-mcp-server.mjs:124; test-subagent-mcp-server.mjs:114-117):\
+      \ shutdown() handles rejected runtimePromise.\n  - S2 (larva.ts:107-108, 10344-10351,\
+      \ 11494-11598): Added RuntimeEnv keys, shared allowsPersonaSpawn, local canPresent/failBeforeLaunch\
+      \ helpers, removed dead branch.\n  - S3 (larva.ts:8970-9023, 9073, 12087): Consolidated\
+      \ callback delivery error handling inside deliverSubagentResultCallback.\n \
+      \ - S4 (larva.ts:745, 769, 2166-2178, 9091-9125, 10144-10147, 11251-11254):\
+      \ Routed dropSessionTimelineInvocation through sharedSubagentState, inlined\
+      \ appendSubagentPresentationRunning, reset startup failures and reloadPendingHandoff\
+      \ in resetSubagentPresentationStateForTests.\n  - S5 (subagent-mcp-server.mjs:50,\
+      \ 105-114): Filtered empty PATH segments and deduplicated larva_subagent return\
+      \ shaping.\n  - S6 (test-subagent-mcp-server.mjs:77-86, 318-325, 499-502): Shared\
+      \ pidEntries() and removed duplicate RPC assertions.\n\nVerification:\n- Run:\
+      \ `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (19/19\
+      \ check groups passed).\n- Run: `node contrib/pi-extension/test-subagent-reload-handoff.mjs`\
+      \ -> exit 0 (PASS).\n- Run: `node contrib/pi-extension/test-native-launch-context.mjs`\
+      \ -> exit 0 (6/6 passed).\n- Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`\
+      \ -> exit 0 (3 passed).\n- Run: `git diff --check && git status --short` ->\
+      \ exit 0.\n\nGaps:\n- None.\n\nSpec link:\n- contrib/pi-extension/larva.ts\n\
+      - contrib/pi-extension/subagent-mcp-server.mjs"
   - id: pi-subagent-code-hygiene.acceptance-gate
     name: Terminal acceptance gate for Pi subagent code-hygiene audit and remediation
     status: pending
