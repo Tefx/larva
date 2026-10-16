@@ -148571,7 +148571,7 @@ phases:
   - id: pi-subagent-mcp-code-hygiene-fixes.deliver
     name: Resolve code-hygiene SHOULD_FIX findings in larva.ts and subagent-mcp-server.mjs
       and extend regression tests
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/larva.ts\n    - contrib/pi-extension/subagent-mcp-server.mjs\n\
       \    - contrib/pi-extension/test-subagent-mcp-server.mjs\n    - contrib/codex-plugin/larva.ts\n\
@@ -148634,6 +148634,45 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-16T14:06:13.568800Z'
+    done_at: '2026-10-16T14:11:14.844102+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 7644af720276eb5230a1f4ae84ecb4a7f53c4121 (retained ref: refs/vectl/candidates/pi-subagent-mcp-code-hygiene-fixes.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T14-07-07-352Z_01a14509-b857-7224-9157-ef853fb28dab.jsonl)
+
+      - Files: contrib/pi-extension/larva.ts, contrib/pi-extension/subagent-mcp-server.mjs,
+      contrib/codex-plugin/larva.ts, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/pi-extension/test-subagent-mcp-server.mjs
+
+
+      Verification:
+
+      - Run: `node contrib/pi-extension/test-subagent-mcp-server.mjs` -> exit 0 (18/18
+      check groups passed, including invalid JSON-RPC id returning id:null, explicit
+      arguments:null rejection, omitted arguments default, parent_persona_id trimming,
+      and empty LARVA_MCP_PARENT_PERSONA handling).
+
+      - Run: `node contrib/pi-extension/test-native-launch-context.mjs` -> exit 0
+      (6/6 passed).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed in 0.41s, including SHA-256 byte parity across all 5 runtime
+      files).
+
+      - Run: `git diff --check && git status --short` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/subagent-mcp-server.mjs'
   - id: pi-subagent-mcp-code-hygiene-fixes.acceptance-gate
     name: Gate review and integrated acceptance for code-hygiene SHOULD_FIX fixes
     status: pending
