@@ -49,7 +49,7 @@ const tools = definitions.map(([name, description, properties, required = []]) =
 const shutdownController = new AbortController();
 const disconnected = new Promise(resolve => shutdownController.signal.addEventListener('abort', resolve, { once: true }));
 const home = process.env.HOME || homedir();
-const pathEntries = (process.env.PATH ?? '').split(delimiter);
+const pathEntries = (process.env.PATH ?? '').split(delimiter).filter(Boolean);
 for (const directory of [join(home, '.local/bin'), join(home, '.pi/agent/bin'), '/opt/homebrew/bin', '/usr/local/bin']) {
   if (existsSync(directory) && !pathEntries.includes(directory)) pathEntries.push(directory);
 }
@@ -102,18 +102,15 @@ async function callTool(name, args) {
     } };
     const { wait_for_completion, ...input } = args;
     const result = await runtime.larva_subagent(input, { ...ctx, callbackSurface });
-    if (result.status !== 'accepted') {
-      return { content: [{ type: 'text', text: JSON.stringify(result) }], details: result, isError: result.status !== 'success' };
-    }
-    remember(result.task_id, slot);
-    if (wait_for_completion) {
+    if (result.status === 'accepted') remember(result.task_id, slot);
+    if (result.status === 'accepted' && wait_for_completion) {
       let waited;
       do {
         waited = await runtime.larva_subagent_wait({ task_ids: [result.task_id], timeout_ms: 86400000 }, ctx);
       } while (!waited.isError && !waited.details.satisfied && !shutdownController.signal.aborted);
       return await enrich(waited);
     }
-    return { content: [{ type: 'text', text: JSON.stringify(result) }], details: result, isError: false };
+    return { content: [{ type: 'text', text: JSON.stringify(result) }], details: result, isError: result.status !== 'accepted' && result.status !== 'success' };
   }
   const result = await runtime[name](args, ctx);
   return name === 'larva_subagent_wait' || name === 'larva_subagent_select' ? await enrich(result) : result;
@@ -124,7 +121,7 @@ function shutdown() {
   if (!stopping) {
     shutdownController.abort();
     stopping = (runtimePromise
-      ? runtimePromise.then(runtime => runtime.resetExtensionUI('mcp_shutdown'))
+      ? runtimePromise.then(runtime => runtime.resetExtensionUI('mcp_shutdown'), () => {})
       : Promise.resolve()).then(() => { process.exitCode = 0; });
   }
   return stopping;

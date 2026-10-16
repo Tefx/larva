@@ -45,6 +45,7 @@ function client(overrides = {}, runtimeDir = packageDir) {
   child.on('exit', () => { for (const waiter of pending.values()) waiter.reject(new Error(`server exited: ${stderr}`)); pending.clear(); });
   const api = {
     child,
+    get stderr() { return stderr; },
     request(method, params = {}, framed = false, id = ++sequence) {
       const responseId = typeof id === 'string' || typeof id === 'number' ? id : null;
       const body = JSON.stringify({ jsonrpc: '2.0', id, method, params });
@@ -73,10 +74,12 @@ function client(overrides = {}, runtimeDir = packageDir) {
   clients.push(api);
   return api;
 }
+async function pidEntries() {
+  const files = (await readdir(root)).filter(file => file.startsWith('pid-'));
+  return await Promise.all(files.map(async file => JSON.parse(await readFile(join(root, file), 'utf8'))));
+}
 async function assertReaped() {
-  const files = await readdir(root);
-  for (const file of files.filter(file => file.startsWith('pid-'))) {
-    const entry = JSON.parse(await readFile(join(root, file), 'utf8'));
+  for (const entry of await pidEntries()) {
     assert.throws(() => process.kill(entry.pid, 0), { code: 'ESRCH' });
     assert.equal(existsSync(entry.capsule), false, entry.capsule);
   }
@@ -108,7 +111,10 @@ try {
     assert.equal(invalid.isError, true);
     assert.equal(invalid.details.error.code, 'LARVA_BAD_INPUT');
   }
+  const missingRuntime = await idle.request('tools/call', { name: 'larva_subagent_sessions' });
+  assert.equal(missingRuntime.error.code, -32603);
   await idle.close();
+  assert.equal(idle.stderr, '');
   console.log('server-only initialize, notification, ping, tools/list, rejected calls and idle EOF: PASS');
 
   // Observe import and reset at the actual module boundary. Real child/capsule
@@ -138,6 +144,15 @@ export async function resetExtensionUI(reason) { await record(reason); }
   const cli = join(root, 'larva-cli.mjs');
   await writeFile(cli, `
 const command = process.argv[2], id = process.argv[3];
+if (command === 'resolve' && process.env.FIXTURE_RESOLVE_GATE) {
+ const {writeFile, access} = await import('node:fs/promises');
+ const gate = process.env.FIXTURE_RESOLVE_GATE;
+ await writeFile(gate + '.entered', '');
+ while (true) {
+  try { await access(gate + '.release'); break; } catch {}
+  await new Promise(resolve => setTimeout(resolve, 10));
+ }
+}
 if (id !== undefined && id !== id.trim()) throw new Error('Persona resolution received untrimmed id');
 const spec = id => ({id, description: 'Fixture '+id, prompt: 'Fixture prompt', model: 'fixture/model', capabilities: {}, spec_version: '0.1.0', spec_digest: 'sha256:fixture', can_spawn: id === 'parent' ? ['child'] : id === 'deny' ? false : true});
 process.stdout.write(JSON.stringify({data: command === 'list' ? [spec('child'), spec('other')] : spec(id)}));
@@ -196,7 +211,11 @@ createInterface({input:process.stdin}).on('line', async line => {
     const terminal = await completion;
     assert.equal(terminal.details.status, 'success');
     assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
-    assert.equal(runtime.larva_subagent_sessions({}, {externalHostCanSpawn:true}).details.sessions[0].task_id, external.task_id);
+    const recent = runtime.larva_subagent_sessions({}, {externalHostCanSpawn:true});
+    assert.equal(recent.details.sessions[0].task_id, external.task_id);
+    assert.equal(recent.details.sessions[0].persona_id, 'child');
+    assert.equal(recent.details.sessions[0].last_status, 'success');
+    assert.ok(!JSON.stringify(recent.content).includes('undefined'));
     const resumedExternal = await runtime.larva_subagent({persona_id:'child',task:'headless resume',task_id:external.task_id}, {
       env, externalHostCanSpawn:true,
     });
@@ -206,6 +225,25 @@ createInterface({input:process.stdin}).on('line', async line => {
     const nativeHeadless = await runtime.larva_subagent({persona_id:'child',task:'no native parent'}, {env});
     assert.equal(nativeHeadless.error.code,'LARVA_NO_ACTIVE_PERSONA');
   } finally { await runtime.resetExtensionUI('test_cleanup'); }
+  const gate = join(root, 'resolve-gate');
+  const resolving = client({FIXTURE_RESOLVE_GATE:gate});
+  const pidCount = (await pidEntries()).length;
+  const unresolvedCall = resolving.tool('larva_subagent', {persona_id:'child',task:'disconnect while resolving'}).catch(() => {});
+  const deadline = Date.now() + 10000;
+  while (!existsSync(gate + '.entered')) {
+    assert.ok(Date.now() < deadline, 'resolve gate was not reached');
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  const closing = resolving.close();
+  // Let EOF teardown run while resolution remains gated in the CLI process.
+  await new Promise(resolve => setTimeout(resolve, 100));
+  await writeFile(gate + '.release', '');
+  await closing;
+  await unresolvedCall;
+  assert.equal((await pidEntries()).length, pidCount, 'disconnect during resolve must not spawn a child');
+  assert.deepEqual(await readdir(join(root, '.pi/larva/runtime')), []);
+  await assertReaped();
+  console.log('disconnect during model resolution prevents child spawn and capsule creation: PASS');
   const delayed = client({FIXTURE_RPC_STARTUP:'delayed'});
   const delayedRun = await delayed.tool('larva_subagent', {persona_id:'child',task:'delayed readiness',wait_for_completion:true});
   assert.equal(delayedRun.isError, false, JSON.stringify(delayedRun));
@@ -280,13 +318,8 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.ok(registryNames.length > 0);
   assert.deepEqual(expected.filter(name => registryNames.includes(name)), []);
   console.log('stdio initialize, framed ping, tools/list and registry separation: PASS');
-  assert.equal((await c.tool('larva_subagent', {persona_id:'child',task:'run',unknown:true})).isError, true);
   const personas = await c.tool('larva_personas', {query:'child'});
   assert.equal(personas.details.personas[0].id, 'child');
-  const emptySessions = await c.request('tools/call', {name:'larva_subagent_sessions'});
-  assert.equal(emptySessions.error, undefined, JSON.stringify(emptySessions));
-  assert.equal(emptySessions.result.isError, false, JSON.stringify(emptySessions));
-  assert.deepEqual(emptySessions.result.details.sessions, []);
   const single = await c.tool('larva_subagent', {persona_id:'child', task:'single', wait_for_completion:true});
   assert.equal(single.isError, false, JSON.stringify(single));
   const output = Object.values(single.details.terminal_outputs)[0];
@@ -328,7 +361,15 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.ok(Object.values(waited.details.terminal_outputs).every(output => output.result_text === 'output parent='));
   assert.equal((await c.tool('larva_subagent_status',{task_id:taskId})).details.runs[0].callback_delivery, 'delivered');
   assert.ok((await c.tool('larva_subagent_events')).details.events.length > 0);
-  assert.ok((await c.tool('larva_subagent_sessions')).details.sessions.length > 0);
+  const recent = await c.tool('larva_subagent_sessions');
+  assert.ok(recent.details.sessions.length > 0);
+  for (const taskId of taskIds) {
+    const session = recent.details.sessions.find(session => session.task_id === taskId);
+    assert.ok(session, `missing session: ${taskId}`);
+    assert.equal(session.persona_id, 'child');
+    assert.equal(session.last_status, 'success');
+  }
+  assert.ok(!JSON.stringify(recent.content).includes('undefined'));
   console.log('parallel fan-out, wait/select captured output, status/events/sessions: PASS');
   const activity = await c.tool('larva_subagent_activity', {task_id:taskId});
   assert.equal(activity.isError, false, JSON.stringify(activity));
@@ -455,8 +496,7 @@ createInterface({input:process.stdin}).on('line', async line => {
 } finally {
   for (const c of clients) await c.close().catch(() => { c.child.kill('SIGKILL'); });
   // Reconcile fixture child PIDs even if an assertion or protocol operation failed.
-  for (const file of (await readdir(root)).filter(file => file.startsWith('pid-'))) {
-    const entry = JSON.parse(await readFile(join(root,file),'utf8'));
+  for (const entry of await pidEntries()) {
     try { process.kill(entry.pid,'SIGKILL'); } catch {}
     if (entry.capsule) await rm(entry.capsule,{recursive:true,force:true});
   }

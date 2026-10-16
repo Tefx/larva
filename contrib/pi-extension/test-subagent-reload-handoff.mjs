@@ -106,7 +106,8 @@ createInterface({ input: process.stdin }).on('line', (line) => {
     await next.emit("session_start", "reload");
     assert.ok(two.subagentPresentationLogForTests().some((e) => e.task_id === task));
     if (!finishInGap) {
-      assert.ok(alive(pid));
+      await old.emit("session_shutdown", "quit");
+      assert.ok(alive(pid), "retired handler must not reap transferred child");
       const status = await two.larva_subagent_status({ task_id: task }, next.ctx);
       assert.equal(status.details.runs[0].status, "running");
       assert.ok(next.statuses.some(([k, v]) => k === "larva-subagents" && v === "🤖 1"));
@@ -132,6 +133,47 @@ createInterface({ input: process.stdin }).on('line', (line) => {
     assert.equal(alive(pid), false);
     assert.deepEqual(await readdir(join(root, ".pi/larva/runtime")), []);
   }
+  // A failed host reload leaves the old shutdown handler responsible for cleanup.
+  {
+    const mod = await fresh();
+    const h = host();
+    await mod.initializeExtension(h.ctx, h.pi);
+    assert.equal((await mod.commitPersona("ok", h.ctx, h.pi)).ok, true);
+    const { task, pid } = await spawn(mod, h);
+    await h.emit("session_shutdown", "reload");
+    await h.emit("session_shutdown", "quit");
+    assert.equal(alive(pid), false);
+    assert.deepEqual(await readdir(join(root, ".pi/larva/runtime")), []);
+    assert.equal(mod.subagentActiveRunDiagnosticsForTests().find(r => r.task_id === task).callback_delivery, "stale");
+    assert.equal(h.callbacks.length, 0);
+  }
+  // Retention must protect every deferred callback, even beyond the 25-run window.
+  {
+    const one = await fresh();
+    const old = host();
+    await one.initializeExtension(old.ctx, old.pi);
+    assert.equal((await one.commitPersona("ok", old.ctx, old.pi)).ok, true);
+    const runs = [];
+    for (let i = 0; i < 27; i++) runs.push(await spawn(one, old));
+    await old.emit("session_shutdown", "reload");
+    old.poison();
+    for (const { pid } of runs) process.kill(pid, "SIGUSR1");
+    await until(() => one.subagentActiveRunDiagnosticsForTests().every(r => r.status === "success"));
+    const pending = one.subagentActiveRunDiagnosticsForTests();
+    assert.equal(pending.length, 27);
+    assert.ok(pending.every(r => r.callback_delivery === "pending"));
+    const two = await fresh();
+    const next = host();
+    await two.initializeExtension(next.ctx, next.pi);
+    await next.emit("session_start", "reload");
+    await until(() => next.callbacks.length === 27);
+    assert.deepEqual(new Set(next.callbacks.map(m => m.details.task_id)), new Set(runs.map(r => r.task)));
+    assert.equal(two.subagentActiveRunDiagnosticsForTests().length, 25);
+    assert.ok(two.subagentActiveRunDiagnosticsForTests().every(r => r.callback_delivery === "delivered"));
+    assert.equal(old.staleCalls, 0);
+    await until(async () => runs.every(r => !alive(r.pid)) && (await readdir(join(root, ".pi/larva/runtime"))).length === 0);
+    await next.emit("session_shutdown", "quit");
+  }
   for (const reason of ["quit", "new", "resume", "fork"]) {
     const mod = await fresh();
     assert.deepEqual(mod.subagentActiveRunDiagnosticsForTests(), [], "normal imports must not inherit state");
@@ -145,7 +187,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
     assert.equal(h.callbacks.length, 0);
     assert.equal(mod.subagentPresentationLogForTests().length, 0);
   }
-  console.log("PASS: running reload handoff, reload-gap callback, fresh-import isolation, quit/new/resume/fork child and capsule cleanup");
+  console.log("PASS: running reload handoff, reload-gap callback, failed-reload quit cleanup, 27 deferred callbacks retained then pruned to 25, fresh-import isolation, quit/new/resume/fork child and capsule cleanup");
 } finally {
   for (const mod of modules) await mod.resetExtensionUI("test_cleanup");
   await rm(root, { recursive: true, force: true });

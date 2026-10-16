@@ -104,6 +104,8 @@ type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_CHILD_SESSION_DIR?: string;
   LARVA_PI_PARENT_PERSONA_ID?: string;
   LARVA_PI_REAL_BIN?: string;
+  LARVA_PI_CLI_SCRIPT?: string;
+  LARVA_MCP_PARENT_PERSONA?: string;
   LARVA_PI_EXTENSION_FLAG?: string;
   LARVA_PI_EXTENSION_ENTRY?: string;
   LARVA_CLI_ARGV_JSON?: string;
@@ -366,6 +368,7 @@ type LarvaSubagentEventKind = "accepted" | "phase" | "terminal" | "callback_deli
 type LarvaSubagentEvent = {
   sequence: number;
   task_id: string;
+  persona_id: string;
   kind: LarvaSubagentEventKind;
   status: LarvaSubagentPublicStatus;
   phase: string;
@@ -739,6 +742,7 @@ type SharedSubagentRuntimeState = {
   reloadPendingHandoff: boolean;
   notifyOverlay: (() => void) | null;
   requestTimeline: ((entry: SubagentPresentationLogEntry) => void) | null;
+  dropTimeline: ((entry: SubagentPresentationLogEntry) => void) | null;
 };
 const subagentGlobal = globalThis as Record<symbol, SharedSubagentRuntimeState | undefined>;
 const previousSubagentState = subagentGlobal[LARVA_SUBAGENT_SHARED_STATE_SYMBOL];
@@ -762,6 +766,7 @@ const sharedSubagentState: SharedSubagentRuntimeState = previousSubagentState?.r
     reloadPendingHandoff: false,
     notifyOverlay: null,
     requestTimeline: null,
+    dropTimeline: null,
   };
 subagentGlobal[LARVA_SUBAGENT_SHARED_STATE_SYMBOL] = sharedSubagentState;
 const {
@@ -2159,6 +2164,11 @@ function timelineEventsForEntry(entry: SubagentPresentationLogEntry): SubagentTi
 // Session history is presentation-only. This bridge owns no file cursor: the lazy
 // Worker reads finite incremental snapshots and sends only bounded excerpts.
 function dropSessionTimelineInvocation(entry: SubagentPresentationLogEntry): void {
+  sharedSubagentState.dropTimeline?.(entry);
+}
+
+sharedSubagentState.dropTimeline = dropLocalSessionTimelineInvocation;
+function dropLocalSessionTimelineInvocation(entry: SubagentPresentationLogEntry): void {
   const invocation = entry.presentation_invocation;
   if (invocation === undefined) return;
   sessionTimelineRequests.delete(invocation);
@@ -8462,6 +8472,7 @@ function subagentEventFromSnapshot(snapshot: LarvaSubagentRunSnapshot, kind: Lar
   return {
     sequence: sharedSubagentState.subagentEventSequence,
     task_id: snapshot.task_id,
+    persona_id: snapshot.persona_id,
     kind,
     status: snapshot.status,
     phase: snapshot.phase,
@@ -8762,10 +8773,10 @@ function terminalResultFromSnapshot(snapshot: SubagentTerminalSnapshot): LarvaSu
 
 function pruneTerminalSubagentRuns(): void {
   for (const record of new Set(activeSubagentRuns.values())) {
-    if (record.terminal_snapshot !== null && record.task_id === null) activeSubagentRuns.delete(record.private_key);
+    if (record.terminal_snapshot !== null && record.task_id === null && record.callback_delivery !== "pending") activeSubagentRuns.delete(record.private_key);
   }
   const terminalRecords = Array.from(activeSubagentRuns.values())
-    .filter((record) => record.terminal_snapshot !== null)
+    .filter((record) => record.terminal_snapshot !== null && record.callback_delivery !== "pending")
     .sort((left, right) => Date.parse(left.updated_at) - Date.parse(right.updated_at));
   while (terminalRecords.length > 25) {
     const next = terminalRecords.shift();
@@ -8957,47 +8968,55 @@ export function larvaSubagentResultCallbackDelivery(content: string, details: Re
 }
 
 async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise<void> {
-  if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.terminal_snapshot === null) return;
-  if (!parentSessionStillCurrent(record)) {
-    setSubagentCallbackDelivery(record, "stale");
-    return;
-  }
-  const surface = record.callback_surface;
-  const payload = await callbackPayloadFromRun(record);
-  // Payload reads can yield across shutdown; defer delivery until the new
-  // runtime has rebound the callback and UI surfaces.
-  if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.callback_surface !== surface) return;
-  const ctx = record.callback_ctx;
-  const callback = larvaSubagentResultCallbackDelivery(payload.message as string, payload);
-  if (typeof record.callback_surface.sendMessage === "function") {
-    try {
-      await record.callback_surface.sendMessage(callback.message, callback.options);
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : String(caught);
-      if (!message.includes("Cannot read properties of undefined (reading 'emit')")) throw caught;
-      void traceChildRpc(record.env, "callback_host_completion_failed", { task_id: record.task_id, code: "LARVA_CALLBACK_HOST_POST_DELIVERY_FAILED", message_preview: boundedTracePreview(message) });
+  try {
+    if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.terminal_snapshot === null) return;
+    if (!parentSessionStillCurrent(record)) {
+      setSubagentCallbackDelivery(record, "stale");
+      return;
     }
-  } else if (typeof ctx?.sendMessage === "function") {
-    await ctx.sendMessage(callback.message, callback.options);
-  } else if (typeof ctx?.sendCustomMessage === "function") {
-    await ctx.sendCustomMessage("larva-subagent-result", payload, callback.options);
-  } else if (typeof ctx?.session?.appendEntry === "function") {
-    ctx.session.appendEntry("larva-subagent-result", payload, callback.options);
-  } else if (typeof ctx?.session?.addCustomEntry === "function") {
-    ctx.session.addCustomEntry("larva-subagent-result", payload, callback.options);
-  } else if (typeof record.callback_surface.appendEntry === "function") {
-    record.callback_surface.appendEntry("larva-subagent-result", payload);
-  } else if (typeof ctx?.appendEntry === "function") {
-    ctx.appendEntry("larva-subagent-result", payload, callback.options);
-  } else if (typeof record.callback_surface.sendUserMessage === "function") {
-    await record.callback_surface.sendUserMessage(callback.message.content as string, { customType: "larva-subagent-result", details: payload, ...callback.options });
-  } else if (typeof ctx?.sendUserMessage === "function") {
-    await ctx.sendUserMessage(callback.message.content as string, { customType: "larva-subagent-result", details: payload, ...callback.options });
-  } else {
-    setSubagentCallbackDelivery(record, "failed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_SURFACE_UNAVAILABLE", "No Pi callback delivery surface was available; no larva-subagent-result callback was injected."));
-    return;
+    const surface = record.callback_surface;
+    const payload = await callbackPayloadFromRun(record);
+    // Payload reads can yield across shutdown; defer delivery until the new
+    // runtime has rebound the callback and UI surfaces.
+    if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.callback_surface !== surface) return;
+    const ctx = record.callback_ctx;
+    const callback = larvaSubagentResultCallbackDelivery(payload.message as string, payload);
+    if (typeof record.callback_surface.sendMessage === "function") {
+      try {
+        await record.callback_surface.sendMessage(callback.message, callback.options);
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : String(caught);
+        if (!message.includes("Cannot read properties of undefined (reading 'emit')")) throw caught;
+        void traceChildRpc(record.env, "callback_host_completion_failed", { task_id: record.task_id, code: "LARVA_CALLBACK_HOST_POST_DELIVERY_FAILED", message_preview: boundedTracePreview(message) });
+      }
+    } else if (typeof ctx?.sendMessage === "function") {
+      await ctx.sendMessage(callback.message, callback.options);
+    } else if (typeof ctx?.sendCustomMessage === "function") {
+      await ctx.sendCustomMessage("larva-subagent-result", payload, callback.options);
+    } else if (typeof ctx?.session?.appendEntry === "function") {
+      ctx.session.appendEntry("larva-subagent-result", payload, callback.options);
+    } else if (typeof ctx?.session?.addCustomEntry === "function") {
+      ctx.session.addCustomEntry("larva-subagent-result", payload, callback.options);
+    } else if (typeof record.callback_surface.appendEntry === "function") {
+      record.callback_surface.appendEntry("larva-subagent-result", payload);
+    } else if (typeof ctx?.appendEntry === "function") {
+      ctx.appendEntry("larva-subagent-result", payload, callback.options);
+    } else if (typeof record.callback_surface.sendUserMessage === "function") {
+      await record.callback_surface.sendUserMessage(callback.message.content as string, { customType: "larva-subagent-result", details: payload, ...callback.options });
+    } else if (typeof ctx?.sendUserMessage === "function") {
+      await ctx.sendUserMessage(callback.message.content as string, { customType: "larva-subagent-result", details: payload, ...callback.options });
+    } else {
+      setSubagentCallbackDelivery(record, "failed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_SURFACE_UNAVAILABLE", "No Pi callback delivery surface was available; no larva-subagent-result callback was injected."));
+      return;
+    }
+    setSubagentCallbackDelivery(record, "delivered");
+  } catch (caught) {
+    const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
+    void traceChildRpc(record.env, "callback_delivery_failed", { task_id: record.task_id, code: diagnostic.code, message_preview: boundedTracePreview(diagnostic.message) });
+    setSubagentCallbackDelivery(record, "failed", diagnostic);
+  } finally {
+    pruneTerminalSubagentRuns();
   }
-  setSubagentCallbackDelivery(record, "delivered");
 }
 
 function isChildStdoutClosedBeforeAgentEnd(result: LarvaSubagentResult | LarvaError | null): boolean {
@@ -9051,11 +9070,7 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
   if (record.task_id === null && terminal.status === "failed" && terminal.error !== null) appendSubagentStartupFailure(record, terminal.error);
   if (record.presentation_enabled && record.presentation_generation === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(terminalResultFromSnapshot(record.terminal_snapshot), record.input, record.presentation_call_id);
   if (options.suppressCallback) setSubagentCallbackDelivery(record, "suppressed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_DUPLICATE_SUPPRESSED", "Duplicate terminal callback suppressed because the model-facing terminal control path already returned the terminal result."));
-  else void deliverSubagentResultCallback(record).catch((caught) => {
-    const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
-    void traceChildRpc(record.env, "callback_delivery_failed", { task_id: record.task_id, code: diagnostic.code, message_preview: boundedTracePreview(diagnostic.message) });
-    setSubagentCallbackDelivery(record, "failed", diagnostic);
-  });
+  else void deliverSubagentResultCallback(record);
   pruneTerminalSubagentRuns();
   return record.terminal_snapshot;
 }
@@ -9073,19 +9088,20 @@ function appendSubagentPresentationLog(entry: Omit<SubagentPresentationLogEntry,
   return retained;
 }
 
-function appendSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
+function recordSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
+  const mode = presentationMode(input);
   const existingIndex = retainedSubagentPresentationLog.findIndex((entry) => entry.status === "running" && (callId !== undefined ? entry.call_id === callId : entry.task_id === taskId));
   const runningEntry: Omit<SubagentPresentationLogEntry, "sequence"> = {
     task_id: taskId,
     persona_id: personaId,
     status: "running",
-    mode: presentationMode(input),
+    mode,
     task_preview: presentationTaskPreview(input),
     task_prompt: presentationTaskPrompt(input),
     phase: "waiting_for_child",
     call_id: callId,
     presentation_invocation: ++sharedSubagentState.subagentInvocationSequence,
-    presentation_scan_ready: presentationMode(input) !== "resume",
+    presentation_scan_ready: mode !== "resume",
   };
   if (existingIndex >= 0) {
     runningEntry.presentation_invocation = retainedSubagentPresentationLog[existingIndex].presentation_invocation ?? runningEntry.presentation_invocation;
@@ -9093,7 +9109,7 @@ function appendSubagentPresentationRunning(taskId: string, personaId: string, in
       ...retainedSubagentPresentationLog[existingIndex],
       ...runningEntry,
     });
-    if (presentationMode(input) !== "resume") requestSessionTimeline(retainedSubagentPresentationLog[existingIndex]);
+    if (mode !== "resume") requestSessionTimeline(retainedSubagentPresentationLog[existingIndex]);
     persistSubagentPresentationCache();
     notifySubagentPresentationOverlay();
     return;
@@ -9103,7 +9119,7 @@ function appendSubagentPresentationRunning(taskId: string, personaId: string, in
     const evicted = retainedSubagentPresentationLog.shift();
     if (evicted !== undefined) dropSessionTimelineInvocation(evicted);
   }
-  if (presentationMode(input) !== "resume") requestSessionTimeline(retainedSubagentPresentationLog.at(-1)!);
+  if (mode !== "resume") requestSessionTimeline(retainedSubagentPresentationLog.at(-1)!);
   persistSubagentPresentationCache();
   notifySubagentPresentationOverlay();
 }
@@ -9119,10 +9135,6 @@ function removePendingSubagentPresentationRunning(taskId: string): SubagentPrese
     }
   }
   return preserved;
-}
-
-function recordSubagentPresentationRunning(taskId: string, personaId: string, input?: LarvaSubagentInput, callId?: string): void {
-  appendSubagentPresentationRunning(taskId, personaId, input, callId);
 }
 
 function presentationMode(input?: LarvaSubagentInput): SubagentPresentationMode | undefined {
@@ -10130,6 +10142,8 @@ export function setChildRpcStartupReadyTimeoutForTests(timeoutMs: number | null)
 }
 
 export function resetSubagentPresentationStateForTests(): void {
+  subagentStartupFailureLog.length = 0;
+  sharedSubagentState.reloadPendingHandoff = false;
   childRpcStartupReadyTimeoutOverrideForTests = null;
   retainedSubagentPresentationLog.length = 0;
   sharedSubagentState.subagentPresentationSequence = 0;
@@ -10327,11 +10341,13 @@ function normalizeString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
+function allowsPersonaSpawn(canSpawnValue: unknown, targetPersonaId: string): boolean {
+  return canSpawnValue === true || (Array.isArray(canSpawnValue) && canSpawnValue.includes(targetPersonaId));
+}
+
 function canSpawn(activeParent: PersonaEnvelope | null, personaId: string): LarvaError | null {
   if (!activeParent) return error("LARVA_NO_ACTIVE_PERSONA", "No active parent Larva persona.");
-  const authority = activeParent.can_spawn;
-  if (authority === true) return null;
-  if (Array.isArray(authority) && authority.includes(personaId)) return null;
+  if (allowsPersonaSpawn(activeParent.can_spawn, personaId)) return null;
   return error("LARVA_SPAWN_NOT_ALLOWED", "Active parent persona cannot spawn the requested persona.");
 }
 
@@ -10583,6 +10599,9 @@ async function startChild(parentEnv: RuntimeEnv, root: string, personaId: string
   const prefix = launcherArgs(env, extensionSources);
   if (!Array.isArray(prefix)) return prefix;
   const route = await childModelArgument(env, personaId);
+  if (record !== undefined && (record.terminal_snapshot !== null || record.cancellation_source !== null || record.status === "cancelling")) {
+    return error("LARVA_CHILD_START_FAILED", "Child startup aborted before spawn.");
+  }
   if (isLarvaError(route)) return route;
   if (record !== undefined) record.route_generation = route.generation;
   const capsule = createChildPiCapsule(env);
@@ -11231,6 +11250,7 @@ async function cleanupActiveSubagentRegistryForLifecycle(reason: string): Promis
 
 export async function resetExtensionUI(reason = "manual"): Promise<{ status: "success"; active_children_reaped: number; busy_cleared: boolean; overlay_closed: boolean; presentation_cleared: boolean }> {
   sharedSubagentState.reloadPendingHandoff = false;
+  subagentStartupFailureLog.length = 0;
   childRpcStartupReadyTimeoutOverrideForTests = null;
   // Invalidate presentation before awaiting child abort/cleanup: late reader
   // messages cannot cross into a replacement parent session during that wait.
@@ -11379,6 +11399,11 @@ async function runChildSequence(
   const activeChildEntry = { child: started.child, env: started.env };
   activeRecord.child = started.child;
   activeSubagentChildren.add(activeChildEntry);
+  if (activeRecord.terminal_snapshot !== null || activeRecord.cancellation_source !== null || abortSignal?.aborted) {
+    await cleanupSubagentRunChild(activeRecord);
+    const snapshot = activeRecord.terminal_snapshot ?? await abortSubagentRun(activeRecord, "model", "parent abort signal", { awaitTerminal: true });
+    return terminalResultFromSnapshot(snapshot!);
+  }
   let allocatedTaskId = taskId;
   const child = started.child;
   const rpc = new RpcClient(
@@ -11468,10 +11493,14 @@ async function runChildSequence(
 
 export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext & { env?: RuntimeEnv; abortSignal?: AbortSignal; onPhase?: (phase: string, taskId?: string | null) => void; presentationCallId?: string; callbackSurface?: SubagentCallbackSurface; externalHostCanSpawn?: boolean }): Promise<LarvaSubagentResult> {
   const presentationGeneration = ctx?.externalHostCanSpawn === undefined ? sharedSubagentState.subagentUiResetGeneration : null;
+  const canPresent = () => presentationGeneration === sharedSubagentState.subagentUiResetGeneration;
+  const failBeforeLaunch = (result: LarvaSubagentResult): LarvaSubagentResult => {
+    if (canPresent()) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
+    return result;
+  };
   const parsed = validateInput(input);
   if ("status" in parsed) {
-    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(parsed, input, ctx?.presentationCallId);
-    return parsed; // public task_id: null on bad input pre-session failures
+    return failBeforeLaunch(parsed);
   }
   const { personaId, task, taskId, noProgressTimeoutMs } = parsed;
   // Keep per-call external authority and capsule environment isolated during fan-out.
@@ -11489,14 +11518,12 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   }
   if (isLarvaError(lexicallyValidTaskId)) {
     const result = failed(null, personaId, lexicallyValidTaskId);
-    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
-    return result;
+    return failBeforeLaunch(result);
   }
   const root = await childSessionRoot(env);
   if (isLarvaError(root)) {
     const result = failed(null, personaId, root);
-    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
-    return result;
+    return failBeforeLaunch(result);
   }
 
   let canonicalTaskId: string | null = null;
@@ -11504,8 +11531,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     const validated = await validateTaskId(lexicallyValidTaskId, root);
     if (isLarvaError(validated)) {
       const result = failed(null, personaId, validated);
-      if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
-      return result;
+      return failBeforeLaunch(result);
     }
     canonicalTaskId = validated;
   }
@@ -11521,7 +11547,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     } else if (normalizedParentId !== undefined) {
       try {
         const parent = await resolvePersona(normalizedParentId, { env });
-        if (parent.can_spawn !== true && !(Array.isArray(parent.can_spawn) && parent.can_spawn.includes(personaId))) {
+        if (!allowsPersonaSpawn(parent.can_spawn, personaId)) {
           authorityError = error("LARVA_SPAWN_NOT_ALLOWED", "External parent persona cannot spawn the requested persona.");
         } else env.LARVA_PI_PARENT_PERSONA_ID = normalizedParentId;
       } catch (caught) {
@@ -11533,29 +11559,26 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   } else authorityError = canSpawn(state.envelope, personaId);
   if (authorityError) {
     const result = failed(null, personaId, authorityError);
-    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
-    return result;
+    return failBeforeLaunch(result);
   }
   if (canonicalTaskId !== null && subagentTaskIdBusyInRegistry(canonicalTaskId)) {
     const result = failed(canonicalTaskId, personaId, error("LARVA_SESSION_BUSY", "Child session is already being resumed."));
-    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
-    return result;
+    return failBeforeLaunch(result);
   }
   const runtimeConfig = loadSubagentRuntimeConfig(env);
   if (isLarvaError(runtimeConfig)) {
     const result = failed(canonicalTaskId, personaId, runtimeConfig);
-    if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationResult(result, input, ctx?.presentationCallId);
-    return result;
+    return failBeforeLaunch(result);
   }
   const record = createSubagentRun(input, env, personaId, canonicalTaskId, ctx);
-  if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
+  if (canPresent() && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
   const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, noProgressTimeoutMs, runtimeConfig.extension_sources, ctx?.abortSignal, {
     onPhase: (phase, readyTaskId) => {
       ctx?.onPhase?.(phase, readyTaskId);
       // A resumed child's switch_session may migrate/rewrite the file. Start
       // presentation only after that native acknowledgement, from a fresh cursor.
-      if (canonicalTaskId !== null && phase === "session_ready" && presentationGeneration === sharedSubagentState.subagentUiResetGeneration) {
+      if (canonicalTaskId !== null && phase === "session_ready" && canPresent()) {
         const entry = retainedSubagentPresentationLog.find((item) => item.task_id === canonicalTaskId && item.status === "running" && (ctx?.presentationCallId === undefined || item.call_id === ctx.presentationCallId));
         if (entry !== undefined) {
           entry.presentation_scan_ready = true;
@@ -11564,13 +11587,12 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
       }
     },
     onTaskAllocated: (allocatedTaskId) => {
-      if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
+      if (canPresent()) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
     },
     onStreamEvent: (eventValue, streamedTaskId) => {
-      if (presentationGeneration === sharedSubagentState.subagentUiResetGeneration) applyNormalizedSubagentStreamEvent(streamedTaskId, ctx?.presentationCallId, eventValue);
+      if (canPresent()) applyNormalizedSubagentStreamEvent(streamedTaskId, ctx?.presentationCallId, eventValue);
     },
   }, record);
-  if (result.status !== "accepted") return result;
   return result;
 }
 
@@ -12062,11 +12084,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
           record.parent_session_identity = piSessionIdentity(runtimeCtx);
           record.presentation_generation = sharedSubagentState.subagentUiResetGeneration;
           if (record.terminal_snapshot !== null && record.callback_delivery === "pending") {
-            void deliverSubagentResultCallback(record).catch((caught) => {
-              const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
-              void traceChildRpc(record.env, "callback_delivery_failed", { task_id: record.task_id, code: diagnostic.code, message_preview: boundedTracePreview(diagnostic.message) });
-              setSubagentCallbackDelivery(record, "failed", diagnostic);
-            });
+            void deliverSubagentResultCallback(record);
           }
         }
         for (const entry of retainedSubagentPresentationLog) {
@@ -12100,7 +12118,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     return handleLarvaSessionBeforeCompact(payload, runtimeCtx, pi, pi.compactAdapter ?? nativePiCompactAdapter);
   });
   pi.on?.("session_shutdown", async (payload: unknown) => {
-    if (!instructionGenerationIsCurrent(instanceGeneration)) return;
+    if (!instructionGenerationIsCurrent(instanceGeneration) && !sharedSubagentState.reloadPendingHandoff) return;
     invalidateInstructionResolver();
     if (isRecord(payload) && payload.reason === "reload") {
       sharedSubagentState.reloadPendingHandoff = true;
