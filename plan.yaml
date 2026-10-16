@@ -148868,7 +148868,7 @@ phases:
   - id: pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate
     name: Gate review and integrated acceptance for Pi fullscreen mouse-reporting
       preservation
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_panel_fullscreen_mouse_fix`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -148909,3 +148909,5 @@ phases:
     depends_on:
     - pi-subagent-panel-fullscreen-mouse-fix.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-16T16:20:06.956281Z'
