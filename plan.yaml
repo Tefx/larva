@@ -149283,7 +149283,7 @@ phases:
   - id: pi-subagent-code-hygiene.pathway-audit
     name: Parallel depth pathway audit of Pi subagent MCP, reload handoff, and fullscreen
       mouse pathways
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -149345,6 +149345,8 @@ phases:
     - tests/shell/test_pi_extension_subagent_ux.py
     - tests/fixtures/pi/native_tui_probe.py
     agent: pathway-auditor
+    claimed_by: pathway-auditor
+    claimed_at: '2026-10-16T18:38:00.083451Z'
   - id: pi-subagent-code-hygiene.remediate-and-verify
     name: Remediate admitted code-hygiene findings, sync Codex plugin mirror, and
       verify
