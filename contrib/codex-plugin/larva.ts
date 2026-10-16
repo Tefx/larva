@@ -795,6 +795,7 @@ const SUBAGENT_TRUNCATION_MARKER = "… [truncated]";
 const CHILD_RPC_JSONL_MAX_BYTES = 1_048_576;
 const CHILD_RPC_COMMAND_TIMEOUT_MS = 10_000;
 const CHILD_RPC_STARTUP_READY_TIMEOUT_MS = 60_000;
+const nativeRpcSetTimeout = globalThis.setTimeout.bind(globalThis);
 let childRpcStartupReadyTimeoutOverrideForTests: number | null = null;
 // Pi acknowledges a prompt only after input and before_agent_start extension preflight.
 const CHILD_RPC_PROMPT_PREFLIGHT_TIMEOUT_MS = 60_000;
@@ -10913,7 +10914,7 @@ class RpcClient {
       const onStdoutClose = (): void => {
         if (!this.closed && this.rpcReady) settle(this.stdoutClosedError());
       };
-      const timer = setTimeout(() => {
+      const timer = nativeRpcSetTimeout(() => {
         const commandType = typeof body.type === "string" ? body.type : "unknown";
         const stage = this.rpcReady ? (this.diagnosticContext?.().phase ?? "post_readiness") : "startup_readiness";
         const firstFrameReceived = this.frameSequence > 0;
