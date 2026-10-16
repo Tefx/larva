@@ -148951,3 +148951,162 @@ phases:
       Spec link:
 
       - contrib/pi-extension/larva.ts'
+- id: pi_subagent_reload_hot_handoff
+  name: Preserve and rebind active subagent runs across Pi /reload without interruption
+  status: pending
+  gate: Terminal gate pi-subagent-reload-hot-handoff.acceptance-gate verifies /reload
+    hot handoff across module instances, callback and UI indicator rebinding, preservation
+    of quit/new/resume/fork teardown, byte parity with contrib/codex-plugin/larva.ts,
+    and passing tests.
+  context: 'Authority: user requirement for Scheme A non-disruptive subagent hot handoff
+    across Pi /reload (session_shutdown + session_start with reason: "reload") across
+    jiti module reloads in contrib/pi-extension/larva.ts and contrib/codex-plugin/larva.ts.'
+  depends_on:
+  - pi_subagent_panel_fullscreen_mouse_fix
+  steps:
+  - id: pi-subagent-reload-hot-handoff.deliver
+    name: Implement globalThis subagent hot handoff across Pi /reload with tests and
+      docs
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/larva.ts\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_pi_extension_subagent_ux.py\n\
+      \    - tests/shell/test_codex_plugin_contract.py\n  blocked_paths:\n    - plan.yaml\n\
+      \    - .vectl/**\n    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n\
+      \    - src/larva/shell/mcp*.py\n\nDeliver:\n1. `globalThis` shared subagent\
+      \ runtime state across `jiti` module reloads in `contrib/pi-extension/larva.ts`:\n\
+      \   - Back the subagent runtime state (`activeSubagentRuns`, `activeSubagentChildren`,\
+      \ `subagentEventLog`, `subagentStartupFailureLog`, `subagentEventWaiters`, `subagentBackgroundIndicatorContexts`,\
+      \ `retainedSubagentPresentationLog`, and their sequence/generation counters\
+      \ `subagentEventSequence`, `subagentStartupSequence`, `subagentPresentationSequence`,\
+      \ `subagentUiResetGeneration`, `subagentInvocationSequence`, plus `reloadPendingHandoff:\
+      \ boolean` and `notifyPresentationOverlay?: () => void`) with a process-local\
+      \ `globalThis[Symbol.for(\"larva.pi.subagent.shared-state.v1\")]` state container\
+      \ so that when Pi's `AgentSession.reload()` loads a fresh module instance of\
+      \ `larva.ts` via `jiti.import` in the same Node process, both the in-flight\
+      \ background child promises in the previous module instance and the newly registered\
+      \ tools/commands/UI in the reloaded module instance operate on the exact same\
+      \ live subagent registry, event log, waiters, and presentation log.\n   - Ensure\
+      \ existing tests that import `larva.ts?query` with separate query strings for\
+      \ isolated test cases still start clean when no `reloadPendingHandoff` is active:\
+      \ reuse the existing `globalThis[Symbol.for(\"larva.pi.subagent.shared-state.v1\"\
+      )]` state across a new module evaluation when and only when `existing.reloadPendingHandoff\
+      \ === true`, and otherwise initialize a fresh state container and store it on\
+      \ `globalThis`.\n2. Non-disruptive `session_shutdown(reason: \"reload\")` and\
+      \ `session_start(reason: \"reload\")` rebinding in `contrib/pi-extension/larva.ts`:\n\
+      \   - In `pi.on(\"session_shutdown\", (payload) => ...)`:\n     - When `isRecord(payload)\
+      \ && payload.reason === \"reload\"`:\n       - Call `invalidateInstructionResolver()`;\n\
+      \       - Set `reloadPendingHandoff = true`;\n       - Close any open overlay\
+      \ (`closeSubagentPresentationOverlay()`), stop the old module instance's timeline\
+      \ worker (`await stopSessionTimelineWorker()`), and clear `subagentBackgroundIndicatorContexts`;\n\
+      \       - Do NOT abort or reap `activeSubagentRuns` / `activeSubagentChildren`\
+      \ or clear `retainedSubagentPresentationLog`.\n     - For all other `session_shutdown`\
+      \ reasons (`\"quit\"`, `\"new\"`, `\"resume\"`, `\"fork\"`, etc.) and for the\
+      \ direct synthetic `pi.on(\"reload\", ...)` handler used by legacy unit tests:\
+      \ continue calling `resetExtensionUI(reason)` as before.\n   - In `pi.on(\"\
+      session_start\", async (payload, eventCtx) => ...)`:\n     - When `(isRecord(payload)\
+      \ && payload.reason === \"reload\") || reloadPendingHandoff`:\n       - Clear\
+      \ `reloadPendingHandoff = false`;\n       - Do NOT call `resetExtensionUI(\"\
+      session_start\")`;\n       - Rebind all active or pending-callback runs in `activeSubagentRuns`\
+      \ to the reloaded session context: update `record.callback_ctx = runtimeCtx`,\
+      \ `record.callback_surface = callbackSurfaceFrom(runtimeCtx, pi)`, `record.parent_session_identity\
+      \ = piSessionIdentity(runtimeCtx)`, and `record.presentation_generation = subagentUiResetGeneration`;\n\
+      \       - If any run reached terminal state during the reload window while `record.callback_delivery\
+      \ === \"pending\"`, trigger `void deliverSubagentResultCallback(record)`;\n\
+      \       - Restart timeline scanning (`requestSessionTimeline(entry)`) for any\
+      \ running entry in `retainedSubagentPresentationLog` with `presentation_scan_ready\
+      \ !== false`, and call `updateSubagentBackgroundIndicator(runtimeCtx)` so the\
+      \ `\U0001F916` status indicator is immediately restored.\n3. Synchronize `contrib/codex-plugin/larva.ts`\
+      \ byte-for-byte with `contrib/pi-extension/larva.ts`, and document the `/reload`\
+      \ hot-handoff behavior in `contrib/pi-extension/README.md` and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`.\n\
+      4. Add regression tests (`contrib/pi-extension/test-subagent-reload-handoff.mjs`\
+      \ and/or `tests/shell/test_pi_extension_subagent_ux.py`):\n   - Exercise a running\
+      \ subagent across Pi's exact reload sequence:\n     1) Module instance 1 initializes,\
+      \ commits a persona, and spawns a child subagent (`status: \"accepted\"`, child\
+      \ is actively running);\n     2) Emit `session_shutdown({ type: \"session_shutdown\"\
+      , reason: \"reload\" })` on instance 1, invalidate instance 1's callback surface\
+      \ (so calling old `sendMessage` would throw), import a fresh module instance\
+      \ 2 (`larva.ts?reload-instance-2`), call `initializeExtension` on instance 2,\
+      \ and emit `session_start({ type: \"session_start\", reason: \"reload\" })`\
+      \ on instance 2;\n     3) Verify the child process is still alive and running\
+      \ (`larva_subagent_status` on instance 2 shows `running`, status bar indicator\
+      \ `\U0001F916 1` is set on instance 2's UI, presentation log in instance 2 retains\
+      \ the running entry);\n     4) Allow the child to finish and verify that `larva_subagent_wait`\
+      \ on instance 2 resolves with `satisfied: true`, `status: \"success\"`, and\
+      \ the `larva-subagent-result` callback is delivered to instance 2's `sendMessage`\
+      \ surface (with zero calls to instance 1's invalidated surface);\n     5) Also\
+      \ verify that `session_shutdown({ type: \"session_shutdown\", reason: \"quit\"\
+      \ })` (and `\"new\"`, `\"resume\"`, `\"fork\"`) still aborts and reaps active\
+      \ child subagents.\n\nBoundary:\n- `node-typescript-engineer` owns implementation,\
+      \ byte-parity synchronization between `contrib/pi-extension/larva.ts` and `contrib/codex-plugin/larva.ts`,\
+      \ documentation updates, and regression tests within `allowed_paths`.\n- Do\
+      \ not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not mutate\
+      \ user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- `node contrib/pi-extension/test-subagent-reload-handoff.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`\
+      \ pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile failing assertions\
+      \ within `allowed_paths`; reap any spawned child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-reload-handoff.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: pi-subagent-reload-hot-handoff.acceptance-gate
+    name: Gate review and integrated acceptance for Pi /reload subagent hot handoff
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `pi_subagent_reload_hot_handoff`\
+      \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
+      \nBoundary:\n- `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects\
+      \ integrated code/test/doc diffs, byte parity across `contrib/pi-extension/larva.ts`\
+      \ and `contrib/codex-plugin/larva.ts`, and verification evidence from `pi-subagent-reload-hot-handoff.deliver`.\n\
+      \nAdmit:\n- Included producer outcome: `pi-subagent-reload-hot-handoff.deliver`\
+      \ (building on `pi_subagent_panel_fullscreen_mouse_fix`).\n- Verify:\n  1. `contrib/pi-extension/larva.ts`\
+      \ backs subagent runtime state with `globalThis[Symbol.for(\"larva.pi.subagent.shared-state.v1\"\
+      )]` and reuses existing state across module evaluation when and only when `reloadPendingHandoff\
+      \ === true` so isolated `larva.ts?query` imports start clean while `/reload`\
+      \ preserves live subagent state.\n  2. `session_shutdown({ reason: \"reload\"\
+      \ })` sets `reloadPendingHandoff = true`, closes any open overlay, stops the\
+      \ old timeline worker, and clears background indicator contexts without aborting\
+      \ or reaping `activeSubagentRuns` / `activeSubagentChildren` or clearing `retainedSubagentPresentationLog`;\
+      \ `session_start({ reason: \"reload\" })` rebinds active/pending-callback runs\
+      \ to the reloaded session context, delivers any pending terminal callbacks,\
+      \ restarts timeline scanning for running entries, and restores the `\U0001F916\
+      ` background indicator while `quit`/`new`/`resume`/`fork` teardown still aborts\
+      \ and reaps active child subagents.\n  3. `contrib/codex-plugin/larva.ts` matches\
+      \ `contrib/pi-extension/larva.ts` byte-for-byte, and `contrib/pi-extension/README.md`\
+      \ + `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md` document the `/reload`\
+      \ hot-handoff behavior.\n  4. All required verification commands (`node contrib/pi-extension/test-subagent-reload-handoff.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, `git diff --check`)\
+      \ pass on the immutable integrated commit.\n\nRecovery:\n- If a material defect\
+      \ or parity/test gap is found, report exact findings with file/line citations\
+      \ so Orchestrator can route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-reload-handoff.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - contrib/pi-extension/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - contrib/pi-extension/test-native-launch-context.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - pi-subagent-reload-hot-handoff.deliver
+    agent: gate-reviewer
