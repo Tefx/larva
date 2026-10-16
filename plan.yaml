@@ -148761,7 +148761,7 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs'
 - id: pi_subagent_panel_fullscreen_mouse_fix
   name: Preserve Pi fullscreen mouse tracking across subagent overlay open and close
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate verifies
     fullscreen mouse reporting preservation across subagent overlay open/close, BorderedScrollableText.handleMouse
     support, byte parity with contrib/codex-plugin/larva.ts, and passing unit + native
@@ -148776,7 +148776,7 @@ phases:
   - id: pi-subagent-panel-fullscreen-mouse-fix.deliver
     name: Preserve Pi fullscreen mouse tracking in subagent overlays and add unit
       + native PTY tests
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/larva.ts\n    - contrib/codex-plugin/larva.ts\n\
       \    - tests/shell/test_pi_extension_subagent_ux.py\n    - tests/fixtures/pi/native_tui_probe.py\n\
@@ -148832,6 +148832,8 @@ phases:
     - tests/shell/test_codex_plugin_contract.py
     - scripts/pi-native-journeys.mjs
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-16T15:57:33.533543Z'
   - id: pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate
     name: Gate review and integrated acceptance for Pi fullscreen mouse-reporting
       preservation
