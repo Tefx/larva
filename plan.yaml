@@ -149283,7 +149283,7 @@ phases:
   - id: pi-subagent-code-hygiene.pathway-audit
     name: Parallel depth pathway audit of Pi subagent MCP, reload handoff, and fullscreen
       mouse pathways
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -149347,6 +149347,28 @@ phases:
     agent: pathway-auditor
     claimed_by: pathway-auditor
     claimed_at: '2026-10-16T18:38:00.083451Z'
+    done_at: '2026-10-16T18:46:16.446678+00:00'
+    evidence: "Artifact:\n- Auditor: pathway-auditor (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T18-38-53-100Z_01a14602-86ac-7257-9adb-78c6cb6c5c52.jsonl,\
+      \ full report /Users/tefx/.pi/larva/subagent-output-artifacts/2026-10-16T18-44-54-059Z-2026-10-16T18-38-53-100Z_01a14602-86ac-7257-9adb-78c6cb6c5c52.js-4961b2fefb3d973b.txt)\n\
+      - Target commit: git:61336ef42bb4dec4c06b32a52db96e9bdb485ef6\n- Categorized\
+      \ findings:\n  - MUST_FIX #1 (contrib/pi-extension/larva.ts:12102-12113): Failed\
+      \ reload after session_shutdown(reason=\"reload\") leaves instructionGenerationIsCurrent\
+      \ false while reloadPendingHandoff is still true, blocking subsequent non-reload\
+      \ session_shutdown cleanup on that instance.\n  - MUST_FIX #2 (contrib/pi-extension/larva.ts:8763-8773):\
+      \ pruneTerminalSubagentRuns() evicts terminal records beyond 25 without excluding\
+      \ records whose callback_delivery === \"pending\" during reload deferral.\n\
+      \  - MUST_FIX #3 (contrib/pi-extension/larva.ts:10585-10623, 11375-11406): Disconnect/abort\
+      \ during asynchronous startChild model resolution can terminalize record before\
+      \ spawn and then still create a capsule and spawn a child that escapes abortSubagentRun\
+      \ early return.\n  - SHOULD_FIX #4 (contrib/pi-extension/subagent-mcp-server.mjs:31,\
+      \ 123-135): Rejected runtimePromise on failed lazy import causes shutdown()\
+      \ to reject without a catch handler.\n  - ACCEPTABLE: 6 pathways verified wired\
+      \ (lazy import/TUI fallback, outbox/wait/select enrichment, external-host admission/CLI\
+      \ discovery, normal reload handoff, fullscreen mouse ownership, startup readiness/diagnostics).\n\
+      \nVerification:\n- Run: `git status --short && git diff --check` -> exit 0 (strictly\
+      \ read-only execution).\n\nGaps:\n- All 3 MUST_FIX and 1 SHOULD_FIX items are\
+      \ queued for resolution in pi-subagent-code-hygiene.remediate-and-verify.\n\n\
+      Spec link:\n- contrib/pi-extension/larva.ts\n- contrib/pi-extension/subagent-mcp-server.mjs"
   - id: pi-subagent-code-hygiene.remediate-and-verify
     name: Remediate admitted code-hygiene findings, sync Codex plugin mirror, and
       verify
