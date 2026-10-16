@@ -149202,7 +149202,7 @@ phases:
 - id: pi_subagent_code_hygiene_audit
   name: Code-hygiene audit and remediation for Pi subagent MCP, Codex plugin, and
     reload/mouse fixes
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-code-hygiene.acceptance-gate verifies that all admitted
     MUST_FIX and worthwhile SHOULD_FIX findings from structural-auditor and pathway-auditor
     are resolved, the 5 runtime files in contrib/codex-plugin/ match contrib/pi-extension/
@@ -149216,7 +149216,7 @@ phases:
   - id: pi-subagent-code-hygiene.structural-audit
     name: Parallel breadth structural audit of Pi subagent MCP, Codex plugin, and
       reload/mouse changes
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -149278,6 +149278,8 @@ phases:
     - tests/shell/test_pi_extension_subagent_ux.py
     - tests/fixtures/pi/native_tui_probe.py
     agent: structural-auditor
+    claimed_by: structural-auditor
+    claimed_at: '2026-10-16T18:37:57.813729Z'
   - id: pi-subagent-code-hygiene.pathway-audit
     name: Parallel depth pathway audit of Pi subagent MCP, reload handoff, and fullscreen
       mouse pathways
