@@ -149111,7 +149111,7 @@ phases:
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules'
   - id: pi-subagent-reload-hot-handoff.acceptance-gate
     name: Gate review and integrated acceptance for Pi /reload subagent hot handoff
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_reload_hot_handoff`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -149155,3 +149155,5 @@ phases:
     depends_on:
     - pi-subagent-reload-hot-handoff.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-16T16:55:42.384401Z'
