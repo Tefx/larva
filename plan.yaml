@@ -149202,7 +149202,7 @@ phases:
 - id: pi_subagent_code_hygiene_audit
   name: Code-hygiene audit and remediation for Pi subagent MCP, Codex plugin, and
     reload/mouse fixes
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-code-hygiene.acceptance-gate verifies that all admitted
     MUST_FIX and worthwhile SHOULD_FIX findings from structural-auditor and pathway-auditor
     are resolved, the 5 runtime files in contrib/codex-plugin/ match contrib/pi-extension/
@@ -149492,7 +149492,7 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs"
   - id: pi-subagent-code-hygiene.acceptance-gate
     name: Terminal acceptance gate for Pi subagent code-hygiene audit and remediation
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_code_hygiene_audit`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -149536,3 +149536,48 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-16T19:11:11.566260Z'
+    done_at: '2026-10-16T19:15:09.401918+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:945759ff1510047c3f4d94f7208384572afa34d3 (integrating producer
+      commit 6675c048ea1d4deebe7f5973b1776ac6b3e580d4)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T19-11-55-254Z_01a14620-c576-74c6-b7fd-03a74f2f9442.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=DELTA, phase_ids=[pi_subagent_code_hygiene_audit], findings=[],
+      requirements 3/3 PROVEN (req-1-frozen-ledger-must-fix-items-p1-p2-p3-s1-closed,
+      req-2-frozen-ledger-should-fix-items-p4-s2-s3-s4-s5-s6-closed, req-3-no-diff-regressions-byte-parity-and-verification-passed)
+
+
+      Verification:
+
+      - Run: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate10-binding-hPgICJ/binding.json /tmp/larva-gate10-binding-hPgICJ/gate-report.json
+      -> exit 0 (POSITIVE_GATE_EVIDENCE).
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0 (19/19
+      check groups passed).
+
+      - Run: node contrib/pi-extension/test-subagent-reload-handoff.mjs -> exit 0
+      (PASS).
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed).
+
+      - Run: .venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (3 passed).
+
+      - Run: git status --short && git diff --check -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/subagent-mcp-server.mjs'
