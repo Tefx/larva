@@ -149216,7 +149216,7 @@ phases:
   - id: pi-subagent-code-hygiene.structural-audit
     name: Parallel breadth structural audit of Pi subagent MCP, Codex plugin, and
       reload/mouse changes
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       repo_change_policy: no_repo_change
@@ -149280,6 +149280,32 @@ phases:
     agent: structural-auditor
     claimed_by: structural-auditor
     claimed_at: '2026-10-16T18:37:57.813729Z'
+    done_at: '2026-10-16T19:01:11.886252+00:00'
+    evidence: "Artifact:\n- Auditor: structural-auditor (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T18-38-53-161Z_01a14602-86e9-715b-bc37-c6f0ddc6627b.jsonl,\
+      \ full report /Users/tefx/.pi/larva/subagent-output-artifacts/2026-10-16T18-58-58-402Z-2026-10-16T18-38-53-161Z_01a14602-86e9-715b-bc37-c6f0ddc6627b.js-8faf248204420815.txt)\n\
+      - Target commit: git:61336ef42bb4dec4c06b32a52db96e9bdb485ef6\n- Categorized\
+      \ findings:\n  - MUST_FIX #1 (contrib/pi-extension/larva.ts:366-377, 8460-8473,\
+      \ 9345-9354; test-subagent-mcp-server.mjs:200, 319): Headless larva_subagent_sessions\
+      \ reads event.persona_id from LarvaSubagentEvent, which omits persona_id.\n\
+      \  - SHOULD_FIX #2 (contrib/pi-extension/larva.ts:91-122, 10396-10402, 11470-11574):\
+      \ Deduplicate pre-launch failure & presentationGeneration guards, dead line\
+      \ 11573 branch, can_spawn predicate, and missing RuntimeEnv keys.\n  - SHOULD_FIX\
+      \ #3 (contrib/pi-extension/larva.ts:8959-9004, 9054-9058, 12065-12069): Consolidate\
+      \ duplicated deliverSubagentResultCallback catch handler inside deliverSubagentResultCallback.\n\
+      \  - SHOULD_FIX #4 (contrib/pi-extension/larva.ts:724-771, 2161-2168, 9124-9126,\
+      \ 10132-10146): Route dropSessionTimelineInvocation via sharedSubagentState,\
+      \ inline appendSubagentPresentationRunning, and clear subagentStartupFailureLog/reloadPendingHandoff\
+      \ in resetSubagentPresentationStateForTests.\n  - SHOULD_FIX #5 (contrib/pi-extension/subagent-mcp-server.mjs:50-53,\
+      \ 93-109): Filter empty PATH segments when PATH is empty/unset and deduplicate\
+      \ larva_subagent return shaping in callTool.\n  - SHOULD_FIX #6 (contrib/pi-extension/test-subagent-mcp-server.mjs:75-82,\
+      \ 278-284, 430-436): Trim duplicate RPC assertions and share pidEntries() helper.\n\
+      \  - ACCEPTABLE: 5-file runtime byte mirror in contrib/codex-plugin/, pre-import\
+      \ schema table in subagent-mcp-server.mjs, contract-pinned helpers/lifecycle\
+      \ loop in larva.ts, fullscreen mouse ownership, and reload handoff test suite.\n\
+      \nVerification:\n- Run: `git status --short && git diff --check` -> exit 0 (strictly\
+      \ read-only execution).\n\nGaps:\n- All 1 MUST_FIX and 5 SHOULD_FIX items are\
+      \ queued in the Frozen Finding Ledger for pi-subagent-code-hygiene.remediate-and-verify.\n\
+      \nSpec link:\n- contrib/pi-extension/larva.ts\n- contrib/pi-extension/subagent-mcp-server.mjs"
   - id: pi-subagent-code-hygiene.pathway-audit
     name: Parallel depth pathway audit of Pi subagent MCP, reload handoff, and fullscreen
       mouse pathways
