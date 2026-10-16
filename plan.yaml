@@ -148967,7 +148967,7 @@ phases:
   - id: pi-subagent-reload-hot-handoff.deliver
     name: Implement globalThis subagent hot handoff across Pi /reload with tests and
       docs
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/larva.ts\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_pi_extension_subagent_ux.py\n\
@@ -149066,6 +149066,49 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-16T16:42:21.345462Z'
+    done_at: '2026-10-16T16:55:38.880981+00:00'
+    evidence: 'Artifact:
+
+      - Commit: a9419ebc8cef81424242bc165e5548f531802ca9 (retained ref: refs/vectl/candidates/pi-subagent-reload-hot-handoff.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T16-43-16-872Z_01a14598-b008-75bc-9d1c-999598be56fb.jsonl)
+
+      - Files: contrib/pi-extension/larva.ts, contrib/codex-plugin/larva.ts, contrib/pi-extension/test-subagent-reload-handoff.mjs,
+      contrib/pi-extension/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      tests/shell/test_pi_extension_subagent_ux.py
+
+
+      Verification:
+
+      - Run: `node contrib/pi-extension/test-subagent-reload-handoff.mjs` -> exit
+      0 (`PASS: running reload handoff, reload-gap callback, fresh-import isolation,
+      quit/new/resume/fork child and capsule cleanup`).
+
+      - Run: `node contrib/pi-extension/test-native-launch-context.mjs` -> exit 0
+      (6/6 passed).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (3 passed in 0.24s).
+
+      - Run: `.venv/bin/python -m pytest -q tests/shell/test_pi_extension_subagent_ux.py
+      -k "reload_handoff or background_indicator or lifecycle"` -> exit 0 (5 passed).
+
+      - Run: `node contrib/pi-extension/test-session-timeline-worker.mjs` -> exit
+      0 (`PASS`).
+
+      - Run: `git diff --check && git status --short` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/README.md#native-reload-subagent-handoff
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules'
   - id: pi-subagent-reload-hot-handoff.acceptance-gate
     name: Gate review and integrated acceptance for Pi /reload subagent hot handoff
     status: pending
