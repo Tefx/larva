@@ -148759,3 +148759,120 @@ phases:
       - contrib/pi-extension/larva.ts
 
       - contrib/pi-extension/subagent-mcp-server.mjs'
+- id: pi_subagent_panel_fullscreen_mouse_fix
+  name: Preserve Pi fullscreen mouse tracking across subagent overlay open and close
+  status: pending
+  gate: Terminal gate pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate verifies
+    fullscreen mouse reporting preservation across subagent overlay open/close, BorderedScrollableText.handleMouse
+    support, byte parity with contrib/codex-plugin/larva.ts, and passing unit + native
+    PTY navigation tests.
+  context: 'Authority: user bug report and confirmed root cause in contrib/pi-extension/larva.ts
+    where SubagentPresentationLogOverlay and BorderedScrollableText emit DISABLE_MOUSE_REPORTING
+    (\x1b[?1006l\x1b[?1000l) on dispose() while TuiAltScreen owns mouse tracking in
+    Pi fullscreen mode.'
+  depends_on:
+  - pi_subagent_mcp_code_hygiene_fixes
+  steps:
+  - id: pi-subagent-panel-fullscreen-mouse-fix.deliver
+    name: Preserve Pi fullscreen mouse tracking in subagent overlays and add unit
+      + native PTY tests
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/larva.ts\n    - contrib/codex-plugin/larva.ts\n\
+      \    - tests/shell/test_pi_extension_subagent_ux.py\n    - tests/fixtures/pi/native_tui_probe.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. In `contrib/pi-extension/larva.ts`:\n   - Extend `PiTui` type with\
+      \ optional `mode?: string; mouseEnabled?: boolean; altScreenActive?: boolean;`.\n\
+      \   - Add helper `function tuiOwnsMouseReporting(tui?: PiTui): boolean { return\
+      \ (tui?.mode === \"fullscreen\" || tui?.altScreenActive === true) && tui?.mouseEnabled\
+      \ !== false; }`.\n   - In both `BorderedScrollableText` and `SubagentPresentationLogOverlay`:\
+      \ only write `ENABLE_MOUSE_REPORTING` in `constructor()` (and set `this.mouseReportingEnabled\
+      \ = true`) when `this.tui?.terminal?.write` is present AND `!tuiOwnsMouseReporting(this.tui)`.\
+      \ Consequently, in `dispose()`, `DISABLE_MOUSE_REPORTING` is only written when\
+      \ the overlay itself enabled mouse reporting in regular mode (`!tuiOwnsMouseReporting(this.tui)`),\
+      \ never in fullscreen mode where `TuiAltScreen` owns mouse tracking.\n   - Implement\
+      \ `handleMouse(event: PiMouseEvent): PiMouseEventResult | undefined` on `BorderedScrollableText`\
+      \ (matching `SubagentPresentationLogOverlay.handleMouse`) so `BorderedScrollableText`\
+      \ also scrolls via `handleMouse` in fullscreen mode.\n   - Synchronize `contrib/codex-plugin/larva.ts`\
+      \ byte-for-byte with `contrib/pi-extension/larva.ts`.\n2. In `tests/shell/test_pi_extension_subagent_ux.py`\
+      \ and `tests/fixtures/pi/native_tui_probe.py`:\n   - In `tests/shell/test_pi_extension_subagent_ux.py`:\
+      \ add assertions verifying that when `tui` has `mode: \"fullscreen\"` (or `altScreenActive:\
+      \ true`), constructing, scrolling via `handleMouse`, and disposing `SubagentPresentationLogOverlay`\
+      \ and `BorderedScrollableText` emit zero `ENABLE_MOUSE_REPORTING` / `DISABLE_MOUSE_REPORTING`\
+      \ writes (`terminalWrites` is `[]`), while in `mode: \"regular\"` (or when `mode`\
+      \ is omitted) they still emit `ENABLE_MOUSE_REPORTING` on open and `DISABLE_MOUSE_REPORTING`\
+      \ on `dispose()`.\n   - In `tests/fixtures/pi/native_tui_probe.py` (`panel_journey`):\
+      \ verify that in `mode == \"fullscreen\"`, closing the panel (`close_panel()`)\
+      \ does NOT emit `\\x1b[?1006l\\x1b[?1000l` to `terminal.output` while the session\
+      \ is still running (before `terminal.close()`), whereas in `mode == \"regular\"\
+      ` it does emit `\\x1b[?1006l\\x1b[?1000l` on `close_panel()`.\n\nBoundary:\n\
+      - `node-typescript-engineer` owns implementation, byte-parity synchronization\
+      \ between `contrib/pi-extension/larva.ts` and `contrib/codex-plugin/larva.ts`,\
+      \ and unit + native PTY navigation test updates within `allowed_paths`.\n- Do\
+      \ not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not mutate\
+      \ user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- Python unit tests\
+      \ (`tests/shell/test_pi_extension_subagent_ux.py`, `tests/shell/test_codex_plugin_contract.py`),\
+      \ native PTY journey scenario (`node scripts/pi-native-journeys.mjs --scenario\
+      \ panel-navigation`), and `git diff --check` pass.\n\nRecovery:\n- Revert uncommitted\
+      \ edits or reconcile failing assertions within `allowed_paths`; reap any spawned\
+      \ child processes or PTY sessions on test exit."
+    verification: '- Run `.venv/bin/python -m pytest -q tests/shell/test_pi_extension_subagent_ux.py
+      tests/shell/test_codex_plugin_contract.py` -> exits 0.
+
+      - Run `node scripts/pi-native-journeys.mjs --scenario panel-navigation` -> exits
+      0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/fixtures/pi/native_tui_probe.py
+    - tests/shell/test_codex_plugin_contract.py
+    - scripts/pi-native-journeys.mjs
+    agent: node-typescript-engineer
+  - id: pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate
+    name: Gate review and integrated acceptance for Pi fullscreen mouse-reporting
+      preservation
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `pi_subagent_panel_fullscreen_mouse_fix`\
+      \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
+      \nBoundary:\n- `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects\
+      \ integrated code/test diffs, byte parity across `contrib/pi-extension/larva.ts`\
+      \ and `contrib/codex-plugin/larva.ts`, and verification evidence from `pi-subagent-panel-fullscreen-mouse-fix.deliver`.\n\
+      \nAdmit:\n- Included producer outcome: `pi-subagent-panel-fullscreen-mouse-fix.deliver`\
+      \ (building on `pi_subagent_mcp_code_hygiene_fixes`).\n- Verify:\n  1. `contrib/pi-extension/larva.ts`\
+      \ extends `PiTui` with optional `mode`, `mouseEnabled`, and `altScreenActive`,\
+      \ defines `tuiOwnsMouseReporting(tui?: PiTui)`, and suppresses `ENABLE_MOUSE_REPORTING`\
+      \ / `DISABLE_MOUSE_REPORTING` terminal writes in both `BorderedScrollableText`\
+      \ and `SubagentPresentationLogOverlay` when `tuiOwnsMouseReporting(this.tui)`\
+      \ is true while preserving regular-mode mouse reporting lifecycle.\n  2. `BorderedScrollableText`\
+      \ implements `handleMouse(event: PiMouseEvent): PiMouseEventResult | undefined`\
+      \ matching `SubagentPresentationLogOverlay.handleMouse` so fullscreen mouse\
+      \ scrolling works across both overlay types.\n  3. `contrib/codex-plugin/larva.ts`\
+      \ matches `contrib/pi-extension/larva.ts` byte-for-byte.\n  4. `tests/shell/test_pi_extension_subagent_ux.py`\
+      \ and `tests/fixtures/pi/native_tui_probe.py` (`panel_journey`) verify fullscreen\
+      \ vs regular mouse reporting writes and `BorderedScrollableText.handleMouse`,\
+      \ and all verification checks (`.venv/bin/python -m pytest -q tests/shell/test_pi_extension_subagent_ux.py\
+      \ tests/shell/test_codex_plugin_contract.py`, `node scripts/pi-native-journeys.mjs\
+      \ --scenario panel-navigation`, `git diff --check`) pass on the immutable integrated\
+      \ commit.\n\nRecovery:\n- If a material defect or parity/test gap is found,\
+      \ report exact findings with file/line citations so Orchestrator can route a\
+      \ single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`.venv/bin/python -m pytest
+      -q tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_codex_plugin_contract.py`,
+      `node scripts/pi-native-journeys.mjs --scenario panel-navigation`, and `git
+      diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/fixtures/pi/native_tui_probe.py
+    - tests/shell/test_codex_plugin_contract.py
+    - scripts/pi-native-journeys.mjs
+    depends_on:
+    - pi-subagent-panel-fullscreen-mouse-fix.deliver
+    agent: gate-reviewer
