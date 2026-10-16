@@ -248,8 +248,14 @@ def panel_journey() -> list[dict]:
 
             def close_panel() -> None:
                 ended = len(terminal.rows("ui_prompt_end"))
+                start = len(terminal.output)
                 terminal.send("q")
                 terminal.wait(lambda: len(terminal.rows("ui_prompt_end")) > ended, "panel close acknowledged")
+                mouse_disabled = "\x1b[?1006l\x1b[?1000l" in terminal.output[start:]
+                if mode == "fullscreen":
+                    assert not mouse_disabled, "panel close disabled fullscreen mouse tracking"
+                else:
+                    assert mouse_disabled, "panel close did not release regular-mode mouse tracking"
 
             terminal.send("4")
             for batch in range(1, 6):

@@ -712,6 +712,75 @@ def test_native_panel_timeline_follows_pauses_and_signals_in_place_updates(tmp_p
     assert payload["overlayLocal"] is True
 
 
+def test_overlay_mouse_reporting_respects_tui_ownership(tmp_path: Path) -> None:
+    payload = _run_node(
+        tmp_path,
+        _node_prelude(tmp_path)
+        + r'''
+        const { default: assert } = await import("node:assert/strict");
+        const task = join(childRoot, "mouse-ownership.jsonl");
+        const text = Array.from({ length: 60 }, (_, i) => `LINE_${i}`).join("\n");
+        mod.recordSubagentPresentationEntryForTests(task, "child", "running", {
+          presentation_scan_ready: false,
+          timeline_events: Array.from({ length: 60 }, (_, i) => ({
+            kind: "assistant", text: `MSG_${i}`, session_id: `m${i}`,
+          })),
+        });
+        const entry = mod.subagentPresentationLogForTests().find(row => row.task_id === task);
+        const enable = "\x1b[?1000h\x1b[?1006h";
+        const disable = "\x1b[?1006l\x1b[?1000l";
+        const cases = [
+          [{ mode: "fullscreen" }, false],
+          [{ altScreenActive: true }, false],
+          [{ mode: "fullscreen", mouseEnabled: true }, false],
+          [{ mode: "regular" }, true],
+          [{}, true],
+          [{ mode: "fullscreen", mouseEnabled: false }, true],
+          [{ altScreenActive: true, mouseEnabled: false }, true],
+        ];
+        let checked = 0;
+        for (const [state, overlayOwnsMouse] of cases) {
+          for (const Component of [mod.SubagentPresentationLogOverlay, mod.BorderedScrollableText]) {
+            const terminalWrites = [];
+            let renders = 0;
+            const component = new Component({
+              text, entry, generation: 1, maxBoxLines: 14,
+              tui: { ...state, requestRender: () => { renders += 1; },
+                terminal: { rows: 42, write: data => terminalWrites.push(data) } },
+            });
+            assert.deepEqual(terminalWrites, overlayOwnsMouse ? [enable] : []);
+            if (Component === mod.SubagentPresentationLogOverlay) {
+              component.handleInput("4");
+              component.render(120);
+              component.handleInput("\x1b[1~");
+            }
+            const before = component.render(120);
+            const previousRenders = renders;
+            assert.deepEqual(component.handleMouse({ type: "wheel", wheelDelta: 3 }), {
+              handled: true, render: false,
+            });
+            const after = component.render(120);
+            assert.notDeepEqual(after, before, "normalized wheel must scroll content");
+            assert.equal(renders, previousRenders + 1, "scroll requests one render");
+            for (const event of [
+              { type: "click" }, { type: "wheel" },
+              { type: "wheel", wheelDelta: NaN },
+              { type: "wheel", wheelDelta: Infinity },
+              { type: "wheel", wheelDelta: "3" },
+            ]) assert.equal(component.handleMouse(event), undefined);
+            assert.deepEqual(component.render(120), after);
+            component.dispose();
+            component.dispose();
+            assert.deepEqual(terminalWrites, overlayOwnsMouse ? [enable, disable] : []);
+            checked += 1;
+          }
+        }
+        console.log(JSON.stringify({ checked }));
+        ''',
+    )
+    assert payload["checked"] == 14
+
+
 def test_native_panel_normalized_mouse_and_resize_keep_navigation_bounded(tmp_path: Path) -> None:
     """Exercise normalized and raw paths once, including a previously fitting pane."""
     payload = _run_node(

@@ -459,7 +459,11 @@ type PiOverlayComponent = PiRenderableComponent & { handleInput?: (data: string)
 type PiKeybindings = { matches?: (data: string, keybindingId: string) => boolean };
 type PiOverlayHandle = { focus?: () => void };
 type PiShortcutContext = PiContext & { isIdle?: () => boolean };
-type PiTui = { requestRender?: () => void; terminal?: { write?: (data: string) => void; rows?: number; columns?: number } };
+type PiTui = { mode?: string; mouseEnabled?: boolean; altScreenActive?: boolean; requestRender?: () => void; terminal?: { write?: (data: string) => void; rows?: number; columns?: number } };
+
+function tuiOwnsMouseReporting(tui?: PiTui): boolean {
+  return (tui?.mode === "fullscreen" || tui?.altScreenActive === true) && tui?.mouseEnabled !== false;
+}
 type PiCustomFactory = (
   tui: PiTui,
   theme: { fg?: (token: string, text: string) => string; bold?: (text: string) => string },
@@ -1409,7 +1413,7 @@ export class BorderedScrollableText implements PiOverlayComponent {
     this.done = options.done;
     this.maxBoxLines = Math.max(4, Math.floor(options.maxBoxLines ?? 22));
     this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? 100));
-    if (this.tui?.terminal?.write) {
+    if (this.tui?.terminal?.write && !tuiOwnsMouseReporting(this.tui)) {
       this.tui.terminal.write(ENABLE_MOUSE_REPORTING);
       this.mouseReportingEnabled = true;
     }
@@ -1469,6 +1473,12 @@ export class BorderedScrollableText implements PiOverlayComponent {
       `│ ${overlayPadLine(scrollInfo, contentWidth)} │`,
       `╰${"─".repeat(boxWidth - 2)}╯`,
     ];
+  }
+
+  handleMouse(event: PiMouseEvent): PiMouseEventResult | undefined {
+    if (event.type !== "wheel" || typeof event.wheelDelta !== "number" || !Number.isFinite(event.wheelDelta)) return undefined;
+    this.scrollBy(event.wheelDelta);
+    return { handled: true, render: false };
   }
 
   handleInput(data: string): void {
@@ -2457,7 +2467,7 @@ export class SubagentPresentationLogOverlay implements PiOverlayComponent {
     this.maxWidth = Math.max(4, Math.floor(options.maxWidth ?? Number.MAX_SAFE_INTEGER));
     this.selectorMode = options.initialMode === "selector";
     this.alignSelectorCursorToSelection(true);
-    if (this.tui?.terminal?.write) {
+    if (this.tui?.terminal?.write && !tuiOwnsMouseReporting(this.tui)) {
       this.tui.terminal.write(ENABLE_MOUSE_REPORTING);
       this.mouseReportingEnabled = true;
     }
