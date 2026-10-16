@@ -10448,8 +10448,7 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
   }
 }
 
-function resolvePiCommandPrefix(_env: RuntimeEnv): string[] | LarvaError {
-  const env = _env;
+function resolvePiCommandPrefix(env: RuntimeEnv): string[] | LarvaError {
   if (nativePiCommandPrefix !== null) return [...nativePiCommandPrefix];
   const explicit = env.LARVA_PI_CLI_SCRIPT ?? env.LARVA_PI_REAL_BIN;
   const candidates = explicit !== undefined ? [explicit] : (env.PATH ?? "").split(process.platform === "win32" ? ";" : ":").filter(isAbsolute).map((directory) => join(directory, "pi"));
@@ -11450,19 +11449,21 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
   }
   let authorityError: LarvaError | null = null;
   if (ctx?.externalHostCanSpawn !== undefined) {
-    const parentId = input.parent_persona_id !== undefined ? input.parent_persona_id : env.LARVA_MCP_PARENT_PERSONA;
-    if (parentId !== undefined && normalizeString(parentId) === null) {
+    const normalizedParentId = input.parent_persona_id !== undefined
+      ? normalizeString(input.parent_persona_id)?.trim() ?? null
+      : normalizeString(env.LARVA_MCP_PARENT_PERSONA)?.trim() ?? undefined;
+    if (normalizedParentId === null) {
       authorityError = error("LARVA_BAD_INPUT", "parent_persona_id must be a non-empty string.");
     } else if (!ctx.externalHostCanSpawn) {
       authorityError = error("LARVA_SPAWN_NOT_ALLOWED", "External host cannot spawn personas.");
-    } else if (typeof parentId === "string") {
+    } else if (normalizedParentId !== undefined) {
       try {
-        const parent = await resolvePersona(parentId, { env });
+        const parent = await resolvePersona(normalizedParentId, { env });
         if (parent.can_spawn !== true && !(Array.isArray(parent.can_spawn) && parent.can_spawn.includes(personaId))) {
           authorityError = error("LARVA_SPAWN_NOT_ALLOWED", "External parent persona cannot spawn the requested persona.");
-        } else env.LARVA_PI_PARENT_PERSONA_ID = parentId;
+        } else env.LARVA_PI_PARENT_PERSONA_ID = normalizedParentId;
       } catch (caught) {
-        authorityError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve parent persona ${parentId}`);
+        authorityError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve parent persona ${normalizedParentId}`);
       }
     } else {
       delete env.LARVA_PI_PARENT_PERSONA_ID;
@@ -11485,7 +11486,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
     return result;
   }
   const record = createSubagentRun(input, env, personaId, canonicalTaskId, ctx);
-  if (presentationGeneration !== null && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
+  if (presentationGeneration === subagentUiResetGeneration && canonicalTaskId !== null) recordSubagentPresentationRunning(canonicalTaskId, personaId, input, ctx?.presentationCallId);
   if (ctx?.abortSignal?.aborted) return terminalResultFromSnapshot(finalizeSubagentRun(record, cancelled(canonicalTaskId, personaId), { suppressCallback: true }));
   const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, noProgressTimeoutMs, runtimeConfig.extension_sources, ctx?.abortSignal, {
     onPhase: (phase, readyTaskId) => {

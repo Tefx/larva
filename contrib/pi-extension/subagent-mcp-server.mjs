@@ -140,7 +140,7 @@ function send(value, framed) {
   process.stdout.write(framed ? `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}` : `${body}\n`);
 }
 async function dispatch(message, framed) {
-  const id = message?.id ?? null;
+  const id = typeof message?.id === 'string' || typeof message?.id === 'number' ? message.id : null;
   if (!message || message.jsonrpc !== '2.0' || typeof message.method !== 'string' || (Object.hasOwn(message, 'id') && typeof message.id !== 'string' && typeof message.id !== 'number' && message.id !== null)) {
     send({ jsonrpc: '2.0', id, error: { code: -32600, message: 'Invalid Request' } }, framed);
     return;
@@ -152,7 +152,7 @@ async function dispatch(message, framed) {
       case 'initialize': result = { protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'larva-pi-subagent', version: '0.8.7' } }; break;
       case 'ping': result = {}; break;
       case 'tools/list': result = { tools }; break;
-      case 'tools/call': result = await callTool(message.params?.name, message.params?.arguments ?? {}); break;
+      case 'tools/call': result = await callTool(message.params?.name, message.params?.arguments === undefined ? {} : message.params.arguments); break;
       default: throw Object.assign(new Error('Method not found'), { rpcCode: -32601 });
     }
     // MCP tool results expose runtime details as structuredContent as well as text.

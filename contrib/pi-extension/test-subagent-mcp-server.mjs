@@ -45,12 +45,12 @@ function client(overrides = {}, runtimeDir = packageDir) {
   child.on('exit', () => { for (const waiter of pending.values()) waiter.reject(new Error(`server exited: ${stderr}`)); pending.clear(); });
   const api = {
     child,
-    request(method, params = {}, framed = false) {
-      const id = ++sequence;
+    request(method, params = {}, framed = false, id = ++sequence) {
+      const responseId = typeof id === 'string' || typeof id === 'number' ? id : null;
       const body = JSON.stringify({ jsonrpc: '2.0', id, method, params });
       const result = new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(id); reject(new Error(`Timed out: ${method}; ${stderr}`)); }, 30000);
-        pending.set(id, { resolve(value) { clearTimeout(timer); resolve(value); }, reject(error) { clearTimeout(timer); reject(error); } });
+        const timer = setTimeout(() => { pending.delete(responseId); reject(new Error(`Timed out: ${method}; ${stderr}`)); }, 30000);
+        pending.set(responseId, { resolve(value) { clearTimeout(timer); resolve(value); }, reject(error) { clearTimeout(timer); reject(error); } });
       });
       const data = framed ? `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}` : body + '\n';
       child.stdin.write(data);
@@ -92,6 +92,15 @@ try {
   idle.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
   assert.deepEqual((await idle.request('ping')).result, {});
   assert.equal((await idle.request('tools/list')).result.tools.length, 9);
+  for (const [id, framed] of [[{}, false], [[], true]]) {
+    assert.deepEqual(await idle.request('ping', {}, framed, id), {
+      jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' },
+    });
+  }
+  const nullArguments = await idle.request('tools/call', { name: 'larva_subagent_sessions', arguments: null });
+  assert.equal(nullArguments.result.isError, true);
+  assert.deepEqual(nullArguments.result.details.error, { code: 'LARVA_BAD_INPUT', message: 'arguments must be an object.' });
+  assert.equal(nullArguments.result.content[0].text, 'LARVA_BAD_INPUT: arguments must be an object.');
   const unknown = await idle.request('tools/call', { name: 'unknown', arguments: {} });
   assert.equal(unknown.error.code, -32602);
   for (const args of [[], { task: 'missing persona' }, { persona_id: 'child', task: 'run', unknown: true }, { persona_id: 'child', task: 1 }]) {
@@ -115,6 +124,9 @@ export async function resetExtensionUI(reason) { await record(reason); }
   const lazy = client({}, idleDir);
   await lazy.request('initialize');
   assert.equal(existsSync(lifecycleFile), false);
+  const omittedArguments = await lazy.request('tools/call', { name: 'larva_subagent_sessions' });
+  assert.equal(omittedArguments.error, undefined, JSON.stringify(omittedArguments));
+  assert.deepEqual(omittedArguments.result.details.sessions, []);
   await Promise.all([lazy.tool('larva_subagent_sessions'), lazy.tool('larva_subagent_sessions')]);
   assert.deepEqual((await readFile(lifecycleFile, 'utf8')).trim().split('\n').map(JSON.parse), ['loaded']);
   await lazy.close();
@@ -126,6 +138,7 @@ export async function resetExtensionUI(reason) { await record(reason); }
   const cli = join(root, 'larva-cli.mjs');
   await writeFile(cli, `
 const command = process.argv[2], id = process.argv[3];
+if (id !== undefined && id !== id.trim()) throw new Error('Persona resolution received untrimmed id');
 const spec = id => ({id, description: 'Fixture '+id, prompt: 'Fixture prompt', model: 'fixture/model', capabilities: {}, spec_version: '0.1.0', spec_digest: 'sha256:fixture', can_spawn: id === 'parent' ? ['child'] : id === 'deny' ? false : true});
 process.stdout.write(JSON.stringify({data: command === 'list' ? [spec('child'), spec('other')] : spec(id)}));
 `);
@@ -169,8 +182,10 @@ createInterface({input:process.stdin}).on('line', async line => {
   try {
     const disabled = await runtime.larva_subagent({persona_id:'child',task:'disabled'}, {env,externalHostCanSpawn:false});
     assert.equal(disabled.error.code,'LARVA_SPAWN_NOT_ALLOWED');
-    const malformedParent = await runtime.larva_subagent({persona_id:'child',task:'invalid',parent_persona_id:null}, {env,externalHostCanSpawn:true});
-    assert.equal(malformedParent.error.code,'LARVA_BAD_INPUT');
+    for (const parent_persona_id of [null, '', '   ', 42]) {
+      const malformedParent = await runtime.larva_subagent({persona_id:'child',task:'invalid',parent_persona_id}, {env,externalHostCanSpawn:true});
+      assert.deepEqual(malformedParent.error, {code:'LARVA_BAD_INPUT',message:'parent_persona_id must be a non-empty string.'});
+    }
     assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
     let delivered;
     const completion = new Promise(resolve => { delivered = resolve; });
@@ -268,6 +283,10 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.equal((await c.tool('larva_subagent', {persona_id:'child',task:'run',unknown:true})).isError, true);
   const personas = await c.tool('larva_personas', {query:'child'});
   assert.equal(personas.details.personas[0].id, 'child');
+  const emptySessions = await c.request('tools/call', {name:'larva_subagent_sessions'});
+  assert.equal(emptySessions.error, undefined, JSON.stringify(emptySessions));
+  assert.equal(emptySessions.result.isError, false, JSON.stringify(emptySessions));
+  assert.deepEqual(emptySessions.result.details.sessions, []);
   const single = await c.tool('larva_subagent', {persona_id:'child', task:'single', wait_for_completion:true});
   assert.equal(single.isError, false, JSON.stringify(single));
   const output = Object.values(single.details.terminal_outputs)[0];
@@ -282,7 +301,8 @@ createInterface({input:process.stdin}).on('line', async line => {
     const denied = await c.tool('larva_subagent', {persona_id:target,task:'deny',parent_persona_id:parent});
     assert.equal(denied.details.error.code, 'LARVA_SPAWN_NOT_ALLOWED');
   }
-  const allowed = await c.tool('larva_subagent', {persona_id:'child', task:'allowed', parent_persona_id:'parent', wait_for_completion:true});
+  const allowed = await c.tool('larva_subagent', {persona_id:'child', task:'allowed', parent_persona_id:'  parent  ', wait_for_completion:true});
+  assert.equal(allowed.isError, false, JSON.stringify(allowed));
   assert.equal(Object.values(allowed.details.terminal_outputs)[0].result_text, 'output parent=parent');
   const unrestricted = await c.tool('larva_subagent', {persona_id:'other',task:'allowed boolean',parent_persona_id:'child',wait_for_completion:true});
   assert.equal(Object.values(unrestricted.details.terminal_outputs)[0].result_text, 'output parent=child');
@@ -290,6 +310,13 @@ createInterface({input:process.stdin}).on('line', async line => {
   const configuredDenied = await configuredParent.tool('larva_subagent',{persona_id:'other',task:'deny env parent'});
   assert.equal(configuredDenied.details.error.code, 'LARVA_SPAWN_NOT_ALLOWED');
   await configuredParent.close();
+  for (const parent of ['   ', '']) {
+    const unsetParent = client({LARVA_MCP_PARENT_PERSONA:parent, LARVA_PI_PARENT_PERSONA_ID:'stale'});
+    const unsetRun = await unsetParent.tool('larva_subagent', {persona_id:'child',task:'unset env parent',wait_for_completion:true});
+    assert.equal(unsetRun.isError, false, JSON.stringify(unsetRun));
+    assert.equal(Object.values(unsetRun.details.terminal_outputs)[0].result_text, 'output parent=');
+    await unsetParent.close();
+  }
   console.log('parent whitelist, boolean authority, configured parent and child environment propagation: PASS');
   const accepted = await Promise.all(['slow one','two'].map(task => c.tool('larva_subagent', {persona_id:'child',task,wait_for_completion:false})));
   for (const result of accepted) assert.equal(result.details.status, 'accepted');
