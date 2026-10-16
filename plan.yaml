@@ -148776,7 +148776,7 @@ phases:
   - id: pi-subagent-panel-fullscreen-mouse-fix.deliver
     name: Preserve Pi fullscreen mouse tracking in subagent overlays and add unit
       + native PTY tests
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/larva.ts\n    - contrib/codex-plugin/larva.ts\n\
       \    - tests/shell/test_pi_extension_subagent_ux.py\n    - tests/fixtures/pi/native_tui_probe.py\n\
@@ -148834,6 +148834,37 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-16T15:57:33.533543Z'
+    done_at: '2026-10-16T16:19:46.956435+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 33c7e433378b8857e138f22dbf6bcdd7c7bb9948 (retained ref: refs/vectl/candidates/pi-subagent-panel-fullscreen-mouse-fix.deliver)
+
+      - Executor: node-typescript-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T15-58-40-993Z_01a1456f-db60-7108-a872-60563398685b.jsonl)
+
+      - Files: contrib/pi-extension/larva.ts, contrib/codex-plugin/larva.ts, tests/shell/test_pi_extension_subagent_ux.py,
+      tests/fixtures/pi/native_tui_probe.py
+
+
+      Verification:
+
+      - Run: `PI_BIN="$PWD/contrib/pi-extension/node_modules/.bin/pi" LARVA_TEST_PI_CODING_AGENT="$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent"
+      .venv/bin/python -m pytest -q tests/shell/test_pi_extension_subagent_ux.py tests/shell/test_codex_plugin_contract.py`
+      -> exit 0 (61 passed in 139.99s).
+
+      - Run: `node scripts/pi-native-journeys.mjs --scenario panel-navigation` ->
+      exit 0 (`{"scenario":"panel-navigation","pass":true}`).
+
+      - Run: `git diff --check && git status --short` -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/larva.ts'
   - id: pi-subagent-panel-fullscreen-mouse-fix.acceptance-gate
     name: Gate review and integrated acceptance for Pi fullscreen mouse-reporting
       preservation
