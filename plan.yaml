@@ -148953,7 +148953,7 @@ phases:
       - contrib/pi-extension/larva.ts'
 - id: pi_subagent_reload_hot_handoff
   name: Preserve and rebind active subagent runs across Pi /reload without interruption
-  status: in_progress
+  status: done
   gate: Terminal gate pi-subagent-reload-hot-handoff.acceptance-gate verifies /reload
     hot handoff across module instances, callback and UI indicator rebinding, preservation
     of quit/new/resume/fork teardown, byte parity with contrib/codex-plugin/larva.ts,
@@ -149111,7 +149111,7 @@ phases:
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules'
   - id: pi-subagent-reload-hot-handoff.acceptance-gate
     name: Gate review and integrated acceptance for Pi /reload subagent hot handoff
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_reload_hot_handoff`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -149157,3 +149157,45 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-16T16:55:42.384401Z'
+    done_at: '2026-10-16T16:58:11.955615+00:00'
+    evidence: 'Artifact:
+
+      - Target commit: git:2fb1803369e8ef6713176b747ba2092d5258dc30 (integrating producer
+      commit a9419ebc8cef81424242bc165e5548f531802ca9)
+
+      - Reviewer: gate-reviewer (session /Users/tefx/.pi/larva/child-sessions/2026-10-16T16-56-14-404Z_01a145a4-8d43-70bb-8ad9-4e073bb4aa34.jsonl)
+
+      - Gate report: schema_version=gate.report.v2, status=PASS, review_kind=PHASE_GATE,
+      review_mode=FULL, phase_ids=[pi_subagent_reload_hot_handoff], findings=[], warnings=[],
+      requirements 3/3 PROVEN (req-1-globalthis-shared-state-transfer-gated-by-reload-handoff,
+      req-2-session-shutdown-and-start-reload-rebind-vs-teardown, req-3-byte-parity-and-reload-handoff-regression-verification)
+
+
+      Verification:
+
+      - Run: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      /tmp/larva-gate9-binding-uD32da/binding.json /tmp/larva-gate9-binding-uD32da/gate-report.json
+      -> exit 0 (POSITIVE_GATE_EVIDENCE).
+
+      - Run: node contrib/pi-extension/test-subagent-reload-handoff.mjs -> exit 0
+      (PASS).
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed).
+
+      - Run: .venv/bin/python -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (3 passed).
+
+      - Run: git status --short && git diff --check -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - contrib/pi-extension/README.md#native-reload-subagent-handoff
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules'
