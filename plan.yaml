@@ -148953,7 +148953,7 @@ phases:
       - contrib/pi-extension/larva.ts'
 - id: pi_subagent_reload_hot_handoff
   name: Preserve and rebind active subagent runs across Pi /reload without interruption
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-reload-hot-handoff.acceptance-gate verifies /reload
     hot handoff across module instances, callback and UI indicator rebinding, preservation
     of quit/new/resume/fork teardown, byte parity with contrib/codex-plugin/larva.ts,
@@ -148967,7 +148967,7 @@ phases:
   - id: pi-subagent-reload-hot-handoff.deliver
     name: Implement globalThis subagent hot handoff across Pi /reload with tests and
       docs
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/larva.ts\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_pi_extension_subagent_ux.py\n\
@@ -149064,6 +149064,8 @@ phases:
     - tests/shell/test_pi_extension_subagent_ux.py
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-16T16:42:21.345462Z'
   - id: pi-subagent-reload-hot-handoff.acceptance-gate
     name: Gate review and integrated acceptance for Pi /reload subagent hot handoff
     status: pending
