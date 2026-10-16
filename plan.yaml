@@ -148675,7 +148675,7 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs'
   - id: pi-subagent-mcp-code-hygiene-fixes.acceptance-gate
     name: Gate review and integrated acceptance for code-hygiene SHOULD_FIX fixes
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `pi_subagent_mcp_code_hygiene_fixes`\
       \ over the integrated candidate commit on `feat/pi-subagent-mcp-and-codex-plugin`.\n\
@@ -148715,3 +148715,5 @@ phases:
     depends_on:
     - pi-subagent-mcp-code-hygiene-fixes.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-16T14:11:18.526238Z'
