@@ -148558,7 +148558,7 @@ phases:
       - docs/guides/USAGE.md#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses'
 - id: pi_subagent_mcp_code_hygiene_fixes
   name: Resolve code-hygiene SHOULD_FIX findings in larva.ts and subagent-mcp-server.mjs
-  status: pending
+  status: in_progress
   gate: Terminal gate pi-subagent-mcp-code-hygiene-fixes.acceptance-gate verifies
     all 3 SHOULD_FIX items, presentationGeneration consistency, regression tests,
     and byte parity across contrib/pi-extension/ and contrib/codex-plugin/.
@@ -148571,7 +148571,7 @@ phases:
   - id: pi-subagent-mcp-code-hygiene-fixes.deliver
     name: Resolve code-hygiene SHOULD_FIX findings in larva.ts and subagent-mcp-server.mjs
       and extend regression tests
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/larva.ts\n    - contrib/pi-extension/subagent-mcp-server.mjs\n\
       \    - contrib/pi-extension/test-subagent-mcp-server.mjs\n    - contrib/codex-plugin/larva.ts\n\
@@ -148632,6 +148632,8 @@ phases:
     - contrib/codex-plugin/subagent-mcp-server.mjs
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-16T14:06:13.568800Z'
   - id: pi-subagent-mcp-code-hygiene-fixes.acceptance-gate
     name: Gate review and integrated acceptance for code-hygiene SHOULD_FIX fixes
     status: pending
