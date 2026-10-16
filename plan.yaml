@@ -149398,7 +149398,7 @@ phases:
   - id: pi-subagent-code-hygiene.remediate-and-verify
     name: Remediate admitted code-hygiene findings, sync Codex plugin mirror, and
       verify
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - .agents/plugins/marketplace.json\n    - contrib/pi-extension/**\n\
       \    - contrib/codex-plugin/**\n    - README.md\n    - docs/**\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -149453,6 +149453,8 @@ phases:
     - pi-subagent-code-hygiene.structural-audit
     - pi-subagent-code-hygiene.pathway-audit
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-16T19:01:15.521002Z'
   - id: pi-subagent-code-hygiene.acceptance-gate
     name: Terminal acceptance gate for Pi subagent code-hygiene audit and remediation
     status: pending
