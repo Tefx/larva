@@ -149583,7 +149583,7 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs'
 - id: release_0_8_8
   name: Prepare, merge to main, and publish Larva 0.8.8
-  status: in_progress
+  status: done
   gate: Terminal step release-0-8-8.publish-and-verify verifies that main and immutable
     tag v0.8.8 are pushed, GitHub Release v0.8.8 is published, remote CI and Publish
     to PyPI workflows succeed on the exact v0.8.8 commit SHA, fresh isolated unpinned
@@ -149727,7 +149727,7 @@ phases:
   - id: release-0-8-8.publish-and-verify
     name: Fast-forward main, publish Larva 0.8.8, and verify remote CI, PyPI uvx,
       and Codex plugin cache
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - artifacts/**\n\
       \nDeliver:\n1. Fast-forward/rebase `main` onto the integrated 0.8.8 release\
@@ -149781,3 +149781,45 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-17T05:19:23.120982Z'
+    done_at: '2026-10-17T05:42:04.339501+00:00'
+    evidence: 'Artifact:
+
+      - Candidate & tag commit: 0c269b1bd59bfb876f3a592f46bf964a3e297fc3 (annotated
+      tag v0.8.8 object: 842fea9cf00242c33223dc3de4848e85c619c491)
+
+      - GitHub Release: https://github.com/Tefx/larva/releases/tag/v0.8.8 (published,
+      non-draft, non-prerelease)
+
+      - GitHub Actions CI: https://github.com/Tefx/larva/actions/runs/39006119193
+      (local-schema: success, pi-native-runtime: success)
+
+      - GitHub Actions Publish to PyPI: https://github.com/Tefx/larva/actions/runs/39006119344
+      (build: success, publish: success)
+
+      - Production PyPI: larva 0.8.8 (larva-0.8.8-py3-none-any.whl 128,726 bytes;
+      larva-0.8.8.tar.gz 3,607,692 bytes; both non-yanked)
+
+      - Codex plugin cache: /Users/tefx/.codex/plugins/cache/larva/larva-subagent/0.8.8
+      (5 runtime files byte-identical)
+
+
+      Verification:
+
+      - Run: gh run view 39006119193 & gh run view 39006119344 -> both conclusion=success
+      on 0c269b1bd59bfb876f3a592f46bf964a3e297fc3.
+
+      - Run: env -i fresh isolated unpinned uvx --from larva larva --help -> exit
+      0, METADATA Version: 0.8.8.
+
+      - Run: cmp -s on all 5 runtime files in ~/.codex/plugins/cache/larva/larva-subagent/0.8.8
+      -> exit 0.
+
+
+      Gaps:
+
+      - None.
+
+
+      Spec link:
+
+      - scripts/release-notes-0.8.8.md'
