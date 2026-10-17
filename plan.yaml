@@ -149826,7 +149826,7 @@ phases:
 - id: codex_subagent_activity_panel
   name: Codex Larva Subagent Activity Panel (Thread Side-Panel MCP App + Inline Tool-Call
     Card)
-  status: pending
+  status: in_progress
   gate: Terminal gate codex-subagent-activity-panel.acceptance-gate verifies live
     child stream telemetry in LarvaSubagentRunSnapshot, the larva_subagent_panel entrypoint
     tool and ui://larva-pi-subagent/panel + ui://larva-pi-subagent/widget MCP App
@@ -149843,7 +149843,7 @@ phases:
   - id: codex-subagent-activity-panel.deliver
     name: Implement Scheme A Codex Larva subagent activity panel MCP App, live child
       stream telemetry, docs, and contract tests
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -149945,6 +149945,8 @@ phases:
     - contrib/pi-extension/test-subagent-mcp-server.mjs
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-17T14:45:19.836944Z'
   - id: codex-subagent-activity-panel.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent activity
       panel
