@@ -150091,3 +150091,192 @@ phases:
       Spec link:
 
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
+- id: codex_subagent_panel_uiux_redesign
+  name: Codex Larva Subagent Activity Panel & Inline Widget UI/UX Redesign
+  status: pending
+  gate: Terminal gate codex-subagent-panel-uiux.acceptance-gate verifies Codex-native
+    visual design tokens, strict form-factor separation between the collapsed-by-default
+    inline widget (ui://larva-pi-subagent/widget) and the Active/Done side-panel workbench
+    (ui://larva-pi-subagent/panel), structured detail tabs without raw JSON metadata
+    dumps, collapsible 1-line tool rows with on-demand larva_subagent_activity expansion,
+    byte parity across contrib/pi-extension/ and contrib/codex-plugin/, and passing
+    Node and Python contract tests.
+  context: 'Authority: user-requested systematic UI/UX redesign of the Codex Larva
+    Subagent Activity Panel (ui://larva-pi-subagent/panel) and Inline Widget (ui://larva-pi-subagent/widget)
+    aligned with @openai/mcp-extensions and Codex Desktop''s native subagent panel
+    design system, strict form-factor separation (inline collapsed by default with
+    progressive disclosure vs. side-panel/fullscreen Active/Done workbench), and preserved
+    MCP App postMessage bridge and tool contracts.'
+  depends_on:
+  - codex_subagent_activity_panel
+  steps:
+  - id: codex-subagent-panel-uiux.deliver
+    name: Redesign Codex Larva subagent activity panel and collapsed-by-default inline
+      widget UI/UX
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. Codex-Native Visual Design System & Tokens (`contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ & `contrib/codex-plugin/subagent-mcp-server.mjs`):\n   - Adopt the official\
+      \ `@openai/mcp-extensions` and Codex Desktop CSS token hierarchy (`--color-background-primary/secondary/tertiary`,\
+      \ `--color-text-primary/secondary/tertiary/info/success/warning/danger`, `--color-border-primary/secondary`,\
+      \ `--color-ring-primary`, `--font-sans`, `--font-mono`, `--border-radius-sm/md/lg`,\
+      \ `light-dark(...)` fallbacks, and `hostContext.safeAreaInsets`).\n   - Use\
+      \ `font-variant-numeric: tabular-nums` on all durations (`12s`, `1m 24s`), counts,\
+      \ and timestamps; format model + thinking effort as Codex's native `{model}\
+      \ · {thinking}` label (stripping redundant provider prefixes when compact, e.g.\
+      \ `gpt-6.1-sol · high` with full route on hover/info); format phases into human-readable\
+      \ labels (`Waiting for child`, `Starting`, `Session ready`, `Prompt sent`, `Stall\
+      \ suspected`, `Completed`, `Failed`, `Cancelled`) instead of raw snake_case\
+      \ or raw `JSON.stringify` dumps.\n   - Include clean inline SVG icons (status\
+      \ pulse/spinner, check, alert, ban/cancelled, chevron disclosure, back arrow,\
+      \ refresh, fullscreen/inline toggle, tool icon, copy) with zero external network\
+      \ assets (`connect-src 'none'` safe).\n2. Strict Form-Factor Separation (`inline`\
+      \ Widget vs. `panel` Side-Panel / Fullscreen):\n   - Inline Form Factor (`surface\
+      \ === \"widget\"` and `mode === \"inline\"`) — Collapsed by Default (Progressive\
+      \ Disclosure):\n     - Must NOT expand all content, tool lists, or raw JSON\
+      \ by default.\n     - Default Collapsed State:\n       - Single targeted run\
+      \ (or when `task_id` / `personaHint` is focused, or 1 run exists): renders a\
+      \ compact, scannable 2-line activity card:\n         - Line 1: Status indicator\
+      \ + `persona_id` + `{model} · {thinking}` badge + tool count pill (`N tools`)\
+      \ + tabular elapsed time (`14s`) + inline `Stop` button (when running) + `Details`\
+      \ disclosure toggle (`aria-expanded=\"false\"`) + `Fullscreen` (`⤢`, calling\
+      \ `ui/request-display-mode({ mode: \"fullscreen\" })`) button.\n         - Line\
+      \ 2 (single truncated line): live activity summary when running (`Active tool:\
+      \ <name>` + brief args, or `Thinking…`, or latest line of `live_assistant_preview`,\
+      \ or `task_preview`), or 1-line result/error summary when completed.\n     \
+      \  - Multi-run status/wait batches: renders a compact summary header (`Active\
+      \ · X · Done · Y` + `Fullscreen` button) and compact 1-line rows per run; clicking\
+      \ a row toggles its inline detail drawer.\n     - Expanded Inline State (only\
+      \ when the user clicks `Details` / a run row):\n       - Smoothly reveals a\
+      \ bounded detail drawer (emitting `ui/notifications/size-changed`) with segmented\
+      \ tabs: `Activity` (live assistant stream tail + compact collapsible 1-line\
+      \ tool rows), `Result` (formatted output/error with Copy button), and `Info`\
+      \ (task prompt + structured metadata pills: Phase, Model, Thinking, copyable\
+      \ `task_id`).\n   - Panel / Fullscreen Form Factor (`surface === \"panel\"`\
+      \ or `mode === \"fullscreen\"`) — Codex Side-Panel Workbench:\n     - Designed\
+      \ for Codex Desktop's right-hand Thread Side Panel (`100vh`) and Fullscreen\
+      \ view:\n     - Run List grouped into Codex's native `Active · {count}` and\
+      \ `Done · {count}` sections (with `\"No active subagents\"` empty state, filter\
+      \ pills `All` / `Active` / `Done`, and header actions `Refresh` + `Inline`/`Fullscreen`\
+      \ toggle).\n     - Responsive Navigation:\n       - On narrow side-panel widths\
+      \ (`< 620px`): supports clean list-to-detail navigation (`← Back to subagents`\
+      \ header in detail view, plus quick run-switcher pills when multiple runs exist)\
+      \ so the narrow side panel is never cramped by a squashed 2-column grid.\n \
+      \      - On wide viewports (`>= 620px`): shows a two-column split workbench\
+      \ (left rail with `Active · {count}` and `Done · {count}` run cards; right pane\
+      \ with the selected run's Detail Inspector).\n     - Structured Detail Inspector\
+      \ (no raw metadata `JSON.stringify` dumps):\n       - Header with `persona_id`,\
+      \ status badge, `{model} · {thinking}`, formatted phase, live elapsed timer,\
+      \ and `Stop` (`Cancel`) button when active.\n       - Segmented tabs (`Timeline`,\
+      \ `Result`, `Task & Session`):\n         - `Timeline`: live thinking / assistant\
+      \ stream preview card + chronological Tool Calls (`tool_snapshots`) where each\
+      \ tool call is a compact 1-line collapsible row (`name`, `status`, 1-line `args_preview`\
+      \ summary) that expands on click to show `args_preview` / `output_preview` /\
+      \ `error_preview` and on-demand `Inspect args` / `Inspect result` buttons (`larva_subagent_activity`).\n\
+      \         - `Result`: terminal output (`terminal_outputs[task_id].result_text`\
+      \ or `result_preview`) or error banner, with `Copy` button.\n         - `Task\
+      \ & Session`: task prompt/preview + structured key-value grid (`Session ID`\
+      \ `.jsonl` path, `Phase`, `Model`, `Thinking`, `Started`, `Updated`).\n3. Preserved\
+      \ Bridge, Parity, Docs, and Contract Tests:\n   - Preserve all existing MCP\
+      \ tool names, schemas, `_meta` declarations, `ui/initialize` -> `ui/notifications/initialized`\
+      \ handshake, `ui/notifications/host-context-changed`, `ui/notifications/tool-input`,\
+      \ `ui/notifications/tool-result`, `ui/resource-teardown`, `ui/request-display-mode`,\
+      \ `ui/notifications/size-changed`, `larva_subagent_panel` polling, `larva_subagent_activity`\
+      \ (`Inspect args` / `Inspect result`), and `larva_subagent_cancel` (`Cancel`\
+      \ / `Stop`).\n   - Keep all 5 runtime files in `contrib/codex-plugin/` byte-identical\
+      \ with `contrib/pi-extension/`.\n   - Update `contrib/pi-extension/test-subagent-mcp-server.mjs`\
+      \ (and documentation in `contrib/pi-extension/README.md`, `contrib/codex-plugin/README.md`,\
+      \ `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md` if applicable) to verify:\n\
+      \     - `inline` (`widget`) mode starts collapsed by default (detail drawer\
+      \ / tool list / result body hidden until expanded, and expanding triggers `ui/notifications/size-changed`),\n\
+      \     - `panel` mode renders the `Active` / `Done` sections and structured detail\
+      \ tabs (`Timeline`, `Result`, `Task & Session`),\n     - Tool rows expand on\
+      \ click and invoke `larva_subagent_activity` for `Inspect args` / `Inspect result`,\n\
+      \     - Cancellation, display-mode switching, theme updates, hidden-document\
+      \ polling pause, and teardown cleanup all pass.\n\nBoundary:\n- `frontend-engineer`\
+      \ owns the UI/UX redesign implementation, byte-parity synchronization between\
+      \ `contrib/pi-extension/` and `contrib/codex-plugin/`, documentation updates,\
+      \ and Node/Python contract tests within `allowed_paths`.\n- Do not modify `src/larva/core/**`\
+      \ or `src/larva/shell/mcp*.py`, and do not mutate user `~/.codex` or `~/.pi`\
+      \ state during tests.\n\nAdmit:\n- `node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`\
+      \ pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile failing assertions\
+      \ within `allowed_paths`; reap any spawned child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: frontend-engineer
+  - id: codex-subagent-panel-uiux.acceptance-gate
+    name: Gate review and integrated acceptance for Codex Larva subagent panel and
+      widget UI/UX redesign
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `codex_subagent_panel_uiux_redesign`\
+      \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
+      \ read-only (`no_repo_change`). Inspects integrated code/test/doc diffs, byte\
+      \ parity across `contrib/pi-extension/` and `contrib/codex-plugin/`, and verification\
+      \ evidence from `codex-subagent-panel-uiux.deliver`.\n\nAdmit:\n- Included producer\
+      \ outcome: `codex-subagent-panel-uiux.deliver` (building on `codex_subagent_activity_panel`).\n\
+      - Verify:\n  1. `ui://larva-pi-subagent/panel` and `ui://larva-pi-subagent/widget`\
+      \ adopt the `@openai/mcp-extensions` and Codex Desktop CSS token hierarchy (`--color-background-*`,\
+      \ `--color-text-*`, `--color-border-*`, `--font-sans`, `--font-mono`, `--border-radius-*`,\
+      \ `light-dark(...)`, `safeAreaInsets`), tabular numerals (`tabular-nums`), `{model}\
+      \ · {thinking}` labels, human-readable phase labels, and zero external network\
+      \ assets (`connect-src 'none'` safe).\n  2. Strict form-factor separation holds:\n\
+      \     - Inline widget (`surface === \"widget\"` and `mode === \"inline\"`) starts\
+      \ collapsed by default (rendering a compact 2-line single-run card or compact\
+      \ multi-run summary without expanding tool lists or result bodies by default)\
+      \ and reveals a bounded detail drawer (`Activity`, `Result`, `Info`) with `ui/notifications/size-changed`\
+      \ only upon user disclosure (`Details` / row click).\n     - Panel / Fullscreen\
+      \ (`surface === \"panel\"` or `mode === \"fullscreen\"`) renders the Codex Side-Panel\
+      \ Workbench with `Active · {count}` and `Done · {count}` sections, responsive\
+      \ narrow (`< 620px` list-to-detail with `← Back to subagents`) and wide (`>=\
+      \ 620px` split workbench) navigation, and the structured Detail Inspector (`Timeline`,\
+      \ `Result`, `Task & Session`) with collapsible 1-line tool rows and no raw metadata\
+      \ `JSON.stringify` dumps.\n  3. All existing MCP tool names, schemas, `_meta`\
+      \ declarations, `postMessage` bridge flows (`ui/initialize`, `ui/notifications/initialized`,\
+      \ `ui/notifications/host-context-changed`, `ui/notifications/tool-input`, `ui/notifications/tool-result`,\
+      \ `ui/resource-teardown`, `ui/request-display-mode`, `ui/notifications/size-changed`),\
+      \ `larva_subagent_panel` polling, `larva_subagent_activity` (`Inspect args`\
+      \ / `Inspect result`), and `larva_subagent_cancel` (`Cancel` / `Stop`) remain\
+      \ intact, and all 5 runtime files in `contrib/codex-plugin/` match `contrib/pi-extension/`\
+      \ byte-for-byte.\n  4. All required verification commands (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, `git diff --check`)\
+      \ pass on the immutable integrated commit.\n\nRecovery:\n- If a material defect\
+      \ or parity/test gap is found, report exact findings with file/line citations\
+      \ so Orchestrator can route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - codex-subagent-panel-uiux.deliver
+    agent: gate-reviewer
