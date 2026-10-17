@@ -164,6 +164,7 @@ async function callTool(name, args) {
 function subagentPanelApp(surface) {
   let sequence = 0, selected = null, personaHint = null, filter = {}, state = { runs: [], terminal_outputs: {} }, mode = surface === 'panel' ? 'fullscreen' : 'inline', stopped = false, polling = false;
   let inlineExpanded = false, mobileView = 'list', listFilter = 'All';
+  const isInlineWidget = () => surface === 'widget' && mode === 'inline';
   const tabs = new Map(), expandedTools = new Set(), inspectedOutputs = new Map(), controlCounts = new Map();
   const pending = new Map();
   const root = document.getElementById('app');
@@ -292,7 +293,7 @@ function subagentPanelApp(surface) {
   function runCard(run, parent) {
     const card = button('', () => {
       selected = run.task_id; inlineExpanded = true; mobileView = 'detail'; render();
-      if (mode === 'inline') notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight });
+      if (isInlineWidget()) notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight });
       else if (window.matchMedia('(max-width:619px)').matches) Array.from(document.querySelectorAll('button')).find(node => node.className === 'back')?.focus();
     }, parent);
     card.className = 'run-card'; card.dataset.focusKey = `run:${run.task_id}`; card.setAttribute('aria-pressed', String(selected === run.task_id));
@@ -347,9 +348,9 @@ function subagentPanelApp(surface) {
       const grid = element('dl', undefined, body); grid.className = 'metadata';
       for (const [label, value] of [
         ['Persona', run.persona_id], ['Status', run.status], ['Phase', phase(run)], ['Model', run.startup_model],
-        ['Requested Thinking', run.requested_thinking], [mode === 'inline' ? 'Thinking' : 'Effective Thinking', run.startup_thinking],
+        ['Requested Thinking', run.requested_thinking], [isInlineWidget() ? 'Thinking' : 'Effective Thinking', run.startup_thinking],
         ['Elapsed', duration(run.elapsed_ms)], ['Started', run.started_at], ['Updated', run.updated_at],
-        [mode === 'inline' ? 'Session Path' : 'Session ID', run.task_id],
+        [isInlineWidget() ? 'Session Path' : 'Session ID', run.task_id],
       ]) { element('dt', label, grid); element('dd', value ?? '—', grid); }
       copy(run.task_id, body);
     }
@@ -362,34 +363,34 @@ function subagentPanelApp(surface) {
     if (focused) Array.from(document.querySelectorAll('button')).find(node => node.dataset.focusKey === focused)?.focus({ preventScroll: true });
   }
   function renderContent() {
-    root.replaceChildren(); document.documentElement.dataset.mode = mode; root.dataset.mobileView = mobileView;
+    root.replaceChildren(); document.documentElement.dataset.mode = mode; document.documentElement.dataset.surface = surface; root.dataset.mobileView = mobileView;
     const runs = state.runs ?? [], active = runs.filter(isActive), done = runs.filter(run => !isActive(run));
     const run = runs.find(item => item.task_id === selected) ?? runs.find(item => item.persona_id === personaHint) ?? runs[0];
     if (run) selected = run.task_id;
     const focused = filter.task_id || runs.length === 1 || runs.some(item => item.persona_id === personaHint);
     const header = element('header'); header.className = 'toolbar';
-    if (mode === 'inline' && focused && run) {
+    if (isInlineWidget() && focused && run) {
       status(run, header); element('strong', run.persona_id, header);
       element('span', model(run), header).className = 'model';
       if (run.tool_snapshots?.length) element('span', `${run.tool_snapshots.length} tools`, header).className = 'badge';
       elapsed(run, header); cancel(run, header); disclosure(header); displayButton(header);
       element('div', preview(run).replace(/\s+/g, ' ')).className = 'preview summary';
     } else {
-      element('strong', mode === 'inline' ? `Larva Subagents · ${active.length} active · ${done.length} done` : 'Larva Subagents', header);
-      if (mode !== 'inline') for (const [name, label] of [['All', 'All'], ['Active', `Active · ${active.length}`], ['Done', `Done · ${done.length}`]]) {
+      element('strong', isInlineWidget() ? `Larva Subagents · ${active.length} active · ${done.length} done` : 'Larva Subagents', header);
+      if (!isInlineWidget()) for (const [name, label] of [['All', 'All'], ['Active', `Active · ${active.length}`], ['Done', `Done · ${done.length}`]]) {
         const control = button(label, () => { listFilter = name; render(); }, header); control.setAttribute('aria-pressed', String(listFilter === name));
       }
       button('Refresh', refresh, header); displayButton(header);
-      if (mode === 'inline' && inlineExpanded) disclosure(header);
+      if (isInlineWidget() && inlineExpanded) disclosure(header);
     }
     const error = element('div', state.error?.message ?? ''); error.id = 'error'; error.setAttribute('role', 'alert');
-    if (mode === 'inline') {
+    if (isInlineWidget()) {
       if (!run) { element('p', personaHint ? `Waiting for ${personaHint}…` : 'No recent subagent runs.'); return; }
       if (!focused || (inlineExpanded && runs.length > 1)) {
         const list = element('nav'); list.className = inlineExpanded ? 'switcher' : 'compact-list'; list.setAttribute('aria-label', 'Subagent runs');
         for (const item of runs) runCard(item, list);
       }
-      if (inlineExpanded) { const drawer = element('section'); drawer.className = 'drawer'; inspector(run, drawer); }
+      if (inlineExpanded) { const drawer = element('section'); drawer.className = 'drawer'; drawer.dataset.scrollKey = `drawer:${run.task_id}`; inspector(run, drawer); }
     } else {
       const layout = element('main'); layout.className = 'workbench';
       const list = element('nav', undefined, layout); list.className = 'run-list'; list.dataset.scrollKey = 'runs'; list.setAttribute('aria-label', 'Subagent runs');
@@ -430,7 +431,7 @@ function subagentPanelApp(surface) {
     await refresh();
     if (!stopped) pollTimer = setTimeout(poll, state.runs?.some(run => run.result_pending || run.status === 'running') ? 1000 : 2500);
   }
-  const observer = new ResizeObserver(() => { if (mode === 'inline' && !stopped) notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight }); });
+  const observer = new ResizeObserver(() => { if (isInlineWidget() && !stopped) notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight }); });
   observer.observe(root);
   const clock = setInterval(tick, 1000);
   document.addEventListener('visibilitychange', () => { if (!stopped && document.visibilityState !== 'hidden') void refresh(); });
@@ -446,7 +447,7 @@ function renderSubagentPanelHtml(surface) {
   /* App font aliases preserve host tokens without self-referential custom properties. */
   .run-list{min-width:0}.run-card strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toolbar>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .status svg{display:block}.status[data-status=running]{animation:pulse 2s ease-in-out infinite}@keyframes pulse{50%{opacity:.45}}@media(prefers-reduced-motion:reduce){.status[data-status=running]{animation:none}}
-  [data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:calc(12px + var(--safe-top,0px)) calc(12px + var(--safe-right,0px)) calc(12px + var(--safe-bottom,0px)) calc(12px + var(--safe-left,0px))}button{font:inherit;color:inherit;cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;min-height:30px}button:hover{background:var(--muted)}button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}button:disabled{opacity:.5;cursor:wait}button[aria-pressed=true]{background:var(--accent);border-color:var(--primary)}.toolbar,.row,.tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar{padding-bottom:10px}.toolbar>strong{margin-right:auto}.model,.badge{border-radius:var(--radius-sm);background:var(--muted);padding:1px 6px;font-size:11px}.elapsed{font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto;color:var(--muted-foreground)}.muted{color:var(--muted-foreground)}.preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.summary{color:var(--muted-foreground)}.status{color:var(--muted-foreground)}.status[data-status=running],.status[data-status=accepted]{color:var(--primary)}.status[data-status=success]{color:var(--success)}.status[data-status=failed],#error{color:var(--danger)}.status[data-status=cancelled]{color:var(--warning)}.cancel{color:var(--danger)}.workbench{display:grid;grid-template-columns:minmax(210px,32%) minmax(0,1fr);height:calc(100dvh - 90px - var(--safe-top,0px) - var(--safe-bottom,0px));min-height:280px;border-top:1px solid var(--border)}.run-list{overflow:auto;padding:12px 12px 12px 0;border-right:1px solid var(--border)}.run-card{display:block;width:100%;text-align:left;padding:10px;margin-bottom:6px;background:var(--tertiary);border-radius:var(--radius-md);overflow:hidden}.run-card .row{flex-wrap:nowrap}.run-card .row>span:not(.elapsed){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.run-card .preview{color:var(--muted-foreground);margin-top:4px}.inspector{overflow:auto;padding:16px;min-width:0}.detail-header{margin-bottom:16px}h2{font-size:17px;margin:0}h3{font-size:12px;margin:14px 0 8px}h4{font-size:11px;color:var(--muted-foreground);margin:10px 0 4px}.tabs{border-bottom:1px solid var(--border);padding-bottom:8px;position:sticky;top:0;background:var(--background);z-index:1}.tabs button{flex:1;white-space:nowrap}.tab-body{padding-top:12px;min-width:0}pre{font:12px/1.6 var(--app-font-mono);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;margin:6px 0 12px}.stream,.result{padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--tertiary)}.stream{max-height:160px}.activity{color:var(--primary);background:var(--accent);border-radius:var(--radius-sm);padding:8px}.drawer{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--secondary)}[data-mode=inline] .result{max-height:220px}ol{list-style:none;padding:0;margin:0}li{border:1px solid var(--border);border-radius:var(--radius-md);margin:6px 0;overflow:hidden}.tool-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0}.tool-row .preview{flex:1;color:var(--muted-foreground)}.tool-content{padding:0 12px 12px}.tool-content pre{max-height:260px}.metadata{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px}.metadata dt{color:var(--muted-foreground)}.metadata dd{margin:0;overflow-wrap:anywhere}.back{display:none}.compact-list .run-card .row.muted{display:none}.compact-list .run-card{display:flex;gap:12px;padding:6px}.compact-list .run-card>.row{flex-shrink:0}.switcher{display:flex;gap:6px;overflow:auto;margin-top:8px}.switcher .run-card{min-width:180px}#error:empty{display:none}@media(max-width:619px){.workbench{grid-template-columns:1fr}.run-list{border-right:0}.back{display:block;margin-bottom:12px}[data-mobile-view=list] .inspector,[data-mobile-view=detail] .run-list{display:none}.toolbar{gap:6px}.metadata{grid-template-columns:1fr;gap:2px}.metadata dd{margin-bottom:8px}}
+  [data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:calc(12px + var(--safe-top,0px)) calc(12px + var(--safe-right,0px)) calc(12px + var(--safe-bottom,0px)) calc(12px + var(--safe-left,0px))}button{font:inherit;color:inherit;cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;min-height:30px}button:hover{background:var(--muted)}button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}button:disabled{opacity:.5;cursor:wait}button[aria-pressed=true]{background:var(--accent);border-color:var(--primary)}.toolbar,.row,.tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar{padding-bottom:10px}.toolbar>strong{margin-right:auto}.model,.badge{border-radius:var(--radius-sm);background:var(--muted);padding:1px 6px;font-size:11px}.elapsed{font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto;color:var(--muted-foreground)}.muted{color:var(--muted-foreground)}.preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.summary{color:var(--muted-foreground)}.status{color:var(--muted-foreground)}.status[data-status=running],.status[data-status=accepted]{color:var(--primary)}.status[data-status=success]{color:var(--success)}.status[data-status=failed],#error{color:var(--danger)}.status[data-status=cancelled]{color:var(--warning)}.cancel{color:var(--danger)}.workbench{display:grid;grid-template-columns:minmax(210px,32%) minmax(0,1fr);height:calc(100dvh - 90px - var(--safe-top,0px) - var(--safe-bottom,0px));min-height:280px;border-top:1px solid var(--border)}.run-list{overflow:auto;padding:12px 12px 12px 0;border-right:1px solid var(--border)}.run-card{display:block;width:100%;text-align:left;padding:10px;margin-bottom:6px;background:var(--tertiary);border-radius:var(--radius-md);overflow:hidden}.run-card .row{flex-wrap:nowrap}.run-card .row>span:not(.elapsed){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.run-card .preview{color:var(--muted-foreground);margin-top:4px}.inspector{overflow:auto;padding:16px;min-width:0}.detail-header{margin-bottom:16px}h2{font-size:17px;margin:0}h3{font-size:12px;margin:14px 0 8px}h4{font-size:11px;color:var(--muted-foreground);margin:10px 0 4px}.tabs{border-bottom:1px solid var(--border);padding-bottom:8px;position:sticky;top:0;background:var(--background);z-index:1}.tabs button{flex:1;white-space:nowrap}.tab-body{padding-top:12px;min-width:0}pre{font:12px/1.6 var(--app-font-mono);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;margin:6px 0 12px}.stream,.result{padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--tertiary)}.stream{max-height:160px}.activity{color:var(--primary);background:var(--accent);border-radius:var(--radius-sm);padding:8px}.drawer{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--secondary);max-height:340px;overflow-y:auto}[data-surface=widget][data-mode=inline] .result{max-height:220px}ol{list-style:none;padding:0;margin:0}li{border:1px solid var(--border);border-radius:var(--radius-md);margin:6px 0;overflow:hidden}.tool-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0}.tool-row .preview{flex:1;color:var(--muted-foreground)}.tool-content{padding:0 12px 12px}.tool-content pre{max-height:260px}.metadata{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px}.metadata dt{color:var(--muted-foreground)}.metadata dd{margin:0;overflow-wrap:anywhere}.back{display:none}.compact-list .run-card .row.muted{display:none}.compact-list .run-card{display:flex;gap:12px;padding:6px}.compact-list .run-card>.row{flex-shrink:0}.switcher{display:flex;gap:6px;overflow:auto;margin-top:8px}.switcher .run-card{min-width:180px}#error:empty{display:none}@media(max-width:619px){.workbench{grid-template-columns:1fr}.run-list{border-right:0}.back{display:block;margin-bottom:12px}[data-mobile-view=list] .inspector,[data-mobile-view=detail] .run-list{display:none}.toolbar{gap:6px}.metadata{grid-template-columns:1fr;gap:2px}.metadata dd{margin-bottom:8px}}
   </style></head><body><div id="app"></div><script>(${subagentPanelApp.toString()})(${JSON.stringify(surface)})</script></body></html>`;
 }
 

@@ -105,7 +105,7 @@ async function exercisePanelBridge(html, surface, multiple = false) {
     querySelectorAll: selector => visibleNodes().filter(value => selector === 'button' ? value.tag === 'button' : selector === '[data-scroll-key]' ? value.dataset.scrollKey !== undefined : value.dataset.started !== undefined),
     addEventListener(name, callback) { listeners[name] = callback; },
   };
-  const run = { task_id: '/fixture/child.jsonl', persona_id: 'child', status: 'running', phase: 'waiting_for_child', result_pending: true, started_at: new Date().toISOString(), elapsed_ms: 100, startup_model: 'fixture/model', startup_thinking: 'high', task_preview: 'fixture task', live_assistant_preview: '<script>literal text</script>', active_tool: { name: 'read' }, tool_snapshots: [{ toolCallId: 'call-1', name: 'read', status: 'running', args_preview: 'fixture' }] };
+  const run = { task_id: '/fixture/child.jsonl', persona_id: 'child', status: 'running', phase: 'waiting_for_child', result_pending: true, started_at: new Date().toISOString(), elapsed_ms: 100, startup_model: 'fixture/model', startup_thinking: 'high', task_preview: 'fixture task', live_assistant_preview: '<script>literal text</script>', active_tool: { name: 'read' }, tool_snapshots: Array.from({ length: 25 }, (_, index) => ({ toolCallId: `call-${index + 1}`, name: 'read', status: 'running', args_preview: 'fixture' })) };
   const deliver = message => listeners.message({ source: window.parent, data: { jsonrpc: '2.0', ...message } });
   const window = { matchMedia() { return { matches: narrow }; }, addEventListener(name, callback) { listeners[name] = callback; }, parent: {
     postMessage(message) {
@@ -162,11 +162,26 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   for (const tab of ['Timeline', 'Result', 'Task & Session']) assert.ok(hasText(tab));
   assert.ok(hasText(run.live_assistant_preview));
   assert.ok(!hasText('Inspect args'));
+  assert.equal(visibleNodes().filter(value => value.className === 'tool-row').length, 25);
+  if (surface === 'widget') {
+    // Mechanical CSS contract; actual height and scroll reachability need a browser.
+    const drawerStyle = html.match(/\.drawer\s*\{([^}]+)\}/)?.[1];
+    assert.ok(drawerStyle, 'the disclosed drawer has a CSS rule');
+    const height = Number(drawerStyle.match(/max-height:\s*([\d.]+)px/)?.[1]);
+    assert.ok(Number.isFinite(height) && height > 0, 'drawer has a finite positive pixel height bound');
+    assert.match(drawerStyle, /overflow-y:\s*auto(?:;|$)/);
+    for (const tab of ['Result', 'Task & Session', 'Timeline']) {
+      await click(tab);
+      assert.ok(visibleNodes().some(value => value.className === 'drawer'), `${tab} stays inside the bounded drawer`);
+    }
+    visibleNodes().find(value => value.className === 'drawer').scrollTop = 160;
+  }
   const expandTool = async () => { const target = visibleNodes().find(value => value.className === 'tool-row'); assert.ok(target); await target.onclick(); await flush(); };
   await expandTool();
   assert.ok(hasText('Inspect args'));
   deliver({ method: 'ui/notifications/host-context-changed', params: { theme: 'light' } });
   assert.equal(document.documentElement.dataset.theme, 'light');
+  if (surface === 'widget') assert.equal(visibleNodes().find(value => value.className === 'drawer').scrollTop, 160);
   deliver({ method: 'ui/notifications/tool-input', params: { arguments: { task_id: run.task_id, persona_id: 'child' } } });
   await flush();
   assert.deepEqual(sent.filter(message => message.params?.name === 'larva_subagent_panel').at(-1).params.arguments, { task_id: run.task_id });
@@ -185,6 +200,7 @@ async function exercisePanelBridge(html, surface, multiple = false) {
     assert.deepEqual(sent.find(message => message.method === 'ui/request-display-mode').params, { mode: 'fullscreen' });
   }
   assert.ok(hasText('Active · 1')); assert.ok(hasText('Done · 0'));
+  assert.ok(visibleNodes().some(value => value.className === 'workbench'), `${surface} uses the workbench in fullscreen mode`);
   await click('Done · 0');
   assert.ok(!visibleNodes().some(value => value.tag === 'h3' && value.textContent === 'Active · 1'));
   assert.ok(hasText('No completed subagents'));
@@ -226,10 +242,26 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   assert.ok(!hasText('terminal output'), 'resumed run drops prior terminal output');
   assert.ok(hasText('No terminal output yet.'));
   await click('Inline');
-  if (surface === 'widget') { await click('Hide details'); assert.ok(!hasText('Timeline')); assert.ok(!hasText('Inspect args')); }
+  assert.equal(document.documentElement.dataset.mode, 'inline');
+  const hasWorkbench = () => visibleNodes().some(value => value.className === 'workbench');
+  if (surface === 'widget') {
+    assert.ok(!hasWorkbench(), 'inline widget returns to its card and drawer');
+    await click('Hide details'); assert.ok(!hasText('Timeline')); assert.ok(!hasText('Inspect args'));
+    const beforeResize = sent.length; resize();
+    assert.equal(sent.length, beforeResize + 1);
+    assert.equal(sent.at(-1).method, 'ui/notifications/size-changed');
+  } else {
+    assert.ok(hasWorkbench(), 'panel resource preserves the workbench in host inline mode');
+    assert.ok(hasText('Active · 1')); assert.ok(hasText('Done · 0'));
+    for (const tab of ['Timeline', 'Result', 'Task & Session']) assert.ok(hasText(tab));
+    assert.ok(!hasText('Details'));
+    await click('Task & Session'); assert.ok(hasText('Session ID')); assert.ok(hasText('Effective Thinking'));
+    const beforeResize = sent.length; resize(); assert.equal(sent.length, beforeResize);
+  }
   document.visibilityState = 'hidden';
   deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [] } } });
-  assert.ok(hasText('Waiting for child…'));
+  if (surface === 'widget') assert.ok(hasText('Waiting for child…'));
+  else { assert.ok(hasWorkbench()); assert.ok(hasText('No active subagents')); }
   await click('Fullscreen');
   assert.ok(hasText('Active · 0')); assert.ok(hasText('Done · 0')); assert.ok(hasText('No active subagents'));
   deliver({ id: 999, method: 'ui/resource-teardown', params: {} });
