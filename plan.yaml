@@ -150710,3 +150710,159 @@ phases:
       Spec link:
 
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
+- id: codex_persona_mention_preload_and_poll_fix
+  name: Codex @larva Persona Mention Preloading & Completed Inline Widget Polling
+    Quiescence
+  status: pending
+  gate: 'Terminal gate codex-persona-mention-preload.acceptance-gate verifies Codex
+    Desktop mention catalog preloading (preload: true on search_mentions with initialize
+    capabilities omitting openai/mentions so pii(e) honors preload), 10s in-memory
+    persona list cache without breaking lazy larva.ts loading on notifications/initialized,
+    stopping automatic background polling on completed inline widget cards, versioned
+    ui://larva-pi-subagent/panel-v3 and ui://larva-pi-subagent/widget-v3 resource
+    URIs with backward-compatible resources/read handling, byte parity across contrib/pi-extension/
+    and contrib/codex-plugin/, and passing Node and Python contract tests.'
+  context: 'Authority: user-reported first-time @larva persona autocomplete Loading...
+    hang (18.6s durationMs / 17.1s queueWaitMs in Codex Desktop logs caused by serverCapabilities["openai/mentions"]
+    shadowing search_mentions._meta["openai/extensions"]["mentions/search"].preload
+    plus background polling contention from completed inline widgets).'
+  depends_on:
+  - codex_subagent_panel_layout_and_prompt_fix
+  steps:
+  - id: codex-persona-mention-preload.deliver
+    name: Enable Codex mention catalog preload, cache persona catalog, stop idle polling
+      on completed inline widgets, and bump -v3 URIs
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. Enable Codex Desktop Mention Catalog Preloading (`contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ & `contrib/codex-plugin/subagent-mcp-server.mjs`):\n   - In `initialize`,\
+      \ return `capabilities: { tools: {}, resources: {} }` (omitting `extensions['openai/mentions']`\
+      \ and `experimental['openai/mentions']` so `s == null` in Codex Desktop's `pii(e)`\
+      \ and `tool._meta['openai/extensions']['mentions/search'].preload` is honored).\n\
+      \   - On `search_mentions`:\n     - Set `_meta: { 'openai/extensions': { 'mentions/search':\
+      \ { preload: true } }, ui: { visibility: ['app'] } }`.\n     - Update `inputSchema`\
+      \ to accept the preload/legacy search arguments sent by Codex Desktop's `Gfr`:\n\
+      \       `{ type: 'object', properties: { query: { type: 'string' }, preload:\
+      \ { type: 'boolean' }, path: { type: 'array', items: { type: 'string' } } },\
+      \ required: ['query'], additionalProperties: false }`.\n     - When `args.preload\
+      \ === true`, return up to `200` personas (instead of `30`) so the entire persona\
+      \ registry is preloaded into Codex Desktop's `Mmi` (`jmi`) cache, and include\
+      \ `searchTerms: [persona.id, \\`@larva:\\${persona.id}\\`, ...(persona.description\
+      \ ? [persona.description] : []), ...(persona.model ? [persona.model] : [])]`\
+      \ on every `resource_link` item so `jQu` in Codex Desktop matches `persona.id`,\
+      \ `@larva:<id>`, description keywords, and model names in `0 ms` locally.\n\
+      2. In-Memory Persona Catalog Cache Preserving Lazy Runtime Loading (`subagent-mcp-server.mjs`):\n\
+      \   - Cache `listPersonas(ctx)` in memory with a short TTL (e.g. 10 seconds)\
+      \ once `getRuntime()` is loaded by `search_mentions`, `resources/list`, or `resources/read`\
+      \ (`larva://personas/...`).\n   - CRITICAL: Do NOT import `larva.ts` on `notifications/initialized`—preserve\
+      \ the lazy runtime invariant where `initialize`, `notifications/initialized`,\
+      \ `tools/list`, `resources/templates/list`, and `resources/read` (`ui://...`)\
+      \ succeed without loading `larva.ts` (as tested with `LARVA_TEST_MISSING_RUNTIME:\
+      \ '1'` in `test-subagent-mcp-server.mjs`). Because `preload: true` causes Codex\
+      \ Desktop (`kmi`) to call `search_mentions({ query: \"\", preload: true, path:\
+      \ [] })` automatically in the background at startup, the runtime and persona\
+      \ catalog are warmed automatically in Codex Desktop without breaking headless\
+      \ server-only startup tests.\n3. Stop Idle Polling on Completed Inline Widgets\
+      \ & Bump Resource URIs (`subagent-mcp-server.mjs`):\n   - Bump widget/panel\
+      \ URIs on tool descriptors to `\"ui://larva-pi-subagent/panel-v3\"` (`larva_subagent_panel`)\
+      \ and `\"ui://larva-pi-subagent/widget-v3\"` (`larva_subagent`, `larva_subagent_wait`,\
+      \ `larva_subagent_select`, `larva_subagent_status`), while keeping `/panel`,\
+      \ `/panel-v2`, `/panel-v3`, `/widget`, `/widget-v2`, and `/widget-v3` accepted\
+      \ in `resources/read` for backward compatibility.\n   - In `subagentPanelApp`:\
+      \ when `isInlineWidget()` is true and a poll completes with at least one run\
+      \ and zero active runs (`state.runs?.length > 0 && !state.runs.some(run => run.result_pending\
+      \ || isActive(run))`), do NOT schedule the next automatic `pollTimer` (manual\
+      \ `Refresh`, `ui/notifications/tool-input`, `ui/notifications/tool-result`,\
+      \ or expanding/switching to fullscreen still refreshes normally).\n4. Parity,\
+      \ Docs, and Contract Tests:\n   - Keep all 5 runtime files in `contrib/codex-plugin/`\
+      \ byte-identical with `contrib/pi-extension/`.\n   - Update `contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `tests/shell/test_codex_plugin_contract.py`, `contrib/pi-extension/README.md`,\
+      \ `contrib/codex-plugin/README.md`, and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`\
+      \ to verify:\n     - `initialize` capabilities omit `openai/mentions` while\
+      \ `search_mentions` declares `_meta['openai/extensions']['mentions/search'].preload\
+      \ === true` and accepts `{ query: \"\", preload: true, path: [] }`, returning\
+      \ `searchTerms` on `resource_link` items and up to 200 items when `preload:\
+      \ true`,\n     - Lazy runtime loading with `LARVA_TEST_MISSING_RUNTIME: '1'`\
+      \ continues to pass after `notifications/initialized`,\n     - Completed inline\
+      \ widgets stop automatic `larva_subagent_panel` polling once all runs in the\
+      \ widget are terminal, while active inline widgets and the side-panel workbench\
+      \ continue polling as expected,\n     - `-v3` resource URIs and backward-compatible\
+      \ `/panel`, `/panel-v2`, `/widget`, `/widget-v2` reads pass.\n\nBoundary:\n\
+      - `node-typescript-engineer` owns implementation, byte-parity synchronization\
+      \ between `contrib/pi-extension/` and `contrib/codex-plugin/`, documentation\
+      \ updates, and Node/Python contract tests within `allowed_paths`.\n- Do not\
+      \ modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not mutate\
+      \ user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- `node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`\
+      \ pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile failing assertions\
+      \ within `allowed_paths`; reap any spawned child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: codex-persona-mention-preload.acceptance-gate
+    name: Gate review and integrated acceptance for Codex @larva persona mention preload
+      and inline widget polling quiescence
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `codex_persona_mention_preload_and_poll_fix`\
+      \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
+      \ read-only (`no_repo_change`). Inspects integrated code/test/doc diffs, byte\
+      \ parity across `contrib/pi-extension/` and `contrib/codex-plugin/`, and verification\
+      \ evidence from `codex-persona-mention-preload.deliver`.\n\nAdmit:\n- Included\
+      \ producer outcome: `codex-persona-mention-preload.deliver` (building on `codex_subagent_panel_layout_and_prompt_fix`).\n\
+      - Verify:\n  1. `initialize` returns `capabilities: { tools: {}, resources:\
+      \ {} }` (without `extensions['openai/mentions']` or `experimental['openai/mentions']`),\
+      \ and `search_mentions` exposes `_meta: { 'openai/extensions': { 'mentions/search':\
+      \ { preload: true } }, ui: { visibility: ['app'] } }`, accepts `{ query, preload,\
+      \ path }`, returns up to 200 items when `preload === true`, and populates `searchTerms`\
+      \ (`[persona.id, \"@larva:<id>\", description?, model?]`) on each `resource_link`.\n\
+      \  2. Persona catalog lookup uses a short-lived in-memory cache while preserving\
+      \ lazy `larva.ts` loading on `initialize`, `notifications/initialized`, `tools/list`,\
+      \ `resources/templates/list`, and `resources/read` (`ui://...`).\n  3. Completed\
+      \ inline widgets (`isInlineWidget()` with `state.runs?.length > 0` and no active/pending\
+      \ runs) stop scheduling automatic background `pollTimer` ticks while retaining\
+      \ manual `Refresh`, `tool-input`/`tool-result` updates, and fullscreen/panel\
+      \ polling; tool `_meta` uses `\"ui://larva-pi-subagent/panel-v3\"` and `\"ui://larva-pi-subagent/widget-v3\"\
+      ` while `resources/read` serves unversioned, `-v2`, and `-v3` URIs.\n  4. All\
+      \ 5 runtime files in `contrib/codex-plugin/` match `contrib/pi-extension/` byte-for-byte,\
+      \ and all required verification commands (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, `git diff --check`)\
+      \ pass on the immutable integrated commit.\n\nRecovery:\n- If a material defect\
+      \ or parity/test gap is found, report exact findings with file/line citations\
+      \ so Orchestrator can route a single cohesive repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - codex-persona-mention-preload.deliver
+    agent: gate-reviewer
