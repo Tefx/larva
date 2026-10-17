@@ -253,6 +253,7 @@ type RecentSubagentSession = {
   sequence: number;
 };
 type LarvaSubagentRunSnapshot = {
+  task_prompt: string;
   task_preview: string;
   startup_model: string | null;
   requested_thinking: PiThinkingLevel | null;
@@ -8596,6 +8597,7 @@ function statusSnapshotForRun(record: ActiveSubagentRun, status: LarvaSubagentPu
   return {
     task_id: record.task_id,
     persona_id: record.persona_id,
+    task_prompt: record.task_prompt ?? record.task_preview ?? "",
     task_preview: record.task_preview ?? "",
     startup_model: record.startup_model,
     requested_thinking: record.requested_thinking,

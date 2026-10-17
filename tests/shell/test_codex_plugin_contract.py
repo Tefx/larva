@@ -137,7 +137,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
         {"jsonrpc": "2.0", "id": 3, "method": "resources/templates/list"},
         *[{"jsonrpc": "2.0", "id": i, "method": "resources/read",
            "params": {"uri": f"ui://larva-pi-subagent/{surface}"}}
-          for i, surface in ((4, "panel"), (5, "widget"))],
+          for i, surface in ((4, "panel-v2"), (5, "widget-v2"), (6, "panel"), (7, "widget"))],
     ]
     # Match Codex's regular-file-only cache copy, without the source sibling.
     cached = tmp_path / "cache" / "larva-subagent"
@@ -163,7 +163,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
             process.communicate()
     assert process.returncode == 0, stderr
     replies = [json.loads(line) for line in stdout.splitlines()]
-    assert len(replies) == 5, stdout
+    assert len(replies) == 7, stdout
     by_id = {reply["id"]: reply for reply in replies}
     assert by_id[1]["result"]["protocolVersion"] == "2024-11-05"
     assert by_id[1]["result"]["capabilities"] == {
@@ -181,16 +181,22 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
     assert by_id[1]["result"]["serverInfo"]["name"] == "larva-pi-subagent"
     definitions = by_id[2]["result"]["tools"]
     assert len(definitions) == 11
-    for i, modes in ((4, ["fullscreen", "inline"]), (5, ["inline", "fullscreen"])):
+    for i, modes in ((4, ["fullscreen"]), (5, ["inline", "fullscreen"]),
+                     (6, ["fullscreen"]), (7, ["inline", "fullscreen"])):
         resource = by_id[i]["result"]["contents"][0]
         assert resource["mimeType"] == "text/html;profile=mcp-app"
         assert resource["_meta"] == {
             "openai/ui": {"preferredDisplayMode": modes[0], "availableDisplayModes": modes},
             "ui": {"prefersBorder": True},
         }
+    for versioned, legacy in ((4, 6), (5, 7)):
+        current = by_id[versioned]["result"]["contents"][0]
+        previous = by_id[legacy]["result"]["contents"][0]
+        assert current["uri"] == previous["uri"] + "-v2"
+        assert current["text"] == previous["text"]
     panel_tool = next(tool for tool in definitions if tool["name"] == "larva_subagent_panel")
     assert panel_tool["_meta"] == {
-        "ui": {"resourceUri": "ui://larva-pi-subagent/panel", "visibility": ["app"]},
+        "ui": {"resourceUri": "ui://larva-pi-subagent/panel-v2", "visibility": ["app"]},
         "openai/ui": {"entrypoints": [{"type": "thread"}]},
     }
     assert panel_tool["inputSchema"] == {
@@ -202,7 +208,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
     for tool in definitions:
         if tool["name"] in {"larva_subagent", "larva_subagent_wait", "larva_subagent_select", "larva_subagent_status"}:
             assert tool["_meta"] == {
-                "ui": {"resourceUri": "ui://larva-pi-subagent/widget", "visibility": ["model", "app"]},
+                "ui": {"resourceUri": "ui://larva-pi-subagent/widget-v2", "visibility": ["model", "app"]},
                 "openai/ui": {"preferredModelDisplayMode": "inline"},
             }
     mention_tool = next(tool for tool in definitions if tool["name"] == "search_mentions")

@@ -80,25 +80,40 @@ After updating the checkout, refresh the Codex cached bundle with
 
 ### Live activity panel and inline widget
 
-MCP Apps hosts can open the **Larva Subagents** thread side-panel tab through
-the app-only `larva_subagent_panel` tool → `ui://larva-pi-subagent/panel`
-(fullscreen by default). Spawn, wait, select, and status tool cards attach
-`ui://larva-pi-subagent/widget` as a **collapsed-by-default inline card**.
-The compact card shows persona, model · thinking, tool count, elapsed time,
-Cancel for active runs, and a single activity or terminal-summary line. It does
-not open assistant streams, tool lists, or result bodies automatically. Details
-opens an inline drawer with Timeline, Result, and Task & Session tabs; Hide
-details collapses it again. Multiple runs use compact selectable rows.
+MCP Apps hosts open the **Larva Subagents** thread side-panel tab through
+the app-only `larva_subagent_panel` tool → `ui://larva-pi-subagent/panel-v2`.
+The panel advertises fullscreen only and has no redundant Inline button.
+Spawn, wait, select, and status tool cards attach
+`ui://larva-pi-subagent/widget-v2` as a **collapsed-by-default inline card**.
+The versioned URIs refresh Codex Desktop's cached UI resource. Legacy
+`/panel` and `/widget` resource reads still return the same current app.
 
-Fullscreen opens the **side-panel workbench** directly: an All / Active / Done
-filter toolbar, grouped Active and Done run list, and a selected-run inspector.
-On narrow screens, selecting a run opens the inspector; Back to subagents
-returns to the list. Timeline shows bounded assistant previews and compact tool
-rows; expanding a tool reveals previews and Inspect args / result through
+The compact card shows persona, model · thinking, tool count, elapsed time,
+Cancel for active runs, and one activity or terminal-summary line. Details
+opens a scrollable drawer capped at 340px; Hide details collapses it again.
+Multiple runs use compact selectable rows. Only the widget offers Fullscreen /
+Inline switching. The panel always keeps its workbench layout.
+
+The **workbench** shows an All / Active / Done run filter, grouped run selector,
+and an always-visible selected-run inspector. Below 680px, the selector stacks
+above the inspector and scrolls within a 148px cap; the inspector fills the
+remaining height. Wider windows use two columns. There is no list/detail
+screen switch.
+
+The inspector defaults to **All**, showing Task Prompt, Timeline, and Result
+cards in that order, followed by a compact paired Session Metadata grid. Timeline, Result, and Task & Session filters each show only
+their corresponding card. Task Prompt displays the full multiline
+`task_prompt` (falling back to `task_preview` for older snapshots), with Copy
+prompt and Expand prompt / Collapse prompt controls. Its text viewport starts
+at a 110px maximum height; expansion removes that text height cap. Compact
+run cards continue using bounded activity/task previews.
+
+Timeline shows bounded assistant output and collapsible tool rows; expanding
+a row reveals previews and Inspect args / result through
 `larva_subagent_activity`. Result and session metadata offer Copy controls.
-Fullscreen / Inline switching and Refresh use the host bridge. Host theme,
-style variables, and safe-area insets apply to both layouts. Display, clipboard,
-and bridge availability depend on host support.
+Refresh uses the host bridge. Host theme, style variables, and safe-area insets
+apply to both layouts. Display, clipboard, and bridge availability depend on
+host support.
 
 The server advertises eleven tools: nine model-facing runtime tools and two
 app-only tools (`search_mentions`, `larva_subagent_panel`). UI resources load
@@ -108,7 +123,8 @@ and every 2.5 seconds while idle, and pauses polling in hidden documents.
 Panel reads preserve the process-local outbox and never consume child output.
 Restart loses live state; recorded historical activity remains separate.
 
-Status and wait/select snapshots include bounded task and assistant previews,
+Status, panel, and wait/select snapshots include the full initial `task_prompt`
+with preserved newlines, alongside bounded `task_preview` and assistant previews,
 startup model/requested and effective thinking levels, thinking/tool indicators,
 the 25 most recent tool snapshots, last child activity, and terminal result
 preview. External-host runs populate these fields directly from child RPC

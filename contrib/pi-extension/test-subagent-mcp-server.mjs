@@ -77,9 +77,10 @@ function client(overrides = {}, runtimeDir = packageDir) {
 }
 // Execute the shipped resource script against a controlled parent bridge and
 // minimal DOM, without replacing any of the app's request or rendering logic.
+const fullPrompt = 'First task line: ' + 'preserve this complete initial instruction. '.repeat(5) + '\nSecond task line: preserve newlines and the final instruction.';
 async function exercisePanelBridge(html, surface, multiple = false) {
   const sent = [], listeners = {}, timers = new Map(), variables = {};
-  let timerId = 0, disconnected = false, narrow = false;
+  let timerId = 0, disconnected = false;
   const node = tag => {
     const value = { tag, dataset: {}, children: [], textContent: '', attributes: {}, scrollTop: 0,
       setAttribute(key, value) { this.attributes[key] = value; },
@@ -105,9 +106,9 @@ async function exercisePanelBridge(html, surface, multiple = false) {
     querySelectorAll: selector => visibleNodes().filter(value => selector === 'button' ? value.tag === 'button' : selector === '[data-scroll-key]' ? value.dataset.scrollKey !== undefined : value.dataset.started !== undefined),
     addEventListener(name, callback) { listeners[name] = callback; },
   };
-  const run = { task_id: '/fixture/child.jsonl', persona_id: 'child', status: 'running', phase: 'waiting_for_child', result_pending: true, started_at: new Date().toISOString(), elapsed_ms: 100, startup_model: 'fixture/model', startup_thinking: 'high', task_preview: 'fixture task', live_assistant_preview: '<script>literal text</script>', active_tool: { name: 'read' }, tool_snapshots: Array.from({ length: 25 }, (_, index) => ({ toolCallId: `call-${index + 1}`, name: 'read', status: 'running', args_preview: 'fixture' })) };
+  const run = { task_id: '/fixture/child.jsonl', persona_id: 'child', status: 'running', phase: 'waiting_for_child', result_pending: true, started_at: new Date().toISOString(), elapsed_ms: 100, startup_model: 'fixture/model', startup_thinking: 'high', task_preview: 'fixture task', task_prompt: fullPrompt, live_assistant_preview: '<script>literal text</script>', active_tool: { name: 'read' }, tool_snapshots: Array.from({ length: 25 }, (_, index) => ({ toolCallId: `call-${index + 1}`, name: 'read', status: 'running', args_preview: 'fixture' })) };
   const deliver = message => listeners.message({ source: window.parent, data: { jsonrpc: '2.0', ...message } });
-  const window = { matchMedia() { return { matches: narrow }; }, addEventListener(name, callback) { listeners[name] = callback; }, parent: {
+  const window = { addEventListener(name, callback) { listeners[name] = callback; }, parent: {
     postMessage(message) {
       sent.push(JSON.parse(JSON.stringify(message)));
       if (!message.id || message.method === undefined) return;
@@ -130,11 +131,12 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   assert.equal(sent[0].method, 'ui/initialize');
   assert.equal(sent[0].params.protocolVersion, '2026-01-26');
   assert.deepEqual(sent[0].params.appInfo, { name: 'Larva Subagents', version: '0.8.9' });
+  assert.deepEqual(sent[0].params.appCapabilities.availableDisplayModes, surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen']);
   assert.ok(sent.some(message => message.method === 'ui/notifications/initialized'));
   assert.equal(variables['--color-text-primary'], 'red');
   assert.equal(document.documentElement.dataset.theme, 'dark');
   const hasText = text => visibleNodes().some(value => value.textContent === text);
-  const click = async text => { const target = visibleNodes().find(value => value.tag === 'button' && value.textContent === text); assert.ok(target, text); target.focus(); await target.onclick(); await flush(); };
+  const click = async (text, group) => { const candidates = group ? visibleNodes().find(value => value.className === group)?.children ?? [] : visibleNodes(); const target = candidates.find(value => value.tag === 'button' && value.textContent === text); assert.ok(target, text); target.focus(); await target.onclick(); await flush(); };
   assert.equal(variables['--safe-top'], '8px');
   assert.equal(document.documentElement.dataset.mode, surface === 'widget' ? 'inline' : 'fullscreen');
   if (surface === 'widget') {
@@ -159,7 +161,35 @@ async function exercisePanelBridge(html, surface, multiple = false) {
     assert.ok(hasText('Active · 1')); assert.ok(hasText('Done · 0'));
     assert.ok(!hasText('Details'));
   }
-  for (const tab of ['Timeline', 'Result', 'Task & Session']) assert.ok(hasText(tab));
+  for (const tab of ['All', 'Timeline', 'Result', 'Task & Session']) assert.ok(hasText(tab));
+  assert.equal(visibleNodes().filter(value => value.className === 'section-card').length, 3, 'All is the unified default');
+  const sectionTitles = () => visibleNodes().find(value => value.className === 'tab-body').children.map(card => card.children[0].children[0].textContent);
+  assert.deepEqual(sectionTitles(), ['Task Prompt', 'Timeline', 'Result', 'Session Metadata']);
+  const promptBox = () => visibleNodes().find(value => value.className === 'prompt-box');
+  assert.equal(promptBox().textContent, fullPrompt);
+  assert.equal(promptBox().tag, 'pre'); assert.equal(promptBox().dataset.expanded, 'false');
+  await click('Copy prompt'); assert.equal(copied, fullPrompt);
+  await click('Expand prompt'); assert.equal(promptBox().dataset.expanded, 'true'); assert.ok(hasText('Collapse prompt'));
+  await click('Collapse prompt'); assert.equal(promptBox().dataset.expanded, 'false');
+  run.task_prompt = '';
+  deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
+  assert.equal(promptBox().textContent, run.task_preview, 'older snapshots keep a task preview fallback');
+  run.task_prompt = fullPrompt;
+  deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
+  await flush();
+  const promptStyle = html.match(/\.prompt-box\s*\{([^}]+)\}/)?.[1];
+  assert.match(promptStyle, /max-height:\s*110px(?:;|$)/);
+  assert.match(html.match(/\.prompt-box\[data-expanded=true\]\s*\{([^}]+)\}/)?.[1], /max-height:\s*none(?:;|$)/);
+  for (const [tab, expected] of [['Timeline', 'stream'], ['Result', 'result'], ['Task & Session', 'prompt-box']]) {
+    await click(tab, 'tabs');
+    assert.equal(visibleNodes().filter(value => value.className === 'section-card').length, 1);
+    assert.equal(hasText('Session Metadata'), tab === 'Task & Session');
+    assert.ok(visibleNodes().some(value => value.className === expected));
+    for (const other of ['stream', 'result', 'prompt-box'].filter(name => name !== expected)) assert.ok(!visibleNodes().some(value => value.className === other));
+  }
+  await click('All', 'tabs');
+  assert.equal(visibleNodes().filter(value => value.className === 'section-card').length, 3);
+  assert.deepEqual(sectionTitles(), ['Task Prompt', 'Timeline', 'Result', 'Session Metadata']);
   assert.ok(hasText(run.live_assistant_preview));
   assert.ok(!hasText('Inspect args'));
   assert.equal(visibleNodes().filter(value => value.className === 'tool-row').length, 25);
@@ -205,13 +235,18 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   assert.ok(!visibleNodes().some(value => value.tag === 'h3' && value.textContent === 'Active · 1'));
   assert.ok(hasText('No completed subagents'));
   await click('All');
-  narrow = true;
   const selectedCard = visibleNodes().find(value => value.className === 'run-card');
   selectedCard.focus(); await selectedCard.onclick(); await flush();
-  assert.equal(app.dataset.mobileView, 'detail'); assert.equal(document.activeElement.className, 'back');
-  await click('← Back to subagents');
-  assert.equal(app.dataset.mobileView, 'list'); assert.equal(document.activeElement.dataset.focusKey, `run:${run.task_id}`);
-  narrow = false;
+  assert.ok(visibleNodes().some(value => value.className === 'run-list'));
+  assert.ok(visibleNodes().some(value => value.className === 'inspector'));
+  assert.ok(!hasText('← Back to subagents'));
+  // Mechanical CSS contract; browser measurements verify actual layout and visibility.
+  const narrowStyles = html.split('@media(max-width:679px)')[1];
+  assert.match(narrowStyles.match(/\.workbench\{([^}]+)\}/)?.[1], /display:flex;flex-direction:column/);
+  const railStyle = narrowStyles.match(/\.run-list\{([^}]+)\}/)?.[1];
+  assert.match(railStyle, /max-height:148px/); assert.match(railStyle, /overflow-y:auto/);
+  const inspectorStyle = narrowStyles.match(/\.inspector\{([^}]+)\}/)?.[1];
+  assert.match(inspectorStyle, /flex:1;min-height:0;overflow-y:auto/);
   visibleNodes().find(value => value.className === 'inspector').scrollTop = 48;
   await click('Refresh');
   assert.equal(visibleNodes().find(value => value.className === 'inspector').scrollTop, 48);
@@ -241,7 +276,11 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   await click('Result');
   assert.ok(!hasText('terminal output'), 'resumed run drops prior terminal output');
   assert.ok(hasText('No terminal output yet.'));
-  await click('Inline');
+  if (surface === 'widget') await click('Inline');
+  else {
+    assert.ok(!hasText('Inline')); assert.ok(!hasText('Fullscreen'));
+    deliver({ method: 'ui/notifications/host-context-changed', params: { displayMode: 'inline' } });
+  }
   assert.equal(document.documentElement.dataset.mode, 'inline');
   const hasWorkbench = () => visibleNodes().some(value => value.className === 'workbench');
   if (surface === 'widget') {
@@ -262,7 +301,8 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [] } } });
   if (surface === 'widget') assert.ok(hasText('Waiting for child…'));
   else { assert.ok(hasWorkbench()); assert.ok(hasText('No active subagents')); }
-  await click('Fullscreen');
+  if (surface === 'widget') await click('Fullscreen');
+  else deliver({ method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen' } });
   assert.ok(hasText('Active · 0')); assert.ok(hasText('Done · 0')); assert.ok(hasText('No active subagents'));
   deliver({ id: 999, method: 'ui/resource-teardown', params: {} });
   assert.deepEqual(sent.at(-1), { jsonrpc: '2.0', id: 999, result: {} });
@@ -309,15 +349,18 @@ try {
   const listedTools = (await idle.request('tools/list')).result.tools;
   assert.equal(listedTools.length, 11);
   const panelTool = listedTools.find(tool => tool.name === 'larva_subagent_panel');
-  assert.deepEqual(panelTool._meta, { ui: { resourceUri: 'ui://larva-pi-subagent/panel', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } });
+  assert.deepEqual(panelTool._meta, { ui: { resourceUri: 'ui://larva-pi-subagent/panel-v2', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } });
   for (const surface of ['panel', 'widget']) {
-    const uri = 'ui://larva-pi-subagent/' + surface;
+    const uri = 'ui://larva-pi-subagent/' + surface + '-v2';
     const resource = (await idle.request('resources/read', { uri })).result.contents[0];
+    assert.equal(resource.uri, uri);
+    const legacy = (await idle.request('resources/read', { uri: uri.replace('-v2', '') })).result.contents[0];
+    assert.equal(legacy.text, resource.text); assert.deepEqual(legacy._meta, resource._meta);
     assert.equal(resource.mimeType, 'text/html;profile=mcp-app');
     assert.equal(resource._meta.ui.prefersBorder, true);
     assert.deepEqual(resource._meta['openai/ui'], {
       preferredDisplayMode: surface === 'panel' ? 'fullscreen' : 'inline',
-      availableDisplayModes: surface === 'panel' ? ['fullscreen', 'inline'] : ['inline', 'fullscreen'],
+      availableDisplayModes: surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'],
     });
     for (const method of ['ui/initialize', 'ui/notifications/initialized', 'larva_subagent_panel', 'larva_subagent_activity', 'larva_subagent_cancel']) assert.ok(resource.text.includes(method));
     await exercisePanelBridge(resource.text, surface);
@@ -635,7 +678,7 @@ createInterface({input:process.stdin}).on('line', async line => {
   console.log('stdio initialize, framed ping, tools/list and registry separation: PASS');
   const personas = await c.tool('larva_personas', {query:'child'});
   assert.equal(personas.details.personas[0].id, 'child');
-  const single = await c.tool('larva_subagent', {persona_id:'child', task:'single', wait_for_completion:true});
+  const single = await c.tool('larva_subagent', {persona_id:'child', task:fullPrompt, wait_for_completion:true});
   assert.equal(single.isError, false, JSON.stringify(single));
   const output = Object.values(single.details.terminal_outputs)[0];
   assert.equal(output.result_text, 'output parent=');
@@ -647,7 +690,11 @@ createInterface({input:process.stdin}).on('line', async line => {
   const panel = (await c.tool('larva_subagent_panel', {task_id:taskId})).structuredContent;
   assert.equal(panel.status, 'success');
   assert.deepEqual(panel.sessions, []);
-  assert.equal(panel.runs[0].task_preview, 'single');
+  assert.equal(panel.runs[0].task_prompt, fullPrompt);
+  assert.notEqual(panel.runs[0].task_preview, fullPrompt);
+  assert.ok(panel.runs[0].task_preview.length <= 120);
+  const snapshot = (await c.tool('larva_subagent_status', {task_id:taskId})).details.runs[0];
+  assert.equal(snapshot.task_prompt, fullPrompt);
   assert.equal(panel.runs[0].startup_model, 'fixture/model');
   assert.equal(panel.runs[0].live_assistant_preview, 'live fixture assistant');
   assert.equal(panel.runs[0].tool_snapshots[0].status, 'success');

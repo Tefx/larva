@@ -64,11 +64,11 @@ tools.push({
   description: 'Open the Larva subagent live activity panel and inspect active or recent Pi child sessions.',
   inputSchema: { type: 'object', properties: { task_id: string, limit: integer(1, 25) }, required: [], additionalProperties: false },
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  _meta: { ui: { resourceUri: 'ui://larva-pi-subagent/panel', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } },
+  _meta: { ui: { resourceUri: 'ui://larva-pi-subagent/panel-v2', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } },
 });
 for (const tool of tools) {
   if (['larva_subagent', 'larva_subagent_wait', 'larva_subagent_select', 'larva_subagent_status'].includes(tool.name)) {
-    tool._meta = { ui: { resourceUri: 'ui://larva-pi-subagent/widget', visibility: ['model', 'app'] }, 'openai/ui': { preferredModelDisplayMode: 'inline' } };
+    tool._meta = { ui: { resourceUri: 'ui://larva-pi-subagent/widget-v2', visibility: ['model', 'app'] }, 'openai/ui': { preferredModelDisplayMode: 'inline' } };
   }
 }
 const shutdownController = new AbortController();
@@ -163,9 +163,9 @@ async function callTool(name, args) {
 // Serialized into both UI resources; all data stays on the host postMessage bridge.
 function subagentPanelApp(surface) {
   let sequence = 0, selected = null, personaHint = null, filter = {}, state = { runs: [], terminal_outputs: {} }, mode = surface === 'panel' ? 'fullscreen' : 'inline', stopped = false, polling = false;
-  let inlineExpanded = false, mobileView = 'list', listFilter = 'All';
+  let inlineExpanded = false, listFilter = 'All';
   const isInlineWidget = () => surface === 'widget' && mode === 'inline';
-  const tabs = new Map(), expandedTools = new Set(), inspectedOutputs = new Map(), controlCounts = new Map();
+  const tabs = new Map(), expandedTools = new Set(), expandedPrompts = new Set(), inspectedOutputs = new Map(), controlCounts = new Map();
   const pending = new Map();
   const root = document.getElementById('app');
   const notify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
@@ -284,17 +284,17 @@ function subagentPanelApp(surface) {
     control.dataset.focusKey = 'details';
     control.setAttribute('aria-expanded', String(inlineExpanded));
   }
-  function copy(text, parent) {
-    button('Copy', async () => {
+  function copy(text, parent, label = 'Copy') {
+    button(label, async () => {
       if (!navigator.clipboard) throw new Error('Clipboard unavailable in this host.');
       await navigator.clipboard.writeText(text);
     }, parent);
   }
   function runCard(run, parent) {
     const card = button('', () => {
-      selected = run.task_id; inlineExpanded = true; mobileView = 'detail'; render();
+      selected = run.task_id; inlineExpanded = true; render();
       if (isInlineWidget()) notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight });
-      else if (window.matchMedia('(max-width:619px)').matches) Array.from(document.querySelectorAll('button')).find(node => node.className === 'back')?.focus();
+
     }, parent);
     card.className = 'run-card'; card.dataset.focusKey = `run:${run.task_id}`; card.setAttribute('aria-pressed', String(selected === run.task_id));
     const top = element('div', undefined, card); top.className = 'row';
@@ -305,14 +305,32 @@ function subagentPanelApp(surface) {
     element('div', preview(run).replace(/\s+/g, ' '), card).className = 'preview';
   }
   function inspector(run, parent) {
-    const tab = tabs.get(run.task_id) ?? (isActive(run) || run.tool_snapshots?.length ? 'Timeline' : 'Result');
+    const tab = tabs.get(run.task_id) ?? 'All';
     const bar = element('div', undefined, parent); bar.className = 'tabs'; bar.setAttribute('aria-label', 'Run details');
-    for (const name of ['Timeline', 'Result', 'Task & Session']) {
+    for (const name of ['All', 'Timeline', 'Result', 'Task & Session']) {
       const control = button(name, () => { tabs.set(run.task_id, name); render(); }, bar);
       control.setAttribute('aria-pressed', String(name === tab));
     }
     const body = element('div', undefined, parent); body.className = 'tab-body';
-    if (tab === 'Timeline') {
+    function section(title) {
+      const card = element('section', undefined, body); card.className = 'section-card';
+      const heading = element('div', undefined, card); heading.className = 'section-header';
+      element('h3', title, heading);
+      return { card, heading };
+    }
+    if (tab === 'All' || tab === 'Task & Session') {
+      const { card, heading: promptHeader } = section('Task Prompt');
+      const prompt = run.task_prompt || run.task_preview || '';
+      copy(prompt, promptHeader, 'Copy prompt');
+      const expanded = expandedPrompts.has(run.task_id);
+      const toggle = button(expanded ? 'Collapse prompt' : 'Expand prompt', () => {
+        expanded ? expandedPrompts.delete(run.task_id) : expandedPrompts.add(run.task_id); render();
+      }, promptHeader);
+      toggle.dataset.focusKey = `prompt-toggle:${run.task_id}`; toggle.setAttribute('aria-expanded', String(expanded));
+      const box = element('pre', prompt, card); box.className = 'prompt-box'; box.dataset.expanded = String(expanded); box.dataset.scrollKey = `prompt:${run.task_id}`;
+    }
+    if (tab === 'All' || tab === 'Timeline') {
+      const { card: body } = section('Timeline');
       if (isActive(run)) element('p', run.active_tool ? `Active tool: ${run.active_tool.name}` : run.live_thinking ? 'Thinking…' : phase(run), body).className = 'activity';
       if (run.live_assistant_preview) {
         const stream = element('pre', run.live_assistant_preview, body); stream.className = 'stream'; stream.dataset.scrollKey = `stream:${run.task_id}`;
@@ -340,19 +358,26 @@ function subagentPanelApp(surface) {
           inspectedOutputs.set(key, JSON.stringify(data, null, 2)); render();
         }, content);
       }
-    } else if (tab === 'Result') {
-      const text = resultText(run); copy(text, body);
-      const output = element('pre', text, body); output.className = 'result'; output.dataset.scrollKey = `result:${run.task_id}`;
-    } else {
-      element('h3', 'Task', body); element('pre', run.task_preview ?? '', body);
-      const grid = element('dl', undefined, body); grid.className = 'metadata';
+    }
+    if (tab === 'All' || tab === 'Result') {
+      const { card, heading } = section('Result');
+      const text = resultText(run); copy(text, heading);
+      const output = element('pre', text, card); output.className = 'result'; output.dataset.scrollKey = `result:${run.task_id}`;
+    }
+    if (tab === 'All' || tab === 'Task & Session') {
+      const card = element('section', undefined, body); card.className = 'session-metadata';
+      const heading = element('div', undefined, card); heading.className = 'section-header';
+      element('h3', 'Session Metadata', heading); copy(run.task_id, heading);
+      const grid = element('dl', undefined, card); grid.className = 'metadata';
       for (const [label, value] of [
         ['Persona', run.persona_id], ['Status', run.status], ['Phase', phase(run)], ['Model', run.startup_model],
         ['Requested Thinking', run.requested_thinking], [isInlineWidget() ? 'Thinking' : 'Effective Thinking', run.startup_thinking],
         ['Elapsed', duration(run.elapsed_ms)], ['Started', run.started_at], ['Updated', run.updated_at],
         [isInlineWidget() ? 'Session Path' : 'Session ID', run.task_id],
-      ]) { element('dt', label, grid); element('dd', value ?? '—', grid); }
-      copy(run.task_id, body);
+      ]) {
+        const key = element('dt', label, grid), text = element('dd', value ?? '—', grid);
+        if (label === 'Session Path' || label === 'Session ID') { key.className = 'session-label'; text.className = 'session-value'; }
+      }
     }
   }
   function render() {
@@ -363,7 +388,7 @@ function subagentPanelApp(surface) {
     if (focused) Array.from(document.querySelectorAll('button')).find(node => node.dataset.focusKey === focused)?.focus({ preventScroll: true });
   }
   function renderContent() {
-    root.replaceChildren(); document.documentElement.dataset.mode = mode; document.documentElement.dataset.surface = surface; root.dataset.mobileView = mobileView;
+    root.replaceChildren(); document.documentElement.dataset.mode = mode; document.documentElement.dataset.surface = surface;
     const runs = state.runs ?? [], active = runs.filter(isActive), done = runs.filter(run => !isActive(run));
     const run = runs.find(item => item.task_id === selected) ?? runs.find(item => item.persona_id === personaHint) ?? runs[0];
     if (run) selected = run.task_id;
@@ -380,7 +405,7 @@ function subagentPanelApp(surface) {
       if (!isInlineWidget()) for (const [name, label] of [['All', 'All'], ['Active', `Active · ${active.length}`], ['Done', `Done · ${done.length}`]]) {
         const control = button(label, () => { listFilter = name; render(); }, header); control.setAttribute('aria-pressed', String(listFilter === name));
       }
-      button('Refresh', refresh, header); displayButton(header);
+      button('Refresh', refresh, header); if (surface === 'widget') displayButton(header);
       if (isInlineWidget() && inlineExpanded) disclosure(header);
     }
     const error = element('div', state.error?.message ?? ''); error.id = 'error'; error.setAttribute('role', 'alert');
@@ -401,10 +426,6 @@ function subagentPanelApp(surface) {
         for (const item of group) runCard(item, list);
       }
       const detail = element('section', undefined, layout); detail.className = 'inspector'; detail.dataset.scrollKey = `detail:${run?.task_id ?? ''}`;
-      button('← Back to subagents', () => {
-        mobileView = 'list'; render();
-        Array.from(document.querySelectorAll('button')).find(node => node.dataset.focusKey === `run:${selected}`)?.focus();
-      }, detail).className = 'back';
       if (!run) { element('p', 'Select a subagent to view activity.', detail); return; }
       const heading = element('div', undefined, detail); heading.className = 'row detail-header';
       element('h2', run.persona_id, heading); element('span', run.status, heading).className = 'badge';
@@ -436,7 +457,7 @@ function subagentPanelApp(surface) {
   const clock = setInterval(tick, 1000);
   document.addEventListener('visibilitychange', () => { if (!stopped && document.visibilityState !== 'hidden') void refresh(); });
   render();
-  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.8.9' }, appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] } }).then(result => {
+  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.8.9' }, appCapabilities: { availableDisplayModes: surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'] } }).then(result => {
     if (stopped) return;
     hostContext(result.hostContext); notify('ui/notifications/initialized', {}); void poll();
   }).catch(showError);
@@ -447,7 +468,7 @@ function renderSubagentPanelHtml(surface) {
   /* App font aliases preserve host tokens without self-referential custom properties. */
   .run-list{min-width:0}.run-card strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toolbar>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .status svg{display:block}.status[data-status=running]{animation:pulse 2s ease-in-out infinite}@keyframes pulse{50%{opacity:.45}}@media(prefers-reduced-motion:reduce){.status[data-status=running]{animation:none}}
-  [data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:calc(12px + var(--safe-top,0px)) calc(12px + var(--safe-right,0px)) calc(12px + var(--safe-bottom,0px)) calc(12px + var(--safe-left,0px))}button{font:inherit;color:inherit;cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;min-height:30px}button:hover{background:var(--muted)}button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}button:disabled{opacity:.5;cursor:wait}button[aria-pressed=true]{background:var(--accent);border-color:var(--primary)}.toolbar,.row,.tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar{padding-bottom:10px}.toolbar>strong{margin-right:auto}.model,.badge{border-radius:var(--radius-sm);background:var(--muted);padding:1px 6px;font-size:11px}.elapsed{font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto;color:var(--muted-foreground)}.muted{color:var(--muted-foreground)}.preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.summary{color:var(--muted-foreground)}.status{color:var(--muted-foreground)}.status[data-status=running],.status[data-status=accepted]{color:var(--primary)}.status[data-status=success]{color:var(--success)}.status[data-status=failed],#error{color:var(--danger)}.status[data-status=cancelled]{color:var(--warning)}.cancel{color:var(--danger)}.workbench{display:grid;grid-template-columns:minmax(210px,32%) minmax(0,1fr);height:calc(100dvh - 90px - var(--safe-top,0px) - var(--safe-bottom,0px));min-height:280px;border-top:1px solid var(--border)}.run-list{overflow:auto;padding:12px 12px 12px 0;border-right:1px solid var(--border)}.run-card{display:block;width:100%;text-align:left;padding:10px;margin-bottom:6px;background:var(--tertiary);border-radius:var(--radius-md);overflow:hidden}.run-card .row{flex-wrap:nowrap}.run-card .row>span:not(.elapsed){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.run-card .preview{color:var(--muted-foreground);margin-top:4px}.inspector{overflow:auto;padding:16px;min-width:0}.detail-header{margin-bottom:16px}h2{font-size:17px;margin:0}h3{font-size:12px;margin:14px 0 8px}h4{font-size:11px;color:var(--muted-foreground);margin:10px 0 4px}.tabs{border-bottom:1px solid var(--border);padding-bottom:8px;position:sticky;top:0;background:var(--background);z-index:1}.tabs button{flex:1;white-space:nowrap}.tab-body{padding-top:12px;min-width:0}pre{font:12px/1.6 var(--app-font-mono);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;margin:6px 0 12px}.stream,.result{padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--tertiary)}.stream{max-height:160px}.activity{color:var(--primary);background:var(--accent);border-radius:var(--radius-sm);padding:8px}.drawer{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--secondary);max-height:340px;overflow-y:auto}[data-surface=widget][data-mode=inline] .result{max-height:220px}ol{list-style:none;padding:0;margin:0}li{border:1px solid var(--border);border-radius:var(--radius-md);margin:6px 0;overflow:hidden}.tool-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0}.tool-row .preview{flex:1;color:var(--muted-foreground)}.tool-content{padding:0 12px 12px}.tool-content pre{max-height:260px}.metadata{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px}.metadata dt{color:var(--muted-foreground)}.metadata dd{margin:0;overflow-wrap:anywhere}.back{display:none}.compact-list .run-card .row.muted{display:none}.compact-list .run-card{display:flex;gap:12px;padding:6px}.compact-list .run-card>.row{flex-shrink:0}.switcher{display:flex;gap:6px;overflow:auto;margin-top:8px}.switcher .run-card{min-width:180px}#error:empty{display:none}@media(max-width:619px){.workbench{grid-template-columns:1fr}.run-list{border-right:0}.back{display:block;margin-bottom:12px}[data-mobile-view=list] .inspector,[data-mobile-view=detail] .run-list{display:none}.toolbar{gap:6px}.metadata{grid-template-columns:1fr;gap:2px}.metadata dd{margin-bottom:8px}}
+  [data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:calc(12px + var(--safe-top,0px)) calc(12px + var(--safe-right,0px)) calc(12px + var(--safe-bottom,0px)) calc(12px + var(--safe-left,0px))}button{font:inherit;color:inherit;cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;min-height:30px}button:hover{background:var(--muted)}button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}button:disabled{opacity:.5;cursor:wait}button[aria-pressed=true]{background:var(--accent);border-color:var(--primary)}.toolbar,.row,.tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar{padding-bottom:10px}.toolbar>strong{margin-right:auto}.model,.badge{border-radius:var(--radius-sm);background:var(--muted);padding:1px 6px;font-size:11px}.elapsed{font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto;color:var(--muted-foreground)}.muted{color:var(--muted-foreground)}.preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.summary{color:var(--muted-foreground)}.status{color:var(--muted-foreground)}.status[data-status=running],.status[data-status=accepted]{color:var(--primary)}.status[data-status=success]{color:var(--success)}.status[data-status=failed],#error{color:var(--danger)}.status[data-status=cancelled]{color:var(--warning)}.cancel{color:var(--danger)}.workbench{display:grid;grid-template-columns:minmax(220px,30%) minmax(0,1fr);height:calc(100dvh - 90px - var(--safe-top,0px) - var(--safe-bottom,0px));min-height:280px;border-top:1px solid var(--border)}.run-list{overflow:auto;padding:12px 12px 12px 0;border-right:1px solid var(--border)}.run-card{display:block;width:100%;text-align:left;padding:10px;margin-bottom:6px;background:var(--tertiary);border-radius:var(--radius-md);overflow:hidden}.run-card .row{flex-wrap:nowrap}.run-card .row>span:not(.elapsed){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.run-card .preview{color:var(--muted-foreground);margin-top:4px}.inspector{overflow:auto;padding:16px;min-width:0}.detail-header{margin-bottom:16px}h2{font-size:17px;margin:0}h3{font-size:12px;margin:14px 0 8px}h4{font-size:11px;color:var(--muted-foreground);margin:10px 0 4px}.tabs{border-bottom:1px solid var(--border);padding-bottom:8px;position:sticky;top:0;background:var(--background);z-index:1}.tabs button{flex:1;white-space:nowrap}.tab-body{padding-top:12px;min-width:0}pre{font:12px/1.6 var(--app-font-mono);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;margin:6px 0 12px}.stream,.result{padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--tertiary)}.stream{max-height:160px}.activity{color:var(--primary);background:var(--accent);border-radius:var(--radius-sm);padding:8px}.drawer{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--secondary);max-height:340px;overflow-y:auto}[data-surface=widget][data-mode=inline] .result{max-height:220px}ol{list-style:none;padding:0;margin:0}li{border:1px solid var(--border);border-radius:var(--radius-md);margin:6px 0;overflow:hidden}.tool-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0}.tool-row .preview{flex:1;color:var(--muted-foreground)}.tool-content{padding:0 12px 12px}.tool-content pre{max-height:260px}.metadata{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content minmax(0,1fr);gap:4px 10px;font-size:11px}.metadata dt{color:var(--muted-foreground)}.metadata dd{margin:0;overflow-wrap:anywhere}.metadata .session-label{grid-column:1}.metadata .session-value{grid-column:2 / -1}.section-card{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--tertiary);padding:10px;margin-bottom:10px}.section-header{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.section-header h3{margin:0 auto 0 0}.section-header button{font-size:11px;min-height:26px;padding:3px 7px}.prompt-box{max-height:110px;overflow:auto;padding:8px;background:var(--background);border:1px solid var(--border);border-radius:var(--radius-sm)}.prompt-box[data-expanded=true]{max-height:none}.compact-list .run-card .row.muted{display:none}.compact-list .run-card{display:flex;gap:12px;padding:6px}.compact-list .run-card>.row{flex-shrink:0}.switcher{display:flex;gap:6px;overflow:auto;margin-top:8px}.switcher .run-card{min-width:180px}#error:empty{display:none}@media(max-width:679px){.workbench{display:flex;flex-direction:column}.run-list{flex:0 0 auto;max-height:148px;overflow-y:auto;border-right:0;border-bottom:1px solid var(--border);padding:8px 0}.inspector{flex:1;min-height:0;overflow-y:auto;padding:12px 0}.toolbar{gap:6px}}
   </style></head><body><div id="app"></div><script>(${subagentPanelApp.toString()})(${JSON.stringify(surface)})</script></body></html>`;
 }
 
@@ -517,9 +538,9 @@ async function dispatch(message, framed) {
       }
       case 'resources/read': {
         const uri = message.params?.uri;
-        if (uri === 'ui://larva-pi-subagent/panel' || uri === 'ui://larva-pi-subagent/widget') {
-          const surface = uri.endsWith('/panel') ? 'panel' : 'widget';
-          const modes = surface === 'panel' ? ['fullscreen', 'inline'] : ['inline', 'fullscreen'];
+        if (uri === 'ui://larva-pi-subagent/panel' || uri === 'ui://larva-pi-subagent/panel-v2' || uri === 'ui://larva-pi-subagent/widget' || uri === 'ui://larva-pi-subagent/widget-v2') {
+          const surface = uri.includes('/panel') ? 'panel' : 'widget';
+          const modes = surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'];
           result = { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: renderSubagentPanelHtml(surface), _meta: { 'openai/ui': { preferredDisplayMode: modes[0], availableDisplayModes: modes }, ui: { prefersBorder: true } } }] };
           break;
         }
