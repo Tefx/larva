@@ -149843,7 +149843,7 @@ phases:
   - id: codex-subagent-activity-panel.deliver
     name: Implement Scheme A Codex Larva subagent activity panel MCP App, live child
       stream telemetry, docs, and contract tests
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -149947,6 +149947,53 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-17T14:45:19.836944Z'
+    done_at: '2026-10-17T15:00:55.682174+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f760acad70f0bcc6e93405530f22d678c0c42a85 (retained ref: refs/vectl-retained/codex-subagent-activity-panel.deliver)
+
+      - Executor: node-typescript-engineer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T14-48-12-045Z_01a14a55-b00d-7544-a404-f451eb6c4e4d.jsonl)
+
+      - Changed files: contrib/pi-extension/larva.ts, contrib/pi-extension/subagent-mcp-server.mjs,
+      contrib/codex-plugin/larva.ts, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/pi-extension/README.md, contrib/codex-plugin/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      contrib/pi-extension/test-subagent-mcp-server.mjs, tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0 (verified
+      server-only ui://larva-pi-subagent/panel and ui://larva-pi-subagent/widget resource
+      reads without loading larva.ts, controlled postMessage bridge exercise for ui/initialize,
+      ui/notifications/initialized, hostContext theme/CSS variables, tool-input/tool-result,
+      larva_subagent_panel polling, larva_subagent_activity args/result inspection,
+      larva_subagent_cancel, display-mode toggle, size-changed, and resource-teardown;
+      verified live stream telemetry fields task_preview, startup_model, live_assistant_preview,
+      live_thinking, active_tool, bounded 25 tool_snapshots, result_preview, deep-clone
+      isolation, and empty retainedSubagentPresentationLog in external-host mode).
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      checks passed).
+
+      - Run: /Users/tefx/Projects/larva/.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (3 passed; verified 11 tools, _meta on larva_subagent_panel and widget-enabled
+      runtime tools, byte parity of all 5 runtime files, and ui:// resource reads
+      in isolated cache).
+
+      - Run: git diff --check -> exit 0.
+
+
+      Gaps:
+
+      - Automated tests exercise the real stdio MCP server, child RPC stream, and
+      the shipped UI script via a controlled postMessage bridge/minimal DOM; live
+      interactive rendering inside the Codex Desktop GUI is not exercised by automated
+      tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
   - id: codex-subagent-activity-panel.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent activity
       panel
