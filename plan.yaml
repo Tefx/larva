@@ -149595,7 +149595,7 @@ phases:
   - id: release-0-8-8.prepare
     name: Prepare Larva 0.8.8 release candidate, fix contract test compatibility,
       and verify
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n  \
@@ -149682,6 +149682,48 @@ phases:
     agent: devops-engineer
     claimed_by: devops-engineer
     claimed_at: '2026-10-17T05:11:27.949722Z'
+    done_at: '2026-10-17T05:19:19.726702+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 0aea5275c751617e1c14ac8a174e041635a5484e (retained ref: refs/vectl/candidates/release-0-8-8.prepare)
+
+      - Executor: devops-engineer (session /Users/tefx/.pi/larva/child-sessions/2026-10-17T05-12-16-019Z_01a14846-6792-76b3-871b-1d76e4ac3fda.jsonl)
+
+      - Files: pyproject.toml, src/larva/__init__.py, uv.lock, contrib/pi-extension/package.json,
+      contrib/pi-extension/package-lock.json, contrib/pi-extension/subagent-mcp-server.mjs,
+      contrib/pi-extension/larva.ts, contrib/codex-plugin/.codex-plugin/plugin.json,
+      contrib/codex-plugin/subagent-mcp-server.mjs, contrib/codex-plugin/larva.ts,
+      docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md, scripts/release-notes-0.8.8.md,
+      tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: PI_BIN="$PWD/contrib/pi-extension/node_modules/.bin/pi" LARVA_TEST_PI_CODING_AGENT="$PWD/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent"
+      .venv/bin/python -m pytest -q tests/shell/test_pi_extension_contract.py tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (173 passed in 45.27s).
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs && node contrib/pi-extension/test-subagent-reload-handoff.mjs
+      && node contrib/pi-extension/test-native-launch-context.mjs -> exit 0.
+
+      - Run: uv build --offline + scripts/mcp-release-smoke.py -> exit 0 (resolved_larva=0.8.8,
+      tool_count=13).
+
+      - Run: uv run --locked --python 3.12 --group dev invar guard --all -> exit 0
+      (42 files checked, 0 errors).
+
+      - Run: git diff --check && git status --short -> exit 0.
+
+
+      Gaps:
+
+      - Remote push, tag v0.8.8, GitHub Release, remote CI/Publish workflows, and
+      fresh unpinned PyPI uvx verification are owned by release-0-8-8.publish-and-verify.
+
+
+      Spec link:
+
+      - scripts/release-notes-0.8.8.md'
   - id: release-0-8-8.publish-and-verify
     name: Fast-forward main, publish Larva 0.8.8, and verify remote CI, PyPI uvx,
       and Codex plugin cache
