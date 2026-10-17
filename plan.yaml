@@ -150334,7 +150334,7 @@ phases:
   - id: codex-subagent-panel-uiux.repair
     name: Repair inline detail drawer height bound (F1) and panel surface workbench
       invariant (F2)
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150392,3 +150392,22 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-10-17T16:04:23.608353Z'
+    done_at: '2026-10-17T16:10:17.799604+00:00'
+    evidence: "Artifact:\n- Commit: 9357a5f838589e07bd66d08aec14bc9aaf307b8c (retained\
+      \ ref: refs/vectl-retained/codex-subagent-panel-uiux.repair)\n- Executor: frontend-engineer\
+      \ (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T15-30-14-043Z_01a14a7c-2b9b-774e-8bfc-6a82c6e7c468.jsonl)\n\
+      - Closed Frozen Finding Ledger items:\n  - F1: Constrained .drawer with max-height:\
+      \ 340px; overflow-y: auto and scroll-position preservation (data-scroll-key=\"\
+      drawer:<task_id>\") across Timeline, Result, and Task & Session.\n  - F2: Introduced\
+      \ isInlineWidget = () => surface === 'widget' && mode === 'inline' so ui://larva-pi-subagent/panel\
+      \ preserves .workbench even when mode === 'inline', while ui://larva-pi-subagent/widget\
+      \ uses the inline card in inline mode and .workbench in fullscreen mode.\n\n\
+      Verification:\n- Run: node contrib/pi-extension/test-subagent-mcp-server.mjs\
+      \ -> exit 0 (including 25-tool drawer height/scroll and surface-transition regressions).\n\
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6\
+      \ passed).\n- Run: /Users/tefx/Projects/larva/.venv/bin/python -m pytest -q\
+      \ tests/shell/test_codex_plugin_contract.py -> exit 0 (3 passed).\n- Run: git\
+      \ diff --check -> exit 0.\n- Headless Chrome probe -> all three tabs stayed\
+      \ <= 340px with 25 tools; scrolling reached tool row 25; panel workbench survived\
+      \ mode === 'inline'.\n\nGaps:\n- Actual interactive Codex Desktop GUI rendering\
+      \ remains unverified by automated tests.\n\nSpec link:\n- docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget"
