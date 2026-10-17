@@ -149581,3 +149581,157 @@ phases:
       - contrib/pi-extension/larva.ts
 
       - contrib/pi-extension/subagent-mcp-server.mjs'
+- id: release_0_8_8
+  name: Prepare, merge to main, and publish Larva 0.8.8
+  status: pending
+  gate: Terminal step release-0-8-8.publish-and-verify verifies that main and immutable
+    tag v0.8.8 are pushed, GitHub Release v0.8.8 is published, remote CI and Publish
+    to PyPI workflows succeed on the exact v0.8.8 commit SHA, fresh isolated unpinned
+    uvx --from larva larva --help and installed metadata resolve 0.8.8 from production
+    PyPI, and local ~/.codex/plugins/cache/larva/larva-subagent is refreshed to 0.8.8.
+  depends_on:
+  - pi_subagent_code_hygiene_audit
+  steps:
+  - id: release-0-8-8.prepare
+    name: Prepare Larva 0.8.8 release candidate, fix contract test compatibility,
+      and verify
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
+      \ uv.lock\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n  \
+      \  - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - scripts/release-notes-0.8.8.md\n\
+      \    - tests/shell/test_codex_plugin_contract.py\n    - tests/shell/test_pi_*.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. Fix the 4 static/contract test compatibility items so all 170 tests\
+      \ in `tests/shell/test_pi_extension_contract.py` pass:\n   - In `contrib/pi-extension/larva.ts`\
+      \ (`resolvePiCommandPrefix`): restore parameter name `_env: RuntimeEnv` and\
+      \ `const env = _env;` so `scripts/pi-test-child-loader.mjs`'s regex replacement\
+      \ `function nativeTestOriginalPrefix(_env: RuntimeEnv)` defines `env`.\n   -\
+      \ In `contrib/pi-extension/larva.ts` (`pi.on?.(\"session_start\", async (_payload:\
+      \ unknown, eventCtx?: PiContext) => {`): restore parameter name `_payload: unknown`\
+      \ (checking `isRecord(_payload) && _payload.reason === \"reload\"`) to match\
+      \ `test_pi_extension_contract.py:411`.\n   - In `contrib/pi-extension/larva.ts`\
+      \ (`deliverSubagentResultCallback`): after `const payload = await callbackPayloadFromRun(record);`,\
+      \ check `if (sharedSubagentState.reloadPendingHandoff || record.callback_surface\
+      \ !== surface) return;` (do not check `record.callback_delivery !== \"pending\"\
+      ` before calling `sendMessage`, and guard `if (record.callback_delivery ===\
+      \ \"pending\") setSubagentCallbackDelivery(record, \"delivered\");` after `sendMessage`\
+      \ completes) so `test_async_subagent_callback_delivery_terminal_states_and_actions`\
+      \ (`suppressedDuplicatePreserved`) passes while reload-handoff deferral remains\
+      \ intact.\n   - In `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md` (`## Session\
+      \ lifecycle rules`): include the exact substring `\"On parent session shutdown,\
+      \ reload, new session, resume, or fork\"` required by `test_pi_extension_contract.py:1667`\
+      \ while documenting the native `session_shutdown({ reason: \"reload\" })` ->\
+      \ `session_start({ reason: \"reload\" })` hot handoff.\n2. Bump version from\
+      \ `0.8.7` to `0.8.8` in:\n   - `pyproject.toml`, `src/larva/__init__.py`, `uv.lock`\n\
+      \   - `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`,\
+      \ `contrib/pi-extension/subagent-mcp-server.mjs`\n   - `contrib/codex-plugin/.codex-plugin/plugin.json`,\
+      \ `contrib/codex-plugin/subagent-mcp-server.mjs`\n   - `tests/shell/test_codex_plugin_contract.py`\n\
+      \   - Synchronize all 5 runtime files in `contrib/codex-plugin/` byte-for-byte\
+      \ with `contrib/pi-extension/`.\n   - Add `scripts/release-notes-0.8.8.md` (concise\
+      \ Chinese release notes for 0.8.8).\n3. Verify `tests/shell/test_pi_extension_contract.py`,\
+      \ `tests/shell/test_codex_plugin_contract.py`, `contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `contrib/pi-extension/test-subagent-reload-handoff.mjs`, wheel build + `scripts/mcp-release-smoke.py`,\
+      \ and `invar guard --all`.\n\nBoundary:\n- `devops-engineer` owns repository\
+      \ release preparation, 0.8.8 version/lock synchronization, Codex plugin byte-for-byte\
+      \ mirror sync, Chinese release notes, and offline/build verification in an isolated\
+      \ worktree.\n- Do not modify `plan.yaml`, `contracts/**`, `src/larva/core/**`,\
+      \ or `src/larva/shell/mcp*.py`. Do not push, tag, or publish to GitHub/PyPI\
+      \ in this preparation step.\n\nAdmit:\n- Consumes accepted `pi_subagent_code_hygiene_audit`\
+      \ outcome on `feat/pi-subagent-mcp-and-codex-plugin` (clean linear descendant\
+      \ of `main`, latest published version `0.8.7`).\n- Consumer is `release-0-8-8.publish-and-verify`.\n\
+      - All 170 tests in `tests/shell/test_pi_extension_contract.py`, `tests/shell/test_codex_plugin_contract.py`,\
+      \ `node contrib/pi-extension/test-subagent-mcp-server.mjs`, `node contrib/pi-extension/test-subagent-reload-handoff.mjs`,\
+      \ wheel build + `scripts/mcp-release-smoke.py`, and `invar guard --all` pass.\n\
+      \nRecovery:\n- Revert or correct uncommitted edits within `allowed_paths` inside\
+      \ the assigned worktree, reap any spawned test processes, and delete temporary\
+      \ build/smoke artifacts before completion."
+    verification: '- Run `.venv/bin/python -m pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py` -> exits 0 (all 170 contract tests
+      and Codex plugin contract tests pass).
+
+      - Run `node contrib/pi-extension/test-subagent-mcp-server.mjs && node contrib/pi-extension/test-subagent-reload-handoff.mjs`
+      -> exits 0.
+
+      - Verify all 5 runtime files in `contrib/codex-plugin/` match `contrib/pi-extension/`
+      byte-for-byte.
+
+      - Build wheel/sdist and run `scripts/mcp-release-smoke.py` against the 0.8.8
+      wheel -> exits 0.
+
+      - Run `uv run --locked --python 3.12 --group dev invar guard --all` and `git
+      diff --check` -> exits 0.'
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - uv.lock
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/package.json
+    - contrib/pi-extension/package-lock.json
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/.codex-plugin/plugin.json
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_codex_plugin_contract.py
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - scripts/mcp-release-smoke.py
+    - INVAR.md
+    agent: devops-engineer
+  - id: release-0-8-8.publish-and-verify
+    name: Fast-forward main, publish Larva 0.8.8, and verify remote CI, PyPI uvx,
+      and Codex plugin cache
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
+      scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - artifacts/**\n\
+      \nDeliver:\n1. Fast-forward/rebase `main` onto the integrated 0.8.8 release\
+      \ candidate and push `main` and immutable tag `v0.8.8` to `origin` (`https://github.com/Tefx/larva.git`).\n\
+      2. Publish GitHub Release `v0.8.8` using `scripts/release-notes-0.8.8.md`.\n\
+      3. Wait for and verify both remote GitHub Actions workflows (`CI` and `Publish\
+      \ to PyPI`) succeed on the exact `v0.8.8` commit SHA.\n4. Verify fresh isolated\
+      \ unpinned `uvx --from larva larva --help` and installed metadata resolve `0.8.8`\
+      \ from production PyPI, and refresh local `~/.codex/plugins/cache/larva/larva-subagent`\
+      \ to `0.8.8`.\n\nBoundary:\n- `devops-engineer` owns runtime/external release\
+      \ execution against `origin` (`https://github.com/Tefx/larva.git`), GitHub Releases\
+      \ (`Tefx/larva`), GitHub Actions (`CI` and `Publish to PyPI`), production PyPI\
+      \ (`larva`), and local `~/.codex/plugins/cache/larva/larva-subagent`.\n- No\
+      \ tracked repository file mutations (`repo_change_policy: runtime_state_only`).\
+      \ No force-push, tag deletion/rewrite, or package yank. Existing credentials\
+      \ via opaque host handoff only; never expose secret values.\n\nAdmit:\n- Consumes\
+      \ integrated `release-0-8-8.prepare` candidate and tracked `scripts/release-notes-0.8.8.md`.\n\
+      - Reconcile local/remote `main`, tags, GitHub Releases, Actions runs, and PyPI\
+      \ state read-only before executing external effects.\n- Both remote workflows\
+      \ (`CI` and `Publish to PyPI`) succeed on the exact `v0.8.8` commit SHA, fresh\
+      \ isolated unpinned `uvx --from larva larva --help` and installed metadata report\
+      \ `0.8.8`, and `~/.codex/plugins/cache/larva/larva-subagent` matches `0.8.8`.\n\
+      \nRecovery:\n- Reconcile whether `main` push, tag `v0.8.8`, GitHub Release `v0.8.8`,\
+      \ or workflow runs already occurred before any retry; consume matching completed\
+      \ effects rather than duplicating. Clean isolated temporary `uvx` cache/tool\
+      \ directories after capturing verification evidence. Stop and report observed\
+      \ state if any non-fast-forward conflict or remote workflow failure occurs."
+    verification: '- Verify `git rev-parse main`, `git rev-parse v0.8.8^{commit}`,
+      and remote `origin/main` / `refs/tags/v0.8.8` match the exact integrated 0.8.8
+      candidate SHA.
+
+      - Verify GitHub Release `v0.8.8` is published with notes from `scripts/release-notes-0.8.8.md`.
+
+      - Verify both GitHub Actions workflows (`CI` and `Publish to PyPI`) complete
+      with `conclusion == "success"` on the exact `v0.8.8` commit SHA.
+
+      - Verify fresh isolated unpinned `uvx --from larva larva --help` exits 0 and
+      installed package metadata resolves `0.8.8` from production PyPI.
+
+      - Verify local `~/.codex/plugins/cache/larva/larva-subagent` is refreshed to
+      `0.8.8` and matches the 0.8.8 plugin files.'
+    refs:
+    - pyproject.toml
+    - src/larva/__init__.py
+    - .github/workflows/ci.yml
+    - .github/workflows/publish.yml
+    - contrib/codex-plugin/.codex-plugin/plugin.json
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    depends_on:
+    - release-0-8-8.prepare
+    agent: devops-engineer
