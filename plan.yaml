@@ -150461,7 +150461,7 @@ phases:
 - id: codex_subagent_panel_layout_and_prompt_fix
   name: Codex Larva Subagent Panel Unified Layout, Full Task Prompt, and Resource
     URI Cache Busting
-  status: in_progress
+  status: done
   gate: Terminal gate codex-subagent-panel-layout-prompt.acceptance-gate verifies
     full multiline task_prompt exposure and rendering, always-visible master+inspector
     side-panel workbench with unified high-density All/Timeline/Result/Task & Session
@@ -150614,7 +150614,7 @@ phases:
   - id: codex-subagent-panel-layout-prompt.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent panel unified
       layout, full task prompt, and -v2 resource URIs
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `codex_subagent_panel_layout_and_prompt_fix`\
       \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
@@ -150665,3 +150665,48 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-17T17:49:23.549361Z'
+    done_at: '2026-10-17T17:54:25.273648+00:00'
+    evidence: 'Artifact:
+
+      - Gate target: git:95f4141d0edf742b9b35e4c85baf2b077fdf8159 (producer commit
+      0a89d6121fbe569cb9e5c67482365ed1c8aa770a)
+
+      - Reviewer: gate-reviewer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T15-56-50-224Z_01a14a94-86af-7021-a5ef-8e0aa29046e5.jsonl)
+
+      - Gate report schema: gate.report.v2 (status=PASS, review_kind=PHASE_GATE, review_mode=FULL,
+      evidence_disposition=POSITIVE_GATE_EVIDENCE)
+
+
+      Verification:
+
+      - Run: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      <binding.json> <report.json> -> exit 0 (valid=true, binding_checked=true, evidence_disposition=POSITIVE_GATE_EVIDENCE)
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed)
+
+      - Run: PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider
+      tests/shell/test_codex_plugin_contract.py -> exit 0 (3 passed)
+
+      - Probe: Headless Chrome layout verification on real resources/read panel-v2
+      and widget-v2 HTML -> confirmed full multiline task_prompt rendering and expand/collapse/copy
+      controls, All overview ordering (Task Prompt -> Timeline -> Result -> compact
+      4-column Session Metadata), always-visible stacked selector (148px) + inspector
+      below 680px and 2-column grid at >= 680px, widget-only display mode toggle,
+      and panel-v2/widget-v2 + legacy URI compatibility.
+
+      - Run: git diff --check -> exit 0
+
+
+      Gaps:
+
+      - Automated checks and headless Chrome probes verify the shipped HTML/CSS/JS
+      and real stdio MCP server; live interactive rendering inside the Codex Desktop
+      GUI window is not exercised by automated tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
