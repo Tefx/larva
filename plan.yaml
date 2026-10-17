@@ -150713,7 +150713,7 @@ phases:
 - id: codex_persona_mention_preload_and_poll_fix
   name: Codex @larva Persona Mention Preloading & Completed Inline Widget Polling
     Quiescence
-  status: pending
+  status: in_progress
   gate: 'Terminal gate codex-persona-mention-preload.acceptance-gate verifies Codex
     Desktop mention catalog preloading (preload: true on search_mentions with initialize
     capabilities omitting openai/mentions so pii(e) honors preload), 10s in-memory
@@ -150732,7 +150732,7 @@ phases:
   - id: codex-persona-mention-preload.deliver
     name: Enable Codex mention catalog preload, cache persona catalog, stop idle polling
       on completed inline widgets, and bump -v3 URIs
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150819,6 +150819,8 @@ phases:
     - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
     - tests/shell/test_codex_plugin_contract.py
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-10-17T18:58:32.825821Z'
   - id: codex-persona-mention-preload.acceptance-gate
     name: Gate review and integrated acceptance for Codex @larva persona mention preload
       and inline widget polling quiescence
