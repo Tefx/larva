@@ -150713,7 +150713,7 @@ phases:
 - id: codex_persona_mention_preload_and_poll_fix
   name: Codex @larva Persona Mention Preloading & Completed Inline Widget Polling
     Quiescence
-  status: in_progress
+  status: done
   gate: 'Terminal gate codex-persona-mention-preload.acceptance-gate verifies Codex
     Desktop mention catalog preloading (preload: true on search_mentions with initialize
     capabilities omitting openai/mentions so pii(e) honors preload), 10s in-memory
@@ -150865,7 +150865,7 @@ phases:
   - id: codex-persona-mention-preload.acceptance-gate
     name: Gate review and integrated acceptance for Codex @larva persona mention preload
       and inline widget polling quiescence
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `codex_persona_mention_preload_and_poll_fix`\
       \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
@@ -150911,3 +150911,41 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-17T19:06:40.400150Z'
+    done_at: '2026-10-17T19:11:39.059764+00:00'
+    evidence: 'Artifact:
+
+      - Gate target: git:b99a8a46ad0859326e3081c52cadd291454bb256 (producer commit
+      7797d367307a64350d3c50b1dc1da45da1a5282c)
+
+      - Reviewer: gate-reviewer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T15-56-50-224Z_01a14a94-86af-7021-a5ef-8e0aa29046e5.jsonl)
+
+      - Gate report schema: gate.report.v2 (status=PASS, review_kind=PHASE_GATE, review_mode=FULL,
+      evidence_disposition=POSITIVE_GATE_EVIDENCE)
+
+
+      Verification:
+
+      - Run: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      <binding.json> <report.json> -> exit 0 (valid=true, binding_checked=true, evidence_disposition=POSITIVE_GATE_EVIDENCE)
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed)
+
+      - Run: PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider
+      tests/shell/test_codex_plugin_contract.py -> exit 0 (3 passed)
+
+      - Run: git diff --check -> exit 0
+
+
+      Gaps:
+
+      - Automated checks cover the real stdio MCP server, child RPC stream, and shipped
+      UI script via a controlled postMessage bridge/minimal DOM; interactive Codex
+      Desktop GUI rendering is not exercised by automated tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
