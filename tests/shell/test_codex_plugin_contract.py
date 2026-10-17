@@ -42,11 +42,12 @@ def test_manifest_and_mcp_config() -> None:
     manifest = json.loads((PLUGIN / ".codex-plugin/plugin.json").read_text())
     jsonschema.validate(manifest, {
         "type": "object",
-        "required": ["name", "version", "description", "skills", "mcpServers", "interface"],
+        "required": ["name", "version", "description", "skills", "mcpServers", "interface", "keywords"],
         "properties": {
             "name": {"const": "larva-subagent"},
-            "version": {"const": "0.8.8"},
+            "version": {"const": "0.8.9"},
             "description": {"type": "string", "minLength": 1},
+            "keywords": {"const": ["larva", "persona", "subagent", "pi"]},
             "skills": {"const": "./skills/"},
             "mcpServers": {"const": "./.mcp.json"},
             "interface": {
@@ -133,6 +134,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
         }},
         {"jsonrpc": "2.0", "method": "notifications/initialized"},
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        {"jsonrpc": "2.0", "id": 3, "method": "resources/templates/list"},
     ]
     # Match Codex's regular-file-only cache copy, without the source sibling.
     cached = tmp_path / "cache" / "larva-subagent"
@@ -158,13 +160,31 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
             process.communicate()
     assert process.returncode == 0, stderr
     replies = [json.loads(line) for line in stdout.splitlines()]
-    assert len(replies) == 2, stdout
+    assert len(replies) == 3, stdout
     by_id = {reply["id"]: reply for reply in replies}
     assert by_id[1]["result"]["protocolVersion"] == "2024-11-05"
-    assert by_id[1]["result"]["capabilities"] == {"tools": {}}
+    assert by_id[1]["result"]["capabilities"] == {
+        "tools": {}, "resources": {},
+        "extensions": {"openai/mentions": {"searchTool": "search_mentions"}},
+        "experimental": {"openai/mentions": {"searchTool": "search_mentions"}},
+    }
+    assert by_id[1]["result"]["serverInfo"]["title"] == "Larva Subagents"
+    assert by_id[3]["result"] == {"resourceTemplates": [{
+        "uriTemplate": "larva://personas/{persona_id}", "name": "larva-persona",
+        "title": "Larva Persona",
+        "description": "Resolved Larva persona metadata and delegation guidance.",
+        "mimeType": "text/markdown",
+    }]}
     assert by_id[1]["result"]["serverInfo"]["name"] == "larva-pi-subagent"
     definitions = by_id[2]["result"]["tools"]
-    assert len(definitions) == 9
+    assert len(definitions) == 10
+    mention_tool = next(tool for tool in definitions if tool["name"] == "search_mentions")
+    assert mention_tool["annotations"] == {
+        "readOnlyHint": True, "destructiveHint": False, "openWorldHint": False,
+    }
+    assert mention_tool["_meta"] == {
+        "openai/extensions": {"mentions/search": {}}, "ui": {"visibility": ["app"]},
+    }
     # tools/list is the deployed, harness-neutral description contract.
     descriptions = {tool["name"]: tool["description"] for tool in definitions}
     for description in descriptions.values():
@@ -175,7 +195,8 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
         assert ".jsonl" in descriptions[name]
         assert "task_id" in descriptions[name]
     schemas = {tool["name"]: tool["inputSchema"] for tool in definitions}
-    assert set(schemas) == TOOLS
+    assert set(schemas) == TOOLS | {"search_mentions"}
+    assert {tool["name"] for tool in definitions if tool.get("_meta", {}).get("ui", {}).get("visibility") != ["app"]} == TOOLS
 
     skill = (PLUGIN / "skills/larva-subagent/SKILL.md").read_text()
     # These text checks pin the installed guidance, not model routing judgment.

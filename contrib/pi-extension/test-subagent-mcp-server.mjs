@@ -91,10 +91,35 @@ try {
   await cp(join(packageDir, 'subagent-mcp-server.mjs'), join(idleDir, 'subagent-mcp-server.mjs'));
   assert.deepEqual(await readdir(idleDir), ['subagent-mcp-server.mjs']);
   const idle = client({}, idleDir);
-  assert.equal((await idle.request('initialize')).result.serverInfo.name, 'larva-pi-subagent');
+  const initialized = (await idle.request('initialize')).result;
+  assert.deepEqual(initialized.serverInfo, { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.9' });
+  assert.deepEqual(initialized.capabilities, {
+    tools: {}, resources: {},
+    extensions: { 'openai/mentions': { searchTool: 'search_mentions' } },
+    experimental: { 'openai/mentions': { searchTool: 'search_mentions' } },
+  });
+  assert.equal(initialized.instructions, 'When the user mentions @larva:<persona_id>, @persona:<persona_id>, or a larva://personas/<persona_id> resource (including [@larva:<persona_id>](mcp-resource://...)), delegate the requested task to larva_subagent with persona_id="<persona_id>" and wait_for_completion=true (or false for parallel fan-out). When @Larva Subagents is mentioned without an exact persona_id, call larva_personas first.');
+  assert.ok(initialized.instructions.length < 512);
+  for (const protocolVersion of ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25', '2026-07-28', 'unsupported']) {
+    assert.equal((await idle.request('initialize', { protocolVersion })).result.protocolVersion, protocolVersion === 'unsupported' ? '2024-11-05' : protocolVersion);
+  }
+  assert.deepEqual((await idle.request('resources/templates/list')).result, {
+    resourceTemplates: [{ uriTemplate: 'larva://personas/{persona_id}', name: 'larva-persona', title: 'Larva Persona', description: 'Resolved Larva persona metadata and delegation guidance.', mimeType: 'text/markdown' }],
+  });
+  for (const uri of [undefined, 42, 'https://example.com/child', 'larva://personas/', 'larva://personas/child?x', 'larva://personas/%ZZ']) {
+    assert.deepEqual((await idle.request('resources/read', { uri })).error, { code: -32602, message: 'Invalid persona resource URI.' });
+  }
   idle.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
   assert.deepEqual((await idle.request('ping')).result, {});
-  assert.equal((await idle.request('tools/list')).result.tools.length, 9);
+  const listedTools = (await idle.request('tools/list')).result.tools;
+  assert.equal(listedTools.length, 10);
+  const mentionsTool = listedTools[9];
+  assert.equal(mentionsTool.name, 'search_mentions');
+  assert.deepEqual(mentionsTool.annotations, { readOnlyHint: true, destructiveHint: false, openWorldHint: false });
+  assert.deepEqual(mentionsTool._meta, { 'openai/extensions': { 'mentions/search': {} }, ui: { visibility: ['app'] } });
+  for (const args of [{}, { query: 1 }, { query: '', extra: true }]) {
+    assert.equal((await idle.tool('search_mentions', args)).isError, true);
+  }
   for (const [id, framed] of [[{}, false], [[], true]]) {
     assert.deepEqual(await idle.request('ping', {}, framed, id), {
       jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' },
@@ -300,7 +325,7 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.equal(existsSync(join(cachedPlugin, '../pi-extension')), false);
   const cached = client({}, cachedPlugin);
   assert.equal((await cached.request('initialize')).result.serverInfo.name, 'larva-pi-subagent');
-  assert.equal((await cached.request('tools/list')).result.tools.length, 9);
+  assert.equal((await cached.request('tools/list')).result.tools.length, 10);
   const cachedRun = await cached.tool('larva_subagent', {persona_id:'child',task:'cached plugin',wait_for_completion:true});
   assert.equal(cachedRun.isError, false, JSON.stringify(cachedRun));
   assert.equal(Object.values(cachedRun.details.terminal_outputs)[0].result_text, 'output parent=');
@@ -312,7 +337,24 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.deepEqual((await c.request('ping', {}, true)).result, {});
   const listed = (await c.request('tools/list')).result.tools;
   const expected = ['larva_personas','larva_subagent','larva_subagent_wait','larva_subagent_select','larva_subagent_status','larva_subagent_events','larva_subagent_sessions','larva_subagent_cancel','larva_subagent_activity'];
-  assert.deepEqual(listed.map(tool => tool.name), expected);
+  assert.deepEqual(listed.map(tool => tool.name), [...expected, 'search_mentions']);
+  const childResource = { uri: 'larva://personas/child', name: 'child', title: '@larva:child', description: 'Fixture child', mimeType: 'text/markdown' };
+  const otherResource = { ...childResource, uri: 'larva://personas/other', name: 'other', title: '@larva:other', description: 'Fixture other' };
+  const allMentions = await c.tool('search_mentions', { query: '' });
+  assert.equal(allMentions.isError, false);
+  assert.deepEqual(allMentions.content, []);
+  assert.deepEqual(allMentions.structuredContent, { items: [childResource, otherResource].map(resource => ({ type: 'resource_link', ...resource })) });
+  for (const query of ['child', '@larva:child', ' @LARVA:child ', '@persona:child', 'larva:child', 'persona:child', '@child']) {
+    assert.deepEqual((await c.tool('search_mentions', { query })).structuredContent.items, [{ type: 'resource_link', ...childResource }]);
+  }
+  assert.deepEqual((await c.tool('search_mentions', { query: 'no-match' })).structuredContent.items, []);
+  assert.deepEqual((await c.request('resources/list')).result, { resources: [childResource, otherResource] });
+  for (const uri of ['larva://personas/child', 'larva://personas/%63hild']) {
+    assert.deepEqual((await c.request('resources/read', { uri })).result, { contents: [{
+      uri, mimeType: 'text/markdown',
+      text: '# @larva:child\n\nFixture child\n\n- **persona_id**: `child`\n- **model**: `fixture/model`\n- **delegation**: Call `larva_subagent` with `persona_id: "child"`.\n',
+    }] });
+  }
   const registrySource = await readFile(join(packageDir, '../../src/larva/shell/mcp_contract.py'), 'utf8');
   const registryNames = [...registrySource.matchAll(/"name"\s*:\s*"([^"]+)"/g)].map(match => match[1]);
   assert.ok(registryNames.length > 0);

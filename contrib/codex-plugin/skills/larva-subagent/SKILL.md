@@ -10,7 +10,9 @@ description: Discover Larva personas and delegate self-contained work to Pi chil
 1. **Default to Codex native subagents:** Use Codex's built-in `spawn_agent`,
    `wait`, `send_input`, and `close_agent` for ordinary subagent delegation.
 2. **Opt-in / capability-driven `larva_subagent`:** Use it only when the user
-   explicitly requests `larva` / `larva_subagent` / `pi` subagents, or when
+   explicitly requests `larva` / `larva_subagent` / `pi` subagents, uses
+   `@larva` / `@larva:<persona_id>` / `@persona:<persona_id>` /
+   `larva://personas/<persona_id>` composer mentions, or when
    the task requires Larva-specific capabilities: `model-map.json` cross-provider
    routing, persistent `.jsonl` child session resume across turns/processes,
    `can_spawn` parent whitelist enforcement, or `larva_subagent_activity`
@@ -26,8 +28,15 @@ permissions, and any parent persona's `can_spawn` policy.
 
 ## Discover and delegate
 
-Call `larva_personas` with a task-relevant query; select a fitting persona from
-the returned candidates. Give `larva_subagent` its exact `persona_id`, a concise
+When the user selects a persona via `@larva` + `Tab` in the Codex composer,
+the inserted mention is
+`[@larva:<persona_id>](mcp-resource://larva-pi-subagent/larva%3A%2F%2Fpersonas%2F<persona_id>)`.
+That selection, a `larva://personas/<persona_id>` resource, or a written
+`@larva:<persona_id>` / `@persona:<persona_id>` supplies the exact `persona_id`:
+call `larva_subagent` directly with that ID without calling `larva_personas` first.
+When no exact `persona_id` is given (including `@Larva Subagents` alone), call
+`larva_personas` first with a task-relevant query and select a fitting returned
+candidate. Give `larva_subagent` its exact `persona_id`, a concise
 route rationale, absolute working paths, requested outcome, allowed effects,
 exclusions, and completion checks. Do not invent persona IDs.
 

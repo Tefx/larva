@@ -46,6 +46,19 @@ const definitions = [
   ['larva_subagent_activity', 'Read recorded tool activity from an exact child session JSONL path.', { task_id: string, session_path: string, limit: integer(1, 20), cursor: string, tool_name: string, since_timestamp: string, until_timestamp: string, tool_call_id: string, disambiguation_index: integer(0, Number.MAX_SAFE_INTEGER), entry_id: string, segment_part: { enum: ['args', 'result'] }, result_index: integer(0, Number.MAX_SAFE_INTEGER), offset: integer(0, Number.MAX_SAFE_INTEGER), length: integer(1, 4000), source_version: string }],
 ];
 const tools = definitions.map(([name, description, properties, required = []]) => ({ name, description, inputSchema: { type: 'object', properties, required, additionalProperties: false } }));
+tools.push({
+  name: 'search_mentions',
+  title: 'Search Larva personas',
+  description: 'Search registered Larva personas for composer @-mention completion.',
+  inputSchema: {
+    type: 'object',
+    properties: { query: { type: 'string' } },
+    required: ['query'],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  _meta: { 'openai/extensions': { 'mentions/search': {} }, ui: { visibility: ['app'] } },
+});
 const shutdownController = new AbortController();
 const disconnected = new Promise(resolve => shutdownController.signal.addEventListener('abort', resolve, { once: true }));
 const home = process.env.HOME || homedir();
@@ -92,6 +105,18 @@ async function callTool(name, args) {
   const schema = tool.inputSchema;
   if (schema.required.some(key => !Object.hasOwn(args, key)) || Object.entries(args).some(([key, value]) => !Object.hasOwn(schema.properties, key) || !validValue(value, schema.properties[key]))) return badInput('Arguments do not match the tool input schema.');
   const runtime = await getRuntime();
+  if (name === 'search_mentions') {
+    const normalizedQuery = args.query.trim().replace(/^(?:@?(?:larva|persona):|@)/i, '').trim();
+    const items = runtime.rankPersonasForSelector(await runtime.listPersonas(ctx), normalizedQuery).slice(0, 30).map(persona => ({
+      type: 'resource_link',
+      uri: `larva://personas/${encodeURIComponent(persona.id)}`,
+      name: persona.id,
+      title: `@larva:${persona.id}`,
+      ...(persona.description || persona.model ? { description: persona.description ?? persona.model } : {}),
+      mimeType: 'text/markdown',
+    }));
+    return { content: [], details: { items }, isError: false };
+  }
   if (name === 'larva_subagent') {
     let release;
     const slot = { payload: null, delivered: new Promise(resolve => { release = resolve; }) };
@@ -146,8 +171,57 @@ async function dispatch(message, framed) {
   try {
     let result;
     switch (message.method) {
-      case 'initialize': result = { protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'larva-pi-subagent', version: '0.8.8' } }; break;
+      case 'initialize':
+        result = {
+          protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25', '2026-07-28'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05',
+          capabilities: {
+            tools: {}, resources: {},
+            extensions: { 'openai/mentions': { searchTool: 'search_mentions' } },
+            experimental: { 'openai/mentions': { searchTool: 'search_mentions' } },
+          },
+          serverInfo: { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.9' },
+          instructions: 'When the user mentions @larva:<persona_id>, @persona:<persona_id>, or a larva://personas/<persona_id> resource (including [@larva:<persona_id>](mcp-resource://...)), delegate the requested task to larva_subagent with persona_id="<persona_id>" and wait_for_completion=true (or false for parallel fan-out). When @Larva Subagents is mentioned without an exact persona_id, call larva_personas first.',
+        };
+        break;
       case 'ping': result = {}; break;
+      case 'resources/templates/list':
+        result = {
+          resourceTemplates: [{
+            uriTemplate: 'larva://personas/{persona_id}',
+            name: 'larva-persona', title: 'Larva Persona',
+            description: 'Resolved Larva persona metadata and delegation guidance.',
+            mimeType: 'text/markdown',
+          }],
+        };
+        break;
+      case 'resources/list': {
+        const runtime = await getRuntime();
+        const personas = await runtime.listPersonas(ctx);
+        result = { resources: personas.map(persona => ({
+          uri: `larva://personas/${encodeURIComponent(persona.id)}`,
+          name: persona.id, title: `@larva:${persona.id}`,
+          ...(persona.description || persona.model ? { description: persona.description ?? persona.model } : {}),
+          mimeType: 'text/markdown',
+        })) };
+        break;
+      }
+      case 'resources/read': {
+        const uri = message.params?.uri;
+        const match = typeof uri === 'string' && /^larva:\/\/personas\/([^/?#]+)$/.exec(uri);
+        if (!match) throw { rpcCode: -32602, message: 'Invalid persona resource URI.' };
+        let personaId;
+        try { personaId = decodeURIComponent(match[1]); }
+        catch { throw { rpcCode: -32602, message: 'Invalid persona resource URI.' }; }
+        const runtime = await getRuntime();
+        let spec;
+        try { spec = await runtime.resolvePersona(personaId, ctx); }
+        catch (error) { throw { rpcCode: -32602, message: error.message ?? String(error) }; }
+        result = { contents: [{
+          uri, mimeType: 'text/markdown',
+          text: `# @larva:${spec.id}\n\n${spec.description ?? ''}\n\n- **persona_id**: \`${spec.id}\`\n- **model**: \`${spec.model}\`\n- **delegation**: Call \`larva_subagent\` with \`persona_id: "${spec.id}"\`.\n`,
+        }] };
+        break;
+      }
       case 'tools/list': result = { tools }; break;
       case 'tools/call': result = await callTool(message.params?.name, message.params?.arguments === undefined ? {} : message.params.arguments); break;
       default: throw Object.assign(new Error('Method not found'), { rpcCode: -32601 });

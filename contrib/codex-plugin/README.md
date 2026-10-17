@@ -180,6 +180,20 @@ do not assume other hosts implement those keys.
 
 ## Tool usage and runtime lifecycle
 
+In the Codex composer, type `@larva` → `Tab` → select `@larva:<persona_id>`.
+The `openai/mentions` extension advertises `search_mentions`, a read-only,
+app-only autocomplete tool (`ui.visibility: ["app"]`) alongside the nine
+model-facing runtime tools below. It returns up to 30 ranked persona resource
+links; an empty query lists available candidates. The server exposes
+`larva://personas/{persona_id}` MCP resources through `resources/list`,
+`resources/read`, and `resources/templates/list`. Resource text includes the
+resolved persona ID, model, description, and delegation guidance.
+
+An exact selected or written `@larva:<persona_id>` / `@persona:<persona_id>`
+mention supplies the ID for a direct `larva_subagent` call. Without an exact ID,
+including `@Larva Subagents` alone, discover candidates with `larva_personas`
+first. Server `instructions` carry this guidance for MCP hosts.
+
 | Tool | Use |
 | --- | --- |
 | `larva_personas` | Discover resolved persona candidates |
@@ -192,8 +206,9 @@ do not assume other hosts implement those keys.
 | `larva_subagent_cancel` | Cancel one exact task handle |
 | `larva_subagent_activity` | Inspect recorded tool calls/results from a session path |
 
-The server loads `larva.ts` only after a `tools/call` passes tool lookup and
-input schema validation. Initialization, ping, `tools/list` and rejected calls
+The server loads `larva.ts` when a `tools/call` passes tool lookup and input
+schema validation, or when listing/reading persona resources. Initialization,
+ping, `tools/list`, `resources/templates/list` and schema-rejected calls
 leave the runtime unloaded (about 42 MB idle RSS in an observed local run;
 platform and Node build affect this figure). Idle EOF exits without importing
 it; after loading starts, shutdown awaits `resetExtensionUI("mcp_shutdown")` to reap children and capsules.

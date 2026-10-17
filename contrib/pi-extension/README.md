@@ -1353,11 +1353,21 @@ an MCP client's stdio server configuration. Use Node with native TypeScript
 support and `node:module.registerHooks` (the checkout tests use Node 26).
 The headless host needs neither local `node_modules` nor an additional MCP npm
 package; Pi and the Python Larva CLI must be installed separately.
-This server exposes nine tools:
+This server exposes nine model-facing runtime tools:
 `larva_personas`, `larva_subagent`, `larva_subagent_wait`,
 `larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
 `larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
-Their names do not overlap the Python registry MCP server's tools; both servers
+It also advertises `openai/mentions` with the read-only, app-only
+`search_mentions` tool (`ui.visibility: ["app"]`). In the Codex composer, type
+`@larva` → `Tab` → select `@larva:<persona_id>` for persona autocomplete.
+Search returns up to 30 ranked `larva://personas/{persona_id}` resource links;
+an empty query lists candidates. MCP `resources/list`, `resources/read`, and
+`resources/templates/list` expose persona metadata and delegation guidance.
+Server `instructions` direct hosts to delegate exact `@larva:<persona_id>` /
+`@persona:<persona_id>` mentions or persona resources directly to
+`larva_subagent`; without an exact ID, call `larva_personas` first.
+
+The runtime tool names do not overlap the Python registry MCP server's tools; both servers
 can be configured together. JSON-RPC supports newline-delimited JSON and legacy
 `Content-Length` frames; responses use the request's framing. Stdout carries only
 protocol messages.
@@ -1393,11 +1403,11 @@ window; resumed runs replace the prior output for that handle. These outputs
 belong to this MCP server process and disappear on restart. Activity inspection
 can still read historical session files.
 
-The server loads `larva.ts` on demand after the first `tools/call` passes tool
-lookup and input schema validation (about 42 MB idle RSS observed locally,
-varying by platform and Node build). Initialization, ping, `tools/list` and
-rejected calls do not load the runtime; sessions with no validated tool call exit on EOF without
-loading it. Once loading has started, closing client stdin, SIGTERM or SIGINT
+The server loads `larva.ts` on demand when a `tools/call` passes tool lookup
+and input schema validation, or when listing/reading persona resources (about 42 MB idle RSS observed locally,
+varying by platform and Node build). Initialization, ping, `tools/list`,
+`resources/templates/list` and schema-rejected calls do not load the runtime;
+sessions with no runtime-dependent request exit on EOF without loading it. Once loading has started, closing client stdin, SIGTERM or SIGINT
 awaits the runtime and calls `resetExtensionUI("mcp_shutdown")`
 to cancel active runs, reap child processes and remove their private runtime
 capsules. Session JSONL files and final output artifacts remain available at their
