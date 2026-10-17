@@ -150275,24 +150275,30 @@ phases:
     status: pending
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `codex_subagent_panel_uiux_redesign`\
-      \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
-      \ read-only (`no_repo_change`). Inspects integrated code/test/doc diffs, byte\
-      \ parity across `contrib/pi-extension/` and `contrib/codex-plugin/`, and verification\
-      \ evidence from `codex-subagent-panel-uiux.deliver`.\n\nAdmit:\n- Included producer\
-      \ outcome: `codex-subagent-panel-uiux.deliver` (building on `codex_subagent_activity_panel`).\n\
+      \ over the integrated candidate commit (re-evaluating in Delta mode against\
+      \ the frozen finding ledger `F1`, `F2` and the repair diff).\n\nBoundary:\n\
+      - `gate-reviewer` is strictly read-only (`no_repo_change`). Inspects integrated\
+      \ code/test/doc diffs, byte parity across `contrib/pi-extension/` and `contrib/codex-plugin/`,\
+      \ and verification evidence from `codex-subagent-panel-uiux.deliver` and `codex-subagent-panel-uiux.repair`.\n\
+      \nAdmit:\n- Included producer outcomes: `codex-subagent-panel-uiux.deliver`\
+      \ and `codex-subagent-panel-uiux.repair` (building on `codex_subagent_activity_panel`).\n\
       - Verify:\n  1. `ui://larva-pi-subagent/panel` and `ui://larva-pi-subagent/widget`\
       \ adopt the `@openai/mcp-extensions` and Codex Desktop CSS token hierarchy (`--color-background-*`,\
       \ `--color-text-*`, `--color-border-*`, `--font-sans`, `--font-mono`, `--border-radius-*`,\
       \ `light-dark(...)`, `safeAreaInsets`), tabular numerals (`tabular-nums`), `{model}\
       \ · {thinking}` labels, human-readable phase labels, and zero external network\
-      \ assets (`connect-src 'none'` safe).\n  2. Strict form-factor separation holds:\n\
-      \     - Inline widget (`surface === \"widget\"` and `mode === \"inline\"`) starts\
-      \ collapsed by default (rendering a compact 2-line single-run card or compact\
-      \ multi-run summary without expanding tool lists or result bodies by default)\
-      \ and reveals a bounded detail drawer (`Activity`, `Result`, `Info`) with `ui/notifications/size-changed`\
-      \ only upon user disclosure (`Details` / row click).\n     - Panel / Fullscreen\
-      \ (`surface === \"panel\"` or `mode === \"fullscreen\"`) renders the Codex Side-Panel\
-      \ Workbench with `Active · {count}` and `Done · {count}` sections, responsive\
+      \ assets (`connect-src 'none'` safe).\n  2. Strict form-factor separation holds\
+      \ (closing `F1` and `F2` with zero diff regressions):\n     - Inline widget\
+      \ (`surface === \"widget\"` and `mode === \"inline\"`) starts collapsed by default\
+      \ (rendering a compact 2-line single-run card or compact multi-run summary without\
+      \ expanding tool lists or result bodies by default) and reveals a finite-height\
+      \ bounded detail drawer (`.drawer` / `.tab-body` constrained with `max-height`\
+      \ and `overflow-y: auto` across `Activity`/`Timeline`, `Result`, and `Info`/`Task\
+      \ & Session`) with `ui/notifications/size-changed` only upon user disclosure\
+      \ (`Details` / row click).\n     - Panel / Fullscreen (`surface === \"panel\"\
+      ` or `mode === \"fullscreen\"`) always renders the Codex Side-Panel Workbench\
+      \ (`.workbench` with `Active · {count}` and `Done · {count}` sections, even\
+      \ if `ui://larva-pi-subagent/panel` receives `mode === \"inline\"`), responsive\
       \ narrow (`< 620px` list-to-detail with `← Back to subagents`) and wide (`>=\
       \ 620px` split workbench) navigation, and the structured Detail Inspector (`Timeline`,\
       \ `Result`, `Task & Session`) with collapsible 1-line tool rows and no raw metadata\
@@ -150323,4 +150329,64 @@ phases:
     - tests/shell/test_codex_plugin_contract.py
     depends_on:
     - codex-subagent-panel-uiux.deliver
+    - codex-subagent-panel-uiux.repair
     agent: gate-reviewer
+  - id: codex-subagent-panel-uiux.repair
+    name: Repair inline detail drawer height bound (F1) and panel surface workbench
+      invariant (F2)
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\nClose the frozen gate finding ledger (`F1`, `F2`) on `REQ-INLINE-VS-PANEL-FORM-FACTOR-SEPARATION`:\n\
+      1. `F1` — Bound the disclosed inline detail drawer height (`contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ & `contrib/codex-plugin/subagent-mcp-server.mjs`):\n   - Constrain `.drawer`\
+      \ (or its scrolling `.tab-body` region) with a finite `max-height` (e.g., `max-height:\
+      \ 340px; overflow-y: auto`) across `Timeline` (`Activity`), `Result`, and `Task\
+      \ & Session` (`Info`) so a 25-tool run keeps the inline drawer within the finite\
+      \ height bound while allowing scroll access to every row and preserving `ui/notifications/size-changed`\
+      \ notifications.\n2. `F2` — Preserve `.workbench` for `ui://larva-pi-subagent/panel`\
+      \ even when the host accepts or switches to `mode === \"inline\"` (`contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ & `contrib/codex-plugin/subagent-mcp-server.mjs`):\n   - Define `const isInlineWidget\
+      \ = surface === 'widget' && mode === 'inline';` (and use it in `renderContent`,\
+      \ `inspector`, and `ResizeObserver`) so `ui://larva-pi-subagent/panel` (`surface\
+      \ === 'panel'`) always preserves the `.workbench` layout (`Active` / `Done`\
+      \ sections and Detail Inspector) regardless of `mode` (satisfying `surface ===\
+      \ \"panel\" || mode === \"fullscreen\"`), while `ui://larva-pi-subagent/widget`\
+      \ (`surface === 'widget'`) renders the collapsed-by-default inline card when\
+      \ `mode === 'inline'` and the `.workbench` when `mode === 'fullscreen'`.\n3.\
+      \ Parity and Contract Tests:\n   - Add regression assertions in `contrib/pi-extension/test-subagent-mcp-server.mjs`\
+      \ verifying both `F1` (finite `max-height` / `overflow-y: auto` bound on the\
+      \ disclosed inline drawer across tabs for a 25-tool run) and `F2` (`ui://larva-pi-subagent/panel`\
+      \ preserves `.workbench` with `Active` / `Done` sections when `mode === 'inline'`,\
+      \ while `ui://larva-pi-subagent/widget` renders the inline card when `mode ===\
+      \ 'inline'` and `.workbench` when `mode === 'fullscreen'`).\n   - Keep all 5\
+      \ runtime files in `contrib/codex-plugin/` byte-identical with `contrib/pi-extension/`.\n\
+      \nBoundary:\n- `frontend-engineer` owns the reactive repair, byte-parity synchronization\
+      \ between `contrib/pi-extension/` and `contrib/codex-plugin/`, and Node/Python\
+      \ contract tests within `allowed_paths`.\n- Do not modify `src/larva/core/**`\
+      \ or `src/larva/shell/mcp*.py`, and do not mutate user `~/.codex` or `~/.pi`\
+      \ state during tests.\n\nAdmit:\n- `node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`\
+      \ pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile failing assertions\
+      \ within `allowed_paths`; reap any spawned child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - codex-subagent-panel-uiux.deliver
+    agent: frontend-engineer
