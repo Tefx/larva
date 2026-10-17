@@ -150334,7 +150334,7 @@ phases:
   - id: codex-subagent-panel-uiux.repair
     name: Repair inline detail drawer height bound (F1) and panel surface workbench
       invariant (F2)
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150390,3 +150390,5 @@ phases:
     depends_on:
     - codex-subagent-panel-uiux.deliver
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-10-17T16:04:23.608353Z'
