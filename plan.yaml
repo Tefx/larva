@@ -149727,7 +149727,7 @@ phases:
   - id: release-0-8-8.publish-and-verify
     name: Fast-forward main, publish Larva 0.8.8, and verify remote CI, PyPI uvx,
       and Codex plugin cache
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: runtime_state_only\n\
       scope:\n  allowed_paths: []\n  blocked_paths:\n    - plan.yaml\n    - artifacts/**\n\
       \nDeliver:\n1. Fast-forward/rebase `main` onto the integrated 0.8.8 release\
@@ -149779,3 +149779,5 @@ phases:
     depends_on:
     - release-0-8-8.prepare
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-17T05:19:23.120982Z'
