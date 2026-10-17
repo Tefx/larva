@@ -149826,7 +149826,7 @@ phases:
 - id: codex_subagent_activity_panel
   name: Codex Larva Subagent Activity Panel (Thread Side-Panel MCP App + Inline Tool-Call
     Card)
-  status: in_progress
+  status: done
   gate: Terminal gate codex-subagent-activity-panel.acceptance-gate verifies live
     child stream telemetry in LarvaSubagentRunSnapshot, the larva_subagent_panel entrypoint
     tool and ui://larva-pi-subagent/panel + ui://larva-pi-subagent/widget MCP App
@@ -149997,7 +149997,7 @@ phases:
   - id: codex-subagent-activity-panel.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent activity
       panel
-    status: claimed
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `codex_subagent_activity_panel`\
       \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
@@ -150052,3 +150052,42 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-10-17T15:01:13.501323Z'
+    done_at: '2026-10-17T15:07:04.338263+00:00'
+    evidence: 'Artifact:
+
+      - Gate target: git:0f1ef0985e873dbd518aeff5002ea5ca06f78d58 (producer commit
+      f760acad70f0bcc6e93405530f22d678c0c42a85)
+
+      - Reviewer: gate-reviewer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T15-02-03-899Z_01a14a62-617a-771e-97b6-68d19e3a225e.jsonl)
+
+      - Gate report schema: gate.report.v2 (status=PASS, review_kind=PHASE_GATE, review_mode=FULL,
+      evidence_disposition=POSITIVE_GATE_EVIDENCE)
+
+
+      Verification:
+
+      - Run: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate --binding
+      <binding.json> <report.json> -> exit 0 (valid=true, binding_checked=true, evidence_disposition=POSITIVE_GATE_EVIDENCE)
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed)
+
+      - Run: PYTHONDONTWRITEBYTECODE=1 /Users/tefx/Projects/larva/.venv/bin/python
+      -m pytest -q -p no:cacheprovider tests/shell/test_codex_plugin_contract.py ->
+      exit 0 (3 passed)
+
+      - Run: git diff --check -> exit 0
+
+
+      Gaps:
+
+      - Automated checks cover the real stdio MCP server, child RPC stream, and shipped
+      UI script via a controlled postMessage bridge/minimal DOM; interactive Codex
+      Desktop GUI rendering is not exercised by automated tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
