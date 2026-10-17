@@ -150093,7 +150093,7 @@ phases:
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
 - id: codex_subagent_panel_uiux_redesign
   name: Codex Larva Subagent Activity Panel & Inline Widget UI/UX Redesign
-  status: pending
+  status: in_progress
   gate: Terminal gate codex-subagent-panel-uiux.acceptance-gate verifies Codex-native
     visual design tokens, strict form-factor separation between the collapsed-by-default
     inline widget (ui://larva-pi-subagent/widget) and the Active/Done side-panel workbench
@@ -150113,7 +150113,7 @@ phases:
   - id: codex-subagent-panel-uiux.deliver
     name: Redesign Codex Larva subagent activity panel and collapsed-by-default inline
       widget UI/UX
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150225,6 +150225,8 @@ phases:
     - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
     - tests/shell/test_codex_plugin_contract.py
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-10-17T15:29:06.313964Z'
   - id: codex-subagent-panel-uiux.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent panel and
       widget UI/UX redesign
