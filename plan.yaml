@@ -150458,3 +150458,161 @@ phases:
       \ <= 340px with 25 tools; scrolling reached tool row 25; panel workbench survived\
       \ mode === 'inline'.\n\nGaps:\n- Actual interactive Codex Desktop GUI rendering\
       \ remains unverified by automated tests.\n\nSpec link:\n- docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget"
+- id: codex_subagent_panel_layout_and_prompt_fix
+  name: Codex Larva Subagent Panel Unified Layout, Full Task Prompt, and Resource
+    URI Cache Busting
+  status: pending
+  gate: Terminal gate codex-subagent-panel-layout-prompt.acceptance-gate verifies
+    full multiline task_prompt exposure and rendering, always-visible master+inspector
+    side-panel workbench with unified high-density All/Timeline/Result/Task & Session
+    inspector, versioned ui://larva-pi-subagent/panel-v2 and ui://larva-pi-subagent/widget-v2
+    resource URIs with backward-compatible resources/read handling, byte parity across
+    contrib/pi-extension/ and contrib/codex-plugin/, and passing Node and Python contract
+    tests.
+  context: 'Authority: user-reported follow-up defects on the Codex Larva Subagent
+    Activity Panel ("初始 prompt/task 显示不全" and "这里太空了，布局安排不合理") plus IndexedDB widget
+    resource cache-busting (ui://larva-pi-subagent/panel-v2 and ui://larva-pi-subagent/widget-v2).'
+  depends_on:
+  - codex_subagent_panel_uiux_redesign
+  steps:
+  - id: codex-subagent-panel-layout-prompt.deliver
+    name: Implement full task_prompt exposure, always-visible unified side-panel inspector
+      layout, and -v2 resource URI cache busting
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n    - artifacts/**\n  \
+      \  - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\n\
+      Deliver:\n1. Full Initial Task Prompt (`task_prompt`) Exposure & Rendering (\"\
+      初始 prompt/task 显示不全\"):\n   - In `contrib/pi-extension/larva.ts` and `contrib/codex-plugin/larva.ts`,\
+      \ add `task_prompt: string` (`record.task_prompt ?? record.task_preview ?? \"\
+      \"`) to `LarvaSubagentRunSnapshot` in `statusSnapshotForRun`.\n   - In `subagentPanelApp`\
+      \ (`contrib/pi-extension/subagent-mcp-server.mjs` & `contrib/codex-plugin/subagent-mcp-server.mjs`),\
+      \ render the complete multiline `run.task_prompt || run.task_preview` in the\
+      \ Task Prompt section (with `Copy prompt` and `Expand / Collapse prompt` toggle\
+      \ when long, never truncating at 120 chars), while keeping `run.task_preview`\
+      \ for 1-line compact list cards.\n2. Eliminate Empty Space & Unreasonable Side-Panel\
+      \ Layout (\"这里太空了，布局安排不合理\"):\n   - Always-Visible Master + Inspector Workbench\
+      \ in `panel` / `fullscreen` mode:\n     - On side-panel widths (`< 680px`),\
+      \ stack a compact, bounded Run Selector Strip / List at the top (`max-height:\
+      \ 148px; overflow-y: auto`) and keep the Selected Run Inspector permanently\
+      \ visible right below it (`flex: 1; min-height: 0; overflow-y: auto`) so opening\
+      \ the panel immediately shows both the run list and the active/latest run's\
+      \ full details with zero wasted blank space. On wide viewports (`>= 680px`),\
+      \ use a 2-column split (`240px` left rail + `1fr` right inspector).\n     -\
+      \ In the top toolbar of `surface === 'panel'`, remove the redundant `Inline`\
+      \ button (keep the `Fullscreen` / `Inline` toggle button on `surface === 'widget'`\
+      \ so inline cards can expand to fullscreen and return to inline).\n   - Unified\
+      \ High-Density Inspector with View Filter (`All` / `Timeline` / `Result` / `Task\
+      \ & Session`):\n     - Default the inspector to a Unified Overview (`All`) while\
+      \ keeping the filter tabs `All`, `Timeline`, `Result`, `Task & Session` so users\
+      \ or tests can also switch to a single section:\n       1. Compact Run Header\
+      \ & Metadata Bar: `persona_id`, status badge, `{model} · {thinking}` badge,\
+      \ phase badge, live elapsed timer, compact metadata pills (`Session: <filename.jsonl>`\
+      \ with `Copy ID` button, `Started`, `Updated`), and `Cancel` button when active.\n\
+      \       2. Task Prompt Card: Header (`Task Prompt` + `Copy prompt` + `Expand`/`Collapse`\
+      \ toggle when > 180px) + `<pre class=\"prompt-box\">${run.task_prompt || run.task_preview}</pre>`\
+      \ showing the full multiline prompt.\n       3. Activity & Tool Calls Card (`Timeline`):\
+      \ Live activity banner (`Active tool: <name>` or `Thinking…`) + live streaming\
+      \ assistant output (`live_assistant_preview`) + chronological collapsible 1-line\
+      \ `tool-row` items (expanding on click to show `Arguments`, `Output`/`Error`,\
+      \ and `Inspect args` / `Inspect result`).\n       4. Result Card (`Result`):\
+      \ Terminal output (`resultText(run)`) with `Copy result` button.\n     - Clicking\
+      \ `Timeline`, `Result`, or `Task & Session` in the tab bar filters/focuses that\
+      \ section (preserving compatibility with existing tab navigation); in the default\
+      \ `All` view, all relevant content is immediately visible without empty screens.\n\
+      3. Versioned `ui://` Resource URIs to Bust Codex Desktop's IndexedDB Cache (`codex-widget-resources`):\n\
+      \   - Update `_meta.ui.resourceUri` on `larva_subagent_panel` to `\"ui://larva-pi-subagent/panel-v2\"\
+      ` and on `larva_subagent`, `larva_subagent_wait`, `larva_subagent_select`, `larva_subagent_status`\
+      \ to `\"ui://larva-pi-subagent/widget-v2\"`.\n   - In `resources/read`, accept\
+      \ both `\"ui://larva-pi-subagent/panel\"` / `\"ui://larva-pi-subagent/panel-v2\"\
+      ` (surface `'panel'`) and `\"ui://larva-pi-subagent/widget\"` / `\"ui://larva-pi-subagent/widget-v2\"\
+      ` (surface `'widget'`) so both new tool descriptors and any historical chat\
+      \ items resolve cleanly.\n   - Keep all 5 runtime files in `contrib/codex-plugin/`\
+      \ byte-identical with `contrib/pi-extension/`.\n   - Update `contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `tests/shell/test_codex_plugin_contract.py`, `contrib/pi-extension/README.md`,\
+      \ `contrib/codex-plugin/README.md`, and `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`\
+      \ to verify `task_prompt`, the unified layout, and the `-v2` URIs (plus backward-compatible\
+      \ unversioned URI reads).\n\nBoundary:\n- `frontend-engineer` owns the implementation\
+      \ across `larva.ts` and `subagent-mcp-server.mjs`, byte-parity synchronization\
+      \ between `contrib/pi-extension/` and `contrib/codex-plugin/`, documentation\
+      \ updates, and Node/Python contract tests within `allowed_paths`.\n- Do not\
+      \ modify `src/larva/core/**` or `src/larva/shell/mcp*.py`, and do not mutate\
+      \ user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n- `node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`\
+      \ pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile failing assertions\
+      \ within `allowed_paths`; reap any spawned child processes on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    agent: frontend-engineer
+  - id: codex-subagent-panel-layout-prompt.acceptance-gate
+    name: Gate review and integrated acceptance for Codex Larva subagent panel unified
+      layout, full task prompt, and -v2 resource URIs
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `codex_subagent_panel_layout_and_prompt_fix`\
+      \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
+      \ read-only (`no_repo_change`). Inspects integrated code/test/doc diffs, byte\
+      \ parity across `contrib/pi-extension/` and `contrib/codex-plugin/`, and verification\
+      \ evidence from `codex-subagent-panel-layout-prompt.deliver`.\n\nAdmit:\n- Included\
+      \ producer outcome: `codex-subagent-panel-layout-prompt.deliver` (building on\
+      \ `codex_subagent_panel_uiux_redesign`).\n- Verify:\n  1. `LarvaSubagentRunSnapshot`\
+      \ in `contrib/pi-extension/larva.ts` and `contrib/codex-plugin/larva.ts` exposes\
+      \ full `task_prompt`, and `subagentPanelApp` renders the complete multiline\
+      \ `run.task_prompt || run.task_preview` in `<pre class=\"prompt-box\">` with\
+      \ `Copy prompt` and `Expand`/`Collapse` toggle when long while keeping `run.task_preview`\
+      \ for 1-line compact list cards.\n  2. In `panel` / `fullscreen` mode, the workbench\
+      \ keeps both the Run Selector Strip / List and the Selected Run Inspector simultaneously\
+      \ visible on narrow side-panel widths (`< 680px` stacked with bounded top list\
+      \ `max-height: 148px` and flex-filling inspector below; `>= 680px` 2-column\
+      \ split), omits the redundant `Inline` toggle button on `surface === 'panel'`\
+      \ (retaining `Fullscreen`/`Inline` toggle on `surface === 'widget'`), and defaults\
+      \ the inspector to the high-density Unified Overview (`All`) while supporting\
+      \ `All` / `Timeline` / `Result` / `Task & Session` section filtering and preserving\
+      \ bounded inline widget drawer behavior.\n  3. Tool metadata uses `\"ui://larva-pi-subagent/panel-v2\"\
+      ` (`larva_subagent_panel`) and `\"ui://larva-pi-subagent/widget-v2\"` (`larva_subagent`,\
+      \ `larva_subagent_wait`, `larva_subagent_select`, `larva_subagent_status`),\
+      \ `resources/read` serves both `-v2` and unversioned `panel`/`widget` URIs,\
+      \ all 5 runtime files in `contrib/codex-plugin/` match `contrib/pi-extension/`\
+      \ byte-for-byte, and documentation + tests are updated and passing (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,\
+      \ `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python\
+      \ -m pytest -q tests/shell/test_codex_plugin_contract.py`, `git diff --check`).\n\
+      \nRecovery:\n- If a material defect or parity/test gap is found, report exact\
+      \ findings with file/line citations so Orchestrator can route a single cohesive\
+      \ repair before Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - codex-subagent-panel-layout-prompt.deliver
+    agent: gate-reviewer
