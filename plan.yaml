@@ -150732,7 +150732,7 @@ phases:
   - id: codex-persona-mention-preload.deliver
     name: Enable Codex mention catalog preload, cache persona catalog, stop idle polling
       on completed inline widgets, and bump -v3 URIs
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150821,6 +150821,47 @@ phases:
     agent: node-typescript-engineer
     claimed_by: node-typescript-engineer
     claimed_at: '2026-10-17T18:58:32.825821Z'
+    done_at: '2026-10-17T19:06:38.487988+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 7797d367307a64350d3c50b1dc1da45da1a5282c (retained ref: refs/vectl-retained/codex-persona-mention-preload.deliver)
+
+      - Executor: node-typescript-engineer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T14-48-12-045Z_01a14a55-b00d-7544-a404-f451eb6c4e4d.jsonl)
+
+      - Changed files: contrib/pi-extension/subagent-mcp-server.mjs, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/pi-extension/test-subagent-mcp-server.mjs, contrib/pi-extension/README.md,
+      contrib/codex-plugin/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0 (verified
+      initialize capabilities omit openai/mentions, search_mentions._meta[''openai/extensions''][''mentions/search'']
+      = { preload: true }, preload/path schema validation, up to 200 items when preload:
+      true vs 30 when preload omitted/false, searchTerms on every resource_link item,
+      10s shared persona list promise cache with failed-scan eviction, completed inline
+      widget polling quiescence and restart on active notification/fullscreen switch,
+      and panel-v3/widget-v3 + legacy URI reads).
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed).
+
+      - Run: /Users/tefx/Projects/larva/.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (3 passed).
+
+      - Run: git diff --check -> exit 0.
+
+
+      Gaps:
+
+      - Actual interactive Codex Desktop GUI rendering is not exercised by automated
+      tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
   - id: codex-persona-mention-preload.acceptance-gate
     name: Gate review and integrated acceptance for Codex @larva persona mention preload
       and inline widget polling quiescence
