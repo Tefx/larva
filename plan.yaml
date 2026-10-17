@@ -150113,7 +150113,7 @@ phases:
   - id: codex-subagent-panel-uiux.deliver
     name: Redesign Codex Larva subagent activity panel and collapsed-by-default inline
       widget UI/UX
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150227,6 +150227,48 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-10-17T15:29:06.313964Z'
+    done_at: '2026-10-17T15:56:18.818977+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 3c935dc200f3290c3c9bf36f668dd261e63cc1e9 (retained ref: refs/vectl-retained/codex-subagent-panel-uiux.deliver)
+
+      - Executor: frontend-engineer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T15-30-14-043Z_01a14a7c-2b9b-774e-8bfc-6a82c6e7c468.jsonl)
+
+      - Changed files: contrib/pi-extension/subagent-mcp-server.mjs, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/pi-extension/test-subagent-mcp-server.mjs, contrib/pi-extension/README.md,
+      contrib/codex-plugin/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+
+
+      Verification:
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0 (verified
+      collapsed-by-default inline widget for single-run and multi-run batches, Details/Hide
+      details disclosure with ui/notifications/size-changed, panel workbench Active/Done
+      sections and filter pills, narrow-viewport Back to subagents navigation, 3-tab
+      Timeline/Result/Task & Session inspector, collapsible tool rows with Inspect
+      args/result persistence across polling rerenders, scroll and focus preservation,
+      clipboard copy, human-readable phase/model/duration formatting, safe-area insets,
+      and byte parity).
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed).
+
+      - Run: /Users/tefx/Projects/larva/.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (3 passed).
+
+      - Run: git diff --check -> exit 0.
+
+
+      Gaps:
+
+      - Automated checks cover the real stdio MCP server, child RPC stream, and shipped
+      UI script across widget and panel surfaces in a controlled DOM/bridge harness;
+      interactive Codex Desktop GUI rendering is not exercised by automated tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
   - id: codex-subagent-panel-uiux.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent panel and
       widget UI/UX redesign
