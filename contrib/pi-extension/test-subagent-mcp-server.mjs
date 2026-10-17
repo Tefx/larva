@@ -77,15 +77,18 @@ function client(overrides = {}, runtimeDir = packageDir) {
 }
 // Execute the shipped resource script against a controlled parent bridge and
 // minimal DOM, without replacing any of the app's request or rendering logic.
-async function exercisePanelBridge(html) {
-  const nodes = [], sent = [], listeners = {}, timers = new Map(), variables = {};
-  let timerId = 0, disconnected = false;
+async function exercisePanelBridge(html, surface, multiple = false) {
+  const sent = [], listeners = {}, timers = new Map(), variables = {};
+  let timerId = 0, disconnected = false, narrow = false;
   const node = tag => {
-    const value = { tag, dataset: {}, children: [], textContent: '',
+    const value = { tag, dataset: {}, children: [], textContent: '', attributes: {}, scrollTop: 0,
+      setAttribute(key, value) { this.attributes[key] = value; },
+      getAttribute(key) { return this.attributes[key]; },
+      focus() { document.activeElement = this; },
       append(child) { this.children.push(child); },
       replaceChildren() { this.children = []; },
     };
-    nodes.push(value); return value;
+    return value;
   };
   const app = node('div'); app.id = 'app';
   const visibleNodes = () => {
@@ -97,27 +100,28 @@ async function exercisePanelBridge(html) {
     visibilityState: 'visible',
     documentElement: { dataset: {}, scrollHeight: 320, style: { setProperty(key, value) { variables[key] = value; } } },
     createElement: node,
+    createElementNS: (_, tag) => node(tag),
     getElementById: id => visibleNodes().find(value => value.id === id),
-    querySelectorAll: () => visibleNodes().filter(value => value.dataset.started),
+    querySelectorAll: selector => visibleNodes().filter(value => selector === 'button' ? value.tag === 'button' : selector === '[data-scroll-key]' ? value.dataset.scrollKey !== undefined : value.dataset.started !== undefined),
     addEventListener(name, callback) { listeners[name] = callback; },
   };
   const run = { task_id: '/fixture/child.jsonl', persona_id: 'child', status: 'running', phase: 'waiting_for_child', result_pending: true, started_at: new Date().toISOString(), elapsed_ms: 100, startup_model: 'fixture/model', startup_thinking: 'high', task_preview: 'fixture task', live_assistant_preview: '<script>literal text</script>', active_tool: { name: 'read' }, tool_snapshots: [{ toolCallId: 'call-1', name: 'read', status: 'running', args_preview: 'fixture' }] };
   const deliver = message => listeners.message({ source: window.parent, data: { jsonrpc: '2.0', ...message } });
-  const window = { addEventListener(name, callback) { listeners[name] = callback; }, parent: {
+  const window = { matchMedia() { return { matches: narrow }; }, addEventListener(name, callback) { listeners[name] = callback; }, parent: {
     postMessage(message) {
       sent.push(JSON.parse(JSON.stringify(message)));
       if (!message.id || message.method === undefined) return;
       let result = {};
-      if (message.method === 'ui/initialize') result = { hostContext: { theme: 'dark', styles: { variables: { '--color-text-primary': 'red' } } } };
+      if (message.method === 'ui/initialize') result = { hostContext: { theme: 'dark', safeAreaInsets: { top: 8, bottom: 12 }, styles: { variables: { '--color-text-primary': 'red' } } } };
       if (message.method === 'ui/request-display-mode') result = { mode: message.params.mode };
-      if (message.method === 'tools/call') result = { structuredContent: message.params.name === 'larva_subagent_panel' ? { runs: [run], terminal_outputs: {} } : { expanded: 'fixture segment' } };
+      if (message.method === 'tools/call') result = { structuredContent: message.params.name === 'larva_subagent_panel' ? { runs: multiple && !message.params.arguments.task_id ? [run, { ...run, task_id: '/fixture/done.jsonl', persona_id: 'finished-child', status: 'success', phase: 'success', result_pending: false }] : [run], terminal_outputs: {} } : { expanded: 'fixture segment' } };
       queueMicrotask(() => deliver({ id: message.id, result }));
     },
   } };
   const schedule = callback => { const id = ++timerId; timers.set(id, callback); return id; };
-  let resize;
+  let resize, copied;
   runInNewContext(html.match(/<script>([\s\S]*)<\/script>/)[1], {
-    window, document, setTimeout: schedule, clearTimeout: id => timers.delete(id),
+    window, document, navigator: { clipboard: { async writeText(text) { copied = text; } } }, setTimeout: schedule, clearTimeout: id => timers.delete(id),
     setInterval: schedule, clearInterval: id => timers.delete(id),
     ResizeObserver: class { constructor(callback) { resize = callback; } observe() {} disconnect() { disconnected = true; } },
   });
@@ -129,13 +133,43 @@ async function exercisePanelBridge(html) {
   assert.ok(sent.some(message => message.method === 'ui/notifications/initialized'));
   assert.equal(variables['--color-text-primary'], 'red');
   assert.equal(document.documentElement.dataset.theme, 'dark');
-  assert.ok(visibleNodes().some(value => value.textContent === run.live_assistant_preview));
+  const hasText = text => visibleNodes().some(value => value.textContent === text);
+  const click = async text => { const target = visibleNodes().find(value => value.tag === 'button' && value.textContent === text); assert.ok(target, text); target.focus(); await target.onclick(); await flush(); };
+  assert.equal(variables['--safe-top'], '8px');
+  assert.equal(document.documentElement.dataset.mode, surface === 'widget' ? 'inline' : 'fullscreen');
+  if (surface === 'widget') {
+    assert.ok(hasText('child'));
+    assert.ok(hasText('fixture/model · high'));
+    assert.ok(hasText('Active tool: read'));
+    assert.ok(!hasText('Timeline'));
+    assert.ok(!hasText('Inspect args'));
+    assert.ok(!hasText(run.live_assistant_preview));
+    assert.ok(!visibleNodes().some(value => ['result', 'tool-row', 'drawer'].includes(value.className)));
+    if (multiple) {
+      assert.ok(hasText('Larva Subagents · 1 active · 1 done'));
+      const card = visibleNodes().find(value => value.className === 'run-card');
+      await card.onclick(); await flush();
+    } else {
+      assert.equal(visibleNodes().find(value => value.textContent === 'Details').getAttribute('aria-expanded'), 'false');
+      await click('Details');
+      assert.equal(document.activeElement.textContent, 'Hide details');
+    }
+    assert.ok(sent.some(message => message.method === 'ui/notifications/size-changed'));
+  } else {
+    assert.ok(hasText('Active · 1')); assert.ok(hasText('Done · 0'));
+    assert.ok(!hasText('Details'));
+  }
+  for (const tab of ['Timeline', 'Result', 'Task & Session']) assert.ok(hasText(tab));
+  assert.ok(hasText(run.live_assistant_preview));
+  assert.ok(!hasText('Inspect args'));
+  const expandTool = async () => { const target = visibleNodes().find(value => value.className === 'tool-row'); assert.ok(target); await target.onclick(); await flush(); };
+  await expandTool();
+  assert.ok(hasText('Inspect args'));
   deliver({ method: 'ui/notifications/host-context-changed', params: { theme: 'light' } });
   assert.equal(document.documentElement.dataset.theme, 'light');
   deliver({ method: 'ui/notifications/tool-input', params: { arguments: { task_id: run.task_id, persona_id: 'child' } } });
   await flush();
   assert.deepEqual(sent.filter(message => message.params?.name === 'larva_subagent_panel').at(-1).params.arguments, { task_id: run.task_id });
-  const click = async text => { const target = visibleNodes().find(value => value.tag === 'button' && value.textContent === text); assert.ok(target, text); await target.onclick(); await flush(); };
   await click('Inspect args');
   assert.deepEqual(sent.filter(message => message.params?.name === 'larva_subagent_activity').at(-1).params.arguments, { task_id: run.task_id, tool_call_id: 'call-1', segment_part: 'args' });
   assert.ok(visibleNodes().some(value => value.textContent.includes('fixture segment')));
@@ -143,18 +177,61 @@ async function exercisePanelBridge(html) {
   assert.equal(sent.filter(message => message.params?.name === 'larva_subagent_activity').at(-1).params.arguments.segment_part, 'result');
   await click('Cancel');
   assert.equal(sent.filter(message => message.params?.name === 'larva_subagent_cancel').at(-1).params.arguments.task_id, run.task_id);
-  resize();
-  assert.equal(sent.at(-1).method, 'ui/notifications/size-changed');
-  await click('Fullscreen');
-  assert.deepEqual(sent.find(message => message.method === 'ui/request-display-mode').params, { mode: 'fullscreen' });
+  assert.ok(visibleNodes().some(value => value.textContent.includes('fixture segment')), 'inspection survives polling rerenders');
+  if (surface === 'widget') {
+    resize();
+    assert.equal(sent.at(-1).method, 'ui/notifications/size-changed');
+    await click('Fullscreen');
+    assert.deepEqual(sent.find(message => message.method === 'ui/request-display-mode').params, { mode: 'fullscreen' });
+  }
+  assert.ok(hasText('Active · 1')); assert.ok(hasText('Done · 0'));
+  await click('Done · 0');
+  assert.ok(!visibleNodes().some(value => value.tag === 'h3' && value.textContent === 'Active · 1'));
+  assert.ok(hasText('No completed subagents'));
+  await click('All');
+  narrow = true;
+  const selectedCard = visibleNodes().find(value => value.className === 'run-card');
+  selectedCard.focus(); await selectedCard.onclick(); await flush();
+  assert.equal(app.dataset.mobileView, 'detail'); assert.equal(document.activeElement.className, 'back');
+  await click('← Back to subagents');
+  assert.equal(app.dataset.mobileView, 'list'); assert.equal(document.activeElement.dataset.focusKey, `run:${run.task_id}`);
+  narrow = false;
+  visibleNodes().find(value => value.className === 'inspector').scrollTop = 48;
+  await click('Refresh');
+  assert.equal(visibleNodes().find(value => value.className === 'inspector').scrollTop, 48);
   const before = sent.length;
   document.visibilityState = 'hidden'; await click('Refresh');
   assert.equal(sent.length, before);
   document.visibilityState = 'visible';
+  await click('Result');
   run.result_pending = false; run.status = 'success'; run.result_preview = 'finished';
   deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run], terminal_outputs: { [run.task_id]: { result_text: 'terminal output' } } } } });
-  assert.ok(visibleNodes().some(value => value.textContent === 'terminal output'));
+  assert.ok(hasText('terminal output'));
   await flush();
+  assert.ok(hasText('terminal output'), 'terminal output survives refresh without cached output');
+  await click('Copy'); assert.equal(copied, 'terminal output');
+  await click('Task & Session'); assert.ok(hasText('/fixture/child.jsonl')); assert.ok(hasText('fixture/model'));
+  assert.equal(document.activeElement.textContent, 'Task & Session');
+  assert.ok(visibleNodes().includes(document.activeElement), 'rerenders preserve keyboard focus');
+  for (const [ms, formatted] of [[14000, '14s'], [84000, '1m 24s'], [3720000, '1h 02m']]) {
+    run.elapsed_ms = ms;
+    deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
+    assert.ok(hasText(formatted)); await flush();
+  }
+  run.status = 'running'; run.result_pending = true; run.result_preview = null; run.startup_model = 'openai/gpt-6.1-sol';
+  deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
+  await flush();
+  assert.ok(hasText('gpt-6.1-sol · high')); assert.ok(hasText('openai/gpt-6.1-sol'));
+  await click('Result');
+  assert.ok(!hasText('terminal output'), 'resumed run drops prior terminal output');
+  assert.ok(hasText('No terminal output yet.'));
+  await click('Inline');
+  if (surface === 'widget') { await click('Hide details'); assert.ok(!hasText('Timeline')); assert.ok(!hasText('Inspect args')); }
+  document.visibilityState = 'hidden';
+  deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [] } } });
+  assert.ok(hasText('Waiting for child…'));
+  await click('Fullscreen');
+  assert.ok(hasText('Active · 0')); assert.ok(hasText('Done · 0')); assert.ok(hasText('No active subagents'));
   deliver({ id: 999, method: 'ui/resource-teardown', params: {} });
   assert.deepEqual(sent.at(-1), { jsonrpc: '2.0', id: 999, result: {} });
   assert.equal(disconnected, true);
@@ -211,7 +288,8 @@ try {
       availableDisplayModes: surface === 'panel' ? ['fullscreen', 'inline'] : ['inline', 'fullscreen'],
     });
     for (const method of ['ui/initialize', 'ui/notifications/initialized', 'larva_subagent_panel', 'larva_subagent_activity', 'larva_subagent_cancel']) assert.ok(resource.text.includes(method));
-    if (surface === 'widget') await exercisePanelBridge(resource.text);
+    await exercisePanelBridge(resource.text, surface);
+    if (surface === 'widget') await exercisePanelBridge(resource.text, surface, true);
     assert.ok(resource.text.includes("connect-src 'none'"));
     assert.ok(!/<(?:script|link|img)[^>]+(?:src|href)=/i.test(resource.text));
   }

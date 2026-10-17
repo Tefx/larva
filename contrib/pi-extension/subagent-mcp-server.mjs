@@ -163,6 +163,8 @@ async function callTool(name, args) {
 // Serialized into both UI resources; all data stays on the host postMessage bridge.
 function subagentPanelApp(surface) {
   let sequence = 0, selected = null, personaHint = null, filter = {}, state = { runs: [], terminal_outputs: {} }, mode = surface === 'panel' ? 'fullscreen' : 'inline', stopped = false, polling = false;
+  let inlineExpanded = false, mobileView = 'list', listFilter = 'All';
+  const tabs = new Map(), expandedTools = new Set(), inspectedOutputs = new Map(), controlCounts = new Map();
   const pending = new Map();
   const root = document.getElementById('app');
   const notify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
@@ -184,12 +186,19 @@ function subagentPanelApp(surface) {
     for (const [key, value] of Object.entries(context?.styles?.variables ?? {})) {
       if (key.startsWith('--')) document.documentElement.style.setProperty(key, String(value));
     }
-    if (context?.theme) document.documentElement.dataset.theme = context.theme;
+    if (context?.safeAreaInsets) for (const side of ['top', 'right', 'bottom', 'left']) document.documentElement.style.setProperty(`--safe-${side}`, `${context.safeAreaInsets[side] ?? 0}px`);
+    if (['light', 'dark'].includes(context?.theme)) document.documentElement.dataset.theme = context.theme;
     if (context?.displayMode) mode = context.displayMode;
+    document.documentElement.dataset.mode = mode;
+    render();
   }
   function accept(data) {
     if (data?.persona_id) personaHint = data.persona_id;
-    if (data?.runs) state = { ...state, ...data };
+    if (data?.runs) {
+      const outputs = { ...state.terminal_outputs, ...data.terminal_outputs };
+      for (const run of data.runs) if (isActive(run)) delete outputs[run.task_id];
+      state = { ...state, ...data, error: data.error, terminal_outputs: outputs };
+    }
     if (data?.snapshots) state.runs = Object.values(data.snapshots).flat();
     if (data?.task_id) { selected = data.task_id; filter = { task_id: data.task_id }; }
     render();
@@ -219,61 +228,200 @@ function subagentPanelApp(surface) {
   }
   function button(text, action, parent) {
     const node = element('button', text, parent);
-    node.onclick = () => Promise.resolve().then(action).catch(showError);
+    const occurrence = controlCounts.get(text) ?? 0; controlCounts.set(text, occurrence + 1);
+    node.dataset.focusKey = `${text}:${occurrence}`;
+    node.onclick = async () => {
+      node.disabled = true;
+      try { await action(); } catch (error) { showError(error); }
+      finally { node.disabled = false; }
+    };
     return node;
   }
-  function showError(error) { document.getElementById('error').textContent = error.message ?? JSON.stringify(error); }
-  function render() {
-    root.replaceChildren();
-    const runs = state.runs ?? [];
-    const active = runs.filter(run => run.result_pending).length;
-    const header = element('header');
-    element('strong', `Larva Subagents · ${active} active / ${runs.length - active} completed`, header);
-    button('Refresh', refresh, header);
+  function showError(error) { document.getElementById('error').textContent = error.message ?? String(error); }
+  const isActive = run => ['accepted', 'running'].includes(run.status);
+  const phase = run => ({ starting: 'Starting', session_ready: 'Session ready', prompt_sent: 'Prompt sent', waiting_for_child: 'Working', stall_suspected: 'Stall suspected', success: 'Completed', failed: 'Failed', cancelled: 'Cancelled' }[run.phase] ?? 'Starting');
+  const model = run => `${(run.startup_model ?? 'Route pending').replace(/^openai\//, '')} · ${run.startup_thinking ?? 'default'}`;
+  const resultText = run => state.terminal_outputs?.[run.task_id]?.result_text ?? run.result_preview ?? run.error?.message ?? 'No terminal output yet.';
+  const preview = run => (isActive(run) ? run.active_tool ? `Active tool: ${run.active_tool.name}` : run.live_thinking ? 'Thinking…' : run.live_assistant_preview?.trim().split('\n').at(-1) || run.task_preview : state.terminal_outputs?.[run.task_id]?.result_text ?? run.result_preview ?? run.error?.message ?? run.task_preview) ?? '';
+  function duration(ms) {
+    const seconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    return `${Math.floor(seconds / 3600)}h ${String(Math.floor(seconds / 60) % 60).padStart(2, '0')}m`;
+  }
+  function elapsed(run, parent) {
+    const node = element('span', duration(run.elapsed_ms), parent); node.className = 'elapsed';
+    node.dataset.started = run.started_at ?? ''; node.dataset.elapsed = String(run.elapsed_ms ?? 0); node.dataset.active = String(isActive(run));
+  }
+  function status(run, parent) {
+    const node = element('span', undefined, parent);
+    node.className = 'status'; node.dataset.status = run.status; node.title = phase(run);
+    node.setAttribute('aria-label', phase(run));
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [key, value] of Object.entries({ width: '14', height: '14', viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5', 'aria-hidden': 'true' })) svg.setAttribute(key, value);
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', run.status === 'success' ? 'M3 8l3 3 7-7' : run.status === 'failed' ? 'M4 4l8 8M12 4l-8 8' : 'M8 2a6 6 0 1 0 6 6');
+    svg.append(path); node.append(svg);
+  }
+  function displayButton(parent) {
     button(mode === 'inline' ? 'Fullscreen' : 'Inline', async () => {
-      const result = await rpc('ui/request-display-mode', { mode: mode === 'inline' ? 'fullscreen' : 'inline' });
-      mode = result.mode ?? mode; render();
-    }, header);
-    element('div', state.error?.message ?? '', root).id = 'error';
-    const layout = element('main'); const list = element('nav', undefined, layout);
-    for (const run of runs) {
-      const card = button(`${run.persona_id}\n${run.phase} · ${run.startup_model ?? 'route pending'} / ${run.startup_thinking ?? '-'}\n${run.task_preview}\n${run.active_tool?.name ?? (run.live_thinking ? 'Thinking…' : '')}`, () => { selected = run.task_id; render(); }, list);
-      card.dataset.status = run.status;
-      element('span', run.status, card).className = 'badge';
-      const elapsed = element('small', '', card); elapsed.dataset.started = run.started_at; elapsed.dataset.elapsed = String(run.elapsed_ms); elapsed.dataset.active = String(run.result_pending);
+      const requested = mode === 'inline' ? 'fullscreen' : 'inline';
+      const response = await rpc('ui/request-display-mode', { mode: requested });
+      mode = response.mode ?? mode; render();
+    }, parent).dataset.focusKey = 'display-mode';
+  }
+  function cancel(run, parent) {
+    if (isActive(run)) button('Cancel', async () => {
+      await tool('larva_subagent_cancel', { task_id: run.task_id, reason: 'Cancelled from activity panel' }); await refresh();
+    }, parent).className = 'cancel';
+  }
+  function disclosure(parent) {
+    const control = button(inlineExpanded ? 'Hide details' : 'Details', () => {
+      inlineExpanded = !inlineExpanded; render();
+      notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight });
+    }, parent);
+    control.dataset.focusKey = 'details';
+    control.setAttribute('aria-expanded', String(inlineExpanded));
+  }
+  function copy(text, parent) {
+    button('Copy', async () => {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable in this host.');
+      await navigator.clipboard.writeText(text);
+    }, parent);
+  }
+  function runCard(run, parent) {
+    const card = button('', () => {
+      selected = run.task_id; inlineExpanded = true; mobileView = 'detail'; render();
+      if (mode === 'inline') notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight });
+      else if (window.matchMedia('(max-width:619px)').matches) Array.from(document.querySelectorAll('button')).find(node => node.className === 'back')?.focus();
+    }, parent);
+    card.className = 'run-card'; card.dataset.focusKey = `run:${run.task_id}`; card.setAttribute('aria-pressed', String(selected === run.task_id));
+    const top = element('div', undefined, card); top.className = 'row';
+    status(run, top); element('strong', run.persona_id, top); elapsed(run, top);
+    const meta = element('div', undefined, card); meta.className = 'row muted';
+    element('span', model(run), meta); element('span', phase(run), meta);
+    if (run.tool_snapshots?.length) element('span', `${run.tool_snapshots.length} tools`, meta).className = 'badge';
+    element('div', preview(run).replace(/\s+/g, ' '), card).className = 'preview';
+  }
+  function inspector(run, parent) {
+    const tab = tabs.get(run.task_id) ?? (isActive(run) || run.tool_snapshots?.length ? 'Timeline' : 'Result');
+    const bar = element('div', undefined, parent); bar.className = 'tabs'; bar.setAttribute('aria-label', 'Run details');
+    for (const name of ['Timeline', 'Result', 'Task & Session']) {
+      const control = button(name, () => { tabs.set(run.task_id, name); render(); }, bar);
+      control.setAttribute('aria-pressed', String(name === tab));
     }
-    const detail = element('section', undefined, layout);
-    const run = runs.find(run => run.task_id === selected) ?? runs.find(run => run.persona_id === personaHint) ?? runs[0];
-    if (!run) { element('p', personaHint ? `Waiting for ${personaHint}…` : 'No recent subagent runs.', detail); return; }
-    selected = run.task_id;
-    element('h2', run.persona_id, detail);
-    element('pre', JSON.stringify(Object.fromEntries(['task_id', 'persona_id', 'startup_model', 'startup_thinking', 'phase', 'elapsed_ms'].map(key => [key, run[key]])), null, 2), detail);
-    if (['accepted', 'running'].includes(run.status)) button('Cancel', async () => { await tool('larva_subagent_cancel', { task_id: run.task_id, reason: 'Cancelled from activity panel' }); await refresh(); }, detail);
-    element('h3', run.live_thinking ? 'Thinking…' : 'Assistant stream', detail);
-    element('pre', run.live_assistant_preview ?? '', detail);
-    element('h3', 'Result', detail);
-    element('pre', state.terminal_outputs?.[run.task_id]?.result_text ?? run.result_preview ?? run.error?.message ?? '', detail);
-    if (run.active_tool) element('strong', `Active tool: ${run.active_tool.name ?? run.active_tool.toolCallId}`, detail);
-    const calls = element('ol', undefined, detail);
-    for (const call of run.tool_snapshots ?? []) {
-      const item = element('li', undefined, calls);
-      element('strong', `${call.name ?? call.toolCallId} · ${call.status}`, item);
-      element('pre', [call.args_preview, call.output_preview, call.error_preview].filter(Boolean).join('\n'), item);
-      const expanded = element('pre', '', item);
-      for (const part of ['args', 'result']) button(`Inspect ${part}`, async () => {
-        const result = await tool('larva_subagent_activity', { task_id: run.task_id, tool_call_id: call.toolCallId, segment_part: part });
-        expanded.textContent = JSON.stringify(result, null, 2);
-      }, item);
+    const body = element('div', undefined, parent); body.className = 'tab-body';
+    if (tab === 'Timeline') {
+      if (isActive(run)) element('p', run.active_tool ? `Active tool: ${run.active_tool.name}` : run.live_thinking ? 'Thinking…' : phase(run), body).className = 'activity';
+      if (run.live_assistant_preview) {
+        const stream = element('pre', run.live_assistant_preview, body); stream.className = 'stream'; stream.dataset.scrollKey = `stream:${run.task_id}`;
+      }
+      element('h3', 'Tool calls', body);
+      if (!run.tool_snapshots?.length) element('p', 'No tool calls yet.', body).className = 'muted';
+      const calls = element('ol', undefined, body);
+      for (const call of run.tool_snapshots ?? []) {
+        const key = run.task_id + ':' + call.toolCallId, open = expandedTools.has(key);
+        const item = element('li', undefined, calls);
+        const control = button('', () => { open ? expandedTools.delete(key) : expandedTools.add(key); render(); }, item);
+        control.className = 'tool-row'; control.dataset.focusKey = `tool:${key}`; control.setAttribute('aria-expanded', String(open));
+        element('strong', call.name ?? call.toolCallId, control);
+        element('span', call.status, control).className = 'badge';
+        element('span', call.args_preview ?? '', control).className = 'preview';
+        if (!open) continue;
+        const content = element('div', undefined, item); content.className = 'tool-content';
+        for (const [label, text] of [['Arguments', call.args_preview], ['Output', call.output_preview], ['Error', call.error_preview]]) {
+          if (text) { element('h4', label, content); element('pre', text, content); }
+        }
+        const inspected = element('pre', inspectedOutputs.get(key) ?? '', content); inspected.setAttribute('aria-live', 'polite');
+        inspected.dataset.scrollKey = `inspection:${key}`;
+        for (const part of ['args', 'result']) button(`Inspect ${part}`, async () => {
+          const data = await tool('larva_subagent_activity', { task_id: run.task_id, tool_call_id: call.toolCallId, segment_part: part });
+          inspectedOutputs.set(key, JSON.stringify(data, null, 2)); render();
+        }, content);
+      }
+    } else if (tab === 'Result') {
+      const text = resultText(run); copy(text, body);
+      const output = element('pre', text, body); output.className = 'result'; output.dataset.scrollKey = `result:${run.task_id}`;
+    } else {
+      element('h3', 'Task', body); element('pre', run.task_preview ?? '', body);
+      const grid = element('dl', undefined, body); grid.className = 'metadata';
+      for (const [label, value] of [
+        ['Persona', run.persona_id], ['Status', run.status], ['Phase', phase(run)], ['Model', run.startup_model],
+        ['Requested Thinking', run.requested_thinking], [mode === 'inline' ? 'Thinking' : 'Effective Thinking', run.startup_thinking],
+        ['Elapsed', duration(run.elapsed_ms)], ['Started', run.started_at], ['Updated', run.updated_at],
+        [mode === 'inline' ? 'Session Path' : 'Session ID', run.task_id],
+      ]) { element('dt', label, grid); element('dd', value ?? '—', grid); }
+      copy(run.task_id, body);
+    }
+  }
+  function render() {
+    const focused = document.activeElement?.dataset?.focusKey;
+    const scrollPositions = new Map(Array.from(document.querySelectorAll('[data-scroll-key]')).map(node => [node.dataset.scrollKey, node.scrollTop]));
+    controlCounts.clear(); renderContent();
+    for (const node of document.querySelectorAll('[data-scroll-key]')) if (scrollPositions.has(node.dataset.scrollKey)) node.scrollTop = scrollPositions.get(node.dataset.scrollKey);
+    if (focused) Array.from(document.querySelectorAll('button')).find(node => node.dataset.focusKey === focused)?.focus({ preventScroll: true });
+  }
+  function renderContent() {
+    root.replaceChildren(); document.documentElement.dataset.mode = mode; root.dataset.mobileView = mobileView;
+    const runs = state.runs ?? [], active = runs.filter(isActive), done = runs.filter(run => !isActive(run));
+    const run = runs.find(item => item.task_id === selected) ?? runs.find(item => item.persona_id === personaHint) ?? runs[0];
+    if (run) selected = run.task_id;
+    const focused = filter.task_id || runs.length === 1 || runs.some(item => item.persona_id === personaHint);
+    const header = element('header'); header.className = 'toolbar';
+    if (mode === 'inline' && focused && run) {
+      status(run, header); element('strong', run.persona_id, header);
+      element('span', model(run), header).className = 'model';
+      if (run.tool_snapshots?.length) element('span', `${run.tool_snapshots.length} tools`, header).className = 'badge';
+      elapsed(run, header); cancel(run, header); disclosure(header); displayButton(header);
+      element('div', preview(run).replace(/\s+/g, ' ')).className = 'preview summary';
+    } else {
+      element('strong', mode === 'inline' ? `Larva Subagents · ${active.length} active · ${done.length} done` : 'Larva Subagents', header);
+      if (mode !== 'inline') for (const [name, label] of [['All', 'All'], ['Active', `Active · ${active.length}`], ['Done', `Done · ${done.length}`]]) {
+        const control = button(label, () => { listFilter = name; render(); }, header); control.setAttribute('aria-pressed', String(listFilter === name));
+      }
+      button('Refresh', refresh, header); displayButton(header);
+      if (mode === 'inline' && inlineExpanded) disclosure(header);
+    }
+    const error = element('div', state.error?.message ?? ''); error.id = 'error'; error.setAttribute('role', 'alert');
+    if (mode === 'inline') {
+      if (!run) { element('p', personaHint ? `Waiting for ${personaHint}…` : 'No recent subagent runs.'); return; }
+      if (!focused || (inlineExpanded && runs.length > 1)) {
+        const list = element('nav'); list.className = inlineExpanded ? 'switcher' : 'compact-list'; list.setAttribute('aria-label', 'Subagent runs');
+        for (const item of runs) runCard(item, list);
+      }
+      if (inlineExpanded) { const drawer = element('section'); drawer.className = 'drawer'; inspector(run, drawer); }
+    } else {
+      const layout = element('main'); layout.className = 'workbench';
+      const list = element('nav', undefined, layout); list.className = 'run-list'; list.dataset.scrollKey = 'runs'; list.setAttribute('aria-label', 'Subagent runs');
+      for (const [name, group] of [['Active', active], ['Done', done]]) {
+        if (listFilter !== 'All' && listFilter !== name) continue;
+        element('h3', `${name} · ${group.length}`, list);
+        if (!group.length) element('p', name === 'Active' ? 'No active subagents' : 'No completed subagents', list).className = 'muted';
+        for (const item of group) runCard(item, list);
+      }
+      const detail = element('section', undefined, layout); detail.className = 'inspector'; detail.dataset.scrollKey = `detail:${run?.task_id ?? ''}`;
+      button('← Back to subagents', () => {
+        mobileView = 'list'; render();
+        Array.from(document.querySelectorAll('button')).find(node => node.dataset.focusKey === `run:${selected}`)?.focus();
+      }, detail).className = 'back';
+      if (!run) { element('p', 'Select a subagent to view activity.', detail); return; }
+      const heading = element('div', undefined, detail); heading.className = 'row detail-header';
+      element('h2', run.persona_id, heading); element('span', run.status, heading).className = 'badge';
+      element('span', model(run), heading).className = 'muted'; element('span', phase(run), heading); elapsed(run, heading); cancel(run, heading);
+      inspector(run, detail);
     }
     tick();
   }
   function tick() {
-    for (const node of document.querySelectorAll('[data-started]')) node.textContent = `${Math.floor((node.dataset.active === 'true' ? Date.now() - Date.parse(node.dataset.started) : Number(node.dataset.elapsed)) / 1000)}s`;
+    for (const node of document.querySelectorAll('[data-started]')) {
+      const live = node.dataset.active === 'true' && Number.isFinite(Date.parse(node.dataset.started));
+      node.textContent = duration(live ? Date.now() - Date.parse(node.dataset.started) : node.dataset.elapsed);
+    }
   }
   async function refresh() {
     if (stopped || polling || document.visibilityState === 'hidden') return;
     polling = true;
-    try { state = await tool('larva_subagent_panel', filter); render(); }
+    try { accept(await tool('larva_subagent_panel', filter)); }
     catch (error) { showError(error); }
     finally { polling = false; }
   }
@@ -294,7 +442,11 @@ function subagentPanelApp(surface) {
 }
 function renderSubagentPanelHtml(surface) {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'"><style>
-  :root{color-scheme:light dark;font:14px system-ui;color:var(--color-text-primary,inherit);background:var(--color-background-primary,transparent)}[data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}body{margin:12px}header{display:flex;gap:10px;align-items:center;flex-wrap:wrap}main{display:grid;grid-template-columns:minmax(180px,30%) 1fr;gap:16px}nav{display:flex;flex-direction:column;gap:8px}button{cursor:pointer;padding:8px;text-align:left;white-space:pre-wrap;border:1px solid #8886;border-radius:6px;background:transparent;color:inherit}button:hover{background:#8882}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto}section{min-width:0}small{display:block}.badge{display:inline-block;border:1px solid #8888;border-radius:10px;padding:1px 6px;margin:4px}[data-status=running] .badge{color:#69c}[data-status=success] .badge{color:#5a7}[data-status=failed] .badge{color:#d66}#error{color:#d55}li{margin-bottom:12px}@media(max-width:600px){main{grid-template-columns:1fr}}
+  :root{color-scheme:light dark;--background:var(--color-background-primary,light-dark(#ffffff,#181818));--foreground:var(--color-text-primary,light-dark(#1a1c1f,#ffffff));--secondary:var(--color-background-secondary,light-dark(rgba(255,255,255,.96),rgba(54,54,54,.96)));--tertiary:var(--color-background-tertiary,color-mix(in srgb,var(--foreground) 4%,var(--background)));--card:color-mix(in srgb,var(--foreground) 5%,var(--background));--muted:color-mix(in srgb,var(--foreground) 8%,transparent);--muted-foreground:var(--color-text-secondary,light-dark(rgba(26,28,31,.55),rgba(255,255,255,.55)));--border:var(--color-border-secondary,light-dark(rgba(26,28,31,.09),rgba(255,255,255,.09)));--input:var(--color-border-primary,light-dark(rgba(26,28,31,.13),rgba(255,255,255,.13)));--primary:var(--color-text-info,light-dark(#339cff,#83c3ff));--accent:var(--color-background-info,color-mix(in srgb,var(--primary) 14%,transparent));--success:var(--color-text-success,light-dark(#16a34a,#4ade80));--success-bg:var(--color-background-success,color-mix(in srgb,var(--success) 14%,transparent));--warning:var(--color-text-warning,light-dark(#d97706,#fbbf24));--warning-bg:var(--color-background-warning,color-mix(in srgb,var(--warning) 14%,transparent));--danger:var(--color-text-danger,light-dark(#dc2626,#f87171));--danger-bg:var(--color-background-danger,color-mix(in srgb,var(--danger) 14%,transparent));--ring:var(--color-ring-primary,var(--primary));--radius-sm:var(--border-radius-sm,6px);--radius-md:var(--border-radius-md,8px);--radius-lg:var(--border-radius-lg,12px);--app-font-sans:var(--font-sans,-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif);--app-font-mono:var(--font-mono,ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace);font:13px/1.5 var(--app-font-sans);color:var(--foreground);background:var(--background)}
+  /* App font aliases preserve host tokens without self-referential custom properties. */
+  .run-list{min-width:0}.run-card strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toolbar>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .status svg{display:block}.status[data-status=running]{animation:pulse 2s ease-in-out infinite}@keyframes pulse{50%{opacity:.45}}@media(prefers-reduced-motion:reduce){.status[data-status=running]{animation:none}}
+  [data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:calc(12px + var(--safe-top,0px)) calc(12px + var(--safe-right,0px)) calc(12px + var(--safe-bottom,0px)) calc(12px + var(--safe-left,0px))}button{font:inherit;color:inherit;cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;min-height:30px}button:hover{background:var(--muted)}button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}button:disabled{opacity:.5;cursor:wait}button[aria-pressed=true]{background:var(--accent);border-color:var(--primary)}.toolbar,.row,.tabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar{padding-bottom:10px}.toolbar>strong{margin-right:auto}.model,.badge{border-radius:var(--radius-sm);background:var(--muted);padding:1px 6px;font-size:11px}.elapsed{font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:auto;color:var(--muted-foreground)}.muted{color:var(--muted-foreground)}.preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.summary{color:var(--muted-foreground)}.status{color:var(--muted-foreground)}.status[data-status=running],.status[data-status=accepted]{color:var(--primary)}.status[data-status=success]{color:var(--success)}.status[data-status=failed],#error{color:var(--danger)}.status[data-status=cancelled]{color:var(--warning)}.cancel{color:var(--danger)}.workbench{display:grid;grid-template-columns:minmax(210px,32%) minmax(0,1fr);height:calc(100dvh - 90px - var(--safe-top,0px) - var(--safe-bottom,0px));min-height:280px;border-top:1px solid var(--border)}.run-list{overflow:auto;padding:12px 12px 12px 0;border-right:1px solid var(--border)}.run-card{display:block;width:100%;text-align:left;padding:10px;margin-bottom:6px;background:var(--tertiary);border-radius:var(--radius-md);overflow:hidden}.run-card .row{flex-wrap:nowrap}.run-card .row>span:not(.elapsed){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.run-card .preview{color:var(--muted-foreground);margin-top:4px}.inspector{overflow:auto;padding:16px;min-width:0}.detail-header{margin-bottom:16px}h2{font-size:17px;margin:0}h3{font-size:12px;margin:14px 0 8px}h4{font-size:11px;color:var(--muted-foreground);margin:10px 0 4px}.tabs{border-bottom:1px solid var(--border);padding-bottom:8px;position:sticky;top:0;background:var(--background);z-index:1}.tabs button{flex:1;white-space:nowrap}.tab-body{padding-top:12px;min-width:0}pre{font:12px/1.6 var(--app-font-mono);white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;margin:6px 0 12px}.stream,.result{padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--tertiary)}.stream{max-height:160px}.activity{color:var(--primary);background:var(--accent);border-radius:var(--radius-sm);padding:8px}.drawer{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--secondary)}[data-mode=inline] .result{max-height:220px}ol{list-style:none;padding:0;margin:0}li{border:1px solid var(--border);border-radius:var(--radius-md);margin:6px 0;overflow:hidden}.tool-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0}.tool-row .preview{flex:1;color:var(--muted-foreground)}.tool-content{padding:0 12px 12px}.tool-content pre{max-height:260px}.metadata{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 16px}.metadata dt{color:var(--muted-foreground)}.metadata dd{margin:0;overflow-wrap:anywhere}.back{display:none}.compact-list .run-card .row.muted{display:none}.compact-list .run-card{display:flex;gap:12px;padding:6px}.compact-list .run-card>.row{flex-shrink:0}.switcher{display:flex;gap:6px;overflow:auto;margin-top:8px}.switcher .run-card{min-width:180px}#error:empty{display:none}@media(max-width:619px){.workbench{grid-template-columns:1fr}.run-list{border-right:0}.back{display:block;margin-bottom:12px}[data-mobile-view=list] .inspector,[data-mobile-view=detail] .run-list{display:none}.toolbar{gap:6px}.metadata{grid-template-columns:1fr;gap:2px}.metadata dd{margin-bottom:8px}}
   </style></head><body><div id="app"></div><script>(${subagentPanelApp.toString()})(${JSON.stringify(surface)})</script></body></html>`;
 }
 

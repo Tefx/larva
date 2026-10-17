@@ -67,11 +67,22 @@ and timeline workers; native Pi presentation is unchanged.
 MCP Apps hosts can open the **Larva Subagents** thread side-panel tab through
 the app-only `larva_subagent_panel` tool → `ui://larva-pi-subagent/panel`
 (fullscreen by default). Spawn, wait, select, and status tool cards attach
-`ui://larva-pi-subagent/widget` (inline by default). Both surfaces offer
-Fullscreen / Inline switching, Refresh, run selection, route/thinking metadata,
-elapsed time, live assistant previews, tool progress, and terminal output.
-Active runs offer Cancel; each tool offers Inspect args / result through
-`larva_subagent_activity`. Display and bridge availability depend on host support.
+`ui://larva-pi-subagent/widget` as a **collapsed-by-default inline card**.
+The compact card shows persona, model · thinking, tool count, elapsed time,
+Cancel for active runs, and a single activity or terminal-summary line. It does
+not open assistant streams, tool lists, or result bodies automatically. Details
+opens an inline drawer with Timeline, Result, and Task & Session tabs; Hide
+details collapses it again. Multiple runs use compact selectable rows.
+
+Fullscreen opens the **side-panel workbench** directly: an All / Active / Done
+filter toolbar, grouped Active and Done run list, and a selected-run inspector.
+On narrow screens, selecting a run opens the inspector; Back to subagents
+returns to the list. Timeline shows bounded assistant previews and compact tool
+rows; expanding a tool reveals previews and Inspect args / result through
+`larva_subagent_activity`. Result and session metadata offer Copy controls.
+Fullscreen / Inline switching and Refresh use the host bridge. Host theme,
+style variables, and safe-area insets apply to both layouts. Display, clipboard,
+and bridge availability depend on host support.
 
 The server advertises eleven tools: nine model-facing runtime tools and two
 app-only tools (`search_mentions`, `larva_subagent_panel`). UI resources load
