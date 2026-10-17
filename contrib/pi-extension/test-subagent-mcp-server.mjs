@@ -119,15 +119,24 @@ async function exercisePanelBridge(html, surface, multiple = false) {
       queueMicrotask(() => deliver({ id: message.id, result }));
     },
   } };
-  const schedule = callback => { const id = ++timerId; timers.set(id, callback); return id; };
+  const schedule = (callback, delay, interval = false) => { const id = ++timerId; timers.set(id, { callback, delay, interval }); return id; };
+  const pollTimers = () => [...timers].filter(([, timer]) => !timer.interval && [1000, 2500].includes(timer.delay));
+  const firePoll = async () => {
+    const [id, timer] = pollTimers()[0] ?? [];
+    assert.ok(timer, 'a poll is scheduled'); timers.delete(id); await timer.callback(); await flush();
+  };
   let resize, copied;
   runInNewContext(html.match(/<script>([\s\S]*)<\/script>/)[1], {
     window, document, navigator: { clipboard: { async writeText(text) { copied = text; } } }, setTimeout: schedule, clearTimeout: id => timers.delete(id),
-    setInterval: schedule, clearInterval: id => timers.delete(id),
+    setInterval: (callback, delay) => schedule(callback, delay, true), clearInterval: id => timers.delete(id),
     ResizeObserver: class { constructor(callback) { resize = callback; } observe() {} disconnect() { disconnected = true; } },
   });
-  const flush = async () => { for (let index = 0; index < 15; index++) await Promise.resolve(); };
+  const flush = async () => { for (let index = 0; index < 50; index++) await Promise.resolve(); };
   await flush();
+  assert.equal(pollTimers().length, 1);
+  assert.equal(pollTimers()[0][1].delay, 1000, 'active runs keep polling');
+  await firePoll();
+  assert.equal(pollTimers().length, 1, 'polling never duplicates its timer');
   assert.equal(sent[0].method, 'ui/initialize');
   assert.equal(sent[0].params.protocolVersion, '2026-01-26');
   assert.deepEqual(sent[0].params.appInfo, { name: 'Larva Subagents', version: '0.8.9' });
@@ -269,10 +278,32 @@ async function exercisePanelBridge(html, surface, multiple = false) {
     deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
     assert.ok(hasText(formatted)); await flush();
   }
+  await flush();
+  if (surface === 'widget') {
+    await click('Inline');
+    assert.equal(pollTimers().length, 0, 'completed inline cards stop scheduling polls');
+    run.status = 'accepted';
+    deliver({ method: 'ui/notifications/tool-input', params: { arguments: { task_id: run.task_id } } });
+    await flush();
+    assert.equal(pollTimers().length, 1, 'tool-input restarts polling when the refreshed run is active');
+    assert.equal(pollTimers()[0][1].delay, 1000, 'accepted status polls even before result_pending is populated');
+    run.status = 'success';
+    deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
+    await flush();
+    assert.equal(pollTimers().length, 0, 'the newly completed inline card stops again');
+    await click('Fullscreen');
+  }
+  assert.equal(pollTimers().length, 1, 'fullscreen panels continue polling completed runs');
+  assert.equal(pollTimers()[0][1].delay, 2500);
+  await firePoll();
+  if (surface === 'widget') await click('Inline');
   run.status = 'running'; run.result_pending = true; run.result_preview = null; run.startup_model = 'openai/gpt-6.1-sol';
   deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run] } } });
   await flush();
+  assert.equal(pollTimers().length, 1, 'active tool-result resumes an idle inline widget');
+  assert.equal(pollTimers()[0][1].delay, 1000);
   assert.ok(hasText('gpt-6.1-sol · high')); assert.ok(hasText('openai/gpt-6.1-sol'));
+  if (surface === 'widget') await click('Fullscreen');
   await click('Result');
   assert.ok(!hasText('terminal output'), 'resumed run drops prior terminal output');
   assert.ok(hasText('No terminal output yet.'));
@@ -299,6 +330,9 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   }
   document.visibilityState = 'hidden';
   deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [] } } });
+  await flush();
+  assert.equal(pollTimers().length, 1, 'empty widgets keep waiting for their initial run');
+  assert.equal(pollTimers()[0][1].delay, 2500);
   if (surface === 'widget') assert.ok(hasText('Waiting for child…'));
   else { assert.ok(hasWorkbench()); assert.ok(hasText('No active subagents')); }
   if (surface === 'widget') await click('Fullscreen');
@@ -328,11 +362,7 @@ try {
   const idle = client({}, idleDir);
   const initialized = (await idle.request('initialize')).result;
   assert.deepEqual(initialized.serverInfo, { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.9' });
-  assert.deepEqual(initialized.capabilities, {
-    tools: {}, resources: {},
-    extensions: { 'openai/mentions': { searchTool: 'search_mentions' } },
-    experimental: { 'openai/mentions': { searchTool: 'search_mentions' } },
-  });
+  assert.deepEqual(initialized.capabilities, { tools: {}, resources: {} });
   assert.equal(initialized.instructions, 'When the user mentions @larva:<persona_id>, @persona:<persona_id>, or a larva://personas/<persona_id> resource (including [@larva:<persona_id>](mcp-resource://...)), delegate the requested task to larva_subagent with persona_id="<persona_id>" and wait_for_completion=true (or false for parallel fan-out). When @Larva Subagents is mentioned without an exact persona_id, call larva_personas first.');
   assert.ok(initialized.instructions.length < 512);
   for (const protocolVersion of ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25', '2026-07-28', 'unsupported']) {
@@ -349,13 +379,15 @@ try {
   const listedTools = (await idle.request('tools/list')).result.tools;
   assert.equal(listedTools.length, 11);
   const panelTool = listedTools.find(tool => tool.name === 'larva_subagent_panel');
-  assert.deepEqual(panelTool._meta, { ui: { resourceUri: 'ui://larva-pi-subagent/panel-v2', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } });
+  assert.deepEqual(panelTool._meta, { ui: { resourceUri: 'ui://larva-pi-subagent/panel-v3', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } });
   for (const surface of ['panel', 'widget']) {
-    const uri = 'ui://larva-pi-subagent/' + surface + '-v2';
+    const uri = 'ui://larva-pi-subagent/' + surface + '-v3';
     const resource = (await idle.request('resources/read', { uri })).result.contents[0];
     assert.equal(resource.uri, uri);
-    const legacy = (await idle.request('resources/read', { uri: uri.replace('-v2', '') })).result.contents[0];
-    assert.equal(legacy.text, resource.text); assert.deepEqual(legacy._meta, resource._meta);
+    for (const suffix of ['', '-v2']) {
+      const legacy = (await idle.request('resources/read', { uri: uri.replace('-v3', suffix) })).result.contents[0];
+      assert.equal(legacy.text, resource.text); assert.deepEqual(legacy._meta, resource._meta);
+    }
     assert.equal(resource.mimeType, 'text/html;profile=mcp-app');
     assert.equal(resource._meta.ui.prefersBorder, true);
     assert.deepEqual(resource._meta['openai/ui'], {
@@ -371,8 +403,8 @@ try {
   const mentionsTool = listedTools[9];
   assert.equal(mentionsTool.name, 'search_mentions');
   assert.deepEqual(mentionsTool.annotations, { readOnlyHint: true, destructiveHint: false, openWorldHint: false });
-  assert.deepEqual(mentionsTool._meta, { 'openai/extensions': { 'mentions/search': {} }, ui: { visibility: ['app'] } });
-  for (const args of [{}, { query: 1 }, { query: '', extra: true }]) {
+  assert.deepEqual(mentionsTool._meta, { 'openai/extensions': { 'mentions/search': { preload: true } }, ui: { visibility: ['app'] } });
+  for (const args of [{}, { query: 1 }, { query: '', extra: true }, { query: '', preload: 'true' }, { query: '', preload: 1 }, { query: '', path: 'bad' }, { query: '', path: [1] }, { query: '', path: [''] }]) {
     assert.equal((await idle.tool('search_mentions', args)).isError, true);
   }
   for (const [id, framed] of [[{}, false], [[], true]]) {
@@ -418,6 +450,58 @@ export async function resetExtensionUI(reason) { await record(reason); }
   await lazy.close();
   assert.deepEqual((await readFile(lifecycleFile, 'utf8')).trim().split('\n').map(JSON.parse), ['loaded', 'mcp_shutdown']);
   console.log('first validated call imports once; EOF awaits resetExtensionUI(mcp_shutdown): PASS');
+
+  // Exercise the real server cache with a controlled catalog source and clock.
+  const catalogDir = join(root, 'catalog-cache');
+  const catalogLog = join(root, 'catalog-scans.jsonl');
+  const catalogClock = join(root, 'catalog-clock');
+  await writeFile(catalogClock, '1000');
+  await mkdir(catalogDir);
+  await cp(join(packageDir, 'subagent-mcp-server.mjs'), join(catalogDir, 'subagent-mcp-server.mjs'));
+  await writeFile(join(catalogDir, 'larva.ts'), `
+import { appendFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+let failNext = false;
+Date.now = () => Number(readFileSync(${JSON.stringify(catalogClock)}, 'utf8'));
+export function larva_subagent_status() { failNext = true; return {content:[],details:{runs:[]}}; }
+export async function listPersonas() {
+ await appendFile(${JSON.stringify(catalogLog)}, JSON.stringify(Date.now())+'\\n');
+ await new Promise(resolve => setTimeout(resolve, 20));
+ if (failNext) { failNext = false; throw new Error('fixture catalog failure'); }
+ return Array.from({length:205}, (_, i) => ({id:'persona-'+i, ...(i ? {description:'Description '+i,model:'provider/model-'+i} : {})}));
+}
+export const rankPersonasForSelector = personas => personas;
+export function resetExtensionUI() {}
+`);
+  const catalog = client({}, catalogDir);
+  await catalog.request('initialize');
+  catalog.child.stdin.write(JSON.stringify({jsonrpc:'2.0',method:'notifications/initialized'})+'\n');
+  await catalog.request('ping');
+  assert.equal(existsSync(catalogLog), false);
+  const scans = async () => (await readFile(catalogLog, 'utf8')).trim().split('\n').map(JSON.parse);
+  const [preloaded, catalogResources] = await Promise.all([
+    catalog.tool('search_mentions', {query:'',preload:true,path:[]}), catalog.request('resources/list'),
+  ]);
+  assert.equal(preloaded.structuredContent.items.length, 200);
+  assert.deepEqual(preloaded.structuredContent.items[0].searchTerms, ['persona-0','@larva:persona-0']);
+  assert.deepEqual(preloaded.structuredContent.items[1].searchTerms, ['persona-1','@larva:persona-1','Description 1','provider/model-1']);
+  assert.equal(catalogResources.result.resources.length, 205);
+  assert.deepEqual(await scans(), [1000]);
+  assert.equal((await catalog.tool('search_mentions', {query:'',preload:false,path:['same','same']})).structuredContent.items.length, 30);
+  await writeFile(catalogClock, '10999');
+  await catalog.tool('search_mentions', {query:''});
+  assert.deepEqual(await scans(), [1000], 'catalog remains cached at 9,999ms');
+  await writeFile(catalogClock, '11000');
+  await catalog.request('resources/list');
+  assert.deepEqual(await scans(), [1000,11000], 'catalog refreshes at the ten-second boundary');
+  await writeFile(catalogClock, '21000');
+  await catalog.tool('larva_subagent_status');
+  const failedCatalog = await catalog.request('resources/list');
+  assert.equal(failedCatalog.error.message, 'fixture catalog failure');
+  await catalog.tool('search_mentions', {query:''});
+  assert.deepEqual(await scans(), [1000,11000,21000,21000], 'rejected catalog promises are evicted');
+  await catalog.close();
+  console.log('preload/search limits and terms, shared concurrent TTL cache, expiry and failure recovery: PASS');
 
   await mkdir(env.PI_CODING_AGENT_DIR, { recursive: true });
   await symlink(join(root, 'absent-target'), join(env.PI_CODING_AGENT_DIR, 'dangling'));
@@ -656,12 +740,13 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.deepEqual(listed.map(tool => tool.name), [...expected, 'search_mentions', 'larva_subagent_panel']);
   const childResource = { uri: 'larva://personas/child', name: 'child', title: '@larva:child', description: 'Fixture child', mimeType: 'text/markdown' };
   const otherResource = { ...childResource, uri: 'larva://personas/other', name: 'other', title: '@larva:other', description: 'Fixture other' };
-  const allMentions = await c.tool('search_mentions', { query: '' });
+  const mention = resource => ({ type: 'resource_link', ...resource, searchTerms: [resource.name, resource.title, resource.description, 'fixture/model'] });
+  const allMentions = await c.tool('search_mentions', { query: '', preload: true, path: [] });
   assert.equal(allMentions.isError, false);
   assert.deepEqual(allMentions.content, []);
-  assert.deepEqual(allMentions.structuredContent, { items: [childResource, otherResource].map(resource => ({ type: 'resource_link', ...resource })) });
+  assert.deepEqual(allMentions.structuredContent, { items: [childResource, otherResource].map(mention) });
   for (const query of ['child', '@larva:child', ' @LARVA:child ', '@persona:child', 'larva:child', 'persona:child', '@child']) {
-    assert.deepEqual((await c.tool('search_mentions', { query })).structuredContent.items, [{ type: 'resource_link', ...childResource }]);
+    assert.deepEqual((await c.tool('search_mentions', { query })).structuredContent.items, [mention(childResource)]);
   }
   assert.deepEqual((await c.tool('search_mentions', { query: 'no-match' })).structuredContent.items, []);
   assert.deepEqual((await c.request('resources/list')).result, { resources: [childResource, otherResource] });

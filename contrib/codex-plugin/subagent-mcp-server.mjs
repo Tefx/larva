@@ -52,23 +52,23 @@ tools.push({
   description: 'Search registered Larva personas for composer @-mention completion.',
   inputSchema: {
     type: 'object',
-    properties: { query: { type: 'string' } },
+    properties: { query: { type: 'string' }, preload: { type: 'boolean' }, path: { type: 'array', items: string } },
     required: ['query'],
     additionalProperties: false,
   },
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  _meta: { 'openai/extensions': { 'mentions/search': {} }, ui: { visibility: ['app'] } },
+  _meta: { 'openai/extensions': { 'mentions/search': { preload: true } }, ui: { visibility: ['app'] } },
 });
 tools.push({
   name: 'larva_subagent_panel', title: 'Larva Subagents',
   description: 'Open the Larva subagent live activity panel and inspect active or recent Pi child sessions.',
   inputSchema: { type: 'object', properties: { task_id: string, limit: integer(1, 25) }, required: [], additionalProperties: false },
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-  _meta: { ui: { resourceUri: 'ui://larva-pi-subagent/panel-v2', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } },
+  _meta: { ui: { resourceUri: 'ui://larva-pi-subagent/panel-v3', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } },
 });
 for (const tool of tools) {
   if (['larva_subagent', 'larva_subagent_wait', 'larva_subagent_select', 'larva_subagent_status'].includes(tool.name)) {
-    tool._meta = { ui: { resourceUri: 'ui://larva-pi-subagent/widget-v2', visibility: ['model', 'app'] }, 'openai/ui': { preferredModelDisplayMode: 'inline' } };
+    tool._meta = { ui: { resourceUri: 'ui://larva-pi-subagent/widget-v3', visibility: ['model', 'app'] }, 'openai/ui': { preferredModelDisplayMode: 'inline' } };
   }
 }
 const shutdownController = new AbortController();
@@ -79,6 +79,17 @@ for (const directory of [join(home, '.local/bin'), join(home, '.pi/agent/bin'), 
   if (existsSync(directory) && !pathEntries.includes(directory)) pathEntries.push(directory);
 }
 const ctx = { env: { ...process.env, PATH: pathEntries.join(delimiter) }, externalHostCanSpawn: true, abortSignal: shutdownController.signal };
+let personaCache;
+function cachedPersonas(runtime) {
+  const now = Date.now();
+  if (!personaCache || personaCache.expiresAt <= now) {
+    const cache = { expiresAt: now + 10_000, personasPromise: Promise.resolve().then(() => runtime.listPersonas(ctx)) };
+    personaCache = cache;
+    // A failed scan must not poison subsequent catalog requests.
+    void cache.personasPromise.catch(() => { if (personaCache === cache) personaCache = undefined; });
+  }
+  return personaCache.personasPromise;
+}
 // Bound retained output to the same recent-terminal window as the runtime.
 const outbox = new Map();
 function remember(taskId, slot) {
@@ -95,7 +106,7 @@ function validValue(value, schema) {
   if (schema.type === 'string') return typeof value === 'string' && value.length >= (schema.minLength ?? 0);
   if (schema.type === 'boolean') return typeof value === 'boolean';
   if (schema.type === 'integer') return Number.isSafeInteger(value) && value >= schema.minimum && value <= schema.maximum;
-  if (schema.type === 'array') return Array.isArray(value) && value.length >= schema.minItems && value.length <= schema.maxItems && new Set(value).size === value.length && value.every(item => validValue(item, schema.items));
+  if (schema.type === 'array') return Array.isArray(value) && value.length >= (schema.minItems ?? 0) && value.length <= (schema.maxItems ?? Infinity) && (!schema.uniqueItems || new Set(value).size === value.length) && value.every(item => validValue(item, schema.items));
   return true;
 }
 async function enrich(result) {
@@ -126,11 +137,12 @@ async function callTool(name, args) {
   }
   if (name === 'search_mentions') {
     const normalizedQuery = args.query.trim().replace(/^(?:@?(?:larva|persona):|@)/i, '').trim();
-    const items = runtime.rankPersonasForSelector(await runtime.listPersonas(ctx), normalizedQuery).slice(0, 30).map(persona => ({
+    const items = runtime.rankPersonasForSelector(await cachedPersonas(runtime), normalizedQuery).slice(0, args.preload === true ? 200 : 30).map(persona => ({
       type: 'resource_link',
       uri: `larva://personas/${encodeURIComponent(persona.id)}`,
       name: persona.id,
       title: `@larva:${persona.id}`,
+      searchTerms: [persona.id, `@larva:${persona.id}`, ...(persona.description ? [persona.description] : []), ...(persona.model ? [persona.model] : [])],
       ...(persona.description || persona.model ? { description: persona.description ?? persona.model } : {}),
       mimeType: 'text/markdown',
     }));
@@ -162,7 +174,7 @@ async function callTool(name, args) {
 
 // Serialized into both UI resources; all data stays on the host postMessage bridge.
 function subagentPanelApp(surface) {
-  let sequence = 0, selected = null, personaHint = null, filter = {}, state = { runs: [], terminal_outputs: {} }, mode = surface === 'panel' ? 'fullscreen' : 'inline', stopped = false, polling = false;
+  let sequence = 0, selected = null, personaHint = null, filter = {}, state = { runs: [], terminal_outputs: {} }, mode = surface === 'panel' ? 'fullscreen' : 'inline', stopped = false, polling = null;
   let inlineExpanded = false, listFilter = 'All';
   const isInlineWidget = () => surface === 'widget' && mode === 'inline';
   const tabs = new Map(), expandedTools = new Set(), expandedPrompts = new Set(), inspectedOutputs = new Map(), controlCounts = new Map();
@@ -213,9 +225,9 @@ function subagentPanelApp(surface) {
       if (message.error) waiter.reject(new Error(message.error.message)); else waiter.resolve(message.result);
       return;
     }
-    if (message.method === 'ui/notifications/host-context-changed') hostContext(message.params?.hostContext ?? message.params);
-    if (message.method === 'ui/notifications/tool-input') { accept(message.params?.arguments); void refresh(); }
-    if (message.method === 'ui/notifications/tool-result') { accept(message.params?.structuredContent); void refresh(); }
+    if (message.method === 'ui/notifications/host-context-changed') { hostContext(message.params?.hostContext ?? message.params); void poll(); }
+    if (message.method === 'ui/notifications/tool-input') { accept(message.params?.arguments); void poll(); }
+    if (message.method === 'ui/notifications/tool-result') { accept(message.params?.structuredContent); void poll(); }
     if (message.method === 'ui/resource-teardown') {
       stopped = true; clearTimeout(pollTimer); clearInterval(clock);
       observer.disconnect();
@@ -268,7 +280,7 @@ function subagentPanelApp(surface) {
     button(mode === 'inline' ? 'Fullscreen' : 'Inline', async () => {
       const requested = mode === 'inline' ? 'fullscreen' : 'inline';
       const response = await rpc('ui/request-display-mode', { mode: requested });
-      mode = response.mode ?? mode; render();
+      mode = response.mode ?? mode; render(); void poll();
     }, parent).dataset.focusKey = 'display-mode';
   }
   function cancel(run, parent) {
@@ -441,21 +453,31 @@ function subagentPanelApp(surface) {
     }
   }
   async function refresh() {
-    if (stopped || polling || document.visibilityState === 'hidden') return;
-    polling = true;
-    try { accept(await tool('larva_subagent_panel', filter)); }
-    catch (error) { showError(error); }
-    finally { polling = false; }
+    if (stopped || document.visibilityState === 'hidden') return;
+    if (!polling) polling = (async () => {
+      try { accept(await tool('larva_subagent_panel', filter)); }
+      catch (error) { showError(error); }
+      finally { polling = null; }
+    })();
+    return polling;
   }
-  let pollTimer;
+  let pollTimer, pollInProgress = false, pollAgain = false;
   async function poll() {
+    if (stopped) return;
+    if (pollInProgress) { pollAgain = true; return; }
+    clearTimeout(pollTimer); pollTimer = undefined;
+    pollInProgress = true;
     await refresh();
-    if (!stopped) pollTimer = setTimeout(poll, state.runs?.some(run => run.result_pending || run.status === 'running') ? 1000 : 2500);
+    pollInProgress = false;
+    if (pollAgain) { pollAgain = false; void poll(); return; }
+    if (!stopped && (!isInlineWidget() || !state.runs?.length || state.runs.some(run => run.result_pending || isActive(run)))) {
+      pollTimer = setTimeout(poll, state.runs?.some(run => run.result_pending || isActive(run)) ? 1000 : 2500);
+    }
   }
   const observer = new ResizeObserver(() => { if (isInlineWidget() && !stopped) notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight }); });
   observer.observe(root);
   const clock = setInterval(tick, 1000);
-  document.addEventListener('visibilitychange', () => { if (!stopped && document.visibilityState !== 'hidden') void refresh(); });
+  document.addEventListener('visibilitychange', () => { if (!stopped && document.visibilityState !== 'hidden') void poll(); });
   render();
   rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.8.9' }, appCapabilities: { availableDisplayModes: surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'] } }).then(result => {
     if (stopped) return;
@@ -505,11 +527,7 @@ async function dispatch(message, framed) {
       case 'initialize':
         result = {
           protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25', '2026-07-28'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05',
-          capabilities: {
-            tools: {}, resources: {},
-            extensions: { 'openai/mentions': { searchTool: 'search_mentions' } },
-            experimental: { 'openai/mentions': { searchTool: 'search_mentions' } },
-          },
+          capabilities: { tools: {}, resources: {} },
           serverInfo: { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.9' },
           instructions: 'When the user mentions @larva:<persona_id>, @persona:<persona_id>, or a larva://personas/<persona_id> resource (including [@larva:<persona_id>](mcp-resource://...)), delegate the requested task to larva_subagent with persona_id="<persona_id>" and wait_for_completion=true (or false for parallel fan-out). When @Larva Subagents is mentioned without an exact persona_id, call larva_personas first.',
         };
@@ -527,7 +545,7 @@ async function dispatch(message, framed) {
         break;
       case 'resources/list': {
         const runtime = await getRuntime();
-        const personas = await runtime.listPersonas(ctx);
+        const personas = await cachedPersonas(runtime);
         result = { resources: personas.map(persona => ({
           uri: `larva://personas/${encodeURIComponent(persona.id)}`,
           name: persona.id, title: `@larva:${persona.id}`,
@@ -538,7 +556,7 @@ async function dispatch(message, framed) {
       }
       case 'resources/read': {
         const uri = message.params?.uri;
-        if (uri === 'ui://larva-pi-subagent/panel' || uri === 'ui://larva-pi-subagent/panel-v2' || uri === 'ui://larva-pi-subagent/widget' || uri === 'ui://larva-pi-subagent/widget-v2') {
+        if (['panel', 'panel-v2', 'panel-v3', 'widget', 'widget-v2', 'widget-v3'].some(name => uri === `ui://larva-pi-subagent/${name}`)) {
           const surface = uri.includes('/panel') ? 'panel' : 'widget';
           const modes = surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'];
           result = { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: renderSubagentPanelHtml(surface), _meta: { 'openai/ui': { preferredDisplayMode: modes[0], availableDisplayModes: modes }, ui: { prefersBorder: true } } }] };

@@ -62,15 +62,36 @@ existing `~/.local/bin`, `~/.pi/agent/bin`, `/opt/homebrew/bin`, and
 without overriding explicit prefixes. External-host runs skip TUI presentation
 and timeline workers; native Pi presentation is unchanged.
 
+### Mention catalog preload and cache
+
+Initialization advertises only `capabilities: { tools: {}, resources: {} }`;
+mention discovery uses the app-only `search_mentions` tool metadata:
+`_meta["openai/extensions"]["mentions/search"] = { preload: true }`.
+Omitting the initialize-level `openai/mentions` capability lets Codex Desktop
+honor that preload flag. `notifications/initialized` never imports `larva.ts`.
+
+`search_mentions({ query: '', preload: true, path: [] })` returns up to 200
+persona resource links; ordinary searches return up to 30. Optional `preload`
+must be boolean and `path` must be an array of nonempty strings. Every link
+includes `searchTerms` containing its ID, `@larva:<id>`, and any description
+and model, allowing Codex Desktop to match its preloaded catalog locally.
+Registries larger than 200 entries exceed the preload response limit.
+
+The server shares a process-local ten-second persona-list promise cache between
+`search_mentions` and `resources/list`, including concurrent requests.
+Registry changes appear on the next request after expiry; a failed scan is
+evicted for retry. Initialization and UI resource reads remain lazy.
+
 ### Live activity panel and inline widget
 
 MCP Apps hosts open the **Larva Subagents** thread side-panel tab through
-the app-only `larva_subagent_panel` tool → `ui://larva-pi-subagent/panel-v2`.
+the app-only `larva_subagent_panel` tool → `ui://larva-pi-subagent/panel-v3`.
 The panel advertises fullscreen only and has no redundant Inline button.
 Spawn, wait, select, and status tool cards attach
-`ui://larva-pi-subagent/widget-v2` as a **collapsed-by-default inline card**.
+`ui://larva-pi-subagent/widget-v3` as a **collapsed-by-default inline card**.
 The versioned URIs refresh Codex Desktop's cached UI resource. Legacy
-`/panel` and `/widget` resource reads still return the same current app.
+`/panel`, `/panel-v2`, `/widget`, and `/widget-v2` resource reads still return
+the same current app.
 
 The compact card shows persona, model · thinking, tool count, elapsed time,
 Cancel for active runs, and one activity or terminal-summary line. Details
@@ -102,8 +123,11 @@ host support.
 The server advertises eleven tools: nine model-facing runtime tools and two
 app-only tools (`search_mentions`, `larva_subagent_panel`). UI resources load
 without importing `larva.ts`. The self-contained app uses only the parent
-JSON-RPC bridge, makes no network requests, polls every second while active
-and every 2.5 seconds while idle, and pauses polling in hidden documents.
+JSON-RPC bridge and makes no network requests. Active runs poll every second;
+fullscreen panels and widgets awaiting their first run poll every 2.5 seconds
+when idle. Completed inline widgets stop scheduling polls. Switching to
+fullscreen or receiving a new active-run notification restarts polling.
+Hidden documents make no polling requests.
 Panel reads preserve the process-local outbox and never consume child output.
 Restart loses live state; recorded historical activity remains separate.
 
