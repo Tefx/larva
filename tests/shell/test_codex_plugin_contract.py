@@ -45,7 +45,7 @@ def test_manifest_and_mcp_config() -> None:
         "required": ["name", "version", "description", "skills", "mcpServers", "interface"],
         "properties": {
             "name": {"const": "larva-subagent"},
-            "version": {"const": "0.8.7"},
+            "version": {"const": "0.8.8"},
             "description": {"type": "string", "minLength": 1},
             "skills": {"const": "./skills/"},
             "mcpServers": {"const": "./.mcp.json"},

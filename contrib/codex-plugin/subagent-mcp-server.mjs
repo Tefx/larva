@@ -146,7 +146,7 @@ async function dispatch(message, framed) {
   try {
     let result;
     switch (message.method) {
-      case 'initialize': result = { protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'larva-pi-subagent', version: '0.8.7' } }; break;
+      case 'initialize': result = { protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'larva-pi-subagent', version: '0.8.8' } }; break;
       case 'ping': result = {}; break;
       case 'tools/list': result = { tools }; break;
       case 'tools/call': result = await callTool(message.params?.name, message.params?.arguments === undefined ? {} : message.params.arguments); break;

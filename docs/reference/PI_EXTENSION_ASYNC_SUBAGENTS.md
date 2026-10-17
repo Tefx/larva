@@ -1848,6 +1848,10 @@ continuity only and must not mutate terminal state, event history, active-run
 authority, or watchdog timing.
 
 ## Session lifecycle rules
+On parent session shutdown, reload, new session, resume, or fork, Larva applies
+the lifecycle-specific rules below: native reload transfers live ownership;
+session-ending events and direct synthetic reload tear down child runs.
+
 Pi's native `/reload` emits `session_shutdown({ reason: "reload" })`,
 replaces the extension module, then emits `session_start({ reason: "reload" })`.
 Larva transfers live subagent Maps, Sets, presentation rows and counters through

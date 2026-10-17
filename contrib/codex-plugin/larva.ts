@@ -8978,7 +8978,7 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
     const payload = await callbackPayloadFromRun(record);
     // Payload reads can yield across shutdown; defer delivery until the new
     // runtime has rebound the callback and UI surfaces.
-    if (sharedSubagentState.reloadPendingHandoff || record.callback_delivery !== "pending" || record.callback_surface !== surface) return;
+    if (sharedSubagentState.reloadPendingHandoff || record.callback_surface !== surface) return;
     const ctx = record.callback_ctx;
     const callback = larvaSubagentResultCallbackDelivery(payload.message as string, payload);
     if (typeof record.callback_surface.sendMessage === "function") {
@@ -9009,11 +9009,11 @@ async function deliverSubagentResultCallback(record: ActiveSubagentRun): Promise
       setSubagentCallbackDelivery(record, "failed", subagentCallbackDeliveryDiagnostic("LARVA_CALLBACK_SURFACE_UNAVAILABLE", "No Pi callback delivery surface was available; no larva-subagent-result callback was injected."));
       return;
     }
-    setSubagentCallbackDelivery(record, "delivered");
+    if (record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "delivered");
   } catch (caught) {
     const diagnostic = callbackDeliveryDiagnosticFromCaught(caught);
     void traceChildRpc(record.env, "callback_delivery_failed", { task_id: record.task_id, code: diagnostic.code, message_preview: boundedTracePreview(diagnostic.message) });
-    setSubagentCallbackDelivery(record, "failed", diagnostic);
+    if (record.callback_delivery === "pending") setSubagentCallbackDelivery(record, "failed", diagnostic);
   } finally {
     pruneTerminalSubagentRuns();
   }
@@ -10525,7 +10525,8 @@ function createChildPiCapsule(env: RuntimeEnv): string | LarvaError {
   }
 }
 
-function resolvePiCommandPrefix(env: RuntimeEnv): string[] | LarvaError {
+function resolvePiCommandPrefix(_env: RuntimeEnv): string[] | LarvaError {
+  const env = _env;
   if (nativePiCommandPrefix !== null) return [...nativePiCommandPrefix];
   const explicit = env.LARVA_PI_CLI_SCRIPT ?? env.LARVA_PI_REAL_BIN;
   const candidates = explicit !== undefined ? [explicit] : (env.PATH ?? "").split(process.platform === "win32" ? ";" : ":").filter(isAbsolute).map((directory) => join(directory, "pi"));
@@ -12067,14 +12068,14 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   registerAgentPersonaSwitchTools(ctx, pi);
   const initialRuntimeCtx = withRuntimeEnv(ctx, env);
   if (canInitializeSessionNow(initialRuntimeCtx)) await ensureSessionInitialized(initialRuntimeCtx, pi);
-  pi.on?.("session_start", async (payload: unknown, eventCtx?: PiContext) => {
+  pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
     if (!instructionGenerationIsCurrent(instanceGeneration)) return;
     const generation = beginInstructionTransition();
     try {
       const runtimeCtx = withRuntimeEnv(eventCtx ?? ctx, env);
       registerSubagentBackgroundIndicatorContext(runtimeCtx);
       registerLarvaPersonaAutocompleteProvider(runtimeCtx);
-      const isReloadHandoff = (isRecord(payload) && payload.reason === "reload") || sharedSubagentState.reloadPendingHandoff;
+      const isReloadHandoff = (isRecord(_payload) && _payload.reason === "reload") || sharedSubagentState.reloadPendingHandoff;
       if (isReloadHandoff) {
         sharedSubagentState.reloadPendingHandoff = false;
         for (const record of new Set(activeSubagentRuns.values())) {
