@@ -253,6 +253,16 @@ type RecentSubagentSession = {
   sequence: number;
 };
 type LarvaSubagentRunSnapshot = {
+  task_preview: string;
+  startup_model: string | null;
+  requested_thinking: PiThinkingLevel | null;
+  startup_thinking: PiThinkingLevel | null;
+  result_preview: string | null;
+  live_assistant_preview: string | null;
+  live_thinking: boolean;
+  active_tool: SubagentToolSnapshot | null;
+  tool_snapshots: SubagentToolSnapshot[];
+  last_child_activity: SubagentChildActivity | null;
   task_id: string;
   persona_id: string;
   status: LarvaSubagentPublicStatus;
@@ -683,6 +693,11 @@ type SubagentTerminalSnapshot = Readonly<{
   completed_at: string;
 }>;
 type ActiveSubagentRun = {
+  live_assistant_preview: string | null;
+  live_thinking: boolean;
+  active_tool: SubagentToolSnapshot | null;
+  tool_snapshots: SubagentToolSnapshot[];
+  last_child_activity: SubagentChildActivity | null;
   private_key: string;
   task_id: string | null;
   persona_id: string;
@@ -8581,12 +8596,22 @@ function statusSnapshotForRun(record: ActiveSubagentRun, status: LarvaSubagentPu
   return {
     task_id: record.task_id,
     persona_id: record.persona_id,
+    task_preview: record.task_preview ?? "",
+    startup_model: record.startup_model,
+    requested_thinking: record.requested_thinking,
+    startup_thinking: record.startup_thinking,
+    live_assistant_preview: record.live_assistant_preview,
+    live_thinking: record.live_thinking,
+    active_tool: record.active_tool === null ? null : { ...record.active_tool },
+    tool_snapshots: record.tool_snapshots.map(tool => ({ ...tool })),
+    last_child_activity: record.last_child_activity === null ? null : { ...record.last_child_activity },
+    result_preview: record.result_pending ? null : boundedPresentationPreview(record.result_text, 4000),
     status,
     phase: record.phase,
     result_pending: !isTerminalSubagentStatus(status),
     started_at: record.started_at,
     updated_at: record.updated_at,
-    elapsed_ms: nonNegativeElapsedMs(record.started_at, now),
+    elapsed_ms: nonNegativeElapsedMs(record.started_at, record.terminal_snapshot === null ? now : Date.parse(record.terminal_snapshot.completed_at)),
     age_ms: nonNegativeElapsedMs(record.updated_at, now),
     sequence_latest: latestSubagentEventSequenceForTask(record.task_id),
     error: record.error,
@@ -8675,6 +8700,11 @@ function createSubagentRun(input: LarvaSubagentInput, env: RuntimeEnv, personaId
     startup_model: null,
     requested_thinking: null,
     startup_thinking: null,
+    live_assistant_preview: null,
+    live_thinking: false,
+    active_tool: null,
+    tool_snapshots: [],
+    last_child_activity: null,
   };
   activeSubagentRuns.set(record.private_key, record);
   return record;
@@ -9041,6 +9071,8 @@ function finalizeSubagentRun(record: ActiveSubagentRun, result: LarvaSubagentRes
       ? failed(result.task_id, result.persona_id, error("LARVA_CHILD_PROTOCOL_FAILED", "Accepted run cannot be terminalized as accepted."))
       : result;
   const completedAt = timestampNow();
+  record.live_thinking = false;
+  record.active_tool = null;
   record.status = terminal.status;
   record.phase = terminal.status;
   record.result_pending = false;
@@ -9422,14 +9454,14 @@ function validatePublicTaskIdForStatus(taskId: string, env: RuntimeEnv): string 
 
 function statusSnapshotForExactTask(taskId: string): LarvaSubagentRunSnapshot[] {
   const record = activeSubagentRunByTaskId(taskId);
-  const latest = record?.status_history.at(-1) ?? (record === null ? null : statusSnapshotForRun(record));
-  return latest === null ? [] : [{ ...latest }];
+  const latest = record === null ? null : statusSnapshotForRun(record);
+  return latest === null ? [] : [latest];
 }
 
 function latestStatusSnapshots(limit: number): LarvaSubagentRunSnapshot[] {
   const snapshots = Array.from(activeSubagentRuns.values()).flatMap((record) => {
-    const latest = record.status_history.at(-1) ?? statusSnapshotForRun(record);
-    return latest === null ? [] : [{ ...latest }];
+    const latest = statusSnapshotForRun(record);
+    return latest === null ? [] : [latest];
   });
   return snapshots.sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at)).slice(0, limit);
 }
@@ -11085,6 +11117,34 @@ function sessionFileFromState(value: unknown): string | LarvaError {
   return sessionFile;
 }
 
+function captureSubagentLiveActivity(record: ActiveSubagentRun, event: NormalizedSubagentStreamEvent): void {
+  if (record.terminal_snapshot !== null) return;
+  record.last_child_activity = {
+    category: event.kind, received_at: timestampNow(),
+    ...(event.kind === "activity" ? { summary: event.summary } : {}),
+  };
+  if (event.kind === "thinking_hidden") record.live_thinking = true;
+  if (["assistant_delta", "tool", "message_boundary", "terminal"].includes(event.kind)) record.live_thinking = false;
+  if (event.kind === "assistant_delta" && !event.tool_argument) {
+    record.live_assistant_preview = ((record.live_assistant_preview ?? "") + event.text).slice(-4000);
+  }
+  if (event.kind === "message_boundary" && event.assistant) record.live_assistant_preview = event.assistant.text.slice(-4000);
+  if (event.kind === "tool") {
+    const previous = record.tool_snapshots.find(tool => tool.toolCallId === event.toolCallId);
+    const tool: SubagentToolSnapshot = {
+      toolCallId: event.toolCallId, status: event.status,
+      name: event.name ?? previous?.name,
+      args_preview: event.args_preview ?? previous?.args_preview,
+      output_preview: event.output_preview ?? previous?.output_preview,
+      error_preview: event.error_preview ?? previous?.error_preview,
+    };
+    record.tool_snapshots = [...record.tool_snapshots.filter(item => item.toolCallId !== event.toolCallId), tool].slice(-25);
+    if (event.status === "running") record.active_tool = { ...tool };
+    else if (record.active_tool?.toolCallId === event.toolCallId) record.active_tool = null;
+  }
+  if (event.kind === "terminal") record.active_tool = null;
+}
+
 function captureSubagentStartupRoute(record: ActiveSubagentRun, startupModel: string, requestedThinking: PiThinkingLevel, startupThinking: PiThinkingLevel): void {
   if (record.startup_model !== null || record.requested_thinking !== null || record.startup_thinking !== null) return;
   record.startup_model = startupModel;
@@ -11591,6 +11651,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: PiContext 
       if (canPresent()) recordSubagentPresentationRunning(allocatedTaskId, personaId, input, ctx?.presentationCallId);
     },
     onStreamEvent: (eventValue, streamedTaskId) => {
+      captureSubagentLiveActivity(record, eventValue);
       if (canPresent()) applyNormalizedSubagentStreamEvent(streamedTaskId, ctx?.presentationCallId, eventValue);
     },
   }, record);

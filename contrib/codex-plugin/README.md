@@ -237,6 +237,32 @@ The 3600-second host call timeout, observer `timeout_ms`, and child's no-progres
 independent; a host timeout is not proof of cancellation. Inspect and reconcile
 effects before retrying or resuming uncertain work.
 
+### Live activity panel and inline widget
+
+MCP Apps hosts can open the **Larva Subagents** thread side-panel tab through
+the app-only `larva_subagent_panel` tool → `ui://larva-pi-subagent/panel`
+(fullscreen by default). Spawn, wait, select, and status tool cards attach
+`ui://larva-pi-subagent/widget` (inline by default). Both surfaces offer
+Fullscreen / Inline switching, Refresh, run selection, route/thinking metadata,
+elapsed time, live assistant previews, tool progress, and terminal output.
+Active runs offer Cancel; each tool offers Inspect args / result through
+`larva_subagent_activity`. Display and bridge availability depend on host support.
+
+The server advertises eleven tools: nine model-facing runtime tools and two
+app-only tools (`search_mentions`, `larva_subagent_panel`). UI resources load
+without importing `larva.ts`. The self-contained app uses only the parent
+JSON-RPC bridge, makes no network requests, polls every second while active
+and every 2.5 seconds while idle, and pauses polling in hidden documents.
+Panel reads preserve the process-local outbox and never consume child output.
+Restart loses live state; recorded historical activity remains separate.
+
+Status and wait/select snapshots include bounded task and assistant previews,
+startup model/requested and effective thinking levels, thinking/tool indicators,
+the 25 most recent tool snapshots, last child activity, and terminal result
+preview. External-host runs populate these fields directly from child RPC
+frames without retaining native TUI presentation logs or spawning timeline
+workers. Preview text is bounded; Inspect retrieves paged recorded segments.
+
 ### Child RPC readiness and timeout diagnostics
 
 Child Pi initial RPC readiness has a separate 60-second window

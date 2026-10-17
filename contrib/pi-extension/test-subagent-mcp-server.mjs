@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
+import { runInNewContext } from 'node:vm';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 const root = realpathSync(await mkdtemp(join(tmpdir(), 'larva-mcp-')));
@@ -74,6 +75,91 @@ function client(overrides = {}, runtimeDir = packageDir) {
   clients.push(api);
   return api;
 }
+// Execute the shipped resource script against a controlled parent bridge and
+// minimal DOM, without replacing any of the app's request or rendering logic.
+async function exercisePanelBridge(html) {
+  const nodes = [], sent = [], listeners = {}, timers = new Map(), variables = {};
+  let timerId = 0, disconnected = false;
+  const node = tag => {
+    const value = { tag, dataset: {}, children: [], textContent: '',
+      append(child) { this.children.push(child); },
+      replaceChildren() { this.children = []; },
+    };
+    nodes.push(value); return value;
+  };
+  const app = node('div'); app.id = 'app';
+  const visibleNodes = () => {
+    const result = [];
+    const walk = parent => { result.push(parent); for (const child of parent.children) walk(child); };
+    walk(app); return result;
+  };
+  const document = {
+    visibilityState: 'visible',
+    documentElement: { dataset: {}, scrollHeight: 320, style: { setProperty(key, value) { variables[key] = value; } } },
+    createElement: node,
+    getElementById: id => visibleNodes().find(value => value.id === id),
+    querySelectorAll: () => visibleNodes().filter(value => value.dataset.started),
+    addEventListener(name, callback) { listeners[name] = callback; },
+  };
+  const run = { task_id: '/fixture/child.jsonl', persona_id: 'child', status: 'running', phase: 'waiting_for_child', result_pending: true, started_at: new Date().toISOString(), elapsed_ms: 100, startup_model: 'fixture/model', startup_thinking: 'high', task_preview: 'fixture task', live_assistant_preview: '<script>literal text</script>', active_tool: { name: 'read' }, tool_snapshots: [{ toolCallId: 'call-1', name: 'read', status: 'running', args_preview: 'fixture' }] };
+  const deliver = message => listeners.message({ source: window.parent, data: { jsonrpc: '2.0', ...message } });
+  const window = { addEventListener(name, callback) { listeners[name] = callback; }, parent: {
+    postMessage(message) {
+      sent.push(JSON.parse(JSON.stringify(message)));
+      if (!message.id || message.method === undefined) return;
+      let result = {};
+      if (message.method === 'ui/initialize') result = { hostContext: { theme: 'dark', styles: { variables: { '--color-text-primary': 'red' } } } };
+      if (message.method === 'ui/request-display-mode') result = { mode: message.params.mode };
+      if (message.method === 'tools/call') result = { structuredContent: message.params.name === 'larva_subagent_panel' ? { runs: [run], terminal_outputs: {} } : { expanded: 'fixture segment' } };
+      queueMicrotask(() => deliver({ id: message.id, result }));
+    },
+  } };
+  const schedule = callback => { const id = ++timerId; timers.set(id, callback); return id; };
+  let resize;
+  runInNewContext(html.match(/<script>([\s\S]*)<\/script>/)[1], {
+    window, document, setTimeout: schedule, clearTimeout: id => timers.delete(id),
+    setInterval: schedule, clearInterval: id => timers.delete(id),
+    ResizeObserver: class { constructor(callback) { resize = callback; } observe() {} disconnect() { disconnected = true; } },
+  });
+  const flush = async () => { for (let index = 0; index < 15; index++) await Promise.resolve(); };
+  await flush();
+  assert.equal(sent[0].method, 'ui/initialize');
+  assert.equal(sent[0].params.protocolVersion, '2026-01-26');
+  assert.deepEqual(sent[0].params.appInfo, { name: 'Larva Subagents', version: '0.8.9' });
+  assert.ok(sent.some(message => message.method === 'ui/notifications/initialized'));
+  assert.equal(variables['--color-text-primary'], 'red');
+  assert.equal(document.documentElement.dataset.theme, 'dark');
+  assert.ok(visibleNodes().some(value => value.textContent === run.live_assistant_preview));
+  deliver({ method: 'ui/notifications/host-context-changed', params: { theme: 'light' } });
+  assert.equal(document.documentElement.dataset.theme, 'light');
+  deliver({ method: 'ui/notifications/tool-input', params: { arguments: { task_id: run.task_id, persona_id: 'child' } } });
+  await flush();
+  assert.deepEqual(sent.filter(message => message.params?.name === 'larva_subagent_panel').at(-1).params.arguments, { task_id: run.task_id });
+  const click = async text => { const target = visibleNodes().find(value => value.tag === 'button' && value.textContent === text); assert.ok(target, text); await target.onclick(); await flush(); };
+  await click('Inspect args');
+  assert.deepEqual(sent.filter(message => message.params?.name === 'larva_subagent_activity').at(-1).params.arguments, { task_id: run.task_id, tool_call_id: 'call-1', segment_part: 'args' });
+  assert.ok(visibleNodes().some(value => value.textContent.includes('fixture segment')));
+  await click('Inspect result');
+  assert.equal(sent.filter(message => message.params?.name === 'larva_subagent_activity').at(-1).params.arguments.segment_part, 'result');
+  await click('Cancel');
+  assert.equal(sent.filter(message => message.params?.name === 'larva_subagent_cancel').at(-1).params.arguments.task_id, run.task_id);
+  resize();
+  assert.equal(sent.at(-1).method, 'ui/notifications/size-changed');
+  await click('Fullscreen');
+  assert.deepEqual(sent.find(message => message.method === 'ui/request-display-mode').params, { mode: 'fullscreen' });
+  const before = sent.length;
+  document.visibilityState = 'hidden'; await click('Refresh');
+  assert.equal(sent.length, before);
+  document.visibilityState = 'visible';
+  run.result_pending = false; run.status = 'success'; run.result_preview = 'finished';
+  deliver({ method: 'ui/notifications/tool-result', params: { structuredContent: { runs: [run], terminal_outputs: { [run.task_id]: { result_text: 'terminal output' } } } } });
+  assert.ok(visibleNodes().some(value => value.textContent === 'terminal output'));
+  await flush();
+  deliver({ id: 999, method: 'ui/resource-teardown', params: {} });
+  assert.deepEqual(sent.at(-1), { jsonrpc: '2.0', id: 999, result: {} });
+  assert.equal(disconnected, true);
+  assert.equal(timers.size, 0);
+}
 async function pidEntries() {
   const files = (await readdir(root)).filter(file => file.startsWith('pid-'));
   return await Promise.all(files.map(async file => JSON.parse(await readFile(join(root, file), 'utf8'))));
@@ -112,7 +198,23 @@ try {
   idle.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
   assert.deepEqual((await idle.request('ping')).result, {});
   const listedTools = (await idle.request('tools/list')).result.tools;
-  assert.equal(listedTools.length, 10);
+  assert.equal(listedTools.length, 11);
+  const panelTool = listedTools.find(tool => tool.name === 'larva_subagent_panel');
+  assert.deepEqual(panelTool._meta, { ui: { resourceUri: 'ui://larva-pi-subagent/panel', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } });
+  for (const surface of ['panel', 'widget']) {
+    const uri = 'ui://larva-pi-subagent/' + surface;
+    const resource = (await idle.request('resources/read', { uri })).result.contents[0];
+    assert.equal(resource.mimeType, 'text/html;profile=mcp-app');
+    assert.equal(resource._meta.ui.prefersBorder, true);
+    assert.deepEqual(resource._meta['openai/ui'], {
+      preferredDisplayMode: surface === 'panel' ? 'fullscreen' : 'inline',
+      availableDisplayModes: surface === 'panel' ? ['fullscreen', 'inline'] : ['inline', 'fullscreen'],
+    });
+    for (const method of ['ui/initialize', 'ui/notifications/initialized', 'larva_subagent_panel', 'larva_subagent_activity', 'larva_subagent_cancel']) assert.ok(resource.text.includes(method));
+    if (surface === 'widget') await exercisePanelBridge(resource.text);
+    assert.ok(resource.text.includes("connect-src 'none'"));
+    assert.ok(!/<(?:script|link|img)[^>]+(?:src|href)=/i.test(resource.text));
+  }
   const mentionsTool = listedTools[9];
   assert.equal(mentionsTool.name, 'search_mentions');
   assert.deepEqual(mentionsTool.annotations, { readOnlyHint: true, destructiveHint: false, openWorldHint: false });
@@ -211,6 +313,21 @@ createInterface({input:process.stdin}).on('line', async line => {
  } else if(m.type==='prompt') {
   large = m.message.includes('large output');
   send({id:m.id,success:true,data:{}});
+  send({type:'message_update',assistantMessageEvent:{type:'thinking_delta',delta:'hidden thought'}});
+  send({type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'live fixture assistant'}});
+  send({type:'message_update',assistantMessageEvent:{type:'toolcall_delta',delta:'ignore tool args'}});
+  send({type:'tool_execution_start',toolCallId:'call-1',toolName:'read',args:{path:'fixture'}});
+  if (!m.message.includes('telemetry hang')) setTimeout(()=>send({type:'tool_execution_end',toolCallId:'call-1',toolName:'read',isError:false,result:{content:[{type:'text',text:'fixture content'}]}}),20);
+  if (m.message.includes('telemetry hang')) {
+   for (let i=0;i<30;i++) {
+    send({type:'tool_execution_start',toolCallId:'bounded-'+i,toolName:'read',args:{index:i}});
+    send({type:'tool_execution_update',toolCallId:'bounded-'+i,partialResult:{content:[{type:'text',text:'partial '+i}]}});
+    send({type:'tool_execution_end',toolCallId:'bounded-'+i,isError:false,result:{content:[{type:'text',text:'done '+i}]}});
+   }
+   send({type:'message_end',message:{role:'assistant',content:[{type:'text',text:'boundary assistant'}]}});
+   send({type:'tool_execution_start',toolCallId:'active',toolName:'read',args:{path:'active'}});
+   send({type:'message_update',assistantMessageEvent:{type:'thinking_delta',delta:'hidden'}});
+  }
   if (!m.message.includes('hang')) setTimeout(()=>send({type:'agent_end'}),m.message.includes('slow')?400:50);
  } else if(m.type==='get_last_assistant_text') send({id:m.id,success:true,data:{text:large ? 'large-result-'.repeat(2000) : 'output parent='+process.env.LARVA_PI_PARENT_PERSONA_ID}});
  else if(m.type==='abort') send({id:m.id,success:true,data:{}});
@@ -235,6 +352,22 @@ createInterface({input:process.stdin}).on('line', async line => {
     assert.equal(external.status, 'accepted', JSON.stringify(external));
     const terminal = await completion;
     assert.equal(terminal.details.status, 'success');
+    const telemetry = (await runtime.larva_subagent_status({task_id:external.task_id}, {env,externalHostCanSpawn:true})).details.runs[0];
+    assert.equal(telemetry.task_preview, 'headless capsule');
+    assert.equal(telemetry.startup_model, 'fixture/model');
+    assert.equal(telemetry.live_assistant_preview, 'live fixture assistant');
+    assert.equal(telemetry.live_thinking, false);
+    assert.equal(telemetry.active_tool, null);
+    assert.equal(telemetry.tool_snapshots[0].name, 'read');
+    assert.equal(telemetry.tool_snapshots[0].args_preview, '{"path":"fixture"}');
+    assert.equal(telemetry.tool_snapshots[0].status, 'success');
+    assert.equal(telemetry.tool_snapshots[0].output_preview, 'fixture content');
+    assert.equal(telemetry.result_preview, 'output parent=');
+    telemetry.tool_snapshots[0].name = 'mutated';
+    telemetry.last_child_activity.category = 'mutated';
+    const unchanged = (await runtime.larva_subagent_status({task_id:external.task_id}, {env})).details.runs[0];
+    assert.equal(unchanged.tool_snapshots[0].name, 'read');
+    assert.notEqual(unchanged.last_child_activity.category, 'mutated');
     assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
     const recent = runtime.larva_subagent_sessions({}, {externalHostCanSpawn:true});
     assert.equal(recent.details.sessions[0].task_id, external.task_id);
@@ -246,6 +379,36 @@ createInterface({input:process.stdin}).on('line', async line => {
     });
     assert.equal(resumedExternal.status, 'accepted');
     await runtime.larva_subagent_wait({task_ids:[external.task_id],timeout_ms:10000});
+    assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
+    const streaming = await runtime.larva_subagent({persona_id:'child',task:'telemetry hang'}, {env,externalHostCanSpawn:true});
+    let live;
+    const streamDeadline = Date.now() + 5000;
+    do {
+      live = (await runtime.larva_subagent_status({task_id:streaming.task_id}, {env})).details.runs[0];
+      if (live.active_tool?.toolCallId === 'active') break;
+      assert.ok(Date.now() < streamDeadline, 'live telemetry frames not received');
+      await new Promise(resolve => setTimeout(resolve, 5));
+    } while (true);
+    assert.equal(live.result_preview, null);
+    assert.equal(live.live_thinking, true);
+    assert.equal(live.live_assistant_preview, 'boundary assistant');
+    assert.equal(live.tool_snapshots.length, 25);
+    assert.equal(live.tool_snapshots[0].toolCallId, 'bounded-6');
+    assert.equal(live.tool_snapshots[0].name, 'read');
+    assert.equal(live.tool_snapshots[0].args_preview, '{"index":6}');
+    assert.equal(live.tool_snapshots[0].output_preview, 'done 6');
+    live.active_tool.name = 'mutated';
+    const liveWait = await runtime.larva_subagent_wait({task_ids:[streaming.task_id],timeout_ms:0}, {env});
+    assert.equal(liveWait.details.snapshots[streaming.task_id].active_tool.name, 'read');
+    liveWait.details.snapshots[streaming.task_id].tool_snapshots[0].name = 'mutated';
+    const liveSelect = await runtime.larva_subagent_select({task_ids:[streaming.task_id],timeout_ms:0}, {env});
+    assert.equal(liveSelect.details.snapshots[streaming.task_id].tool_snapshots[0].name, 'read');
+    await runtime.larva_subagent_cancel({task_id:streaming.task_id,reason:'telemetry assertions complete'}, {env});
+    await runtime.larva_subagent_wait({task_ids:[streaming.task_id],timeout_ms:10000}, {env});
+    const cancelledStream = (await runtime.larva_subagent_status({task_id:streaming.task_id}, {env})).details.runs[0];
+    assert.equal(cancelledStream.status, 'cancelled');
+    assert.equal(cancelledStream.active_tool, null);
+    assert.equal(cancelledStream.live_thinking, false);
     assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
     const nativeHeadless = await runtime.larva_subagent({persona_id:'child',task:'no native parent'}, {env});
     assert.equal(nativeHeadless.error.code,'LARVA_NO_ACTIVE_PERSONA');
@@ -325,7 +488,7 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.equal(existsSync(join(cachedPlugin, '../pi-extension')), false);
   const cached = client({}, cachedPlugin);
   assert.equal((await cached.request('initialize')).result.serverInfo.name, 'larva-pi-subagent');
-  assert.equal((await cached.request('tools/list')).result.tools.length, 10);
+  assert.equal((await cached.request('tools/list')).result.tools.length, 11);
   const cachedRun = await cached.tool('larva_subagent', {persona_id:'child',task:'cached plugin',wait_for_completion:true});
   assert.equal(cachedRun.isError, false, JSON.stringify(cachedRun));
   assert.equal(Object.values(cachedRun.details.terminal_outputs)[0].result_text, 'output parent=');
@@ -337,7 +500,7 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.deepEqual((await c.request('ping', {}, true)).result, {});
   const listed = (await c.request('tools/list')).result.tools;
   const expected = ['larva_personas','larva_subagent','larva_subagent_wait','larva_subagent_select','larva_subagent_status','larva_subagent_events','larva_subagent_sessions','larva_subagent_cancel','larva_subagent_activity'];
-  assert.deepEqual(listed.map(tool => tool.name), [...expected, 'search_mentions']);
+  assert.deepEqual(listed.map(tool => tool.name), [...expected, 'search_mentions', 'larva_subagent_panel']);
   const childResource = { uri: 'larva://personas/child', name: 'child', title: '@larva:child', description: 'Fixture child', mimeType: 'text/markdown' };
   const otherResource = { ...childResource, uri: 'larva://personas/other', name: 'other', title: '@larva:other', description: 'Fixture other' };
   const allMentions = await c.tool('search_mentions', { query: '' });
@@ -371,6 +534,17 @@ createInterface({input:process.stdin}).on('line', async line => {
   assert.equal(output.callback_delivery, 'delivered');
   assert.ok(output.callback_id && output.completed_at && output.message);
   const taskId = output.task_id;
+  const panel = (await c.tool('larva_subagent_panel', {task_id:taskId})).structuredContent;
+  assert.equal(panel.status, 'success');
+  assert.deepEqual(panel.sessions, []);
+  assert.equal(panel.runs[0].task_preview, 'single');
+  assert.equal(panel.runs[0].startup_model, 'fixture/model');
+  assert.equal(panel.runs[0].live_assistant_preview, 'live fixture assistant');
+  assert.equal(panel.runs[0].tool_snapshots[0].status, 'success');
+  assert.equal(panel.runs[0].result_preview, 'output parent=');
+  assert.equal(panel.terminal_outputs[taskId].result_text, 'output parent=');
+  assert.ok((await c.tool('larva_subagent_panel')).structuredContent.sessions.length > 0);
+  assert.equal((await c.tool('larva_subagent_panel', {limit:26})).isError, true);
   console.log('external-host default admission and single-call completion outbox: PASS');
   for (const [parent, target] of [['parent','other'],['deny','child']]) {
     const denied = await c.tool('larva_subagent', {persona_id:target,task:'deny',parent_persona_id:parent});
@@ -396,6 +570,10 @@ createInterface({input:process.stdin}).on('line', async line => {
   const accepted = await Promise.all(['slow one','two'].map(task => c.tool('larva_subagent', {persona_id:'child',task,wait_for_completion:false})));
   for (const result of accepted) assert.equal(result.details.status, 'accepted');
   const taskIds = accepted.map(result => result.details.task_id);
+  const livePanel = (await c.tool('larva_subagent_panel', {task_id:taskIds[0]})).structuredContent;
+  assert.equal(livePanel.runs[0].result_pending, true);
+  assert.equal(livePanel.runs[0].result_preview, null);
+  assert.equal(livePanel.runs[0].startup_model, 'fixture/model');
   const selected = await c.tool('larva_subagent_select', {task_ids:taskIds,timeout_ms:10000});
   assert.ok(Object.keys(selected.details.terminal_outputs).length >= 1);
   const waited = await c.tool('larva_subagent_wait', {task_ids:taskIds,timeout_ms:10000});

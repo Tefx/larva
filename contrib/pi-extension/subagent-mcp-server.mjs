@@ -59,6 +59,18 @@ tools.push({
   annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   _meta: { 'openai/extensions': { 'mentions/search': {} }, ui: { visibility: ['app'] } },
 });
+tools.push({
+  name: 'larva_subagent_panel', title: 'Larva Subagents',
+  description: 'Open the Larva subagent live activity panel and inspect active or recent Pi child sessions.',
+  inputSchema: { type: 'object', properties: { task_id: string, limit: integer(1, 25) }, required: [], additionalProperties: false },
+  annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  _meta: { ui: { resourceUri: 'ui://larva-pi-subagent/panel', visibility: ['app'] }, 'openai/ui': { entrypoints: [{ type: 'thread' }] } },
+});
+for (const tool of tools) {
+  if (['larva_subagent', 'larva_subagent_wait', 'larva_subagent_select', 'larva_subagent_status'].includes(tool.name)) {
+    tool._meta = { ui: { resourceUri: 'ui://larva-pi-subagent/widget', visibility: ['model', 'app'] }, 'openai/ui': { preferredModelDisplayMode: 'inline' } };
+  }
+}
 const shutdownController = new AbortController();
 const disconnected = new Promise(resolve => shutdownController.signal.addEventListener('abort', resolve, { once: true }));
 const home = process.env.HOME || homedir();
@@ -105,6 +117,13 @@ async function callTool(name, args) {
   const schema = tool.inputSchema;
   if (schema.required.some(key => !Object.hasOwn(args, key)) || Object.entries(args).some(([key, value]) => !Object.hasOwn(schema.properties, key) || !validValue(value, schema.properties[key]))) return badInput('Arguments do not match the tool input schema.');
   const runtime = await getRuntime();
+  if (name === 'larva_subagent_panel') {
+    const status = await runtime.larva_subagent_status(args, ctx);
+    const sessions = args.task_id ? [] : (await runtime.larva_subagent_sessions(args.limit === undefined ? {} : { limit: args.limit }, ctx)).details.sessions;
+    const runs = status.details.runs;
+    const terminal_outputs = Object.fromEntries(runs.filter(run => !run.result_pending && outbox.get(run.task_id)?.payload).map(run => [run.task_id, outbox.get(run.task_id).payload]));
+    return { content: [{ type: 'text', text: `${runs.length} recent subagent run(s); ${runs.filter(run => run.result_pending).length} active.` }], details: { ...status.details, sessions, terminal_outputs }, isError: status.isError };
+  }
   if (name === 'search_mentions') {
     const normalizedQuery = args.query.trim().replace(/^(?:@?(?:larva|persona):|@)/i, '').trim();
     const items = runtime.rankPersonasForSelector(await runtime.listPersonas(ctx), normalizedQuery).slice(0, 30).map(persona => ({
@@ -139,6 +158,144 @@ async function callTool(name, args) {
   }
   const result = await runtime[name](args, ctx);
   return name === 'larva_subagent_wait' || name === 'larva_subagent_select' ? await enrich(result) : result;
+}
+
+// Serialized into both UI resources; all data stays on the host postMessage bridge.
+function subagentPanelApp(surface) {
+  let sequence = 0, selected = null, personaHint = null, filter = {}, state = { runs: [], terminal_outputs: {} }, mode = surface === 'panel' ? 'fullscreen' : 'inline', stopped = false, polling = false;
+  const pending = new Map();
+  const root = document.getElementById('app');
+  const notify = (method, params) => window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+  function rpc(method, params) {
+    return new Promise((resolve, reject) => {
+      const id = ++sequence;
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error('Host request timed out')); }, 15000);
+      pending.set(id, { resolve, reject, timer });
+      window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
+    });
+  }
+  async function tool(name, args) {
+    const result = await rpc('tools/call', { name, arguments: args });
+    const data = result.structuredContent ?? result.details;
+    if (result.isError) throw new Error(data?.error?.message ?? 'Tool failed');
+    return data ?? result;
+  }
+  function hostContext(context) {
+    for (const [key, value] of Object.entries(context?.styles?.variables ?? {})) {
+      if (key.startsWith('--')) document.documentElement.style.setProperty(key, String(value));
+    }
+    if (context?.theme) document.documentElement.dataset.theme = context.theme;
+    if (context?.displayMode) mode = context.displayMode;
+  }
+  function accept(data) {
+    if (data?.persona_id) personaHint = data.persona_id;
+    if (data?.runs) state = { ...state, ...data };
+    if (data?.snapshots) state.runs = Object.values(data.snapshots).flat();
+    if (data?.task_id) { selected = data.task_id; filter = { task_id: data.task_id }; }
+    render();
+  }
+  window.addEventListener('message', event => {
+    if (event.source !== window.parent || event.data?.jsonrpc !== '2.0') return;
+    const message = event.data;
+    const waiter = pending.get(message.id);
+    if (waiter && !message.method) {
+      pending.delete(message.id); clearTimeout(waiter.timer);
+      if (message.error) waiter.reject(new Error(message.error.message)); else waiter.resolve(message.result);
+      return;
+    }
+    if (message.method === 'ui/notifications/host-context-changed') hostContext(message.params?.hostContext ?? message.params);
+    if (message.method === 'ui/notifications/tool-input') { accept(message.params?.arguments); void refresh(); }
+    if (message.method === 'ui/notifications/tool-result') { accept(message.params?.structuredContent); void refresh(); }
+    if (message.method === 'ui/resource-teardown') {
+      stopped = true; clearTimeout(pollTimer); clearInterval(clock);
+      observer.disconnect();
+      for (const waiter of pending.values()) { clearTimeout(waiter.timer); waiter.reject(new Error('Panel closed')); }
+      pending.clear();
+      window.parent.postMessage({ jsonrpc: '2.0', id: message.id, result: {} }, '*');
+    }
+  });
+  function element(tag, text, parent = root) {
+    const node = document.createElement(tag); if (text !== undefined) node.textContent = text; parent.append(node); return node;
+  }
+  function button(text, action, parent) {
+    const node = element('button', text, parent);
+    node.onclick = () => Promise.resolve().then(action).catch(showError);
+    return node;
+  }
+  function showError(error) { document.getElementById('error').textContent = error.message ?? JSON.stringify(error); }
+  function render() {
+    root.replaceChildren();
+    const runs = state.runs ?? [];
+    const active = runs.filter(run => run.result_pending).length;
+    const header = element('header');
+    element('strong', `Larva Subagents · ${active} active / ${runs.length - active} completed`, header);
+    button('Refresh', refresh, header);
+    button(mode === 'inline' ? 'Fullscreen' : 'Inline', async () => {
+      const result = await rpc('ui/request-display-mode', { mode: mode === 'inline' ? 'fullscreen' : 'inline' });
+      mode = result.mode ?? mode; render();
+    }, header);
+    element('div', state.error?.message ?? '', root).id = 'error';
+    const layout = element('main'); const list = element('nav', undefined, layout);
+    for (const run of runs) {
+      const card = button(`${run.persona_id}\n${run.phase} · ${run.startup_model ?? 'route pending'} / ${run.startup_thinking ?? '-'}\n${run.task_preview}\n${run.active_tool?.name ?? (run.live_thinking ? 'Thinking…' : '')}`, () => { selected = run.task_id; render(); }, list);
+      card.dataset.status = run.status;
+      element('span', run.status, card).className = 'badge';
+      const elapsed = element('small', '', card); elapsed.dataset.started = run.started_at; elapsed.dataset.elapsed = String(run.elapsed_ms); elapsed.dataset.active = String(run.result_pending);
+    }
+    const detail = element('section', undefined, layout);
+    const run = runs.find(run => run.task_id === selected) ?? runs.find(run => run.persona_id === personaHint) ?? runs[0];
+    if (!run) { element('p', personaHint ? `Waiting for ${personaHint}…` : 'No recent subagent runs.', detail); return; }
+    selected = run.task_id;
+    element('h2', run.persona_id, detail);
+    element('pre', JSON.stringify(Object.fromEntries(['task_id', 'persona_id', 'startup_model', 'startup_thinking', 'phase', 'elapsed_ms'].map(key => [key, run[key]])), null, 2), detail);
+    if (['accepted', 'running'].includes(run.status)) button('Cancel', async () => { await tool('larva_subagent_cancel', { task_id: run.task_id, reason: 'Cancelled from activity panel' }); await refresh(); }, detail);
+    element('h3', run.live_thinking ? 'Thinking…' : 'Assistant stream', detail);
+    element('pre', run.live_assistant_preview ?? '', detail);
+    element('h3', 'Result', detail);
+    element('pre', state.terminal_outputs?.[run.task_id]?.result_text ?? run.result_preview ?? run.error?.message ?? '', detail);
+    if (run.active_tool) element('strong', `Active tool: ${run.active_tool.name ?? run.active_tool.toolCallId}`, detail);
+    const calls = element('ol', undefined, detail);
+    for (const call of run.tool_snapshots ?? []) {
+      const item = element('li', undefined, calls);
+      element('strong', `${call.name ?? call.toolCallId} · ${call.status}`, item);
+      element('pre', [call.args_preview, call.output_preview, call.error_preview].filter(Boolean).join('\n'), item);
+      const expanded = element('pre', '', item);
+      for (const part of ['args', 'result']) button(`Inspect ${part}`, async () => {
+        const result = await tool('larva_subagent_activity', { task_id: run.task_id, tool_call_id: call.toolCallId, segment_part: part });
+        expanded.textContent = JSON.stringify(result, null, 2);
+      }, item);
+    }
+    tick();
+  }
+  function tick() {
+    for (const node of document.querySelectorAll('[data-started]')) node.textContent = `${Math.floor((node.dataset.active === 'true' ? Date.now() - Date.parse(node.dataset.started) : Number(node.dataset.elapsed)) / 1000)}s`;
+  }
+  async function refresh() {
+    if (stopped || polling || document.visibilityState === 'hidden') return;
+    polling = true;
+    try { state = await tool('larva_subagent_panel', filter); render(); }
+    catch (error) { showError(error); }
+    finally { polling = false; }
+  }
+  let pollTimer;
+  async function poll() {
+    await refresh();
+    if (!stopped) pollTimer = setTimeout(poll, state.runs?.some(run => run.result_pending || run.status === 'running') ? 1000 : 2500);
+  }
+  const observer = new ResizeObserver(() => { if (mode === 'inline' && !stopped) notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight }); });
+  observer.observe(root);
+  const clock = setInterval(tick, 1000);
+  document.addEventListener('visibilitychange', () => { if (!stopped && document.visibilityState !== 'hidden') void refresh(); });
+  render();
+  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.8.9' }, appCapabilities: { availableDisplayModes: ['inline', 'fullscreen'] } }).then(result => {
+    if (stopped) return;
+    hostContext(result.hostContext); notify('ui/notifications/initialized', {}); void poll();
+  }).catch(showError);
+}
+function renderSubagentPanelHtml(surface) {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'"><style>
+  :root{color-scheme:light dark;font:14px system-ui;color:var(--color-text-primary,inherit);background:var(--color-background-primary,transparent)}[data-theme=light]{color-scheme:light}[data-theme=dark]{color-scheme:dark}body{margin:12px}header{display:flex;gap:10px;align-items:center;flex-wrap:wrap}main{display:grid;grid-template-columns:minmax(180px,30%) 1fr;gap:16px}nav{display:flex;flex-direction:column;gap:8px}button{cursor:pointer;padding:8px;text-align:left;white-space:pre-wrap;border:1px solid #8886;border-radius:6px;background:transparent;color:inherit}button:hover{background:#8882}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto}section{min-width:0}small{display:block}.badge{display:inline-block;border:1px solid #8888;border-radius:10px;padding:1px 6px;margin:4px}[data-status=running] .badge{color:#69c}[data-status=success] .badge{color:#5a7}[data-status=failed] .badge{color:#d66}#error{color:#d55}li{margin-bottom:12px}@media(max-width:600px){main{grid-template-columns:1fr}}
+  </style></head><body><div id="app"></div><script>(${subagentPanelApp.toString()})(${JSON.stringify(surface)})</script></body></html>`;
 }
 
 let stopping;
@@ -207,6 +364,12 @@ async function dispatch(message, framed) {
       }
       case 'resources/read': {
         const uri = message.params?.uri;
+        if (uri === 'ui://larva-pi-subagent/panel' || uri === 'ui://larva-pi-subagent/widget') {
+          const surface = uri.endsWith('/panel') ? 'panel' : 'widget';
+          const modes = surface === 'panel' ? ['fullscreen', 'inline'] : ['inline', 'fullscreen'];
+          result = { contents: [{ uri, mimeType: 'text/html;profile=mcp-app', text: renderSubagentPanelHtml(surface), _meta: { 'openai/ui': { preferredDisplayMode: modes[0], availableDisplayModes: modes }, ui: { prefersBorder: true } } }] };
+          break;
+        }
         const match = typeof uri === 'string' && /^larva:\/\/personas\/([^/?#]+)$/.exec(uri);
         if (!match) throw { rpcCode: -32602, message: 'Invalid persona resource URI.' };
         let personaId;

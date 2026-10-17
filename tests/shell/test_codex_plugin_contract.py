@@ -135,6 +135,9 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
         {"jsonrpc": "2.0", "method": "notifications/initialized"},
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
         {"jsonrpc": "2.0", "id": 3, "method": "resources/templates/list"},
+        *[{"jsonrpc": "2.0", "id": i, "method": "resources/read",
+           "params": {"uri": f"ui://larva-pi-subagent/{surface}"}}
+          for i, surface in ((4, "panel"), (5, "widget"))],
     ]
     # Match Codex's regular-file-only cache copy, without the source sibling.
     cached = tmp_path / "cache" / "larva-subagent"
@@ -160,7 +163,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
             process.communicate()
     assert process.returncode == 0, stderr
     replies = [json.loads(line) for line in stdout.splitlines()]
-    assert len(replies) == 3, stdout
+    assert len(replies) == 5, stdout
     by_id = {reply["id"]: reply for reply in replies}
     assert by_id[1]["result"]["protocolVersion"] == "2024-11-05"
     assert by_id[1]["result"]["capabilities"] == {
@@ -177,7 +180,31 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
     }]}
     assert by_id[1]["result"]["serverInfo"]["name"] == "larva-pi-subagent"
     definitions = by_id[2]["result"]["tools"]
-    assert len(definitions) == 10
+    assert len(definitions) == 11
+    for i, modes in ((4, ["fullscreen", "inline"]), (5, ["inline", "fullscreen"])):
+        resource = by_id[i]["result"]["contents"][0]
+        assert resource["mimeType"] == "text/html;profile=mcp-app"
+        assert resource["_meta"] == {
+            "openai/ui": {"preferredDisplayMode": modes[0], "availableDisplayModes": modes},
+            "ui": {"prefersBorder": True},
+        }
+    panel_tool = next(tool for tool in definitions if tool["name"] == "larva_subagent_panel")
+    assert panel_tool["_meta"] == {
+        "ui": {"resourceUri": "ui://larva-pi-subagent/panel", "visibility": ["app"]},
+        "openai/ui": {"entrypoints": [{"type": "thread"}]},
+    }
+    assert panel_tool["inputSchema"] == {
+        "type": "object", "properties": {
+            "task_id": {"type": "string", "minLength": 1},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 25},
+        }, "required": [], "additionalProperties": False,
+    }
+    for tool in definitions:
+        if tool["name"] in {"larva_subagent", "larva_subagent_wait", "larva_subagent_select", "larva_subagent_status"}:
+            assert tool["_meta"] == {
+                "ui": {"resourceUri": "ui://larva-pi-subagent/widget", "visibility": ["model", "app"]},
+                "openai/ui": {"preferredModelDisplayMode": "inline"},
+            }
     mention_tool = next(tool for tool in definitions if tool["name"] == "search_mentions")
     assert mention_tool["annotations"] == {
         "readOnlyHint": True, "destructiveHint": False, "openWorldHint": False,
@@ -195,7 +222,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
         assert ".jsonl" in descriptions[name]
         assert "task_id" in descriptions[name]
     schemas = {tool["name"]: tool["inputSchema"] for tool in definitions}
-    assert set(schemas) == TOOLS | {"search_mentions"}
+    assert set(schemas) == TOOLS | {"search_mentions", "larva_subagent_panel"}
     assert {tool["name"] for tool in definitions if tool.get("_meta", {}).get("ui", {}).get("visibility") != ["app"]} == TOOLS
 
     skill = (PLUGIN / "skills/larva-subagent/SKILL.md").read_text()
