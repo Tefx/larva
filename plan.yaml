@@ -149583,7 +149583,7 @@ phases:
       - contrib/pi-extension/subagent-mcp-server.mjs'
 - id: release_0_8_8
   name: Prepare, merge to main, and publish Larva 0.8.8
-  status: pending
+  status: in_progress
   gate: Terminal step release-0-8-8.publish-and-verify verifies that main and immutable
     tag v0.8.8 are pushed, GitHub Release v0.8.8 is published, remote CI and Publish
     to PyPI workflows succeed on the exact v0.8.8 commit SHA, fresh isolated unpinned
@@ -149595,7 +149595,7 @@ phases:
   - id: release-0-8-8.prepare
     name: Prepare Larva 0.8.8 release candidate, fix contract test compatibility,
       and verify
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - pyproject.toml\n    - src/larva/__init__.py\n    -\
       \ uv.lock\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n  \
@@ -149680,6 +149680,8 @@ phases:
     - scripts/mcp-release-smoke.py
     - INVAR.md
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-10-17T05:11:27.949722Z'
   - id: release-0-8-8.publish-and-verify
     name: Fast-forward main, publish Larva 0.8.8, and verify remote CI, PyPI uvx,
       and Codex plugin cache
