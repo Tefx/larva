@@ -149823,3 +149823,181 @@ phases:
       Spec link:
 
       - scripts/release-notes-0.8.8.md'
+- id: codex_subagent_activity_panel
+  name: Codex Larva Subagent Activity Panel (Thread Side-Panel MCP App + Inline Tool-Call
+    Card)
+  status: pending
+  gate: Terminal gate codex-subagent-activity-panel.acceptance-gate verifies live
+    child stream telemetry in LarvaSubagentRunSnapshot, the larva_subagent_panel entrypoint
+    tool and ui://larva-pi-subagent/panel + ui://larva-pi-subagent/widget MCP App
+    resources, self-contained HTML UI postMessage bridge and actions, byte parity
+    across contrib/pi-extension/ and contrib/codex-plugin/, and passing Node and Python
+    contract tests.
+  context: 'Authority: user-approved Scheme A for the Codex Larva Subagent Activity
+    Panel combining a Thread Side-Panel MCP App entrypoint (larva_subagent_panel ->
+    ui://larva-pi-subagent/panel) and Inline/Fullscreen Tool-Call Cards (ui://larva-pi-subagent/widget)
+    with live child stream telemetry in contrib/pi-extension/ and contrib/codex-plugin/.'
+  depends_on:
+  - release_0_8_8
+  steps:
+  - id: codex-subagent-activity-panel.deliver
+    name: Implement Scheme A Codex Larva subagent activity panel MCP App, live child
+      stream telemetry, docs, and contract tests
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
+      \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
+      \    - tests/fixtures/pi/**\n  blocked_paths:\n    - plan.yaml\n    - .vectl/**\n\
+      \    - artifacts/**\n    - contracts/**\n    - src/larva/core/**\n    - src/larva/shell/mcp*.py\n\
+      \nDeliver:\n1. Live Subagent Stream & Route Telemetry for MCP Runs (`contrib/pi-extension/larva.ts`\
+      \ & `contrib/codex-plugin/larva.ts`):\n   - Keep `retainedSubagentPresentationLog`\
+      \ empty when `externalHostCanSpawn !== undefined` (preserving existing headless\
+      \ Pi TUI isolation and `test-subagent-mcp-server.mjs` assertions, and never\
+      \ spawning `session-timeline-worker.mjs` in external-host mode).\n   - Track\
+      \ live child stream progress directly on `ActiveSubagentRun` and expose it in\
+      \ `LarvaSubagentRunSnapshot` returned by `larva_subagent_status` and in terminal\
+      \ snapshots:\n     - `task_preview`: bounded task summary string\n     - `startup_model`,\
+      \ `requested_thinking`, `startup_thinking`\n     - `live_assistant_preview`:\
+      \ latest streaming assistant text tail from `assistant_delta`\n     - `live_thinking`:\
+      \ boolean indicating active thinking state (`thinking_hidden`)\n     - `active_tool`:\
+      \ `{ toolCallId, name, status, args_preview, output_preview } | null`\n    \
+      \ - `tool_snapshots`: bounded array (up to 25) of `{ toolCallId, name, status,\
+      \ args_preview, output_preview, error_preview }` recorded from child `tool_execution_start/update/end`\
+      \ stream frames\n     - `last_child_activity`: `{ category, received_at, summary\
+      \ } | null`\n     - `result_preview`: bounded terminal result text preview when\
+      \ completed\n2. MCP Server UI Resources & Entrypoints (`contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ & `contrib/codex-plugin/subagent-mcp-server.mjs`):\n   - Add app-only read-only\
+      \ entrypoint tool `larva_subagent_panel`:\n     - `title: \"Larva Subagents\"\
+      `\n     - `description: \"Open the Larva subagent live activity panel and inspect\
+      \ active or recent Pi child sessions.\"`\n     - `inputSchema: { type: \"object\"\
+      , properties: { task_id: { type: \"string\", minLength: 1 }, limit: { type:\
+      \ \"integer\", minimum: 1, maximum: 25 } }, required: [], additionalProperties:\
+      \ false }`\n     - `annotations: { readOnlyHint: true, destructiveHint: false,\
+      \ openWorldHint: false }`\n     - `_meta: { ui: { resourceUri: \"ui://larva-pi-subagent/panel\"\
+      , visibility: [\"app\"] }, \"openai/ui\": { entrypoints: [{ type: \"thread\"\
+      \ }] } }`\n     - When called via `tools/call`, returns a combined structured\
+      \ payload (`runs`, `startup_failures`, `sessions`, `terminal_outputs`) from\
+      \ `larva_subagent_status` + `larva_subagent_sessions` + the MCP server's `outbox`\
+      \ so a single fast poll gives the panel everything it needs.\n   - Attach inline/fullscreen\
+      \ widget metadata `_meta: { ui: { resourceUri: \"ui://larva-pi-subagent/widget\"\
+      , visibility: [\"model\", \"app\"] }, \"openai/ui\": { preferredModelDisplayMode:\
+      \ \"inline\" } }` to `larva_subagent`, `larva_subagent_wait`, `larva_subagent_select`,\
+      \ and `larva_subagent_status` so tool invocations in Codex Desktop also render\
+      \ an interactive subagent card while remaining callable by both model and app.\n\
+      \   - Ensure `larva_subagent_activity` and `larva_subagent_cancel` are callable\
+      \ by the MCP App (`visibility: [\"model\", \"app\"]` default) so the panel can\
+      \ expand full tool call arguments/results from the child `.jsonl` file and cancel\
+      \ running subagents.\n   - In `resources/read`, support `ui://larva-pi-subagent/panel`\
+      \ (`preferredDisplayMode: \"fullscreen\"`, `availableDisplayModes: [\"fullscreen\"\
+      , \"inline\"]`) and `ui://larva-pi-subagent/widget` (`preferredDisplayMode:\
+      \ \"inline\"`, `availableDisplayModes: [\"inline\", \"fullscreen\"]`), returning\
+      \ `mimeType: \"text/html;profile=mcp-app\"` with `_meta: { \"openai/ui\": {\
+      \ preferredDisplayMode, availableDisplayModes }, ui: { prefersBorder: true }\
+      \ }` and a self-contained HTML5/CSS/JS application.\n   - The self-contained\
+      \ HTML application must have zero external network dependencies (compatible\
+      \ with Codex Desktop's `connect-src 'none'` CSP) and:\n     - Perform the `ui/initialize`\
+      \ + `ui/notifications/initialized` JSON-RPC 2.0 `window.parent.postMessage`\
+      \ handshake, apply `hostContext.styles.variables` and `hostContext.theme`, handle\
+      \ `ui/notifications/tool-input`, `ui/notifications/tool-result`, and `ui/notifications/host-context-changed`,\
+      \ and emit `ui/notifications/size-changed` in inline mode.\n     - Display active\
+      \ and completed subagent runs (`persona_id`, `status`, `phase`, `startup_model`,\
+      \ `startup_thinking`, live elapsed duration, `task_preview`), live streaming\
+      \ assistant output tail & thinking indicator, active tool execution badge, and\
+      \ the ordered `tool_snapshots` list.\n     - Allow selecting any run, expanding\
+      \ any tool call's full `args` / `result` on demand via `tools/call` -> `larva_subagent_activity`,\
+      \ refreshing or auto-polling `larva_subagent_panel` (e.g. 1s when active runs\
+      \ exist, 2.5s when idle), requesting fullscreen/inline mode toggle via `ui/request-display-mode`,\
+      \ and cancelling a running subagent via `larva_subagent_cancel`.\n3. Plugin\
+      \ Parity, Docs, and Contract Tests:\n   - Keep all 5 runtime files in `contrib/codex-plugin/`\
+      \ (`larva.ts`, `activity.ts`, `child-rpc-frame-preload.mjs`, `session-timeline-worker.mjs`,\
+      \ `subagent-mcp-server.mjs`) byte-identical with `contrib/pi-extension/`.\n\
+      \   - Update `contrib/codex-plugin/README.md`, `contrib/pi-extension/README.md`,\
+      \ `contrib/pi-extension/test-subagent-mcp-server.mjs`, and `tests/shell/test_codex_plugin_contract.py`\
+      \ to test the new `larva_subagent_panel` tool, `ui://larva-pi-subagent/panel`\
+      \ and `ui://larva-pi-subagent/widget` resources, live stream fields (`live_assistant_preview`,\
+      \ `active_tool`, `tool_snapshots`, `startup_model`), and concurrent `larva_subagent_panel`\
+      \ polling while a child subagent is running.\n\nBoundary:\n- `node-typescript-engineer`\
+      \ owns implementation, byte-parity synchronization between `contrib/pi-extension/`\
+      \ and `contrib/codex-plugin/`, documentation updates, and Node/Python contract\
+      \ tests within `allowed_paths`.\n- Do not modify `src/larva/core/**` or `src/larva/shell/mcp*.py`,\
+      \ and do not mutate user `~/.codex` or `~/.pi` state during tests.\n\nAdmit:\n\
+      - `node contrib/pi-extension/test-subagent-mcp-server.mjs`, `node contrib/pi-extension/test-native-launch-context.mjs`,\
+      \ `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`,\
+      \ and `git diff --check` pass.\n\nRecovery:\n- Revert uncommitted edits or reconcile\
+      \ failing assertions within `allowed_paths`; reap any spawned child processes\
+      \ on test exit."
+    verification: '- Run `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+      -> exits 0.
+
+      - Run `node contrib/pi-extension/test-native-launch-context.mjs` -> exits 0.
+
+      - Run `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`
+      -> exits 0.
+
+      - Run `git diff --check` -> exits 0.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - tests/shell/test_codex_plugin_contract.py
+    agent: node-typescript-engineer
+  - id: codex-subagent-activity-panel.acceptance-gate
+    name: Gate review and integrated acceptance for Codex Larva subagent activity
+      panel
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
+      - Single terminal acceptance decision for phase `codex_subagent_activity_panel`\
+      \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
+      \ read-only (`no_repo_change`). Inspects integrated code/test/doc diffs, byte\
+      \ parity across `contrib/pi-extension/` and `contrib/codex-plugin/`, and verification\
+      \ evidence from `codex-subagent-activity-panel.deliver`.\n\nAdmit:\n- Included\
+      \ producer outcome: `codex-subagent-activity-panel.deliver` (building on `release_0_8_8`).\n\
+      - Verify:\n  1. `contrib/pi-extension/larva.ts` keeps `retainedSubagentPresentationLog`\
+      \ empty in external-host mode (`externalHostCanSpawn !== undefined`, never spawning\
+      \ `session-timeline-worker.mjs`) while recording live child stream progress\
+      \ on `ActiveSubagentRun` and exposing `task_preview`, `startup_model`, `requested_thinking`,\
+      \ `startup_thinking`, `live_assistant_preview`, `live_thinking`, `active_tool`,\
+      \ `tool_snapshots` (bounded up to 25), `last_child_activity`, and `result_preview`\
+      \ in `LarvaSubagentRunSnapshot` and terminal snapshots.\n  2. `contrib/pi-extension/subagent-mcp-server.mjs`\
+      \ exposes the app-only read-only entrypoint tool `larva_subagent_panel` (`_meta.ui.resourceUri:\
+      \ \"ui://larva-pi-subagent/panel\"`, `_meta.ui.visibility: [\"app\"]`, `_meta[\"\
+      openai/ui\"].entrypoints: [{ type: \"thread\" }]`) returning combined `runs`,\
+      \ `startup_failures`, `sessions`, and `terminal_outputs`; attaches inline/fullscreen\
+      \ widget `_meta` (`ui://larva-pi-subagent/widget`, `visibility: [\"model\",\
+      \ \"app\"]`, `preferredModelDisplayMode: \"inline\"`) to `larva_subagent`, `larva_subagent_wait`,\
+      \ `larva_subagent_select`, and `larva_subagent_status`; keeps `larva_subagent_activity`\
+      \ and `larva_subagent_cancel` callable by the app; and serves self-contained\
+      \ (`connect-src 'none'` safe) `text/html;profile=mcp-app` resources for `ui://larva-pi-subagent/panel`\
+      \ and `ui://larva-pi-subagent/widget` implementing the MCP Apps JSON-RPC 2.0\
+      \ `postMessage` bridge, live run/tool inspection, `larva_subagent_activity`\
+      \ expansion, auto-polling, display-mode toggle, and cancellation.\n  3. All\
+      \ 5 runtime files in `contrib/codex-plugin/` match `contrib/pi-extension/` byte-for-byte,\
+      \ and `contrib/codex-plugin/README.md` + `contrib/pi-extension/README.md` document\
+      \ the panel and widget capabilities.\n  4. All required verification commands\
+      \ (`node contrib/pi-extension/test-subagent-mcp-server.mjs`, `node contrib/pi-extension/test-native-launch-context.mjs`,\
+      \ `.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py`,\
+      \ `git diff --check`) pass on the immutable integrated commit, including concurrent\
+      \ `larva_subagent_panel` polling while a child subagent is running.\n\nRecovery:\n\
+      - If a material defect or parity/test gap is found, report exact findings with\
+      \ file/line citations so Orchestrator can route a single cohesive repair before\
+      \ Delta gate re-evaluation."
+    verification: '- Confirm producer evidence and execute read-only verification
+      checks on the immutable integrated candidate commit (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-native-launch-context.mjs`, `.venv/bin/python
+      -m pytest -q tests/shell/test_codex_plugin_contract.py`, and `git diff --check`).'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/README.md
+    - contrib/codex-plugin/README.md
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - codex-subagent-activity-panel.deliver
+    agent: gate-reviewer
