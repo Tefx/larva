@@ -150478,7 +150478,7 @@ phases:
   - id: codex-subagent-panel-layout-prompt.deliver
     name: Implement full task_prompt exposure, always-visible unified side-panel inspector
       layout, and -v2 resource URI cache busting
-    status: claimed
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150566,6 +150566,51 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-10-17T17:33:55.203077Z'
+    done_at: '2026-10-17T17:49:20.770129+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 0a89d6121fbe569cb9e5c67482365ed1c8aa770a (retained ref: refs/vectl-retained/codex-subagent-panel-layout-prompt.deliver)
+
+      - Executor: frontend-engineer (session: /Users/tefx/.pi/larva/child-sessions/2026-10-17T15-30-14-043Z_01a14a7c-2b9b-774e-8bfc-6a82c6e7c468.jsonl)
+
+      - Changed files: contrib/pi-extension/larva.ts, contrib/codex-plugin/larva.ts,
+      contrib/pi-extension/subagent-mcp-server.mjs, contrib/codex-plugin/subagent-mcp-server.mjs,
+      contrib/pi-extension/test-subagent-mcp-server.mjs, contrib/pi-extension/README.md,
+      contrib/codex-plugin/README.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      tests/shell/test_codex_plugin_contract.py
+
+
+      Verification:
+
+      - Run: node contrib/pi-extension/test-subagent-mcp-server.mjs -> exit 0 (verified
+      full multiline task_prompt preservation and rendering, Expand/Collapse prompt
+      and Copy prompt controls, unified All overview ordered as Task Prompt -> Timeline
+      -> Result -> Session Metadata plus section filtering, always-visible stacked
+      selector + inspector below 680px, widget-only display mode toggle, and panel-v2/widget-v2
+      + legacy resource URI reads).
+
+      - Run: node contrib/pi-extension/test-native-launch-context.mjs -> exit 0 (6/6
+      passed).
+
+      - Run: /Users/tefx/Projects/larva/.venv/bin/python -m pytest -q tests/shell/test_codex_plugin_contract.py
+      -> exit 0 (3 passed).
+
+      - Run: git diff --check -> exit 0.
+
+      - Headless Chrome layout verification -> confirmed 420px/560px stacked selector
+      (148px) + visible inspector (541px), 900px 2-column grid, and Task Prompt +
+      Timeline visible above the fold in both panel and 340px widget drawer.
+
+
+      Gaps:
+
+      - Actual interactive Codex Desktop GUI rendering remains unverified by automated
+      tests.
+
+
+      Spec link:
+
+      - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
   - id: codex-subagent-panel-layout-prompt.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent panel unified
       layout, full task prompt, and -v2 resource URIs
