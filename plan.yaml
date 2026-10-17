@@ -150461,7 +150461,7 @@ phases:
 - id: codex_subagent_panel_layout_and_prompt_fix
   name: Codex Larva Subagent Panel Unified Layout, Full Task Prompt, and Resource
     URI Cache Busting
-  status: pending
+  status: in_progress
   gate: Terminal gate codex-subagent-panel-layout-prompt.acceptance-gate verifies
     full multiline task_prompt exposure and rendering, always-visible master+inspector
     side-panel workbench with unified high-density All/Timeline/Result/Task & Session
@@ -150478,7 +150478,7 @@ phases:
   - id: codex-subagent-panel-layout-prompt.deliver
     name: Implement full task_prompt exposure, always-visible unified side-panel inspector
       layout, and -v2 resource URI cache busting
-    status: pending
+    status: claimed
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
       \  allowed_paths:\n    - contrib/pi-extension/**\n    - contrib/codex-plugin/**\n\
       \    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md\n    - tests/shell/test_codex_plugin_contract.py\n\
@@ -150564,6 +150564,8 @@ phases:
     - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
     - tests/shell/test_codex_plugin_contract.py
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-10-17T17:33:55.203077Z'
   - id: codex-subagent-panel-layout-prompt.acceptance-gate
     name: Gate review and integrated acceptance for Codex Larva subagent panel unified
       layout, full task prompt, and -v2 resource URIs
