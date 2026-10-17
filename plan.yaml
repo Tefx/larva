@@ -150865,7 +150865,7 @@ phases:
   - id: codex-persona-mention-preload.acceptance-gate
     name: Gate review and integrated acceptance for Codex @larva persona mention preload
       and inline widget polling quiescence
-    status: pending
+    status: claimed
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n\nDeliver:\n\
       - Single terminal acceptance decision for phase `codex_persona_mention_preload_and_poll_fix`\
       \ over the integrated candidate commit.\n\nBoundary:\n- `gate-reviewer` is strictly\
@@ -150909,3 +150909,5 @@ phases:
     depends_on:
     - codex-persona-mention-preload.deliver
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-10-17T19:06:40.400150Z'
