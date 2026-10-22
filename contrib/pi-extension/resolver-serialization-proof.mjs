@@ -11,8 +11,13 @@ export function targetSystemText(api, payload) {
   if (api === "anthropic-messages" || api === "bedrock-converse-stream") {
     return typeof payload.system === "string" ? payload.system : payload.system.findLast(b => b.text && !b.text.startsWith("You are Claude Code,"))?.text;
   }
-  const first = (payload.messages ?? payload.input)[0];
-  return typeof first.content === "string" ? first.content : first.content.find(p => typeof p.text === "string")?.text;
+  const messages = payload.messages ?? payload.input;
+  let targetIndex = 0;
+  while (targetIndex < messages.length && messages[targetIndex]?.type === "additional_tools") {
+    targetIndex++;
+  }
+  const first = messages[targetIndex];
+  return typeof first?.content === "string" ? first.content : first?.content?.find(p => typeof p.text === "string")?.text;
 }
 
 export async function proveSerializers(runtime, piRoot, prompt) {

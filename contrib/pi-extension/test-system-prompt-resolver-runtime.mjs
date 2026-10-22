@@ -763,6 +763,58 @@ await run("F5 provider payload fixtures return unchanged for all supported slots
       },
     },
     {
+      api: "openai-responses",
+      payload: {
+        input: [
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+          { role: "developer", content: prompt },
+          { role: "user", content: [{ type: "input_text", text: "hello" }] },
+          { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+          { type: "configuration_update", reasoning: { effort: "high" } },
+        ],
+      },
+    },
+    {
+      api: "azure-openai-responses",
+      payload: {
+        input: [
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+          { role: "developer", content: prompt },
+          { role: "user", content: [{ type: "input_text", text: "hello" }] },
+          { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+          { type: "configuration_update", reasoning: { effort: "high" } },
+        ],
+      },
+    },
+    {
+      api: "openai-responses",
+      payload: {
+        input: [
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+          { role: "developer", content: [{ type: "input_text", text: prompt }] },
+          { role: "user", content: [{ type: "input_text", text: "hello" }] },
+          { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+          { type: "configuration_update", reasoning: { effort: "high" } },
+        ],
+      },
+    },
+    {
+      api: "azure-openai-responses",
+      payload: {
+        input: [
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+          { role: "developer", content: [{ type: "input_text", text: prompt }] },
+          { role: "user", content: [{ type: "input_text", text: "hello" }] },
+          { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+          { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+          { type: "configuration_update", reasoning: { effort: "high" } },
+        ],
+      },
+    },
+    {
       api: "openai-codex-responses",
       payload: {
         instructions: prompt,
@@ -984,6 +1036,195 @@ await run("no-persona known slot without stale content stays unchanged and does 
   assert.equal(mod.projectLarvaIdentityIntoProviderPayload({
     config: { temperature: 0.2 },
   }, null, "google-generative-ai").status, "unchanged");
+});
+
+await run("F5 openai-responses and azure-openai-responses additional_tools and configuration_update compatibility", async () => {
+  const runtime = await boot("responses-tools", { LARVA_PI_INITIAL_PERSONA_ID: "origin" });
+  const apis = ["openai-responses", "azure-openai-responses"];
+  const resolvedPrompt = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "Base prompt")[0].systemPrompt;
+  const envelope = runtime.mod.getActiveEnvelope();
+  assert.ok(envelope);
+
+  for (const api of apis) {
+    let abortCount = 0;
+    const makeCtx = () => ({
+      model: { api },
+      ui: runtime.ctx.ui,
+      abort: () => { abortCount++; },
+    });
+
+    const makeFullPayload = (devContent) => ({
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+        { role: "developer", content: devContent },
+        { role: "user", content: [{ type: "input_text", text: "user message 1" }] },
+        { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+        { role: "assistant", content: [{ type: "text", text: "assistant reply" }] },
+        { role: "user", content: [{ type: "input_text", text: "user message 2" }] },
+        { type: "configuration_update", reasoning: { effort: "high" } },
+      ],
+    });
+
+    // 1. Returns { status: "unchanged" } and before_provider_request returns undefined (without calling ctx.abort()) when prompt is already resolved
+    const stringPayloadResolved = makeFullPayload(resolvedPrompt);
+    const arrayPayloadResolved = makeFullPayload([{ type: "input_text", text: resolvedPrompt }]);
+
+    assert.equal(runtime.mod.projectLarvaIdentityIntoProviderPayload(stringPayloadResolved, envelope, api).status, "unchanged");
+    assert.equal(runtime.mod.projectLarvaIdentityIntoProviderPayload(arrayPayloadResolved, envelope, api).status, "unchanged");
+
+    abortCount = 0;
+    const beforeResultString = await runtime.handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: stringPayloadResolved,
+    }, makeCtx());
+    assert.equal(beforeResultString, undefined);
+    assert.equal(abortCount, 0);
+
+    abortCount = 0;
+    const beforeResultArray = await runtime.handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: arrayPayloadResolved,
+    }, makeCtx());
+    assert.equal(beforeResultArray, undefined);
+    assert.equal(abortCount, 0);
+
+    // 2. Projects in place at leading instruction message when identity changes
+    // (e.g. switch to target persona)
+    const switched = await runtime.mod.larva_persona_switch({
+      persona_id: "target",
+      reason: "switch for testing responses projection",
+    }, runtime.ctx, runtime.pi);
+    assert.equal(switched.status, "success");
+    const targetEnvelope = runtime.mod.getActiveEnvelope();
+    const targetResolved = emitResolve(runtime.events, runtime.mod.LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, "Base prompt")[0].systemPrompt;
+
+    // String content projection
+    const projFromString = runtime.mod.projectLarvaIdentityIntoProviderPayload(stringPayloadResolved, targetEnvelope, api);
+    assert.equal(projFromString.status, "projected");
+    const nextStr = projFromString.payload;
+    assert.equal(nextStr.input.length, stringPayloadResolved.input.length);
+    assert.deepEqual(nextStr.input[0], stringPayloadResolved.input[0]); // leading additional_tools preserved
+    assert.equal(nextStr.input[1].role, "developer");
+    assert.equal(nextStr.input[1].content, targetResolved); // projected in place
+    assert.deepEqual(nextStr.input[2], stringPayloadResolved.input[2]); // user message preserved
+    assert.deepEqual(nextStr.input[3], stringPayloadResolved.input[3]); // mid-convo developer notice preserved
+    assert.deepEqual(nextStr.input[4], stringPayloadResolved.input[4]); // mid-convo additional_tools preserved
+    assert.deepEqual(nextStr.input[5], stringPayloadResolved.input[5]); // assistant preserved
+    assert.deepEqual(nextStr.input[6], stringPayloadResolved.input[6]); // user preserved
+    assert.deepEqual(nextStr.input[7], stringPayloadResolved.input[7]); // trailing configuration_update preserved
+
+    // Array content projection
+    const projFromArray = runtime.mod.projectLarvaIdentityIntoProviderPayload(arrayPayloadResolved, targetEnvelope, api);
+    assert.equal(projFromArray.status, "projected");
+    const nextArr = projFromArray.payload;
+    assert.equal(nextArr.input.length, arrayPayloadResolved.input.length);
+    assert.deepEqual(nextArr.input[0], arrayPayloadResolved.input[0]);
+    assert.equal(nextArr.input[1].role, "developer");
+    assert.deepEqual(nextArr.input[1].content, [{ type: "input_text", text: targetResolved }]);
+    assert.deepEqual(nextArr.input[2], arrayPayloadResolved.input[2]);
+    assert.deepEqual(nextArr.input[3], arrayPayloadResolved.input[3]);
+    assert.deepEqual(nextArr.input[4], arrayPayloadResolved.input[4]);
+    assert.deepEqual(nextArr.input[5], arrayPayloadResolved.input[5]);
+    assert.deepEqual(nextArr.input[6], arrayPayloadResolved.input[6]);
+    assert.deepEqual(nextArr.input[7], arrayPayloadResolved.input[7]);
+
+    // before_provider_request with target persona projecting payload
+    const projectedViaHook = await runtime.handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: stringPayloadResolved,
+    }, makeCtx());
+    assert.ok(projectedViaHook);
+    assert.equal(projectedViaHook.input[1].content, targetResolved);
+    assert.deepEqual(projectedViaHook.input[0], stringPayloadResolved.input[0]);
+    assert.deepEqual(projectedViaHook.input[2], stringPayloadResolved.input[2]);
+    assert.deepEqual(projectedViaHook.input[3], stringPayloadResolved.input[3]);
+    assert.deepEqual(projectedViaHook.input[4], stringPayloadResolved.input[4]);
+    assert.deepEqual(projectedViaHook.input[5], stringPayloadResolved.input[5]);
+    assert.deepEqual(projectedViaHook.input[6], stringPayloadResolved.input[6]);
+    assert.deepEqual(projectedViaHook.input[7], stringPayloadResolved.input[7]);
+
+    // Switch back to origin
+    await runtime.mod.larva_persona_switch({
+      persona_id: "origin",
+      reason: "switch back to origin",
+    }, runtime.ctx, runtime.pi);
+
+    // 3. Under larva:none stale-marker cleanup
+    const staleString = makeFullPayload(`${LARVA_IDENTITY_POLICY_BEGIN}\nstale\n${LARVA_IDENTITY_POLICY_END}\n\nClean base`);
+    const cleanedResult = runtime.mod.projectLarvaIdentityIntoProviderPayload(staleString, null, api);
+    assert.equal(cleanedResult.status, "projected");
+    assert.deepEqual(cleanedResult.payload.input[0], staleString.input[0]);
+    assert.equal(cleanedResult.payload.input[1].role, "developer");
+    assert.equal(cleanedResult.payload.input[1].content.includes(LARVA_IDENTITY_POLICY_BEGIN), false);
+    assert.ok(cleanedResult.payload.input[1].content.includes("Clean base"));
+    assert.deepEqual(cleanedResult.payload.input[2], staleString.input[2]);
+    assert.deepEqual(cleanedResult.payload.input[3], staleString.input[3]);
+    assert.deepEqual(cleanedResult.payload.input[4], staleString.input[4]);
+    assert.deepEqual(cleanedResult.payload.input[5], staleString.input[5]);
+    assert.deepEqual(cleanedResult.payload.input[6], staleString.input[6]);
+    assert.deepEqual(cleanedResult.payload.input[7], staleString.input[7]);
+
+    // 4. Leading additional_tools with NO leading instruction message
+    const noLeadingInstr = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+        { role: "user", content: [{ type: "input_text", text: "user message 1" }] },
+        { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+        { type: "configuration_update", reasoning: { effort: "high" } },
+      ],
+    };
+    // with active persona envelope
+    const injected = runtime.mod.projectLarvaIdentityIntoProviderPayload(noLeadingInstr, envelope, api);
+    assert.equal(injected.status, "projected");
+    assert.equal(injected.payload.input.length, 5);
+    assert.deepEqual(injected.payload.input[0], noLeadingInstr.input[0]); // leading additional_tools preserved
+    assert.equal(injected.payload.input[1].role, "developer");
+    assert.ok(injected.payload.input[1].content.includes("Prompt for origin"));
+    assert.deepEqual(injected.payload.input[2], noLeadingInstr.input[1]); // user message
+    assert.deepEqual(injected.payload.input[3], noLeadingInstr.input[2]); // mid-convo developer notice untouched
+    assert.deepEqual(injected.payload.input[4], noLeadingInstr.input[3]); // trailing config update untouched
+
+    // with null envelope
+    const nullResult = runtime.mod.projectLarvaIdentityIntoProviderPayload(noLeadingInstr, null, api);
+    assert.equal(nullResult.status, "unchanged");
+
+    // 5. Malformed developer message after leading additional_tools
+    const malformed1 = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [] },
+        { role: "developer", content: { broken: true } },
+      ],
+    };
+    assert.deepEqual(runtime.mod.projectLarvaIdentityIntoProviderPayload(malformed1, envelope, api), {
+      status: "missing_slot",
+      api,
+    });
+
+    const malformed2 = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [] },
+        { role: "developer" },
+      ],
+    };
+    assert.deepEqual(runtime.mod.projectLarvaIdentityIntoProviderPayload(malformed2, envelope, api), {
+      status: "missing_slot",
+      api,
+    });
+
+    // Malformed triggers abort() in before_provider_request
+    abortCount = 0;
+    const malformedHookResult = await runtime.handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: malformed1,
+    }, makeCtx());
+    assert.equal(malformedHookResult, undefined);
+    assert.equal(abortCount, 1);
+  }
 });
 
 for (const runtime of runtimes) await runtime.handlers.session_shutdown({ reason: "quit" });

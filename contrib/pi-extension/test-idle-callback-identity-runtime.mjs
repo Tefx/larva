@@ -545,6 +545,230 @@ await run("actual Pi EventBus replies once synchronously for larva:resolve-syste
   assert.equal(replies.length, 1);
 });
 
+await run("openai-responses and azure-openai-responses handle additional_tools and configuration_update", async () => {
+  const mod = await importFresh("responses-tools");
+  const apis = ["openai-responses", "azure-openai-responses"];
+  const resolvedPrompt = mod.composeLarvaSystemPrompt("Base developer prompt", { envelope, switchGuidance: null, continuationMessage: null }).systemPrompt;
+
+  const fakeCli = await mkdtemp(join(tmpdir(), "larva-idle-responses-cli-"));
+  const cli = join(fakeCli, "cli.mjs");
+  await writeFile(cli, `
+const [, , command, arg, jsonFlag] = process.argv;
+if (command === "resolve" && jsonFlag === "--json") {
+  process.stdout.write(JSON.stringify({ data: { id: arg, description: "Persona " + arg, prompt: "Prompt for " + arg, model: "loopback/model", capabilities: {}, spec_version: "0.1.0", spec_digest: "sha256:" + arg, can_spawn: true } }));
+  process.exit(0);
+}
+if (command === "list" && arg === "--json") {
+  process.stdout.write(JSON.stringify({ data: [{ id: "origin", description: "Origin", model: "loopback/model", spec_digest: "sha256:origin", capabilities: {} }] }));
+  process.exit(0);
+}
+process.exit(3);
+`, "utf8");
+
+  const handlers = {};
+  const notices = [];
+  const ctx = {
+    env: { LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]), LARVA_PI_INITIAL_PERSONA_ID: "origin", LARVA_PI_AGENT_PERSONA_SWITCH: "manual" },
+    ui: { setStatus: async () => {}, notify: async (message, notifyType) => { notices.push({ message, notifyType }); } },
+    modelRegistry: { find: async () => ({ id: "model" }) },
+  };
+  const pi = {
+    getAllTools: async () => ["read"],
+    setActiveTools: async () => true,
+    registerCommand: () => {},
+    registerTool: () => {},
+    on: (event, handler) => { handlers[event] = handler; },
+  };
+  await mod.initializeExtension(ctx, pi);
+  const activeEnvelope = mod.getActiveEnvelope();
+  const activeResolvedPrompt = mod.composeLarvaSystemPrompt("Base developer prompt", { envelope: activeEnvelope, switchGuidance: null, continuationMessage: null }).systemPrompt;
+
+  for (const api of apis) {
+    const makePayload = (developerContent) => ({
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+        { role: "developer", content: developerContent },
+        { role: "user", content: [{ type: "input_text", text: "hello user" }] },
+        { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+        { role: "assistant", content: [{ type: "text", text: "working" }] },
+        { role: "user", content: [{ type: "input_text", text: "next" }] },
+        { type: "configuration_update", reasoning: { effort: "high" } },
+      ],
+    });
+
+    // 1. Returns { status: "unchanged" } and before_provider_request returns undefined (without calling ctx.abort()) when already resolved
+    const stringPayloadResolved = makePayload(activeResolvedPrompt);
+    assert.equal(mod.projectLarvaIdentityIntoProviderPayload(stringPayloadResolved, activeEnvelope, api).status, "unchanged");
+
+    let abortCalled = false;
+    const eventCtx = {
+      model: { api },
+      ui: ctx.ui,
+      abort: () => { abortCalled = true; },
+    };
+    const stringResult = await handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: stringPayloadResolved,
+    }, eventCtx);
+    assert.equal(stringResult, undefined);
+    assert.equal(abortCalled, false);
+
+    const arrayPayloadResolved = makePayload([{ type: "input_text", text: activeResolvedPrompt }]);
+    assert.equal(mod.projectLarvaIdentityIntoProviderPayload(arrayPayloadResolved, activeEnvelope, api).status, "unchanged");
+
+    abortCalled = false;
+    const arrayResult = await handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: arrayPayloadResolved,
+    }, eventCtx);
+    assert.equal(arrayResult, undefined);
+    assert.equal(abortCalled, false);
+
+    // 2. Projects in place at the leading instruction message when identity/mode/continuation changes or under larva:none stale-marker cleanup,
+    // preserving leading additional_tools, user messages, mid-convo developer notices, mid-convo additional_tools, and trailing configuration_update in exact order.
+    const stringPayloadBase = makePayload("Base developer prompt");
+    const projString = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload(stringPayloadBase, envelope, api));
+    assert.equal(projString.input.length, stringPayloadBase.input.length);
+    assert.deepEqual(projString.input[0], stringPayloadBase.input[0]); // leading additional_tools preserved
+    assert.equal(projString.input[1].role, "developer");
+    assert.equal(projString.input[1].content, resolvedPrompt); // projected in place
+    assert.deepEqual(projString.input[2], stringPayloadBase.input[2]); // user message preserved
+    assert.deepEqual(projString.input[3], stringPayloadBase.input[3]); // mid-convo developer notice preserved
+    assert.deepEqual(projString.input[4], stringPayloadBase.input[4]); // mid-convo additional_tools preserved
+    assert.deepEqual(projString.input[5], stringPayloadBase.input[5]); // assistant preserved
+    assert.deepEqual(projString.input[6], stringPayloadBase.input[6]); // user preserved
+    assert.deepEqual(projString.input[7], stringPayloadBase.input[7]); // trailing configuration_update preserved
+
+    const arrayPayloadBase = makePayload([{ type: "input_text", text: "Base developer prompt" }]);
+    const projArray = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload(arrayPayloadBase, envelope, api));
+    assert.equal(projArray.input.length, arrayPayloadBase.input.length);
+    assert.deepEqual(projArray.input[0], arrayPayloadBase.input[0]);
+    assert.equal(projArray.input[1].role, "developer");
+    assert.deepEqual(projArray.input[1].content, [{ type: "input_text", text: resolvedPrompt }]);
+    assert.deepEqual(projArray.input[2], arrayPayloadBase.input[2]);
+    assert.deepEqual(projArray.input[3], arrayPayloadBase.input[3]);
+    assert.deepEqual(projArray.input[4], arrayPayloadBase.input[4]);
+    assert.deepEqual(projArray.input[5], arrayPayloadBase.input[5]);
+    assert.deepEqual(projArray.input[6], arrayPayloadBase.input[6]);
+    assert.deepEqual(projArray.input[7], arrayPayloadBase.input[7]);
+
+    // Under larva:none stale-marker cleanup
+    const staleContent = `${identityBegin}\nstale\n<!-- larva:identity-policy:end -->\n\nBase developer prompt`;
+    const stringPayloadStale = makePayload(staleContent);
+    const cleanedString = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload(stringPayloadStale, null, api));
+    assert.equal(cleanedString.input.length, stringPayloadStale.input.length);
+    assert.deepEqual(cleanedString.input[0], stringPayloadStale.input[0]);
+    assert.equal(cleanedString.input[1].role, "developer");
+    assert.equal(cleanedString.input[1].content.includes(identityBegin), false);
+    assert.ok(cleanedString.input[1].content.includes("Base developer prompt"));
+    assert.deepEqual(cleanedString.input[2], stringPayloadStale.input[2]);
+    assert.deepEqual(cleanedString.input[3], stringPayloadStale.input[3]);
+    assert.deepEqual(cleanedString.input[4], stringPayloadStale.input[4]);
+    assert.deepEqual(cleanedString.input[5], stringPayloadStale.input[5]);
+    assert.deepEqual(cleanedString.input[6], stringPayloadStale.input[6]);
+    assert.deepEqual(cleanedString.input[7], stringPayloadStale.input[7]);
+
+    const arrayPayloadStale = makePayload([{ type: "input_text", text: staleContent }]);
+    const cleanedArray = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload(arrayPayloadStale, null, api));
+    assert.equal(cleanedArray.input.length, arrayPayloadStale.input.length);
+    assert.deepEqual(cleanedArray.input[0], arrayPayloadStale.input[0]);
+    assert.equal(cleanedArray.input[1].role, "developer");
+    assert.equal(cleanedArray.input[1].content[0].text.includes(identityBegin), false);
+    assert.ok(cleanedArray.input[1].content[0].text.includes("Base developer prompt"));
+    assert.deepEqual(cleanedArray.input[2], arrayPayloadStale.input[2]);
+    assert.deepEqual(cleanedArray.input[3], arrayPayloadStale.input[3]);
+    assert.deepEqual(cleanedArray.input[4], arrayPayloadStale.input[4]);
+    assert.deepEqual(cleanedArray.input[5], arrayPayloadStale.input[5]);
+    assert.deepEqual(cleanedArray.input[6], arrayPayloadStale.input[6]);
+    assert.deepEqual(cleanedArray.input[7], arrayPayloadStale.input[7]);
+
+    // 3. Leading additional_tools with NO leading instruction message
+    const noInstructionPayload = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+        { role: "user", content: [{ type: "input_text", text: "user message 1" }] },
+        { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+        { type: "configuration_update", reasoning: { effort: "high" } },
+      ],
+    };
+
+    // with active persona envelope: injects { role: "developer", content: <composed> } right after leading additional_tools
+    // and before user message, leaving mid-convo developer notice and configuration_update untouched
+    const injectedActive = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload(noInstructionPayload, envelope, api));
+    assert.equal(injectedActive.input.length, 5);
+    assert.deepEqual(injectedActive.input[0], noInstructionPayload.input[0]);
+    assert.equal(injectedActive.input[1].role, "developer");
+    assert.ok(injectedActive.input[1].content.includes(envelope.prompt));
+    assert.ok(injectedActive.input[1].content.includes(marker));
+    assert.deepEqual(injectedActive.input[2], noInstructionPayload.input[1]);
+    assert.deepEqual(injectedActive.input[3], noInstructionPayload.input[2]);
+    assert.deepEqual(injectedActive.input[4], noInstructionPayload.input[3]);
+
+    // multiple leading additional_tools items
+    const multiLeadingToolsPayload = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_alpha" }] },
+        { type: "additional_tools", role: "developer", tools: [{ type: "function", name: "tool_beta" }] },
+        { role: "user", content: [{ type: "input_text", text: "user message 1" }] },
+        { role: "developer", content: "This is an incremental tools update from mid-conversation" },
+        { type: "configuration_update", reasoning: { effort: "high" } },
+      ],
+    };
+    const multiInjected = projectedPayload(mod.projectLarvaIdentityIntoProviderPayload(multiLeadingToolsPayload, envelope, api));
+    assert.equal(multiInjected.input.length, 6);
+    assert.deepEqual(multiInjected.input[0], multiLeadingToolsPayload.input[0]);
+    assert.deepEqual(multiInjected.input[1], multiLeadingToolsPayload.input[1]);
+    assert.equal(multiInjected.input[2].role, "developer");
+    assert.ok(multiInjected.input[2].content.includes(envelope.prompt));
+    assert.deepEqual(multiInjected.input[3], multiLeadingToolsPayload.input[2]);
+    assert.deepEqual(multiInjected.input[4], multiLeadingToolsPayload.input[3]);
+    assert.deepEqual(multiInjected.input[5], multiLeadingToolsPayload.input[4]);
+
+    // with null envelope: returns { status: "unchanged" }
+    assert.equal(mod.projectLarvaIdentityIntoProviderPayload(noInstructionPayload, null, api).status, "unchanged");
+    assert.equal(mod.projectLarvaIdentityIntoProviderPayload(multiLeadingToolsPayload, null, api).status, "unchanged");
+
+    // 4. Malformed developer message after leading additional_tools:
+    // returns { status: "missing_slot", api }
+    const malformedObjectContent = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [] },
+        { role: "developer", content: { broken: true } },
+      ],
+    };
+    assert.deepEqual(mod.projectLarvaIdentityIntoProviderPayload(malformedObjectContent, envelope, api), {
+      status: "missing_slot",
+      api,
+    });
+
+    const malformedMissingContent = {
+      model: "gpt-5-preview",
+      input: [
+        { type: "additional_tools", role: "developer", tools: [] },
+        { role: "developer" },
+      ],
+    };
+    assert.deepEqual(mod.projectLarvaIdentityIntoProviderPayload(malformedMissingContent, envelope, api), {
+      status: "missing_slot",
+      api,
+    });
+
+    // Malformed developer message in before_provider_request triggers abort()
+    abortCalled = false;
+    const malformedHookResult = await handlers.before_provider_request({
+      type: "before_provider_request",
+      payload: malformedObjectContent,
+    }, eventCtx);
+    assert.equal(malformedHookResult, undefined);
+    assert.equal(abortCalled, true);
+  }
+});
+
 const failed = results.filter((result) => result.status === "FAIL");
 for (const result of results) {
   process.stdout.write(`${result.status} ${result.name}${result.message ? `\n${result.message}` : ""}\n`);

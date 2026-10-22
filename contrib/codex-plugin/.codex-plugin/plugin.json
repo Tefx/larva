@@ -1,6 +1,6 @@
 {
   "name": "larva-subagent",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "description": "On-demand bridge to Larva Pi child sessions for Larva-specific capabilities alongside Codex's default native subagents.",
   "keywords": ["larva", "persona", "subagent", "pi"],
   "skills": "./skills/",

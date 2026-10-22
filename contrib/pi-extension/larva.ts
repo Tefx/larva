@@ -7153,25 +7153,33 @@ function projectStringField(payload: Record<string, unknown>, snapshot: SystemPr
 function projectFirstInstructionMessage(payload: Record<string, unknown>, snapshot: SystemPromptComposeSnapshot, field: "messages" | "input", api: string): LarvaIdentityProjectionResult {
   const messages = payload[field];
   if (!Array.isArray(messages)) return { status: "missing_slot", api };
-  const first = messages.length > 0 && isRecord(messages[0]) ? messages[0] : null;
+  let targetIndex = 0;
+  if (field === "input") {
+    while (targetIndex < messages.length && isRecord(messages[targetIndex]) && messages[targetIndex].type === "additional_tools") {
+      targetIndex += 1;
+    }
+  }
+  const prefix = messages.slice(0, targetIndex);
+  const suffix = messages.slice(targetIndex + 1);
+  const first = targetIndex < messages.length && isRecord(messages[targetIndex]) ? messages[targetIndex] : null;
   if (first === null || (first.role !== "system" && first.role !== "developer")) {
     const role = field === "input" ? "developer" : "system";
-    return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: [{ role, content: text }, ...messages] }));
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: [...prefix, { role, content: text }, ...messages.slice(targetIndex)] }));
   }
   if (typeof first.content === "string") {
-    return applyProjectedText(projectSystemText(first.content, snapshot), api, (text) => ({ ...payload, [field]: [{ ...first, content: text }, ...messages.slice(1)] }));
+    return applyProjectedText(projectSystemText(first.content, snapshot), api, (text) => ({ ...payload, [field]: [...prefix, { ...first, content: text }, ...suffix] }));
   }
   if (!Array.isArray(first.content)) return { status: "missing_slot", api };
   const partIndex = first.content.findIndex((part) => isRecord(part) && (part.type === "text" || part.type === "input_text") && typeof part.text === "string");
   if (partIndex < 0) {
     const partType = field === "input" ? "input_text" : "text";
-    return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: [{ ...first, content: [{ type: partType, text }, ...first.content] }, ...messages.slice(1)] }));
+    return injectInstructionText(snapshot, api, (text) => ({ ...payload, [field]: [...prefix, { ...first, content: [{ type: partType, text }, ...first.content] }, ...suffix] }));
   }
   const part = first.content[partIndex] as Record<string, unknown>;
   return applyProjectedText(projectSystemText(part.text as string, snapshot), api, (text) => {
     const content = first.content.slice();
     content[partIndex] = { ...part, text };
-    return { ...payload, [field]: [{ ...first, content }, ...messages.slice(1)] };
+    return { ...payload, [field]: [...prefix, { ...first, content }, ...suffix] };
   });
 }
 

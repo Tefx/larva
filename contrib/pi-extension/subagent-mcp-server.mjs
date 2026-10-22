@@ -479,7 +479,7 @@ function subagentPanelApp(surface) {
   const clock = setInterval(tick, 1000);
   document.addEventListener('visibilitychange', () => { if (!stopped && document.visibilityState !== 'hidden') void poll(); });
   render();
-  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.8.9' }, appCapabilities: { availableDisplayModes: surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'] } }).then(result => {
+  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.8.10' }, appCapabilities: { availableDisplayModes: surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen'] } }).then(result => {
     if (stopped) return;
     hostContext(result.hostContext); notify('ui/notifications/initialized', {}); void poll();
   }).catch(showError);
@@ -528,7 +528,7 @@ async function dispatch(message, framed) {
         result = {
           protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25', '2026-07-28'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05',
           capabilities: { tools: {}, resources: {} },
-          serverInfo: { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.9' },
+          serverInfo: { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.10' },
           instructions: 'When the user mentions @larva:<persona_id>, @persona:<persona_id>, or a larva://personas/<persona_id> resource (including [@larva:<persona_id>](mcp-resource://...)), delegate the requested task to larva_subagent with persona_id="<persona_id>" and wait_for_completion=true (or false for parallel fan-out). When @Larva Subagents is mentioned without an exact persona_id, call larva_personas first.',
         };
         break;
