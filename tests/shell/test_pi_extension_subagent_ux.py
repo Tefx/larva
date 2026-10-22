@@ -4041,18 +4041,29 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
 
     contract = payload["status_contract"]
     expected_schema_fields = [
+        "active_tool",
         "age_ms",
         "callback_delivery",
         "callback_delivery_diagnostic",
         "elapsed_ms",
         "error",
+        "last_child_activity",
+        "live_assistant_preview",
+        "live_thinking",
         "persona_id",
         "phase",
+        "requested_thinking",
         "result_pending",
+        "result_preview",
         "sequence_latest",
         "started_at",
+        "startup_model",
+        "startup_thinking",
         "status",
         "task_id",
+        "task_preview",
+        "task_prompt",
+        "tool_snapshots",
         "updated_at",
     ]
     assert contract["registered"] is True
@@ -4076,6 +4087,12 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
     )
     assert contract["activeRun"]["result_pending"] is True
     assert contract["activeRun"]["error"] is None
+    assert contract["activeRun"]["task_prompt"] == "status active then terminal proof"
+    assert contract["activeRun"]["task_preview"] == "status active then terminal proof"
+    assert contract["activeRun"]["result_preview"] is None
+    assert contract["activeRun"]["tool_snapshots"] == []
+    assert contract["activeRun"]["active_tool"] is None
+    assert contract["activeRun"]["live_thinking"] is False
     assert contract["terminalExactCount"] == 1
     assert contract["terminalSchemaFields"] == expected_schema_fields
     assert contract["terminalRun"]["persona_id"] == "ok"
@@ -4083,6 +4100,12 @@ def test_async_subagent_a6_status_tool_schema_unobserved_expected_red(tmp_path: 
     assert contract["terminalRun"]["phase"] == "success"
     assert contract["terminalRun"]["result_pending"] is False
     assert contract["terminalRun"]["error"] is None
+    assert contract["terminalRun"]["task_prompt"] == "status active then terminal proof"
+    assert contract["terminalRun"]["task_preview"] == "status active then terminal proof"
+    assert contract["terminalRun"]["active_tool"] is None
+    assert contract["terminalRun"]["live_thinking"] is False
+    assert isinstance(contract["terminalRun"]["tool_snapshots"], list)
+    assert contract["terminalRun"]["result_preview"] == "final child output"
     assert contract["topLevelRunsAbsent"] is True
 
 
