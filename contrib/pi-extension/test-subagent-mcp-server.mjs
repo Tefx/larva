@@ -139,7 +139,7 @@ async function exercisePanelBridge(html, surface, multiple = false) {
   assert.equal(pollTimers().length, 1, 'polling never duplicates its timer');
   assert.equal(sent[0].method, 'ui/initialize');
   assert.equal(sent[0].params.protocolVersion, '2026-01-26');
-  assert.deepEqual(sent[0].params.appInfo, { name: 'Larva Subagents', version: '0.8.10' });
+  assert.deepEqual(sent[0].params.appInfo, { name: 'Larva Subagents', version: '0.8.11' });
   assert.deepEqual(sent[0].params.appCapabilities.availableDisplayModes, surface === 'panel' ? ['fullscreen'] : ['inline', 'fullscreen']);
   assert.ok(sent.some(message => message.method === 'ui/notifications/initialized'));
   assert.equal(variables['--color-text-primary'], 'red');
@@ -361,7 +361,7 @@ try {
   assert.deepEqual(await readdir(idleDir), ['subagent-mcp-server.mjs']);
   const idle = client({}, idleDir);
   const initialized = (await idle.request('initialize')).result;
-  assert.deepEqual(initialized.serverInfo, { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.10' });
+  assert.deepEqual(initialized.serverInfo, { name: 'larva-pi-subagent', title: 'Larva Subagents', version: '0.8.11' });
   assert.deepEqual(initialized.capabilities, { tools: {}, resources: {} });
   assert.equal(initialized.instructions, 'When the user mentions @larva:<persona_id>, @persona:<persona_id>, or a larva://personas/<persona_id> resource (including [@larva:<persona_id>](mcp-resource://...)), delegate the requested task to larva_subagent with persona_id="<persona_id>" and wait_for_completion=true (or false for parallel fan-out). When @Larva Subagents is mentioned without an exact persona_id, call larva_personas first.');
   assert.ok(initialized.instructions.length < 512);
@@ -566,7 +566,7 @@ createInterface({input:process.stdin}).on('line', async line => {
    send({type:'message_update',assistantMessageEvent:{type:'thinking_delta',delta:'hidden'}});
   }
   if (!m.message.includes('hang')) setTimeout(()=>send({type:'agent_end'}),m.message.includes('slow')?400:50);
- } else if(m.type==='get_last_assistant_text') send({id:m.id,success:true,data:{text:large ? 'large-result-'.repeat(2000) : 'output parent='+process.env.LARVA_PI_PARENT_PERSONA_ID}});
+ } else if(m.type==='get_last_assistant_text') send({id:m.id,success:true,data:{text:large ? 'large-result-'.repeat(3000) : 'output parent='+process.env.LARVA_PI_PARENT_PERSONA_ID}});
  else if(m.type==='abort') send({id:m.id,success:true,data:{}});
  else if(m.type==='switch_session') {sessionFile=m.sessionPath;send({id:m.id,success:true,data:{}});}
 });
@@ -847,7 +847,7 @@ createInterface({input:process.stdin}).on('line', async line => {
   const largeOutput = Object.values(large.details.terminal_outputs)[0];
   assert.equal(largeOutput.child_output_truncated,true);
   assert.equal(largeOutput.child_output_preview,largeOutput.result_text);
-  assert.equal(await readFile(largeOutput.full_output_artifact.path,'utf8'),'large-result-'.repeat(2000));
+  assert.equal(await readFile(largeOutput.full_output_artifact.path,'utf8'),'large-result-'.repeat(3000));
   assert.match(largeOutput.message,/full_output_artifact/);
   console.log('truncated callback preserves preview and full-output artifact: PASS');
   const hanging = await c.tool('larva_subagent',{persona_id:'child',task:'hang for cancellation'});

@@ -130,7 +130,7 @@ def _node_prelude(tmp_path: Path) -> str:
                 if (${{JSON.stringify(scenario)}} === "empty-final") send({{ id: msg.id, success: true, data: {{}} }});
                 else if (${{JSON.stringify(scenario)}} === "malformed-final") send({{ id: msg.id, success: true, data: {{ text: {{ bad: true }} }} }});
                 else if (${{JSON.stringify(scenario)}} === "multiline-final") send({{ id: msg.id, success: true, data: {{ text: "status: SUCCESS\\\\nevidence: |\\\\n  line one\\\\n\\\\n  line three" }} }});
-                else if (${{JSON.stringify(scenario)}} === "long-final") send({{ id: msg.id, success: true, data: {{ text: "LONG_OUTPUT_START\\\\n" + "Ω".repeat(7000) + "\\\\nLONG_OUTPUT_END" }} }});
+                else if (${{JSON.stringify(scenario)}} === "long-final") send({{ id: msg.id, success: true, data: {{ text: "LONG_OUTPUT_START\\\\n" + "Ω".repeat(40000) + "\\\\nLONG_OUTPUT_END" }} }});
                 else send({{ id: msg.id, success: true, data: {{ text: "final child output" }} }});
                 setTimeout(() => process.exit(0), 1);
               }}
@@ -329,7 +329,7 @@ def test_larva_subagent_long_output_artifact_callback_manifest_and_short_inline_
         + """
         const { readFile, stat } = await import("node:fs/promises");
         const { createHash } = await import("node:crypto");
-        const expectedLong = "LONG_OUTPUT_START\\n" + "Ω".repeat(7000) + "\\nLONG_OUTPUT_END";
+        const expectedLong = "LONG_OUTPUT_START\\n" + "Ω".repeat(40000) + "\\nLONG_OUTPUT_END";
 
         const longChild = join(tmpRoot, "long-child.mjs");
         await writeFakeChild(longChild, "long-final");

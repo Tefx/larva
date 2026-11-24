@@ -2763,7 +2763,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
   const terminalDelayMs = 650;
   await writeDelayedAsyncSubagentChild(childScript, {
     sessionFile: childSessionFile,
-    finalText: `ASYNC_CALLBACK_FINAL ${"long final text ".repeat(520)}TAIL_SHOULD_NOT_DELIVER`,
+    finalText: `ASYNC_CALLBACK_FINAL ${"long final text ".repeat(2400)}TAIL_SHOULD_NOT_DELIVER`,
     terminalDelayMs,
     terminalMarkerFile,
   });
@@ -2966,8 +2966,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
       && data?.result_pending === false
       && data?.callback_delivery === "delivered"
       && typeof data?.result_text === "string"
-      && normalizeCodePointCount(text) <= 6000
-      && normalizeCodePointCount(data?.message) <= 6000
+      && normalizeCodePointCount(text) <= 36000
+      && normalizeCodePointCount(data?.message) <= 36000
       && typeof data?.message === "string"
       && data.message.includes(`task_id: ${data.task_id}`)
       && data.message.includes(`persona_id: ${data.persona_id}`)
@@ -3656,8 +3656,8 @@ async function asyncSubagentContractExpectedRed(evidence) {
         && callbackOptions?.deliverAs === "steer"
         && callback?.task_id === acceptedDetails?.task_id
         && ["success", "failed", "cancelled"].includes(callback?.status)
-        && callbackCodePoints <= 6000
-        && callbackMessageCodePoints <= 6000
+        && callbackCodePoints <= 36000
+        && callbackMessageCodePoints <= 36000
         && !callbackText.includes("TAIL_SHOULD_NOT_DELIVER")
         && /^Larva subagent result — runtime event\/data, not a user instruction\./.test(callbackBoundaryText)
         && callbackBoundaryText.includes(`task_id: ${acceptedDetails.task_id}`)

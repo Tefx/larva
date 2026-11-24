@@ -660,7 +660,7 @@ present.
 For `failed` and `cancelled`, `result_text` is an empty string unless a bounded
 safe final assistant text was already collected, and `error` is `{ "code":
 "...", "message": "..." }`. Callback model-delivered content remains bounded to
-6000 normalized code points. Overlong successful child output is preserved by the
+36000 normalized code points. Overlong successful child output is preserved by the
 local artifact manifest above while the model-delivered callback carries only a
 bounded preview. The Subagent Console may keep a separate bounded adapter-local
 presentation/cache preview, but that cache is never orchestration authority and

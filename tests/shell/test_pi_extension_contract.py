@@ -4848,7 +4848,7 @@ def test_async_subagent_a4_a7_expected_red_result_callback_and_lifecycle_source_
         "triggerTurn",
         "deliverAs",
         "steer",
-        "6000",
+        "36000",
         "callback_id",
         "completed_at",
         "child_output_truncated",
