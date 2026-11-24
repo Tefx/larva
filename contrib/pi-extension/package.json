@@ -1,9 +1,15 @@
 {
-  "name": "@larva/pi-extension",
+  "name": "pi-larva",
   "version": "0.8.11",
-  "private": true,
+  "description": "Larva PersonaSpec runtime, persona switching, and async subagent extension for Pi.",
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tefx/larva.git",
+    "directory": "contrib/pi-extension"
+  },
   "type": "module",
-  "keywords": ["pi-package"],
+  "keywords": ["pi-package", "pi-extension", "pi", "larva"],
   "files": [
     "larva.ts",
     "activity.ts",
