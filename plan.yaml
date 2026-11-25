@@ -150949,3 +150949,418 @@ phases:
       Spec link:
 
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
+- id: pi_multihop_subagent_mechanism_v4
+  name: Multi-Hop Subagent & Mechanism/Policy Separation (Spec v4)
+  status: pending
+  gate: All Spec v4 multi-hop subagent mechanism & policy-separation invariants, 6-stage
+    admission precedence, lineage wire bounds, resumed child persona authority, multi-hop
+    agent_settled barrier, inductive watchdog progress relay, single-signal abort
+    & kernel-pipe capsule cleanup, and Pi/Codex byte-parity checks pass with zero
+    regressions and untouched PersonaSpec core contracts.
+  depends_on:
+  - codex_persona_mention_preload_and_poll_fix
+  steps:
+  - id: admission-and-lineage
+    name: Runtime Config, Lineage Wire, 6-Stage Admission, Resumed Child Persona &
+      De-Bloat
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: contract-and-simplicity]\n\nDeliver:\n- [D1] `contrib/pi-extension/larva.ts:loadSubagentRuntimeConfig`\
+      \ — admit optional root keys `root_session_spawn?: \"persona\" | \"allow\"`\
+      \ (default `\"persona\"`), `max_depth?: 1..100`, and `max_active_runs?: 1..100`\
+      \ alongside `schema_version: 1` and `extension_sources`; reject unknown keys\
+      \ or invalid values with `LARVA_SUBAGENT_CONFIG_INVALID`; preserve legacy JSON\
+      \ serialization `{\"extension_sources\":[...]}` when all three optional keys\
+      \ are omitted.\n- [D2] `contrib/pi-extension/larva.ts:startChild` — validate\
+      \ and propagate `LARVA_PI_SUBAGENT_DEPTH` (`parentDepth` = `0` when `LARVA_PI_LAUNCHED\
+      \ !== \"1\"`, else `/^(?:[1-9][0-9]?|100)$/` default `\"1\"`; `nextDepth = parentDepth\
+      \ + 1 <= 100`) and `LARVA_PI_ANCESTOR_TASK_IDS` (`A_out = A_inherited U {S_self}`,\
+      \ JSON array of `<= 100` canonical absolute `.jsonl` paths under `childSessionRoot`,\
+      \ `<= 65536` UTF-8 bytes, zero truncation) for both `larva_subagent` and `runPersonaInvocationChild`;\
+      \ fail closed before launch with `LARVA_CHILD_START_FAILED` (`task_id: null`).\n\
+      - [D3/S1] `contrib/pi-extension/larva.ts:larva_subagent` — enforce 6-stage admission\
+      \ (`Stage 1..6`), external host vs. native Pi depth/persona authority, and synchronous\
+      \ Stage 6 ownership reservation held until `cleanupChild` settles in `finally`\
+      \ (never evicted by `pruneTerminalSubagentRuns` while unsettled).\n- [D3/DEB]\
+      \ `contrib/pi-extension/larva.ts:{initializeSession,observeVerifiedChildRoute,runPersonaInvocationChild,transformChildRpcSerializedRecord}`\
+      \ — enforce `LARVA_PI_INITIAL_PERSONA_ID` on child init and `switch_session`,\
+      \ verify active child persona ID in `observeVerifiedChildRoute`, set `LARVA_PI_PERSONA_INVOCATION\
+      \ = \"1\"` to project `> 1 MiB` persona-invocation responses without disk artifacts,\
+      \ and delete write-only `RpcClient.pendingCommandTypes` and `PersonaInvocationActiveRequest.abort_controller`\
+      \ without introducing `isLarvaPiLaunched`.\n\nImplementation Notes (Non-Binding):\n\
+      - 6-Stage `larva_subagent` admission precedence (`failed(envelopeTaskId, personaId,\
+      \ error)`):\n  - Stage 1 (`envelopeTaskId = null`, `LARVA_BAD_INPUT`): syntax\
+      \ checks (`persona_id`, `task`, `no_progress_timeout_ms`, non-empty `task_id`,\
+      \ non-empty trimmed `input.parent_persona_id` when `ctx?.externalHostCanSpawn\
+      \ !== undefined`, lexical `task_id` syntax).\n  - Stage 2 (`envelopeTaskId =\
+      \ null`, `LARVA_CHILD_START_FAILED` / `LARVA_BAD_INPUT`): `childSessionRoot(env)`\
+      \ and `validateTaskId` -> `canonicalTaskId`.\n  - Stage 3 (`envelopeTaskId =\
+      \ null`, `LARVA_CHILD_START_FAILED`): incoming `LARVA_PI_SUBAGENT_DEPTH` / `LARVA_PI_ANCESTOR_TASK_IDS`\
+      \ and outgoing `nextDepth <= 100` / `A_out` bounds.\n  - Stage 4 (`envelopeTaskId\
+      \ = canonicalTaskId`, `LARVA_SUBAGENT_CONFIG_INVALID`): `loadSubagentRuntimeConfig(env)`.\n\
+      \  - Stage 5 (`envelopeTaskId = null`, `LARVA_NO_ACTIVE_PERSONA` / `LARVA_PERSONA_NOT_FOUND`\
+      \ / `LARVA_SPAWN_NOT_ALLOWED`):\n    - If `runtimeConfig.max_depth !== undefined\
+      \ && parentDepth >= runtimeConfig.max_depth`, fail with `LARVA_SPAWN_NOT_ALLOWED`.\n\
+      \    - External MCP host (`ctx?.externalHostCanSpawn !== undefined`): if `!ctx.externalHostCanSpawn`,\
+      \ fail with `LARVA_SPAWN_NOT_ALLOWED`. Normalize `env.LARVA_MCP_PARENT_PERSONA`\
+      \ so empty/whitespace-only strings become `undefined` (preserving `test-subagent-mcp-server.mjs:805`).\
+      \ At `parentDepth === 0`, if explicit selector (`input.parent_persona_id ??\
+      \ normalizedEnvMcpPersona`) is present, resolve via `resolvePersona` (`LARVA_PERSONA_NOT_FOUND`)\
+      \ and require `allowsPersonaSpawn(parent.can_spawn, personaId)` (`LARVA_SPAWN_NOT_ALLOWED`);\
+      \ if absent, grant external host root authority. At `parentDepth >= 1`, bind\
+      \ authority to `env.LARVA_PI_INITIAL_PERSONA_ID` (`LARVA_NO_ACTIVE_PERSONA`\
+      \ if absent); if an explicit selector is also passed and differs from `env.LARVA_PI_INITIAL_PERSONA_ID`,\
+      \ reject with `LARVA_SPAWN_NOT_ALLOWED`; resolve `env.LARVA_PI_INITIAL_PERSONA_ID`\
+      \ and require `allowsPersonaSpawn(parent.can_spawn, personaId)`.\n    - Native\
+      \ Pi session (`ctx?.externalHostCanSpawn === undefined`): require `state.envelope\
+      \ !== null` (`LARVA_NO_ACTIVE_PERSONA`). If `parentDepth === 0 && runtimeConfig.root_session_spawn\
+      \ === \"allow\"`, target authorization succeeds regardless of `state.envelope.can_spawn`\
+      \ (without bypassing Pi `tool_call` `LARVA_TOOL_DENIED`, `max_depth`, or `max_active_runs`);\
+      \ otherwise require `allowsPersonaSpawn(state.envelope.can_spawn, personaId)`\
+      \ (`LARVA_SPAWN_NOT_ALLOWED`).\n  - Stage 6 (`envelopeTaskId = canonicalTaskId`,\
+      \ `LARVA_SESSION_BUSY` / `LARVA_SPAWN_NOT_ALLOWED`): reject with `LARVA_SESSION_BUSY`\
+      \ if `canonicalTaskId !== null` and (`canonicalTaskId` is in `A_out` or matches\
+      \ any unsettled owned run); reject with `LARVA_SPAWN_NOT_ALLOWED` if `runtimeConfig.max_active_runs\
+      \ !== undefined` and unsettled owned run count `>= runtimeConfig.max_active_runs`;\
+      \ reserve ownership slot synchronously through `cleanupChild` completion in\
+      \ `finally`.\n- Resumed child persona authority: when `env.LARVA_PI_LAUNCHED\
+      \ === \"1\"`, `LARVA_PI_INITIAL_PERSONA_ID` is authoritative on both initial\
+      \ startup and `switch_session` (do not adopt a different stored persona from\
+      \ the resumed `.jsonl` file); expose active `persona_id` in child `get_state`\
+      \ response data so `observeVerifiedChildRoute` verifies `persona_id` alongside\
+      \ model and thinking level (`LARVA_CHILD_PROTOCOL_FAILED` on mismatch).\n- `runPersonaInvocationChild`\
+      \ (`larva.ts:7963`) remains exempt from `root_session_spawn`, `max_depth`, and\
+      \ `max_active_runs`, and sets `LARVA_PI_PERSONA_INVOCATION = \"1\"` on child\
+      \ env so `transformChildRpcSerializedRecord` (`larva.ts:8332`) uses `childRpcProjection`\
+      \ instead of `boundedChildRpcOutputEnvelope` when `inputBytes > CHILD_RPC_JSONL_MAX_BYTES`.\n\
+      \nBoundary:\n- Owner: `node-typescript-engineer`\n- Allowed paths (`scope.allowed_paths`):\
+      \ `contrib/pi-extension/larva.ts`, `tests/shell/test_pi_extension_contract.py`\n\
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,\
+      \ `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`\n\
+      - Material effects & rollback: repo-local TypeScript and test edits; reversible\
+      \ via `git checkout`. Note: mirror copy to `contrib/codex-plugin/larva.ts` is\
+      \ deferred (`[DEFER_TO_CONSOLIDATE]`) to `consolidate` so parallel step `mcp-stdio-gate-and-docs`\
+      \ stays 100% file-disjoint.\n\nAdmit:\n- Witnessed inputs: Spec v4 Sections\
+      \ 1, 2.1, 2.2, 2.3, 3.1, and 3.4.\n- Verification: `uv run pytest -q tests/shell/test_pi_extension_contract.py\
+      \ -x`\n\nRecovery:\n- Fix any failing contract or regression check in-place\
+      \ before completion; escalate only if a hard boundary is crossed."
+    verification: uv run pytest -q tests/shell/test_pi_extension_contract.py -x
+    refs:
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md
+    agent: node-typescript-engineer
+  - id: mcp-stdio-gate-and-docs
+    name: Outer MCP Stdio Whitespace Gate & Spec v4 Documentation Sync
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [S1-MCP] `contrib/pi-extension/subagent-mcp-server.mjs:callTool` and `contrib/codex-plugin/subagent-mcp-server.mjs:callTool`
+      — reject whitespace-only string arguments (`parent_persona_id`, `persona_id`,
+      `task`, `task_id` with `.trim().length === 0`) with `LARVA_BAD_INPUT` before
+      lazy runtime loading (`getRuntime()`), maintaining byte parity between both
+      `subagent-mcp-server.mjs` copies.
+
+      - [TEST-MCP] `contrib/pi-extension/test-subagent-mcp-server.mjs` — add discriminating
+      assertions proving whitespace-only `parent_persona_id`, `persona_id`, `task`,
+      and `task_id` are rejected at the outer MCP stdio gate with `LARVA_BAD_INPUT`
+      before extension runtime load, while whitespace-only `LARVA_MCP_PARENT_PERSONA`
+      env continues to normalize to `undefined` (`test-subagent-mcp-server.mjs:805`).
+
+      - [DOCS] `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, `docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`,
+      `contrib/pi-extension/README.md`, `contrib/codex-plugin/README.md` — document
+      the Spec v4 mechanism/policy separation contracts (`subagent-runtime.json` optional
+      policy fields, `LARVA_PI_SUBAGENT_DEPTH` & `LARVA_PI_ANCESTOR_TASK_IDS` wire
+      contract, 6-stage admission precedence, resumed child persona authority, `runPersonaInvocationChild`
+      `LARVA_PI_PERSONA_INVOCATION = "1"` exemption, multi-hop `agent_settled` barrier
+      & `larva_subagent_progress` relay, and kernel-pipe `stdin` self-exit + `$LARVA_PI_CAPSULE_ROOT/descendants/`
+      manifest).
+
+
+      Implementation Notes (Non-Binding):
+
+      - In `subagent-mcp-server.mjs` (`validValue` / `callTool` around lines 99–125),
+      ensure string arguments for `larva_subagent` (`persona_id`, `task`, `task_id`,
+      `parent_persona_id`) and other subagent tools requiring non-empty string handles
+      reject whitespace-only strings (`value.trim().length > 0`) before `await getRuntime()`
+      is invoked, while preserving `search_mentions` `query` handling.
+
+      - Copy `contrib/pi-extension/subagent-mcp-server.mjs` directly to `contrib/codex-plugin/subagent-mcp-server.mjs`
+      so SHA-256 byte parity holds immediately.
+
+      - Preserve all existing token anchors required by `test_subagent_runtime_config_docs_preserve_allowlist_and_tool_policy_boundaries`
+      in `tests/shell/test_pi_extension_contract.py`.
+
+
+      Boundary:
+
+      - Owner: `node-typescript-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/subagent-mcp-server.mjs`,
+      `contrib/codex-plugin/subagent-mcp-server.mjs`, `contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`, `docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`,
+      `contrib/pi-extension/README.md`, `contrib/codex-plugin/README.md`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: MCP server, test, and doc updates; reversible
+      via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: Spec v4 Sections 1, 2, and 3.
+
+      - Verification: `node contrib/pi-extension/test-subagent-mcp-server.mjs`
+
+
+      Recovery:
+
+      - Repair any failing MCP stdio or documentation token check in-place before
+      completion.'
+    verification: node contrib/pi-extension/test-subagent-mcp-server.mjs
+    refs:
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
+    - contrib/pi-extension/README.md
+    agent: node-typescript-engineer
+  - id: multihop-settlement-and-lifecycle
+    name: Multi-Hop RPC Settlement Barrier, Watchdog Relay, Single-Signal Abort &
+      Capsule Manifest
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      [REQUIRES_SKILL: contract-and-simplicity]\n\nDeliver:\n- [S2-PROMPT] `contrib/pi-extension/larva.ts:{runChildSequence,runPersonaInvocationChild}`\
+      \ — if RPC `prompt` succeeds with `data.disposition === \"handled\"`, fail closed\
+      \ before publishing `accepted` with `LARVA_CHILD_PROTOCOL_FAILED` (or `LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED`).\n\
+      - [S2-BARRIER] `contrib/pi-extension/larva.ts:{transformChildRpcSerializedRecord,installChildRpcFrameWriter,RpcClient,initializeExtension}`\
+      \ — treat `agent_end` as provisional; at `agent_settled`, if `aborted === true`\
+      \ or latest provisional `agent_end` has `childAgentTerminalError !== null`,\
+      \ immediately abort/reap descendants and forward paired `agent_end` + `agent_settled`\
+      \ (with parent `RpcClient` classifying `aborted === true` without prior parent\
+      \ cancellation commitment as `LARVA_CHILD_RUNTIME_FAILED` without probing `get_last_assistant_text`);\
+      \ otherwise park `agent_end` + `agent_settled` while any descendant obligation\
+      \ (unsettled `larva_subagent` run/callback, active `runPersonaInvocationChild`,\
+      \ or `pendingPersonaSwitchContinuation`) is held, releasing when `callback_id`\
+      \ is recorded in `sessionEntries(ctx)` and a subsequent assistant run settles\
+      \ (with `setImmediate` idle re-drive for late-steered unconsumed callbacks)\
+      \ or when all remaining obligations resolve at idle.\n- [S2-RELAY] `contrib/pi-extension/larva.ts:{noteSubagentProgress,RpcClient}`\
+      \ — emit bounded non-terminal RPC progress frame (`larva_subagent_progress`)\
+      \ from depth `d` whenever an active descendant at `d + 1` (or relayed `d + k`)\
+      \ produces `recognizedSubagentProgress === true`, resetting depth `d - 1`'s\
+      \ consecutive no-progress watchdog for `d` without presentation text deltas\
+      \ or observer-read extensions.\n- [S3-ABORT-CAPSULE] `contrib/pi-extension/larva.ts:{RpcClient.abort,startChild,cleanupChild,resetExtensionUI}`\
+      \ and `contrib/pi-extension/child-rpc-frame-preload.mjs` — close `child.stdin`\
+      \ immediately after `{ type: \"abort\" }` RPC response settles, send at most\
+      \ one `SIGTERM` at 1,500 ms and mark `ChildProcess` so `cleanupChild` skips\
+      \ a second `SIGTERM`; bind `process.stdin.once(\"close\")` to a 1,500 ms unref'd\
+      \ self-exit timer (`removeChildCapsuleRoot` + `process.exit(143)`) and `process.once(\"\
+      exit\", () => removeChildCapsuleRoot(process.env))`; record descendant `{ capsule_root\
+      \ }` under `$LARVA_PI_CAPSULE_ROOT/descendants/` before `spawn()`, reap leftover\
+      \ descendant capsules after pipe-close grace in ancestor `cleanupChild`, and\
+      \ await all in-flight cleanups in `resetExtensionUI`.\n\nImplementation Notes\
+      \ (Non-Binding):\n- Multi-hop settlement barrier:\n  - In Pi 1.6.0, `agent_end`\
+      \ with `willRetry: false` on context overflow may recover via automatic compaction\
+      \ before `agent_settled`. Keep `agent_end` provisional until `agent_settled`.\n\
+      \  - Track each `larva_subagent` run's settlement obligation until (a) its `larva-subagent-result`\
+      \ (`callback_id`) appears in `sessionEntries(ctx)` and a subsequent assistant\
+      \ run settles, or (b) its callback is suppressed, fails/stales before injection,\
+      \ or fails to start a new run when triggered at idle.\n  - If a steered callback\
+      \ landed in the late-streaming window after Pi's last queue check (`agent_settled`\
+      \ fires before `callback_id` is in `sessionEntries(ctx)`), re-drive the unconsumed\
+      \ callback via `setImmediate` after `agent_settled`; when all obligations resolve\
+      \ while idle, flush the latest parked `agent_end` + `agent_settled` pair to\
+      \ stdout.\n- Inductive watchdog progress relay:\n  - Recognized progress from\
+      \ depth `d + 1` (`recognizedSubagentProgress === true`, including incoming `{\
+      \ type: \"larva_subagent_progress\" }` from `d + k`) emits `{ type: \"larva_subagent_progress\"\
+      \ }` on depth `d`'s RPC stdout when `env.LARVA_PI_LAUNCHED === \"1\"`, and `RpcClient`\
+      \ maps `{ type: \"larva_subagent_progress\" }` to a recognized progress event\
+      \ that resets the parent watchdog without adding presentation text deltas.\n\
+      - Pre-spawn capsule manifest & single-signal abort:\n  - Record descendant `{\
+      \ capsule_root }` JSON entry under `$LARVA_PI_CAPSULE_ROOT/descendants/` after\
+      \ `createChildPiCapsule` and before `spawn()`, deleting the manifest entry once\
+      \ that descendant's `cleanupChild` removes its capsule; if an intermediate child\
+      \ exits before cleaning `descendants/`, ancestor `cleanupChild` waits for the\
+      \ pipe-close grace window (`SUBAGENT_ABORT_KILL_GRACE_MS`) and removes any leftover\
+      \ descendant `capsule_root` directories (reporting unremovable paths via `reportChildCapsuleCleanupFailure`).\n\
+      \  - Track all in-flight `cleanupChild` promises so `resetExtensionUI` awaits\
+      \ them before returning.\n\nBoundary:\n- Owner: `node-typescript-engineer`\n\
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/pi-extension/child-rpc-frame-preload.mjs`,\
+      \ `tests/shell/test_pi_extension_contract.py`, `contrib/pi-extension/test-subagent-mcp-server.mjs`\n\
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,\
+      \ `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`\n\
+      - Material effects & rollback: runtime and test updates; reversible via `git\
+      \ checkout`.\n\nAdmit:\n- Witnessed inputs: Spec v4 Sections 3.2 and 3.3, plus\
+      \ `admission-and-lineage` completion.\n- Verification: `uv run pytest -q tests/shell/test_pi_extension_contract.py\
+      \ -x && node contrib/pi-extension/test-subagent-mcp-server.mjs`\n\nRecovery:\n\
+      - Fix any failing multi-hop settlement, watchdog relay, abort, or capsule cleanup\
+      \ test in-place before completion."
+    verification: uv run pytest -q tests/shell/test_pi_extension_contract.py -x &&
+      node contrib/pi-extension/test-subagent-mcp-server.mjs
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    depends_on:
+    - admission-and-lineage
+    agent: node-typescript-engineer
+  - id: consolidate
+    name: Codex Plugin Byte-Parity Sync & Post-Merge Consolidation
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [SYNC] `contrib/codex-plugin/{larva.ts,subagent-mcp-server.mjs,child-rpc-frame-preload.mjs}`
+      — synchronize byte-identical copies from `contrib/pi-extension/{larva.ts,subagent-mcp-server.mjs,child-rpc-frame-preload.mjs}`
+      and close any `[DEFER_TO_CONSOLIDATE]` shared-helper deduplications across `larva.ts`,
+      `subagent-mcp-server.mjs`, and `child-rpc-frame-preload.mjs`.
+
+      - [PARITY] `tests/shell/test_codex_plugin_contract.py` and `tests/shell/test_pi_extension_contract.py`
+      — verify SHA-256 byte parity across all mirrored runtime files, verify `contracts/persona_spec.schema.json`
+      and `src/larva/core/**` have zero diff, and verify all Spec v4 contract & MCP
+      tests pass.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Copy `contrib/pi-extension/larva.ts`, `contrib/pi-extension/subagent-mcp-server.mjs`,
+      and `contrib/pi-extension/child-rpc-frame-preload.mjs` to `contrib/codex-plugin/`
+      and verify SHA-256 equality (`shasum -a 256`).
+
+      - Confirm `RpcClient.pendingCommandTypes`, `PersonaInvocationActiveRequest.abort_controller`,
+      and `isLarvaPiLaunched` are absent in both `contrib/pi-extension/larva.ts` and
+      `contrib/codex-plugin/larva.ts`.
+
+
+      Boundary:
+
+      - Owner: `node-typescript-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/pi-extension/subagent-mcp-server.mjs`,
+      `contrib/pi-extension/child-rpc-frame-preload.mjs`, `contrib/codex-plugin/larva.ts`,
+      `contrib/codex-plugin/subagent-mcp-server.mjs`, `contrib/codex-plugin/child-rpc-frame-preload.mjs`,
+      `tests/shell/test_pi_extension_contract.py`, `tests/shell/test_codex_plugin_contract.py`,
+      `contrib/pi-extension/test-subagent-mcp-server.mjs`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: mirror sync and consolidation cleanup; reversible
+      via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: completed `mcp-stdio-gate-and-docs` and `multihop-settlement-and-lifecycle`
+      steps.
+
+      - Verification: `uv run pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x && node contrib/pi-extension/test-subagent-mcp-server.mjs`
+
+
+      Recovery:
+
+      - Re-sync mirrors and fix any parity or contract failure in-place before completion.'
+    verification: uv run pytest -q tests/shell/test_pi_extension_contract.py tests/shell/test_codex_plugin_contract.py
+      -x && node contrib/pi-extension/test-subagent-mcp-server.mjs
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - contrib/pi-extension/subagent-mcp-server.mjs
+    - contrib/codex-plugin/subagent-mcp-server.mjs
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - contrib/codex-plugin/child-rpc-frame-preload.mjs
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - mcp-stdio-gate-and-docs
+    - multihop-settlement-and-lifecycle
+    agent: node-typescript-engineer
+  - id: acceptance-gate
+    name: Spec v4 Full Regression, Byte-Parity & Invar Acceptance Gate
+    status: pending
+    description: 'step_type: gate
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - [GATE-1] Verify `contracts/persona_spec.schema.json` and `src/larva/core/**`
+      are completely unmodified (`git diff --exit-code contracts/persona_spec.schema.json
+      src/larva/core`) and runtime files remain 100% policy-agnostic.
+
+      - [GATE-2] Verify SHA-256 byte parity between `contrib/pi-extension/{larva.ts,subagent-mcp-server.mjs,child-rpc-frame-preload.mjs}`
+      and `contrib/codex-plugin/{larva.ts,subagent-mcp-server.mjs,child-rpc-frame-preload.mjs}`,
+      and verify absence of deleted write-only fields (`pendingCommandTypes`, `abort_controller`)
+      and banned identifier `isLarvaPiLaunched`.
+
+      - [GATE-3] Execute and record passing receipts for the full pytest suite (`uv
+      run pytest -q`), Node extension/MCP test harnesses (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
+      `node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`), and Invar guard
+      (`uv run invar guard`).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Read-only terminal gate for phase `pi_multihop_subagent_mechanism_v4`. Do
+      not modify any repository files.
+
+
+      Boundary:
+
+      - Owner: `gate-reviewer`
+
+      - Allowed paths (`scope.allowed_paths`): `[]` (read-only gate; `repo_change_policy:
+      no_repo_change`)
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/**`, `src/**`,
+      `contrib/**`, `docs/**`, `tests/**`
+
+      - Material effects & rollback: read-only verification; zero repository mutations.
+
+
+      Admit:
+
+      - Witnessed inputs: completed `consolidate` step and Spec v4 requirements.
+
+      - Verification: `git diff --exit-code contracts/persona_spec.schema.json src/larva/core
+      && uv run pytest -q && node contrib/pi-extension/test-subagent-mcp-server.mjs
+      && node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs && uv run invar
+      guard`
+
+
+      Recovery:
+
+      - If any gate check fails, report exact failing command and discrepancy without
+      modifying repository files.'
+    verification: git diff --exit-code contracts/persona_spec.schema.json src/larva/core
+      && uv run pytest -q && node contrib/pi-extension/test-subagent-mcp-server.mjs
+      && node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs && uv run invar
+      guard
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_codex_plugin_contract.py
+    - contrib/pi-extension/test-subagent-mcp-server.mjs
+    depends_on:
+    - consolidate
+    agent: gate-reviewer
