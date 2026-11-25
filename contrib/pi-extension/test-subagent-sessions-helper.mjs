@@ -53,7 +53,7 @@ rl.on("line", async (line) => {
   if (message.type === "get_state") {
     await mkdir(sessionDir, { recursive: true });
     if (!process.env.LARVA_TEST_SWITCH_RELEASE_FILE) await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "initial-native-session" }) + "\\n", "utf8");
-    send({ id: message.id, success: true, data: { sessionFile } });
+    send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID } });
     return;
   }
   if (message.type === "switch_session") {
@@ -235,7 +235,7 @@ await writeFile(releaseFile, "release", "utf8");
 const finalResult = await runningPromise;
 assert.equal(finalResult.status, "accepted");
 assert.equal(finalResult.task_id, runningSummary.task_id);
-await waitForPresentationEntry((entry) => entry.task_id === runningSummary.task_id && entry.status === "success", "running child terminal entry");
+await waitForPresentationEntry((entry) => entry.task_id === runningSummary.task_id && entry.status === "success" && !mod.isSubagentTaskBusyForTests(entry.task_id), "running child terminal entry and ownership settlement");
 assert.equal(mod.isSubagentTaskBusyForTests(runningSummary.task_id), false);
 const finalSummary = mod.larva_subagent_sessions({ limit: 10 }).details.sessions[0];
 assert.equal(finalSummary.task_id, runningSummary.task_id);

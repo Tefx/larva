@@ -49,11 +49,9 @@ for a verified Pi package bin script when the parent process is not Pi.
 Larva CLI discovery uses `LARVA_CLI_ARGV_JSON` when explicit; otherwise it checks
 settings (including `~/.pi/agent/settings.json` `larva.cliPath`), then
 `~/.local/bin/larva`, then `PATH`. The server passes
-`externalHostCanSpawn: true` to the runtime. A per-call `parent_persona_id`
-takes precedence over `LARVA_MCP_PARENT_PERSONA`; if supplied, the resolved
-parent must permit the requested child through `can_spawn`. With neither
-parent selector, the external host grants spawn authority. Native active
-persona enforcement is unchanged.
+`externalHostCanSpawn: true` to the runtime. See
+[spawn admission and lineage](#spawn-admission-and-lineage-spec-v4) for how
+root and descendant MCP authority differ from native Pi.
 
 Install the self-contained Codex plugin without configuration edits:
 
@@ -72,9 +70,11 @@ without overriding explicit prefixes. External-host runs skip TUI presentation
 and timeline workers; native Pi presentation is unchanged.
 
 The first validated `tools/call` lazily imports `larva.ts`; initialize, ping,
-tools/list and rejected calls leave it unloaded (about 42 MB idle RSS observed
-locally, depending on platform and Node build). Idle EOF exits without loading;
-once loading starts, shutdown awaits `resetExtensionUI("mcp_shutdown")`.
+tools/list and rejected calls leave it unloaded. The server rejects whitespace-only
+values for nonblank subagent fields (including handles in arrays) with
+`LARVA_BAD_INPUT` before import. Blank `search_mentions` queries still list
+candidates. Idle EOF exits without loading; once loading starts, shutdown awaits
+`resetExtensionUI("mcp_shutdown")`.
 After updating the checkout, refresh the Codex cached bundle with
 `codex plugin remove larva-subagent@larva && codex plugin add larva-subagent@larva`.
 
@@ -359,7 +359,7 @@ Pi runs extension hooks in load order. A configured source such as
 persona policy when that visible tool set changes. Lazy tools therefore become
 available on the same child turn without enabling ambient discovery.
 
-The config schema is:
+Example config with optional policy limits:
 
 ```json
 {
@@ -367,7 +367,10 @@ The config schema is:
   "extension_sources": [
     "pi-agent:npm/node_modules/pi-mcp-adapter",
     "../extensions/required-skill-router"
-  ]
+  ],
+  "root_session_spawn": "persona",
+  "max_depth": 4,
+  "max_active_runs": 8
 }
 ```
 
@@ -378,7 +381,10 @@ real config-file directory so a `~/.pi/larva/subagent-runtime.json` symlink may
 point to a repo-managed config with adjacent extension sources. Pi npm/git/URL
 source forms are passed through unchanged. The absolute override
 `LARVA_PI_SUBAGENT_CONFIG_FILE` selects one alternate file. Missing default
-config means an empty allowlist. Malformed/unknown config fields, duplicate
+config means an empty allowlist and default policy. All three policy keys are
+optional. `root_session_spawn` accepts `"persona"` (default) or `"allow"`;
+`max_depth` and `max_active_runs` must be integers in `1..100` when present and
+impose no additional limit when omitted. Unknown keys, invalid values, duplicate
 sources, invalid overrides, and unreadable local sources fail before spawn with
 `LARVA_SUBAGENT_CONFIG_INVALID`.
 
@@ -409,8 +415,60 @@ Pi emits the `prompt` response only after prompt preflight, including configured
 retain the 10-second bound; the prompt-acceptance command has a separate bounded
 60-second window so allowlisted extensions can finish lazy initialization before
 `larva_subagent` returns its accepted receipt. A missing prompt acknowledgement
-still fails with `LARVA_CHILD_PROTOCOL_FAILED`; this window does not start the
-post-acceptance no-progress watchdog.
+or a successful response with `data.disposition: "handled"` fails with
+`LARVA_CHILD_PROTOCOL_FAILED` before an accepted receipt. This window does not
+start the post-acceptance no-progress watchdog.
+
+### Spawn admission and lineage (Spec v4)
+
+`larva_subagent` applies the following checks in order. The first failure wins;
+no child launches until all six stages pass.
+
+| Stage | Check | Failure code | Failure `task_id` |
+| --- | --- | --- | --- |
+| 1 | Input syntax: nonblank persona/task, watchdog bound, optional resume-handle syntax, and nonblank explicit parent selector for external hosts | `LARVA_BAD_INPUT` | `null` |
+| 2 | Resolve `childSessionRoot` and validate/canonicalize any resume target under it | `LARVA_CHILD_START_FAILED` or `LARVA_BAD_INPUT` | `null` |
+| 3 | Validate incoming lineage and outgoing depth and ancestor bounds | `LARVA_CHILD_START_FAILED` | `null` |
+| 4 | Load and validate `subagent-runtime.json` | `LARVA_SUBAGENT_CONFIG_INVALID` | Canonical resume handle, or `null` for a fresh run |
+| 5 | Enforce `max_depth` and parent spawn authority | `LARVA_NO_ACTIVE_PERSONA`, `LARVA_PERSONA_NOT_FOUND`, or `LARVA_SPAWN_NOT_ALLOWED` | `null` |
+| 6 | Reject a resume of an ancestor or a run still owned by this process, then enforce `max_active_runs` and reserve ownership synchronously | `LARVA_SESSION_BUSY` or `LARVA_SPAWN_NOT_ALLOWED` | Canonical resume handle, or `null` for a fresh run |
+
+An ownership slot stays reserved through child cleanup, even after the run is
+terminal; pruning terminal results cannot release it early. `max_active_runs`
+counts unsettled runs owned by the spawning process, not the entire tree.
+
+At stage 5, a configured `max_depth` denies the spawn when parent depth is at
+least that limit. Native Pi requires an active persona and applies its
+`can_spawn` policy, except that `root_session_spawn: "allow"` bypasses that
+`can_spawn` check at depth 0, not the active-persona requirement. It does not
+bypass Pi's `LARVA_TOOL_DENIED` gate or the
+configured depth and active-run limits. At descendant depths, `can_spawn`
+always applies.
+
+An external MCP host must grant spawn authority (`externalHostCanSpawn: true`).
+At depth 0, `parent_persona_id` takes precedence over `LARVA_MCP_PARENT_PERSONA`
+and the selected persona's `can_spawn` applies. Blank environment values count
+as unset; an explicitly blank tool argument is invalid. If no selector is
+present, the external host grants root authority. At depth 1 or deeper, the
+parent must instead be `LARVA_PI_INITIAL_PERSONA_ID`; a missing ID or a
+conflicting selector fails admission, and the bound persona's `can_spawn`
+applies. `root_session_spawn` does not alter external-host authority.
+
+Lineage is internal launch metadata, not configurable spawn policy:
+
+- `LARVA_PI_SUBAGENT_DEPTH`: a parent not marked `LARVA_PI_LAUNCHED=1` has
+  depth 0. A Larva-launched parent accepts decimal `1` through `100` without
+  padding (missing defaults to `1`). The child receives parent depth plus one,
+  which must not exceed `100` regardless of policy.
+- `LARVA_PI_ANCESTOR_TASK_IDS`: the outgoing JSON array is the union of inherited
+  ancestor handles and the spawning session's own handle when present. Incoming
+  and outgoing values must contain at most 100 canonical absolute `.jsonl`
+  paths under `childSessionRoot` and occupy at most 65,536 UTF-8 bytes each.
+  Invalid or oversized lineage fails closed before launch with
+  `LARVA_CHILD_START_FAILED` and `task_id: null`; there is no truncation.
+
+These wire bounds also apply to [extension-facing persona invocation](PI_EXTENSION_PERSONA_INVOCATION.md#internal-reuse),
+which does not use the model-facing spawn policy.
 
 ### Consecutive no-progress watchdog
 
@@ -450,7 +508,8 @@ Only normalized child RPC execution activity can reset the deadline:
 | Assistant delta | Yes | The normalized visible delta must be non-empty. |
 | Thinking activity | Yes | A normalized thinking stream event counts even though its content stays hidden. |
 | Tool execution start/update/end | Yes | The frame must normalize to an identified tool execution event. |
-| `agent_end` | Yes | Terminal ownership is then resolved by the existing completion/cancellation race. |
+| `agent_end` | Yes | Provisional for modern RPC; settlement decides terminal ownership. |
+| `larva_subagent_progress` | Yes | Recognized descendant activity, with no presentation text delta. |
 | Empty or whitespace-only assistant delta | No | It cannot arm, reset, extend, recover, or cancel the watchdog. |
 | `status`, `events`, `wait`, or `select` read | No | Observer activity is timing-neutral. |
 | Presentation/cache write or callback attempt | No | UI and delivery work never proves child execution progress. |
@@ -795,17 +854,38 @@ Oversized records follow these rules:
 - The Pi RPC assistant delta source is `assistantMessageEvent.delta`; full
   partials such as `frame.message` never enter status, presentation, callback,
   event-log, or trace state.
+Modern settlement and relay rules apply regardless of record size:
+
 - Every `agent_end` is compacted before stdout. It retains `willRetry` and only
   bounded provider/runtime failure code, type, and message. The parent caches
   that record as a legacy candidate; it does not end a marked modern run.
-  `agent_settled` owns modern terminal execution state. Explicit legacy fallback
-  also refuses to settle on `agent_end` while `willRetry` is true.
+  `agent_settled` owns modern terminal execution state, allowing retry or
+  compaction to recover after an earlier `agent_end`. At settlement, an aborted
+  or failed turn aborts and reaps descendants and forwards the paired terminal
+  frames; a child abort without committed parent cancellation is a runtime
+  failure, with no stale final-text probe. Otherwise, the pair stays parked while
+  a descendant run or callback, an invocation, or a persona-switch continuation
+  remains unsettled. A delivered callback normally releases its obligation only
+  after its `callback_id` appears in the current session and a subsequent
+  assistant turn settles. Suppressed or stale callbacks and callbacks that fail
+  to deliver or start an idle continuation release the obligation without a
+  follow-up turn. An unconsumed late steer is re-driven at idle; if no
+  obligations remain at idle, the latest parked pair is forwarded. Explicit
+  legacy fallback does not settle on an `agent_end` with `willRetry: true`.
+- A Larva child relays recognized direct or relayed descendant progress as
+  bounded, nonterminal `larva_subagent_progress` frames. Each hop resets its
+  immediate parent's watchdog for that child; it adds no presentation text, and
+  observer reads never extend the timeout.
+Oversized final output follows the delivery-specific rules below:
+
 - Before an oversized successful `get_last_assistant_text` response is written,
   the child writer persists the exact decoded UTF-8 text in the existing ordered
   adapter artifact locations with file mode `0600`. Stdout carries only the
   matching response id plus bounded delivery state, preview, and a manifest with
   `path`, SHA-256, byte count, and line count. The parent never reconstructs final
-  output by scanning child session JSONL.
+  output by scanning child session JSONL. Persona invocation instead projects
+  oversize records without artifacts, as described in the
+  [invocation contract](PI_EXTENSION_PERSONA_INVOCATION.md#internal-reuse).
 - Artifact write failure has no blind retry and no child replay. Execution stays
   successful while `delivery_status` becomes `failed` with a bounded diagnostic.
 - Public callback, wait, and select metadata expose `execution_status`
@@ -888,9 +968,10 @@ Cancellation sequence:
 1. look up or retain the exact active run,
 2. if status is `accepted` or `running`, transition to `cancelling`,
 3. record the first cancellation source and bounded reason,
-4. send child RPC abort,
-5. wait the adapter grace period of 1500 ms,
-6. kill the child process only if it has not exited after that grace period,
+4. send child RPC abort and close child stdin when the RPC settles,
+5. allow a 1,500 ms grace period,
+6. send at most one `SIGTERM` if the child is still alive; cleanup does not
+   send a second `SIGTERM`,
 7. transition to `cancelled` with `LARVA_CHILD_CANCELLED` if child did not
    complete first,
 8. return/emit the terminal or in-progress cancellation state exactly once.
@@ -1948,7 +2029,7 @@ unspecified reason), and on the legacy direct synthetic `reload` event:
 - mark active callbacks stale,
 - abort every non-terminal child run using the same child RPC abort path as
   targeted cancellation,
-- after the 1500 ms grace period, kill any still-running child process,
+- await in-flight child cleanups before shutdown returns,
 - do not call `pi.sendMessage()` through a stale extension context,
 - do not deliver late callbacks into a different parent session,
 - preserve only renderer-safe recent presentation state if the cache is enabled.
@@ -1956,6 +2037,16 @@ unspecified reason), and on the legacy direct synthetic `reload` event:
 Before a background result callback is sent, the extension must verify that the
 parent session identity still matches the acceptance-time identity and that the
 callback was not already delivered or suppressed.
+
+Each child owns a kernel stdin pipe. On stdin close, the child arms an unref'd
+1,500 ms self-exit timer that removes its capsule and exits with status 143;
+normal exit also removes the capsule. This allows pipe closure to cascade to
+children if an intermediate process exits. Before spawning a descendant, its
+parent writes a `{ "capsule_root": "..." }` entry under
+`$LARVA_PI_CAPSULE_ROOT/descendants/` and removes the entry after cleanup. An
+ancestor cleaning up after an intermediate exit waits for the pipe-close grace
+period, reaps leftover descendant capsules from the manifest, and reports
+cleanup failures. The manifest is not a public task registry.
 
 Lifecycle preservation does not make cached rows authoritative. After process
 exit, cached presentation rows may be displayed for human continuity, but
@@ -1974,6 +2065,13 @@ filesystem admission also recognizes a configured child-session directory's
 physical root, including macOS `/var` → `/private/var`. This allows a retained
 canonical receipt to resume in a later native parent. Observer tools keep their
 process-local, no-filesystem-discovery rules.
+
+In a Larva-launched child (`LARVA_PI_LAUNCHED=1`),
+`LARVA_PI_INITIAL_PERSONA_ID` is authoritative on initialization and on
+`switch_session`; a different persona stored in the resumed JSONL cannot replace
+it. Before sending the prompt, the parent verifies the child's active
+`persona_id` in `get_state` along with model and thinking level. A mismatch is
+`LARVA_CHILD_PROTOCOL_FAILED`.
 
 Recognized child startup errors retain the existing `larva pi: <ERROR_CODE>:`
 projection before RPC readiness. A failed `get_state` must not be overwritten by
@@ -2024,18 +2122,16 @@ child runtime behavior.
 - `LARVA_NO_ACTIVE_PERSONA`: parent persona required but absent.
 - `LARVA_CHILD_PROTOCOL_FAILED`: child RPC contract failed before accepted state
   or while collecting terminal state.
-- `LARVA_CHILD_RUNTIME_FAILED`: the terminal `agent_end` event reports that the
-  child assistant failed. The bounded error message includes the first diagnostic
-  type when present, such as `provider_transport_failure`, plus the assistant
-  `errorMessage`; the run must not be finalized as success or probe stale final
-  text after this terminal failure.
-- The latest assistant message in `agent_end` is authoritative over contradictory
-  top-level `terminal`, `status`, or `reason` fields for failure classification.
-- A failed `agent_end` observed before a later exact cancellation remains failed.
-  The stored runtime failure is terminalized once and emits at most one callback;
-  cancellation that begins before child completion keeps the existing cancellation
-  precedence.
-- `LARVA_SESSION_BUSY`: same `task_id` already active in this parent process.
+- `LARVA_CHILD_RUNTIME_FAILED`: the modern child settles with a terminal
+  assistant error or aborts without a prior parent cancellation commitment.
+  Failure classification uses the latest provisional `agent_end` assistant
+  message rather than contradictory top-level `terminal`, `status`, or `reason`
+  fields. The bounded diagnostic retains the provider/runtime error type and
+  message when present. The parent must not probe stale final text after failure.
+- A settled runtime failure cannot be replaced by a later exact cancellation;
+  cancellation committed before settlement keeps its existing precedence.
+- `LARVA_SESSION_BUSY`: the canonical resume handle is in the ancestor chain
+  (including the spawning session), or is owned by an unsettled local run.
 - `LARVA_SUBAGENT_NOT_OBSERVED`: exact `task_id` is well-formed but not observed
   by this parent process for console focus, cancellation, `wait`, or `select`.
   The read-only `larva_subagent_status(task_id)` tool is the exception: it
@@ -2112,12 +2208,11 @@ Implementation is not complete until these gates pass:
 16. Docs test/review: README and this design agree that `larva:none` is default,
     `/larva-subagent` is canonical, the status indicator is count-only, and no
     public `larva_subagent_join` tool exists.
-17. Lifecycle test: an `agent_end` whose latest assistant message has
-    `stopReason: "error"` and a `provider_transport_failure` diagnostic becomes
-    `failed` with `LARVA_CHILD_RUNTIME_FAILED`, preserves the bounded diagnostic
-    type/message, reaps the child, and never becomes success because final text is
-    empty or stale.
-18. Race test: after the failed `agent_end` is observed, a later exact cancel
+17. Lifecycle test: `agent_settled` following an `agent_end` whose latest
+    assistant message has `stopReason: "error"` and a `provider_transport_failure`
+    diagnostic yields `LARVA_CHILD_RUNTIME_FAILED`, preserves the bounded
+    diagnostic, reaps the child, and never probes empty or stale final text.
+18. Race test: after the failure settles, a later exact cancel
     cannot replace it with success or cancellation. The failure wins over a
     contradictory top-level `terminal: "success"`, skips abort/final-text RPC,
     and emits exactly one failed callback.

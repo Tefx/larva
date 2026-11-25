@@ -47,7 +47,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
   const msg = JSON.parse(line);
   const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI;
   const slash = route.indexOf('/');
-  if (msg.type === 'get_state') send({ id: msg.id, success: true, data: { sessionFile, model: { provider: route.slice(0, slash), id: route.slice(slash + 1) }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
+  if (msg.type === 'get_state') send({ id: msg.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: { provider: route.slice(0, slash), id: route.slice(slash + 1) }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
   else if (msg.type === 'prompt') send({ id: msg.id, success: true });
   else if (msg.type === 'get_last_assistant_text') { send({ id: msg.id, success: true, data: { text: 'reload-complete' } }); setTimeout(() => process.exit(0), 5); }
   else if (msg.type === 'abort') { send({ id: msg.id, success: true }); process.exit(0); }
@@ -168,10 +168,11 @@ createInterface({ input: process.stdin }).on('line', (line) => {
     await next.emit("session_start", "reload");
     await until(() => next.callbacks.length === 27);
     assert.deepEqual(new Set(next.callbacks.map(m => m.details.task_id)), new Set(runs.map(r => r.task)));
+    // Retention also protects records whose child ownership has not settled.
+    await until(async () => runs.every(r => !alive(r.pid) && !two.isSubagentTaskBusyForTests(r.task)) && (await readdir(join(root, ".pi/larva/runtime"))).length === 0);
     assert.equal(two.subagentActiveRunDiagnosticsForTests().length, 25);
     assert.ok(two.subagentActiveRunDiagnosticsForTests().every(r => r.callback_delivery === "delivered"));
     assert.equal(old.staleCalls, 0);
-    await until(async () => runs.every(r => !alive(r.pid)) && (await readdir(join(root, ".pi/larva/runtime"))).length === 0);
     await next.emit("session_shutdown", "quit");
   }
   for (const reason of ["quit", "new", "resume", "fork"]) {
@@ -187,7 +188,59 @@ createInterface({ input: process.stdin }).on('line', (line) => {
     assert.equal(h.callbacks.length, 0);
     assert.equal(mod.subagentPresentationLogForTests().length, 0);
   }
-  console.log("PASS: running reload handoff, reload-gap callback, failed-reload quit cleanup, 27 deferred callbacks retained then pruned to 25, fresh-import isolation, quit/new/resume/fork child and capsule cleanup");
+  // A still-live host can reload an extension written before child settlement
+  // state was added. Seed the previous runtime's shape, not a v4 object.
+  {
+    const sharedStateKey = Symbol.for("larva.pi.subagent.shared-state.v1");
+    const legacy = {
+      activeSubagentRuns: new Map(),
+      activeSubagentChildren: new Set(),
+      subagentEventLog: [],
+      subagentStartupFailureLog: [],
+      subagentEventWaiters: new Set(),
+      subagentBackgroundIndicatorContexts: new Set(),
+      retainedSubagentPresentationLog: [],
+      subagentEventSequence: 0,
+      subagentStartupSequence: 0,
+      subagentPresentationSequence: 0,
+      subagentUiResetGeneration: 0,
+      subagentInvocationSequence: 0,
+      reloadPendingHandoff: true,
+      notifyOverlay: null,
+      requestTimeline: null,
+      dropTimeline: null,
+    };
+    globalThis[sharedStateKey] = legacy;
+    // Register for cleanup after checking the backfill, before spawning children.
+    const mod = await import(`./larva.ts?reload-${++importSequence}`);
+    assert.equal(globalThis[sharedStateKey], legacy, "reload must reuse the previous state object");
+    assert.ok(legacy.childCleanupTasks instanceof Map);
+    assert.ok(legacy.childAbortTasks instanceof WeakMap);
+    assert.ok(legacy.childCapsuleManifests instanceof WeakMap);
+    assert.ok(legacy.childSigtermResults instanceof WeakMap);
+    assert.equal(legacy.childSettlementBarrier, null);
+    modules.add(mod);
+
+    const next = host();
+    await mod.initializeExtension(next.ctx, next.pi);
+    await next.emit("session_start", "reload");
+    assert.equal((await mod.commitPersona("ok", next.ctx, next.pi)).ok, true);
+    const completed = await spawn(mod, next);
+    const running = await spawn(mod, next);
+    process.kill(completed.pid, "SIGUSR1");
+    await until(() => next.callbacks.length === 1);
+    assert.equal(next.callbacks[0].details.task_id, completed.task);
+    assert.match(next.callbacks[0].content, /reload-complete/);
+    assert.equal(mod.isSubagentTaskBusyForTests(running.task), true);
+    assert.ok((await mod.resetExtensionUI("legacy_reload_test")).active_children_reaped >= 1);
+    for (const { task, pid } of [completed, running]) {
+      assert.equal(mod.isSubagentTaskBusyForTests(task), false);
+      assert.equal(alive(pid), false);
+    }
+    assert.deepEqual(await readdir(join(root, ".pi/larva/runtime")), []);
+    assert.equal(next.callbacks.length, 1, "reset must not deliver a callback for the reaped run");
+  }
+  console.log("PASS: running and terminal reload handoff, legacy state backfill, callback retention, fresh-import isolation, lifecycle settlement and capsule cleanup");
 } finally {
   for (const mod of modules) await mod.resetExtensionUI("test_cleanup");
   await rm(root, { recursive: true, force: true });

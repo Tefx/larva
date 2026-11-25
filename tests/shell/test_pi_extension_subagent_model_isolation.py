@@ -29,7 +29,9 @@ def _run_node(tmp_path: Path, source: str, *, timeout: int = 15) -> dict[str, ob
         env={**os.environ, "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0"},
     )
     assert completed.returncode == 0, completed.stderr
-    return json.loads(completed.stdout)
+    # Launched-parent progress is emitted as RPC records beside the harness result.
+    progress = '{"type":"larva_subagent_progress"}'
+    return json.loads("\n".join(line for line in completed.stdout.split("\n") if line != progress))
 
 
 def test_cli_selected_child_startup_commits_prompt_and_tools_without_set_model(
@@ -271,7 +273,7 @@ def test_process_local_model_map_profile_is_inherited_by_new_child_process(
                 currentProvider = message.provider;
                 currentModelId = message.modelId;
                 send({{ id: message.id, success: true, data: {{}} }});
-              }} else if (message.type === "get_state") send({{ id: message.id, success: true, data: {{ sessionFile, model: {{ provider: currentProvider, id: currentModelId }}, thinkingLevel: arg("--thinking") }} }});
+              }} else if (message.type === "get_state") send({{ id: message.id, success: true, data: {{ sessionFile, persona_id: persona, model: {{ provider: currentProvider, id: currentModelId }}, thinkingLevel: arg("--thinking") }} }});
               else if (message.type === "prompt") {{
                 send({{ id: message.id, success: true, data: {{}} }});
                 if (persona !== "cleanup") setTimeout(() => send({{ type: "agent_end" }}), 5);

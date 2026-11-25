@@ -69,6 +69,14 @@ import { pathToFileURL } from "node:url";
 
 const extension = await import(pathToFileURL(process.env.LARVA_PI_EXTENSION_ENTRY).href + "?child-writer=" + Date.now());
 extension.installChildRpcFrameWriterForTests(process.env);
+// The real writer stamps get_state from the committed persona.
+const persona = await extension.commitPersona(process.env.LARVA_PI_INITIAL_PERSONA_ID, {
+  env: process.env,
+  modelRegistry: { find: () => ({ provider: "provider", modelId: "model" }) },
+  setModel: () => true,
+  getAllTools: () => [],
+});
+if (!persona.ok) throw new Error(persona.error.message);
 
 const sessionDirIndex = process.argv.indexOf("--session-dir");
 const sessionDir = sessionDirIndex >= 0 ? process.argv[sessionDirIndex + 1] : process.cwd();

@@ -384,6 +384,12 @@ def _assert_state_uses_neutral_route(payload: dict[str, Any], response_id: str) 
     assert state["data"]["model"]["id"] == route["model_id"]
 
 
+def _decode_runtime_stdout(stdout: str) -> dict[str, Any]:
+    # Launched-parent progress is emitted as RPC records beside the harness result.
+    progress = '{"type":"larva_subagent_progress"}'
+    return json.loads("\n".join(line for line in stdout.split("\n") if line != progress))
+
+
 def _run_runtime_scenario_raw(
     scenario: str, *, persona: str | None = None, timeout: float = 12.0
 ) -> tuple[dict[str, Any], int, str, str]:
@@ -401,7 +407,7 @@ def _run_runtime_scenario_raw(
         timeout=timeout,
     )
     assert completed.stdout.strip(), completed.stderr
-    payload = json.loads(completed.stdout)
+    payload = _decode_runtime_stdout(completed.stdout)
     if "isolation" in payload.get("runtime", {}):
         _assert_neutral_runtime_isolation(payload)
     return payload, completed.returncode, completed.stdout, completed.stderr
@@ -429,7 +435,7 @@ def _run_node_inline(tmp_path: Path, script: str, *, timeout: float = 8.0) -> di
         timeout=timeout,
     )
     assert completed.returncode == 0, completed.stderr
-    return json.loads(completed.stdout)
+    return _decode_runtime_stdout(completed.stdout)
 
 
 
@@ -447,7 +453,7 @@ const rl = createInterface({ input: process.stdin });
 function send(value) { process.stdout.write(JSON.stringify(value) + "\n"); }
 rl.on("line", async (line) => {
   const msg = JSON.parse(line);
-  if (msg.type === "get_state") { await writeFile(sessionFile, "{}\n", "utf8"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+  if (msg.type === "get_state") { await writeFile(sessionFile, "{}\n", "utf8"); send({ id: msg.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
   else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
   else if (msg.type === "prompt") { send({ id: msg.id, success: true }); setTimeout(() => send({ type: "agent_end" }), 5); }
   else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "real AgentSession callback output" } }); setTimeout(() => process.exit(0), 1); }

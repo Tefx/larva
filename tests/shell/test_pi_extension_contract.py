@@ -107,7 +107,9 @@ def _assert_required_workflow_step(workflow: str, token: str) -> None:
     assert "|| true" not in step
 
 
-def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str, Any]:
+def _run_node(
+    tmp_path: Path, script: str, *, timeout: float = 3.0, expected_stderr: str | None = None,
+) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is required for Pi extension runtime contract tests")
@@ -121,11 +123,13 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str,
         text=True,
         timeout=timeout,
         env={
-            **{key: value for key, value in os.environ.items() if not key.startswith(("LARVA_", "PI_")) or key.startswith("LARVA_TEST_")},
+            **{key: value for key, value in os.environ.items() if key != "NODE_OPTIONS" and (not key.startswith(("LARVA_", "PI_")) or key.startswith("LARVA_TEST_"))},
             "HOME": str(tmp_path), "LARVA_PI_INITIAL_PERSONA_ID": "", "LARVA_PI_LAUNCHED": "0",
         },
     )
     assert completed.returncode == 0, completed.stderr
+    if expected_stderr is not None:
+        assert expected_stderr in completed.stderr
     return json.loads(completed.stdout)
 
 
@@ -1043,7 +1047,7 @@ def test_async_subagent_callback_delivery_terminal_states_and_actions(tmp_path: 
             failedDiagnostic: rows.failed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DELIVERY_FAILED" && rows.failed.terminal?.callback_delivery_diagnostic?.message.includes("callback boom"),
             stalePreventedInjection: staleAttempts.length === 0 && rows.stale.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_PARENT_STALE",
             deliveredExactlyOnce: deliveredAttempts.length === 1 && rows.delivered.terminal?.callback_delivery === "delivered",
-            suppressedDuplicatePreserved: suppressedAttempts.length === 1 && rows.suppressed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DUPLICATE_SUPPRESSED",
+            suppressedDuplicatePrevented: suppressedAttempts.length === 0 && rows.suppressed.terminal?.callback_delivery_diagnostic?.code === "LARVA_CALLBACK_DUPLICATE_SUPPRESSED",
           }},
         }}));
         """,
@@ -1058,31 +1062,22 @@ def test_async_subagent_callback_delivery_terminal_states_and_actions(tmp_path: 
         "failedDiagnostic": True,
         "stalePreventedInjection": True,
         "deliveredExactlyOnce": True,
-        "suppressedDuplicatePreserved": True,
+        "suppressedDuplicatePrevented": True,
     }, json.dumps(result, indent=2, sort_keys=True)
 
 
-def test_async_subagent_resume_task_id_lexical_validation_precedes_filesystem_checks() -> None:
-    """Resume task_id validation must reject non-normalized strings before filesystem checks."""
-    source = _source()
-    function_start = source.index("export async function larva_subagent(")
-    body = source[function_start:source.index("function safelyEmitSubagentUpdate", function_start)]
-
-    assert "validateExactPublicTaskIdLexical(taskId, env)" in body
-    assert body.index("validateExactPublicTaskIdLexical(taskId, env)") < body.index("childSessionRoot(env)")
-    assert body.index("validateExactPublicTaskIdLexical(taskId, env)") < body.index("validateTaskId(lexicallyValidTaskId, root)")
-    lexical_body = _function_body(source, "function validateExactPublicTaskIdLexical")
-    for token in (
-        'taskId.trim() !== taskId',
-        'taskId.normalize("NFC") !== taskId',
-        'taskId.includes("~")',
-        'taskId.includes("%")',
-        'segment.length === 0',
-        'segment === "."',
-        'segment === ".."',
-        'resolve(taskId) !== taskId',
-    ):
-        assert token in lexical_body
+def test_async_subagent_resume_task_id_lexical_validation_precedes_filesystem_checks(tmp_path: Path) -> None:
+    """Malformed handles beat an unusable root; a valid handle reaches root admission."""
+    payload = _run_node(tmp_path, f"""
+        const {{ larva_subagent }} = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {{ LARVA_PI_CHILD_SESSION_DIR: 'invalid-relative-root' }};
+        const run = task_id => larva_subagent({{ persona_id: 'child', task: 'resume', task_id }}, {{ env }});
+        const malformed = ['relative.jsonl', '/root/session.txt', '/root/~.jsonl', '/root/%2e.jsonl',
+          '/root//child.jsonl', '/root/../child.jsonl', '/root/./child.jsonl', '/root/e\\u0301.jsonl'];
+        console.log(JSON.stringify({{ malformed: await Promise.all(malformed.map(run)), valid: await run('/root/child.jsonl') }}));
+    """)
+    assert {(r['error']['code'], r['task_id']) for r in payload['malformed']} == {('LARVA_BAD_INPUT', None)}
+    assert (payload['valid']['error']['code'], payload['valid']['task_id']) == ('LARVA_CHILD_START_FAILED', None)
 
 
 def test_async_subagent_background_activity_indicator_count_only() -> None:
@@ -1146,6 +1141,8 @@ def test_live_pi_command_registration_uses_two_arg_argument_completion_shape(tmp
           on: () => undefined,
         }};
         await mod.initializeExtension(ctx, pi);
+        // Test argument shape independently of the cold autocomplete deadline.
+        await mod.listPersonas(ctx);
         const commandItem = {{ value: registered.name, label: registered.name }};
         const argumentItems = await registered.options.getArgumentCompletions("vectl");
         const canPiMatchCommand = commandItem.value.startsWith("larva");
@@ -1160,6 +1157,7 @@ def test_live_pi_command_registration_uses_two_arg_argument_completion_shape(tmp
           emptyResult: await registered.options.getArgumentCompletions("missing"),
         }}));
         """,
+        timeout=25,
     )
 
     assert result["registeredNameType"] == "string"
@@ -2521,6 +2519,729 @@ def test_subagent_runtime_config_resolves_allowlisted_extension_sources_and_reje
     }
 
 
+def test_subagent_runtime_config_admits_only_bounded_spawn_controls(tmp_path: Path) -> None:
+    config = tmp_path / 'runtime.json'
+    valid = [{}, {'root_session_spawn': 'allow', 'max_depth': 1, 'max_active_runs': 100},
+             {'root_session_spawn': 'persona', 'max_depth': 100, 'max_active_runs': 1}]
+    invalid = [{'root_session_spawn': value} for value in ('all', ' allow', True, None)]
+    invalid += [{key: value} for key in ('max_depth', 'max_active_runs') for value in (0, 101, 1.5, '1', True, None)]
+    result = _run_node(tmp_path, f"""
+        import {{ writeFileSync }} from 'node:fs';
+        const {{ loadSubagentRuntimeConfig }} = await import({json.dumps(EXTENSION.as_uri())});
+        const config = {json.dumps(str(config))};
+        const values = {json.dumps(valid + invalid)};
+        const results = values.map(value => {{
+          writeFileSync(config, JSON.stringify({{ schema_version: 1, extension_sources: [], ...value }}));
+          return loadSubagentRuntimeConfig({{ LARVA_PI_SUBAGENT_CONFIG_FILE: config }});
+        }});
+        console.log(JSON.stringify({{ results, legacy: JSON.stringify(results[0]) }}));
+    """)
+    assert result['legacy'] == '{"extension_sources":[]}'
+    assert result['results'][:len(valid)] == [{'extension_sources': [], **value} for value in valid]
+    assert {value['code'] for value in result['results'][len(valid):]} == {'LARVA_SUBAGENT_CONFIG_INVALID'}
+
+
+def _subagent_rpc_peer(tmp_path: Path) -> dict[str, str]:
+    """A controlled Pi RPC peer driving the installed Larva handlers and preload."""
+    cli = tmp_path / 'resolve-persona.mjs'
+    cli.write_text(textwrap.dedent("""
+        const id = process.argv[3];
+        if (id === 'unknown') process.exit(1);
+        const can_spawn = id === 'deny' ? false : id === 'parent' ? ['child'] : true;
+        console.log(JSON.stringify({data: {id, description: id, prompt: id,
+          model: 'provider/model', capabilities: {}, spec_version: '0.1.0', spec_digest: 'sha256:fixture', can_spawn}}));
+    """), encoding='utf-8')
+    peer = tmp_path / 'rpc-child.mjs'
+    peer.write_text(textwrap.dedent(f"""
+        import assert from 'node:assert/strict';
+        import {{ appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync }} from 'node:fs';
+        import {{ dirname, join, basename }} from 'node:path';
+        import {{ createInterface }} from 'node:readline';
+        import {{ setTimeout as delay }} from 'node:timers/promises';
+        const env = process.env;
+        if (env.LARVA_TEST_LIFECYCLE_LOG) await import({json.dumps((ROOT / 'scripts/pi-test-child-loader.mjs').as_uri())});
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const depth = Number(env.LARVA_PI_SUBAGENT_DEPTH);
+        const capsule = env.LARVA_PI_CAPSULE_ROOT;
+        const log = (event, details = {{}}) => {{
+          if (env.LARVA_TEST_LIFECYCLE_LOG) appendFileSync(env.LARVA_TEST_LIFECYCLE_LOG,
+            JSON.stringify({{ event, depth, pid: process.pid, capsule, at: Date.now(), ...details }}) + '\\n');
+        }};
+        const model = {{ provider: 'provider', id: 'model' }};
+        const handlers = new Map();
+        let idle = true, queued, final = 'completed';
+        const entries = [];
+        const manager = (persona) => ({{ getBranch: () => [{{ type: 'custom',
+          customType: 'larva-active-persona-commit', data: {{ persona_id: persona, spec_digest: 'sha256:fixture' }} }}, ...entries] }});
+        const ctx = {{ model, modelRegistry: {{ find: () => model }}, sessionManager: manager('historical-startup'), isIdle: () => idle }};
+        // Preserve the preload writer in the same order as Pi's stdout guard.
+        const writeRpc = process.stdout.write.bind(process.stdout);
+        const send = (frame) => writeRpc(JSON.stringify(frame) + '\\n');
+        const settle = (aborted = false) => {{
+          idle = true;
+          handlers.get('agent_settled')?.({{ aborted }}, ctx);
+          send({{ type: 'agent_settled', aborted }});
+        }};
+        const pi = {{ on: (name, handler) => handlers.set(name, handler),
+          getFlag: name => name === 'larva-persona' ? 'historical-flag' : undefined,
+          getAllTools: () => [], setActiveTools: () => true, setModel: () => true,
+          sendMessage(message, options) {{
+            assert.equal(options.triggerTurn, true);
+            if (message.customType === 'larva-subagent-result' && !idle) {{
+              assert.equal(queued, undefined);
+              queued = message;
+              log('steered');
+              return;
+            }}
+            if (message.customType === 'larva-subagent-continuation') {{
+              assert.ok(idle && queued);
+              log('redrive');
+              message = queued;
+              queued = undefined;
+            }}
+            idle = false;
+            entries.push(message);
+            setTimeout(() => {{
+              final = `continued(${{message.details.result_text}})`;
+              log('followup_settled');
+              send({{ type: 'agent_end' }});
+              settle();
+            }}, 75);
+          }} }};
+        if (!env.LARVA_TEST_WRONG_PERSONA) await mod.initializeExtension(ctx, pi);
+        if (env.LARVA_TEST_LIFECYCLE_LOG) {{
+          process.stdout.write = process.stderr.write.bind(process.stderr);
+          if (depth > 1) {{
+            const runtime = dirname(capsule);
+            const owners = readdirSync(runtime).filter(name => name !== basename(capsule));
+            assert.ok(owners.some(name => {{
+              const manifest = join(runtime, name, 'descendants', `${{basename(capsule)}}.json`);
+              if (!existsSync(manifest)) return false;
+              const entry = JSON.parse(readFileSync(manifest, 'utf8'));
+              return entry.capsule_root === capsule && entry.pid === process.pid;
+            }}), 'descendant manifest must identify this process before RPC readiness');
+          }}
+          log('started');
+          process.stdin.once('close', () => log('stdin_closed'));
+          process.on('exit', code => log('exit', {{ code, ppid: process.ppid, capsule_present: existsSync(capsule) }}));
+        }}
+        appendFileSync(env.LARVA_TEST_PEER_LOG, JSON.stringify({{ pid: process.pid,
+          parent: env.LARVA_PI_PARENT_PERSONA_ID, depth: env.LARVA_PI_SUBAGENT_DEPTH,
+          ancestors: JSON.parse(env.LARVA_PI_ANCESTOR_TASK_IDS ?? '[]'), invocation: env.LARVA_PI_PERSONA_INVOCATION ?? null }}) + '\\n');
+        if (env.LARVA_TEST_HOLD_CLEANUP) {{
+          process.on('SIGTERM', () => {{}});
+          process.on('SIGUSR2', () => process.exit(0));
+        }}
+        let path = env.LARVA_COMPLETING_CHILD_SESSION_FILE ?? join(env.LARVA_PI_CHILD_SESSION_DIR, `peer-${{process.pid}}.jsonl`);
+        let prompt;
+        for await (const line of createInterface({{ input: process.stdin }})) {{
+          const {{ id, type: command, sessionPath, message }} = JSON.parse(line);
+          const respond = (data) => send({{ id, type: 'response', command, success: true, data }});
+          if (command === 'get_state') {{
+            if (!existsSync(path)) writeFileSync(path, '{{}}\\n');
+            respond({{ sessionFile: path, model, thinkingLevel: 'medium',
+              ...(env.LARVA_TEST_WRONG_PERSONA ? {{ persona_id: 'wrong' }} : {{}}) }});
+          }} else if (command === 'switch_session') {{
+            path = sessionPath;
+            await handlers.get('session_start')?.({{ reason: 'switch' }}, {{ ...ctx, sessionManager: manager('historical-resume') }});
+            respond({{ cancelled: false }});
+          }} else if (command === 'abort') {{
+            log('abort');
+            if (prompt === 'sticky abort') await delay(250);
+            respond({{}});
+            send({{ type: 'agent_end' }});
+            settle(true);
+          }} else if (command === 'prompt') {{
+            prompt = message;
+            if (prompt === 'handled') {{ respond({{ disposition: 'handled' }}); continue; }}
+            respond({{ disposition: 'started' }});
+            if (prompt === 'sticky abort' || prompt === 'orphan leaf') {{
+              process.on('SIGTERM', () => log('sigterm'));
+              continue;
+            }}
+            if (prompt === 'leaf pulses') {{
+              for (let index = 0; index < 15; index++) {{
+                send({{ type: 'message_update', assistantMessageEvent: {{ type: 'text_delta', delta: 'leaf only' }} }});
+                await delay(180);
+              }}
+            }}
+            if (prompt === 'interrupted tree') {{
+              const {{ default: childProcess }} = await import('node:child_process');
+              const {{ syncBuiltinESMExports }} = await import('node:module');
+              const {{ mkdirSync, statSync }} = await import('node:fs');
+              const spawn = childProcess.spawn;
+              // Stop at the native Pi launch boundary, not during persona resolution.
+              childProcess.spawn = (command, args, options) => {{
+                const descendant = options?.env?.LARVA_PI_CAPSULE_ROOT;
+                if (options?.env?.LARVA_PI_SUBAGENT_DEPTH !== '2' || !descendant) return spawn(command, args, options);
+                const manifest = join(capsule, 'descendants', `${{basename(descendant)}}.json`);
+                log('descendant_spawn_boundary', {{ descendant, manifest }});
+                assert.deepEqual(JSON.parse(readFileSync(manifest, 'utf8')), {{ capsule_root: descendant, pid: null }});
+                assert.equal(statSync(manifest).mode & 0o777, 0o600);
+                mkdirSync(join(descendant, 'descendants'));
+                writeFileSync(join(descendant, 'descendants', 'sentinel'), 'untouched');
+                log('interrupting_before_pid_publication');
+                process.kill(process.pid, 'SIGKILL');
+              }};
+              syncBuiltinESMExports();
+              await mod.larva_subagent({{ persona_id: 'child', task: 'orphan leaf' }}, {{ ...ctx, externalHostCanSpawn: true,
+                sessionManager: {{ ...ctx.sessionManager, getSessionFile: () => path }} }});
+              throw new Error('Interrupted descendant launch unexpectedly returned.');
+            }}
+            if (['outer tree', 'mid tree', 'aborted tree', 'orphan tree', 'deep orphan tree'].includes(prompt)) {{
+              idle = false;
+              const childTask = {{ 'outer tree': 'mid tree', 'mid tree': 'leaf pulses', 'aborted tree': 'sticky abort',
+                'deep orphan tree': 'orphan tree', 'orphan tree': 'orphan leaf' }}[prompt];
+              const child = await mod.larva_subagent({{ persona_id: 'child', task: childTask }}, {{ ...ctx, externalHostCanSpawn: true,
+                sessionManager: {{ ...ctx.sessionManager, getSessionFile: () => path }}, callbackSurface: {{ sendMessage: pi.sendMessage }} }});
+              log('descendant_receipt', {{ child }});
+              assert.equal(child.status, 'accepted', JSON.stringify(child));
+              log('descendant_accepted');
+              if (prompt === 'orphan tree' || prompt === 'deep orphan tree') continue;
+              if (prompt === 'aborted tree') {{ send({{ type: 'agent_end' }}); settle(true); continue; }}
+              if (prompt === 'mid tree') {{
+                const deadline = Date.now() + 8000;
+                while (!queued && Date.now() < deadline) await delay(10);
+                assert.ok(queued, 'leaf callback must reach the late steering window');
+              }}
+              send({{ type: 'agent_end', willRetry: false, messages: [{{role: 'assistant', stopReason: 'error', errorMessage: 'provisional overflow'}}] }});
+              send({{ type: 'agent_end', messages: [] }});
+            }} else send({{ type: 'agent_end' }});
+            settle();
+          }} else if (command === 'get_last_assistant_text') {{
+            log('last', {{ final }});
+            respond({{ text: prompt === 'large' ? '🚀'.repeat(270_000) : final }});
+          }}
+        }}
+        if (env.LARVA_TEST_HOLD_CLEANUP || ['orphan tree', 'orphan leaf', 'sticky abort'].includes(prompt)) await delay(4000);
+    """), encoding='utf-8')
+    node = shutil.which('node') or 'node'
+    return {
+        'HOME': str(tmp_path),
+        'LARVA_PI_CHILD_SESSION_DIR': str(tmp_path.resolve()),
+        'LARVA_CLI_ARGV_JSON': json.dumps([node, str(cli)]),
+        'LARVA_PI_TEST_CHILD_ARGV_JSON': json.dumps([node, str(peer)]),
+        'LARVA_TEST_PEER_LOG': str(tmp_path / 'child-log.jsonl'),
+    }
+
+
+def test_subagent_rpc_settlement_waits_for_descendant_callback_turns_and_relays_progress(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ readFileSync, readdirSync }} from 'node:fs';
+        import {{ join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        env.LARVA_TEST_LIFECYCLE_LOG = join(env.HOME, 'lifecycle.jsonl');
+        env.LARVA_PI_CHILD_RPC_TRACE_FILE = join(env.HOME, 'trace.jsonl');
+        // Compress only watchdog time; RPC commands, subprocesses and cleanup
+        // retain their real clocks. The leaf emits for longer than the parent's
+        // entire watchdog interval, not just the warning interval.
+        const nativeTimer = globalThis.setTimeout;
+        const realPerformance = globalThis.performance;
+        let epoch, waitingPhases = 0;
+        globalThis.performance = {{ now: () => epoch === undefined ? 0 : (realPerformance.now() - epoch) * 60 }};
+        globalThis.setTimeout = (fn, ms, ...args) => nativeTimer(fn, ms >= 30_000 ? ms / 60 : ms, ...args);
+        const callbacks = [];
+        const waited = await (async () => {{
+          try {{
+            const receipt = await mod.larva_subagent({{ persona_id: 'child', task: 'outer tree', no_progress_timeout_ms: 120000 }}, {{
+              env, externalHostCanSpawn: true, callbackSurface: {{ sendMessage: message => callbacks.push(message) }},
+              onPhase: phase => {{ if (phase === 'waiting_for_child' && ++waitingPhases === 2) epoch = realPerformance.now(); }},
+            }});
+            assert.equal(receipt.status, 'accepted', JSON.stringify(receipt));
+            const results = await mod.larva_subagent_wait({{ task_ids: [receipt.task_id], timeout_ms: 18000 }}, {{env}});
+            assert.equal(results.details.runs[0].live_assistant_preview, null);
+            return results.details.runs[0];
+          }} finally {{
+            globalThis.performance = realPerformance;
+            globalThis.setTimeout = nativeTimer;
+            await mod.resetExtensionUI('test cleanup');
+          }}
+        }})();
+        const readLog = path => readFileSync(path, 'utf8').trim().split('\\n').map(JSON.parse);
+        const life = readLog(env.LARVA_TEST_LIFECYCLE_LOG);
+        assert.equal(waited.status, 'success', JSON.stringify({{ waited, life }}));
+        assert.ok(epoch !== undefined && realPerformance.now() - epoch > 2000, 'test must cross the parent silence deadline');
+        assert.equal(callbacks[0].details.result_text, 'continued(continued(completed))');
+        const trace = readLog(env.LARVA_PI_CHILD_RPC_TRACE_FILE);
+        for (const depth of [1, 2]) {{
+          const started = life.find(event => event.event === 'started' && event.depth === depth);
+          const wire = trace.filter(event => event.pid === started.pid && event.event === 'rpc_rx');
+          assert.ok(wire.filter(event => event.frame_type === 'larva_subagent_progress').length >= 10);
+          assert.equal(wire.filter(event => event.frame_type === 'agent_end').length, 1, 'provisional agent_end leaked');
+          assert.equal(wire.filter(event => event.frame_type === 'agent_settled').length, 1, 'parked settlement leaked');
+          const followup = life.findIndex(event => event.depth === depth && event.event === 'followup_settled');
+          const last = life.findIndex(event => event.depth === depth && event.event === 'last');
+          assert.ok(followup > -1 && last > followup, 'final text collected before follow-up settled');
+        }}
+        assert.deepEqual(life.filter(event => event.event === 'redrive').map(event => event.depth), [2]);
+        assert.deepEqual(readdirSync(join(env.HOME, '.pi', 'larva', 'runtime')), []);
+        console.log(JSON.stringify({{ status: waited.status }}));
+    """, timeout=25)
+    assert result == {'status': 'success'}
+
+
+@pytest.mark.parametrize(('prompt', 'stopped_depth'), [
+    ('aborted tree', None), ('orphan tree', None), ('deep orphan tree', None), ('sticky abort', None),
+    pytest.param('deep orphan tree', 2, id='live-intermediate-orphan'),
+    pytest.param('deep orphan tree', 3, id='live-leaf-under-dead-orphan'),
+])
+def test_subagent_rpc_abort_and_descendant_capsule_cleanup(
+    tmp_path: Path, prompt: str, stopped_depth: int | None,
+) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ existsSync, readFileSync, readdirSync, writeFileSync }} from 'node:fs';
+        import {{ basename, join }} from 'node:path';
+        import {{ setTimeout as delay }} from 'node:timers/promises';
+        const env = {json.dumps(env)};
+        const prompt = {json.dumps(prompt)};
+        const stoppedDepth = {json.dumps(stopped_depth)};
+        const sticky = prompt === 'sticky abort';
+        const fault = join(env.HOME, 'cleanup-fault.json');
+        if (sticky) {{
+          process.env.NATIVE_CLEANUP_FAULT = fault;
+          await import({json.dumps((ROOT / 'tests/fixtures/pi/native-cleanup-fault.mjs').as_uri())});
+        }}
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const path = env.LARVA_TEST_LIFECYCLE_LOG = join(env.HOME, 'lifecycle.jsonl');
+        const trace = env.LARVA_PI_CHILD_RPC_TRACE_FILE = join(env.HOME, 'trace.jsonl');
+        const readLog = file => readFileSync(file, 'utf8').trim().split('\\n').map(JSON.parse);
+        const log = () => existsSync(path) ? readLog(path) : [];
+        const started = depth => log().find(event => event.event === 'started' && event.depth === depth);
+        const orphanDepth = prompt === 'deep orphan tree' ? 3 : prompt === 'orphan tree' ? 2 : null;
+        let run;
+        try {{
+          const receipt = await mod.larva_subagent({{ persona_id: 'child', task: prompt }}, {{env, externalHostCanSpawn: true}});
+          assert.equal(receipt.status, 'accepted', JSON.stringify(receipt));
+          if (orphanDepth !== null) {{
+            const ready = () => log().filter(event => event.event === 'descendant_accepted').length === orphanDepth - 1;
+            const deadline = Date.now() + 12000;
+            while (!ready() && Date.now() < deadline) await delay(10);
+            assert.ok(ready(), JSON.stringify(log()));
+            if (stoppedDepth !== null) process.kill(started(stoppedDepth).pid, 'SIGSTOP');
+            process.kill(started(1).pid, 'SIGKILL');
+          }} else if (sticky) {{
+            writeFileSync(fault, JSON.stringify({{ operation: 'rmSync', code: 'EACCES', path: started(1).capsule }}));
+            await mod.larva_subagent_cancel({{ task_id: receipt.task_id, reason: 'Fixture cancellation' }}, {{env}});
+          }}
+          const waited = await mod.larva_subagent_wait({{ task_ids: [receipt.task_id], timeout_ms: 6000 }}, {{env}});
+          run = waited.details.runs[0];
+        }} finally {{
+          try {{
+            await mod.resetExtensionUI('await in-flight descendant and direct cleanups');
+            if (orphanDepth === 3) {{
+              const events = log();
+              for (const depth of [2, 3]) {{
+                const {{ pid, capsule }} = started(depth);
+                if (stoppedDepth !== null) {{
+                  assert.ok(existsSync(capsule), `reset deleted depth ${{depth}} capsule: ${{capsule}}`);
+                  const manifest = join(started(depth - 1).capsule, 'descendants', `${{basename(capsule)}}.json`);
+                  assert.deepEqual(JSON.parse(readFileSync(manifest, 'utf8')), {{ capsule_root: capsule, pid }});
+                }}
+                if (stoppedDepth !== null && depth >= stoppedDepth) assert.equal(process.kill(pid, 0), true);
+                else {{
+                  assert.throws(() => process.kill(pid, 0), {{ code: 'ESRCH' }},
+                    `depth ${{depth}} was alive when reset returned: ${{JSON.stringify(events)}}`);
+                  assert.ok(events.some(event => event.depth === depth && event.event === 'exit' && event.code === 143), JSON.stringify(events));
+                }}
+              }}
+            }}
+          }} finally {{
+            if (orphanDepth === 3) {{
+              for (const {{ pid }} of log().filter(event => event.event === 'started')) {{
+                try {{ process.kill(pid, 'SIGKILL'); }} catch (error) {{ if (error.code !== 'ESRCH') throw error; }}
+              }}
+            }}
+          }}
+        }}
+        const failures = readLog(trace).filter(event => event.event === 'capsule_cleanup_failed');
+        if (stoppedDepth !== null) {{
+          const {{ capsule, pid }} = started(stoppedDepth);
+          assert.ok(failures.some(event => event.capsule_root === capsule && event.reason.includes(`pid ${{pid}}`)), JSON.stringify(failures));
+          assert.equal(run.error.code, 'LARVA_CHILD_PROTOCOL_FAILED');
+          console.log(JSON.stringify({{ verified: true }}));
+          process.exit(0);
+        }}
+        const runtime = readdirSync(join(env.HOME, '.pi', 'larva', 'runtime'));
+        assert.deepEqual(runtime, sticky ? [basename(started(1).capsule)] : []);
+        const events = log();
+        assert.ok(!events.some(event => event.event === 'last'), 'an aborted run must not request final text');
+        const depth = sticky ? 1 : 2;
+        const descendant = events.filter(event => event.depth === depth);
+        const closed = descendant.find(event => event.event === 'stdin_closed');
+        const exited = descendant.find(event => event.event === 'exit');
+        assert.ok(closed, JSON.stringify(events));
+        assert.ok(exited && exited.code === 143 && exited.at - closed.at >= 1400, JSON.stringify(events));
+        const terms = descendant.filter(event => event.event === 'sigterm');
+        if (orphanDepth !== null) {{
+          assert.equal(terms.length, 0);
+          assert.equal(run.error.code, 'LARVA_CHILD_PROTOCOL_FAILED');
+        }} else {{
+          assert.equal(terms.length, 1, JSON.stringify(events));
+          const abort = descendant.find(event => event.event === 'abort');
+          assert.ok(closed.at - abort.at < 950, 'child stdin was held open through kill grace');
+          assert.ok(terms[0].at - abort.at >= 1350, 'SIGTERM preceded abort grace');
+          if (sticky) {{
+            assert.equal(run.status, 'cancelled');
+            assert.equal(exited.ppid, process.pid);
+            assert.equal(exited.capsule_present, true, 'living-parent EOF removed the capsule before the exit hook');
+            const capsule = started(1).capsule;
+            assert.ok(readLog(fault + '.hits').some(hit => hit.pid === process.pid && hit.path === capsule));
+            assert.ok(failures.some(event => event.capsule_root === capsule && event.reason === 'EACCES'));
+          }} else assert.equal(run.error.code, 'LARVA_CHILD_RUNTIME_FAILED');
+        }}
+        console.log(JSON.stringify({{ verified: true }}));
+    """, timeout=25, expected_stderr=(
+        'larva pi: capsule cleanup failed:' if stopped_depth is not None or prompt == 'sticky abort' else None
+    ))
+    assert result == {'verified': True}
+
+
+def test_subagent_reset_retains_descendant_with_unpublished_pid(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ readFileSync }} from 'node:fs';
+        import {{ join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        const log = env.LARVA_TEST_LIFECYCLE_LOG = join(env.HOME, 'lifecycle.jsonl');
+        try {{
+          const receipt = await mod.larva_subagent({{ persona_id: 'child', task: 'interrupted tree' }}, {{env, externalHostCanSpawn: true}});
+          assert.equal(receipt.status, 'accepted', JSON.stringify(receipt));
+          const waited = await mod.larva_subagent_wait({{ task_ids: [receipt.task_id], timeout_ms: 6000 }}, {{env}});
+          assert.equal(waited.details.runs[0].status, 'failed', JSON.stringify(waited.details));
+        }} finally {{
+          await mod.resetExtensionUI('reconcile interrupted descendant launch');
+        }}
+        const events = readFileSync(log, 'utf8').trim().split('\\n').map(JSON.parse);
+        assert.ok(events.some(event => event.event === 'interrupting_before_pid_publication'), JSON.stringify(events));
+        const {{ descendant, manifest }} = events.find(event => event.event === 'descendant_spawn_boundary');
+        assert.deepEqual(JSON.parse(readFileSync(manifest, 'utf8')), {{ capsule_root: descendant, pid: null }});
+        assert.equal(readFileSync(join(descendant, 'descendants', 'sentinel'), 'utf8'), 'untouched');
+        console.log(JSON.stringify({{ verified: true }}));
+    """, timeout=15, expected_stderr=(
+        'descendant launch pid was not published before parent shutdown; retaining capsule for reconciliation'
+    ))
+    assert result == {'verified': True}
+
+
+def test_subagent_descendant_pid_publication_replaces_readable_manifest(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import fs from 'node:fs';
+        import {{ syncBuiltinESMExports }} from 'node:module';
+        import {{ basename, dirname, join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        const parent = join(env.HOME, '.pi', 'larva', 'runtime', `child-${{process.pid}}-0000000000000000`);
+        const registry = join(parent, 'descendants');
+        fs.mkdirSync(parent, {{ recursive: true, mode: 0o700 }});
+        Object.assign(env, {{ LARVA_PI_CAPSULE_ROOT: parent, LARVA_PI_INITIAL_PERSONA_ID: 'parent', LARVA_PI_LAUNCHED: '1' }});
+
+        // Pause at the filesystem boundary with both files present. A reader
+        // that already opened the old manifest must still see the old record.
+        const read = pathOrFd => JSON.parse(fs.readFileSync(pathOrFd, 'utf8'));
+        const rename = fs.renameSync;
+        let publishedPid;
+        fs.renameSync = (source, target) => {{
+          if (dirname(target) !== registry) return rename(source, target);
+          const {{ capsule_root, pid }} = read(source);
+          assert.equal(dirname(source), capsule_root);
+          assert.equal(basename(target), `${{basename(capsule_root)}}.json`);
+          assert.deepEqual(fs.readdirSync(registry), [basename(target)]);
+          assert.ok(Number.isSafeInteger(pid) && pid > 0);
+          assert.equal(fs.statSync(source).mode & 0o777, 0o600);
+          const fd = fs.openSync(target, 'r');
+          try {{
+            assert.deepEqual(read(target), {{ capsule_root, pid: null }});
+            rename(source, target);
+            assert.deepEqual(read(fd), {{ capsule_root, pid: null }});
+            assert.deepEqual(read(target), {{ capsule_root, pid }});
+            publishedPid = pid;
+          }} finally {{
+            fs.closeSync(fd);
+          }}
+        }};
+        syncBuiltinESMExports();
+        try {{
+          const receipt = await mod.larva_subagent({{ persona_id: 'child', task: 'test publication' }}, {{env, externalHostCanSpawn: true}});
+          assert.equal(receipt.status, 'accepted', JSON.stringify(receipt));
+          assert.ok(publishedPid, 'PID publication did not atomically replace the manifest');
+          const waited = await mod.larva_subagent_wait({{ task_ids: [receipt.task_id], timeout_ms: 6000 }}, {{env}});
+          assert.equal(waited.details.runs[0].status, 'success', JSON.stringify(waited.details));
+          assert.equal(read(env.LARVA_TEST_PEER_LOG).pid, publishedPid);
+        }} finally {{
+          fs.renameSync = rename;
+          syncBuiltinESMExports();
+          await mod.resetExtensionUI('test cleanup');
+        }}
+        assert.deepEqual(fs.readdirSync(registry), []);
+        console.log(JSON.stringify({{ verified: true }}));
+    """, timeout=15)
+    assert result == {'verified': True}
+
+
+def test_subagent_admission_precedence_and_spawn_authority(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ readFileSync, writeFileSync }} from 'node:fs';
+        import {{ join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        const root = env.LARVA_PI_CHILD_SESSION_DIR;
+        const config = join(root, 'runtime.json');
+        const settings = (limits) => writeFileSync(config, JSON.stringify({{ schema_version: 1, extension_sources: [], ...limits }}));
+        env.LARVA_PI_SUBAGENT_CONFIG_FILE = config;
+        const ancestor = join(root, 'ancestor.jsonl');
+        const self = join(root, 'self.jsonl');
+        writeFileSync(ancestor, '{{}}\\n');
+        writeFileSync(self, '{{}}\\n');
+        env.LARVA_PI_ANCESTOR_TASK_IDS = JSON.stringify([ancestor]);
+        const run = (input = {{}}, override = {{}}, externalHostCanSpawn = true, extra = {{}}) =>
+          mod.larva_subagent({{ persona_id: 'child', task: 'run', ...input }}, {{ env: {{ ...env, ...override }}, externalHostCanSpawn, ...extra }});
+        const fail = async (run, code, task = null) => {{
+          const result = await run;
+          assert.deepEqual([result.error?.code, result.task_id], [code, task], JSON.stringify(result));
+        }};
+        settings({{ unknown: true }});
+        await fail(run({{ task_id: ancestor, parent_persona_id: ' ' }}, {{ LARVA_PI_CHILD_SESSION_DIR: '' }}, false), 'LARVA_BAD_INPUT');
+        await fail(run({{ task_id: ancestor }}, {{ LARVA_PI_CHILD_SESSION_DIR: '' }}), 'LARVA_CHILD_START_FAILED');
+        await fail(run({{ task_id: join(root, 'missing.jsonl') }}, {{ LARVA_PI_ANCESTOR_TASK_IDS: '{{' }}), 'LARVA_BAD_INPUT');
+        await fail(run({{ task_id: ancestor }}, {{ LARVA_PI_ANCESTOR_TASK_IDS: '{{' }}, false), 'LARVA_CHILD_START_FAILED');
+        await fail(run({{ task_id: ancestor }}, {{}}, false), 'LARVA_SUBAGENT_CONFIG_INVALID', ancestor);
+        settings({{}});
+        await fail(run({{ task_id: ancestor }}, {{}}, false), 'LARVA_SPAWN_NOT_ALLOWED');
+        await fail(run({{ task_id: ancestor, parent_persona_id: 'unknown' }}), 'LARVA_PERSONA_NOT_FOUND');
+        await fail(run({{ task_id: ancestor }}), 'LARVA_SESSION_BUSY', ancestor);
+        await fail(run({{ task_id: self }}, {{}}, true, {{ sessionManager: {{ getSessionFile: () => self }} }}), 'LARVA_SESSION_BUSY', self);
+        await fail(run({{ persona_id: 'other', parent_persona_id: '  parent  ' }}), 'LARVA_SPAWN_NOT_ALLOWED');
+        const nested = {{ LARVA_PI_LAUNCHED: '1', LARVA_PI_INITIAL_PERSONA_ID: 'parent' }};
+        await fail(run({{ parent_persona_id: 'allow' }}, nested), 'LARVA_SPAWN_NOT_ALLOWED');
+        await fail(run({{ persona_id: 'other' }}, nested), 'LARVA_SPAWN_NOT_ALLOWED');
+        await fail(run({{}}, {{ ...nested, LARVA_PI_INITIAL_PERSONA_ID: '' }}), 'LARVA_NO_ACTIVE_PERSONA');
+        const native = (override = {{}}) => mod.larva_subagent({{ persona_id: 'child', task: 'native run' }}, {{ env: {{ ...env, ...override }} }});
+        await fail(native(), 'LARVA_NO_ACTIVE_PERSONA');
+        const handlers = new Map();
+        const toolPolicy = env.LARVA_PI_TOOL_POLICY_FILE = join(root, 'policy.json');
+        writeFileSync(toolPolicy, JSON.stringify({{ personas: {{ deny: {{ deny: ['larva_subagent'] }} }} }}));
+        const pi = {{ on: (name, handler) => handlers.set(name, handler),
+          getAllTools: () => ['larva_subagent'], setActiveTools: () => true, setModel: () => true }};
+        const ctx = {{ env, modelRegistry: {{ find: () => ({{ provider: 'provider', id: 'model' }}) }} }};
+        await mod.initializeExtension(ctx, pi);
+        assert.equal((await mod.commitPersona('deny', ctx, pi)).ok, true);
+        await fail(native(), 'LARVA_SPAWN_NOT_ALLOWED');
+        settings({{ root_session_spawn: 'allow', max_depth: 2 }});
+        const hostGate = await handlers.get('tool_call')({{ toolName: 'larva_subagent' }});
+        assert.equal(hostGate.block, true);
+        assert.match(hostGate.reason, /LARVA_TOOL_DENIED/);
+        await fail(native(nested), 'LARVA_SPAWN_NOT_ALLOWED');
+        await fail(run({{}}, {{ ...nested, LARVA_PI_SUBAGENT_DEPTH: '2' }}), 'LARVA_SPAWN_NOT_ALLOWED');
+        for (const accepted of [await native({{ LARVA_PI_SUBAGENT_DEPTH: 'ignored-at-root' }}), await run({{}}, nested, true, {{ sessionManager: {{ getSessionFile: () => self }} }}),
+            await run({{}}, {{ LARVA_MCP_PARENT_PERSONA: '  ', LARVA_PI_PARENT_PERSONA_ID: 'stale' }})]) {{
+          assert.equal(accepted.status, 'accepted', JSON.stringify(accepted));
+          const wait = await mod.larva_subagent_wait({{ task_ids: [accepted.task_id], timeout_ms: 3000 }}, {{ env }});
+          assert.equal(wait.details.runs[0].status, 'success');
+        }}
+        const wire = readFileSync(env.LARVA_TEST_PEER_LOG, 'utf8').trim().split('\\n').map(JSON.parse);
+        console.log(JSON.stringify({{ wire, ancestor, self }}));
+    """, timeout=25)
+    assert [(p['parent'], p['depth'], p['ancestors']) for p in result['wire']] == [
+        ('deny', '1', [result['ancestor']]), ('parent', '2', [result['ancestor'], result['self']]),
+        ('', '1', [result['ancestor']]),
+    ]
+
+
+def test_subagent_lineage_rejects_incoming_and_outgoing_overflow_before_launch(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ existsSync, mkdirSync, readFileSync, symlinkSync }} from 'node:fs';
+        import {{ join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        const root = env.LARVA_PI_CHILD_SESSION_DIR;
+        const ancestor = join(root, 'ancestor.jsonl');
+        const self = join(root, 'self.jsonl');
+        const link = join(root, 'alias.jsonl');
+        symlinkSync(ancestor, link);
+        const paths = Array.from({{ length: 100 }}, (_, index) => join(root, `ancestor-${{index}}.jsonl`));
+        const base = {{ ...env, LARVA_PI_LAUNCHED: '1', LARVA_PI_INITIAL_PERSONA_ID: 'parent' }};
+        const run = (override, selfTaskId) => mod.larva_subagent({{ persona_id: 'child', task: 'probe' }}, {{
+          env: {{ ...base, ...override }}, externalHostCanSpawn: true, sessionManager: {{ getSessionFile: () => selfTaskId }}
+        }});
+        const fail = async (override, selfTaskId) => {{
+          const result = await run(override, selfTaskId);
+          assert.deepEqual([result.error?.code, result.task_id], ['LARVA_CHILD_START_FAILED', null], JSON.stringify(result));
+        }};
+        for (const depth of ['0', '01', '1 ', '1\\n', '1.0', '101', '100']) await fail({{ LARVA_PI_SUBAGENT_DEPTH: depth }});
+        for (const value of [null, {{}}, ['relative.jsonl'], ['/elsewhere/ancestor.jsonl'], [root + '/./ancestor.jsonl'], [link], [9], [...paths, self]]) {{
+          await fail({{ LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify(value) }});
+        }}
+        await fail({{ LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify(paths) }}, self);
+        const longDir = join(root, 'é'.repeat(90), 'é'.repeat(90), 'é'.repeat(90), 'é'.repeat(90));
+        mkdirSync(longDir, {{ recursive: true }});
+        // The outgoing union crosses the UTF-8 bound without crossing 100 IDs.
+        const longIds = [];
+        const longSelf = join(longDir, 'self.jsonl');
+        for (let i = 0; Buffer.byteLength(JSON.stringify([...longIds, longSelf])) <= 65536; i++) {{
+          longIds.push(join(longDir, `${{String(i).padStart(4, '0')}}.jsonl`));
+        }}
+        assert.ok(Buffer.byteLength(JSON.stringify(longIds)) <= 65536 && longIds.length < 100);
+        await fail({{ LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify([...longIds, longSelf]) }});
+        await fail({{ LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify(longIds) }}, longSelf);
+        assert.equal(existsSync(env.LARVA_TEST_PEER_LOG), false);
+        const accepted = await run({{ LARVA_PI_SUBAGENT_DEPTH: '99', LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify(paths) }}, paths[0]);
+        assert.equal(accepted.status, 'accepted', JSON.stringify(accepted));
+        await mod.larva_subagent_wait({{ task_ids: [accepted.task_id], timeout_ms: 3000 }}, {{ env }});
+        const wire = JSON.parse(readFileSync(env.LARVA_TEST_PEER_LOG, 'utf8'));
+        assert.equal(wire.depth, '100');
+        assert.deepEqual(wire.ancestors, paths);
+        console.log(JSON.stringify({{ wire }}));
+    """, timeout=10)
+    assert len(result['wire']['ancestors']) == 100
+
+
+def test_subagent_reservation_survives_terminal_notification_until_cleanup(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ readFileSync, watch, writeFileSync }} from 'node:fs';
+        import {{ join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        const root = env.LARVA_PI_CHILD_SESSION_DIR;
+        const config = env.LARVA_PI_SUBAGENT_CONFIG_FILE = join(root, 'runtime.json');
+        const trace = env.LARVA_PI_CHILD_RPC_TRACE_FILE = join(root, 'rpc-trace.jsonl');
+        const settings = max_active_runs => writeFileSync(config, JSON.stringify({{ schema_version: 1, extension_sources: [], max_active_runs }}));
+        const resume = join(root, 'resume.jsonl');
+        writeFileSync(resume, '{{}}\\n');
+        const run = (task_id, overrides = {{}}) => mod.larva_subagent({{ persona_id: 'child', task: 'complete', task_id }}, {{ env, externalHostCanSpawn: true, ...overrides }});
+        settings(1);
+        const hold = {{ env: {{ ...env, LARVA_TEST_HOLD_CLEANUP: '1' }} }};
+        const concurrent = await Promise.all([run(resume, hold), run(resume, hold)]);
+        const duplicate = concurrent.find(result => result.status !== 'accepted');
+        assert.equal(concurrent.filter(result => result.status === 'accepted').length, 1);
+        assert.deepEqual([duplicate?.error?.code, duplicate?.task_id], ['LARVA_SESSION_BUSY', resume]);
+        const full = await run();
+        assert.deepEqual([full.error?.code, full.task_id], ['LARVA_SPAWN_NOT_ALLOWED', null]);
+        const wait = await mod.larva_subagent_wait({{ task_ids: [resume], timeout_ms: 3000 }}, {{ env }});
+        assert.equal(wait.details.runs[0].status, 'success');
+        const {{ pid }} = JSON.parse(readFileSync(env.LARVA_TEST_PEER_LOG, 'utf8'));
+        try {{
+          assert.equal((await run(resume)).error?.code, 'LARVA_SESSION_BUSY');
+          assert.equal((await run()).error?.code, 'LARVA_SPAWN_NOT_ALLOWED');
+          settings(100);
+          const alreadyAborted = AbortSignal.abort();
+          for (let i = 0; i < 26; i++) {{
+            const other = join(root, `other-${{i}}.jsonl`);
+            writeFileSync(other, '{{}}\\n');
+            assert.equal((await run(other, {{ abortSignal: alreadyAborted }})).status, 'cancelled');
+          }}
+          assert.equal((await run(resume)).error?.code, 'LARVA_SESSION_BUSY');
+        }} finally {{
+          const cleaned = new Promise((resolve, reject) => {{
+            const watcher = watch(trace, () => {{
+              const lines = readFileSync(trace, 'utf8').trim().split('\\n').map(JSON.parse);
+              if (lines.some(entry => entry.event === 'cleanup_end' && entry.pid === pid)) {{
+                watcher.close(); clearTimeout(timer); resolve();
+              }}
+            }});
+            const timer = setTimeout(() => {{ watcher.close(); reject(new Error('child cleanup not observed')); }}, 3000);
+          }});
+          process.kill(pid, 'SIGUSR2');
+          await cleaned;
+        }}
+        settings(1);
+        const admittedAfterCleanup = await run(resume);
+        assert.equal(admittedAfterCleanup.status, 'accepted', JSON.stringify(admittedAfterCleanup));
+        await mod.larva_subagent_wait({{ task_ids: [resume], timeout_ms: 3000 }}, {{ env }});
+        settings(100);
+        const wrong = join(root, 'wrong-route.jsonl');
+        writeFileSync(wrong, '{{}}\\n');
+        const mismatch = await run(wrong, {{ env: {{ ...env, LARVA_TEST_WRONG_PERSONA: '1' }} }});
+        assert.deepEqual([mismatch.error?.code, mismatch.task_id], ['LARVA_CHILD_PROTOCOL_FAILED', wrong]);
+        assert.match(mismatch.error.message, /active persona/);
+        const lines = readFileSync(trace, 'utf8').trim().split('\\n').map(JSON.parse);
+        const lastLaunch = lines.findLastIndex(entry => entry.event === 'child_spawn');
+        assert.equal(lines.slice(lastLaunch).some(entry => entry.event === 'rpc_tx' && entry.frame_type === 'prompt'), false);
+        console.log(JSON.stringify({{ ok: true }}));
+    """, timeout=25)
+
+
+def test_persona_invocation_carries_lineage_and_rejects_oversized_output_without_artifact(tmp_path: Path) -> None:
+    env = _subagent_rpc_peer(tmp_path)
+    result = _run_node(tmp_path, f"""
+        import assert from 'node:assert/strict';
+        import {{ existsSync, readFileSync, writeFileSync }} from 'node:fs';
+        import {{ randomUUID }} from 'node:crypto';
+        import {{ join }} from 'node:path';
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const env = {json.dumps(env)};
+        const root = env.LARVA_PI_CHILD_SESSION_DIR;
+        const self = join(root, 'self.jsonl');
+        const ancestor = join(root, 'ancestor.jsonl');
+        const config = env.LARVA_PI_SUBAGENT_CONFIG_FILE = join(root, 'runtime.json');
+        const trace = env.LARVA_PI_CHILD_RPC_OUTBOUND_TRACE_FILE = join(root, 'outbound.jsonl');
+        writeFileSync(config, JSON.stringify({{ schema_version: 1, extension_sources: [], root_session_spawn: 'persona', max_depth: 1, max_active_runs: 1 }}));
+        const nested = {{ ...env, LARVA_PI_LAUNCHED: '1', LARVA_PI_INITIAL_PERSONA_ID: 'deny', LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify([ancestor]) }};
+        const ctx = {{ env: nested, sessionManager: {{ getSessionFile: () => self }}, modelRegistry: {{ find: () => ({{ id: 'model', provider: 'provider' }}) }} }};
+        const handlers = new Map(), results = new Map();
+        const pi = {{ on: (name, handler) => handlers.set(name, handler), getAllTools: () => [], setActiveTools: () => true, setModel: () => true,
+          emit: (name, result) => {{ if (name === 'larva:persona-invocation:result') results.get(result.request_id)?.(result); return true; }} }};
+        await mod.initializeExtension(ctx, pi);
+        const start = handlers.get('larva:persona-invocation:request');
+        const invoke = async (prompt, override = {{}}) => {{
+          const request_id = randomUUID();
+          const settled = new Promise(resolve => results.set(request_id, resolve));
+          await start({{ request_id, persona_id: 'child', prompt, timeout_ms: 5000 }}, {{ ...ctx, env: {{ ...nested, ...override }} }});
+          return await settled;
+        }};
+        const direct = await mod.larva_subagent({{ persona_id: 'child', task: 'blocked by max_depth' }}, ctx);
+        assert.equal(direct.error?.code, 'LARVA_SPAWN_NOT_ALLOWED');
+        const held = await mod.larva_subagent({{ persona_id: 'child', task: 'hold ownership' }}, {{ env: {{ ...env, LARVA_TEST_HOLD_CLEANUP: '1' }}, externalHostCanSpawn: true }});
+        assert.equal(held.status, 'accepted', JSON.stringify(held));
+        const {{ pid }} = JSON.parse(readFileSync(env.LARVA_TEST_PEER_LOG, 'utf8').trim());
+        let small, large, invalid, handled;
+        try {{
+          assert.match((await mod.larva_subagent({{ persona_id: 'child', task: 'blocked by max_active_runs' }}, {{ env, externalHostCanSpawn: true }})).error?.message, /maximum active runs/);
+          [small, large, invalid, handled] = await Promise.all([
+            invoke('small'), invoke('large'), invoke('not spawned', {{ LARVA_PI_SUBAGENT_DEPTH: '100' }}), invoke('handled')
+          ]);
+        }} finally {{
+          try {{ process.kill(pid, 'SIGUSR2'); }} catch (e) {{ if (e.code !== 'ESRCH') throw e; }}
+          await mod.larva_subagent_wait({{ task_ids: [held.task_id], timeout_ms: 3000 }}, {{ env }});
+        }}
+        assert.equal(small.status, 'success', JSON.stringify(small));
+        assert.equal(small.final_text, 'completed');
+        assert.equal(large.error?.code, 'LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED', JSON.stringify(large));
+        assert.equal(large.final_text, '');
+        assert.match(invalid.error?.message, /would exceed 100/);
+        assert.equal(handled.error?.code, 'LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED');
+        assert.match(handled.error.message, /handled without starting/);
+        const wire = readFileSync(env.LARVA_TEST_PEER_LOG, 'utf8').trim().split('\\n').map(JSON.parse);
+        assert.equal(wire.length, 4);
+        assert.equal(wire[0].invocation, null);
+        for (const peer of wire.slice(1)) assert.deepEqual([peer.invocation, peer.depth, peer.ancestors], ['1', '2', [ancestor, self]]);
+        const outbound = readFileSync(trace, 'utf8').trim().split('\\n').map(JSON.parse);
+        assert.equal(outbound.filter(entry => entry.frame.command === 'get_state' && entry.frame.data.persona_id === 'child').length, 8);
+        assert.ok(outbound.some(entry => entry.frame.id === 'last-1' && entry.frame.success === false && /exceeded 1048576 bytes/.test(entry.frame.error)));
+        assert.equal(existsSync(join(root, 'subagent-output-artifacts')), false);
+        assert.equal(existsSync(join(root, '.pi', 'larva', 'subagent-output-artifacts')), false);
+        console.log(JSON.stringify({{ small: small.status, large: large.status }}));
+    """, timeout=25)
+    assert result == {'small': 'success', 'large': 'failed'}
+    assert not list(tmp_path.rglob('subagent-output-artifacts'))
+    assert 'pendingCommandTypes' not in _source()
+    assert 'abort_controller' not in _source()
+
+
 def test_subagent_runtime_config_injects_explicit_extensions_before_larva_and_keeps_discovery_disabled(
     tmp_path: Path,
 ) -> None:
@@ -2810,6 +3531,7 @@ def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_
         const env = {{
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
           LARVA_PI_EXTENSION_FLAG: {json.dumps(str(fake_pi))},
+          PATH: '', // Exclude unrelated installed Pi from this launch-identity fixture.
           LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(tmp_path))},
           HOME: {json.dumps(str(tmp_path))},
         }};
@@ -2831,6 +3553,7 @@ def test_child_process_requires_launched_sentinel_before_launcher_env_spawn(tmp_
         const denied = await mod.larva_subagent({{ persona_id: "child", task: "must not spawn recursively" }}, {{ env }});
         console.log(JSON.stringify({{ denied, markerExists: await import("node:fs").then(fs => fs.existsSync({json.dumps(str(spawn_marker))})) }}));
         """,
+        timeout=25,
     )
 
     assert result["denied"]["status"] == "failed"
@@ -2934,7 +3657,7 @@ def test_child_terminal_cleanup_owns_private_capsule_and_preserves_base_session(
     (agent / "settings.json").write_text('{ "theme": "dark" }\n', encoding="utf-8")
     durable_session.write_text("parent-session\n", encoding="utf-8")
     child_session.write_text("", encoding="utf-8")
-    completing = ROOT / "tests" / "fixtures" / "pi" / "completing-rpc-child.mjs"
+    peer_env = _subagent_rpc_peer(tmp_path)
 
     result = _run_node(
         tmp_path,
@@ -2943,11 +3666,9 @@ def test_child_terminal_cleanup_owns_private_capsule_and_preserves_base_session(
         import {{ join }} from "node:path";
         const mod = await import({json.dumps(EXTENSION.as_uri())});
         const env = {{
+          ...{json.dumps(peer_env)},
           HOME: {json.dumps(str(home))},
           LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
-          LARVA_PI_TEST_CHILD_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(completing))}]),
-          LARVA_PI_REAL_BIN: process.execPath,
-          LARVA_PI_EXTENSION_FLAG: {json.dumps(str(completing))},
           LARVA_PI_EXTENSION_ENTRY: {json.dumps(str(EXTENSION))},
           LARVA_PI_CHILD_SESSION_DIR: {json.dumps(str(child_sessions))},
           LARVA_PI_CHILD_RPC_LEGACY_FALLBACK: "1",
@@ -3071,13 +3792,13 @@ def test_resume_parent_preflight_defers_model_resolution_to_child_start() -> Non
     _assert_tokens(source, "switch_session", "LARVA_PI_INITIAL_PERSONA_ID", "childModelArgument")
     _assert_regex(
         source,
-        r"validateTaskId[\s\S]+canSpawn[\s\S]+subagentTaskIdBusyInRegistry",
+        r"validateTaskId[\s\S]+subagentSpawnAuthority[\s\S]+subagentTaskIdBusyInRegistry",
         "resume preflight validates path, spawn authority, and busy state before child-start model resolution",
     )
     assert "resolvePersona" not in subagent_body
     assert "resolvePersona" not in child_sequence_body
     assert "childModelArgument" in start_child_body
-    assert child_sequence_body.index("startChild(env, root, personaId, extensionSources, activeRecord)") < child_sequence_body.index('rpc.command("switch-1"')
+    assert child_sequence_body.index("await startChild(") < child_sequence_body.index('rpc.command("switch-1"')
 
 
 def test_concurrent_same_task_resume_uses_in_memory_active_run_registry() -> None:
@@ -3154,7 +3875,7 @@ def test_resume_re_resolves_persona_and_cli_model_at_child_start() -> None:
     assert "resolvePersona" not in child_sequence_body
     _assert_regex(
         source,
-        r"startChild\(env, root, personaId, extensionSources, activeRecord\)[\s\S]+switch_session",
+        r"await startChild\(env, root, personaId, lineage, extensionSources, activeRecord\)[\s\S]+switch_session",
         "resume must resolve the supplied persona model and start the child before switching session",
     )
 
@@ -3188,14 +3909,14 @@ def test_in_flight_abort_is_forwarded_to_child_rpc_and_wins_cancelled_race() -> 
 
 def test_abort_unknown_child_termination_returns_protocol_failed_not_cancelled() -> None:
     source = _source()
-    abort_body = _function_body(source, "async abort()")
+    abort_body = _function_body(source, "async abortAndCloseInput()")
     sequence_body = _function_body(source, "async function runChildSequence")
     subagent_body = _function_body(source, "export async function larva_subagent")
 
     _assert_tokens(
         abort_body,
         "isSuccessResponse(aborted)",
-        "const killed = this.child.kill()",
+        "const killed = requestChildSigterm(this.child)",
         'return killed ? "cancelled" : "unknowable"',
     )
     _assert_tokens(
@@ -4906,10 +5627,11 @@ def test_async_subagent_lifecycle_cleanup_aborts_via_child_rpc_stales_callbacks_
             process.on("SIGTERM", async () => {{ await log({{ event: "sigterm" }}); process.exit(0); }});
             process.on("SIGINT", async () => {{ await log({{ event: "sigint" }}); process.exit(0); }});
             setInterval(() => undefined, 1000);
+            process.stdin.once("close", () => {{ void log({{ event: "stdin_closed" }}); }});
             const rl = createInterface({{ input: process.stdin }});
             rl.on("line", async (line) => {{
               const message = JSON.parse(line);
-              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); await log({{ event: "get_state" }}); send({{ id: message.id, success: true, data: {{ sessionFile, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
+              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); await log({{ event: "get_state" }}); send({{ id: message.id, success: true, data: {{ sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
               else if (message.type === "prompt") {{ await log({{ event: "prompt" }}); send({{ id: message.id, success: true, data: {{}} }}); }}
               else if (message.type === "abort") {{ await log({{ event: "abort_rpc" }}); send({{ id: message.id, success: true, data: {{}} }}); }}
               else if (message.type === "get_last_assistant_text") {{ await log({{ event: "last_text" }}); send({{ id: message.id, success: true, data: {{ text: "SHOULD_NOT_CALLBACK" }} }}); }}
@@ -4993,14 +5715,18 @@ def test_async_subagent_lifecycle_cleanup_aborts_via_child_rpc_stales_callbacks_
           requiredHandlers: Object.fromEntries(["session_start", "shutdown", "reload", "new_session", "session_new", "resume", "fork", "quit"].map((name) => [name, typeof handlers.get(name) === "function"])),
         }}));
         """,
-        timeout=8,
+        timeout=25,
     )
 
     assert payload["result"]["details"]["status"] == "accepted"
     assert payload["sessionFileExists"] is True
     assert payload["cleanupResult"]["active_children_reaped"] == 1
     assert payload["elapsedMs"] >= 1300
-    assert {event["event"] for event in payload["events"]} >= {"get_state", "prompt", "abort_rpc", "sigterm"}
+    events = [event["event"] for event in payload["events"]]
+    assert events[:4] == ["get_state", "get_state", "prompt", "abort_rpc"]
+    assert "stdin_closed" in events
+    # The preload may exit first when the two grace clocks expire together.
+    assert events.count("sigterm") <= 1
     assert payload["childAlive"] is False
     assert payload["callbackCount"] == 0
     diagnostic = payload["afterDiagnostics"][0]
@@ -5051,7 +5777,7 @@ def test_async_subagent_stale_parent_session_identity_suppresses_late_callback(t
             const rl = createInterface({{ input: process.stdin }});
             rl.on("line", async (line) => {{
               const message = JSON.parse(line);
-              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); send({{ id: message.id, success: true, data: {{ sessionFile, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
+              if (message.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\n", "utf8"); send({{ id: message.id, success: true, data: {{ sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
               else if (message.type === "prompt") {{ send({{ id: message.id, success: true, data: {{}} }}); setTimeout(() => send({{ type: "agent_end" }}), 80); }}
               else if (message.type === "get_last_assistant_text") {{ send({{ id: message.id, success: true, data: {{ text: "LATE_STALE_FINAL" }} }}); setTimeout(() => process.exit(0), 5); }}
               else if (message.type === "abort") {{ send({{ id: message.id, success: true }}); process.exit(0); }}
@@ -6042,7 +6768,7 @@ PIINV_MACHINE_ANCHORS: Final[tuple[tuple[str, tuple[str, ...], str], ...]] = (
     ("metadata_json_stringify_max_2048_utf8_bytes", ("PERSONA_INVOCATION_METADATA_MAX_UTF8_BYTES", "JSON.stringify", "2048"), "PIINV_EXPECTED_RED::metadata_json_stringify_max_2048_utf8_bytes::metadata stringify byte bound missing"),
     ("timeout_ms_invalid_below_1", ("timeout_ms", "LARVA_PERSONA_INVOCATION_BAD_INPUT", "minimum: 1"), "PIINV_EXPECTED_RED::timeout_ms_invalid_below_1::timeout lower validation missing"),
     ("timeout_ms_invalid_above_120000", ("timeout_ms", "LARVA_PERSONA_INVOCATION_BAD_INPUT", "120000"), "PIINV_EXPECTED_RED::timeout_ms_invalid_above_120000::timeout upper validation missing"),
-    ("timeout_runtime_timeout_returns_TIMEOUT", ("LARVA_PERSONA_INVOCATION_TIMEOUT", "AbortController", "timeout_ms"), "PIINV_EXPECTED_RED::timeout_runtime_timeout_returns_TIMEOUT::runtime timeout terminal code missing"),
+    ("timeout_runtime_timeout_returns_TIMEOUT", ("LARVA_PERSONA_INVOCATION_TIMEOUT", "timeoutPersonaInvocation", "abortPersonaInvocationChild", "timeout_ms"), "PIINV_EXPECTED_RED::timeout_runtime_timeout_returns_TIMEOUT::runtime timeout terminal code missing"),
     ("final_text_max_16384_utf8_bytes", ("PERSONA_INVOCATION_FINAL_TEXT_MAX_UTF8_BYTES", "16384"), "PIINV_EXPECTED_RED::final_text_max_16384_utf8_bytes::final_text byte bound missing"),
     ("overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation", ("LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED", "final_text: \"\"", "no artifact"), "PIINV_EXPECTED_RED::overlimit_output_PROTOCOL_FAILED_empty_final_text_no_artifact_no_truncation::overlimit protocol failure missing"),
     ("result_error_object_exact_code_message_shape", ("error: { code", "message", "LARVA_PERSONA_INVOCATION_"), "PIINV_EXPECTED_RED::result_error_object_exact_code_message_shape::exact error object shape missing"),

@@ -142,6 +142,9 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
             "name": "search_mentions", "arguments": args,
         }} for i, args in ((10, {"query": "", "preload": "true"}),
                           (11, {"query": "", "path": [1]}))],
+        {"jsonrpc": "2.0", "id": 12, "method": "tools/call", "params": {
+            "name": "larva_subagent_panel", "arguments": {"task_id": " \t"},
+        }},
     ]
     # Match Codex's regular-file-only cache copy, without the source sibling.
     cached = tmp_path / "cache" / "larva-subagent"
@@ -167,11 +170,11 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
             process.communicate()
     assert process.returncode == 0, stderr
     replies = [json.loads(line) for line in stdout.splitlines()]
-    assert len(replies) == 11, stdout
+    assert len(replies) == 12, stdout
     by_id = {reply["id"]: reply for reply in replies}
     assert by_id[1]["result"]["protocolVersion"] == "2024-11-05"
     assert by_id[1]["result"]["capabilities"] == {"tools": {}, "resources": {}}
-    for i in (10, 11):
+    for i in (10, 11, 12):
         assert by_id[i]["result"]["isError"] is True
         assert by_id[i]["result"]["structuredContent"]["error"]["code"] == "LARVA_BAD_INPUT"
     assert by_id[1]["result"]["serverInfo"]["title"] == "Larva Subagents"
@@ -205,7 +208,7 @@ def test_configured_stdio_and_skill_examples(tmp_path: Path) -> None:
     }
     assert panel_tool["inputSchema"] == {
         "type": "object", "properties": {
-            "task_id": {"type": "string", "minLength": 1},
+            "task_id": {"type": "string", "pattern": r"\S"},
             "limit": {"type": "integer", "minimum": 1, "maximum": 25},
         }, "required": [], "additionalProperties": False,
     }

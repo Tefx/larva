@@ -137,6 +137,14 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 const extension = await import(pathToFileURL(process.env.LARVA_PI_EXTENSION_ENTRY).href + "?loopback-child=" + Date.now());
 extension.installChildRpcFrameWriterForTests(process.env);
+// The real writer stamps get_state from the committed persona, not the mock payload.
+const persona = await extension.commitPersona(process.env.LARVA_PI_INITIAL_PERSONA_ID, {
+  env: process.env,
+  modelRegistry: { find: () => ({ provider: "loopback", modelId: "model" }) },
+  setModel: () => true,
+  getAllTools: () => [],
+});
+if (!persona.ok) throw new Error(persona.error.message);
 const sessionDir = process.argv[process.argv.indexOf("--session-dir") + 1];
 await mkdir(sessionDir, { recursive: true });
 const sessionFile = join(sessionDir, "loopback.jsonl");

@@ -423,8 +423,27 @@ try {
     assert.equal(invalid.isError, true);
     assert.equal(invalid.details.error.code, 'LARVA_BAD_INPUT');
   }
+  const blank = ' \t\n\u00a0';
+  const spawnArgs = { persona_id: 'child', task: 'run' };
+  const invalidCalls = [
+    ...['parent_persona_id', 'persona_id', 'task', 'task_id'].map(key => ['larva_subagent', { ...spawnArgs, [key]: blank }]),
+    ['larva_subagent_wait', { task_ids: [blank] }],
+    ['larva_subagent_select', { task_ids: [blank] }],
+    ['larva_subagent_events', { task_ids: [blank] }],
+    ['larva_subagent_status', { task_id: blank }],
+    ['larva_subagent_panel', { task_id: blank }],
+    ['larva_subagent_cancel', { task_id: '/fixture/child.jsonl', reason: blank }],
+    ['larva_subagent_activity', { session_path: blank }],
+  ];
+  for (const [name, args] of invalidCalls) {
+    // No runtime exists here: reaching getRuntime() would return a JSON-RPC error.
+    const invalid = await idle.tool(name, args);
+    assert.equal(invalid.isError, true, `${name}: ${JSON.stringify(args)}`);
+    assert.equal(invalid.structuredContent.error.code, 'LARVA_BAD_INPUT');
+  }
   const missingRuntime = await idle.request('tools/call', { name: 'larva_subagent_sessions' });
   assert.equal(missingRuntime.error.code, -32603);
+  assert.match(missingRuntime.error.message, /Cannot find module .*larva\.ts/);
   await idle.close();
   assert.equal(idle.stderr, '');
   console.log('server-only initialize, notification, ping, tools/list, rejected calls and idle EOF: PASS');
@@ -546,10 +565,18 @@ createInterface({input:process.stdin}).on('line', async line => {
   }
   await mkdir(sessionDir,{recursive:true});
   await writeFile(sessionFile, JSON.stringify({type:'session',version:3,id:'fixture-'+process.pid,cwd:root})+'\\n'+JSON.stringify({type:'message',id:'call-entry',timestamp:'2026-01-01T00:00:00Z',message:{role:'assistant',content:[{type:'toolCall',id:'call-1',name:'read',arguments:{path:'fixture'}}]}})+'\\n'+JSON.stringify({type:'message',id:'result-entry',timestamp:'2026-01-01T00:00:01Z',message:{role:'toolResult',toolCallId:'call-1',toolName:'read',content:[{type:'text',text:'fixture content'}]}})+'\\n');
-  send({id:m.id,success:true,data:{sessionFile}});
+  const persona_id = process.argv[process.argv.indexOf('--larva-persona') + 1];
+  const modern = process.env.FIXTURE_MODERN_TERMINAL === '1';
+  send({id:m.id,success:true,data:{sessionFile,persona_id,...(modern ? {larvaChildRpcFrame:{capability:'larva-child-rpc-frame-preload-v1',max_record_bytes:1048576,framing:'lf-only',terminal:'agent_settled'}} : {})}});
  } else if(m.type==='prompt') {
   large = m.message.includes('large output');
+  if (m.message === 'handled prompt') return send({id:m.id,success:true,data:{disposition:'handled'}});
   send({id:m.id,success:true,data:{}});
+  if (m.message === 'aborted settlement') {
+   send({type:'agent_end',messages:[]});
+   send({type:'agent_settled',aborted:true});
+   return;
+  }
   send({type:'message_update',assistantMessageEvent:{type:'thinking_delta',delta:'hidden thought'}});
   send({type:'message_update',assistantMessageEvent:{type:'text_delta',delta:'live fixture assistant'}});
   send({type:'message_update',assistantMessageEvent:{type:'toolcall_delta',delta:'ignore tool args'}});
@@ -581,6 +608,21 @@ createInterface({input:process.stdin}).on('line', async line => {
       assert.deepEqual(malformedParent.error, {code:'LARVA_BAD_INPUT',message:'parent_persona_id must be a non-empty string.'});
     }
     assert.deepEqual(runtime.subagentPresentationLogForTests(), []);
+    const handled = await runtime.larva_subagent({persona_id:'child',task:'handled prompt'}, {env,externalHostCanSpawn:true});
+    assert.equal(handled.status, 'failed');
+    assert.equal(handled.error.code, 'LARVA_CHILD_PROTOCOL_FAILED');
+    assert.match(handled.error.message, /handled without starting/);
+    const aborted = await runtime.larva_subagent({persona_id:'child',task:'aborted settlement'}, {
+      env:{...env,FIXTURE_MODERN_TERMINAL:'1'},externalHostCanSpawn:true,
+    });
+    assert.equal(aborted.status, 'accepted', JSON.stringify(aborted));
+    await runtime.larva_subagent_wait({task_ids:[aborted.task_id],timeout_ms:5000});
+    const abortedState = (await runtime.larva_subagent_status({task_id:aborted.task_id}, {env})).details.runs[0];
+    assert.equal(abortedState.error.code, 'LARVA_CHILD_RUNTIME_FAILED');
+    const abortTrace = (await readFile(env.LARVA_PI_CHILD_RPC_TRACE_FILE, 'utf8')).trim().split('\n').map(JSON.parse);
+    const spawned = abortTrace.findLast(entry => entry.event === 'child_spawn');
+    assert.ok(!abortTrace.some(entry => entry.pid === spawned.pid && entry.event === 'rpc_tx' && entry.frame_type === 'get_last_assistant_text'));
+    await runtime.resetExtensionUI('fixture terminal cleanup');
     let delivered;
     const completion = new Promise(resolve => { delivered = resolve; });
     const external = await runtime.larva_subagent({persona_id:'child',task:'headless capsule'}, {
@@ -611,6 +653,8 @@ createInterface({input:process.stdin}).on('line', async line => {
     assert.equal(recent.details.sessions[0].persona_id, 'child');
     assert.equal(recent.details.sessions[0].last_status, 'success');
     assert.ok(!JSON.stringify(recent.content).includes('undefined'));
+    // Terminal evidence can arrive before process ownership is released.
+    await runtime.resetExtensionUI('wait for capsule cleanup before resume');
     const resumedExternal = await runtime.larva_subagent({persona_id:'child',task:'headless resume',task_id:external.task_id}, {
       env, externalHostCanSpawn:true,
     });
@@ -741,10 +785,12 @@ createInterface({input:process.stdin}).on('line', async line => {
   const childResource = { uri: 'larva://personas/child', name: 'child', title: '@larva:child', description: 'Fixture child', mimeType: 'text/markdown' };
   const otherResource = { ...childResource, uri: 'larva://personas/other', name: 'other', title: '@larva:other', description: 'Fixture other' };
   const mention = resource => ({ type: 'resource_link', ...resource, searchTerms: [resource.name, resource.title, resource.description, 'fixture/model'] });
-  const allMentions = await c.tool('search_mentions', { query: '', preload: true, path: [] });
-  assert.equal(allMentions.isError, false);
-  assert.deepEqual(allMentions.content, []);
-  assert.deepEqual(allMentions.structuredContent, { items: [childResource, otherResource].map(mention) });
+  for (const query of ['', blank]) {
+    const allMentions = await c.tool('search_mentions', { query, preload: true, path: [] });
+    assert.equal(allMentions.isError, false);
+    assert.deepEqual(allMentions.content, []);
+    assert.deepEqual(allMentions.structuredContent, { items: [childResource, otherResource].map(mention) });
+  }
   for (const query of ['child', '@larva:child', ' @LARVA:child ', '@persona:child', 'larva:child', 'persona:child', '@child']) {
     assert.deepEqual((await c.tool('search_mentions', { query })).structuredContent.items, [mention(childResource)]);
   }
@@ -801,7 +847,7 @@ createInterface({input:process.stdin}).on('line', async line => {
   const configuredDenied = await configuredParent.tool('larva_subagent',{persona_id:'other',task:'deny env parent'});
   assert.equal(configuredDenied.details.error.code, 'LARVA_SPAWN_NOT_ALLOWED');
   await configuredParent.close();
-  for (const parent of ['   ', '']) {
+  for (const parent of [blank, '']) {
     const unsetParent = client({LARVA_MCP_PARENT_PERSONA:parent, LARVA_PI_PARENT_PERSONA_ID:'stale'});
     const unsetRun = await unsetParent.tool('larva_subagent', {persona_id:'child',task:'unset env parent',wait_for_completion:true});
     assert.equal(unsetRun.isError, false, JSON.stringify(unsetRun));

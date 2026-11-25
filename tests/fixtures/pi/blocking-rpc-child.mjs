@@ -23,6 +23,7 @@ rl.on("line", (line) => {
       success: true,
       data: {
         sessionFile,
+        persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID,
         model: { provider: route.slice(0, slash), id: route.slice(slash + 1) },
         thinkingLevel,
       },

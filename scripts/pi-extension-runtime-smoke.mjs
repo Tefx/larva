@@ -915,7 +915,7 @@ async function writeFakeSubagentChild(scriptPath, { sessionFile, finalText = "fr
     const rl = createInterface({ input: process.stdin });
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
-      if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }) + "\\n");
+      if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }) + "\\n");
       if (message.type === "switch_session") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
       if (message.type === "prompt") {
         await writeFile(sessionFile, JSON.stringify({ prompt: message.message }) + "\\n", "utf8");
@@ -947,7 +947,7 @@ async function writeDelayedAsyncSubagentChild(scriptPath, { sessionFile, finalTe
       const message = JSON.parse(line);
       if (message.type === "get_state") {
         await writeFile(sessionFile, "{}\\n", "utf8");
-        send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
+        send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
@@ -981,7 +981,7 @@ async function writeNonresponsiveAbortSubagentChild(scriptPath, { sessionFile })
       const message = JSON.parse(line);
       if (message.type === "get_state") {
         await writeFile(sessionFile, "{}\\n", "utf8");
-        send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
+        send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
@@ -1431,7 +1431,7 @@ async function writeStreamingSubagentChild(scriptPath, sessionFile, gates) {
       const message = JSON.parse(line);
       if (message.type === "get_state") {
         await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "session-rpc-stream" }) + "\\n", "utf8");
-        send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
+        send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
       } else if (message.type === "switch_session") {
         send({ id: message.id, success: true, data: { cancelled: false } });
       } else if (message.type === "prompt") {
@@ -3197,7 +3197,7 @@ async function asyncSubagentContractExpectedRed(evidence) {
     const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
     rl.on("line", async (line) => {
       const message = JSON.parse(line);
-      if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+      if (message.type === "get_state") { await writeFile(sessionFile, "{}\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
       else if (message.type === "prompt") {
         send({ id: message.id, success: true, data: {} });
         send({ type: "agent_end", willRetry: false, messages: [{ role: "assistant", content: [{ type: "text", text: "failed callback" }], stopReason: "error", errorMessage: "bounded runtime failure", diagnostics: [{ type: "provider_transport_failure" }] }] });
@@ -4064,7 +4064,7 @@ rl.on("line", async (line) => {
   await trace({ phase: "rx", type: message.type, id: message.id, modelId: message.modelId || null });
   if (message.type === "get_state") {
     if (persona === "child-starting") { setTimeout(() => process.exit(0), 20); return; }
-    return send({ id: message.id, success: true, data: { sessionFile, model: { provider: activeProvider, id: activeModelId }, thinkingLevel: activeThinking } });
+    return send({ id: message.id, success: true, data: { sessionFile, persona_id: persona, model: { provider: activeProvider, id: activeModelId }, thinkingLevel: activeThinking } });
   }
   if (message.type === "switch_session") return send({ id: message.id, success: true, data: { cancelled: false } });
   if (message.type === "set_model") {
@@ -5268,7 +5268,7 @@ async function main() {
       const rl = createInterface({ input: process.stdin });
       rl.on("line", (line) => {
         const message = JSON.parse(line);
-        if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }) + "\\n");
+        if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }) + "\\n");
         if (message.type === "prompt") {
           process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
           process.stdout.write(JSON.stringify({ type: "agent_end" }) + "\\n");

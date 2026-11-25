@@ -35,8 +35,8 @@ provides nine child-runtime tools, not registry mutation.
 
 External hosts can discover Pi automatically or set `LARVA_PI_CLI_SCRIPT`
 to the verified Pi package bin script. The server supplies
-`externalHostCanSpawn: true`; optional `parent_persona_id` per call, or `LARVA_MCP_PARENT_PERSONA` as fallback, enforces
-that resolved parent's `can_spawn` without changing native Pi parent rules.
+`externalHostCanSpawn: true`; see [external-host authority](#external-host-pi-subagent-mcp-server)
+for how root and descendant MCP calls differ from native Pi.
 Use `wait_for_completion: true` for one delegated task, or accepted receipts
 plus wait/select for parallel work. MCP wait/select results add
 `terminal_outputs` to structured content, with captured result text and artifact
@@ -224,7 +224,12 @@ Larva's later hook re-enumerates the tool baseline and reapplies persona policy
 only when the visible set changed.
 
 `subagent-runtime.json` is a closed JSON object with `schema_version: 1` and an
-`extension_sources` array. Sources use Pi `-e` semantics: npm/git/URL sources are
+`extension_sources` array. Optional spawn policy keys are
+`root_session_spawn` (`"persona"` by default, or `"allow"` for native Pi roots),
+`max_depth`, and `max_active_runs` (each an integer in `1..100` if present).
+Omitting either limit adds no policy cap. These options do not change PersonaSpec
+or bypass Pi tool policy. Unknown keys or invalid values are rejected.
+Sources use Pi `-e` semantics: npm/git/URL sources are
 passed through, `pi-agent:` paths resolve inside `PI_CODING_AGENT_DIR` (default
 `~/.pi/agent`), `~` local paths expand against the runtime home, and relative
 local paths resolve against the real directory containing the config file.
@@ -709,6 +714,10 @@ persona on the **current branch** then takes precedence over the explicit id;
 without one, initialization uses the explicit id, the configured default, or
 `larva:none`. A stored persona's unused explicit model is not validated. Restore
 uses the current registry definition, with a notice if its digest changed.
+This stored-persona precedence applies to interactive sessions, not
+Larva-launched children: `LARVA_PI_INITIAL_PERSONA_ID` stays authoritative on
+initialization and `switch_session`. Child `get_state` verifies the active
+persona alongside model and thinking before the prompt is sent.
 
 Larva reconstructs persona and self-switch mode from
 `ctx.sessionManager.getBranch()`, never abandoned branches returned by
@@ -1459,12 +1468,15 @@ Native Pi extension invocation continues using its captured native launch identi
 The usual Larva CLI, persona registry, model routing and child capsule settings
 still apply.
 
-External hosts do not need a synthetic parent Pi session. Omit `parent_persona_id`
-to admit any valid resolved target persona, or supply it on `larva_subagent` to
-resolve and enforce that parent's `can_spawn` boolean/whitelist. The optional
-`LARVA_MCP_PARENT_PERSONA` environment setting supplies a default parent ID.
-An admitted parent's ID reaches the child as `LARVA_PI_PARENT_PERSONA_ID`.
-The native extension's active-parent authority checks remain unchanged.
+An external MCP root needs no synthetic parent Pi session. A per-call
+`parent_persona_id` overrides `LARVA_MCP_PARENT_PERSONA`; a blank environment
+value counts as unset. With a selector, the resolved parent's `can_spawn` applies;
+without one, the host grants root authority. At descendant depths, authority
+instead binds to `LARVA_PI_INITIAL_PERSONA_ID` and its `can_spawn`; a missing ID
+or conflicting selector fails admission. An admitted parent's ID reaches the
+child as `LARVA_PI_PARENT_PERSONA_ID`. Stdio rejects explicitly blank subagent
+arguments with `LARVA_BAD_INPUT` before importing `larva.ts`; blank
+`search_mentions` queries still list candidates.
 
 `larva_subagent` defaults to an immediate accepted receipt for parallel fan-out.
 Use `wait_for_completion: true` for a single call that waits for terminal output.
@@ -1533,8 +1545,11 @@ Native Pi has a `larva:none` default for fresh sessions unless an explicit
 startup persona or restorable session persona is present. Loading the extension is
 capability, not identity; it does not imply a hidden `general` persona.
 
-When the active parent persona and Pi tool policy allow subagents, the extension
-exposes these model-facing tools:
+The extension exposes these model-facing tools subject to Pi tool policy.
+Native spawn admission also requires an active persona. By default its
+`can_spawn` applies; `root_session_spawn: "allow"` bypasses only that check at
+depth 0. See the [six-stage admission order and hard lineage bounds](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#spawn-admission-and-lineage-spec-v4)
+for `LARVA_PI_SUBAGENT_DEPTH` and `LARVA_PI_ANCESTOR_TASK_IDS`.
 
 ```text
 larva_subagent(persona_id, task, task_id?, no_progress_timeout_ms?)
@@ -1748,8 +1763,10 @@ authoritative for this indicator or any orchestration decision.
 non-empty renderer-safe reason bounded to 500 normalized code points. Cancellation
 must target only that child: it must not abort the parent agent, reset every child,
 delete child session files, cancel siblings, accept aliases, or use fuzzy
-matching. The adapter sends child RPC abort, waits 1500 ms, and kills the child
-process only if it has not exited after that grace period. If the model-facing
+matching. The adapter sends child RPC abort, closes stdin when it settles, and
+sends at most one `SIGTERM` after 1,500 ms if the child is still alive. See
+[kernel-pipe self-exit and the descendant capsule manifest](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules).
+If the model-facing
 cancel tool returns a terminal result (`cancelled`, `success`, or `failed`), the
 duplicate terminal callback is suppressed; if it returns non-terminal
 `cancelling`, the eventual terminal result still delivers one callback. User
@@ -1762,8 +1779,9 @@ keyed by the public `task_id` once known. `moveSubagentRunToTaskId` transfers
 startup records to that public key, `activeSubagentRunByTaskId` owns exact lookup,
 and `cancelSubagentByTaskId` owns targeted cancellation. Terminal states are
 immutable for control purposes: stale or late child completions must not duplicate
-callbacks or revive cancelled tasks. Same-process duplicate resumes of an active
-`task_id` return `LARVA_SESSION_BUSY`.
+callbacks or revive cancelled tasks. Resumes targeting an ancestor or a run
+still owned by this process return `LARVA_SESSION_BUSY`; ownership lasts through
+cleanup, not just until the terminal result.
 
 Failure and cancellation paths return renderer-safe Pi ToolResult wrappers with
 stable error text in `content` and machine-readable state in `details`. Existing
@@ -1965,7 +1983,11 @@ Every emitted child JSONL record is bounded before Pi's captured raw writer send
 it. Oversized progress and full `agent_end.messages` become bounded metadata;
 `willRetry` and bounded provider/runtime type/message remain. Modern execution
 settles only on `agent_settled`, so retry, compaction retry, and continuation work
-cannot end on an earlier `agent_end`.
+cannot end on an earlier `agent_end`. The multi-hop settlement barrier also
+waits for descendant runs and callback continuations, active invocations, and
+pending persona-switch continuations. Recognized descendant activity relays
+upward as `larva_subagent_progress` to reset watchdogs without adding text.
+See the [RPC settlement contract](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-stream-retention-and-memory-safety).
 
 The parent reads stdout with a byte-counted LF decoder rather than Node
 `readline`. It accepts CRLF by stripping one trailing CR, keeps U+2028/U+2029
@@ -2223,6 +2245,11 @@ the reference contract: `prompt_max_65536_utf8_bytes`,
 `lifecycle_fork_stale_context_suppresses_result`,
 `terminal_race_first_terminal_state_wins`, `terminal_race_at_most_one_result`,
 and `terminal_race_late_timeout_cancel_stale_ignored`.
+
+Internal persona invocation shares the hard lineage and lifecycle mechanisms,
+not the optional spawn policy: `root_session_spawn`, `max_depth`, and
+`max_active_runs` do not apply. `LARVA_PI_PERSONA_INVOCATION=1` selects bounded
+projection for RPC records over 1 MiB without disk output artifacts.
 
 See the authoritative design document for the strict event payloads, state
 machine, and boundaries:

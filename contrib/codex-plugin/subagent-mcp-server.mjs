@@ -30,7 +30,7 @@ registerHooks({
 let runtimePromise;
 const getRuntime = () => (runtimePromise ??= import('./larva.ts'));
 
-const string = { type: 'string', minLength: 1 };
+const string = { type: 'string', pattern: '\\S' }; // Nonblank after trim, without changing the value.
 const integer = (minimum, maximum) => ({ type: 'integer', minimum, maximum });
 const ids = { type: 'array', items: string, minItems: 1, maxItems: 25, uniqueItems: true };
 const timeout = integer(0, 86400000);
@@ -52,7 +52,7 @@ tools.push({
   description: 'Search registered Larva personas for composer @-mention completion.',
   inputSchema: {
     type: 'object',
-    properties: { query: { type: 'string' }, preload: { type: 'boolean' }, path: { type: 'array', items: string } },
+    properties: { query: { type: 'string' }, preload: { type: 'boolean' }, path: { type: 'array', items: { type: 'string', minLength: 1 } } },
     required: ['query'],
     additionalProperties: false,
   },
@@ -103,7 +103,7 @@ function badInput(message) {
 }
 function validValue(value, schema) {
   if (schema.enum && !schema.enum.includes(value)) return false;
-  if (schema.type === 'string') return typeof value === 'string' && value.length >= (schema.minLength ?? 0);
+  if (schema.type === 'string') return typeof value === 'string' && value.length >= (schema.minLength ?? 0) && (schema.pattern === undefined || new RegExp(schema.pattern).test(value));
   if (schema.type === 'boolean') return typeof value === 'boolean';
   if (schema.type === 'integer') return Number.isSafeInteger(value) && value >= schema.minimum && value <= schema.maximum;
   if (schema.type === 'array') return Array.isArray(value) && value.length >= (schema.minItems ?? 0) && value.length <= (schema.maxItems ?? Infinity) && (!schema.uniqueItems || new Set(value).size === value.length) && value.every(item => validValue(item, schema.items));

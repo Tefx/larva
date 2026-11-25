@@ -38,6 +38,12 @@ def test_subagent_reload_handoff() -> None:
     assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
+def _decode_runtime_stdout(stdout: str) -> dict[str, Any]:
+    # Launched-parent progress is emitted as RPC records beside the harness result.
+    progress = '{"type":"larva_subagent_progress"}'
+    return json.loads("\n".join(line for line in stdout.split("\n") if line != progress))
+
+
 def _run_node(tmp_path: Path, script: str, *, timeout: float = 20.0) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
@@ -52,7 +58,7 @@ def _run_node(tmp_path: Path, script: str, *, timeout: float = 20.0) -> dict[str
         timeout=timeout,
     )
     assert completed.returncode == 0, completed.stderr
-    return json.loads(completed.stdout)
+    return _decode_runtime_stdout(completed.stdout)
 
 
 def _node_prelude(tmp_path: Path) -> str:
@@ -118,7 +124,7 @@ def _node_prelude(tmp_path: Path) -> str:
             function send(value) {{ process.stdout.write(JSON.stringify(value) + "\\\\n"); }}
             rl.on("line", async (line) => {{
               const msg = JSON.parse(line);
-              if (msg.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\\\n"); send({{ id: msg.id, success: true, data: {{ sessionFile, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
+              if (msg.type === "get_state") {{ await writeFile(sessionFile, "{{}}\\\\n"); send({{ id: msg.id, success: true, data: {{ sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => {{ const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return {{ provider: route.slice(0, slash), id: route.slice(slash + 1) }}; }})(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING }} }}); }}
               else if (msg.type === "switch_session") {{ send({{ id: msg.id, success: true, data: {{ cancelled: false }} }}); }}
               else if (msg.type === "prompt") {{
                 send({{ id: msg.id, success: true }});
@@ -903,6 +909,14 @@ def test_native_panel_rpc_agent_end_settlement_and_callback_remain_distinct(tmp_
           import { pathToFileURL } from "node:url";
           const mod = await import(pathToFileURL(process.env.LARVA_PI_EXTENSION_ENTRY).href);
           mod.installChildRpcFrameWriterForTests(process.env);
+          const [provider, id] = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/");
+          const persona = await mod.commitPersona(process.env.LARVA_PI_INITIAL_PERSONA_ID, {
+            env: process.env,
+            modelRegistry: { find: () => ({ provider, modelId: id }) },
+            setModel: () => true,
+            getAllTools: () => [],
+          });
+          if (!persona.ok) throw new Error(persona.error.message);
           const root = process.argv[process.argv.length - 1];
           await mkdir(root, { recursive: true });
           const sessionFile = join(root, "native-modern.jsonl");
@@ -915,7 +929,6 @@ def test_native_panel_rpc_agent_end_settlement_and_callback_remain_distinct(tmp_
             if (msg.type === "get_state") {
               await writeFile(sessionFile,
                 JSON.stringify({ type: "session", version: 3, id: "modern" }) + "\\n");
-              const [provider, id] = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/");
               response(msg, {
                 sessionFile, model: { provider, id },
                 thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING,
@@ -1060,7 +1073,7 @@ def test_larva_subagent_terminal_log_preserves_process_local_tool_snapshots(tmp_
           function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
           rl.on("line", async (line) => {
             const msg = JSON.parse(line);
-            if (msg.type === "get_state") { await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "fixture-streaming" }) + "\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (msg.type === "get_state") { await writeFile(sessionFile, JSON.stringify({ type: "session", version: 3, id: "fixture-streaming" }) + "\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
             else if (msg.type === "prompt") {
               send({ id: msg.id, success: true });
@@ -1164,7 +1177,7 @@ def test_larva_subagent_background_indicator_count_only_expected_red(tmp_path: P
           function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
           rl.on("line", async (line) => {
             const msg = JSON.parse(line);
-            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
             else if (msg.type === "prompt") { send({ id: msg.id, success: true }); setTimeout(() => send({ type: "agent_end" }), 400); }
             else if (msg.type === "get_last_assistant_text") { send({ id: msg.id, success: true, data: { text: "background indicator final output" } }); setTimeout(() => process.exit(0), 1); }
@@ -1534,8 +1547,8 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
                 return;
               }
               if (msg.type === "get_state") {
-                if (scenario === "new-session-protocol-failure") send({ id: msg.id, success: true, data: { sessionFile: outsideFile } });
-                else { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+                if (scenario === "new-session-protocol-failure") send({ id: msg.id, success: true, data: { sessionFile: outsideFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID } });
+                else { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
               } else if (msg.type === "switch_session") {
                 if (scenario === "resume-failure") { send({ id: msg.id, success: false }); keepAlive(); }
                 else send({ id: msg.id, success: true, data: { cancelled: false } });
@@ -1604,8 +1617,9 @@ def test_larva_subagent_child_rpc_terminal_paths_reap_adapter_owned_processes(tm
             const terminal = result.status === "accepted"
               ? await waitFor(() => mod.subagentPresentationLogForTests().find((entry) => entry.task_id === result.task_id && ["success", "failed", "cancelled"].includes(entry.status)), 1500)
               : result;
-            await sleep(50);
-            const outcome = { status: terminal?.status ?? result.status, errorCode: terminal?.error?.code ?? result.error?.code ?? null, orphan: await processExists(pidFile) };
+            // Terminal presentation can precede process cleanup.
+            const reaped = await waitFor(async () => !(await processExists(pidFile)), 3000);
+            const outcome = { status: terminal?.status ?? result.status, errorCode: terminal?.error?.code ?? result.error?.code ?? null, orphan: !reaped };
             if (name === "provider-transport-failure") {
               outcome.errorMessage = terminal?.error?.message ?? result.error?.message ?? null;
               try {
@@ -1678,7 +1692,7 @@ def test_larva_subagent_wait_and_select_respect_abort_signal(tmp_path: Path) -> 
           const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
           rl.on("line", async (line) => {
             const message = JSON.parse(line);
-            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (message.type === "switch_session") { send({ id: message.id, success: true, data: { cancelled: false } }); }
             else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
             else if (message.type === "abort") { send({ id: message.id, success: true, data: {} }); setTimeout(() => process.exit(0), 1); }
@@ -1761,7 +1775,7 @@ def test_larva_subagent_exact_cancel_owns_aborted_agent_end_without_final_text_p
             await record({ rx: message.type });
             if (message.type === "get_state") {
               await writeFile(sessionFile, "{}\\\\n", "utf8");
-              send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
+              send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
             } else if (message.type === "prompt") {
               send({ id: message.id, success: true, data: {} });
             } else if (message.type === "abort") {
@@ -1842,7 +1856,7 @@ def test_larva_subagent_failed_agent_end_beats_late_exact_cancel(tmp_path: Path)
             await record({ rx: message.type });
             if (message.type === "get_state") {
               await writeFile(sessionFile, "{}\\\\n", "utf8");
-              send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
+              send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } });
             } else if (message.type === "prompt") {
               send({ id: message.id, success: true, data: {} });
               setTimeout(async () => {
@@ -2360,7 +2374,7 @@ def test_larva_subagent_console_c_key_confirms_and_cancels_only_selected_task(tm
           const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
           rl.on("line", async (line) => {
             const message = JSON.parse(line);
-            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (message.type === "switch_session") { send({ id: message.id, success: true, data: { cancelled: false } }); }
             else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
             else if (message.type === "abort") { send({ id: message.id, success: true, data: {} }); setTimeout(() => process.exit(0), 10); }
@@ -3429,7 +3443,7 @@ def test_subagent_log_overlay_command_green_without_live_credentials() -> None:
         timeout=10,
     )
     assert completed.returncode == 0, completed.stderr
-    payload = json.loads(completed.stdout)
+    payload = _decode_runtime_stdout(completed.stdout)
     gate = payload["runtime"]["hardGates"]["subagentLogOverlayCommand"]
 
     assert gate["evidence"]["requiredCommand"] == "larva-subagent"
@@ -3505,7 +3519,7 @@ def _run_runtime_smoke_allow_expected_red(scenario: str) -> tuple[dict[str, Any]
         timeout=120 if scenario == "async-subagent-contract" else 16,
     )
     assert completed.stdout.strip(), completed.stderr
-    return json.loads(completed.stdout), completed.returncode, completed.stderr
+    return _decode_runtime_stdout(completed.stdout), completed.returncode, completed.stderr
 
 
 def _subagent_selector_streaming_payload(*, with_proof: bool = False) -> dict[str, Any]:
@@ -3745,7 +3759,7 @@ def test_async_subagent_real_tool_context_pushes_callback_via_pi_send_message_ex
           function send(value) { process.stdout.write(JSON.stringify(value) + "\\\\n"); }
           rl.on("line", async (line) => {
             const msg = JSON.parse(line);
-            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (msg.type === "get_state") { await writeFile(sessionFile, "{}\\\\n"); send({ id: msg.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: (() => { const route = process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI; const slash = route.indexOf("/"); return { provider: route.slice(0, slash), id: route.slice(slash + 1) }; })(), thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (msg.type === "switch_session") { send({ id: msg.id, success: true, data: { cancelled: false } }); }
             else if (msg.type === "prompt") { send({ id: msg.id, success: true }); }
             else if (msg.type === "abort") { send({ id: msg.id, success: true }); process.exit(0); }
@@ -4128,7 +4142,7 @@ def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not
           const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
           rl.on("line", async (line) => {
             const message = JSON.parse(line);
-            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: { provider: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/")[0], id: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/").slice(1).join("/") }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: { provider: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/")[0], id: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/").slice(1).join("/") }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); }
             else if (message.type === "abort") { process.stdout.end(); setTimeout(() => process.exit(0), 120); }
           });
@@ -4146,7 +4160,7 @@ def test_async_subagent_exact_cancel_stdout_close_before_agent_end_is_cancel_not
           const send = (value) => process.stdout.write(JSON.stringify(value) + "\\\\n");
           rl.on("line", async (line) => {
             const message = JSON.parse(line);
-            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, model: { provider: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/")[0], id: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/").slice(1).join("/") }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
+            if (message.type === "get_state") { await writeFile(sessionFile, "{}\\\\n", "utf8"); send({ id: message.id, success: true, data: { sessionFile, persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID, model: { provider: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/")[0], id: process.env.LARVA_PI_INITIAL_PERSONA_MODEL_FROM_CLI.split("/").slice(1).join("/") }, thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING } }); }
             else if (message.type === "prompt") { send({ id: message.id, success: true, data: {} }); process.stdout.end(); setTimeout(() => process.exit(0), 120); }
             else if (message.type === "abort") { process.exit(0); }
           });
@@ -4321,6 +4335,7 @@ def test_larva_subagent_no_progress_watchdog_runtime_contract(tmp_path: Path) ->
               const slash = route.indexOf("/");
               send({ id: message.id, success: true, data: {
                 sessionFile,
+                persona_id: process.env.LARVA_PI_INITIAL_PERSONA_ID,
                 model: { provider: route.slice(0, slash), id: route.slice(slash + 1) },
                 thinkingLevel: process.env.LARVA_PI_CHILD_REQUESTED_THINKING,
               } });

@@ -136,11 +136,25 @@ Optional `LARVA_PI_MODEL_MAP_FILE` and `LARVA_PI_SUBAGENT_CONFIG_FILE` select
 adapter-local configuration. `LARVA_PI_CHILD_SESSION_DIR` selects persistent
 child history. `PI_CODING_AGENT_DIR` selects Pi agent state. Use absolute paths.
 
-The external server supplies `externalHostCanSpawn: true`; it needs no active
-native Pi parent persona. Set `LARVA_MCP_PARENT_PERSONA` to enforce a resolved
-parent's `can_spawn`, or pass `parent_persona_id` per spawn/resume call (takes
-precedence). Without either, the external host supplies spawn authority.
-Native Pi's active-persona authority rules remain unchanged.
+The server supplies `externalHostCanSpawn: true`. At depth 0 it needs no native
+Pi parent persona. Set `LARVA_MCP_PARENT_PERSONA` to enforce a resolved parent's
+`can_spawn`, or pass `parent_persona_id` per spawn/resume call (takes precedence).
+A blank environment value counts as unset; without a selector, the external
+host supplies root authority. At descendant depths, authority instead binds to
+`LARVA_PI_INITIAL_PERSONA_ID` and its `can_spawn`; a missing ID or conflicting
+selector fails admission. A resumed child keeps its launch persona on
+`switch_session`, and the runtime verifies it with `get_state` before prompting.
+
+The adapter's closed `subagent-runtime.json` accepts `schema_version: 1`,
+`extension_sources`, and optional `root_session_spawn` (`"persona"` by default,
+or `"allow"`), `max_depth`, and `max_active_runs` (integers in `1..100` when
+present). Unknown keys and invalid values return `LARVA_SUBAGENT_CONFIG_INVALID`.
+The two limits apply to MCP subagent spawns; `root_session_spawn` controls only
+native Pi root authority. See the [six-stage admission order](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#spawn-admission-and-lineage-spec-v4)
+for these policy checks and the independent hard `LARVA_PI_SUBAGENT_DEPTH` and
+`LARVA_PI_ANCESTOR_TASK_IDS` wire bounds. The separate [Pi extension persona invocation](../../docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md#internal-reuse)
+uses the same launch mechanism but is not an MCP tool and does not use this
+spawn policy.
 
 ### General MCP harnesses (Claude Code, Cursor, and OpenCode)
 
@@ -211,7 +225,13 @@ schema validation, or when listing/reading persona resources. Initialization,
 ping, `tools/list`, `resources/templates/list` and schema-rejected calls
 leave the runtime unloaded (about 42 MB idle RSS in an observed local run;
 platform and Node build affect this figure). Idle EOF exits without importing
-it; after loading starts, shutdown awaits `resetExtensionUI("mcp_shutdown")` to reap children and capsules.
+it. Whitespace-only subagent arguments return `LARVA_BAD_INPUT` before import;
+blank `search_mentions` queries still list candidates. After loading starts,
+shutdown awaits `resetExtensionUI("mcp_shutdown")` to reap children and capsules.
+For modern child RPC, the [`agent_settled` barrier and `larva_subagent_progress` relay](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-stream-retention-and-memory-safety)
+keep delegated work and its continuations accounted for across hops. Abort uses
+stdin close and at most one `SIGTERM` after 1,500 ms; see
+[kernel-pipe self-exit and the descendant capsule manifest](../../docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules).
 
 For one task, `larva_subagent(wait_for_completion: true)` returns terminal
 results in `structuredContent.terminal_outputs` keyed by exact task ID.

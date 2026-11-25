@@ -150951,7 +150951,7 @@ phases:
       - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md#live-activity-panel-and-inline-widget'
 - id: pi_multihop_subagent_mechanism_v4
   name: Multi-Hop Subagent & Mechanism/Policy Separation (Spec v4)
-  status: pending
+  status: done
   gate: All Spec v4 multi-hop subagent mechanism & policy-separation invariants, 6-stage
     admission precedence, lineage wire bounds, resumed child persona authority, multi-hop
     agent_settled barrier, inductive watchdog progress relay, single-signal abort
@@ -150963,7 +150963,7 @@ phases:
   - id: admission-and-lineage
     name: Runtime Config, Lineage Wire, 6-Stage Admission, Resumed Child Persona &
       De-Bloat
-    status: pending
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: contract-and-simplicity]\n\nDeliver:\n- [D1] `contrib/pi-extension/larva.ts:loadSubagentRuntimeConfig`\
       \ — admit optional root keys `root_session_spawn?: \"persona\" | \"allow\"`\
@@ -151050,9 +151050,26 @@ phases:
     - tests/shell/test_pi_extension_contract.py
     - docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-11-25T16:37:40.870310Z'
+    done_at: '2026-11-25T17:06:47.620178+00:00'
+    evidence: 'Implemented Spec v4 runtime config bounds (root_session_spawn, max_depth,
+      max_active_runs), LARVA_PI_SUBAGENT_DEPTH and LARVA_PI_ANCESTOR_TASK_IDS wire
+      validation/propagation across larva_subagent and runPersonaInvocationChild,
+      6-stage admission precedence with synchronous Stage 6 ownership reservation
+      through cleanupChild, resumed child persona authority with get_state persona_id
+      verification, LARVA_PI_PERSONA_INVOCATION=1 projection without disk artifacts,
+      and deleted write-only pendingCommandTypes and abort_controller in contrib/pi-extension/larva.ts
+      plus contract tests in tests/shell/test_pi_extension_contract.py. Rebased commit
+      on main: 947292d893b9d205381c30c00f41bd03255bb37b (original worktree commit
+      fcb05375). Verification passed: UV_PROJECT_ENVIRONMENT=/Users/tefx/Projects/larva/.venv
+      uv run --no-sync pytest -q tests/shell/test_pi_extension_contract.py (175 passed
+      in 119.20s) plus child native Pi 1.6.1 RPC probe. Gaps: Codex mirror sync deferred
+      to consolidate; test-subagent-mcp-server.mjs fixture still needs data.persona_id
+      in get_state (owned by Wave 2 multihop-settlement-and-lifecycle).'
   - id: mcp-stdio-gate-and-docs
     name: Outer MCP Stdio Whitespace Gate & Spec v4 Documentation Sync
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -151135,10 +151152,24 @@ phases:
     - docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md
     - contrib/pi-extension/README.md
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-11-25T16:37:40.871125Z'
+    done_at: '2026-11-25T16:46:50.198270+00:00'
+    evidence: 'Implemented outer MCP stdio whitespace gate in contrib/pi-extension/subagent-mcp-server.mjs
+      and byte-identical contrib/codex-plugin/subagent-mcp-server.mjs (SHA-256 4e620dbfdba174f262cad6d552bedeb75b65d03b931662769baf45b97bef28bb),
+      added discriminating regression coverage in contrib/pi-extension/test-subagent-mcp-server.mjs,
+      and synced Spec v4 contracts in docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
+      docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md, contrib/pi-extension/README.md,
+      and contrib/codex-plugin/README.md. Commit: 773787e48c410d4f32caeee6a02c6be36ad5bac4.
+      Verification passed: node contrib/pi-extension/test-subagent-mcp-server.mjs;
+      UV_PROJECT_ENVIRONMENT=/Users/tefx/Projects/larva/.venv uv run pytest -q tests/shell/test_pi_extension_contract.py
+      -k test_subagent_runtime_config_docs_preserve_allowlist_and_tool_policy_boundaries.
+      Gaps: outer stdio gate verified; multi-hop runtime behavior is owned by admission-and-lineage
+      and multihop-settlement-and-lifecycle.'
   - id: multihop-settlement-and-lifecycle
     name: Multi-Hop RPC Settlement Barrier, Watchdog Relay, Single-Signal Abort &
       Capsule Manifest
-    status: pending
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       [REQUIRES_SKILL: contract-and-simplicity]\n\nDeliver:\n- [S2-PROMPT] `contrib/pi-extension/larva.ts:{runChildSequence,runPersonaInvocationChild}`\
       \ — if RPC `prompt` succeeds with `data.disposition === \"handled\"`, fail closed\
@@ -151215,9 +151246,27 @@ phases:
     depends_on:
     - admission-and-lineage
     agent: node-typescript-engineer
+    claimed_by: node-typescript-engineer
+    claimed_at: '2026-11-25T17:07:02.049545Z'
+    done_at: '2026-11-25T17:46:29.439180+00:00'
+    evidence: 'Implemented Spec v4 multi-hop settlement barrier (provisional agent_end
+      held until agent_settled, descendant obligation barrier, setImmediate late-steer
+      idle re-drive, aborted===true descendant reap and LARVA_CHILD_RUNTIME_FAILED
+      without get_last_assistant_text), prompt data.disposition===handled fail-closed
+      check across both child launch paths, inductive larva_subagent_progress watchdog
+      relay without presentation text deltas, single-signal abort (stdin close + single
+      SIGTERM at 1,500ms), stdin-close self-exit timer in child-rpc-frame-preload.mjs,
+      pre-spawn $LARVA_PI_CAPSULE_ROOT/descendants/ manifest & ancestor reap in cleanupChild,
+      resetExtensionUI awaiting all in-flight cleanups, and Wave 1 handoff fix adding
+      data.persona_id to test-subagent-mcp-server.mjs get_state mock. Commit: 6936cb269cbd7c501a336c2abde66822dceba177.
+      Verification passed: /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      -x (179 passed), node contrib/pi-extension/test-subagent-mcp-server.mjs (passed),
+      and installed Pi 1.6.1 launch/RPC handshake probe (4 passed). Gaps: multi-hop
+      settlement verified with controlled RPC peers; Codex plugin mirror sync and
+      full suite consolidation belong to Wave 3 consolidate.'
   - id: consolidate
     name: Codex Plugin Byte-Parity Sync & Post-Merge Consolidation
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -151252,7 +151301,7 @@ phases:
 
       Boundary:
 
-      - Owner: `node-typescript-engineer`
+      - Owner: `software-engineer`
 
       - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/pi-extension/subagent-mcp-server.mjs`,
       `contrib/pi-extension/child-rpc-frame-preload.mjs`, `contrib/codex-plugin/larva.ts`,
@@ -151292,10 +151341,30 @@ phases:
     depends_on:
     - mcp-stdio-gate-and-docs
     - multihop-settlement-and-lifecycle
-    agent: node-typescript-engineer
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T17:48:53.578550Z'
+    done_at: '2026-11-25T18:08:40.656174+00:00'
+    evidence: 'Synchronized contrib/codex-plugin/{larva.ts,subagent-mcp-server.mjs,child-rpc-frame-preload.mjs}
+      byte-identically with contrib/pi-extension/ (SHA-256: larva.ts=0b079cfb6092961b4772ceee02782e19a6e9ecb98e090c5d7cde4b480d8b4ef1,
+      subagent-mcp-server.mjs=4e620dbfdba174f262cad6d552bedeb75b65d03b931662769baf45b97bef28bb,
+      child-rpc-frame-preload.mjs=f7661a531e6c37fde1f6034c0f8accfc2391a91db7f7154b97fd5eb1af95fbe0),
+      updated tests/shell/test_codex_plugin_contract.py, and verified zero diff on
+      contracts/persona_spec.schema.json and src/larva/core/** plus absence of pendingCommandTypes,
+      abort_controller, and isLarvaPiLaunched. Commit: 69c19b1c132eccb79ee1525f6530ce392916c83e.
+      Verification passed: pytest -q -x tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py (182 passed), node contrib/pi-extension/test-subagent-mcp-server.mjs
+      (passed), invar guard (passed), tests/core+tests/app (300 passed). Gap discovered
+      outside consolidate scope.allowed_paths: pre-existing mock RPC child get_state
+      fixtures in contrib/pi-extension/test-subagent-rpc-memory-bound.mjs, test-subagent-reload-handoff.mjs,
+      test-subagent-sessions-helper.mjs, test-subagent-rpc-real-pi-0-84-1.mjs, tests/fixtures/pi/{blocking,completing}-rpc-child.mjs,
+      tests/shell/{test_pi_extension_subagent_ux.py,test_pi_extension_subagent_model_isolation.py,test_pi_extension_real_runtime.py},
+      and scripts/pi-extension-runtime-smoke.mjs omit data.persona_id and fail v4
+      observeVerifiedChildRoute before prompting; escalating to vectl-planner to add
+      a focused fixture-alignment step before acceptance-gate.'
   - id: acceptance-gate
     name: Spec v4 Full Regression, Byte-Parity & Invar Acceptance Gate
-    status: pending
+    status: done
     description: 'step_type: gate
 
       repo_change_policy: no_repo_change
@@ -151314,8 +151383,8 @@ phases:
 
       - [GATE-3] Execute and record passing receipts for the full pytest suite (`uv
       run pytest -q`), Node extension/MCP test harnesses (`node contrib/pi-extension/test-subagent-mcp-server.mjs`,
-      `node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`), and Invar guard
-      (`uv run invar guard`).
+      `node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`, `node contrib/pi-extension/test-subagent-reload-handoff.mjs`),
+      and Invar guard (`uv run invar guard`).
 
 
       Implementation Notes (Non-Binding):
@@ -151339,12 +151408,13 @@ phases:
 
       Admit:
 
-      - Witnessed inputs: completed `consolidate` step and Spec v4 requirements.
+      - Witnessed inputs: completed `consolidate`, `align-stale-rpc-mock-fixtures`,
+      and `reload-state-backfill-fix` steps and Spec v4 requirements.
 
       - Verification: `git diff --exit-code contracts/persona_spec.schema.json src/larva/core
       && uv run pytest -q && node contrib/pi-extension/test-subagent-mcp-server.mjs
-      && node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs && uv run invar
-      guard`
+      && node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs && node contrib/pi-extension/test-subagent-reload-handoff.mjs
+      && uv run invar guard`
 
 
       Recovery:
@@ -151362,5 +151432,591 @@ phases:
     - tests/shell/test_codex_plugin_contract.py
     - contrib/pi-extension/test-subagent-mcp-server.mjs
     depends_on:
-    - consolidate
+    - reload-state-backfill-fix
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-11-25T19:14:08.573728Z'
+    done_at: '2026-11-25T20:50:38.093566+00:00'
+    evidence: 'DELTA #4 gate PASS (POSITIVE_GATE_EVIDENCE) on git:19b2d69c2eff54cb5b06f6a2c5c36ee349c3d0b1
+      validated via review_report_validator.py (/tmp/vectl-gate-report-v4-delta4.json,
+      binding /tmp/vectl-gate-binding-v4-delta4.json): all 7 bound requirements PROVEN
+      (GATE-1..3, S3-ABORT-CAPSULE, ORPHAN-LIVENESS, PARENT-OWNERSHIP, SYNC-MIRRORS);
+      pre/post-renameSync interruption probes, 3-hop normal/stopped/busy teardown,
+      sticky-abort living-parent rmSync/EACCES ownership, 188 pytest cases (187 contract
+      + 1 native-capsule-removal), all 5 Node harnesses, and byte-identical Pi/Codex
+      parity all passed.'
+  - id: align-stale-rpc-mock-fixtures
+    name: Align Stale Mock RPC Child get_state Fixtures with Spec v4 Route Verification
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [FIXTURE-1] `contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`, `contrib/pi-extension/test-subagent-reload-handoff.mjs`,
+      `contrib/pi-extension/test-subagent-sessions-helper.mjs`, `contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs`,
+      `scripts/pi-extension-runtime-smoke.mjs` — update mock RPC child `get_state`
+      response fixtures (which bypass `larva.ts` `transformChildRpcSerializedRecord`)
+      to include `data.persona_id` matching the requested child persona (`process.env.LARVA_PI_INITIAL_PERSONA_ID`
+      or `--larva-persona` CLI arg), preserving any explicit negative-test cases.
+
+      - [FIXTURE-2] `tests/fixtures/pi/blocking-rpc-child.mjs`, `tests/fixtures/pi/completing-rpc-child.mjs`,
+      `tests/shell/test_pi_extension_subagent_ux.py`, `tests/shell/test_pi_extension_subagent_model_isolation.py`,
+      `tests/shell/test_pi_extension_real_runtime.py` — update standalone and inline
+      mock RPC child `get_state` response payloads to include `data.persona_id` resolved
+      from `process.env.LARVA_PI_INITIAL_PERSONA_ID` or `--larva-persona` CLI arg
+      (preserving explicit negative-test mismatch/missing-persona cases) without weakening
+      `observeVerifiedChildRoute` or modifying production runtime files.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Real Pi children emit `persona_id` via `transformChildRpcSerializedRecord`
+      in `larva.ts`, whereas standalone mock RPC child scripts synthesize raw `get_state`
+      responses directly and must echo the launched persona id so `observeVerifiedChildRoute`
+      succeeds before prompting.
+
+      - Do not modify `contrib/pi-extension/larva.ts`, `contrib/codex-plugin/larva.ts`,
+      `contracts/**`, or `src/larva/core/**`.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`,
+      `contrib/pi-extension/test-subagent-reload-handoff.mjs`, `contrib/pi-extension/test-subagent-sessions-helper.mjs`,
+      `contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs`, `tests/fixtures/pi/blocking-rpc-child.mjs`,
+      `tests/fixtures/pi/completing-rpc-child.mjs`, `tests/shell/test_pi_extension_subagent_ux.py`,
+      `tests/shell/test_pi_extension_subagent_model_isolation.py`, `tests/shell/test_pi_extension_real_runtime.py`,
+      `scripts/pi-extension-runtime-smoke.mjs`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: test/fixture updates only; reversible via `git
+      checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: completed `consolidate` step and Spec v4 `observeVerifiedChildRoute`
+      contract.
+
+      - Verification: `/Users/tefx/Projects/larva/.venv/bin/pytest -q && node contrib/pi-extension/test-subagent-mcp-server.mjs
+      && node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs`
+
+
+      Recovery:
+
+      - Fix any stale mock RPC fixture or regression in-place without touching production
+      runtime files before completing the step.'
+    verification: /Users/tefx/Projects/larva/.venv/bin/pytest -q && node contrib/pi-extension/test-subagent-mcp-server.mjs
+      && node contrib/pi-extension/test-subagent-rpc-memory-bound.mjs
+    refs:
+    - contrib/pi-extension/test-subagent-rpc-memory-bound.mjs
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - contrib/pi-extension/test-subagent-sessions-helper.mjs
+    - contrib/pi-extension/test-subagent-rpc-real-pi-0-84-1.mjs
+    - tests/fixtures/pi/blocking-rpc-child.mjs
+    - tests/fixtures/pi/completing-rpc-child.mjs
+    - tests/shell/test_pi_extension_subagent_ux.py
+    - tests/shell/test_pi_extension_subagent_model_isolation.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    depends_on:
+    - consolidate
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T18:12:02.661188Z'
+    done_at: '2026-11-25T19:05:03.025102+00:00'
+    evidence: 'Aligned all 10 stale mock RPC child get_state fixtures (contrib/pi-extension/test-subagent-{rpc-memory-bound,reload-handoff,sessions-helper,rpc-real-pi-0-84-1}.mjs,
+      scripts/pi-extension-runtime-smoke.mjs, tests/fixtures/pi/{blocking,completing}-rpc-child.mjs,
+      tests/shell/test_pi_extension_{subagent_ux,subagent_model_isolation,real_runtime}.py)
+      to emit data.persona_id matching the requested child persona while preserving
+      negative-test cases. Rebased commit on main: 5a64bc61305de367da4b75e6ee0ebe395bca5e6c.
+      Verification: 4 Node harnesses (mcp-server, rpc-memory-bound, reload-handoff,
+      rpc-real-pi-0-84-1) passed; invar guard passed; targeted pytest rerun passed
+      9 tests. Gap handed off to reload-state-backfill-fix: test-subagent-sessions-helper.mjs
+      failed because resetExtensionUI returns before collectAcceptedSubagentTerminalState
+      sets record.ownership_settled=true in larva.ts; full pytest suite will be re-verified
+      at acceptance-gate on main (where contrib/pi-extension/node_modules exists).'
+  - id: reload-state-backfill-fix
+    name: Backfill SharedSubagentRuntimeState Spec v4 Fields Across Reload & Guard
+      childSettlementBarrier
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [RELOAD-1] `contrib/pi-extension/larva.ts:sharedSubagentState` (`:777-804`)
+      — backfill all Spec v4 fields on `sharedSubagentState` (`sharedSubagentState.childCleanupTasks
+      ??= new Map()`, `sharedSubagentState.childAbortTasks ??= new WeakMap()`, `sharedSubagentState.childCapsuleManifests
+      ??= new WeakMap()`, `sharedSubagentState.childSigtermResults ??= new WeakMap()`,
+      `sharedSubagentState.childSettlementBarrier ??= null`) before destructuring
+      `sharedSubagentState` when `previousSubagentState?.reloadPendingHandoff ===
+      true` is reused across `/reload`.
+
+      - [RELOAD-2] `contrib/pi-extension/larva.ts:scheduleChildSettlementCheck` (`:8441`),
+      `settleChildRpcOutboundRecord` (`:8477`), `resetExtensionUI` (`:11684`) — replace
+      strict `=== null` / `!== null` checks on `sharedSubagentState.childSettlementBarrier`
+      with nullish guards (`barrier == null` / `barrier != null`).
+
+      - [RELOAD-3] `contrib/codex-plugin/larva.ts` — sync byte-identically with `contrib/pi-extension/larva.ts`
+      (SHA-256 parity).
+
+      - [RELOAD-4] `contrib/pi-extension/test-subagent-reload-handoff.mjs` — add a
+      discriminating regression test simulating `/reload` from a legacy `globalThis[Symbol.for("larva.pi.subagent.shared-state.v1")]`
+      object missing `childSettlementBarrier` and the four Spec v4 `Map`/`WeakMap`
+      fields, verifying `deliverSubagentResultCallback` and `resetExtensionUI` complete
+      without throwing.
+
+
+      Implementation Notes (Non-Binding):
+
+      - When a pre-v4 runtime sets `reloadPendingHandoff = true` and reloads into
+      Spec v4 `larva.ts`, `previousSubagentState` lacks `childSettlementBarrier` (`undefined`)
+      and the four new `Map`/`WeakMap` fields, causing `barrier === null` at `:8441`
+      to evaluate `false` and throw `TypeError: Cannot read properties of undefined
+      (reading ''parked'')`.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/codex-plugin/larva.ts`,
+      `contrib/pi-extension/test-subagent-reload-handoff.mjs`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: runtime and test updates in `contrib/`; reversible
+      via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: completed `align-stale-rpc-mock-fixtures` step and Spec
+      v4 `SharedSubagentRuntimeState` contract.
+
+      - Verification: `node contrib/pi-extension/test-subagent-reload-handoff.mjs
+      && /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x`
+
+
+      Recovery:
+
+      - Fix any parity or reload-handoff test regression in-place before completing
+      the step.'
+    verification: node contrib/pi-extension/test-subagent-reload-handoff.mjs && /Users/tefx/Projects/larva/.venv/bin/pytest
+      -q tests/shell/test_pi_extension_contract.py tests/shell/test_codex_plugin_contract.py
+      -x
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - contrib/pi-extension/test-subagent-reload-handoff.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_codex_plugin_contract.py
+    depends_on:
+    - align-stale-rpc-mock-fixtures
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T19:05:14.900869Z'
+    done_at: '2026-11-25T19:13:45.664191+00:00'
+    evidence: 'Backfilled all 5 Spec v4 fields (childCleanupTasks, childAbortTasks,
+      childCapsuleManifests, childSigtermResults, childSettlementBarrier) when previousSubagentState
+      is reused across /reload, guarded childSettlementBarrier with == null / != null,
+      fixed cleanupActiveSubagentRegistryForLifecycle/settleSubagentOwnership so resetExtensionUI
+      settles ownership synchronously before returning, synced contrib/codex-plugin/larva.ts
+      byte-identically (SHA-256 72d65d8735e3793d565bf8f2884e0274eb87b0a6f990e9970fcb5870006871eb),
+      and added legacy reload handoff regression test in contrib/pi-extension/test-subagent-reload-handoff.mjs.
+      Commit: 914aa4fa5c64d6eec441d43c8fad17a0ab10bc30. Verification passed: all 5
+      Node harnesses (mcp-server, rpc-memory-bound, reload-handoff, sessions-helper,
+      rpc-real-pi-0-84-1), tests/shell/test_pi_extension_contract.py + tests/shell/test_codex_plugin_contract.py
+      (182 passed), git diff --check, invar guard.'
+  - id: gate-contradiction-repair
+    name: 'Repair Gate Contradictions: Lexical Resume Root, Multi-Hop Orphan Reap
+      Grace & Preload Capsule Ownership'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [GATE-FIX-1] (`D3/S1`, `V4-RESUME-EXACT-ROOT`) In `contrib/pi-extension/larva.ts:larva_subagent`:
+      restore Stage 2 lexical root containment validation (`validateExactPublicTaskIdLexical`,
+      with Darwin `/var` -> `/private/var` physical-root alias retry) before `validateTaskId`
+      so case-folded roots on case-insensitive filesystems fail Stage 2 with `LARVA_BAD_INPUT`
+      and `task_id: null` before launcher admission (`test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch`
+      passes).
+
+      - [GATE-FIX-2] (`S3-ABORT-CAPSULE`, `V4-ORPHAN-TEARDOWN-DEPTH`) In `contrib/pi-extension/larva.ts:reapDescendantCapsules`:
+      wait `SUBAGENT_ABORT_KILL_GRACE_MS` at each recursion level where `names.length
+      > 0` (not only `ancestorRoots.length === 0`) so 3-hop orphan teardown does not
+      delete descendant capsules or return `resetExtensionUI` while depth 2 or depth
+      3 processes are still alive; add a 3-hop orphan teardown regression test in
+      `tests/shell/test_pi_extension_contract.py`.
+
+      - [GATE-FIX-3] (`S3-ABORT-CAPSULE` / `native-capsule-removal`) In `contrib/pi-extension/child-rpc-frame-preload.mjs`:
+      run `removeChildCapsuleRoot(process.env)` only on the orphan self-exit path
+      (`setTimeout` after `stdin` close and `process.ppid === 1` on `exit`) rather
+      than on every normal exit while the parent is alive, so living-parent `cleanupChild`
+      retains single ownership of capsule removal and `native-capsule-removal` hits
+      its fault injection.
+
+      - [GATE-FIX-4] Sync `contrib/codex-plugin/larva.ts` and `contrib/codex-plugin/child-rpc-frame-preload.mjs`
+      byte-identically with `contrib/pi-extension/` (SHA-256 parity).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Remediate the three `acceptance-gate` (`gate.report.v2`) `CONTRADICTION` findings
+      (`V4-RESUME-EXACT-ROOT`, `V4-ORPHAN-TEARDOWN-DEPTH`, and `native-capsule-removal`
+      parent fault bypass) while preserving Spec v4 invariants and Pi/Codex byte parity.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/pi-extension/child-rpc-frame-preload.mjs`,
+      `contrib/codex-plugin/larva.ts`, `contrib/codex-plugin/child-rpc-frame-preload.mjs`,
+      `tests/shell/test_pi_extension_contract.py`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: runtime and contract test updates in `contrib/`
+      and `tests/shell/`; reversible via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: `acceptance-gate` (`gate.report.v2`) finding batch and completed
+      `reload-state-backfill-fix` step.
+
+      - Verification: `/Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_subagent_ux.py::test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch
+      tests/shell/test_pi_extension_real_runtime.py -k "native-capsule-removal" &&
+      /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x`
+
+
+      Recovery:
+
+      - Fix any regression or byte-parity drift in-place before completing the step.'
+    verification: /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_subagent_ux.py::test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch
+      tests/shell/test_pi_extension_real_runtime.py -k "native-capsule-removal" &&
+      /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/child-rpc-frame-preload.mjs
+    - tests/shell/test_pi_extension_contract.py
+    depends_on:
+    - reload-state-backfill-fix
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T19:37:53.926740Z'
+    done_at: '2026-11-25T19:50:50.099257+00:00'
+    evidence: 'Fixed all three acceptance-gate contradictions: (1) restored exact
+      lexical root containment check with Darwin /var->/private/var physical-root
+      alias in larva_subagent Stage 2 so case-folded roots fail with LARVA_BAD_INPUT/task_id:null;
+      (2) updated reapDescendantCapsules to wait SUBAGENT_ABORT_KILL_GRACE_MS at every
+      nonempty descendant level and added a 3-hop orphan teardown regression test
+      in tests/shell/test_pi_extension_contract.py; (3) restricted child-rpc-frame-preload.mjs
+      removeChildCapsuleRoot to orphan self-exit (stdin-close timeout + ppid===1)
+      so living-parent cleanupChild retains capsule ownership for native-capsule-removal;
+      (4) synced contrib/codex-plugin/{larva.ts,child-rpc-frame-preload.mjs} byte-identically
+      (SHA-256 larva.ts=4caf88f4e3b653455b510ebd40bfa8f50af394611d769174459a3068bf7c9de5,
+      child-rpc-frame-preload.mjs=741c4c33d28d4773f880cc165dca95dc2b7047612d9ca9413a227145d14a491a).
+      Commit: 098a09affaf0396e177d861239f41ab5fd258273. Verification passed: test_pi_extension_contract.py
+      + test_codex_plugin_contract.py (183 passed), test_larva_subagent_resume_task_id_path_taxonomy_prevents_launch,
+      native-capsule-removal, and all 4 Node harnesses.'
+  - id: orphan-liveness-and-ownership-fix
+    name: Reconcile Orphan Descendant Liveness & Living-Parent Preload Capsule Ownership
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [ORPHAN-LIVENESS] (`V4-ORPHAN-TEARDOWN-DEPTH`, `GATE-FIX-2`) In `contrib/pi-extension/larva.ts`
+      (`startChild` / `recordDescendantCapsule` / `reapDescendantCapsules`): record
+      `{ capsule_root, pid }` in `$LARVA_PI_CAPSULE_ROOT/descendants/<child>.json`
+      upon spawn, and in `reapDescendantCapsules` reconcile actual OS process liveness
+      (`process.kill(pid, 0)`) across the bounded grace window before removing any
+      descendant capsule or manifest; if any descendant PID remains alive after the
+      bounded grace window expires, retain its capsule and manifest for reconciliation,
+      emit `reportChildCapsuleCleanupFailure`, and return `complete = false` rather
+      than deleting live capsules. Add a regression test in `tests/shell/test_pi_extension_contract.py`
+      proving delayed/stopped intermediate descendants retain their capsules/manifests
+      and emit cleanup failure rather than deleting live capsules.
+
+      - [PARENT-OWNERSHIP] (`V4-LIVING-PARENT-EOF-REMOVAL`, `GATE-FIX-3`) In `contrib/pi-extension/child-rpc-frame-preload.mjs`:
+      run `removeChildCapsuleRoot(process.env)` inside both the `stdin`-close timer
+      and `exit` handler ONLY when `process.ppid === 1` (truly orphaned), so a sticky
+      child with a living parent (`process.ppid !== 1`) still self-exits `143` without
+      deleting its capsule, preserving single-owner living-parent `cleanupChild` removal
+      and `rmSync`/`EACCES` fault injection. Add a sticky-abort living-parent regression
+      test in `tests/shell/test_pi_extension_contract.py`.
+
+      - [SYNC-MIRRORS] Sync `contrib/codex-plugin/larva.ts` and `contrib/codex-plugin/child-rpc-frame-preload.mjs`
+      byte-identically with `contrib/pi-extension/` (SHA-256 parity).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Remediate the two remaining `acceptance-gate` DELTA (`gate.report.v2`) `CONTRADICTION`
+      findings (`V4-ORPHAN-TEARDOWN-DEPTH` / `GATE-FIX-2` and `V4-LIVING-PARENT-EOF-REMOVAL`
+      / `GATE-FIX-3`) while preserving Spec v4 invariants and Pi/Codex byte parity.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/pi-extension/child-rpc-frame-preload.mjs`,
+      `contrib/codex-plugin/larva.ts`, `contrib/codex-plugin/child-rpc-frame-preload.mjs`,
+      `tests/shell/test_pi_extension_contract.py`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: runtime and contract test updates in `contrib/`
+      and `tests/shell/`; reversible via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: `acceptance-gate` DELTA (`gate.report.v2`) finding batch
+      and completed `gate-contradiction-repair` step.
+
+      - Verification: `/Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x && /Users/tefx/Projects/larva/.venv/bin/pytest
+      -q tests/shell/test_pi_extension_real_runtime.py -k "native-capsule-removal"`
+
+
+      Recovery:
+
+      - Fix any regression or byte-parity drift in-place before completing the step.'
+    verification: /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x && /Users/tefx/Projects/larva/.venv/bin/pytest
+      -q tests/shell/test_pi_extension_real_runtime.py -k "native-capsule-removal"
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/child-rpc-frame-preload.mjs
+    - contrib/codex-plugin/larva.ts
+    - contrib/codex-plugin/child-rpc-frame-preload.mjs
+    - tests/shell/test_pi_extension_contract.py
+    depends_on:
+    - gate-contradiction-repair
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T20:01:03.288473Z'
+    done_at: '2026-11-25T20:08:45.083285+00:00'
+    evidence: 'Recorded { capsule_root, pid } in descendant manifests and updated
+      reapDescendantCapsules to reconcile OS liveness (process.kill(pid, 0) -> ESRCH)
+      across the bounded grace window before deleting capsules/manifests (retaining
+      unsettled capsules/manifests and emitting reportChildCapsuleCleanupFailure on
+      live descendants); restricted child-rpc-frame-preload.mjs removeChildCapsuleRoot
+      to process.ppid === 1 (truly orphaned) so living parents retain single capsule-removal
+      ownership even when a sticky child self-exits 143; synced contrib/codex-plugin/{larva.ts,child-rpc-frame-preload.mjs}
+      byte-identically (SHA-256 larva.ts=baabeb601a3ee02d3d6060f84e12bf319d99dcd6357cc0cc125d6a9e0ff18ac6,
+      child-rpc-frame-preload.mjs=e66fe6ea26c2b485187c10a432a6c5baf3e0b760c5fcde431535866e57b3e6bc);
+      added 3-hop stopped-descendant and sticky-abort living-parent regression tests
+      in tests/shell/test_pi_extension_contract.py. Commit: 025830341326fb4b5f48df8cd3399e46602fa376.
+      Verification passed: 185 Pi/Codex contract tests, native-capsule-removal, all
+      5 Node harnesses, invar guard.'
+  - id: descendant-manifest-prespawn-fix
+    name: Publish Pre-Spawn Descendant Capsule Manifest & Reconcile Null-PID Interruption
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [PRESPAWN-MANIFEST] (`V4-DESCENDANT-MANIFEST-PUBLICATION-GAP`) In `contrib/pi-extension/larva.ts`
+      (`startChild`, `recordDescendantCapsule`, `reapDescendantCapsules`): write the
+      descendant capsule manifest `{ capsule_root, pid: null }` strictly before `spawn()`,
+      then update the manifest with `{ capsule_root, pid: child.pid }` immediately
+      after `spawn()` returns a `child.pid` (registering `childCapsuleManifests` in
+      both normal and post-spawn error paths, and removing the pre-spawn manifest
+      only if `spawn()` itself throws with `child === undefined`). In `reapDescendantCapsules`,
+      accept `pid: null | positiveSafeInt`: when `pid === null` (intermediate parent
+      died before PID publication), retain the descendant capsule and manifest, emit
+      `reportChildCapsuleCleanupFailure`, and return `complete = false` rather than
+      deleting or ignoring an unsettled launch. Add a regression test in `tests/shell/test_pi_extension_contract.py`
+      covering pre-PID-publication interruption.
+
+      - [SYNC-MIRRORS] Sync `contrib/codex-plugin/larva.ts` byte-identically with
+      `contrib/pi-extension/larva.ts` (SHA-256 parity).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Remediate `acceptance-gate` DELTA #2 (`gate.report.v2`) `CONTRADICTION` finding
+      `V4-DESCENDANT-MANIFEST-PUBLICATION-GAP` (`S3-ABORT-CAPSULE`, `ORPHAN-LIVENESS`)
+      while preserving Spec v4 invariants and Pi/Codex byte parity.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/codex-plugin/larva.ts`,
+      `tests/shell/test_pi_extension_contract.py`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: runtime and contract test updates in `contrib/`
+      and `tests/shell/`; reversible via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: `acceptance-gate` DELTA #2 (`gate.report.v2`) finding on
+      `V4-DESCENDANT-MANIFEST-PUBLICATION-GAP` and completed `orphan-liveness-and-ownership-fix`
+      step.
+
+      - Verification: `/Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x`
+
+
+      Recovery:
+
+      - Fix any regression or byte-parity drift in-place before completing the step.'
+    verification: /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    depends_on:
+    - orphan-liveness-and-ownership-fix
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T20:16:35.523806Z'
+    done_at: '2026-11-25T20:26:02.967618+00:00'
+    evidence: 'Published pre-spawn descendant capsule manifest { capsule_root, pid:
+      null } strictly before spawn() and updated { capsule_root, pid: child.pid }
+      immediately upon spawn return (cleaning up pre-spawn manifest only if spawn()
+      itself throws with child === undefined, and registering childCapsuleManifests
+      across both normal and post-spawn error paths); updated reapDescendantCapsules
+      to retain capsules/manifests and emit reportChildCapsuleCleanupFailure when
+      pid === null; synced contrib/codex-plugin/larva.ts byte-identically (SHA-256
+      12c7053d230ecdd26932857b3f6e4737033854d394189703fdd705c597571451); added pre-PID-publication
+      interruption regression test in tests/shell/test_pi_extension_contract.py. Commit:
+      fff8cdbf24fbb7deff1fd60b92de08969c7798de. Verification passed: 186 Pi/Codex
+      contract tests, all 5 Node harnesses, invar guard.'
+  - id: atomic-manifest-rename-fix
+    name: Atomic Write-and-Rename Descendant Manifest PID Publication
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [ATOMIC-RENAME] In `contrib/pi-extension/larva.ts` (`startChild` / `recordDescendantCapsule`):
+      replace the `O_TRUNC` in-place manifest rewrite during PID publication with
+      atomic write-and-rename (write `{ capsule_root, pid: child.pid }` to a sibling
+      temp file inside `capsuleRoot`, e.g. `join(capsuleRoot, "manifest.tmp")`, with
+      `mode: 0o600`, then `renameSync(tempPath, manifest)` atomically onto `manifest`,
+      unlinking `tempPath` in `finally` if rename failed), so `manifest` is always
+      either valid `{ capsule_root, pid: null }` or valid `{ capsule_root, pid }`
+      with zero 0-byte truncation window. Add a regression test in `tests/shell/test_pi_extension_contract.py`
+      proving the manifest never passes through a zero-byte/unreadable state during
+      PID publication.
+
+      - [SYNC-MIRRORS] Sync `contrib/codex-plugin/larva.ts` byte-identically with
+      `contrib/pi-extension/larva.ts` (SHA-256 parity).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Remediate `acceptance-gate` DELTA #3 (`gate.report.v2`) `CONTRADICTION` on
+      the `O_TRUNC` zero-byte manifest window during PID publication (`S3-ABORT-CAPSULE`,
+      `ORPHAN-LIVENESS`) while preserving Spec v4 invariants and Pi/Codex byte parity.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`
+
+      - Allowed paths (`scope.allowed_paths`): `contrib/pi-extension/larva.ts`, `contrib/codex-plugin/larva.ts`,
+      `tests/shell/test_pi_extension_contract.py`
+
+      - Blocked paths (`scope.blocked_paths`): `plan.yaml`, `contracts/persona_spec.schema.json`,
+      `src/larva/core/**`, `contrib/pi-extension/package.json`, `contrib/pi-extension/package-lock.json`
+
+      - Material effects & rollback: runtime and contract test updates in `contrib/`
+      and `tests/shell/`; reversible via `git checkout`.
+
+
+      Admit:
+
+      - Witnessed inputs: `acceptance-gate` DELTA #3 (`gate.report.v2`) finding on
+      the `O_TRUNC` zero-byte manifest window during PID publication and completed
+      `descendant-manifest-prespawn-fix` step.
+
+      - Verification: `/Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x`
+
+
+      Recovery:
+
+      - Fix any regression or byte-parity drift in-place before completing the step.'
+    verification: /Users/tefx/Projects/larva/.venv/bin/pytest -q tests/shell/test_pi_extension_contract.py
+      tests/shell/test_codex_plugin_contract.py -x
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/codex-plugin/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    depends_on:
+    - descendant-manifest-prespawn-fix
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-25T20:38:58.984336Z'
+    done_at: '2026-11-25T20:44:42.398951+00:00'
+    evidence: 'Replaced in-place O_TRUNC manifest rewrite during PID publication with
+      atomic staging in capsuleRoot/manifest.tmp (mode 0o600, flag wx) and renameSync
+      onto manifest (unlinking tempPath in finally on failure), guaranteeing zero
+      0-byte window; synced contrib/codex-plugin/larva.ts byte-identically (SHA-256
+      9496e4af7836b9f71c64438382209fd390ccb80f5a555bce8ed5ad9f2140708e); added atomic-rename
+      regression test in tests/shell/test_pi_extension_contract.py. Commit: 137d5db8f86d257ca4c29187c59ffc982e8f9ae7.
+      Verification passed: 187 Pi/Codex contract tests, all 5 Node harnesses, invar
+      static verification.'

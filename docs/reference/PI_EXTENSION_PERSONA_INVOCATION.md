@@ -30,6 +30,25 @@ The invocation mechanism internally reuses existing Larva Pi mechanisms:
 - Lifecycle stale suppression
 - Protocol/internal error handling
 
+`runPersonaInvocationChild` does not use the `larva_subagent` admission policy:
+`root_session_spawn`, `max_depth`, and `max_active_runs` do not constrain an
+invocation. Persona tool policy still applies, and the shared child launcher
+still enforces the hard depth and ancestor bounds on
+[`LARVA_PI_SUBAGENT_DEPTH` and `LARVA_PI_ANCESTOR_TASK_IDS`](PI_EXTENSION_ASYNC_SUBAGENTS.md#spawn-admission-and-lineage-spec-v4).
+
+The launcher sets `LARVA_PI_PERSONA_INVOCATION=1` for invocation children. RPC
+records larger than 1 MiB use a bounded projection rather than the async
+subagent output-artifact path. No disk output artifact is created; oversized
+final text still returns the protocol failure defined below, never a truncated
+success. A successful RPC `prompt` response with `data.disposition: "handled"`
+is also `LARVA_PERSONA_INVOCATION_PROTOCOL_FAILED`, not acceptance.
+
+The invocation shares the child transport's
+[`agent_settled` barrier and progress relay](PI_EXTENSION_ASYNC_SUBAGENTS.md#child-rpc-stream-retention-and-memory-safety)
+and [stdin/capsule cleanup](PI_EXTENSION_ASYNC_SUBAGENTS.md#session-lifecycle-rules).
+An invocation is an outstanding obligation for its spawning child's settlement;
+it does not expose a public task handle or extend the invocation timeout.
+
 ## Event Bus Surface
 The interface is entirely over the event bus:
 - `larva:persona-invocation:request`
