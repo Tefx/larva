@@ -2,27 +2,29 @@
 
 ## Local contract authority
 
-Larva is independent. Opifex is abandoned and supplies no current authority,
-required checkout, schema, conformance input, or approval prerequisite.
-Use `contracts/persona_spec.schema.json`, `src/larva/core/validation_contract.py`,
-`src/larva/core/validate.py`, and `src/larva/core/spec.py` as the local contract
-and enforcement surfaces. Preserve their existing meaning; report discrepancies
-rather than silently broadening admission. See `docs/adr/ADR-003-canonical-requiredness-authority.md`.
-
-All admission paths must reject malformed input, forbidden fields and unknown
-top-level fields. Do not add compatibility aliases or accept-and-clean behavior.
-Schema, typing, validator, transport and documentation changes need meaningful
-consistency checks and malformed-input/drift counterexamples. Historical Opifex
-references record retired decisions and never impose an external prerequisite.
+Larva 0.9 is an independent, single-stack TypeScript package. The binding
+contract is `design/larva-0.9-architecture.md` and
+`contracts/persona_spec.schema.json`. The local types and enforcement live in
+`src/core/errors.ts`, `src/core/types.ts`, `src/core/persona.ts`,
+`src/core/config.ts`, `src/core/paths.ts`, `src/core/tool-policy.ts`, and
+`src/core/spawn-policy.ts`. Report discrepancies rather than silently broadening
+admission. Reject malformed values, forbidden fields, and unknown keys; do not
+add compatibility aliases or accept-and-clean behavior.
 
 ## Architecture and verification
 
-- Core (`**/core/**`) is pure: write `@pre`/`@post` contracts and at least one
-  doctest before implementing a Core function; no I/O imports.
-- Shell (`**/shell/**`) owns filesystem, network, environment, time and process
-  effects and returns `Result[T, E]`.
-- Run Invar after changes. Use `invar sig`, `invar map`, and `invar refs` for
-  structure and references. Contract syntax and exceptions are in `INVAR.md`.
+- Keep `src/core/**` pure: no side-effect I/O. Path and environment resolution
+  helpers operate on supplied values as specified. Ship zero runtime npm
+  dependencies.
+- `src/core/**`, `src/store/**`, `src/runtime/**`, and `src/activity/**` must
+  not reference `@earendil-works/pi-tui`. Within `src/surfaces/**` and
+  `src/ui/**`, only Pi extension and TUI modules may import it. No `.mjs`
+  bundle may contain a `@earendil-works/pi-tui` reference.
+- Run `npm run typecheck`, targeted `node --test` suites, and `npm run build`.
+  Run `git diff --exit-code plugins/codex/` on the committed tree after a
+  build to verify that tracked Codex artifacts match the build.
+- Use hermetic fixtures with temporary `LARVA_HOME` and Pi agent directories.
+  Never modify the host `~/.larva` or `~/.pi/agent/settings.json` during tests.
 - Pi dependency locks reproduce local builds; they do not restrict installed Pi
   versions. Record versions as context. Do not add version-based runtime
   rejection, compatibility matrices/probes, speculative adaptation, automatic

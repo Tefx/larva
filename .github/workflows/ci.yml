@@ -3,75 +3,106 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
-  local-schema:
-    runs-on: ubuntu-latest
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: ['22', '26']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
         with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@v4
-      - name: Install locked Python dependencies
-        run: uv sync --locked --python 3.12 --group dev
-      - name: Verify local schema, typing, validation and drift
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build and verify tracked Codex bundles
         run: |
-          uv run --locked --python 3.12 --group dev pytest -q \
-            tests/core/test_schema_validation.py tests/core/test_validate.py \
-            tests/canonical_cutover/test_hard_cutover_readiness.py
+          npm run build
+          git diff --exit-code plugins/codex/
+      - name: Run schema, unit, integration, and end-to-end tests
+        run: |
+          sandbox=$(mktemp -d "$RUNNER_TEMP/larva-tests.XXXXXX")
+          trap 'rm -rf "$sandbox"' EXIT
+          mkdir "$sandbox/home"
+          HOME="$sandbox/home" LARVA_HOME="$sandbox/larva" PI_CODING_AGENT_DIR="$sandbox/pi" npm test
+      - name: Verify tarball manifest and bare Node startup
+        env:
+          KEEP_RELEASE_TARBALL: ${{ github.event_name == 'release' && matrix.os == 'ubuntu-latest' && matrix.node-version == '26' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { spawnSync } from 'node:child_process';
+          import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+          import { join } from 'node:path';
 
-  pi-native-runtime:
-    runs-on: macos-15
-    needs: local-schema
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
-    env:
-      PI_BIN: ${{ github.workspace }}/contrib/pi-extension/node_modules/.bin/pi
-      LARVA_TEST_PI_CODING_AGENT: ${{ github.workspace }}/contrib/pi-extension/node_modules/@earendil-works/pi-coding-agent
-      LARVA_TEST_NATIVE_MCP_PI_BIN: ${{ github.workspace }}/.venv/native-pi/node_modules/.bin/pi
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+          const run = (command, args, options) => {
+            const result = spawnSync(command, args, { encoding: 'utf8', timeout: 30_000, ...options });
+            if (result.error) throw result.error;
+            assert.equal(result.status, 0, `${command} ${args.join(' ')}\n${result.stderr}`);
+            return result.stdout;
+          };
+          const [manifest] = JSON.parse(run('npm', ['pack', '--dry-run', '--json']));
+          assert.equal(manifest.name, 'pi-larva');
+          assert.deepEqual(manifest.files.map(file => file.path).sort(), [
+            'LICENSE', 'README.md', 'dist/child-rpc-preload.mjs', 'dist/cli.mjs', 'dist/mcp-server.mjs',
+            'dist/pi-extension.js', 'dist/timeline-worker.mjs', 'package.json',
+          ]);
+          console.log(`Verified ${manifest.name}@${manifest.version} manifest (${manifest.files.length} files).`);
+
+          const tmp = mkdtempSync(join(process.env.RUNNER_TEMP, 'larva-pack-'));
+          try {
+            const [packed] = JSON.parse(run('npm', ['pack', '--json', '--pack-destination', tmp]));
+            assert.equal(packed.integrity, manifest.integrity);
+            const tarball = join(tmp, packed.filename);
+            const install = join(tmp, 'node_modules', manifest.name);
+            const home = join(tmp, 'home');
+            mkdirSync(install, { recursive: true });
+            mkdirSync(home);
+            run('tar', ['-xzf', tarball, '-C', install, '--strip-components=1']);
+            const options = { cwd: tmp, env: { PATH: process.env.PATH, HOME: home,
+              LARVA_HOME: join(tmp, 'larva'), PI_CODING_AGENT_DIR: join(tmp, 'pi') } };
+            const cli = join(install, 'dist/cli.mjs');
+            assert.match(run(process.execPath, [cli, '--help'], options), /larva --help/);
+            assert.equal(run(process.execPath, [cli, '--version'], options).trim(), manifest.version);
+
+            const protocolVersion = '2025-11-25';
+            const input = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+              protocolVersion, capabilities: {}, clientInfo: { name: 'tarball-smoke', version: '1.0.0' },
+            } }) + '\n';
+            for (const args of [[join(install, 'dist/mcp-server.mjs')], [cli, 'mcp']]) {
+              const response = JSON.parse(run(process.execPath, args, { ...options, input }));
+              assert.equal(response.jsonrpc, '2.0');
+              assert.equal(response.id, 1);
+              assert.equal(response.result.protocolVersion, protocolVersion);
+              assert.equal(response.result.serverInfo.name, 'larva-pi-subagent');
+              assert.equal(response.result.serverInfo.version, manifest.version);
+            }
+            console.log(`Bare Node CLI help/version and both MCP entrypoints passed (${manifest.version}).`);
+
+            if (process.env.KEEP_RELEASE_TARBALL === 'true') {
+              assert.equal(process.env.GITHUB_REF_NAME, `v${manifest.version}`);
+              copyFileSync(tarball, join(process.env.RUNNER_TEMP, 'pi-larva.tgz'));
+            }
+          } finally {
+            rmSync(tmp, { recursive: true, force: true });
+          }
+          NODE
+      - name: Preserve the verified release tarball
+        if: github.event_name == 'release' && matrix.os == 'ubuntu-latest' && matrix.node-version == '26'
+        uses: actions/upload-artifact@v4
         with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "26.7.0"
-      - name: Install locked project dependencies
-        run: |
-          uv sync --locked --python 3.12 --group dev
-          npm --prefix contrib/pi-extension ci
-          npm install --prefix .venv/native-pi --no-save --package-lock=false @earendil-works/pi-coding-agent@1.1.0
-      - name: Prepare disposable runner host settings
-        run: |
-          mkdir -p "$HOME/.pi/agent"
-          echo '{}' > "$HOME/.pi/agent/settings.json"
-      - name: Verify native-owned Python wheel and backend seam
-        run: |
-          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
-            uv run --locked --python 3.12 --group dev pytest -q \
-            tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_model_map_draft_contract.py
-      - name: Verify complete native runtime inventory
-        run: |
-          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
-            uv run --locked --python 3.12 --group dev pytest -q tests/shell/test_pi_extension_real_runtime.py
-      - name: Verify retained contracts and all Node regressions
-        run: |
-          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
-            uv run --locked --python 3.12 --group dev pytest -q \
-            tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_subagent_ux.py \
-            tests/shell/test_pi_extension_subagent_model_isolation.py \
-            tests/shell/test_pi_agent_persona_switch_policy_contract.py tests/shell/test_pi_idle_callback_identity.py \
-            tests/shell/test_pi_subagent_activity.py tests/shell/test_repo_local_ci_gate.py
-          for f in contrib/pi-extension/test-*.mjs; do node "$f"; done
-          node scripts/pi-extension-runtime-smoke.mjs --scenario capability-gates
-      - name: Verify pinned full Invar scan
-        run: |
-          env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH UV_PYTHON_DOWNLOADS=never \
-            uv run --locked --python 3.12 --group dev invar guard --all
+          name: pi-larva-release
+          path: ${{ runner.temp }}/pi-larva.tgz
+          if-no-files-found: error

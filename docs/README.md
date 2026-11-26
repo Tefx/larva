@@ -1,47 +1,24 @@
-# larva documentation map
+# Larva 0.9 documentation
 
-The repository root keeps only entrypoint docs and tool-required files. Detailed
-project documentation lives here by category.
+The [0.9 architecture specification](../design/larva-0.9-architecture.md) and the [PersonaSpec schema](../contracts/persona_spec.schema.json) define the current contract.
 
 ## Guides
 
-- `guides/USER_GUIDE.md` — human-oriented walkthrough
-- `guides/USAGE.md` — agent/operator usage notes
-
-## Adapter guides
-
-- [Codex plugin and general MCP harness setup](../contrib/codex-plugin/README.md) — Marketplace install, Strategy B routing, and direct stdio configuration.
-- [Pi extension](../contrib/pi-extension/README.md) — native Pi integration and external-host subagent lifecycle.
+- [User guide](guides/USER_GUIDE.md): create a persona, use it in Pi, and delegate from Codex.
+- [Operator guide](guides/USAGE.md): configure an isolated home, run MCP, and maintain session state.
 
 ## Reference
 
-- [`reference/ARCHITECTURE.md`](reference/ARCHITECTURE.md)
-- [`reference/INTERFACES.md`](reference/INTERFACES.md)
-- [`reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md) — accepted design basis for Pi async/background subagents, targeted cancellation, and `/larva-subagent` UX.
-- [`reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`](reference/PI_AGENT_PERSONA_SWITCH_POLICY.md) — target four-level Pi agent/runtime persona switch policy: `manual`, `confirm`, `auto`, `free`.
-- [`reference/PI_EXTENSION_COMPACTION_FOCUS.md`](reference/PI_EXTENSION_COMPACTION_FOCUS.md) — target design for adding Larva/persona compaction focus while preserving Pi's default compaction prompts.
+- [Architecture](reference/ARCHITECTURE.md): components, filesystem, canonical data, and state ownership.
+- [Interfaces](reference/INTERFACES.md): CLI, model tools, Pi commands, and Codex integration.
+- [Asynchronous subagents](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md): admission, ownership, observation, and settlement.
+- [Pi persona switching](reference/PI_AGENT_PERSONA_SWITCH_POLICY.md): startup precedence, switching modes, leases, and model-map changes.
 
-## Decisions
+## Historical 0.8.x records
 
-- `adr/` — accepted architecture decision records
+The following archives retain their original context. They are not installation instructions, current contracts, or verification evidence for 0.9:
 
-## Design bases
-
-- `../design/registry-local-variants-and-assembly-removal.md` — accepted design
-  for removing assembly/component surfaces and adding registry-local variants
-  without changing PersonaSpec
-- `../design/pi-agent-persona-self-switch.md` — historical first-target design;
-  its `off|ask|auto` mode semantics are obsolete for new work. Current mode
-  semantics are owned by `reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`.
-- `../design/pi-coding-agent-integration.md` — current Pi integration design
-  except `/larva-mode` / `--agent-persona-switch` mode semantics, which are owned
-  by `reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`.
-- `../design/` — design and adjudication history. Older component/assembly docs
-  are historical unless restated by the accepted registry-local variants design.
-
-## Still intentionally at repo root
-
-- `../README.md` — project entrypoint for GitHub and package metadata
-- `../INVAR.md` — Invar repair patterns referenced by root agent instructions
-- `../AGENTS.md`, `../CLAUDE.md`, `../GEMINI.md` — agent/tooling entrypoints
-- `../plan.yaml` — vectl-managed plan file; do not move or edit directly
+- [Architecture decision records](adr/)
+- [Engineering evidence](evidence/)
+- [Security records](security/)
+- [Verification archives](verification/)

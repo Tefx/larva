@@ -1,37 +1,28 @@
-name: Publish to PyPI
+name: Publish to npm
 
 on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install build and smoke tools
-        run: pip install build uv "mcp>=1.20,<2" anyio
-      - name: Build package
-        run: python -m build
-      - name: Verify clean uvx MCP startup and tool list
-        run: python scripts/mcp-release-smoke.py dist/*.whl
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
+  verify:
+    uses: ./.github/workflows/ci.yml
 
   publish:
-    needs: build
+    needs: verify
     runs-on: ubuntu-latest
-    environment: pypi
     permissions:
       id-token: write
     steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          registry-url: https://registry.npmjs.org
       - uses: actions/download-artifact@v4
         with:
-          name: dist
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+          name: pi-larva-release
+          path: ${{ runner.temp }}/release
+      - run: npm publish --provenance "$RUNNER_TEMP/release/pi-larva.tgz"

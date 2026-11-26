@@ -1,1 +1,0 @@
-"""Shell test package namespace."""

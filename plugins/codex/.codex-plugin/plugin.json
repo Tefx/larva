@@ -1,0 +1,16 @@
+{
+  "name": "larva-subagent",
+  "version": "0.9.0",
+  "description": "On-demand bridge to Larva Pi child sessions for Larva-specific capabilities alongside Codex's default native subagents.",
+  "keywords": ["larva", "persona", "subagent", "pi"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Larva Subagents",
+    "shortDescription": "Persona routing and Pi child orchestration",
+    "longDescription": "Use Codex native subagents by default; opt into Larva Pi child sessions for persona model-map routing, persistent session resume, can_spawn policy, or activity inspection through this on-demand bridge.",
+    "category": "Developer Tools",
+    "composerIcon": "./assets/larva.svg",
+    "logo": "./assets/larva.svg"
+  }
+}

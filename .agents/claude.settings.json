@@ -1,7 +1,0 @@
-{
-  "feedback": {
-    "enabled": false,
-    "auto_trigger": false,
-    "retention_days": 90
-  }
-}

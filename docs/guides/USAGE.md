@@ -1,592 +1,68 @@
-# larva — Agent Usage Guide
+# Larva operator guide
 
-**Audience:** AI agents and operators consuming larva as a tool.
-**larva does:** validate, normalize, register, resolve, update, export, and manage registry-local PersonaSpec variants.
-**larva does NOT do:** call LLMs, execute agents, enforce runtime tool policy, store memory across runs, or silently change the local PersonaSpec schema during admission.
+## Configure an isolated home
 
----
+An unset or empty `LARVA_HOME` selects `$HOME/.larva`. For a separate workspace or test run, use an existing normalized absolute path such as the result of `mktemp -d`:
 
-## 1. How to Call larva
-
-### Primary: MCP Server
-
-Prefer MCP for programmatic access. Two independent stdio servers have distinct
-responsibilities. Start the Python registry server with `larva mcp`.
-This release line uses MCP Python SDK 1.x (`mcp>=1.20,<2`); MCP 2.x requires a
-future server-integration migration before the upper bound can be removed. The
-release gate installs the built wheel through clean `uvx`, initializes the stdio
-server, and checks the 13-tool list.
-
-Available tools:
-
-```text
-larva_validate(spec)                         -> ValidationReport
-larva_register(spec, variant?)               -> {id, registered}
-larva_resolve(id, overrides?, variant?)      -> PersonaSpec
-larva_list()                                 -> [{id, description, spec_digest, model}]
-larva_update(id, patches, variant?)          -> PersonaSpec
-larva_update_batch(where, patches, dry_run?) -> {items, matched, updated}
-larva_clone(source_id, new_id)               -> PersonaSpec
-larva_delete(id)                             -> {id, deleted}
-larva_clear(confirm)                         -> {cleared, count}
-larva_export(all?, ids?)                     -> [PersonaSpec, ...]
-larva_variant_list(id)                       -> registry metadata
-larva_variant_activate(id, variant)          -> {id, active}
-larva_variant_delete(id, variant)            -> {id, variant, deleted}
+```sh
+export LARVA_HOME="$(mktemp -d)"
+larva persona put reviewer.md
+larva doctor --json
 ```
 
-Removed tools:
+`larva doctor` is read-only. It diagnoses malformed definitions, dual-format conflicts, invalid route maps, Pi discovery, and unavailable models. It validates all maps and checks persona routes under `--profile <name>` when given, otherwise under `model-map.json` if present, or against literal routes when absent.
 
-```text
-larva_assemble
-larva_component_list
-larva_component_show
-```
+### Runtime configuration
 
-For every PersonaSpec input, forbidden legacy vocabulary is `tools` and
-`side_effect_policy`. Unknown top-level fields, including `variant`, are rejected
-as non-canonical. Pass `variant` as an operation parameter, never inside `spec`.
+`$LARVA_HOME/config.json` is optional. It accepts only the following keys, with closed nested objects. Invalid or unreadable configuration fails closed.
 
-The Node runtime server is separate:
-`node /absolute/path/to/larva/contrib/pi-extension/subagent-mcp-server.mjs`.
-It exposes nine cross-harness Pi subagent tools:
-`larva_personas`, `larva_subagent`, `larva_subagent_wait`,
-`larva_subagent_select`, `larva_subagent_status`, `larva_subagent_events`,
-`larva_subagent_sessions`, `larva_subagent_cancel`, and `larva_subagent_activity`.
-It discovers resolved personas and runs children without registry mutation.
-Configure either or both servers. See [Workflow E](#workflow-e-cross-harness-pi-subagents-codex-and-general-mcp-harnesses)
-and the [adapter setup guide](../../contrib/codex-plugin/README.md).
+| Key | Values and defaults |
+| --- | --- |
+| `default_persona` | A persona ID or `null` (default). |
+| `switch_mode` | `manual`, `confirm` (default), `auto`, or `free`. |
+| `confirm_timeout_ms` | `0` disables the timeout; otherwise 1,000–86,400,000 ms. Default 900,000 ms. |
+| `subagent.extension_sources` | Unique nonempty strings, default `[]`. Relative local paths resolve against `realpath(LARVA_HOME)`; `~/` expands and `pi-agent:` resolves against the base Pi agent directory. `builtin:`, `npm:`, `git:`, and URL sources are passed to Pi. |
+| `subagent.root_session_spawn` | `persona` (default) or `allow`. Applies only to native Pi at depth zero with an active persona. An explicit target allowlist still applies. |
+| `subagent.max_depth` | Optional integer 1–100; unset leaves only the hard ceiling of 100. |
+| `subagent.max_active_runs` | Optional integer 1–100, limiting unsettled runs per parent process. |
+| `subagent.stall_alert_ms` | `0` disables the alert; otherwise 60,000–86,400,000 ms. Default 600,000 ms, bounded by the run's hard deadline. |
+| `gc.max_age_days` | Integer 1–3,650; default 30. |
+| `gc.max_bytes` | Optional combined session and artifact byte target, at least 1,048,576 bytes. |
 
-### Fallback: CLI
+### Model maps
 
-```bash
-larva validate <spec.json> [--json]
-larva register <spec.json> [--variant <name>] [--json]
-larva resolve <id> [--variant <name>] [--override key=value]... [--json]
-larva list [--json]
-larva update <id> [--variant <name>] --set key=value [--set ...] [--json]
-larva clone <source-id> <new-id> [--json]
-larva delete <id> [--json]
-larva clear --confirm "CLEAR REGISTRY" [--json]
-larva export --all [--json]
-larva export --id <id> [--id <id>]... [--json]
-larva variant list <id> [--json]
-larva variant activate <id> <variant> [--json]
-larva variant delete <id> <variant> [--json]
-larva doctor [--json]
-larva opencode [OPENCODE_ARG ...]
-```
-
-### Fallback: Python API
-
-```python
-from larva.shell.python_api import (
-    validate,
-    register,
-    resolve,
-    update,
-    update_batch,
-    clone,
-    list,
-    delete,
-    clear,
-    export_all,
-    export_ids,
-    variant_list,
-    variant_activate,
-    variant_delete,
-)
-```
-
----
-
-## 2. PersonaSpec — The Core Data Structure
-
-A PersonaSpec is a flat, self-contained JSON object. All canonical larva outputs
-produce or consume this shape.
+Store the default map in `model-map.json` and a named map such as `team` in `model-map.team.json`. Both are optional. A map contains only optional `models` and `prefix_rules` keys:
 
 ```json
 {
-  "spec_version": "0.1.0",
-  "id": "code-reviewer",
-  "description": "Reviews code changes with read-focused tooling.",
-  "prompt": "You are a senior code reviewer...",
-  "model": "openai/gpt-5.5",
-  "model_params": {"temperature": 0.3},
-  "capabilities": {"filesystem": "read_write", "shell": "read_only"},
-  "can_spawn": false,
-  "compaction_prompt": "Summarize working context into concise carry-forward notes.",
-  "spec_digest": "sha256:e3b0c442..."
-}
-```
-
-Field constraints:
-
-- `id`: required flat kebab-case; no namespaces.
-- `spec_version`: canonical input must use `"0.1.0"`.
-- `spec_digest`: computed by larva from canonical JSON, excluding itself.
-- `capabilities`: required canonical capability map.
-- `model`: required non-empty string. Larva treats it as a runtime routing label,
-  not as a provider/model enum; `larva validate` does not guarantee runtime
-  availability.
-- `variant`: not a PersonaSpec field; registry-local only.
-
----
-
-## 3. Runtime Model Configuration for Pi
-
-Keep these surfaces separate:
-
-- PersonaSpec stores the default model string, for example
-  `"model": "openrouter/google/gemini-3.5-flash"`.
-- Larva registry storage defaults to `~/.larva/registry/<persona-id>/` with
-  `manifest.json`, `contract.json`, and `variants/<variant>.json`; variant files
-  own `prompt`, `model`, `model_params`, and `compaction_prompt`.
-- Larva-Pi model-map defaults to `~/.pi/larva/model-map.json`; override with
-  `LARVA_PI_MODEL_MAP_FILE=/absolute/path/to/model-map.json`.
-- Larva-Pi tool policy defaults to `~/.pi/larva/tool-policy.json`; override with
-  `LARVA_PI_TOOL_POLICY_FILE=/absolute/path/to/tool-policy.json`.
-
-Model-map example:
-
-```json
-{
-  "models": {},
+  "models": {
+    "provider/model-id": { "provider": "local", "model_id": "review" }
+  },
   "prefix_rules": [
-    {
-      "from_prefix": "openrouter/",
-      "to_provider": "openrouter",
-      "to_model_id_prefix": ""
-    }
+    { "from_prefix": "provider/", "to_provider": "local", "to_model_id_prefix": "mirror/" }
   ]
 }
 ```
 
-This maps `openrouter/google/gemini-3.5-flash` to provider `openrouter` and
-model id `google/gemini-3.5-flash`. Pi runtime resolution uses exact `models`
-entries first, then longest literal `prefix_rules`, then first-slash fallback.
-Runtime availability is checked against Pi's model registry.
+Entries are closed. Keys and values are nonempty and whitespace-free, except `to_model_id_prefix` may be empty. Duplicate `from_prefix` values are invalid. An exact route wins over the longest matching prefix; if neither matches, Larva uses the literal route. Run `larva doctor --profile team` to check a named profile, and use `/larva-model-map team` in Pi to select it.
 
-No Pi startup path auto-registers missing personas. Register local PersonaSpecs
-explicitly with `larva register`.
+## Configure an external MCP host
 
----
+Register `larva mcp` as a stdio server and pass the same `LARVA_HOME` and Pi provider environment to it. For Codex, the `plugins/codex/` marketplace plugin supplies its own server. Set `LARVA_MCP_PARENT_PERSONA` when you want a default parent identity to restrict root-level delegation; an explicit per-call `parent_persona_id` takes precedence. With neither set, the external host grants root-level spawn authority.
 
-## 4. Core Operations
+For a fresh spawn, supply an authorized, existing absolute `cwd` unless the host exposes exactly one usable local workspace root. Do not assume the server's own working directory is the workspace. For a resume, supply the exact `task_id` and omit `cwd` to use the recorded workspace.
 
-### 4.1 validate
+Use `larva_subagent_wait` with `return_when: "any"` to observe the next ready result in a batch and `larva_subagent_status` to inspect current ownership. `larva_subagent_activity` reads recorded tool traces, not live state. To cancel, pass `task_ids` and `reason` to `larva_subagent_cancel`; include `expected_run_epochs` when acting on an earlier snapshot.
 
-Validate a PersonaSpec candidate.
+## Inspect and retain state
 
-```json
-{
-  "spec": {
-    "id": "my-agent",
-    "description": "Reviews code changes.",
-    "prompt": "You are a senior code reviewer.",
-    "model": "openai/gpt-5.5",
-    "capabilities": {"shell": "read_only"},
-    "spec_version": "0.1.0"
-  }
-}
+```sh
+larva gc --dry-run --json
+larva gc --max-age 30 --max-bytes 104857600 --json
 ```
 
-Returns `ValidationReport` with `valid`, `errors`, and `warnings`.
+GC reaps only confirmed-dead capsules and stale leases and keeps evidence when teardown is unconfirmed. It protects locked or unreconciled sessions and files younger than 60 seconds. When a byte target is set, it also protects files within 24 hours. GC removes age-expired eligible files first, then removes remaining eligible sessions and artifacts oldest first until the byte target is met or no eligible files remain. Protected bytes still count toward the budget. Removing a session acquires its lease and rechecks eligibility so GC and resume cannot unlink and open the same session concurrently.
 
-### 4.2 register
+Dry-run and live reports include `deleted_sessions`, `deleted_artifacts`, `freed_bytes`, `remaining_bytes`, `protected_bytes`, and `budget_met`. `budget_met: false` can therefore be a successful GC result. Do not delete leases or terminate processes based solely on timestamps; inspect ownership and recorded evidence first.
 
-Store a PersonaSpec in the registry.
-
-```json
-{
-  "spec": {
-    "id": "code-reviewer",
-    "description": "Reviews code changes.",
-    "prompt": "You are a stricter senior code reviewer.",
-    "model": "openai/gpt-5.5",
-    "capabilities": {"shell": "read_only"},
-    "spec_version": "0.1.0"
-  },
-  "variant": "tacit"
-}
-```
-
-- `variant` is optional and defaults to `default`.
-- New persona: the registered variant becomes active automatically.
-- Existing persona: register writes/replaces the named variant but does not auto-activate it.
-- `spec.id` must equal the base persona id.
-
-### 4.3 resolve
-
-Fetch a registered persona by id.
-
-```json
-{ "id": "code-reviewer", "variant": "tacit", "overrides": { "model": "openai/gpt-5.5" } }
-```
-
-- Without `variant`, resolve uses the active variant.
-- With `variant`, resolve returns that variant.
-- Runtime overrides apply after variant selection and before final validation and
-  digest computation. Allowed override fields are `prompt`, `model`,
-  `model_params`, and `compaction_prompt`; contract fields, derived fields,
-  registry metadata, legacy fields, and unknown fields are rejected.
-- Return value is a bare canonical PersonaSpec, never a registry envelope.
-
-### 4.4 list
-
-List base personas only.
-
-```json
-[
-  {"id": "code-reviewer", "description": "...", "spec_digest": "sha256:...", "model": "openai/gpt-5.5"}
-]
-```
-
-`larva_list` intentionally does not return variant metadata.
-
-### 4.5 update
-
-Patch either contract-owned fields or implementation-owned fields. Mixed-scope
-patches are rejected.
-
-```json
-{ "id": "code-reviewer", "variant": "tacit", "patches": { "model": "openai/gpt-5.5-pro" } }
-```
-
-Without `variant`, an implementation-only patch updates the active variant and a
-contract-only patch updates the shared persona contract. With `variant`, only
-implementation-owned fields are accepted. Protected fields such as `id`,
-`spec_version`, and `spec_digest` are rejected.
-
-Patchable fields:
-
-| Scope | Patchable fields |
-|-------|------------------|
-| Contract, without `variant` | `description`, `capabilities`, `can_spawn` |
-| Active or named variant | `prompt`, `model`, `model_params`, `compaction_prompt` |
-| Never | `id`, `spec_version`, `spec_digest` |
-
-`larva_update_batch(where, patches, dry_run?)` uses the same ownership rules as
-`update` without a named variant: `where` matches active materialized
-PersonaSpecs, contract-only patches update the shared contract for matched base
-personas, implementation-only patches update matched active variants, and mixed
-patches are rejected for the whole batch.
-
-### 4.6 variant operations
-
-```json
-{ "id": "code-reviewer" }
-```
-
-`larva_variant_list` returns registry metadata:
-
-```json
-{ "id": "code-reviewer", "active": "tacit", "variants": ["default", "tacit"] }
-```
-
-`larva_variant_activate(id, variant)` changes only registry manifest state.
-`larva_variant_delete(id, variant)` deletes only an inactive, non-last variant.
-
-### 4.7 delete and clear
-
-`larva_delete(id)` deletes the base persona and all variants.
-`larva_clear(confirm="CLEAR REGISTRY")` removes the whole registry and requires
-the exact confirmation token.
-
----
-
-## 5. Registry-local Variants
-
-Variants live under the registry and are selected by operation parameter. They
-are not PersonaSpec fields.
-
-```text
-~/.larva/registry/<id>/
-  manifest.json              # {"active": "default"}
-  contract.json              # id, description, capabilities, can_spawn, spec_version
-  variants/
-    default.json             # prompt, model, model_params, compaction_prompt
-    tacit.json               # prompt, model, model_params, compaction_prompt
-```
-
-Rules:
-
-- default resolve/list/export/OpenCode behavior uses the active variant
-- `larva_resolve(id, variant="name")` returns a specific variant as canonical PersonaSpec
-- `larva_register(spec, variant="name")` validates a complete PersonaSpec, stores
-  persona contract fields in `contract.json`, and creates or replaces the named
-  implementation variant
-- contract-owned fields are `id`, `description`, `capabilities`, `can_spawn`, and
-  `spec_version`; implementation-owned fields are `prompt`, `model`,
-  `model_params`, and `compaction_prompt`
-- active and last variants cannot be deleted through `variant_delete`
-- `index.json` is not used by the registry; directory scan is the enumeration source
-
----
-
-## 6. Placeholder policy
-
-Prompt text must already be fully composed before admission. Placeholder-map
-inputs at validate/register/update boundaries are rejected as extra/forbidden
-fields. Prompt text is opaque; `{placeholder}` style text is preserved as text,
-not interpreted as variable injection.
-
----
-
-## 7. Error Handling
-
-Every error is a structured envelope with `code`, `numeric_code`, `message`, and
-`details`.
-
-Common codes:
-
-| Code | Meaning |
-|------|---------|
-| `INVALID_INPUT` | malformed request or unsupported field |
-| `PERSONA_NOT_FOUND` | base persona id not present |
-| `VARIANT_NOT_FOUND` | named variant not present |
-| `INVALID_VARIANT_NAME` | variant name is not lower-kebab slug or exceeds 64 characters |
-| `PERSONA_ID_MISMATCH` | `spec.id` does not match the target base persona id |
-| `BASE_CONTRACT_MISMATCH` | a new variant attempts to redefine existing contract-owned fields |
-| `MIXED_SCOPE_PATCH` | an update patch mixes contract-owned and implementation-owned fields |
-| `FIELD_SCOPE_VIOLATION` | a field is patched or stored outside its owning scope |
-| `REGISTRY_CORRUPT` | manifest, contract, or selected variant state is absent, malformed, or violates ownership |
-| `ACTIVE_VARIANT_DELETE_FORBIDDEN` | attempted to delete active variant |
-| `LAST_VARIANT_DELETE_FORBIDDEN` | attempted to delete only remaining variant |
-| `PERSONA_INVALID` | validation failed after override/update |
-| `FORBIDDEN_FIELD` | legacy or unknown canonical field such as `tools` or `variant` |
-
-Negative CLI examples:
-
-```bash
-# invalid variant slug -> INVALID_VARIANT_NAME
-larva variant activate code-reviewer Bad_Name
-
-# contract field with explicit variant -> FIELD_SCOPE_VIOLATION
-larva update code-reviewer --variant tacit --set can_spawn=false
-
-# mixed contract and implementation fields -> MIXED_SCOPE_PATCH
-larva update code-reviewer --set can_spawn=false --set model=openai/gpt-5.5
-```
-
-Negative Web example:
-
-```http
-PUT /api/registry/personas/code-reviewer/variants/tacit
-Content-Type: application/json
-
-{"id":"code-reviewer-tacit","description":"...","prompt":"...","model":"...","capabilities":{},"spec_version":"0.1.0"}
-```
-
-returns `400` with `PERSONA_ID_MISMATCH` because the route base id and
-`spec.id` differ.
-
----
-
-## 8. File System Layout
-
-```text
-~/.larva/
-  registry/
-    <id>/
-      manifest.json              # {"active": "default"}
-      contract.json              # persona-level contract fields
-      variants/
-        <variant>.json           # variant implementation fields
-```
-
-`manifest.json` is the only correctness source for active variant selection.
-`contract.json` is the only local source for identity, description, capability
-intent, spawn boundary, and schema version. Variant lists are read from
-`variants/*.json`. Variant names match
-`^[a-z0-9]+(-[a-z0-9]+)*$`, are at most 64 characters, and the v1 registry
-returns the complete variant list without pagination. Corrupt or missing
-manifests, contracts, or selected variant files fail closed with
-`REGISTRY_CORRUPT`; larva does not auto-repair them.
-
----
-
-## 9. Common Workflows
-
-### Workflow A: Generate and register a new persona
-
-```text
-1. Build PersonaSpec JSON
-2. larva_validate(spec) -> check valid=true
-3. larva_register(spec) -> writes default variant
-4. larva_resolve(id) -> confirm active round-trip
-```
-
-### Workflow B: Add a named variant
-
-```text
-1. Build a complete PersonaSpec with the same base id
-2. larva_validate(spec) -> check valid=true
-3. larva_register(spec, variant="tacit") -> split into shared contract plus named implementation variant
-4. larva_variant_list(id) -> confirm it exists
-5. larva_variant_activate(id, "tacit") -> make it active when explicitly desired
-```
-
-The source filename may include the variant name, but `spec.id` inside the file
-must remain the base persona id.
-
-### Workflow C: Load for agent execution
-
-```text
-1. larva_resolve(id) -> active PersonaSpec
-   OR larva_resolve(id, variant="tacit") -> explicit variant PersonaSpec
-2. Pass spec to anima or agent runner
-```
-
-### Workflow D: OpenCode
-
-```bash
-larva opencode --agent python-senior
-larva opencode run "check this bug" --agent python-senior
-```
-
-`--agent python-senior` selects the Larva base persona id `python-senior` as the
-OpenCode agent. The wrapper projects active variants only; inactive variants are
-not separate OpenCode agents.
-
-The plugin replaces the selected `[larva:<id>]` placeholder at OpenCode's
-system-prompt transform layer. The hardening contract is selected-id re-resolve
-on runtime cache miss or expiry, no raw placeholder leakage, and fail-closed
-behavior when no prompt can be resolved. Runtime cache fallback is not registry
-storage state and never repairs registry files. Adding or deleting a persona id
-changes the OpenCode agent list and requires restarting `larva opencode`.
-
-### Workflow E: Cross-harness Pi subagents (Codex and general MCP harnesses)
-
-Configure the Node stdio server using the
-[adapter guide](../../contrib/codex-plugin/README.md#direct-mcp-configuration).
-For Codex Marketplace installation, use `codex plugin marketplace add /path/to/larva`
-then `codex plugin add larva-subagent@larva`. General MCP hosts use the same nine
-runtime tools without the Codex routing skill.
-
-The following array contains example MCP `tools/call` params, in workflow order.
-Select a registered persona from discovery; replace the persona IDs as needed.
-The two async spawns return their own exact absolute `.jsonl` `task_id` values:
-the paths below are placeholders for those receipts, never IDs to fabricate.
-
-```json
-[
-  {
-    "name": "larva_personas",
-    "arguments": {
-      "query": "typescript",
-      "limit": 5
-    }
-  },
-  {
-    "name": "larva_subagent",
-    "arguments": {
-      "persona_id": "node-typescript-engineer",
-      "task": "Explain the CLI entry point.",
-      "wait_for_completion": true
-    }
-  },
-  {
-    "name": "larva_subagent",
-    "arguments": {
-      "persona_id": "node-typescript-engineer",
-      "task": "Inspect CLI argument handling without edits.",
-      "wait_for_completion": false
-    }
-  },
-  {
-    "name": "larva_subagent",
-    "arguments": {
-      "persona_id": "node-typescript-engineer",
-      "task": "Inspect CLI error handling without edits.",
-      "wait_for_completion": false
-    }
-  },
-  {
-    "name": "larva_subagent_wait",
-    "arguments": {
-      "task_ids": [
-        "/absolute/sessions/args.jsonl",
-        "/absolute/sessions/errors.jsonl"
-      ],
-      "return_when": "all",
-      "timeout_ms": 60000
-    }
-  },
-  {
-    "name": "larva_subagent_select",
-    "arguments": {
-      "task_ids": [
-        "/absolute/sessions/args.jsonl",
-        "/absolute/sessions/errors.jsonl"
-      ],
-      "timeout_ms": 60000
-    }
-  },
-  {
-    "name": "larva_subagent",
-    "arguments": {
-      "persona_id": "node-typescript-engineer",
-      "task": "Continue with a summary of the argument findings.",
-      "task_id": "/absolute/sessions/args.jsonl",
-      "wait_for_completion": true
-    }
-  },
-  {
-    "name": "larva_subagent_activity",
-    "arguments": {
-      "task_id": "/absolute/sessions/args.jsonl",
-      "limit": 5
-    }
-  }
-]
-```
-
-1. Discover resolved persona candidates with `larva_personas`.
-2. Use `wait_for_completion: true` for a single task's terminal result.
-3. For parallel fan-out, send independent spawns with `false` (the default);
-   preserve each accepted receipt's exact `task_id`. Choose `wait` for all/any/
-   first error or `select` for the first ready task. Both MCP results expose
-   `structuredContent.terminal_outputs`, keyed by ready task ID, plus snapshots
-   and captured callback text. The wait and select examples are alternatives;
-   an observer timeout can return no terminal outputs.
-4. Resume a completed or safely reconciled historical session by passing its
-   exact `.jsonl` `task_id` with `persona_id` and a continuation `task`.
-   Read recorded tools through `larva_subagent_activity`; activity is historical
-   evidence and cannot prove that a run is active or accepted.
-
-The external host supplies spawn authority by default. Per-call
-`parent_persona_id` takes precedence over `LARVA_MCP_PARENT_PERSONA` and
-enforces the resolved parent's `can_spawn` boolean/whitelist.
-Keep the MCP connection open: disconnect aborts active children; restart loses
-observer/outbox state. Captured terminal output retains the latest 25 completed
-tasks and is non-consuming. Historical session files remain available for resume
-and activity inspection. Host call deadlines, observer timeouts, initial child
-RPC readiness (60 seconds), ordinary RPC commands (10 seconds), model-map child
-switches (5 seconds), and the no-progress watchdog are separate controls.
-
-**Codex Strategy B:** default to native `spawn_agent` / `wait` / `send_input` /
-`close_agent`. Opt into Larva for explicit Larva/Pi requests or needed
-`model-map.json` cross-provider routing, persistent resume, `can_spawn` parent
-policy, or activity inspection. Pass Larva `.jsonl` `task_id` only to Larva tools,
-including resume; pass native Codex `agent_id` only to native tools.
-Never mix handles or use shell sleep polling.
-
----
-
-## 10. Critical Constraints
-
-- **No LLM calls.** larva is pure persona management.
-- **No inheritance.** There is no `base:` field.
-- **No assembly/components.** Register complete PersonaSpec JSON directly.
-- **Ids are global and flat.** Ids must be kebab-case.
-- **Variants are registry metadata.** `variant` is rejected inside PersonaSpec.
-- **Contract fields are shared.** `capabilities` and `can_spawn` belong to the
-  persona contract, not to an individual variant.
-- **spec_version is schema identity, not persona revisioning.**
-- **spec_digest is always recomputed.** Active variant switches must change resolved digest when canonical content changes.
-- **Override revalidation is mandatory.** Forbidden override fields produce
-  `FORBIDDEN_OVERRIDE_FIELD`; allowed override values that make the materialized
-  spec invalid produce `PERSONA_INVALID`.
-- **Active and last variants are protected.** Use `variant_activate` before deleting a former active variant; delete the base persona to remove the last variant.
-- **`clear` requires confirmation.** The token `"CLEAR REGISTRY"` must match exactly.
+See [Interfaces](../reference/INTERFACES.md) for command and tool signatures and [Asynchronous subagents](../reference/PI_EXTENSION_ASYNC_SUBAGENTS.md) for lifecycle details.

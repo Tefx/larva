@@ -8,7 +8,7 @@
       "name": "larva-subagent",
       "source": {
         "source": "local",
-        "path": "./contrib/codex-plugin"
+        "path": "./plugins/codex"
       },
       "policy": {
         "installation": "AVAILABLE",

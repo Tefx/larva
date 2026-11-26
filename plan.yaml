@@ -151964,7 +151964,7 @@ phases:
       static verification.'
 - id: larva_0_9_rewrite
   name: Larva 0.9.0 Single-Stack TypeScript Rewrite (pi-larva@0.9.0)
-  status: pending
+  status: done
   gate: Independent FULL gate (larva_0_9.gate) passes with clean npm ci, npm run typecheck,
     npm run build, zero plugins/codex/ drift, all unit/integration/real-Pi+MCP E2E
     node --test suites under hermetic temp LARVA_HOME, verified npm pack --dry-run
@@ -151976,7 +151976,7 @@ phases:
   steps:
   - id: larva_0_9.foundation
     name: 'Wave 1: Foundation Seam Lock, Build Substrate & 0.9.0 Schema'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152074,9 +152074,28 @@ phases:
     - contracts/persona_spec.schema.json
     - AGENTS.md
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T12:49:17.731429Z'
+    done_at: '2026-11-26T13:01:06.484943+00:00'
+    evidence: 'Artifact:
+
+      - Commits integrated on v0.9: cfb37e47dd940ae0c01d6f3f8e4d37d0055a783b + 1dd8279bdf951dc3aa7183a297661525b5aa2918
+      (entrypoint paths aligned with downstream Vectl step files).
+
+
+      Verification:
+
+      - Run: npm ci --ignore-scripts && npm run typecheck && node --test tests/unit/foundation-schema.test.ts
+      && node scripts/build.mjs --check-only -> exit 0 (7/7 tests passed, 0 diagnostics,
+      build check clean).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§1.1, 2.1-2.3, 3.1-3.5, 4.1-4.2; contracts/persona_spec.schema.json.'
   - id: larva_0_9.core_persona
     name: 'Wave 2A: Persona Codec, Strict YAML Subset & Canonical Digest'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152145,9 +152164,27 @@ phases:
     depends_on:
     - larva_0_9.foundation
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:01:15.641851Z'
+    done_at: '2026-11-26T13:13:24.234884+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 2dc0e6fe (rebased from b6e1c865b89dae60bb92f789dff153e6dec39edb
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 33/33
+      unit tests pass including 9 core-persona tests).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §2.2(1)-(2); contracts/persona_spec.schema.json.'
   - id: larva_0_9.core_policy
     name: 'Wave 2B: LARVA_HOME Paths, Config, Model-Map & Tool/Spawn Policy'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152228,9 +152265,28 @@ phases:
     depends_on:
     - larva_0_9.foundation
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:01:15.642570Z'
+    done_at: '2026-11-26T13:11:04.054060+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: d3f24f4c (rebased from 268fd5c077cbec6eec48938ca6c386b413bdaa31
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && node --test tests/unit/foundation-schema.test.ts
+      tests/unit/core-routing-policy.test.ts -> exit 0 (0 diagnostics, 17/17 tests
+      pass).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.1, 2.2(3), 2.3(2)-(3).'
   - id: larva_0_9.preload_pi_bin
     name: 'Wave 2C: Child RPC Preload & Deterministic Pi Binary Inspector'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152289,9 +152345,29 @@ phases:
     depends_on:
     - larva_0_9.foundation
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:01:15.643226Z'
+    done_at: '2026-11-26T13:12:50.619857+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 54a9426e (rebased from 958563756f5654215efffc97e3bcaf943cbb2750
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && node --test tests/unit/foundation-schema.test.ts
+      tests/unit/core-routing-policy.test.ts tests/unit/preload-and-pi-bin.test.ts
+      -> exit 0 (0 diagnostics, 24/24 tests pass including real Pi RPC preload capability
+      handshake).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.3(3), 3.1(7), 3.5(2), 4.2(3).'
   - id: larva_0_9.codex_ui_plugin
     name: 'Wave 2D: Codex MCP App Views (panel-v4, widget-v4), Mentions & Plugin Shell'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152376,9 +152452,28 @@ phases:
     depends_on:
     - larva_0_9.foundation
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-26T13:01:15.643884Z'
+    done_at: '2026-11-26T13:17:59.143344+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 3f7ca298 (rebased from 4f98bf8a43a6cb152624cf7f71e150bee30024c7
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit && node scripts/build.mjs --check-only
+      -> exit 0 (0 diagnostics, 46/46 unit tests pass including 13 Codex UI/plugin
+      tests).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§3.4, 3.5(3).'
   - id: larva_0_9.retire_legacy_and_docs
     name: 'Wave 2E: Retire Legacy Python/Web/OpenCode Stack & Author 0.9.0 Docs'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152447,9 +152542,31 @@ phases:
     depends_on:
     - larva_0_9.foundation
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:01:15.644563Z'
+    done_at: '2026-11-26T13:08:34.366540+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: d99f22c31a0712edce41e7bc211d4d9b37d7fd69 (186 retired
+      Python/Web/OpenCode/test/legacy-doc files removed, 8 Larva 0.9.0 docs rewritten).
+
+
+      Verification:
+
+      - Run: npm run typecheck && node --test tests/unit/foundation-schema.test.ts
+      -> exit 0 (0 diagnostics, 7/7 tests pass).
+
+      - Verified zero retired paths in git ls-files, zero excluded paths modified,
+      all 32 relative links in rewritten docs resolve, zero retired tool/command names
+      in rewritten docs.
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§1.1, 2.1-2.3, 3.1-3.5.'
   - id: larva_0_9.store_personas_artifacts
     name: 'Wave 2.5A: In-Process PersonaStore & 0600 Output Artifacts'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152516,9 +152633,27 @@ phases:
     - larva_0_9.core_persona
     - larva_0_9.core_policy
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:13:31.119448Z'
+    done_at: '2026-11-26T13:21:00.177557+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: e5888731 (rebased from fb8356c4a113147397a6489b0deaed69a12a2a11
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 56/56
+      unit tests pass including 10 store-personas-artifacts tests).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.1(2), 2.3(1), 2.3(3).'
   - id: larva_0_9.store_leases_capsules_gc
     name: 'Wave 2.5B: Atomic Session Leases, Capsules, Session Index & GC'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152593,9 +152728,27 @@ phases:
     depends_on:
     - larva_0_9.core_policy
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:11:20.939294Z'
+    done_at: '2026-11-26T13:24:25.780740+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: cdff5121 (rebased from ab73231e899d4477bf60df06379c8b678a1ffd01
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 7/7
+      store-leases-gc tests pass).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.1(2), 2.3(3)-(4), 4.2(5), 4.2(8).'
   - id: larva_0_9.activity_inspector
     name: 'Wave 2.5C: Activity Timeline Worker & Bounded JSONL Inspector'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152657,9 +152810,27 @@ phases:
     depends_on:
     - larva_0_9.core_policy
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:11:20.941686Z'
+    done_at: '2026-11-26T13:24:36.441516+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 74d52287 (rebased from f06be2a8ea6f9e7a11573efe538144a3e6db6ddf
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 71/71
+      unit tests pass including 8 activity-inspector tests).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§1.1, 3.2, 3.5(2), 4.2(8).'
   - id: larva_0_9.runtime_session_context
     name: 'Wave 3A: SessionContext, PersonaLease & Fixed-Point Prompt Composer'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152735,9 +152906,27 @@ phases:
     - larva_0_9.store_personas_artifacts
     - larva_0_9.preload_pi_bin
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:21:11.375135Z'
+    done_at: '2026-11-26T13:34:59.232802+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 20b330d7 (rebased from bc55123cb3ccbfaba87c11329b9d0cc2495b5bc6
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 108/108
+      unit tests pass including 30 session-context tests).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.3(2), 3.2, 3.3, 4.2(5).'
   - id: larva_0_9.runtime_supervisor
     name: 'Wave 3B: SubagentSupervisor, Multi-Hop Settlement, Watchdogs & Reload Handoff'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152823,9 +153012,31 @@ phases:
     - larva_0_9.store_leases_capsules_gc
     - larva_0_9.preload_pi_bin
     agent: senior-engineer
+    claimed_by: senior-engineer
+    claimed_at: '2026-11-26T13:24:49.885499Z'
+    done_at: '2026-11-26T13:50:57.497648+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 0715ff07 (rebased from 62137cf4cec47794e940d2178992142731f16bb8
+      onto v0.9).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 120/120
+      unit tests pass including 12 supervisor tests).
+
+      - Note: Senior engineer discovered a pre-existing cross-step seam mismatch between
+      src/store/capsule.ts (32-hex suffix from randomBytes(16)) and src/child-rpc-preload.ts:25
+      ([a-f0-9]{16}); dispatching immediate point fix before Wave 4.
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.3(2)-(4), 3.2, 4.2(4)-(8).'
   - id: larva_0_9.surface_cli_doctor
     name: 'Wave 3C: CLI Persona/GC Commands & Doctor Health Check'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152894,9 +153105,26 @@ phases:
     - larva_0_9.store_leases_capsules_gc
     - larva_0_9.preload_pi_bin
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:24:49.886273Z'
+    done_at: '2026-11-26T13:34:04.105288+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: c04a90e2b8f4e6f3be579e854d373ac1cfeab7fe.
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit -> exit 0 (0 diagnostics, 78/78
+      unit tests pass including 7 cli-and-doctor tests).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §3.1.'
   - id: larva_0_9.surface_pi_extension
     name: 'Wave 4A: Native Pi Extension, 7 Tools, Slash Commands & TUI Workbench'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -152972,9 +153200,31 @@ phases:
     - larva_0_9.runtime_session_context
     - larva_0_9.runtime_supervisor
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-26T13:53:26.677715Z'
+    done_at: '2026-11-26T14:20:38.629887+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 0a78cfce (rebased from 649ff049b7081367b08a25dbd6bd2f1a6b9bee37).
+
+
+      Verification:
+
+      - Run: npm run typecheck -- --skipLibCheck && npm run build && npm run test:unit
+      && npm run test:integration -> exit 0 (0 Larva source/test TS diagnostics; 121/121
+      unit + 9/9 integration tests pass).
+
+      - Note: bare tsc --noEmit hits 44 pre-existing .d.ts errors inside node_modules/@earendil-works/{pi-ai,pi-coding-agent}
+      (TS1543 JSON import attributes + TS2694 path.PlatformPath) because tsconfig.json
+      lacks skipLibCheck: true.
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.3(2)-(3), 3.2, 3.3, 4.2(1), 4.2(7).'
   - id: larva_0_9.surface_mcp_and_cli
     name: 'Wave 4B: Standalone MCP Server (6+2 Tools, Apps, Resources) & Root CLI'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -153052,9 +153302,26 @@ phases:
     - larva_0_9.runtime_supervisor
     - larva_0_9.surface_cli_doctor
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T13:53:26.694127Z'
+    done_at: '2026-11-26T14:07:20.952278+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: ae5d11850296a71ed22bb663a831ae9095376e9e.
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run test:unit && npm run test:integration ->
+      exit 0 (0 diagnostics, 121/121 unit + 6/6 integration tests pass).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.3(4), 3.1, 3.2, 3.4, 3.5(2), 4.2(4).'
   - id: larva_0_9.bundle_ci_cutover
     name: 'Wave 5A: Self-Contained Bundle Sync, Legacy contrib/ Removal & CI Cutover'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -153136,9 +153403,29 @@ phases:
     - larva_0_9.surface_mcp_and_cli
     - larva_0_9.retire_legacy_and_docs
     agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T14:21:36.258767Z'
+    done_at: '2026-11-26T14:31:09.089031+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: f5d0b195 (with companion unit-test update 392b1e53
+      on tests/unit/codex-ui-and-plugin.test.ts).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm run test:unit && npm run test:integration && npm pack --dry-run -> exit
+      0 (121/121 unit + 9/9 integration tests pass, 8-file tarball manifest verified,
+      0 legacy files in contrib/ or scripts/pi-*.mjs or tests/fixtures/pi/).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§1.1, 3.5, 4.2(1)-(2).'
   - id: larva_0_9.e2e_real_pi_mcp
     name: 'Wave 5B: Hermetic Real-Pi RPC & External-Cache Codex MCP E2E Suite'
-    status: pending
+    status: done
     description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
       Deliver:\n- [W5B.e2e] tests/e2e/**: Hermetic end-to-end test suite using disposable\
       \ temp `LARVA_HOME` and step-local `npm run build:dist` (never committing `dist/`\
@@ -153179,33 +153466,67 @@ phases:
     - larva_0_9.surface_pi_extension
     - larva_0_9.surface_mcp_and_cli
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T14:21:36.259705Z'
+    done_at: '2026-11-26T14:43:57.538670+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 412a2973 (rebased from 3234ba2110c12dfbed77f11bac1e23ac5b10b2af).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run -> exit 0 (138/138 tests pass: 121 unit +
+      9 integration + 8 real-Pi/MCP E2E; zero bundle drift).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.3(2)-(4), 3.1-3.5, 4.2(4)-(7).'
   - id: larva_0_9.gate
     name: Terminal Independent FULL Gate (Larva 0.9.0 Contract & Simplicity)
-    status: pending
+    status: done
     description: "step_type: gate\nrepo_change_policy: no_repo_change\n[REQUIRES_SKILL:\
-      \ contract-and-simplicity]\n\nDeliver:\n- Independent FULL `gate.report.v2`\
-      \ auditing the complete Larva 0.9.0 single-stack TypeScript rewrite against\
-      \ `design/larva-0.9-architecture.md`:\n  1. Clean toolchain & bundle verification:\
-      \ `npm ci`, `npm run typecheck`, `npm run build`, `git diff --exit-code plugins/codex/`,\
-      \ zero `@earendil-works/pi-tui` references in `dist/{cli,mcp-server,child-rpc-preload,timeline-worker}.mjs`\
-      \ and `plugins/codex/dist/*.mjs`, `npm pack --dry-run` exact file manifest,\
-      \ and bare-`node` tarball smoke from a temp `node_modules/pi-larva/`.\n  2.\
-      \ Full executable verification: `node --test tests/unit/*.test.ts tests/integration/*.test.ts\
-      \ tests/e2e/*.test.ts` under hermetic temp `LARVA_HOME` with zero leaked processes\
+      \ contract-and-simplicity]\n\nDeliver:\n- Independent DELTA #7 `gate.report.v2`\
+      \ verifying complete closure of `F03` virtual-model payload-shape-driven narrowing\
+      \ and prompt projection (`src/pi-extension.ts` + `tests/integration/pi-extension-surface.test.ts`),\
+      \ alongside retained closures for Option A (`Admitted_wire <= Executable_snapshot`),\
+      \ `Pi_down` de-bloat (`F09`), `F01`, `F02`, `F04`, `F05`–`F08`, and full verification\
+      \ suite integrity against `design/larva-0.9-architecture.md`:\n  1. Virtual-model\
+      \ & Option A closure of `F03` (and retained `F09`, `F01`, `F02`, `F04`, `F05`–`F08`):\n\
+      \     - `src/pi-extension.ts:narrowProviderTools` and `projectProviderPrompt`\
+      \ inspect payload structures across all 6 provider formats independent of `ctx.model?.api`\
+      \ (so `ctx.model.api === \"pi-virtual\"` routed via `registerVirtualModel` to\
+      \ `openai-completions`, `openai-responses`, etc. narrows revoked `SPAWN_TOOLS`\
+      \ and projects persona prompts identically to direct models), omitting empty\
+      \ `payload.tools` only when `{ function }` entries were removed with `!hasToolHistory`\
+      \ and `api !== \"mistral-conversations\"`.\n     - Real Pi 1.6.1 `registerVirtualModel`\
+      \ integration test in `tests/integration/pi-extension-surface.test.ts` proves\
+      \ direct and virtual-routed Completions + virtual-routed Responses across late\
+      \ revocation (`5 -> 0 -> 0` + `LARVA_SPAWN_NOT_ALLOWED`), late regrant (frozen\
+      \ request unadvertised, next native snapshot granted and callable), and virtual-route\
+      \ prompt composition.\n     - Option A (`Admitted_wire <= Executable_snapshot`)\
+      \ and `Pi_down` invariants remain intact with zero post-snapshot wire-addition\
+      \ synthesis.\n  2. Clean toolchain & bundle verification: `npm ci`, `npm run\
+      \ typecheck`, `npm run build`, `npm run build -- --check-only`, `git diff --exit-code\
+      \ plugins/codex/`, zero `@earendil-works/pi-tui` references in headless `.mjs`\
+      \ bundles, `npm pack --dry-run` exact 8-file manifest, and bare-`node` tarball\
+      \ smoke from a temp `node_modules/pi-larva/`.\n  3. Full executable verification:\
+      \ `npm test` (`node --test tests/unit/*.test.ts tests/integration/*.test.ts\
+      \ tests/e2e/*.test.ts`) under hermetic temp `LARVA_HOME` with zero leaked processes\
       \ and zero mutations to real host `~/.larva` or `~/.pi/agent/settings.json`.\n\
-      \  3. Clean retirement audit: confirm zero leftover Python/Invar/Opifex/Web/OpenCode/`contrib/`/`scripts/pi-*.mjs`/retired-tool\
-      \ (`larva_subagent_select`, `larva_subagent_sessions`, `larva_subagent_events`,\
-      \ `session_path`, `handoff`, `max_switches_per_chain`, `compaction_prompt`,\
-      \ `larva:persona-invocation`) drift across code, schemas, plugin, CI, and docs.\n\
-      \  4. Full `(D, S, E)` contract & `[SIMPLICITY / DE-BLOAT]` audit across `src/**`,\
-      \ `scripts/build.mjs`, `contracts/persona_spec.schema.json`, `plugins/codex/**`,\
-      \ `.github/workflows/**`, and `tests/**`.\n\nBoundary:\n- owner: gate-reviewer;\
+      \  4. Delta `(D, S, E)` & `[SIMPLICITY / DE-BLOAT]` audit across the DELTA #7\
+      \ modified files (`src/pi-extension.ts`, `tests/integration/pi-extension-surface.test.ts`,\
+      \ synced Codex bundles) and their 1-hop consumers (reusing prior FULL/DELTA\
+      \ gate PASS evidence for untouched surfaces).\n\nBoundary:\n- owner: gate-reviewer;\
       \ authority: read-only verification and gate adjudication only (`no_repo_change`).\n\
       - scope.allowed_paths: `[]` (read-only).\n- scope.blocked_paths: `plan.yaml`.\n\
-      \nAdmit:\n- All checks pass with zero Tier 1 `[CONTRACT / WIRE]` or blocking\
-      \ `[SIMPLICITY / DE-BLOAT]` findings; return structured `gate.report.v2` (`PASS`\
-      \ or `FAIL` with exact file:line findings).\n\nRecovery:\n- Read-only gate;\
-      \ clean any disposable temp verification directories in `try/finally`."
+      \nAdmit:\n- All checks and F03 virtual-model payload-shape-driven closure (plus\
+      \ retained F09, F01, F02, F04, F05–F08) proofs pass with zero Tier 1 `[CONTRACT\
+      \ / WIRE]` or blocking `[SIMPLICITY / DE-BLOAT]` findings; return structured\
+      \ `gate.report.v2` (`PASS` or `FAIL` with exact file:line findings).\n\nRecovery:\n\
+      - Read-only gate; clean any disposable temp verification directories in `try/finally`."
     verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
       && npm test && npm pack --dry-run
     refs:
@@ -153216,4 +153537,1639 @@ phases:
     depends_on:
     - larva_0_9.bundle_ci_cutover
     - larva_0_9.e2e_real_pi_mcp
+    - larva_0_9.repair_bundle_sync
+    - larva_0_9.repair_bundle_sync_2
+    - larva_0_9.repair_bundle_sync_3
+    - larva_0_9.repair_bundle_sync_4
+    - larva_0_9.repair_bundle_sync_5
+    - larva_0_9.repair_bundle_sync_6
+    - larva_0_9.repair_bundle_sync_7
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-11-26T18:25:30.062823Z'
+    done_at: '2026-11-26T18:31:02.462086+00:00'
+    evidence: 'Artifact:
+
+      - Gate report: /tmp/larva-0.9-gate/delta7-report.json (binding: /tmp/larva-0.9-gate/delta7-binding.json,
+      target_ref: git:15fe0716d3e7a0b0e22340d42a8535c4da30b7cc)
+
+      - Validator: python3 ~/.pi/agent/scripts/review_report_validator.py --kind gate
+      --binding /tmp/larva-0.9-gate/delta7-binding.json /tmp/larva-0.9-gate/delta7-report.json
+      -> exit 0 (valid:true, binding_checked:true, evidence_disposition:"POSITIVE_GATE_EVIDENCE",
+      errors:[])
+
+
+      Verdict: PASS (DELTA #7)
+
+      - All 5 bound requirements PROVEN; F01–F09 all closed.
+
+      - F03 closed across direct and Pi 1.6.1 registerVirtualModel routes (Completions
+      + Responses) with immediate revocation, LARVA_SPAWN_NOT_ALLOWED stale denial,
+      deferred next-snapshot regrant, and single-block virtual prompt composition.
+
+      - Simplicity & DSE closure PROVEN (zero api-switch fragility, zero post-snapshot
+      grant synthesis).
+
+      - Bundle & pack integrity PROVEN (typecheck, build, build --check-only, git
+      diff --exit-code plugins/codex/, 7 headless bundles with 0 pi-tui refs, 8-file
+      pack, 4/4 bare-Node smoke).
+
+      - Full hermetic npm test: 164/164 pass across 16 files, 0 failures/skips/leaks,
+      108 protected host entries unchanged.'
+  - id: larva_0_9.repair_core_ingress
+    name: 'Repair Wave 1A: YAML 1.2 Explicit Mappings (F05) & Shared Disk Model-Map
+      Policy (F06)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F05] `src/core/yaml-frontmatter.ts`: admit supported YAML 1.2 explicit string-key
+      mappings (`? key` / `: value`, block and inline variants) while preserving closed
+      schema, duplicate-key rejection, anchor/alias/custom-tag bans, and size/depth
+      guards; keep `src/core/**` pure (zero I/O).
+
+      - [F06] `src/store/model-map.ts` (new) + `src/core/model-map.ts` + `src/surfaces/doctor.ts`:
+      create ONE shared bounded on-disk model-map reader (`loadDiskModelMap(home:
+      string, path: string): Promise<ModelMapDoc | undefined>` and `diskModelMapReader`)
+      in `src/store/model-map.ts` using `lstat` `entryExists`, `resolveContainedPath(root,
+      path, realpath)` (admitting ordinary files and contained symlinks inside `LARVA_HOME`
+      while rejecting escaping/dangling symlinks), and bounded `<= 1_048_576`-byte
+      regular-file UTF-8 reads (`open`/`fstat`), with zero `@earendil-works/pi-tui`
+      imports. Replace `doctor.ts`''s `O_NOFOLLOW` `modelMapReader` with `loadDiskModelMap`
+      so doctor and runtime share one admission policy.
+
+      - Tests (`tests/unit/core-persona.test.ts`, `tests/unit/core-routing-policy.test.ts`,
+      `tests/unit/cli-and-doctor.test.ts`): verify explicit-key YAML through CLI `persona
+      validate`/`put`/`get` matching equivalent JSON spec and digest; add peer regressions
+      comparing `loadDiskModelMap` and `runDoctor` across an ordinary file, a contained
+      symlink, and dangling/escaping symlinks.
+
+
+      Implementation Notes:
+
+      - Export `loadDiskModelMap` and `diskModelMapReader` from `src/store/model-map.ts`
+      as the locked seam consumed in Wave 2 by `src/pi-extension.ts` and `src/runtime/supervisor.ts`.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repo implementation (`modifies_repo`).
+
+      - scope.allowed_paths: `src/core/yaml-frontmatter.ts`, `src/core/model-map.ts`,
+      `src/store/model-map.ts`, `src/surfaces/doctor.ts`, `tests/unit/core-persona.test.ts`,
+      `tests/unit/core-routing-policy.test.ts`, `tests/unit/cli-and-doctor.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck` and targeted `node --test` suites pass with zero regressions
+      and hermetic temp fixtures.
+
+
+      Recovery:
+
+      - Revert only step-owned paths on failure; stop if an external contract contradiction
+      blocks closure.'
+    verification: npm run typecheck && node --test tests/unit/core-persona.test.ts
+      tests/unit/core-routing-policy.test.ts tests/unit/cli-and-doctor.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - contracts/persona_spec.schema.json
+    depends_on:
+    - larva_0_9.bundle_ci_cutover
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T15:01:46.075538Z'
+    done_at: '2026-11-26T15:08:53.116764+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 2d9fe349b874d782a470905ca18e83af863e166e.
+
+
+      Verification:
+
+      - Run: npm run typecheck && node --test tests/unit/core-persona.test.ts tests/unit/core-routing-policy.test.ts
+      tests/unit/cli-and-doctor.test.ts -> exit 0 (28/28 tests pass).
+
+      - Closed F05 (YAML 1.2 explicit block/flow `? key` mappings) and F06 store/doctor
+      side (`src/store/model-map.ts` unified bounded reader + `doctor.ts`).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.1(4), 2.2(2), 2.3(2), 3.1(7).'
+  - id: larva_0_9.repair_store_substrate
+    name: 'Repair Wave 1B: Transitive Capsule Proof (F01), Base Agent/Models Substrate
+      (F02) & Canonical Handle (F04)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F01] `src/store/capsule.ts` + `src/store/session-lease.ts` + `src/store/gc.ts`:
+      implement ONE bounded transitive process-tree ownership proof (`inspectCapsule`
+      / `inspectCapsuleTree` with cycle-set and depth cap `<= 100`) recursively following
+      `descendants/*.json` `capsule_root` links with double-read directory stability
+      and configurable owner predicate (`ownerMode?: "exited" | "live"` so stale-lease/GC
+      require exited owners while Wave 2 `supervisor.ts` settlement checks live `owner_pid
+      === process.pid` with exited child/descendants). Wire `session-lease.ts` and
+      `gc.ts` (preview + live GC) to this single proof so ancestor transcript, lease,
+      and capsule are preserved while any deeper descendant lives and become reclaimable
+      only after full-tree positive exit proof.
+
+      - [F02] `src/core/paths.ts` + `src/store/capsule.ts`: export pure `BASE_PI_AGENT_DIR_ENV
+      = "LARVA_PI_BASE_AGENT_DIR"` and `resolveBasePiAgentDir(env, fallbackHome?)`
+      (preferring non-empty `LARVA_PI_BASE_AGENT_DIR`, then `PI_CODING_AGENT_DIR`,
+      else `~/.pi/agent`, expanding `~/`). In `createCapsule`, resolve `pi-agent:`
+      sources against `options.pi_agent_dir` and snapshot an approved regular base
+      `models.json` (`<= 1_048_576` bytes, contained regular file) as a private `0o600`
+      copy in `join(root, "models.json")` so child writes never affect base dir; reject
+      non-regular/oversized/corrupt base `models.json` cleanly while allowing its
+      absence.
+
+      - [F04] `src/store/session-index.ts`: export `resolveCanonicalSessionPath(home:
+      string, taskId: string): Promise<string>` enforcing absolute `.jsonl` syntax,
+      containment under `realpath(sessions)`, `ENOENT -> LARVA_SESSION_NOT_FOUND`,
+      and strict canonical equality (`canonical === taskId`, rejecting contained noncanonical
+      symlinks with `LARVA_SESSION_INVALID` while admitting canonical files under
+      an aliased `LARVA_HOME`); call it in `readSessionHeader` before `open(..., O_NOFOLLOW)`.
+
+      - Tests (`tests/unit/store-leases-gc.test.ts`): multi-hop post-crash tree (exited
+      ancestors + live leaf -> GC preview, live GC, and competing lease preserve ancestor;
+      all exited -> reclaimable), capsule `models.json` copy isolation, and canonical
+      vs contained-symlink session admission under aliased `LARVA_HOME`.
+
+
+      Implementation Notes:
+
+      - Preserve backward-compatible signatures for `inspectCapsule`, `createCapsule`,
+      and `readSessionHeader` so Wave 2 (`repair_runtime_handle_supervisor`) compiles
+      cleanly without breaking Wave 1 typecheck. Keep `src/core/paths.ts` pure (zero
+      I/O) and zero `@earendil-works/pi-tui` imports.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repo implementation (`modifies_repo`).
+
+      - scope.allowed_paths: `src/core/paths.ts`, `src/store/capsule.ts`, `src/store/session-lease.ts`,
+      `src/store/gc.ts`, `src/store/session-index.ts`, `tests/unit/store-leases-gc.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck` and `node --test tests/unit/store-leases-gc.test.ts` pass
+      with hermetic fixtures and zero leaked child processes.
+
+
+      Recovery:
+
+      - Clean spawned fixture PIDs in `try/finally`; revert only step-owned paths
+      on failure.'
+    verification: npm run typecheck && node --test tests/unit/store-leases-gc.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.e2e_real_pi_mcp
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T15:01:46.077425Z'
+    done_at: '2026-11-26T15:10:11.876198+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 0337971b (rebased from b72c961703b08e4f868c615fe98deb6bf9d9de98).
+
+
+      Verification:
+
+      - Run: npm run typecheck && node --test tests/unit/store-leases-gc.test.ts ->
+      exit 0 (10/10 tests pass).
+
+      - Closed substrate for F01 (transitive capsule tree proof + gc/lease wiring),
+      F02 (BASE_PI_AGENT_DIR_ENV + private models.json capsule snapshot), and F04
+      (resolveCanonicalSessionPath canonical handle admission).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.1(3), 2.2(1), 2.3(3)-(4), 3.2.'
+  - id: larva_0_9.repair_surfaces_schema_authority
+    name: 'Repair Wave 2A: Live Launch-ID Authority (F03), Shared Tool Schemas (F07)
+      & Pi Model-Map Dedup (F06)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F03] `src/pi-extension.ts` + `src/surfaces/pi-tools.ts`: stop relying on
+      a static `session_start` `launchPersona` snapshot for child spawn authority;
+      resolve launch-ID `can_spawn` dynamically via `PersonaStore` on `syncTools`,
+      `authorize`, and `tool_call` (fresh-byte equivalent), failing closed (`can_spawn
+      = false`, removing and denying all 5 subagent tools) when revoked, missing,
+      or conflicted without requiring `/reload`.
+
+      - [F07] `src/surfaces/tool-schemas.ts` (new) + `src/surfaces/pi-tools.ts` +
+      `src/surfaces/mcp-tools.ts`: extract ONE shared closed structural schema and
+      argument validator authority for the common tools (`larva_subagent`, `larva_subagent_wait`,
+      `larva_subagent_cancel`, `larva_subagent_status`, `larva_subagent_activity`,
+      `larva_persona_list`), closing the `larva_subagent_status` `task_id` vs `scope`/`limit`
+      drift across advertised schemas and runtime validation while preserving Pi-only
+      `larva_persona_switch`, MCP-only additions, Pi pre-coercion validation, and
+      zero `@earendil-works/pi-tui` references in `src/surfaces/tool-schemas.ts` and
+      `src/surfaces/mcp-tools.ts`.
+
+      - [F06] `src/pi-extension.ts`: delete the duplicate inline `ModelMapReader`
+      in `loadProfile` and call `loadDiskModelMap` from `src/store/model-map.ts`.
+
+      - Tests (`tests/integration/pi-extension-surface.test.ts`, `tests/integration/mcp-server-surface.test.ts`):
+      add real installed-Pi test covering `can_spawn` revocation and regrant without
+      reload across all 5 subagent tool names plus missing/conflicted launch persona
+      failing closed; cross-check advertised Pi and MCP schemas and runtime rejection
+      for the `larva_subagent_status` exact-vs-scoped matrix.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repo implementation (`modifies_repo`).
+
+      - scope.allowed_paths: `src/surfaces/tool-schemas.ts`, `src/surfaces/pi-tools.ts`,
+      `src/surfaces/mcp-tools.ts`, `src/pi-extension.ts`, `tests/integration/pi-extension-surface.test.ts`,
+      `tests/integration/mcp-server-surface.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck` and both integration test suites pass under hermetic temp
+      fixtures with zero leaked processes.
+
+
+      Recovery:
+
+      - Clean temp bundles/processes in `try/finally`; revert only step-owned paths
+      on failure.'
+    verification: npm run typecheck && node --test tests/integration/pi-extension-surface.test.ts
+      tests/integration/mcp-server-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.repair_core_ingress
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T15:08:58.862661Z'
+    done_at: '2026-11-26T15:20:37.142573+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 65fe0176 (rebased from d18a83a23f9ed7805510a5fe9e34d7ba44ab14c1).
+
+
+      Verification:
+
+      - Run: npm run typecheck && node --test tests/integration/pi-extension-surface.test.ts
+      tests/integration/mcp-server-surface.test.ts -> exit 0 (9/9 integration tests
+      pass).
+
+      - Closed F03 (dynamic PersonaStore launch-ID refresh on syncTools/authorize/tool_call),
+      F07 (shared src/surfaces/tool-schemas.ts authority with status mutual exclusion
+      across Pi & MCP), and Pi-side F06 (loadDiskModelMap).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.2(3), 2.3(1)-(2), 3.2.'
+  - id: larva_0_9.repair_runtime_handle_supervisor
+    name: 'Repair Wave 2B: Supervisor/RPC/Activity Closure (F01, F02, F04, F06) &
+      E2E Regressions'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F01] `src/runtime/supervisor.ts`: delete duplicate recursive `descendantsExited`
+      and delegate settlement ownership verification in `settleOwnership` to the shared
+      bounded transitive proof in `src/store/capsule.ts` (`ownerMode: "live"`).
+
+      - [F02] `src/runtime/supervisor.ts` + `src/runtime/child-rpc-client.ts`: resolve
+      `basePiAgentDir = this.#opts.piAgentDir ?? resolveBasePiAgentDir(this.#env)`
+      via `src/core/paths.ts`, pass it to `capsule.createCapsule`, and propagate `LARVA_PI_BASE_AGENT_DIR:
+      basePiAgentDir` into the child process env while keeping child `PI_CODING_AGENT_DIR`
+      isolated to the private capsule (which holds the snapshotted `models.json`).
+
+      - [F04] `src/runtime/supervisor.ts` + `src/activity/inspector.ts` (+ `src/ui/codex-panel-html.ts`
+      if needed): enforce canonical exact-handle admission via shared `resolveCanonicalSessionPath`
+      from `src/store/session-index.ts` across `supervisor.ts` (`status` exact lookup,
+      `resume` before opening/lease) and `activity/inspector.ts` (preserving `dev`/`ino`
+      staleness checks); verify Codex panel exact-query card behavior on canonical
+      vs rejected handles.
+
+      - [F06] `src/runtime/supervisor.ts`: delete duplicate inline `ModelMapReader`
+      (`exists`/`readText` in `#map`) and call `loadDiskModelMap` from `src/store/model-map.ts`.
+
+      - [Test boundary] `tests/e2e/fixture.ts`: update `gc()` to invoke `dist/cli.mjs`
+      cleanly instead of `src/cli.ts`.
+
+      - Tests (`tests/unit/preload-and-pi-bin.test.ts`, `tests/unit/supervisor.test.ts`,
+      `tests/unit/activity-inspector.test.ts`, `tests/unit/codex-ui-and-plugin.test.ts`,
+      `tests/e2e/codex-mcp.test.ts`, `tests/e2e/pi-subagents.test.ts`): add real 2-hop
+      `pi-agent:` launch e2e test, base-`models.json`-only route verification across
+      `doctor` and bundled MCP child launch, consistent canonical-vs-contained-symlink
+      rejection across `status`/panel/`activity`/`resume` with aliased `LARVA_HOME`,
+      and multi-hop post-crash GC/lease retention regression.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repo implementation (`modifies_repo`).
+
+      - scope.allowed_paths: `src/runtime/supervisor.ts`, `src/runtime/child-rpc-client.ts`,
+      `src/activity/inspector.ts`, `src/ui/codex-panel-html.ts`, `tests/unit/preload-and-pi-bin.test.ts`,
+      `tests/unit/supervisor.test.ts`, `tests/unit/activity-inspector.test.ts`, `tests/unit/codex-ui-and-plugin.test.ts`,
+      `tests/e2e/fixture.ts`, `tests/e2e/codex-mcp.test.ts`, `tests/e2e/pi-subagents.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck`, `npm run build:dist`, and targeted unit + E2E suites
+      pass under hermetic temp `LARVA_HOME` with zero leaked processes and zero mutations
+      to host `~/.larva` or `~/.pi/agent/settings.json`.
+
+
+      Recovery:
+
+      - Clean spawned processes and temp fixtures in `try/finally`; revert only step-owned
+      paths on failure.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/preload-and-pi-bin.test.ts
+      tests/unit/supervisor.test.ts tests/unit/activity-inspector.test.ts tests/unit/codex-ui-and-plugin.test.ts
+      tests/e2e/codex-mcp.test.ts tests/e2e/pi-subagents.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.repair_core_ingress
+    - larva_0_9.repair_store_substrate
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T15:10:23.521273Z'
+    done_at: '2026-11-26T15:22:12.031721+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 32010fc1 (rebased from 39818da3b40429cffd618d2f66d92e62d8cefbc3).
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run build:dist && node --test tests/unit/preload-and-pi-bin.test.ts
+      tests/unit/supervisor.test.ts tests/unit/activity-inspector.test.ts tests/unit/codex-ui-and-plugin.test.ts
+      -> exit 0 (45/45 unit tests pass; 51/51 including E2E codex-mcp and pi-subagents
+      in step worktree).
+
+      - Closed F01 (supervisor delegates settlement ownership proof to shared inspectCapsule),
+      F02 (LARVA_PI_BASE_AGENT_DIR propagation + models.json-only child launch), F04
+      (resolveCanonicalSessionPath across status/resume/activity/panel), supervisor-side
+      F06 (loadDiskModelMap), and E2E gc() dist/cli.mjs invocation.
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§2.1(3)-(4), 2.2(1), 2.3(3)-(4), 3.1(7),
+      3.2.'
+  - id: larva_0_9.repair_bundle_sync
+    name: 'Repair Wave 3: Bundle Rebuild, Codex Plugin Sync & Packaging Smoke'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 self-contained bundles via `npm run build`, synchronize tracked
+      `plugins/codex/dist/**` (and `plugins/codex/.codex-plugin/plugin.json` if touched
+      by build), and verify `git diff --exit-code plugins/codex/` after committing
+      synced artifacts.
+
+      - Verify zero `@earendil-works/pi-tui` references across all headless `.mjs`
+      bundles (`dist/{cli,mcp-server,child-rpc-preload,timeline-worker}.mjs` and `plugins/codex/dist/*.mjs`).
+
+      - Run full verification suite (`npm run typecheck`, `npm test` under hermetic
+      temp `LARVA_HOME`), `npm pack --dry-run`, and bare-`node` tarball smoke (`cli.mjs
+      --version`, `mcp-server.mjs` + `cli.mjs mcp` initialize) in a disposable temp
+      directory.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: build artifact sync and packaging verification
+      (`modifies_repo`).
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck`, `npm run build`, `git diff --exit-code plugins/codex/`,
+      `npm test`, `npm pack --dry-run`, and bare-`node` tarball smoke all pass with
+      zero leaked processes and zero host `~/.larva` or `~/.pi/agent/settings.json`
+      mutations.
+
+
+      Recovery:
+
+      - Clean disposable tarball/smoke temp dirs in `try/finally`; stop and report
+      if any source regression surfaces instead of editing `src/**`.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    - scripts/build.mjs
+    depends_on:
+    - larva_0_9.repair_surfaces_schema_authority
+    - larva_0_9.repair_runtime_handle_supervisor
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T15:22:17.658424Z'
+    done_at: '2026-11-26T15:27:45.102147+00:00'
+    evidence: 'Artifact:
+
+      - Commit integrated on v0.9: 973031823887e2f084924ab4e25ba99bb04546cb.
+
+
+      Verification:
+
+      - Run: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run -> exit 0 (148/148 tests pass: unit + integration
+      + E2E; zero bundle drift; 8-file tarball smoke passed).
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md §§1.1, 3.5, 4.2(1)-(2).'
+  - id: larva_0_9.repair_f01_f02_f04
+    name: Repair F01 (descendant intent GC/proof), F02 (relative base Pi dir), and
+      F04 (panel pin canonical handle)
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F01] src/store/capsule.ts:parsePidRecord,inspectCapsule & src/store/gc.ts:runGc
+      — admit intent-only descendant manifest records (`{ capsule_root }` without
+      `pid`) in `inspectCapsule` rather than rejecting them as malformed; retain intent
+      capsules lacking positive child proof (`reserving`/`spawning` with `!has_child`)
+      or with live preload PIDs, and reclaim once positive preload/descendant exit
+      is proved; transitively pin linked descendant capsules in `runGc` whenever any
+      ancestor capsule is pinned, unreconciled, or retained, and order unpinned capsule
+      reaping ancestor-first across `--dry-run`, live GC, and lease/resume contention
+      so descendant exit proof is never erased before ancestor settlement consumes
+      it.
+
+      - [F02] src/core/paths.ts:resolveBasePiAgentDir & src/runtime/supervisor.ts:SubagentSupervisor
+      — capture host `baseCwd` (`process.cwd()`) in `SubagentSupervisor` and pass
+      it into `resolveBasePiAgentDir(env, baseCwd)` so relative `PI_CODING_AGENT_DIR`
+      / `LARVA_PI_BASE_AGENT_DIR` resolves to a canonical absolute path before launching
+      children in a different workspace `cwd`, preserving `pi-agent:` and `models.json`
+      snapshot resolution across multi-hop spawns alongside absolute and `~/` controls.
+
+      - [F04] src/runtime/supervisor.ts:pinned & src/surfaces/mcp-tools.ts:createMcpTools(larva_subagent_panel)
+      — enforce `resolveCanonicalSessionPath` on the `run_epochs` panel pin branch
+      (catching only `LARVA_SESSION_NOT_FOUND` for deliberate absent-transcript retained/evicted
+      epochs, while rejecting installed non-canonical symlinks or escaped paths with
+      `LARVA_SESSION_INVALID` and preserving no-fallback-to-newer-epoch semantics).
+
+      - Add discriminating regression tests covering all three contracts (F01 producer
+      crash window before PID publication with no-child retain + live/exited preload
+      PID + dry-run/live/lease parity; F02 relative base Pi dir from distinct host
+      cwd across two hops + absolute/tilde controls; F04 panel `run_epochs` rejecting
+      contained symlink/never-issued alias while preserving evicted/absent-transcript
+      epoch recovery).
+
+
+      Implementation Notes:
+
+      - Keep `src/core/paths.ts` pure (no side-effect I/O; accept `baseCwd` as a parameter
+      and preserve `fallbackHome` support for existing callers).
+
+      - In `capsule.ts`, ensure `inspectCapsule` handles both published-PID and intent-only
+      `{ capsule_root }` descendant records (an absent linked capsule without a published
+      PID cannot prove exit) and share transitive descendant discovery with `gc.ts`
+      instead of duplicating tree traversal.
+
+      - In `supervisor.ts`, `status` already enforces `resolveCanonicalSessionPath`
+      catching only `LARVA_SESSION_NOT_FOUND`; share that exact admission check with
+      `pinned` / `larva_subagent_panel`.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repository edits within allowed_paths
+      and hermetic verification tests.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (never mutated);
+      rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `src/core/paths.ts`, `src/store/capsule.ts`, `src/store/gc.ts`,
+      `src/runtime/supervisor.ts`, `src/surfaces/mcp-tools.ts`, `tests/unit/core-routing-policy.test.ts`,
+      `tests/unit/store-leases-gc.test.ts`, `tests/unit/supervisor.test.ts`, `tests/integration/mcp-server-surface.test.ts`,
+      `tests/e2e/codex-mcp.test.ts`, `tests/e2e/pi-subagents.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck`, `npm run build:dist`, and all six targeted unit/integration/E2E
+      test files pass under hermetic temp `LARVA_HOME` with zero leaked processes
+      and complete F01/F02/F04 regression coverage.
+
+      - Depends on: `larva_0_9.repair_bundle_sync`.
+
+
+      Recovery:
+
+      - Keep edits isolated within allowed_paths; clean temp fixtures in `try/finally`;
+      stop and report if any contract ambiguity blocks closure.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/core-routing-policy.test.ts
+      tests/unit/store-leases-gc.test.ts tests/unit/supervisor.test.ts tests/integration/mcp-server-surface.test.ts
+      tests/e2e/codex-mcp.test.ts tests/e2e/pi-subagents.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/core/paths.ts
+    - src/store/capsule.ts
+    - src/store/gc.ts
+    - src/runtime/supervisor.ts
+    - src/surfaces/mcp-tools.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T15:39:52.518150Z'
+    done_at: '2026-11-26T15:53:35.877715+00:00'
+    evidence: 'Integrated 4753535817f0eb94516c9e1395c3fd26313e63df (rebased from 689c112d)
+      onto v0.9. Closed F01 (intent-only `{ capsule_root }` descendant inspection
+      + transitive GC pinning & ancestor-first reaping), F02 (host `baseCwd` resolution
+      in `resolveBasePiAgentDir` & `SubagentSupervisor`), and F04 (shared canonical
+      session-handle admission in `supervisor.pinned` & `larva_subagent_panel` `run_epochs`).
+      Verified pre-rebase (file-disjoint with F03 commit cf29674f): `npm run typecheck`,
+      `npm run build:dist`, and 6 targeted test suites (51/51 pass); bundle rebuild
+      + full `npm test` runs in dependent `larva_0_9.repair_bundle_sync_2`.'
+  - id: larva_0_9.repair_f03_turn_refresh
+    name: Repair F03 (refresh Pi active tool catalog on turn_end and agent_before_settle
+      continuations)
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F03] src/pi-extension.ts:larvaExtension(`turn_end`, `agent_before_settle`)
+      — unconditionally invoke `await refreshTools(live)` at the start of `pi.on("turn_end",
+      ...)` (before the `larva_persona_switch` early-return guard) and in `pi.on("agent_before_settle",
+      ...)` before continuation settlement so Pi 1.6.1''s `prepareNextTurnWithContext`
+      immediately receives the updated active tool list on automatic tool-result continuations
+      (e.g., after a native `write` updates `can_spawn` on disk) without requiring
+      an extra tool call, while retaining fail-closed handler authorization in `registerPiTools`.
+
+      - Add discriminating regression tests in `tests/integration/pi-extension-surface.test.ts`
+      verifying both `can_spawn: false` revocation and `can_spawn: true` regrant when
+      the preceding tool modifies the stored launch persona on disk, with no extra
+      authorization event before the immediate continuation provider request.
+
+
+      Implementation Notes:
+
+      - Inspect `src/pi-extension.ts:288-307`: `turn_end` currently exits early unless
+      a `larva_persona_switch` tool result with `terminate === true` is present, skipping
+      `refreshTools` on ordinary native tool continuations.
+
+      - Keep `refreshTools` idempotent and fail-closed on missing, conflicted, or
+      malformed persona definitions; preserve `larva_persona_switch` continuation
+      and lease-restoration ordering in `turn_end` and `agent_before_settle`.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repository edits within allowed_paths
+      and hermetic verification tests.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (never mutated);
+      rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `src/pi-extension.ts`, `tests/integration/pi-extension-surface.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck` and `node --test tests/integration/pi-extension-surface.test.ts`
+      pass with zero regressions and prove immediate continuation tool-list revocation
+      and regrant.
+
+      - Depends on: `larva_0_9.repair_bundle_sync`.
+
+
+      Recovery:
+
+      - Keep edits isolated within allowed_paths; clean temp fixtures in `try/finally`;
+      stop and report if Pi event ordering contradicts the assumed continuation boundary.'
+    verification: npm run typecheck && node --test tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/pi-extension.ts
+    - tests/integration/pi-extension-surface.test.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T15:39:52.519189Z'
+    done_at: '2026-11-26T15:42:45.404552+00:00'
+    evidence: 'Integrated cf29674f2ce2b3554cfc59324ca47f18ec6c975d (`wt/larva_0_9.repair_f03_turn_refresh`)
+      onto v0.9. Unconditionally invokes `await refreshTools(state)` at the top of
+      `turn_end` and `agent_before_settle` in `src/pi-extension.ts` so Pi 1.6.1''s
+      `prepareNextTurnWithContext` sees updated `can_spawn` tool catalogs immediately
+      on tool-result continuations. Verified: `npm run typecheck`, `npm run build
+      -- --check-only`, `git diff --check`, and `node --test tests/integration/pi-extension-surface.test.ts`
+      (4/4 pass including native `write` `5/5 -> 0/5 -> 5/5` immediate continuation
+      regression).'
+  - id: larva_0_9.repair_bundle_sync_2
+    name: Rebuild dist & Codex bundles and run full hermetic verification after F01–F04
+      repairs
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 package bundles (`npm run build`) and sync tracked `plugins/codex/dist/**`
+      (and `plugins/codex/.codex-plugin/plugin.json` only if needed) after merging
+      `larva_0_9.repair_f01_f02_f04` and `larva_0_9.repair_f03_turn_refresh`, verifying
+      `git diff --exit-code plugins/codex/` passes after build.
+
+      - Verify zero `@earendil-works/pi-tui` references across all headless `.mjs`
+      bundles (`dist/*.mjs` and `plugins/codex/dist/*.mjs`).
+
+      - Run full post-merge verification: `npm run typecheck`, hermetic `npm test`
+      (temp `LARVA_HOME`, `PI_CODING_AGENT_DIR`, and `HOME`, zero leaked processes,
+      zero host mutations), `npm pack --dry-run` (exact 8-file manifest), and bare-`node`
+      installed tarball smoke (`dist/cli.mjs --help`, `--version`, `dist/mcp-server.mjs`,
+      and `dist/cli.mjs mcp` initialize) in a disposable temp directory cleaned in
+      `try/finally`.
+
+
+      Implementation Notes:
+
+      - Do not edit `src/**` or `tests/**` in this bundle/consolidation step; if a
+      build or test regression occurs, stop and report the exact failure.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: bundle rebuild, Codex artifact sync within
+      allowed_paths, and full hermetic build/pack/test verification.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (never mutated);
+      rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run` plus bare-`node` tarball smoke all pass cleanly.
+
+      - Depends on: `larva_0_9.repair_f01_f02_f04`, `larva_0_9.repair_f03_turn_refresh`.
+
+
+      Recovery:
+
+      - Clean all disposable tarball/sandbox directories in `try/finally`; stop and
+      report if any verification or bundle drift fails.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - scripts/build.mjs
+    - package.json
+    - plugins/codex/.codex-plugin/plugin.json
+    depends_on:
+    - larva_0_9.repair_f01_f02_f04
+    - larva_0_9.repair_f03_turn_refresh
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T15:53:41.238922Z'
+    done_at: '2026-11-26T16:03:18.366621+00:00'
+    evidence: 'Integrated e7bf2bc1dfc62466ade29ec1238b9d51ad7cd44f (`wt/larva_0_9.repair_bundle_sync_2`)
+      onto v0.9. Rebuilt all 5 dist bundles (`npm run build`), synced `plugins/codex/dist/{mcp-server.mjs,pi-extension.js}`,
+      confirmed `git diff --exit-code plugins/codex/` and `npm run build -- --check-only`
+      exit 0, zero `@earendil-works/pi-tui` references across all 7 headless `.mjs`
+      bundles, `npm pack --dry-run` exact 8-file manifest + bare-node tarball smoke
+      pass (`--help`, `--version` 0.9.0, `mcp-server.mjs` & `cli.mjs mcp` initialize),
+      and `npm test` 152/152 pass (note: initial `npm test` hit a 151/152 scheduling
+      race at `tests/e2e/pi-subagents.test.ts:49` where `f.provider(start + 2, ''"status":"accepted"'')`
+      matched parent instead of worker when worker booted before parent; fixing that
+      test cursor deterministically before the DELTA gate).'
+  - id: larva_0_9.repair_f03_f04_2
+    name: 'Close Delta #2 blocking findings F03 (context_with_system tool catalog
+      sync) and F04 (shared canonical ancestor validation)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F03] `src/pi-extension.ts:larvaExtension` (`context_with_system`, `before_provider_request`,
+      `refreshTools`): synchronize the authorized subagent tool catalog at the final
+      request/context boundary (`await refreshTools(state)` in `context_with_system`
+      and `before_provider_request`), computing the current tool set from `event.messages`
+      system entries (`toolsAdded`/`toolsRemoved`) and `pi.getAllTools()`, and projecting
+      any `toolsAdded`/`toolsRemoved` delta onto the system transcript so a later
+      peer extension''s `turn_end` or `context` handler committing `can_spawn` changes
+      after Larva''s `turn_end` immediately updates the outgoing request''s advertised
+      tool catalog (both revocation and regrant) while preserving fail-closed handler
+      denial in `registerPiTools` (`authorize`).
+
+      - [F04] `src/store/session-index.ts:resolveCanonicalSessionPath`, `src/runtime/supervisor.ts:#admitExactHandle`:
+      move `canonicalPath` and noncanonical ancestor classification into shared `src/store/session-index.ts`
+      (`resolveCanonicalSessionPath(home, taskId)`) and remove duplicated ancestor
+      logic from `src/runtime/supervisor.ts` (`Pi_down`). When the leaf is absent
+      (`ENOENT`), classify paths through noncanonical/symlinked or escaped ancestors
+      (e.g. `<canonical sessions>/via/missing.jsonl`) as `LARVA_SESSION_INVALID` across
+      ALL exact-handle surfaces (`status`, `panel` pin & latest, `activity`, `resume`),
+      while truly missing canonical leaves under the canonical sessions root still
+      throw `LARVA_SESSION_NOT_FOUND` (retaining missing-leaf vs. retained/evicted
+      policy at callers) and canonical handles under an aliased `LARVA_HOME` continue
+      working.
+
+      - Add discriminating regressions in `tests/integration/pi-extension-surface.test.ts`
+      (real-Pi provider test with a later peer `turn_end` handler toggling `can_spawn`
+      false/true verifying immediate request catalog update + fail-closed denial)
+      and in `tests/unit/store-leases-gc.test.ts`, `tests/unit/supervisor.test.ts`,
+      `tests/integration/mcp-server-surface.test.ts`, and `tests/e2e/codex-mcp.test.ts`
+      (missing leaf under contained directory symlink -> `LARVA_SESSION_INVALID`,
+      truly missing canonical leaf -> `LARVA_SESSION_NOT_FOUND`, across `status`,
+      `panel` pin & latest, `activity`, and `resume`, plus canonical handle under
+      aliased `LARVA_HOME`).
+
+
+      Implementation Notes:
+
+      - `scripts/build.mjs` forbids runtime external imports other than `node:*` (and
+      `@earendil-works/pi-tui` in `pi-extension.js`); do NOT import `@earendil-works/pi-ai`
+      at runtime in `src/pi-extension.ts`—reconstruct the current tool set directly
+      from `event.messages` system entries (`toolsAdded`/`toolsRemoved`) matching
+      Pi''s `getCurrentTools` semantics.
+
+      - Export `canonicalPath` from `src/store/session-index.ts` so `src/runtime/supervisor.ts`
+      can reuse it for `#root` canonicalization without keeping a duplicate helper.
+
+      - Do not modify `plugins/codex/**` or `package.json`; `larva_0_9.repair_bundle_sync_3`
+      rebuilds and syncs Codex artifacts.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: edits limited to allowed_paths.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (never mutated);
+      rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `src/pi-extension.ts`, `src/store/session-index.ts`,
+      `src/runtime/supervisor.ts`, `tests/integration/pi-extension-surface.test.ts`,
+      `tests/integration/mcp-server-surface.test.ts`, `tests/e2e/codex-mcp.test.ts`,
+      `tests/unit/store-leases-gc.test.ts`, `tests/unit/supervisor.test.ts`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build:dist && node --test tests/unit/store-leases-gc.test.ts
+      tests/unit/supervisor.test.ts tests/integration/pi-extension-surface.test.ts
+      tests/integration/mcp-server-surface.test.ts tests/e2e/codex-mcp.test.ts` exits
+      0 under hermetic temp `LARVA_HOME`/`PI_CODING_AGENT_DIR`/`HOME`.
+
+      - Depends on: `larva_0_9.repair_bundle_sync_2`.
+
+
+      Recovery:
+
+      - Clean temp fixtures in `try/finally`; stop and report if any contract contradiction
+      or regression appears.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/store-leases-gc.test.ts
+      tests/unit/supervisor.test.ts tests/integration/pi-extension-surface.test.ts
+      tests/integration/mcp-server-surface.test.ts tests/e2e/codex-mcp.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/pi-extension.ts
+    - src/store/session-index.ts
+    - src/runtime/supervisor.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync_2
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T16:25:04.021443Z'
+    done_at: '2026-11-26T16:32:49.224796+00:00'
+    evidence: 'Integrated 755d64bcc1f264aef77005c9a02d2915a49e9201 (`wt/larva_0_9.repair_f03_f04_2`)
+      onto v0.9 and removed worktree. Closed F03 (`src/pi-extension.ts`: `context_with_system`
+      refreshes tools + reconciles `toolsAdded`/`toolsRemoved` deltas against `event.messages`
+      & `pi.getAllTools()`, plus `before_provider_request` refresh) and F04 (`src/store/session-index.ts`:
+      shared `canonicalPath` + `resolveCanonicalSessionPath` noncanonical-ancestor
+      classification before `ENOENT`, removing duplicated check from `src/runtime/supervisor.ts`).
+      Verified: `npm run typecheck`, `npm run build:dist`, `git diff --check`, and
+      5 targeted test suites (40/40 pass including peer `turn_end` 5->0->5 + `LARVA_SPAWN_NOT_ALLOWED`
+      and contained directory symlink `LARVA_SESSION_INVALID` across status/panel/activity/resume).'
+  - id: larva_0_9.repair_bundle_sync_3
+    name: 'Rebuild dist & Codex bundles and run full hermetic verification after Delta
+      #2 F03/F04 repairs'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 package bundles (`npm run build`) and sync tracked `plugins/codex/dist/**`
+      (and `plugins/codex/.codex-plugin/plugin.json` only if needed) after merging
+      `larva_0_9.repair_f03_f04_2`, verifying `git diff --exit-code plugins/codex/`
+      and `npm run build -- --check-only` both exit 0.
+
+      - Verify zero `@earendil-works/pi-tui` references across all headless `.mjs`
+      bundles (`dist/*.mjs` and `plugins/codex/dist/*.mjs`).
+
+      - Run full post-merge hermetic verification: `npm run typecheck`, hermetic `npm
+      test` (temp `LARVA_HOME`, `PI_CODING_AGENT_DIR`, and `HOME`, zero leaked processes,
+      zero host mutations), `npm pack --dry-run` (exact 8-file manifest), and bare-`node`
+      installed tarball smoke (`dist/cli.mjs --help`, `--version`, `dist/mcp-server.mjs`,
+      and `dist/cli.mjs mcp` initialize) in a disposable temp directory cleaned in
+      `try/finally`.
+
+
+      Implementation Notes:
+
+      - Do not edit `src/**` or `tests/**` in this bundle/consolidation step; if a
+      build or test regression occurs, stop and report the exact failure.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: bundle rebuild, Codex artifact sync within
+      allowed_paths, and full hermetic build/pack/test verification.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (never mutated);
+      rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run` plus `npm run build -- --check-only` and
+      bare-`node` tarball smoke all exit 0 cleanly.
+
+      - Depends on: `larva_0_9.repair_f03_f04_2`.
+
+
+      Recovery:
+
+      - Clean all disposable tarball/sandbox directories in `try/finally`; stop and
+      report if any verification or bundle drift fails.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - scripts/build.mjs
+    - package.json
+    - plugins/codex/.codex-plugin/plugin.json
+    depends_on:
+    - larva_0_9.repair_f03_f04_2
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T16:32:56.052132Z'
+    done_at: '2026-11-26T16:38:11.606365+00:00'
+    evidence: Integrated 7dd3135d163c936292b21174b87a4e10f5264c22 (rebased from fe28248b)
+      onto v0.9 and removed worktree. Rebuilt all 5 dist bundles (`npm run build`),
+      synced `plugins/codex/dist/{mcp-server.mjs,pi-extension.js}`, verified `git
+      diff --exit-code plugins/codex/` and `npm run build -- --check-only` exit 0,
+      zero `@earendil-works/pi-tui` references across all 7 headless `.mjs` bundles,
+      `npm pack --dry-run` & `npm pack` exact 8-file manifest + bare-node CLI/MCP
+      smoke pass, and full hermetic `npm test` 153/153 pass (0 failed, 0 cancelled,
+      0 skipped, 0 todo; 137.41s).
+  - id: larva_0_9.repair_f03_f08
+    name: 'Repair Delta #3 F03 (late context_with_system wire-tool sync) and F08 (SPAWN_TOOLS-only
+      reconciliation preserving peer constrainedSampling)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F08] `src/core/tool-policy.ts:SPAWN_TOOLS` & `src/pi-extension.ts:context_with_system`:
+      export `SPAWN_TOOLS` from `src/core/tool-policy.ts` and restrict `src/pi-extension.ts`
+      transcript/payload tool-catalog reconciliation strictly to `SPAWN_TOOLS` so
+      unrelated peer tools (including grammar-constrained `constrainedSampling` tools
+      activated via `setActiveTools` during `context`) are never synthesized or stripped
+      by Larva.
+
+      - [F03] `src/pi-extension.ts:context_with_system`, `before_provider_request`,
+      `projectProviderPrompt` (and wire-tool reconciler): keep `context_with_system`
+      calling `await refreshTools(state)` and reconciling `SPAWN_TOOLS` on `event.messages`
+      (covering `turn_end` and `context`), AND in `before_provider_request` (after
+      all `context_with_system` handlers settle) call `await refreshTools(state)`
+      and reconcile `SPAWN_TOOLS` on the outgoing wire `payload` across supported
+      Pi provider APIs (`openai-completions`, `mistral-conversations`, `openai-responses`/`azure-openai-responses`/`openai-codex-responses`,
+      `anthropic-messages`, `google-generative-ai`/`google-vertex`, `bedrock-converse-stream`,
+      `pi-messages`), preserving peer tools and fail-closed `registerPiTools` invocation
+      denial.
+
+      - Discriminating tests in `tests/unit/core-routing-policy.test.ts` and real-Pi
+      1.6.1 integration tests in `tests/integration/pi-extension-surface.test.ts`
+      verifying: (a) a later peer `context_with_system` handler toggling `can_spawn`
+      false/true on disk updates the immediate outgoing request catalog `5 -> 0 ->
+      5` with fail-closed stale invocation denial alongside `turn_end` and `context`
+      controls; (b) a peer grammar-constrained (`constrainedSampling`) tool activated
+      via `setActiveTools` during `context` preserves its identical `type: "custom"`
+      regex-grammar wire declaration across both the reconciliation turn and the following
+      native turn.
+
+
+      Implementation Notes:
+
+      - Keep `src/core/tool-policy.ts` pure (no side-effect I/O) and avoid importing
+      `@earendil-works/pi-tui` outside Pi TUI/extension modules.
+
+      - Preserve existing `projectProviderPrompt` behavior for incremental frames
+      omitting instruction or tool slots; when reconciling `SPAWN_TOOLS` on provider
+      wire `payload`, only add/remove Larva-owned `SPAWN_TOOLS` in each API''s native
+      tool schema without altering or re-projecting non-Larva tool entries.
+
+      - Reference Delta #3 findings `F03` and `F08` in `/tmp/larva-0.9-gate/delta3-report.json`.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repository code and test edits within
+      `scope.allowed_paths` only.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (use hermetic
+      temp dirs in all tests); rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `src/core/tool-policy.ts`, `src/pi-extension.ts`, `tests/integration/pi-extension-surface.test.ts`,
+      `tests/unit/core-routing-policy.test.ts`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build:dist && node --test tests/unit/core-routing-policy.test.ts
+      tests/integration/pi-extension-surface.test.ts` exits 0 with new discriminating
+      F03 (`context_with_system` late peer `5 -> 0 -> 5` + fail-closed denial) and
+      F08 (`constrainedSampling` `type: "custom"` wire parity across reconciliation
+      and native turns) tests passing.
+
+      - Depends on: `larva_0_9.repair_bundle_sync_3`.
+
+
+      Recovery:
+
+      - Clean disposable test/temp dirs in `try/finally`; stop and report if any contract
+      contradiction or real-Pi API mismatch blocks closure.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/core-routing-policy.test.ts
+      tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/core/tool-policy.ts
+    - src/pi-extension.ts
+    - tests/integration/pi-extension-surface.test.ts
+    - tests/unit/core-routing-policy.test.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync_3
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T16:46:33.932088Z'
+    done_at: '2026-11-26T16:54:51.419255+00:00'
+    evidence: 'Integrated ce350b11a0583a5988c6f244258906fda1b561d2 (`wt/larva_0_9.repair_f03_f08`)
+      onto v0.9 and removed worktree. Exported `SPAWN_TOOLS` from `src/core/tool-policy.ts`,
+      restricted `src/pi-extension.ts` transcript and wire-payload reconciliation
+      strictly to `SPAWN_TOOLS` (F08), and added `before_provider_request` `SPAWN_TOOLS`
+      payload reconciliation after late `context_with_system` hooks across supported
+      Pi provider APIs (F03). Verified: `npm run typecheck`, `npm run build:dist`,
+      and `node --test tests/unit/core-routing-policy.test.ts tests/integration/pi-extension-surface.test.ts`
+      (21/21 pass including late `context_with_system` 5->0->5 + `LARVA_SPAWN_NOT_ALLOWED`
+      denial and `constrainedSampling` `type: "custom"` regex-grammar preservation).'
+  - id: larva_0_9.repair_bundle_sync_4
+    name: 'Rebuild dist & Codex bundles and run full hermetic verification after Delta
+      #3 F03/F08 repairs'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 package bundles (`npm run build`) and sync tracked `plugins/codex/dist/**`
+      (and `plugins/codex/.codex-plugin/plugin.json` only if needed) after merging
+      `larva_0_9.repair_f03_f08`, verifying `git diff --exit-code plugins/codex/`
+      and `npm run build -- --check-only` both exit 0.
+
+      - Verify zero `@earendil-works/pi-tui` references across all headless `.mjs`
+      bundles (`dist/*.mjs` and `plugins/codex/dist/*.mjs`).
+
+      - Run full post-merge hermetic verification: `npm run typecheck`, hermetic `npm
+      test` (temp `LARVA_HOME`, `PI_CODING_AGENT_DIR`, and `HOME`, zero leaked processes,
+      zero host mutations), `npm pack --dry-run` (exact 8-file manifest), and bare-`node`
+      installed tarball smoke (`dist/cli.mjs --help`, `--version`, `dist/mcp-server.mjs`,
+      and `dist/cli.mjs mcp` initialize) in a disposable temp directory cleaned in
+      `try/finally`.
+
+
+      Implementation Notes:
+
+      - Do not edit `src/**` or `tests/**` in this bundle/consolidation step; if a
+      build or test regression occurs, stop and report the exact failure.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: bundle rebuild, Codex artifact sync within
+      allowed_paths, and full hermetic build/pack/test verification.
+
+      - protected_state: host `~/.larva` and `~/.pi/agent/settings.json` (never mutated);
+      rollback: git revert/worktree discard.
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run` plus `npm run build -- --check-only` and
+      bare-`node` tarball smoke all exit 0 cleanly.
+
+      - Depends on: `larva_0_9.repair_f03_f08`.
+
+
+      Recovery:
+
+      - Clean all disposable tarball/sandbox directories in `try/finally`; stop and
+      report if any verification or bundle drift fails.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - scripts/build.mjs
+    - package.json
+    - plugins/codex/.codex-plugin/plugin.json
+    depends_on:
+    - larva_0_9.repair_f03_f08
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T16:54:58.475049Z'
+    done_at: '2026-11-26T17:00:20.632727+00:00'
+    evidence: Integrated 07f8bb63bd16687d8e48bcd7154f857c3d17085e (rebased from 0df51314)
+      onto v0.9 and removed worktree. Rebuilt all 5 dist bundles (`npm run build`),
+      synced `plugins/codex/dist/pi-extension.js`, verified `git diff --exit-code
+      plugins/codex/` and `npm run build -- --check-only` exit 0, zero `@earendil-works/pi-tui`
+      references across all 7 headless `.mjs` bundles, `npm pack --dry-run` & `npm
+      pack` exact 8-file manifest + bare-node CLI/MCP smoke pass, and full hermetic
+      `npm test` 157/157 pass (0 failed, 0 cancelled, 0 skipped, 0 todo; 134.46s).
+  - id: larva_0_9.repair_f03_f09
+    name: 'Repair Delta #4 F03 (Responses additional_tools & strict parity) and F09
+      (prepareLoadout.hiddenDeclarations)'
+    status: done
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n[REQUIRES_SKILL:\
+      \ contract-and-simplicity]\n\nDeliver:\n- [F09] `src/pi-extension.ts:larvaExtension,projectProviderTools`\
+      \ — Track `lastContextSpawn` (tools allowed at `context_with_system`) and `hiddenByPi`\
+      \ (tools in `lastContextSpawn` omitted by Pi's `prepareLoadout.hiddenDeclarations`\
+      \ before `before_provider_request`), ensuring `before_provider_request` never\
+      \ re-adds a tool solely because `payload` omitted it and preserves `hiddenDeclarations`\
+      \ across normal turns and `revoke -> regrant` transitions while restoring unhidden\
+      \ `SPAWN_TOOLS`.\n- [F03] `src/pi-extension.ts:projectProviderTools` — Reconcile\
+      \ `SPAWN_TOOLS` across all real Pi wire locations without duplicating already-represented\
+      \ tools:\n  1. `openai-responses` / `azure-openai-responses` / `openai-codex-responses`:\
+      \ inspect and strip revoked `SPAWN_TOOLS` from both `payload.tools` and `payload.input`\
+      \ items (`type: \"additional_tools\"` / `\"tool_search_output\"`, dropping emptied\
+      \ items and paired `\"tool_search_call\"` if emptied); on late regrant, insert\
+      \ into `payload.input` `additional_tools` when `payload.input` already uses\
+      \ `additional_tools` (never duplicating into `payload.tools`), else `payload.tools`.\n\
+      \  2. Match native `strict` serialization (`strict: false` when existing function\
+      \ tools carry `strict` or `ctx.model?.compat?.supportsStrictMode !== false`,\
+      \ omitted when disabled) on `openai-completions` and `openai-responses` variants;\
+      \ also filter `anthropic-messages` `tool_addition`/`tool_definition` blocks\
+      \ when present.\n- [Tests] `tests/integration/pi-extension-surface.test.ts`\
+      \ — Add real-Pi 1.6.1 integration tests verifying: (a) native `openai-responses`\
+      \ (`supportsMidConvoSystemMessages: true`, `supportsAdditionalTools: true`)\
+      \ across allowed (no duplicates), late `context_with_system` revocation (`0`\
+      \ in both `payload.tools` and `input[].additional_tools` + `LARVA_SPAWN_NOT_ALLOWED`),\
+      \ and late regrant (`5` without duplication), plus `openai-completions` `strict:\
+      \ false` parity on late regrant; (b) cooperative peer `prepareLoadout.hiddenDeclarations:\
+      \ [\"larva_subagent_status\"]` keeping `larva_subagent_status` omitted before\
+      \ and after `revoke -> regrant` while the other 4 spawn tools return and `larva_subagent_status`\
+      \ stays callable while granted.\n\nImplementation Notes (Non-Binding):\n- Inspect\
+      \ installed Pi 1.6.1 `dist/api/openai-responses.js:127-145,243-280`, `dist/api/openai-responses-shared.js:65-77,128-170,195-214`,\
+      \ and `dist/core/agent-session.js:1234-1293,1415-1438` to verify wire item shapes\
+      \ and `prepareLoadout` ordering.\n- Preserve `SPAWN_TOOLS`-only reconciliation\
+      \ so F08 peer `constrainedSampling` (`type: \"custom\"` grammar) declarations\
+      \ and existing OpenAI Completions `turn_end`/`context`/`context_with_system`\
+      \ controls remain intact.\n\nBoundary:\n- owner: software-engineer; authority:\
+      \ repository implementation (`modifies_repo`).\n- scope.allowed_paths: `src/pi-extension.ts`,\
+      \ `tests/integration/pi-extension-surface.test.ts`.\n- scope.blocked_paths:\
+      \ `[\"plan.yaml\"]`.\n- protected_state: real host `~/.larva` and `~/.pi/agent/settings.json`\
+      \ (hermetic temp fixtures only).\n\nAdmit:\n- `npm run typecheck && npm run\
+      \ build:dist && node --test tests/integration/pi-extension-surface.test.ts`\
+      \ exits 0 with all existing and new F03/F09 regressions passing.\n\nRecovery:\n\
+      - Clean temp fixture directories and child processes in `try/finally`; commit\
+      \ cleanly in worktree."
+    verification: npm run typecheck && npm run build:dist && node --test tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/pi-extension.ts
+    - tests/integration/pi-extension-surface.test.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync_4
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T17:11:03.847827Z'
+    done_at: '2026-11-26T17:20:37.622922+00:00'
+    evidence: 'Integrated 8309574448ac547f9a99dba7261c5a0f43f7e543 (`wt/larva_0_9.repair_f03_f09`)
+      onto v0.9 and removed worktree. Closed F03 (`src/pi-extension.ts`: `projectProviderTools`
+      filters/adds across `payload.tools`, `payload.input` `additional_tools`/`tool_search_output`
+      + paired `tool_search_call`, `anthropic-messages` `tool_addition`, and matches
+      native `strict: false` compat defaults without duplicating represented tools)
+      and F09 (`lastContextSpawn` + `hiddenByPi` preserves `prepareLoadout.hiddenDeclarations`
+      omissions before and after `revoke -> regrant` while restoring unhidden `SPAWN_TOOLS`).
+      Verified: `npm run typecheck`, `npm run build:dist`, `git diff --check`, and
+      `tests/integration/pi-extension-surface.test.ts` (11/11) + `tests/unit/core-routing-policy.test.ts`
+      (19/19).'
+  - id: larva_0_9.repair_bundle_sync_5
+    name: 'Rebuild dist & Codex bundles and run full hermetic verification after Delta
+      #4 F03/F09 repairs'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 dist bundles (`npm run build`) and synchronize tracked `plugins/codex/dist/**`
+      with the post-F03/F09 source tree.
+
+      - Verify `git diff --exit-code plugins/codex/` and `npm run build -- --check-only`
+      both exit 0, zero `@earendil-works/pi-tui` references exist in headless `.mjs`
+      bundles, full hermetic `npm test` passes with zero leaked processes, and `npm
+      pack --dry-run` plus bare-`node` tarball smoke pass in a temporary directory.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: build/sync and verification (`modifies_repo`).
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - protected_state: real host `~/.larva` and `~/.pi/agent/settings.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run`, `npm run build -- --check-only`, headless
+      `.mjs` pi-tui absence check, and bare-`node` tarball smoke all exit 0 with clean
+      working tree after committing synced Codex bundle artifacts.
+
+
+      Recovery:
+
+      - Remove temporary tarball extraction directories after verification.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    - plugins/codex/.codex-plugin/plugin.json
+    depends_on:
+    - larva_0_9.repair_f03_f09
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T17:20:47.000780Z'
+    done_at: '2026-11-26T17:27:51.981418+00:00'
+    evidence: Integrated 2b93a2a2288ac35b2b6cb2a921dda2a1781de068 (`wt/larva_0_9.repair_bundle_sync_5`)
+      onto v0.9 and removed worktree. Rebuilt all 5 dist bundles (`npm run build`),
+      synced `plugins/codex/dist/pi-extension.js`, verified `git diff --exit-code
+      plugins/codex/` and `npm run build -- --check-only` exit 0, zero `@earendil-works/pi-tui`
+      references across all 7 headless `.mjs` bundles, `npm pack --dry-run` & `npm
+      pack` exact 8-file manifest + bare-node CLI/MCP smoke pass, and full hermetic
+      `npm test` 159/159 pass (0 failed, 0 cancelled, 0 skipped, 0 todo; 139.91s).
+  - id: larva_0_9.repair_f03_f09_align
+    name: Align Option A (Admitted_wire <= Executable_snapshot) and Pi_down de-bloat
+      in Pi extension
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [Spec] `design/larva-0.9-architecture.md` §2.2(3): add one concise binding
+      sentence stating the `Admitted_wire <= Executable_snapshot` invariant (Architect
+      Ruling `sig_b6b11188503e4840b30ed6e545274331`): pre-snapshot authority changes
+      update `setActiveTools` for immediate executable + native wire effect; post-snapshot
+      revocations strip `SPAWN_TOOLS` immediately and fail closed; post-snapshot regrants
+      update `setActiveTools` for the next native snapshot without post-snapshot wire
+      injection (preserving `prepareLoadout.hiddenDeclarations`).
+
+      - [Pi_down] `src/pi-extension.ts`: delete all post-snapshot wire-addition synthesis
+      (`lastContextSpawn`, `hiddenByPi`, `additions()`, `supportsStrictMode`, `strict`,
+      `useInput`, `anchor`, and `toolsAdded` injection in `spawnDeclarations`, `context_with_system`,
+      and `projectProviderTools`). Keep `await refreshTools(state)` in `context_with_system`
+      and `before_provider_request`, and strictly strip/narrow revoked `SPAWN_TOOLS`
+      (`!allowed.has(name)`) across `event.messages` and outgoing wire payloads (`payload.tools`,
+      `payload.messages`, `payload.input` `additional_tools`/`tool_search_output`
+      + paired `tool_search_call`, `anthropic-messages` `tool_addition`/`tool_definition`,
+      `google` `functionDeclarations`, `bedrock` `toolConfig.tools`, `pi-messages`
+      `toolsRemoved`), preserving `F08` peer `constrainedSampling`.
+
+      - [Tests] `tests/integration/pi-extension-surface.test.ts`: update late peer
+      `turn_end`/`context`/`context_with_system` and `prepareLoadout.hiddenDeclarations`
+      regressions (Completions + Responses `additional_tools`) to verify: (a) immediate
+      `write` `5 -> 0 -> 5` + execution; (b) immediate post-snapshot revocation (`0`
+      in `payload.tools` and `input[].additional_tools` + `LARVA_SPAWN_NOT_ALLOWED`);
+      (c) post-snapshot regrant never advertises uncallable ghost tools on the frozen
+      request, activates all eligible tools on the next native snapshot (native `strict:
+      false`, `4` when `prepareLoadout.hiddenDeclarations` hides `larva_subagent_status`
+      even starting revoked), and executes `larva_subagent_status` cleanly; (d) `F08`
+      `constrainedSampling` preserved.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repository implementation (`modifies_repo`).
+
+      - scope.allowed_paths: `design/larva-0.9-architecture.md`, `src/pi-extension.ts`,
+      `tests/integration/pi-extension-surface.test.ts`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - protected_state: real host `~/.larva` and `~/.pi/agent/settings.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build:dist && node --test tests/integration/pi-extension-surface.test.ts`
+      exits 0 with zero post-snapshot wire-addition synthesis remaining in `src/pi-extension.ts`.
+
+
+      Recovery:
+
+      - Standard hermetic test cleanup; no host state mutations.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/pi-extension.ts
+    - tests/integration/pi-extension-surface.test.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync_5
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T17:39:04.903028Z'
+    done_at: '2026-11-26T17:49:42.125922+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 44cf362aefdcd82ac920cd0f0fe41b426f2334a2 (integrated ff onto v0.9;
+      worktree removed)
+
+
+      Changes:
+
+      - design/larva-0.9-architecture.md §2.2(3): added rule 5 binding Admitted_wire
+      <= Executable_snapshot per Architect ruling sig_b6b11188503e4840b30ed6e545274331.
+
+      - src/pi-extension.ts (Pi_down: -116/+65 lines, net -51): deleted lastContextSpawn,
+      hiddenByPi, additions(), supportsStrictMode, anchor, useInput, and all custom
+      wire-addition synthesis; kept refreshTools and pure strip-only narrowProviderTools
+      across all provider payload shapes + context_with_system toolsAdded stripping,
+      preserving Pi native strict/additional_tools/hiddenDeclarations/constrainedSampling.
+
+      - tests/integration/pi-extension-surface.test.ts: verified pre-snapshot write
+      5->0->5, immediate post-snapshot revocation, next-snapshot native regrant preserving
+      strict: false & hiddenDeclarations (starting both granted and revoked), zero
+      Tool <name> not found, LARVA_SPAWN_NOT_ALLOWED fail-closed execution, and F08
+      constrainedSampling.
+
+
+      Verification:
+
+      - npm run typecheck -> exit 0
+
+      - npm run build:dist -> exit 0
+
+      - node --test tests/integration/pi-extension-surface.test.ts -> 14/14 pass
+
+      - routing-policy + foundation-schema suites -> 19/19 pass'
+  - id: larva_0_9.repair_bundle_sync_6
+    name: Rebuild dist & Codex bundles and run full hermetic verification after Option
+      A F03/F09 alignment
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 dist bundles (`npm run build`) and synchronize tracked `plugins/codex/dist/**`
+      with the post-Option-A / `Pi_down` source tree.
+
+      - Verify `git diff --exit-code plugins/codex/` and `npm run build -- --check-only`
+      both exit 0, zero `@earendil-works/pi-tui` references exist in headless `.mjs`
+      bundles, full hermetic `npm test` passes with zero leaked processes, and `npm
+      pack --dry-run` plus bare-`node` tarball smoke pass in a temporary directory.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: build/sync and verification (`modifies_repo`).
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - protected_state: real host `~/.larva` and `~/.pi/agent/settings.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run`, `npm run build -- --check-only`, headless
+      `.mjs` pi-tui absence check, and bare-`node` tarball smoke all exit 0 with clean
+      working tree after committing synced Codex bundle artifacts.
+
+
+      Recovery:
+
+      - Remove temporary tarball extraction directories after verification.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    - plugins/codex/.codex-plugin/plugin.json
+    depends_on:
+    - larva_0_9.repair_f03_f09_align
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T17:49:47.518008Z'
+    done_at: '2026-11-26T17:59:11.411024+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 25b3bf6f06e7659a72ce694f2dfdaa02e8e42ed7 (plugins/codex/dist/pi-extension.js
+      -110/+61; ff onto v0.9; worktree removed)
+
+
+      Verification:
+
+      - npm run typecheck -> exit 0
+
+      - npm run build -- --check-only -> exit 0
+
+      - git diff --exit-code plugins/codex/ -> exit 0
+
+      - Headless bundles pi-tui check -> 0 references in all 7 headless .mjs bundles
+
+      - Hermetic npm test -> 162/162 pass, 0 failed, 0 skipped, 0 leaked processes,
+      0 mutations to ~/.larva (107 entries) or ~/.pi/agent/settings.json
+
+      - npm pack --dry-run (exact 8 files) + bare-node tarball smoke -> pass (temp
+      dir cleaned)'
+  - id: larva_0_9.repair_f03_virtual_wire
+    name: Make before_provider_request narrowing and prompt projection payload-shape-driven
+      for virtual models (F03)
+    status: done
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n[REQUIRES_SKILL:\
+      \ contract-and-simplicity]\n\nDeliver:\n- [F03] `src/pi-extension.ts:narrowProviderTools`\
+      \ & `before_provider_request` handler: replace the `switch (api)` dispatch with\
+      \ payload-shape-driven narrowing independent of `ctx.model?.api` (so virtual\
+      \ models with `ctx.model.api === \"pi-virtual\"` routed to any physical provider\
+      \ are narrowed identically):\n  - `payload.tools`: filter disallowed `SPAWN_TOOLS`\
+      \ across all four entry shapes (`{ function: { name } }`, `{ toolSpec: { name\
+      \ } }`, `{ functionDeclarations: [...] }` removing empty `functionDeclarations`\
+      \ or empty group entries, and `{ name }`); omit empty `payload.tools` only when\
+      \ `{ function }` entries were removed, `tools.length === 0`, `!hasToolHistory`\
+      \ (no `role === \"tool\"` or assistant `tool_calls.length > 0` in `payload.messages`),\
+      \ and `api !== \"mistral-conversations\"`.\n  - `payload.messages`: narrow `role\
+      \ === \"system\"` `tools` (`{ function: { name } }`) and `content` blocks (`tool_addition`\
+      \ / `tool_definition` with `definition.name`), dropping emptied system messages\
+      \ without sibling fields.\n  - `payload.input`: narrow `additional_tools` and\
+      \ `tool_search_output` items' `tools`, dropping emptied items and paired `tool_search_call`\
+      \ items by `call_id`.\n  - `payload.config.tools` (`functionDeclarations` groups),\
+      \ `payload.toolConfig.tools` (`{ toolSpec: { name } }`), and `payload.context.messages`\
+      \ (`toolsRemoved` delta from `declaredSpawnTools`).\n- [F03] `src/pi-extension.ts:projectProviderPrompt`\
+      \ & `before_provider_request` handler: remove `api` switching and inspect existing\
+      \ prompt slots by payload shape across all 6 formats (`payload.context.systemPrompt`,\
+      \ `payload.config.systemInstruction`, `payload.systemInstruction`, `payload.system`\
+      \ string or part list skipping the Claude Code sentinel string, `payload.input`\
+      \ system/developer message or `payload.instructions`, and `payload.messages`\
+      \ system/developer message) without synthesizing missing slots.\n- [F03] `tests/integration/pi-extension-surface.test.ts`:\
+      \ add a real Pi 1.6.1 `registerVirtualModel` integration test covering direct\
+      \ and virtual-routed OpenAI Completions plus virtual-routed Responses across\
+      \ late revocation (`5 -> 0 -> 0` + `LARVA_SPAWN_NOT_ALLOWED`), late regrant\
+      \ (frozen request unadvertised, next native snapshot granted and callable),\
+      \ and virtual-route system prompt composition.\n\nImplementation Notes:\n- Preserve\
+      \ exact non-mutation semantics (return `undefined` when unchanged) and `input`\
+      \ vs `instructions` precedence (when `payload.input` already contains a system/developer\
+      \ message whose composed text is unchanged, do not fall through to rewrite `payload.instructions`).\n\
+      - Keep `narrowProviderTools` and `projectProviderPrompt` pure and concise; do\
+      \ not reintroduce post-snapshot tool-addition synthesis.\n\nBoundary:\n- owner:\
+      \ software-engineer; authority: repository implementation (`modifies_repo`).\n\
+      - scope.allowed_paths: `src/pi-extension.ts`, `tests/integration/pi-extension-surface.test.ts`.\n\
+      - scope.blocked_paths: `[\"plan.yaml\"]`.\n- protected_state: real host `~/.larva`\
+      \ and `~/.pi/agent/settings.json`.\n\nAdmit:\n- `npm run typecheck && npm run\
+      \ build:dist && node --test tests/integration/pi-extension-surface.test.ts`\
+      \ exits 0 with all direct and virtual-model F03 assertions passing.\n\nRecovery:\n\
+      - Clean temporary fixture directories in `try/finally`; leave no background\
+      \ Pi processes."
+    verification: npm run typecheck && npm run build:dist && node --test tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - src/pi-extension.ts
+    - tests/integration/pi-extension-surface.test.ts
+    depends_on:
+    - larva_0_9.repair_bundle_sync_6
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-26T18:07:38.715265Z'
+    done_at: '2026-11-26T18:16:22.848291+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 40f6afc334156e59411d27a868fe64fdb262b550 (ff onto v0.9; worktree removed)
+
+
+      Changes:
+
+      - src/pi-extension.ts: replaced switch(api) in both projectProviderPrompt and
+      narrowProviderTools with pure payload-shape-driven projection across all 6 provider
+      formats so Pi virtual models (api: "pi-virtual") are narrowed and prompt-composed
+      identically to direct physical selections.
+
+      - tests/integration/pi-extension-surface.test.ts: added real Pi 1.6.1 registerVirtualModel
+      tests covering OpenAI Completions and Responses virtual routes across late revocation,
+      stale denial (LARVA_SPAWN_NOT_ALLOWED), frozen/next-snapshot regrant, and virtual
+      prompt composition.
+
+
+      Verification:
+
+      - npm run typecheck -> exit 0
+
+      - npm run build:dist -> exit 0
+
+      - node --test tests/integration/pi-extension-surface.test.ts -> 16/16 pass
+
+      - git diff --check -> exit 0'
+  - id: larva_0_9.repair_bundle_sync_7
+    name: Rebuild dist & Codex bundles and run full hermetic verification after F03
+      virtual-model wire fix
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Rebuild all 5 dist bundles (`npm run build`) and synchronize tracked `plugins/codex/dist/**`
+      with the updated virtual-model wire-narrowing `src/pi-extension.ts`.
+
+      - Verify `git diff --exit-code plugins/codex/` and `npm run build -- --check-only`
+      both exit 0, zero `@earendil-works/pi-tui` references exist in headless `.mjs`
+      bundles, full hermetic `npm test` passes with zero leaked processes or host
+      `~/.larva`/`~/.pi/agent/settings.json` mutations, and `npm pack --dry-run` plus
+      bare-`node` tarball smoke pass in a temporary directory.
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: build/sync and verification (`modifies_repo`).
+
+      - scope.allowed_paths: `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - protected_state: real host `~/.larva` and `~/.pi/agent/settings.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run`, `npm run build -- --check-only`, headless
+      `.mjs` pi-tui absence check, and bare-`node` tarball smoke all exit 0 with clean
+      working tree after committing synced Codex bundle artifacts.
+
+
+      Recovery:
+
+      - Remove temporary tarball extraction directories after verification.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    - plugins/codex/.codex-plugin/plugin.json
+    depends_on:
+    - larva_0_9.repair_f03_virtual_wire
+    agent: devops-engineer
+    claimed_by: devops-engineer
+    claimed_at: '2026-11-26T18:16:30.036581Z'
+    done_at: '2026-11-26T18:25:18.622532+00:00'
+    evidence: 'Artifact:
+
+      - Commit: a70340f7c5f9f67f2928c27f86528b2c8a6627c8 (plugins/codex/dist/pi-extension.js
+      -106/+98; ff onto v0.9; worktree removed)
+
+
+      Verification:
+
+      - npm run typecheck -> exit 0
+
+      - npm run build && npm run build -- --check-only -> exit 0
+
+      - git diff --exit-code plugins/codex/ -> exit 0
+
+      - All 7 shipped headless .mjs bundles -> 0 @earendil-works/pi-tui references
+
+      - Hermetic npm test -> 164/164 pass, 0 failed, 0 skipped, 0 leaked processes,
+      0 mutations to ~/.larva or ~/.pi/agent/settings.json
+
+      - npm pack --dry-run (exact 8 files) + bare-node tarball smoke -> pass (temp
+      dir removed)'
