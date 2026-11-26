@@ -8,83 +8,25 @@
 # =============================================================
 version: 1
 project: larva
-strategy_ref: design/pi-native-extension.md
-context: 'Deliver the accepted native-only Pi integration and bounded read-only subagent
-  activity increment in the Larva repository, including repository source/tests/docs/package
-  work and disposable local verification. Current user decision: Larva is independent
-  and Opifex is abandoned; remove upstream authority/document dependencies and the
-  missing external-schema test dependency while preserving meaningful Larva-local
-  contract validation and existing schema meaning. No automatic Pi upgrades, global/user
-  installation or configuration changes, runtime version rejection, compatibility
-  probes, version matrices or preemptive adaptation. Actual functional failures may
-  be diagnosed and corrected within the authorized repository boundary. Actual user
-  installation/cutover, release/publish, Pi source changes, registry/schema changes,
-  real credentials and external-model requests remain excluded. Completed Plan history
-  is immutable. Current explicit release authorization: phase release_0_8_3 may prepare
-  version 0.8.3, commit and push to Tefx/larva, create tag v0.8.3 and publish its
-  GitHub Release, use the existing Actions trusted-publishing workflow for PyPI project
-  larva, and verify local uvx retrieval from PyPI. Existing authentication may be
-  used without exposing secrets; unrelated host/global configuration, new credentials,
-  paid models and other targets remain excluded. This scoped authorization supersedes
-  earlier release/publish exclusions only for this release. Current explicit next-patch
-  release authorization: subagent_panel_patch_release may prepare the accepted Timeline
-  repair for the next free patch (expected 0.8.6 after local/remote tags, GitHub and
-  production PyPI reconciliation), ordinarily push existing origin https://github.com/Tefx/larva.git
-  main, create its new immutable tag and GitHub Release and use the existing trusted
-  PyPI workflow. This phase-scoped authorization supersedes earlier publication exclusions
-  for this delivery only. Preserve v0.8.5 at 5165039d8e113e9246b2d6840e7bab9313ca9e7a.
-  No force-push, yank, tag/package replacement, npm publication, global installation/configuration,
-  user Pi changes, new credentials/accounts/spend or real-model calls. Fresh complete
-  remote CI, production availability, truly fresh isolated-cache unpinned uvx latest
-  resolution plus actual larva --help and published Pi install/native delivery proof
-  are required; Python backend and Pi extension delivery remain separate.'
-project_guidance: 'The accepted native-only integration behavior is described in design/pi-native-extension.md,
-  subject to the current user''s Larva-independence and functional-testing decisions.
-  Larva-local contracts govern current validation; Opifex is neither an authority
-  nor a required checkout or schema source. Remove contradictory active repository
-  guidance and upstream references without changing existing PersonaSpec meaning,
-  registry behavior or public result/session schemas. Preserve strict admission, malformed-input
-  rejection and meaningful schema/typing/validator tests. Native Pi is the sole entry;
-  no replacement launcher, environment sanitizer or project-venv option. Main settings
-  persist normally, while automatic persona model/thinking changes remain session-local.
-  Main explicit startup preflight always resolves its ID but validates runtime routes
-  only for the selected persona; Pi-owned syntax failures keep Pi diagnostics. Preserve
-  unaffected behavior in docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md, docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md,
-  docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md and docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md.
-  Do not restore removed aliases. Repository implementation and disposable isolated
-  installation/runtime tests are authorized; actual user installation/cutover and
-  release are excluded. Do not upgrade Pi automatically, modify global installations/configuration,
-  reject a runtime by version, add compatibility probes/matrices or adapt speculatively.
-  Remove exact global Pi 0.85.1 gates while preserving actual native functional observations;
-  committed local dependency locks remain reproducible build inputs, without imposing
-  their version on the user''s installed Pi. Record versions only as evidence context.
-  Invar Core/Shell rules apply. Source tokens, documentation phrases and coached fixture
-  outputs are not behavioral proof. Real loader, runtime, TUI and persistence claims
-  require matching observations; credential-free loopback proves protocol/state transitions
-  only. Reuse applicable unchanged observations and execute changed or missing meaningful
-  proof, with required fresh Invar. Completed evidence and historical design references
-  do not create new pending obligations. Current explicit release authorization: phase
-  release_0_8_3 may prepare version 0.8.3, commit and push to Tefx/larva, create tag
-  v0.8.3 and publish its GitHub Release, use the existing Actions trusted-publishing
-  workflow for PyPI project larva, and verify local uvx retrieval from PyPI. Existing
-  authentication may be used without exposing secrets; unrelated host/global configuration,
-  new credentials, paid models and other targets remain excluded. This scoped authorization
-  supersedes earlier release/publish exclusions only for this release. Release verification
-  remains focused: reuse applicable prior native MCP and focused Invar evidence, preserve
-  the known full-Invar environment failure as a gap, and do not rerun broad native
-  matrices or add defensive test scope. Apply project Invar to relevant source changes
-  without treating unrelated baseline failures as green. Current explicit next-patch
-  release authorization: subagent_panel_patch_release may prepare the accepted Timeline
-  repair for the next free patch (expected 0.8.6 after local/remote tags, GitHub and
-  production PyPI reconciliation), ordinarily push existing origin https://github.com/Tefx/larva.git
-  main, create its new immutable tag and GitHub Release and use the existing trusted
-  PyPI workflow. This phase-scoped authorization supersedes earlier publication exclusions
-  for this delivery only. Preserve v0.8.5 at 5165039d8e113e9246b2d6840e7bab9313ca9e7a.
-  No force-push, yank, tag/package replacement, npm publication, global installation/configuration,
-  user Pi changes, new credentials/accounts/spend or real-model calls. Fresh complete
-  remote CI, production availability, truly fresh isolated-cache unpinned uvx latest
-  resolution plus actual larva --help and published Pi install/native delivery proof
-  are required; Python backend and Pi extension delivery remain separate.'
+strategy_ref: design/larva-0.9-architecture.md
+context: 'Deliver the converged Larva 0.9.0 single-stack TypeScript rewrite (pi-larva@0.9.0)
+  on branch v0.9 per design/larva-0.9-architecture.md. Authorized scope: repository
+  source, schemas, self-contained dist/ and plugins/codex/dist/ bundles, documentation,
+  CI/publish workflows, and hermetic temp-LARVA_HOME unit/integration/real-Pi E2E
+  verification. Excluded from this plan: live npm/GitHub release publishing, git tag
+  creation, and mutating real host ~/.larva or ~/.pi/agent/settings.json. All completed
+  historical 0.8.x phases and evidence remain immutable.'
+project_guidance: 'Authoritative 0.9.0 contract: design/larva-0.9-architecture.md
+  (superseding 0.8.x Python/Invar/Web/OpenCode/compaction/persona-invocation rules
+  for larva_0_9_rewrite). Single-stack Node.js/TypeScript ESM with zero npm runtime
+  dependencies: run npm run typecheck, targeted node --test suites, and npm run build.
+  Keep @earendil-works/pi-tui imports strictly inside Pi extension/TUI modules (zero
+  pi-tui references in dist/{cli,mcp-server,child-rpc-preload,timeline-worker}.mjs).
+  All tests must be hermetic using disposable temp LARVA_HOME directories; never mutate
+  real host ~/.larva, ~/.pi/agent/settings.json, or publish npm/GitHub releases or
+  git tags. Pi dependency locks reproduce local builds only—never add runtime Pi version
+  rejection, compatibility matrices, or automatic Pi upgrades. Keep step commits strictly
+  within scope.allowed_paths so parallel worktrees merge cleanly without collisions.'
 clipboard:
   author: vectl-orchestrator
   summary: User revoked pi-nunc notification; finish Plan and report locally
@@ -152020,3 +151962,1258 @@ phases:
       regression test in tests/shell/test_pi_extension_contract.py. Commit: 137d5db8f86d257ca4c29187c59ffc982e8f9ae7.
       Verification passed: 187 Pi/Codex contract tests, all 5 Node harnesses, invar
       static verification.'
+- id: larva_0_9_rewrite
+  name: Larva 0.9.0 Single-Stack TypeScript Rewrite (pi-larva@0.9.0)
+  status: pending
+  gate: Independent FULL gate (larva_0_9.gate) passes with clean npm ci, npm run typecheck,
+    npm run build, zero plugins/codex/ drift, all unit/integration/real-Pi+MCP E2E
+    node --test suites under hermetic temp LARVA_HOME, verified npm pack --dry-run
+    + bare-node tarball execution, zero pi-tui references in .mjs bundles, zero leftover
+    Python/Web/OpenCode/contrib drift, and full design/larva-0.9-architecture.md contract
+    closure.
+  depends_on:
+  - pi_multihop_subagent_mechanism_v4
+  steps:
+  - id: larva_0_9.foundation
+    name: 'Wave 1: Foundation Seam Lock, Build Substrate & 0.9.0 Schema'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W1.pkg] package.json, package-lock.json, tsconfig.json: Root single-stack
+      package (`name: "pi-larva"`, `version: "0.9.0"`, `type: "module"`, `license:
+      "AGPL-3.0-or-later"`, zero runtime `dependencies`, `bin: { "larva": "./dist/cli.mjs"
+      }`, `pi: { "extensions": ["./dist/pi-extension.js"] }`, `files: ["dist/", "README.md",
+      "LICENSE"]`, `peerDependencies: { "@earendil-works/pi-tui": "*" }`, locked `devDependencies`
+      for `typescript`, `esbuild`, `@types/node`, `@earendil-works/pi-coding-agent`,
+      `@earendil-works/pi-tui`). Scripts: `typecheck`, `build`, `build:dist`, `test`,
+      `test:unit`, `test:integration`, `test:e2e`. Configure `tsconfig.json` (`noEmit:
+      true`, `erasableSyntaxOnly: true`, `allowImportingTsExtensions: true`, `include:
+      ["src/**/*.ts", "tests/unit/**/*.ts", "tests/integration/**/*.ts", "tests/e2e/**/*.ts"]`)
+      so native `node --test` and `tsc --noEmit` pass cleanly while legacy `tests/fixtures/pi/*.ts`
+      still exist until Wave 5.
+
+      - [W1.build] scripts/build.mjs: Pure-ESM `esbuild` bundler (`splitting: false`)
+      supporting `--check-only` (before Wave 4 entrypoints land), `--dist-only` (writes
+      gitignored `dist/` without touching `plugins/codex/`), and full mode (emits
+      `dist/{pi-extension.js,cli.mjs,mcp-server.mjs,child-rpc-preload.mjs,timeline-worker.mjs}`,
+      syncs `plugins/codex/dist/{mcp-server.mjs,pi-extension.js,child-rpc-preload.mjs,timeline-worker.mjs,package.json}`,
+      injects `package.json` version, and asserts zero `@earendil-works/pi-tui` references
+      in all `.mjs` bundles).
+
+      - [W1.schema] contracts/persona_spec.schema.json & delete contracts/errors.yaml:
+      Update schema to exact 0.9.0 closed contract (`id`, `description`, `prompt`,
+      `model`, `thinking` including `off|minimal|low|medium|high|xhigh|max`, `can_spawn`,
+      `tools.{allow,deny}`, optional `spec_digest`, `additionalProperties: false`,
+      rejecting retired 0.8.x fields).
+
+      - [W1.repo] AGENTS.md & delete .pre-commit-config.yaml, INVAR.md: Rewrite repository
+      `AGENTS.md` for 0.9.0 single-stack TypeScript rules (`npm run typecheck`, `node
+      --test`, `npm run build`, zero-`pi-tui` headless `.mjs` rule, hermetic temp-`LARVA_HOME`
+      tests, Vectl rules). Delete `.pre-commit-config.yaml` and `INVAR.md` so downstream
+      parallel worktrees never hit legacy Python Invar pre-commit hooks.
+
+      - [W1.types] src/core/errors.ts & src/core/types.ts: Lock ALL cross-module 0.9.0
+      TypeScript error codes (`LarvaErrorCode`, `LarvaError`, CLI JSON envelope `{
+      ok, data?, error? }` & exit codes `0|1|2`) and shared types (`PersonaSpec`,
+      `PersonaSummary`, `LarvaConfig`, `ModelMapDoc`, `SwitchMode`, `PersonaLease`,
+      `SessionLeaseRecord`, `SubagentStatus`, `OutputState`, `CancelOutcome`, `RunSnapshot`,
+      `ActivityQuery`, `ActivityResponse`, tool input/output shapes, `GcReport`, `DoctorReport`)
+      so Waves 2-4 compile independently without editing `src/core/{errors,types}.ts`.
+
+      - [W1.test] tests/unit/foundation-schema.test.ts: Verify schema acceptance/rejection
+      (valid 0.9.0 specs, all `thinking` levels including `max`, retired 0.8.x fields
+      rejected, unknown fields rejected), `LarvaError` envelope/exit-code mapping,
+      and `scripts/build.mjs --check-only`.
+
+
+      Implementation Notes:
+
+      - See `design/larva-0.9-architecture.md` §§1.1, 2.1-2.3, 3.1-3.5 and `contrib/pi-extension/package.json`
+      for Pi devDependency lock conventions.
+
+      - If local `.git/hooks/pre-commit` triggers legacy `invar-md-protected` when
+      committing the simultaneous deletion of `INVAR.md` and `.pre-commit-config.yaml`
+      in this step only, pass `--no-verify` on that commit.
+
+      - `AGENTS.md` is tracked despite being listed in `.gitignore`; verify `git diff
+      --cached` includes updated `AGENTS.md`.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: repo source/schema/build config only
+      (no global installs, no real `~/.larva` or `~/.pi` edits, no npm publish or
+      git tags).
+
+      - scope.allowed_paths: `package.json`, `package-lock.json`, `tsconfig.json`,
+      `scripts/build.mjs`, `contracts/persona_spec.schema.json`, `contracts/errors.yaml`,
+      `AGENTS.md`, `.pre-commit-config.yaml`, `INVAR.md`, `src/core/errors.ts`, `src/core/types.ts`,
+      `tests/unit/foundation-schema.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm ci` / `npm install`, `npm run typecheck`, `node --test tests/unit/foundation-schema.test.ts`,
+      and `node scripts/build.mjs --check-only` exit 0.
+
+
+      Recovery:
+
+      - Keep working tree clean of untracked scratch; revert partial changes if blocked.'
+    verification: npm run typecheck && node --test tests/unit/foundation-schema.test.ts
+      && node scripts/build.mjs --check-only
+    refs:
+    - design/larva-0.9-architecture.md
+    - contracts/persona_spec.schema.json
+    - AGENTS.md
+    agent: software-engineer
+  - id: larva_0_9.core_persona
+    name: 'Wave 2A: Persona Codec, Strict YAML Subset & Canonical Digest'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2A.yaml] src/core/yaml-frontmatter.ts: Pure-JS zero-runtime-dependency strict
+      YAML 1.2 Core/JSON frontmatter subset parser and serializer delimited by `---`
+      lines (scalars, arrays, nested maps only; reject anchors, aliases, custom tags,
+      and malformed delimiters with `LARVA_PERSONA_INVALID`).
+
+      - [W2A.digest] src/core/digest.ts: Canonical `spec_digest` (`sha256:<64-hex>`)
+      over compact key-sorted UTF-8 JSON of `{ id, description, prompt, model, thinking,
+      can_spawn, tools }` after defaults and lexicographic sorting of `tools.allow`,
+      `tools.deny`, and array `can_spawn`.
+
+      - [W2A.persona] src/core/persona.ts: Bijective `.md` <-> `.json` `PersonaSpec`
+      parser, validator, normalizer, and serializer: CRLF/CR -> LF + `.trim()` on
+      both `description` and `prompt`; kebab-case `<stem>` binding on all named files
+      (omitted `id` in `.md` inferred from `<stem>`; present `id !== <stem>` fails
+      `LARVA_PERSONA_INVALID`); stdin `-` requires explicit `id` and auto-detects
+      JSON (`{`) vs `.md`; literal `<provider>/<model_id>` syntax check (at least
+      one `/`, non-empty whitespace-free halves); `thinking` (`off|minimal|low|medium|high|xhigh|max`,
+      default `"medium"`); `can_spawn` (`boolean | 1..100 unique kebab-case IDs`,
+      default `false`); `tools.{allow,deny}` (single trailing `*` after >=1 non-`*`
+      char, no mid-string `*`, no duplicates); reject unknown/retired 0.8.x fields,
+      `spec_digest` in `.md` frontmatter, and mismatched `spec_digest` in `.json`.
+
+      - [W2A.test] tests/unit/core-persona.test.ts: Bijection & digest identity across
+      `.md`/`.json`, stem inference/mismatch, stdin auto-detect, YAML anchor/alias/tag
+      rejection, whitespace/CRLF normalization, tool-pattern and `can_spawn` edge
+      cases, and retired field rejection.
+
+
+      Implementation Notes:
+
+      - Import only `src/core/{errors,types}.ts` and `node:*` builtins (zero `@earendil-works/pi-tui`,
+      zero npm runtime deps).
+
+      - See `design/larva-0.9-architecture.md` §2.2(1)-(2).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: pure core persona codec only.
+
+      - scope.allowed_paths: `src/core/yaml-frontmatter.ts`, `src/core/digest.ts`,
+      `src/core/persona.ts`, `tests/unit/core-persona.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/core-persona.test.ts` exits 0.
+
+
+      Recovery:
+
+      - Pure module; revert cleanly on failure.'
+    verification: npm run typecheck && node --test tests/unit/core-persona.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - contracts/persona_spec.schema.json
+    depends_on:
+    - larva_0_9.foundation
+    agent: software-engineer
+  - id: larva_0_9.core_policy
+    name: 'Wave 2B: LARVA_HOME Paths, Config, Model-Map & Tool/Spawn Policy'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2B.paths] src/core/paths.ts: `LARVA_HOME` resolution (unset/empty -> `$HOME/.larva`;
+      non-empty relative, NUL-containing, or malformed -> `LARVA_CONFIG_INVALID` with
+      zero fallback), canonical directory layout (`personas/`, `config.json`, `model-map*.json`,
+      `state/{sessions,artifacts,capsules}`), shared lexical and `realpath` containment
+      helpers (used by both `activity` and `status` disk inspection), and `extension_sources`
+      path resolution (`realpath(LARVA_HOME)` relative, `~/`, `pi-agent:`, `builtin:/npm:/git:`/URL).
+
+      - [W2B.config] src/core/config.ts: Closed `config.json` parser/validator (`default_persona`,
+      `switch_mode`, `confirm_timeout_ms`, `subagent.{extension_sources,root_session_spawn,max_depth,max_active_runs,stall_alert_ms}`,
+      `gc.{max_age_days,max_bytes}`; absent -> defaults; malformed/unknown keys ->
+      `LARVA_CONFIG_INVALID`) plus watchdog pair resolver (`no_progress_timeout_ms`
+      `120000..86400000` default `3600000`; explicit `stall_alert_ms >= no_progress_timeout_ms`
+      -> `LARVA_BAD_INPUT`; config-inherited default clamps to `Math.floor(no_progress_timeout_ms
+      / 2)`).
+
+      - [W2B.modelmap] src/core/model-map.ts: Closed `model-map.json` / `model-map.<profile>.json`
+      validator (`models`, `prefix_rules` rejecting duplicate `from_prefix`, flat
+      lowercase kebab/alphanumeric `<profile>` excluding `default`, external symlink
+      target validation -> `LARVA_MODEL_MAP_INVALID`) and route resolver (`models[spec.model]`
+      -> longest `prefix_rules` -> literal `<provider>/<model_id>`).
+
+      - [W2B.tools] src/core/tool-policy.ts: 4-step Native Pi tool policy composition
+      (`tools.allow` -> `tools.deny` wins -> structural capability intersection removing
+      `larva_persona_switch` when child/`manual` and subagent tools when `effectiveCanSpawn
+      === false` -> defense-in-depth handler guard decisions) preserving `larva_*`
+      unless explicitly denied or structurally hidden.
+
+      - [W2B.spawn] src/core/spawn-policy.ts: §2.2(3) `effectiveCanSpawn` evaluator
+      across Native Pi depth 0 (`null` -> `false` regardless of `root_session_spawn`;
+      `root_session_spawn: "allow"` upgrades `false -> true` while preserving explicit
+      `string[]` allowlists), External MCP depth 0 (`parent_persona_id` > `LARVA_MCP_PARENT_PERSONA`
+      > `true`, ignoring `root_session_spawn`), and Descendant depth >= 1 (`LARVA_PI_INITIAL_PERSONA_ID`,
+      conflicting `parent_persona_id` fails closed).
+
+      - [W2B.test] tests/unit/core-routing-policy.test.ts: Hermetic tests covering
+      all 5 modules, containment symlink escapes, watchdog clamping vs explicit conflict,
+      model-map longest-prefix & symlink rules, tool policy composition, and full
+      spawn truth table.
+
+
+      Implementation Notes:
+
+      - Import only `src/core/{errors,types}.ts` and `node:*` builtins (zero `@earendil-works/pi-tui`).
+
+      - See `design/larva-0.9-architecture.md` §§2.1, 2.2(3), 2.3(2)-(3).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: pure core path/config/routing/policy
+      modules only.
+
+      - scope.allowed_paths: `src/core/paths.ts`, `src/core/config.ts`, `src/core/model-map.ts`,
+      `src/core/tool-policy.ts`, `src/core/spawn-policy.ts`, `tests/unit/core-routing-policy.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/core-routing-policy.test.ts`
+      exits 0.
+
+
+      Recovery:
+
+      - Pure modules; revert cleanly on failure.'
+    verification: npm run typecheck && node --test tests/unit/core-routing-policy.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.foundation
+    agent: software-engineer
+  - id: larva_0_9.preload_pi_bin
+    name: 'Wave 2C: Child RPC Preload & Deterministic Pi Binary Inspector'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2C.preload] src/child-rpc-preload.ts: Standalone zero-`pi-tui` child preload
+      module enforcing `1,048,576`-byte stdout JSONL frame cap, synthesizing `agent_settled`
+      terminal marker, emitting preload capability handshake marker (`max_record_bytes:
+      1048576`, `terminal: "agent_settled"`), and self-recording `child_self.json`
+      PID into `LARVA_PI_CAPSULE_ROOT` while deriving expected orphan capsule parent
+      from `LARVA_HOME/state/capsules` (never hardcoded `$HOME/.pi/larva/runtime`).
+
+      - [W2C.pibin] src/runtime/pi-binary.ts: Deterministic `pi` CLI binary discovery
+      (`LARVA_PI_CLI_SCRIPT`, PATH, and managed Pi install identity verification;
+      zero version-based rejection or compatibility matrices) plus `@earendil-works/pi-coding-agent`
+      model-registry lookup helper for `larva doctor` and runtime route verification.
+
+      - [W2C.test] tests/unit/preload-and-pi-bin.test.ts: Hermetic tests verifying
+      1 MiB frame cap, capability marker & `agent_settled` synthesis, `child_self.json`
+      capsule-root derivation from temp `LARVA_HOME`, and `pi` binary + model-registry
+      resolution without mutating host directories.
+
+
+      Implementation Notes:
+
+      - Import only `src/core/{errors,types}.ts` and `node:*` builtins (zero `@earendil-works/pi-tui`).
+
+      - See `design/larva-0.9-architecture.md` §§2.3(3), 3.1(7), 3.5(2), 4.2(3).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: preload & Pi binary discovery modules
+      only.
+
+      - scope.allowed_paths: `src/child-rpc-preload.ts`, `src/runtime/pi-binary.ts`,
+      `tests/unit/preload-and-pi-bin.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/preload-and-pi-bin.test.ts` exits
+      0.
+
+
+      Recovery:
+
+      - Clean temp dirs in `try/finally`; revert cleanly on failure.'
+    verification: npm run typecheck && node --test tests/unit/preload-and-pi-bin.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.foundation
+    agent: software-engineer
+  - id: larva_0_9.codex_ui_plugin
+    name: 'Wave 2D: Codex MCP App Views (panel-v4, widget-v4), Mentions & Plugin Shell'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2D.panel] src/ui/codex-panel-html.ts (`ui://larva-pi-subagent/panel-v4`)
+      & src/ui/codex-widget-html.ts (`ui://larva-pi-subagent/widget-v4`): Self-contained
+      HTML/JS MCP App views matching §3.4(2)-(3): standalone fullscreen thread workbench
+      (`active`/`recent`/`disk` scopes) vs inline/fullscreen tool cards; pre-acceptance/rejected
+      unbound card isolation (zero fallback to unrelated runs, no `Cancel`); accepted
+      `larva_subagent`/`larva_subagent_wait` cards pinned to initiating `(task_id,
+      run_epoch)` via `larva_subagent_panel({ run_epochs })` across hide/reopen +
+      read-only `Run snapshot expired (inspect recorded transcript)` eviction notice;
+      distinct `output_state` rendering (`pending`, `inline`, `artifactized`, `delivery_failed`,
+      `evicted`); visible `phase === "stall_suspected"` indicator; `disk` rows displaying
+      `cwd`, `Busy` (`active_external`/`unreconciled`), `Missing workspace` (`cwd_exists:
+      false`), zero `Cancel` on non-local rows; `Cancel` passing `expected_run_epochs`,
+      suppressing duplicate clicks across polls/display toggles, rendering `cleanup_unconfirmed`/`not_found`
+      as warning/error; observer-only `ui/resource-teardown`/document-hide cleanup
+      + bridge-disconnect notice.
+
+      - [W2D.mentions] src/ui/codex-mentions.ts: Ranked `@larva:<id>` mention payload
+      builder and `larva://personas/{persona_id}` URI helpers (zero `prompt` leakage).
+
+      - [W2D.plugin] plugins/codex/{.codex-plugin/plugin.json,.mcp.json,skills/larva-subagent/SKILL.md,assets/larva.svg,README.md}
+      & .agents/plugins/marketplace.json: Relocate Codex plugin metadata to `plugins/codex/`
+      (`version: "0.9.0"`), point `.agents/plugins/marketplace.json` `"source": "local"`
+      to `./plugins/codex`, configure `.mcp.json` to run `node ./dist/mcp-server.mjs`
+      forwarding `LARVA_HOME`, `LARVA_PI_CLI_SCRIPT`, `LARVA_MCP_PARENT_PERSONA`,
+      `PI_CODING_AGENT_DIR`, standard OS/XDG/proxy and provider env vars (zero legacy
+      `LARVA_CLI_ARGV_JSON`/`LARVA_PI_*` vars), and author `SKILL.md` encoding the
+      exact `@larva:<id>` vs `@larva` mention rule, singleton `roots/list` `cwd` rule,
+      `wait(return_when: "any")`, unified `status`, `activity(task_id)`, and `cancel(task_ids,
+      reason)`.
+
+      - [W2D.test] tests/unit/codex-ui-and-plugin.test.ts: Verify panel/widget state-machine
+      transitions, unbound isolation, epoch-pinned reopen/eviction, `output_state`
+      & `stall_suspected` rendering, `expected_run_epochs` cancel guard, `ui/resource-teardown`
+      quiescence, mention formatting, and plugin manifest/env-forwarding invariants.
+
+
+      Implementation Notes:
+
+      - Zero `@earendil-works/pi-tui` imports; import only `src/core/types.ts` and
+      `node:*`.
+
+      - Export a constant/loader for the canonical `SKILL.md` instructions text so
+      Wave 4 `mcp-server.ts` `initialize.instructions` matches `SKILL.md` verbatim.
+
+      - Reuse icon asset from `contrib/codex-plugin/assets/larva.svg` without modifying
+      `contrib/codex-plugin/`.
+
+
+      Boundary:
+
+      - owner: frontend-engineer; authority: Codex MCP App UI, mentions helper, and
+      `plugins/codex/` metadata only (do NOT create `plugins/codex/dist/`).
+
+      - scope.allowed_paths: `src/ui/codex-panel-html.ts`, `src/ui/codex-widget-html.ts`,
+      `src/ui/codex-mentions.ts`, `plugins/codex/.codex-plugin/plugin.json`, `plugins/codex/.mcp.json`,
+      `plugins/codex/skills/larva-subagent/SKILL.md`, `plugins/codex/assets/larva.svg`,
+      `plugins/codex/README.md`, `.agents/plugins/marketplace.json`, `tests/unit/codex-ui-and-plugin.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/codex-ui-and-plugin.test.ts`
+      exits 0.
+
+
+      Recovery:
+
+      - Revert partial UI/plugin edits cleanly on failure.'
+    verification: npm run typecheck && node --test tests/unit/codex-ui-and-plugin.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - .agents/plugins/marketplace.json
+    depends_on:
+    - larva_0_9.foundation
+    agent: frontend-engineer
+  - id: larva_0_9.retire_legacy_and_docs
+    name: 'Wave 2E: Retire Legacy Python/Web/OpenCode Stack & Author 0.9.0 Docs'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2E.retire] Delete retired 0.8.x Python/Web/OpenCode stack and stale artifacts:
+      `src/larva/**`, `pyproject.toml`, `uv.lock`, `contrib/opencode-plugin/**`, `contrib/web/**`,
+      `.agents/mcp.json`, `.agents/instructions.md`, `.agents/claude.settings.json`,
+      `tests/core/**`, `tests/app/**`, `tests/shell/**`, `tests/canonical_cutover/**`,
+      `tests/repro/**`, `tests/output/**`, `tests/__init__.py`, `test-output/**`,
+      `scripts/mcp-release-smoke.py`, `docs/reference/PI_EXTENSION_PERSONA_INVOCATION.md`,
+      `docs/reference/PI_EXTENSION_COMPACTION_FOCUS.md`.
+
+      - [W2E.docs] Rewrite `README.md`, `docs/README.md`, `docs/reference/ARCHITECTURE.md`,
+      `docs/reference/INTERFACES.md`, `docs/reference/PI_EXTENSION_ASYNC_SUBAGENTS.md`,
+      `docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`, `docs/guides/USAGE.md`,
+      and `docs/guides/USER_GUIDE.md` in clean English matching `design/larva-0.9-architecture.md`
+      (unified `LARVA_HOME`, `.md`/`.json` bijection, 8 CLI commands, 7 Pi / 6 MCP
+      tools, retired fields/tools removed, Codex plugin distribution, zero Opifex/Invar/Python/Web/OpenCode
+      instructions).
+
+
+      Implementation Notes:
+
+      - Do NOT touch `contrib/pi-extension/**`, `contrib/codex-plugin/**`, `.github/workflows/**`,
+      `.agents/plugins/marketplace.json`, `scripts/pi-*.mjs`, `scripts/release-notes-0.8.*.md`,
+      or `tests/fixtures/pi/**` (reserved for Wave 5 cutover and `codex_ui_plugin`).
+
+      - Historical ADRs (`docs/adr/`) and historical verification archives (`docs/evidence/`,
+      `docs/security/`, `docs/verification/`) may remain untouched or clearly marked
+      as historical 0.8.x records in `docs/README.md`.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: legacy Python/Web/OpenCode deletion and
+      0.9.0 documentation rewrite only.
+
+      - scope.allowed_paths: `src/larva/**`, `pyproject.toml`, `uv.lock`, `contrib/opencode-plugin/**`,
+      `contrib/web/**`, `.agents/mcp.json`, `.agents/instructions.md`, `.agents/claude.settings.json`,
+      `tests/core/**`, `tests/app/**`, `tests/shell/**`, `tests/canonical_cutover/**`,
+      `tests/repro/**`, `tests/output/**`, `tests/__init__.py`, `test-output/**`,
+      `scripts/mcp-release-smoke.py`, `README.md`, `docs/**`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck` exits 0; retired paths are absent from `git ls-files`;
+      docs match `design/larva-0.9-architecture.md` with zero broken intra-doc links
+      or retired tool names (`larva_subagent_select`, `larva_subagent_sessions`, `larva_subagent_events`,
+      `larva serve`, `larva opencode`).
+
+
+      Recovery:
+
+      - Use `git rm` cleanly; revert partial edits on failure.'
+    verification: npm run typecheck && node --test tests/unit/foundation-schema.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    - README.md
+    - docs/README.md
+    depends_on:
+    - larva_0_9.foundation
+    agent: software-engineer
+  - id: larva_0_9.store_personas_artifacts
+    name: 'Wave 2.5A: In-Process PersonaStore & 0600 Output Artifacts'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2.5A.store] src/store/persona-store.ts: In-process `PersonaStore` over `LARVA_HOME/personas/`
+      (zero CLI subprocesses, fresh-byte/inode/dual-extension cache invalidation):
+      `validate(target)` supporting file, dir, and stdin `-` with intra-batch duplicate
+      ID check; `get(id)` inspecting only `<id>.{md,json}` (isolating broken sibling
+      files, `LARVA_PERSONA_CONFLICT` if both exist); `list()` ignoring hidden dotfiles,
+      returning sorted valid summaries/specs plus bounded diagnostics for `doctor`;
+      recovery-independent `put(target, { prune })` validating 100% of incoming specs
+      in memory before per-persona hidden-temp atomic rename + `<id>.<other_ext>`
+      unlink, running `--prune` (dir input only) after incoming commits, and reporting
+      `LARVA_STORE_WRITE_FAILED` with `{ committed_ids, pruned_ids, failed_id }` on
+      mid-batch OS I/O error; recovery-independent `rm(ids)` pre-checking every requested
+      ID exists (`LARVA_PERSONA_NOT_FOUND` before any unlink) then unlinking both
+      `<id>.md` and `<id>.json`.
+
+      - [W2.5A.artifacts] src/store/artifacts.ts: `0700` `LARVA_HOME/state/artifacts/`
+      + `0600` atomic artifact writer enforcing the `36,000` code-point inline threshold
+      and returning explicit `inline`, `artifactized`, or `delivery_failed` (with
+      bounded diagnostic, never masking run `status: "success"`).
+
+      - [W2.5A.test] tests/unit/store-personas-artifacts.test.ts: Hermetic temp-`LARVA_HOME`
+      tests for dual-ext conflict detection vs recovery-independent `put`/`rm`, validate-all-before-write
+      atomicity, `--prune`, stale-cache invalidation on byte/inode/dual-ext changes,
+      and `36,000`-codepoint artifactization + `delivery_failed` honesty.
+
+
+      Implementation Notes:
+
+      - Import only `src/core/{errors,types,persona,paths}.ts` and `node:*` (zero
+      `@earendil-works/pi-tui`).
+
+      - See `design/larva-0.9-architecture.md` §§2.1(2), 2.3(1), 2.3(3).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: PersonaStore and artifact store only.
+
+      - scope.allowed_paths: `src/store/persona-store.ts`, `src/store/artifacts.ts`,
+      `tests/unit/store-personas-artifacts.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/store-personas-artifacts.test.ts`
+      exits 0.
+
+
+      Recovery:
+
+      - Clean temp dirs in `try/finally`.'
+    verification: npm run typecheck && node --test tests/unit/store-personas-artifacts.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.core_persona
+    - larva_0_9.core_policy
+    agent: software-engineer
+  - id: larva_0_9.store_leases_capsules_gc
+    name: 'Wave 2.5B: Atomic Session Leases, Capsules, Session Index & GC'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2.5B.lease] src/store/session-lease.ts: Atomic directory lease `LARVA_HOME/state/sessions/<basename(task_id)>.lock/`
+      (`0700` sessions dir, `0600` `lease.json` populated in `.lock.tmp.<pid>.<rand>/`
+      before atomic install so installed locks are never empty; unique `lease_id`;
+      monotonic `reserving -> spawning -> running` + `unreconciled` + `gc_unlinking`;
+      `ESRCH` liveness checks over `owner_pid`, `child_pid`, capsule `child_self.json`,
+      and `descendants/*.json`; instance-serialized `lease_id`-verified stale reclamation
+      preventing successor displacement; never treating grace expiry alone as teardown
+      proof for `"spawning"`/`"unreconciled"`).
+
+      - [W2.5B.capsule] src/store/capsule.ts: Ephemeral `0700` `LARVA_HOME/state/capsules/child-<ppid>-<hex>/`
+      builder (`owner.json`, `descendants/`, private `0600` copied `settings.json`
+      so child startup never mutates shared settings, and `extension_sources` resolution).
+
+      - [W2.5B.index] src/store/session-index.ts: Contained `LARVA_HOME/state/sessions/`
+      scanner (`realpath` containment + `O_RDONLY | O_NONBLOCK`, line-1 Pi header
+      `version` 2|3 parser requiring non-empty absolute `cwd`, `cwd_exists`, and `lock_state:
+      "unlocked" | "active_local" | "active_external" | "unreconciled"`).
+
+      - [W2.5B.gc] src/store/gc.ts: `larva gc` engine: reap dead capsules (`lstat`
+      real dir, all PIDs positively `ESRCH`; retain `"spawning"`/`"unreconciled"`
+      without child PID exit proof as `unreconciled_capsules`); reclaim confirmed-dead
+      stale locks; enforce retention-always-wins-over-`--max-bytes` (active/unreconciled
+      lock, <60s mtime on all sweeps, <24h mtime on `--max-bytes`); prune age then
+      evict oldest-`mtime` unprotected files acquiring `<name>.jsonl.lock/` (`state:
+      "gc_unlinking"`) before unlinking `.jsonl`; `--dry-run`; return `{ deleted_sessions,
+      deleted_artifacts, freed_bytes, remaining_bytes, protected_bytes, budget_met,
+      unreconciled_capsules }`.
+
+      - [W2.5B.test] tests/unit/store-leases-gc.test.ts: Hermetic tests for atomic
+      lease acquisition/reclamation races (`lease_id` CAS), `"spawning"` unreconciled
+      retention, private `0600` capsule `settings.json`, relative header `cwd` rejection,
+      and `gc` retention precedence + `gc_unlinking` mutual exclusion.
+
+
+      Implementation Notes:
+
+      - Import only `src/core/{errors,types,paths,config}.ts` and `node:*` (zero `@earendil-works/pi-tui`).
+
+      - See `design/larva-0.9-architecture.md` §§2.3(3)-(4), 4.2(5), 4.2(8).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: session leases, capsules, session index,
+      and GC only.
+
+      - scope.allowed_paths: `src/store/session-lease.ts`, `src/store/capsule.ts`,
+      `src/store/session-index.ts`, `src/store/gc.ts`, `tests/unit/store-leases-gc.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/store-leases-gc.test.ts` exits
+      0.
+
+
+      Recovery:
+
+      - Clean temp dirs in `try/finally`.'
+    verification: npm run typecheck && node --test tests/unit/store-leases-gc.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.core_policy
+    agent: software-engineer
+  - id: larva_0_9.activity_inspector
+    name: 'Wave 2.5C: Activity Timeline Worker & Bounded JSONL Inspector'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W2.5C.worker] src/timeline-worker.ts: Zero-`pi-tui` worker-thread `.jsonl`
+      excerpt scanner (`node:*` builtins only) supporting bounded incremental scanning
+      and source-version fingerprinting.
+
+      - [W2.5C.inspector] src/activity/inspector.ts: Read-only `larva_subagent_activity({
+      task_id, ... })` inspector sharing `src/core/paths.ts` `realpath` containment
+      under `LARVA_HOME/state/sessions/` (`O_RDONLY | O_NONBLOCK`), strictly rejecting
+      retired `session_path`, bounding full JSON response to `<= 8192` UTF-8 bytes,
+      supporting `limit` (`1..20`, default `5`), opaque cursor pagination including
+      late results for older calls, `tool_name` and ISO `since_timestamp`/`until_timestamp`
+      filters, and exact `tool_call_id` inspection (`disambiguation_index`, `entry_id`,
+      `result_index`, `segment_part: "args" | "result"`, UTF-16 `offset`/`length`
+      `1..4000` bound to `source_version`).
+
+      - [W2.5C.test] tests/unit/activity-inspector.test.ts: Hermetic tests for `realpath`
+      symlink escape rejection, retired `session_path` rejection, `<= 8192` byte cap,
+      cursor late-result inclusion, duplicate `tool_call_id` disambiguation, UTF-16
+      segment continuation + `source_version` mismatch rejection, and worker-thread
+      execution.
+
+
+      Implementation Notes:
+
+      - Import only `src/core/{errors,types,paths}.ts` and `node:*` (zero `@earendil-works/pi-tui`).
+
+      - See `design/larva-0.9-architecture.md` §§1.1, 3.2, 3.5(2), 4.2(8).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: timeline worker and activity inspector
+      only.
+
+      - scope.allowed_paths: `src/timeline-worker.ts`, `src/activity/inspector.ts`,
+      `tests/unit/activity-inspector.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/activity-inspector.test.ts` exits
+      0.
+
+
+      Recovery:
+
+      - Terminate worker threads and remove temp dirs in `try/finally`.'
+    verification: npm run typecheck && node --test tests/unit/activity-inspector.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.core_policy
+    agent: software-engineer
+  - id: larva_0_9.runtime_session_context
+    name: 'Wave 3A: SessionContext, PersonaLease & Fixed-Point Prompt Composer'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W3A.prompt] src/runtime/system-prompt.ts: Idempotent fixed-point composer
+      `C(S, C(S, B)) = C(S, B)` replacing `<!-- larva:identity-policy:begin -->` and
+      `<!-- larva:active-persona:begin -->` across `before_agent_start`, `before_provider_request`,
+      and `larva:resolve-system-prompt:v1` (`scope: "main"`) without block duplication.
+
+      - [W3A.lease] src/runtime/persona-lease.ts: `larva_persona_switch` & `PersonaLease`
+      state machine (`manual < confirm < auto < free`; reject retired `handoff`/`max_switches_per_chain`;
+      solo-call check for `continue_task: true` -> `LARVA_BAD_INPUT`; `confirm` mode
+      requiring `ctx.mode === "tui"` else `LARVA_CONFIRMATION_UNAVAILABLE`, presenting
+      exact 4 choices `[Borrow once | Deny | Auto-borrow for this session | Switch
+      persistently]` with `Auto-borrow` promoted only after validation/commit and
+      timeout/Escape/Ctrl+C denying with late-callback suppression; first-borrow origin
+      capture supporting `null` (`larva:none`) + native `(model, thinking)` vs named
+      Persona; internal autonomous chain cap `8` -> `LARVA_SWITCH_CHAIN_LIMIT`; turn-end
+      restoration rebasing named origin on committed `/larva-model-map` switch while
+      restoring `null` origin to captured native `(model, thinking)`; explicit `restore_failed`
+      latch blocking further switches until manual `/larva-persona`).
+
+      - [W3A.ctx] src/runtime/session-context.ts: Startup/restore/reload Persona &
+      `switch_mode` precedence (Native Pi vs `LARVA_PI_LAUNCHED=1` child with `applyModel:
+      false` on child startup); `/larva-model-map` paired `(model, thinking)` transition
+      with verified rollback vs `LARVA_ROUTE_UNCERTAIN` latch; explicit user persona
+      selection clearing active lease and `restore_failed`/`route_uncertain` latches;
+      in-memory `@persona:<id>` candidate projection directly from `PersonaStore`.
+
+      - [W3A.test] tests/unit/session-context.test.ts: Hermetic state-machine tests
+      covering startup/reload precedence, all 4 `confirm` choices + late-callback
+      denial, mixed-batch `continue_task: true` fail-closed, `null` vs named origin
+      restore with/without `/larva-model-map` rebase, `restore_failed` & `route_uncertain`
+      latches, chain cap `8`, and prompt fixed-point idempotence.
+
+
+      Implementation Notes:
+
+      - Zero `@earendil-works/pi-tui` imports (keep headless/UI-adapter injected via
+      clean callbacks).
+
+      - See `design/larva-0.9-architecture.md` §§2.3(2), 4.2(5).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: runtime session context, persona lease,
+      and prompt composer only.
+
+      - scope.allowed_paths: `src/runtime/system-prompt.ts`, `src/runtime/persona-lease.ts`,
+      `src/runtime/session-context.ts`, `tests/unit/session-context.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/session-context.test.ts` exits
+      0.
+
+
+      Recovery:
+
+      - Pure/hermetic runtime modules; revert cleanly on failure.'
+    verification: npm run typecheck && node --test tests/unit/session-context.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.core_policy
+    - larva_0_9.store_personas_artifacts
+    - larva_0_9.preload_pi_bin
+    agent: software-engineer
+  - id: larva_0_9.runtime_supervisor
+    name: 'Wave 3B: SubagentSupervisor, Multi-Hop Settlement, Watchdogs & Reload Handoff'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W3B.rpc] src/runtime/child-rpc-client.ts: Child `pi --mode rpc` launcher
+      using private capsule `--model`/`--thinking` argv + `child-rpc-preload.mjs`
+      (`LARVA_PI_LAUNCHED=1`, `LARVA_PI_INITIAL_PERSONA_ID`, `LARVA_PI_CAPSULE_ROOT`),
+      verifying preload capability marker (`max_record_bytes: 1048576`, `terminal:
+      "agent_settled"`), `get_state` route verification, `prompt` acceptance (`success:
+      true && data?.disposition !== "handled"`, else `LARVA_CHILD_PROTOCOL_FAILED`),
+      and `1500ms` abort grace -> `SIGKILL` teardown.
+
+      - [W3B.barrier] src/runtime/settlement-barrier.ts: Multi-hop `childSettlementBarrier`
+      discharging terminal `larva-subagent-result` obligations only when `callback_id`
+      is recorded in session entries and consuming assistant turn settles, OR when
+      delivery transitions to `"failed" | "suppressed" | "stale"`, strictly excluding
+      non-terminal `larva-subagent-alert` steers.
+
+      - [W3B.outbox] src/runtime/outbox.ts: Server-minted `run_epoch`, 25-completed-epoch
+      `(task_id, run_epoch)` snapshot + output retention window, single canonical
+      `output_state` (`"pending" | "inline" | "artifactized" | "delivery_failed" |
+      "evicted"`), and non-destructive MCP terminal output enrichment.
+
+      - [W3B.sup] src/runtime/supervisor.ts: 6-stage ordered admission gate (input
+      + watchdog validation; workspace `cwd` resolution enforcing MCP `roots/list`
+      singleton `roots.length === 1` rule and `resume` absolute header `cwd` check
+      + `input.cwd` match; incoming+outgoing lineage bounds `depth + 1 <= 100`, `<=
+      100` ancestors, `<= 65536` UTF-8 bytes; `config.json`; `max_depth` & `effectiveCanSpawn`;
+      atomic `<basename>.jsonl.lock/` + ancestor self-resume rejection + `max_active_runs`);
+      watchdogs (`stall_alert_ms` emitting at most one `larva-subagent-alert` steer
+      per silence episode, reset on progress; `no_progress_timeout_ms` hard cancel,
+      both cleared immediately in `finalizeSubagentRun`); `wait` (`all | any | first_error`
+      bound to ingress `run_epoch`, applying `timeout_ms` across the ENTIRE call including
+      MCP output enrichment); `cancel` (`expected_run_epochs` guard + per-handle `cleanup_unconfirmed`
+      preserving `owner.json`/`descendants/`/`.lock/` evidence without killing host);
+      `status` (`task_id` / `active` / `recent` / `disk`); bounded-partial `/larva-model-map`
+      child fencing (`fenced_for_startup` vs `in_flight_until_run_settles`); and process-global
+      symbol table for Native Pi `/reload` live run handoff.
+
+      - [W3B.test] tests/unit/supervisor.test.ts: Hermetic tests using fake RPC child
+      doubles covering all 6 admission stages, MCP singleton `roots/list`, `childSettlementBarrier`
+      vs stall-alert exclusion, `wait` total deadline + ingress `run_epoch` binding,
+      25-epoch eviction, `expected_run_epochs` stale cancel & `cleanup_unconfirmed`,
+      `/larva-model-map` child fencing, and `/reload` live run rebind.
+
+
+      Implementation Notes:
+
+      - Zero `@earendil-works/pi-tui` imports.
+
+      - See `design/larva-0.9-architecture.md` §§2.3(2)-(4), 3.2, 4.2(4)-(8).
+
+
+      Boundary:
+
+      - owner: senior-engineer; authority: headless subagent supervisor and child
+      RPC runtime only.
+
+      - scope.allowed_paths: `src/runtime/child-rpc-client.ts`, `src/runtime/settlement-barrier.ts`,
+      `src/runtime/outbox.ts`, `src/runtime/supervisor.ts`, `tests/unit/supervisor.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/supervisor.test.ts` exits 0 with
+      zero leaked child processes.
+
+
+      Recovery:
+
+      - Reap all spawned test processes and temp dirs in `try/finally`.'
+    verification: npm run typecheck && node --test tests/unit/supervisor.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.core_policy
+    - larva_0_9.store_personas_artifacts
+    - larva_0_9.store_leases_capsules_gc
+    - larva_0_9.preload_pi_bin
+    agent: senior-engineer
+  - id: larva_0_9.surface_cli_doctor
+    name: 'Wave 3C: CLI Persona/GC Commands & Doctor Health Check'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W3C.doctor] src/surfaces/doctor.ts: Read-only `larva doctor [--profile <name>]`
+      health check validating `LARVA_HOME`, `config.json`, 100% of `personas/` (0
+      conflicts or invalid files), syntax of ALL `model-map*.json` files, verified
+      `pi` CLI discovery, and Pi model-registry resolvability of every Persona''s
+      `model` AFTER applying the selected route map (`model-map.<name>.json` when
+      `--profile` is given, else `model-map.json` when present, else literal `<provider>/<model_id>`).
+
+      - [W3C.cli] src/surfaces/cli-commands.ts: Argument parser and command handlers
+      for `larva persona {validate, put [--prune], get, list [--query] [--full], rm}`,
+      `larva doctor [--profile <name>]`, and `larva gc [--max-age] [--max-bytes] [--dry-run]`,
+      supporting `--json` stdout envelope (`{ ok, data?, error? }`) and exit codes
+      `0` (`ok: true`), `1` (domain/validation/cleanup error), `2` (CLI usage error),
+      plus `larva mcp --json` / unknown flag stderr rejection (`exit 2`).
+
+      - [W3C.test] tests/unit/cli-and-doctor.test.ts: Hermetic temp-`LARVA_HOME` tests
+      covering all persona subcommands (file/dir/stdin `-`, `--prune`, `--query`,
+      `--full`), `doctor` with valid/broken personas & `--profile` route resolution,
+      `gc --dry-run` and live output, `--json` envelope shapes, and `larva mcp --json`
+      exit `2` on stderr.
+
+
+      Implementation Notes:
+
+      - Zero `@earendil-works/pi-tui` imports.
+
+      - Expose a clean `dispatchCli(argv, deps)` entrypoint accepting an injectable
+      `runMcp` callback so Wave 4 `src/cli.ts` wires `larva mcp` cleanly without circular
+      dependencies.
+
+      - See `design/larva-0.9-architecture.md` §3.1.
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: CLI command handlers and doctor surface
+      only.
+
+      - scope.allowed_paths: `src/surfaces/doctor.ts`, `src/surfaces/cli-commands.ts`,
+      `tests/unit/cli-and-doctor.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/unit/cli-and-doctor.test.ts` exits
+      0.
+
+
+      Recovery:
+
+      - Clean temp dirs in `try/finally`.'
+    verification: npm run typecheck && node --test tests/unit/cli-and-doctor.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.core_policy
+    - larva_0_9.store_personas_artifacts
+    - larva_0_9.store_leases_capsules_gc
+    - larva_0_9.preload_pi_bin
+    agent: software-engineer
+  - id: larva_0_9.surface_pi_extension
+    name: 'Wave 4A: Native Pi Extension, 7 Tools, Slash Commands & TUI Workbench'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W4A.ext] src/pi-extension.ts (`dist/pi-extension.js` source entrypoint):
+      Registers `--larva-persona` and `--larva-mode` startup flags, startup/restore/reload
+      hooks (`before_agent_start`, `before_provider_request`, `larva:resolve-system-prompt:v1`),
+      status badges (`larva: <id>` / `larva: none` + event-driven active subagent
+      counter hidden at `0`), editor autocomplete (`/larva-persona <query>`, `@<query>`
+      native-first + `@persona:<id>`, `@persona:<query>` from in-memory `PersonaStore`),
+      custom message renderers for `larva-subagent-result` and `larva-subagent-alert`,
+      and `/reload` live run rebinding.
+
+      - [W4A.tools] src/surfaces/pi-tools.ts: Registers all 7 Native Pi tools (`larva_personas`,
+      `larva_persona_switch`, `larva_subagent`, `larva_subagent_wait`, `larva_subagent_status`,
+      `larva_subagent_activity`, `larva_subagent_cancel`) with closed schemas (`additionalProperties:
+      false`, zero retired tools/params), policy visibility filtering, and handler
+      defense-in-depth.
+
+      - [W4A.cmds] src/surfaces/pi-commands.ts: Registers `/larva-persona [id]`, `/larva-mode
+      [manual|confirm|auto|free]`, `/larva-model-map [default|<profile>]`, and `/larva-subagent
+      [task_id | --cancel <task_id>]` (capturing target `run_epoch` at command submission
+      BEFORE any TUI confirmation on `--cancel`), delivering all outcomes via `ctx.ui.notify`
+      (TUI) and structured custom/status notifications (RPC).
+
+      - [W4A.tui] src/ui/pi-selector-tui.ts & src/ui/pi-subagent-console-tui.ts: `Ctrl+Alt+P`
+      interactive Persona selector + fullscreen Subagent Console Workbench preserving
+      mouse tracking across overlay open/close and binding row `Cancel` actions with
+      `expected_run_epochs`.
+
+      - [W4A.test] tests/integration/pi-extension-surface.test.ts: Integration tests
+      verifying tool registration/filtering, slash-command TUI/RPC notification delivery,
+      `--cancel` pre-confirmation `run_epoch` capture, autocomplete ordering, mouse-tracking
+      preservation, and `/reload` live run continuity.
+
+
+      Implementation Notes:
+
+      - Only Pi extension/TUI modules may import `@earendil-works/pi-tui`; never leak
+      `pi-tui` into `src/core/`, `src/store/`, `src/runtime/`, or `src/activity/`.
+
+      - See `design/larva-0.9-architecture.md` §§2.3(2)-(3), 3.2, 3.3, 4.2(1), 4.2(7).
+
+
+      Boundary:
+
+      - owner: frontend-engineer; authority: Native Pi extension adapter and TUI components
+      only.
+
+      - scope.allowed_paths: `src/pi-extension.ts`, `src/surfaces/pi-tools.ts`, `src/surfaces/pi-commands.ts`,
+      `src/ui/pi-selector-tui.ts`, `src/ui/pi-subagent-console-tui.ts`, `tests/integration/pi-extension-surface.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/integration/pi-extension-surface.test.ts`
+      exits 0.
+
+
+      Recovery:
+
+      - Clean mock sessions and temp dirs in `try/finally`.'
+    verification: npm run typecheck && node --test tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.activity_inspector
+    - larva_0_9.runtime_session_context
+    - larva_0_9.runtime_supervisor
+    agent: frontend-engineer
+  - id: larva_0_9.surface_mcp_and_cli
+    name: 'Wave 4B: Standalone MCP Server (6+2 Tools, Apps, Resources) & Root CLI'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+
+      Deliver:
+
+      - [W4B.tools] src/surfaces/mcp-tools.ts: 6 model-facing MCP tools (`visibility:
+      ["model", "app"]`: `larva_personas`, `larva_subagent` with `wait_for_completion`
+      & `parent_persona_id`, `larva_subagent_wait` with non-destructive 25-epoch `terminal_outputs`
+      bounded by total `timeout_ms`, `larva_subagent_status` with mutually exclusive
+      `task_id` vs `scope`/`limit`, `larva_subagent_activity` with `task_id` only,
+      `larva_subagent_cancel` with `expected_run_epochs` and `isError: true` iff validation
+      fails or any handle returns `cleanup_unconfirmed`), plus app-only `search_mentions`
+      (`_meta["openai/extensions"]["mentions/search"] = { preload: true }`) and `larva_subagent_panel({
+      task_id?, run_epochs?, scope?, limit? })` (`_meta["openai/ui"].entrypoints =
+      [{ type: "thread" }]`, `resourceUri: "ui://larva-pi-subagent/panel-v4"`), attaching
+      `ui://larva-pi-subagent/widget-v4` to `larva_subagent`, `larva_subagent_wait`,
+      and `larva_subagent_status`.
+
+      - [W4B.mcp] src/mcp-server.ts: Standalone zero-`pi-tui` stdio JSON-RPC 2.0 MCP
+      server supporting both `Content-Length` and newline-delimited framing, `initialize.instructions`
+      matching `plugins/codex/skills/larva-subagent/SKILL.md` verbatim, resources
+      `larva://personas/{persona_id}` + `ui://larva-pi-subagent/panel-v4` + `ui://larva-pi-subagent/widget-v4`,
+      client `roots/list` query bridge, never inheriting server `process.cwd()` or
+      `process.cwd()/.pi/settings.json`, and degraded exit `1` ONLY on host shutdown
+      (`EOF`/`SIGTERM`/`SIGINT`) when owned runs or cleanup remain unsettled.
+
+      - [W4B.cli] src/cli.ts: Root `#!/usr/bin/env node` CLI entrypoint wiring all
+      8 commands (`larva persona ...`, `larva mcp`, `larva doctor`, `larva gc`), injecting
+      build-time version constant.
+
+      - [W4B.test] tests/integration/mcp-server-surface.test.ts: Integration tests
+      over stdio pipes covering both JSON-RPC framings, `initialize.instructions`
+      exact parity with `SKILL.md`, 6 model + 2 app tools, resource reads, `roots/list`
+      singleton vs multi-root `LARVA_CWD_REQUIRED`, `wait` total deadline + `terminal_outputs`,
+      `cancel` `cleanup_unconfirmed` host survival vs shutdown exit `1`, and `src/cli.ts`
+      dispatch.
+
+
+      Implementation Notes:
+
+      - Zero `@earendil-works/pi-tui` imports anywhere in `mcp-server.ts`, `mcp-tools.ts`,
+      or `cli.ts`.
+
+      - See `design/larva-0.9-architecture.md` §§2.3(4), 3.1, 3.2, 3.4, 3.5(2), 4.2(4).
+
+
+      Boundary:
+
+      - owner: software-engineer; authority: standalone MCP server and root CLI entrypoint
+      only.
+
+      - scope.allowed_paths: `src/surfaces/mcp-tools.ts`, `src/mcp-server.ts`, `src/cli.ts`,
+      `tests/integration/mcp-server-surface.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+
+      Admit:
+
+      - `npm run typecheck && node --test tests/integration/mcp-server-surface.test.ts`
+      exits 0.
+
+
+      Recovery:
+
+      - Close stdio handles and reap child processes in `try/finally`.'
+    verification: npm run typecheck && node --test tests/integration/mcp-server-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.activity_inspector
+    - larva_0_9.codex_ui_plugin
+    - larva_0_9.runtime_supervisor
+    - larva_0_9.surface_cli_doctor
+    agent: software-engineer
+  - id: larva_0_9.bundle_ci_cutover
+    name: 'Wave 5A: Self-Contained Bundle Sync, Legacy contrib/ Removal & CI Cutover'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [W5A.build] scripts/build.mjs, .gitignore, plugins/codex/dist/**, plugins/codex/.codex-plugin/plugin.json:
+      Update `.gitignore` so `/dist/` ignores only root `dist/` while `plugins/codex/dist/**`
+      is cleanly tracked; finalize and execute `npm run build` emitting all 5 single-file
+      ESM bundles in `dist/` and synced tracked `plugins/codex/dist/{mcp-server.mjs,pi-extension.js,child-rpc-preload.mjs,timeline-worker.mjs,package.json}`
+      (`{"type":"module"}`), injecting `0.9.0` version into `dist/cli.mjs`, `dist/mcp-server.mjs`,
+      and `plugins/codex/.codex-plugin/plugin.json`, and verifying zero `@earendil-works/pi-tui`
+      references in all `.mjs` bundles.
+
+      - [W5A.cleanup] Delete legacy 0.8.x Node/fixture artifacts: `contrib/pi-extension/**`,
+      `contrib/codex-plugin/**`, `scripts/pi-*.mjs`, `scripts/release-notes-0.8.*.md`,
+      `tests/fixtures/pi/**`.
+
+      - [W5A.ci] .github/workflows/ci.yml & .github/workflows/publish.yml: Replace
+      legacy Python/PyPI workflows with Node-only CI (`ci.yml`: Node 22 + latest matrix,
+      `npm ci`, `npm run typecheck`, `npm run build`, `git diff --exit-code plugins/codex/`,
+      schema/unit/integration/real-Pi E2E under hermetic temp `LARVA_HOME`, `npm pack
+      --dry-run` manifest verification, and bare-`node` execution from an isolated
+      tarball install inside `node_modules/`) and npm provenance release workflow
+      (`publish.yml`: clean build, zero `plugins/codex/` drift, tarball smoke, `npm
+      publish --provenance` for `pi-larva`; zero PyPI steps).
+
+      - [W5A.pack] Verify `npm pack --dry-run` contains only `dist/`, `README.md`,
+      `LICENSE`, `package.json` and bare-`node` execution from an unpacked tarball
+      in a temp `node_modules/pi-larva/` runs `dist/cli.mjs --help` and `dist/mcp-server.mjs`
+      cleanly.
+
+
+      Implementation Notes:
+
+      - Do NOT publish to npm, create git tags, or mutate real host `~/.larva` or
+      `~/.pi`.
+
+      - Delete transient tarball/unpack temp directories immediately after verification.
+
+      - See `design/larva-0.9-architecture.md` §§1.1, 3.5, 4.2(1)-(2).
+
+
+      Boundary:
+
+      - owner: devops-engineer; authority: build sync, legacy contrib cleanup, `.gitignore`,
+      and GitHub Actions workflows only (do NOT touch `tests/e2e/**`).
+
+      - scope.allowed_paths: `scripts/build.mjs`, `plugins/codex/dist/**`, `plugins/codex/.codex-plugin/plugin.json`,
+      `.gitignore`, `.github/workflows/ci.yml`, `.github/workflows/publish.yml`, `contrib/pi-extension/**`,
+      `contrib/codex-plugin/**`, `scripts/pi-*.mjs`, `scripts/release-notes-0.8.*.md`,
+      `tests/fixtures/pi/**`.
+
+      - scope.blocked_paths: `plan.yaml`.
+
+
+      Admit:
+
+      - `npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm pack --dry-run` succeed; legacy `contrib/` and `scripts/pi-*.mjs` are
+      absent from `git ls-files`.
+
+
+      Recovery:
+
+      - Clean temp pack dirs in `try/finally`.'
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    - .gitignore
+    - .github/workflows/ci.yml
+    - .github/workflows/publish.yml
+    depends_on:
+    - larva_0_9.surface_pi_extension
+    - larva_0_9.surface_mcp_and_cli
+    - larva_0_9.retire_legacy_and_docs
+    agent: devops-engineer
+  - id: larva_0_9.e2e_real_pi_mcp
+    name: 'Wave 5B: Hermetic Real-Pi RPC & External-Cache Codex MCP E2E Suite'
+    status: pending
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\n\n\
+      Deliver:\n- [W5B.e2e] tests/e2e/**: Hermetic end-to-end test suite using disposable\
+      \ temp `LARVA_HOME` and step-local `npm run build:dist` (never committing `dist/`\
+      \ or touching `plugins/codex/`) exercising real `pi -e dist/pi-extension.js`\
+      \ (headless/RPC) and real `node` MCP server copied into an external temp cache\
+      \ directory outside the repo (simulating `~/.codex/plugins/cache/...` with zero\
+      \ repo `cwd` leakage):\n  1. Startup identity & `switch_mode` precedence + `--larva-persona`\
+      \ missing/invalid fail-closed `exit 2`.\n  2. `PersonaLease` (`confirm`/`auto`/`free`,\
+      \ `/larva-model-map` rebase on named origin vs `null` origin native `(model,\
+      \ thinking)` restore, `continue_task: true` mixed-batch fail-closed, `restore_failed`\
+      \ latch).\n  3. Multi-hop parent -> child -> grandchild `childSettlementBarrier`,\
+      \ soft `stall_alert_ms` + hard `no_progress_timeout_ms`, and Native Pi `/reload`\
+      \ live run continuity.\n  4. Concurrent cross-process `<basename>.jsonl.lock/`\
+      \ contention (`resume` vs `resume`, `resume` vs `larva gc`, dead-owner stale\
+      \ reclamation).\n  5. `expected_run_epochs` stale cancel protection & `cleanup_unconfirmed`\
+      \ host survival (without killing MCP host).\n  6. MCP `roots/list` singleton\
+      \ `cwd` enforcement (0 roots, >=2 roots even if 1 exists, invalid root -> `LARVA_CWD_REQUIRED`;\
+      \ 1 valid root -> succeeds; `resume` absolute header `cwd` check), external-cache\
+      \ self-contained bundle spawn, and `larva_subagent_activity` + `larva_subagent_status(scope:\
+      \ \"disk\")` `realpath` containment.\n\nImplementation Notes:\n- Run `npm run\
+      \ build:dist` (NOT `npm run build`) inside this worktree so `plugins/codex/`\
+      \ remains 100% untouched while running in parallel with `larva_0_9.bundle_ci_cutover`.\n\
+      - Copy `dist/{mcp-server.mjs,pi-extension.js,child-rpc-preload.mjs,timeline-worker.mjs}`\
+      \ + `{\"type\":\"module\"}` `package.json` into a temp external cache dir outside\
+      \ the repository root for Codex-cache E2E tests.\n- Use short injectable watchdog\
+      \ thresholds instead of multi-second sleeps; reap all child processes and temp\
+      \ dirs in `try/finally`.\n- Never make live external LLM API calls or mutate\
+      \ real host `~/.larva` or `~/.pi`.\n\nBoundary:\n- owner: software-engineer;\
+      \ authority: `tests/e2e/**` only.\n- scope.allowed_paths: `tests/e2e/**`.\n\
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.\n\nAdmit:\n\
+      - `npm run build:dist && npm run typecheck && node --test tests/e2e/*.test.ts`\
+      \ exits 0 with zero leaked processes or modified files outside `tests/e2e/**`.\n\
+      \nRecovery:\n- Reap spawned Pi/Node processes and clean temp dirs in `try/finally`."
+    verification: npm run build:dist && npm run typecheck && node --test tests/e2e/*.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9.surface_pi_extension
+    - larva_0_9.surface_mcp_and_cli
+    agent: software-engineer
+  - id: larva_0_9.gate
+    name: Terminal Independent FULL Gate (Larva 0.9.0 Contract & Simplicity)
+    status: pending
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\n[REQUIRES_SKILL:\
+      \ contract-and-simplicity]\n\nDeliver:\n- Independent FULL `gate.report.v2`\
+      \ auditing the complete Larva 0.9.0 single-stack TypeScript rewrite against\
+      \ `design/larva-0.9-architecture.md`:\n  1. Clean toolchain & bundle verification:\
+      \ `npm ci`, `npm run typecheck`, `npm run build`, `git diff --exit-code plugins/codex/`,\
+      \ zero `@earendil-works/pi-tui` references in `dist/{cli,mcp-server,child-rpc-preload,timeline-worker}.mjs`\
+      \ and `plugins/codex/dist/*.mjs`, `npm pack --dry-run` exact file manifest,\
+      \ and bare-`node` tarball smoke from a temp `node_modules/pi-larva/`.\n  2.\
+      \ Full executable verification: `node --test tests/unit/*.test.ts tests/integration/*.test.ts\
+      \ tests/e2e/*.test.ts` under hermetic temp `LARVA_HOME` with zero leaked processes\
+      \ and zero mutations to real host `~/.larva` or `~/.pi/agent/settings.json`.\n\
+      \  3. Clean retirement audit: confirm zero leftover Python/Invar/Opifex/Web/OpenCode/`contrib/`/`scripts/pi-*.mjs`/retired-tool\
+      \ (`larva_subagent_select`, `larva_subagent_sessions`, `larva_subagent_events`,\
+      \ `session_path`, `handoff`, `max_switches_per_chain`, `compaction_prompt`,\
+      \ `larva:persona-invocation`) drift across code, schemas, plugin, CI, and docs.\n\
+      \  4. Full `(D, S, E)` contract & `[SIMPLICITY / DE-BLOAT]` audit across `src/**`,\
+      \ `scripts/build.mjs`, `contracts/persona_spec.schema.json`, `plugins/codex/**`,\
+      \ `.github/workflows/**`, and `tests/**`.\n\nBoundary:\n- owner: gate-reviewer;\
+      \ authority: read-only verification and gate adjudication only (`no_repo_change`).\n\
+      - scope.allowed_paths: `[]` (read-only).\n- scope.blocked_paths: `plan.yaml`.\n\
+      \nAdmit:\n- All checks pass with zero Tier 1 `[CONTRACT / WIRE]` or blocking\
+      \ `[SIMPLICITY / DE-BLOAT]` findings; return structured `gate.report.v2` (`PASS`\
+      \ or `FAIL` with exact file:line findings).\n\nRecovery:\n- Read-only gate;\
+      \ clean any disposable temp verification directories in `try/finally`."
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm test && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    - contracts/persona_spec.schema.json
+    - .github/workflows/ci.yml
+    - .github/workflows/publish.yml
+    depends_on:
+    - larva_0_9.bundle_ci_cutover
+    - larva_0_9.e2e_real_pi_mcp
+    agent: gate-reviewer
