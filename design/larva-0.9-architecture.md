@@ -1,0 +1,259 @@
+# Larva 0.9 Architecture Specification: Single-Stack Persona & Pi Process Manager
+
+- **Status**: Converged architecture specification (verified across 3-pass orthogonal pre-review)
+- **Target Release Line**: `pi-larva` `0.9.0` (single-stack Node.js / TypeScript package; `0.8.12` freezes the retired dual-stack Python/Node line)
+- **Repository Root**: `/Users/tefx/Projects/larva`
+
+---
+
+## 1. Mission, Domain Model, and Hard Non-Goals (`Boundary Anchor`)
+
+Larva is the **Persona Image Store and Process/Context Supervisor** for `pi` (`@earendil-works/pi-coding-agent`). Treating raw `pi` as an untyped execution loop, Larva owns exactly two coupled domain abstractions:
+
+1. **Persona Image (`PersonaSpec` & `PersonaStore`)**: A self-contained, content-addressed (`spec_digest`) execution profile defining an agent's identity (`id`, `description`), system instructions (`prompt`), compute route (`model`, `thinking`), tool sandbox (`tools.allow`, `tools.deny`), and process-fork authority (`can_spawn`).
+2. **Pi Process & Context Lifecycle (`SessionContext` & `SubagentSupervisor`)**:
+   - **In-Process Context (`exec` / `seteuid` / `setuid`)**: Binding and switching active Personas inside a native Pi session, including turn-scoped temporary borrows (`PersonaLease`), manual human selection, and live `model-map` profile rerouting.
+   - **Child Process Tree (`posix_spawn` / `wait` / `kill` / `ps` / `ptrace` / `gc`)**: Spawning, resuming, synchronizing, inspecting, cancelling, and garbage-collecting isolated Persona-bound `pi` OS child processes from either a native Pi parent session or an external MCP host (such as Codex).
+
+### 1.1 Hard Non-Goals and `[SIMPLICITY / DE-BLOAT]` Removals ($\Pi_{\downarrow}$)
+
+Larva `0.9.0` is completely independent of abandoned upstream ecosystems (Opifex, Tela) and external configuration repositories (such as user dotfiles or harness generators). Larva MUST NOT embed external concepts such as template slots, overlay build pipelines, or repository-specific sync flags.
+
+The following legacy directories, subsystems, fields, and redundant surfaces MUST be removed outright (updating root `AGENTS.md`, `contracts/persona_spec.schema.json`, and `docs/reference/*` in lockstep):
+
+- **Python package & runtime stack**: Delete `pyproject.toml`, `uv.lock`, `INVAR.md`, `src/larva/**`, `tests/**/*.py`, and PyPI publishing workflows. PyPI `larva` remains frozen at `0.8.12`.
+- **Legacy `contrib/` packages & duplicate manifests**: Delete `contrib/pi-extension/`, `contrib/codex-plugin/`, `contrib/opencode-plugin/`, and `contrib/web/`. Root `package.json` and `src/` become the single runtime source of truth, with Codex plugin metadata relocated to `plugins/codex/`.
+- **Legacy `PersonaSpec` fields**: Delete `capabilities`, `model_params`, `compaction_prompt`, and `spec_version`.
+- **Standalone Web UI & HTTP REST server**: Delete `larva serve`, FastAPI/Uvicorn routes, and both HTML SPAs.
+- **Python 13-tool Registry CRUD MCP server**: Delete all MCP registry-mutation tools; `larva mcp` becomes the sole Node stdio runtime server for launching and managing Persona-bound `pi` processes.
+- **OpenCode launcher & plugin**: Delete `larva opencode`.
+- **Registry-local multi-variant storage**: Delete `manifest.json`, `contract.json`, `variants/*.json`, and all `variant` operations.
+- **Compaction focus override**: Delete `compaction_prompt` and `compaction.json`.
+- **Extension-private `larva:persona-invocation` event bus**: Delete `larva:persona-invocation:{request,cancel,result}` and all invocation-specific bypass paths.
+- **Cross-process CLI bridge & candidate disk cache**: Delete `LARVA_CLI_ARGV_JSON`, `LARVA_PI_MODEL_MAP_FILE`, `LARVA_PI_SUBAGENT_CONFIG_FILE`, and `LARVA_PI_CHILD_SESSION_DIR` overrides (superseded by unified `LARVA_HOME`), runtime CLI subprocess spawning, `persona-candidates-cache.json`, and `/larva-persona --refresh-cache`.
+- **Retired `larva_persona_switch` parameters**: Delete `handoff` and `max_switches_per_chain` from `larva_persona_switch` (superseding the `0.8.x` handoff/chain-budget clauses in `docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md`; same-session history is already in context and autonomous switch loops use one internal cap).
+- **Redundant subagent tools & cursor event replay**: Delete `larva_subagent_select` (absorbed by `larva_subagent_wait` with `return_when: "any"`), `larva_subagent_sessions` (absorbed by `larva_subagent_status`), `larva_subagent_activity.session_path` (duplicate of `task_id`), and `larva_subagent_events` (ordered event-cursor replay across transitions is intentionally retired; `larva_subagent_status` provides point-in-time snapshots and `larva_subagent_activity` provides recorded `.jsonl` tool traces).
+
+---
+
+## 2. Binding Contract (`MUST`)
+
+### 2.1 Unified `LARVA_HOME` Filesystem & Configuration Contract
+
+1. **Root Resolution**:
+   - All Larva persistent definitions, configuration, and managed runtime state live under one root directory `LARVA_HOME`.
+   - Unset or empty `LARVA_HOME` defaults to `$HOME/.larva`.
+   - Non-empty `LARVA_HOME` MUST be a normalized absolute filesystem path without NUL bytes; relative or malformed values fail closed with `LARVA_CONFIG_INVALID` without falling back to `$HOME/.larva`.
+2. **Directory Layout**:
+   - `LARVA_HOME/personas/` — Declarative Persona store containing `<id>.md` or `<id>.json` files.
+   - `LARVA_HOME/config.json` — Optional closed runtime configuration object.
+   - `LARVA_HOME/model-map.json` and `LARVA_HOME/model-map.<profile>.json` — Optional runtime provider/model reroute maps (`<profile>` is flat lowercase alphanumeric/hyphen, excluding `default`).
+   - `LARVA_HOME/state/sessions/` — Persistent child Pi `.jsonl` transcripts and exclusive `<basename>.jsonl.lock` lease directories/files (`0700` directory).
+   - `LARVA_HOME/state/artifacts/` — Full-text output artifacts for overlong child completions (`0700` directory, `0600` files).
+   - `LARVA_HOME/state/capsules/` — Ephemeral per-child Pi agent configuration sandboxes (`0700` directory).
+3. **`config.json` Closed Schema**:
+   - Absent `config.json` uses defaults; an unreadable, non-object, unknown-key, or invalid-value `config.json` fails closed with `LARVA_CONFIG_INVALID`.
+   - Allowed top-level keys (`additionalProperties: false`):
+     - `default_persona`: `string | null` (valid kebab-case Persona ID or `null`; default `null`).
+     - `switch_mode`: `"manual" | "confirm" | "auto" | "free"` (default `"confirm"`).
+     - `confirm_timeout_ms`: integer `0` (disabled) or `1000..86400000` (default `900000`).
+     - `subagent`: optional closed object (`additionalProperties: false`):
+       - `extension_sources`: `string[]` (default `[]`; unique non-empty strings; supports readable local files/directories resolved relative to `realpath(LARVA_HOME)` when relative, `~/` expansion, `pi-agent:` relative to base Pi agent dir, and `builtin:` / `npm:` / `git:` / URL sources passed to Pi `-e`).
+       - `root_session_spawn`: `"persona" | "allow"` (default `"persona"`).
+       - `max_depth`: integer `1..100` (optional; unset imposes only the hard wire ceiling of `100`).
+       - `max_active_runs`: integer `1..100` (optional; bounds unsettled runs owned by one parent process).
+       - `stall_alert_ms`: integer `0` (disabled) or `60000..86400000` (default `600000`).
+     - `gc`: optional closed object (`additionalProperties: false`):
+       - `max_age_days`: integer `1..3650` (default `30`).
+       - `max_bytes`: integer `>= 1048576` (optional combined byte target across `state/sessions/*.jsonl` and `state/artifacts/*.txt`).
+4. **`model-map*.json` Closed Schema**:
+   - Absent `model-map.json` means literal `<provider>/<model_id>` routing; an unreadable, non-object, unknown-key, or invalid-value `model-map*.json` fails closed with `LARVA_MODEL_MAP_INVALID`.
+   - Allowed top-level keys (`additionalProperties: false`):
+     - `models`: optional `Record<string, { provider: string, model_id: string }>` (`additionalProperties` on each entry `false`; keys and `provider`/`model_id` values must be non-empty whitespace-free strings).
+     - `prefix_rules`: optional array of closed objects `{ from_prefix: string, to_provider: string, to_model_id_prefix: string }` (`from_prefix` and `to_provider` non-empty whitespace-free; `to_model_id_prefix` whitespace-free, empty string allowed; duplicate `from_prefix` values across rules are rejected with `LARVA_MODEL_MAP_INVALID`).
+
+### 2.2 Canonical `PersonaSpec` & Dual-Format Bijection (`.md` and `.json`)
+
+`contracts/persona_spec.schema.json` MUST be updated in lockstep to represent this exact `0.9.0` canonical JSON schema.
+
+1. **Closed Canonical Fields (`additionalProperties: false`)**:
+   - `id` (required in canonical output and stdin input; optional in named `.md` files): lowercase ASCII kebab-case identifier.
+   - `description` (required): string normalized by converting CRLF/CR line endings to LF (`\n`) and `.trim()`; empty after normalization is rejected (`LARVA_PERSONA_INVALID`).
+   - `prompt` (required): string normalized identically in **both** `.md` and `.json` by converting CRLF/CR line endings to LF (`\n`) and `.trim()`; empty after normalization is rejected (`LARVA_PERSONA_INVALID`).
+   - `model` (required): literal `<provider>/<model_id>` string containing at least one `/` with non-empty, whitespace-free `<provider>` (before the first `/`) and `<model_id>` (after the first `/`). Static validation verifies literal route syntax without requiring `model-map.json`; actual provider/model installation and credentials are checked at runtime/startup (`LARVA_MODEL_UNAVAILABLE`) and by `larva doctor`.
+   - `thinking` (optional, default `"medium"`): `"off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"`.
+   - `can_spawn` (optional, default `false`): `boolean` or an array of `1..100` unique valid kebab-case Persona IDs.
+   - `tools` (optional, default `{ "allow": [], "deny": [] }`): closed object `{ allow?: string[], deny?: string[] }`. Each pattern is a non-empty whitespace-free tool name, optionally ending with a single trailing `*` after at least one non-`*` character (mid-string `*` is rejected). Duplicate patterns within `allow` or `deny` are rejected (`LARVA_PERSONA_INVALID`).
+   - `spec_digest` (computed on output; optional in `.json` input, forbidden in `.md` frontmatter): `sha256:<64-hex>` over compact key-sorted UTF-8 JSON of `{ id, description, prompt, model, thinking, can_spawn, tools }` after applying defaults and sorting `tools.allow`, `tools.deny`, and array `can_spawn` lexicographically. Supplying a mismatched `spec_digest` in `.json` input fails with `LARVA_PERSONA_INVALID`.
+2. **Markdown (`.md`) vs. JSON (`.json`) Representation & Stem Binding**:
+   - A `.md` file MUST begin with a YAML frontmatter block delimited by `---` lines using YAML 1.2 Core/JSON scalar/array/map values only (anchors, aliases, and custom tags rejected), followed by the Markdown body (`prompt`). Allowed frontmatter keys: `{ id?, description, model, thinking?, can_spawn?, tools? }`.
+   - For **any** named file `<dir>/<stem>.md` or `<dir>/<stem>.json` (both inside `LARVA_HOME/personas/` and external files/directories passed to `larva persona validate` or `put`), `<stem>` MUST be a valid kebab-case Persona ID: in `.md`, omitted `id` defaults to `<stem>`; if `id` is present in `.md` or `.json`, `id === <stem>` is required (`LARVA_PERSONA_INVALID` on mismatch). Reading from stdin (`-`) requires explicit `id` (auto-detecting JSON when the first non-whitespace character is `{`, otherwise `.md` frontmatter).
+   - **Single-Source Invariant ($\dim = 1$)**: Co-existence of `<id>.md` and `<id>.json` in `LARVA_HOME/personas/` is a conflict (`LARVA_PERSONA_CONFLICT`) on read/list/doctor.
+   - **Canonical Bijection**: Equivalent `.md` and `.json` inputs normalize to the identical `PersonaSpec` object and identical `spec_digest`.
+3. **Authoritative Spawn Authority & Tool Visibility Truth Table**:
+   - **Depth-0 Spawn Authority (`effectiveCanSpawn`)**:
+     - *Native Pi (`LARVA_PI_LAUNCHED !== "1"`)*:
+       - Active persona is `null` (`larva:none`): `false` (`LARVA_NO_ACTIVE_PERSONA` on call), regardless of `root_session_spawn`.
+       - Active persona present & `root_session_spawn === "persona"` (default): active persona's `can_spawn` (`false`, `true`, or `string[]` allowlist).
+       - Active persona present & `root_session_spawn === "allow"`: if active persona has `can_spawn === false`, upgraded to `true` at depth 0; if active persona has `can_spawn: string[]`, that explicit target allowlist still governs (`true` remains `true`).
+     - *External MCP Host (`larva mcp` at depth 0)*: `root_session_spawn` does not apply. Explicit per-call `parent_persona_id` takes precedence over non-blank `LARVA_MCP_PARENT_PERSONA`, enforcing that resolved persona's `can_spawn`; when neither is set, external host grants `true`.
+     - *Descendant Depth ($\ge 1$ in both Native Pi and MCP)*: strictly bound to `LARVA_PI_INITIAL_PERSONA_ID`'s `can_spawn` (missing ID or conflicting `parent_persona_id` fails closed).
+   - **Native Pi Tool Policy Composition Order** over baseline tools $T_{\text{base}}$:
+     1. *`tools.allow`*: keep all $T_{\text{base}}$ if `allow` is empty, else only tools matching `allow`.
+     2. *`tools.deny` (`deny` wins)*: remove any tool matching `deny`.
+     3. *Structural capability intersection* (never widening step 2):
+        - Remove `larva_persona_switch` when `LARVA_PI_LAUNCHED === "1"` or effective `switch_mode === "manual"`.
+        - Remove `larva_subagent`, `larva_subagent_wait`, `larva_subagent_status`, `larva_subagent_activity`, and `larva_subagent_cancel` when `effectiveCanSpawn === false`.
+     4. *Handler defense-in-depth*: direct/stale invocations of hidden or denied tools fail closed (`LARVA_TOOL_DENIED`, `LARVA_NO_ACTIVE_PERSONA`, or `LARVA_SPAWN_NOT_ALLOWED`).
+
+### 2.3 State Authority, Concurrency, and Lifecycle Postconditions (`D, S, E`)
+
+1. **In-Process `PersonaStore` Semantics & Recovery Independence**:
+   - Runtime surfaces read `LARVA_HOME/personas/` in-process with zero CLI subprocesses. Any in-memory caching MUST guarantee fresh-byte equivalence whenever on-disk file bytes, inode, or dual-extension presence change.
+   - `get(id)` inspects only `<id>.md` and `<id>.json` (isolating unrelated broken sibling files from startup/activation) and fails with `LARVA_PERSONA_CONFLICT` if both exist.
+   - `list()` ignores hidden dotfiles (`name.startsWith(".")`), returns valid Personas sorted by `id`, and excludes malformed/conflicted files while recording bounded diagnostics surfaced by `larva doctor`.
+   - **Recovery-Independent Mutation (`put` & `rm`)**: `put` and `rm` MUST NOT fail on an existing `LARVA_PERSONA_CONFLICT` caused by a previously interrupted migration. `put` validates 100% of incoming inputs in memory first ($\mathcal{V}_{\text{admit}} \prec \mathcal{E}_{\text{exec}}$), then per Persona atomically renames a hidden staged file onto `<id>.<ext>` (commit point) and unlinks any `<id>.<other_ext>`. With `--prune` on a directory input, unlisted files are unlinked after all incoming commits complete. If an OS I/O error interrupts a multi-file `put`/`--prune`, CLI returns `LARVA_STORE_WRITE_FAILED` with `{ committed_ids, pruned_ids, failed_id }`. `rm <id...>` pre-checks that at least one `<id>.{md,json}` file exists for every requested ID (`LARVA_PERSONA_NOT_FOUND` before unlinking anything if any ID is absent), then unlinks both `<id>.md` and `<id>.json` if present.
+2. **Startup Identity Precedence, `PersonaLease`, and `/larva-model-map` Ordering**:
+   - **Startup Identity & Switch-Mode Precedence**:
+     - *Native Pi Persona*: (1) explicit `--larva-persona <id>` (missing/invalid Persona or unavailable model exits `2` before prompt); (2) latest persisted `larva-active-persona-commit` in restored session history; (3) `config.json` `default_persona`; (4) `larva:none`. Failures in (2) or (3) degrade non-fatally to `larva:none` with a status warning.
+     - *Native Pi `switch_mode`*: (1) explicit `--larva-mode <mode>` startup flag (applies on initial launch and persists across `/reload` until changed in-session by `/larva-mode`); (2) latest session-local override (`larva-agent-persona-switch-mode` from `/larva-mode` or `Auto-borrow for this session`) when opening/restoring without `--larva-mode`; (3) `config.json` `switch_mode`; (4) `"confirm"`.
+     - *Larva-launched child (`LARVA_PI_LAUNCHED === "1"`)*: `--larva-persona <id>` (`LARVA_PI_INITIAL_PERSONA_ID`) and `switch_mode: "manual"` are authoritative on both fresh spawn and `resume` (`switch_session` re-commits the requested child persona and verifies `get_state` before `prompt`).
+   - **`larva_persona_switch` & `PersonaLease` (`manual < confirm < auto < free`)**:
+     - Calling `larva_persona_switch(..., continue_task: true)` in a mixed tool batch (where another tool call is active or observed in the same assistant turn) fails closed with `LARVA_BAD_INPUT` before confirmation or state mutation.
+     - In `confirm` mode (`ctx.mode === "tui"` required, else `LARVA_CONFIRMATION_UNAVAILABLE`), the dialog presents exactly four choices: `[Borrow once]` (default temporary turn borrow), `[Deny]` (explicit refusal with zero state change), `[Auto-borrow for this session]` (promotes session-local mode to `auto` **only after** target validation and borrow commit succeed), and `[Switch persistently]` (commits a persistent user-approved switch, clearing any active lease, appending `larva-active-persona-commit`, and—when `continue_task: true`—running the one-turn continuation without subsequent restore, identical to `free`). Timeout expiry, Escape, or Ctrl+C denies with zero persona/model/mode mutation and ignores late UI callbacks.
+     - Temporary borrows capture the pre-borrow origin from the first borrow in a turn (`larva:none` is represented as `null` origin along with its pre-borrow native Pi `(model, thinking)` pair) and record `larva-agent-persona-switch-audit` without appending `larva-active-persona-commit`. Any committed explicit user persona selection (`/larva-persona <id>`, `Ctrl+Alt+P` selector, or `confirm` dialog `Switch persistently`) preempts and clears any active `PersonaLease` and any `restore_failed`/`route_uncertain` latch; ad-hoc `/model`, thinking changes, or denied/failed switches do not clear an active lease and are overwritten when the lease restores.
+     - Turn-end settlement (or continuation-turn settlement when `continue_task: true`, bounded by a fixed internal cap of `8` consecutive autonomous switches per user turn, `LARVA_SWITCH_CHAIN_LIMIT`) restores the origin:
+       - If the origin is `null` (`larva:none`), always restore `larva:none` and the captured pre-borrow native `(model, thinking)` pair while retaining any `/larva-model-map` profile committed during the lease for future Persona activations.
+       - If the origin is a named Persona and no `/larva-model-map` profile switch was committed during the lease, restore the origin Persona and exact captured pre-borrow `(model, thinking)` pair.
+       - If the origin is a named Persona and a `/larva-model-map` switch was committed during the lease, rebase restoration by resolving the origin Persona under the newly committed `model-map` profile.
+       - If restoration fails (e.g., origin Persona was deleted via `persona rm` or Pi rejects model restoration), enter an explicit `restore_failed` latch: preserve current runtime state, surface status/audit error, and block further `larva_persona_switch` calls until manual `/larva-persona` selection.
+   - **`/larva-model-map` Fleet Semantics & Rollback Failure Exit**:
+     - Model-map lookup resolves `config.models[spec.model]`, then longest matching `config.prefix_rules` entry, then literal `<provider>/<model_id>`.
+     - On the parent, `/larva-model-map <profile|default>` applies `(model, thinking)` as a paired transition: if applying fails and rollback to the pre-switch `(model, thinking)` is verified, the active profile generation remains unchanged (`status: "failed"`); if rollback is also rejected by Pi, the profile generation still remains unchanged and Larva enters an explicit `route_uncertain` warning state (`LARVA_ROUTE_UNCERTAIN`) requiring manual `/model` or `/larva-persona` reconciliation.
+     - Across live children, switching is **explicitly bounded-partial**: starting children that have not yet passed the pre-`prompt` route fence apply and verify the new profile before `prompt` (`fenced_for_startup`), whereas already-accepted running children (including any internal grandchild-callback continuation turns within that accepted child run until its `agent_settled` releases) complete their active run on their launch-verified route (`in_flight_until_run_settles`), and any subsequent `larva_subagent` spawn or `resume` resolves and verifies the new profile before launch/prompt.
+   - **Observable Slash-Command Delivery in Pi**: Because Pi's slash-command dispatcher discards JS handler return values (`disposition: "handled"`), `/larva-persona`, `/larva-mode`, `/larva-model-map`, and command-mode `/larva-subagent` MUST emit their user/client-visible outcomes through Pi's supported notification/custom-entry surfaces (`ctx.ui.notify` in TUI mode; custom session/status notification in RPC mode).
+   - **Fixed-Point System Prompt Composition**: `before_agent_start`, `before_provider_request`, and `larva:resolve-system-prompt:v1` share one idempotent composer `C(S, C(S, B)) = C(S, B)` replacing `<!-- larva:identity-policy:begin -->` and `<!-- larva:active-persona:begin -->` across distinct persona snapshots without block duplication.
+3. **Subagent Process Supervisor & Atomic Per-Session Ownership Protocol**:
+   - **Public Handle & Run Epoch Metadata**: `task_id` (canonical `realpath` of `<file>.jsonl` under `LARVA_HOME/state/sessions/`) is the sole public session handle. Every run instance also exposes an opaque server-minted `run_epoch` string in `status`/`wait` snapshots solely as an optional optimistic-concurrency guard for UI `Cancel` actions and run-pinned UI cards (`task_id` remains the only handle for `wait`, `status`, `activity`, and `resume`).
+   - **Six-Stage Ordered Admission Gate**:
+     1. *Input validation*: non-blank `persona_id`/`task`, `no_progress_timeout_ms` in `120000..86400000` (default `3600000`), `stall_alert_ms` `0` or `60000..86400000` (explicit `stall_alert_ms >= effective_no_progress_timeout_ms` fails with `LARVA_BAD_INPUT`; config-inherited default clamps to `Math.floor(effective_no_progress_timeout_ms / 2)`), `cwd` syntax, and lexical `task_id` containment under `state/sessions/`.
+     2. *Workspace `cwd` resolution (Single Counting Rule)*:
+        - *Fresh spawn (`task_id` omitted)*: explicit `input.cwd` must be an absolute existing directory (`resolvedCwd = realpath(input.cwd)`). When omitted: Native Pi uses `realpath(ctx.cwd)`; External MCP Host queries client `roots/list` and infers `resolvedCwd = realpath(root)` **if and only if** `roots/list` is supported, returns a **single-element array (`roots.length === 1`)**, and that sole entry is an existing local `file://` directory—in **all** other cases (`roots` unsupported, `0` roots, `>= 2` returned roots even if only one exists on disk, or an invalid/missing singleton root) it fails closed with `LARVA_CWD_REQUIRED`.
+        - *Resume (`task_id` provided)*: read line-1 Pi session header (`version` 2 or 3); header `cwd` MUST be a non-empty **absolute** path (`LARVA_SESSION_INVALID` if relative or malformed) whose `realpath` exists as a directory (`LARVA_CHILD_START_FAILED` if missing). If `input.cwd` is also passed, it MUST equal `resolvedCwd` (`LARVA_BAD_INPUT` on mismatch).
+     3. *Lineage bounds*: validate **both** incoming lineage and the constructed outgoing child lineage (`depth + 1 <= 100`, `<= 100` canonical ancestor `task_id` paths, serialized UTF-8 byte length `<= 65536`), failing closed with `LARVA_CHILD_START_FAILED` without truncation.
+     4. *Config validation*: load and validate `LARVA_HOME/config.json`.
+     5. *Authority & depth policy*: enforce `config.subagent.max_depth` and §2.2(3) `effectiveCanSpawn`.
+     6. *Atomic Per-Session Lease Protocol (`<basename>.jsonl.lock`)*: reject ancestor self-resume (`LARVA_SESSION_BUSY`), enforce `max_active_runs`, and reserve the run slot synchronously. Cross-process exclusion across `fresh`, `resume`, stale-lock reclamation, and `larva gc` uses one atomic directory lease `LARVA_HOME/state/sessions/<basename(task_id)>.lock/`:
+        - Acquisition populates `<basename>.jsonl.lock.tmp.<pid>.<rand>/lease.json` (`0600`) with a unique `lease_id` **before** atomic directory installation onto `<basename>.jsonl.lock/`, guaranteeing an installed lease is never empty.
+        - Lease states progress monotonically: `"reserving"` (`{ lease_id, state: "reserving", owner_pid, child_pid: null, capsule_root: null }` — pre-spawn; if `owner_pid` is confirmed dead `ESRCH`, no child was ever spawned and reclamation is safe) $\to$ `"spawning"` (`{ lease_id, state: "spawning", owner_pid, child_pid: null, capsule_root }` — written immediately before `spawn()`; if `owner_pid` dies before publishing `child_pid`, the lease transitions to `"unreconciled"` unless positive child-PID evidence in the capsule proves the child and all `descendants/` exited `ESRCH`; grace expiry alone NEVER proves teardown) $\to$ `"running"` (`{ lease_id, state: "running", owner_pid, child_pid, capsule_root }` — reclaimable externally only when `owner_pid`, `child_pid`, and all `descendants/` PIDs are confirmed `ESRCH`). Reclaiming any confirmed-dead stale lease MUST verify the exact observed `lease_id` under an instance-serialized reclamation guard so concurrent reclaimers can never displace a newly acquired successor lease at the same path.
+        - On `resume`, after acquiring `<basename>.jsonl.lock/`, the caller opens and verifies `task_id` (`LARVA_SESSION_NOT_FOUND` if already unlinked by a prior `gc` winner, releasing the lock without spawning `pi`). Live locks are released only when `ownership_settled` completes after confirmed child teardown.
+   - **Prompt Acceptance, Watchdogs, Settlement, and Output State**:
+     - `accepted` receipt requires verified preload capability marker (`max_record_bytes: 1048576`, `terminal: "agent_settled"`), route verification (`get_state`), allocated + locked `task_id`, and RPC `prompt` `success: true` with `data?.disposition !== "handled"` (`LARVA_CHILD_PROTOCOL_FAILED` otherwise).
+     - Silence timers arm after `prompt` acceptance. At `stall_alert_ms` consecutive silence while non-terminal, transition `phase -> "stall_suspected"` and (in Native Pi when parent session is current and not reloading) emit at most one `larva-subagent-alert` steer per silence episode; progress resets `phase -> "waiting_for_child"`. At `no_progress_timeout_ms`, abort child (`1500ms` grace then `SIGKILL`) and finalize `cancelled` (`LARVA_CHILD_CANCELLED`).
+     - In multi-hop child runs, `childSettlementBarrier` discharges a terminal `larva-subagent-result` obligation only when its `callback_id` is recorded in session entries and the consuming assistant turn settles, OR when callback delivery transitions to `"failed"`, `"suppressed"`, or `"stale"`. Non-terminal `larva-subagent-alert` steers never register in `childSettlementBarrier`.
+     - **Single Canonical `output_state` Field**: Every snapshot, callback, and `wait` entry distinguishes execution `status` (`"accepted" | "running" | "cancelling" | "success" | "failed" | "cancelled"`) from `output_state` (`"pending" | "inline" | "artifactized" | "delivery_failed" | "evicted"`, replacing legacy `delivery_status`). If `agent_settled` succeeds but writing an oversized artifact (> `36,000` code points) to `state/artifacts/` fails, `status` stays `"success"` while `output_state` becomes `"delivery_failed"` with a bounded diagnostic and zero replay (`first_error` in `wait` triggers on `status === "failed" || status === "cancelled"`).
+     - **Ingress Run-Instance Binding & Total Deadline on `wait`**: `larva_subagent_wait` binds each requested `task_id` to the internal `run_epoch` active/latest at `wait` ingress, retains bounded terminal snapshot + output metadata for the 25 most recent completed `(task_id, run_epoch)` instances, and applies `timeout_ms` across the **entire** call (including MCP output enrichment: if readiness occurs before `timeout_ms` while output delivery is still in flight at the deadline, `wait` returns immediately at `timeout_ms` with `output_state: "pending"`).
+     - **Process-Continuity Reload**: Native Pi `/reload` preserves in-flight child ownership, `run_epoch`, original watchdog deadlines, and at-most-once terminal callback delivery to the rebound session context.
+4. **Garbage Collection (`larva gc`) & Degraded Shutdown / Cancel Separation**:
+   - **Tool-Call Cancel vs. Host Shutdown Separation**: During a live `larva_subagent_cancel` call, if a targeted child/descendant fails to confirm exit within the kill grace window or its capsule/lock cleanup fails, the server preserves its `owner.json` / `descendants/*.json` / `<basename>.jsonl.lock/` evidence and returns per-handle `outcome: "cleanup_unconfirmed"` in the batch ToolResult **without** terminating the MCP/Pi host or disrupting unrelated live runs. Standalone `larva mcp` exits `1` **only** during host shutdown (`EOF` / `SIGTERM` / `SIGINT`) when any owned run or unconfirmed cleanup remains unsettled at process exit.
+   - **`larva gc` Mutual Exclusion & Retention Precedence**:
+     1. Reap dead `state/capsules/child-<ppid>-<hex>/` (`lstat` real directory, `<ppid>` plus all `owner.json`/preload/`descendants/*.json` PIDs positively confirmed `ESRCH`; capsules in `"spawning"`/`"unreconciled"` without positive child PID exit proof are retained and reported as `unreconciled_capsules`, never auto-deleted after a timer) and reclaim confirmed-dead stale `<basename>.jsonl.lock/` leases using `lease_id`-verified serialization.
+     2. **Retention always wins over `--max-bytes`**: any `.jsonl` with an active/unreconciled `<basename>.jsonl.lock/`, any file in `state/{sessions,artifacts}` with `mtime` within 60 seconds (all sweeps), and any file with `mtime` within 24 hours (on `--max-bytes` sweeps) is **protected** and excluded from deletion.
+     3. Delete unprotected files older than `--max-age` days; then, if `--max-bytes` is set, count total bytes across all remaining `state/sessions/*.jsonl` and `state/artifacts/*.txt` (including protected files) and evict unprotected eligible (>24h) files oldest-`mtime`-first until total bytes $\le$ `--max-bytes` or no eligible files remain. To unlink `<name>.jsonl`, `gc` MUST first acquire `<name>.jsonl.lock/` (`state: "gc_unlinking"`), verify `stat` eligibility, unlink `<name>.jsonl`, and remove `<name>.jsonl.lock/`—guaranteeing strict mutual exclusion with `resume`. Both `--dry-run` and live `gc` exit `0` and report `{ deleted_sessions, deleted_artifacts, freed_bytes, remaining_bytes, protected_bytes, budget_met: boolean }`.
+
+---
+
+## 3. Public Interface Surfaces (Minimal, Complete, Orthogonal)
+
+### 3.1 CLI Surface (`larva`)
+
+Commands `1–5`, `7`, and `8` support `--json` (writing `{ ok: boolean, data?: ..., error?: { code, message, details? } }` to `stdout`; exit `0` on `ok: true`, `1` on domain/validation/cleanup error, `2` on CLI usage error). Command `6` (`larva mcp`) reserves `stdout` exclusively for JSON-RPC 2.0 MCP traffic and rejects `--json` or unknown flags on `stderr` with exit `2`:
+
+1. `larva persona validate <file|dir|-> [--json]` — Static validation of a `.md`/`.json` file, stdin (`-`), or directory (checking schema, stem match, and intra-batch duplicate IDs).
+2. `larva persona put <file|dir|-> [--prune] [--json]` — Atomic validate-all-then-commit upsert into `LARVA_HOME/personas/`; `--prune` (directory input only) removes unlisted Personas after all incoming commits succeed.
+3. `larva persona get <id> [--json]` — Output canonical normalized `PersonaSpec` with `spec_digest`.
+4. `larva persona list [--query <text>] [--full] [--json]` — List sorted Persona summaries (`id`, `description`, `model`, `thinking`, `can_spawn`, `spec_digest`), or full `PersonaSpec` objects with `--full`.
+5. `larva persona rm <id...> [--json]` — Pre-check existence of all `<id>` targets, then unlink `<id>.{md,json}`.
+6. `larva mcp` — Start headless stdio MCP runtime server (`Content-Length` or newline-delimited JSON-RPC 2.0).
+7. `larva doctor [--profile <name>] [--json]` — Read-only health check: validates `LARVA_HOME`, `config.json`, 100% of `personas/` (0 conflicts/invalid files), syntax of **all** `model-map*.json` files, verified `pi` CLI discovery, and Pi model-registry resolvability of every Persona's `model` **after** applying the selected route map (`model-map.<name>.json` when `--profile` is given, else `model-map.json` when present, else literal `<provider>/<model_id>`).
+8. `larva gc [--max-age <days>] [--max-bytes <bytes>] [--dry-run] [--json]` — Reap dead capsules/locks and prune expired/excess inactive sessions and artifacts.
+
+### 3.2 Model-Facing Tool Surface (7 in Native Pi / 6 in External MCP)
+
+| Tool | Input Schema (`additionalProperties: false`) | Availability | Semantics |
+|---|---|---|---|
+| `larva_personas` | `{ query?: string, limit?: 1..50 (default 20) }` | Pi & MCP | Read-only ranked search over `id`, `description`, `model`; returns `id`, `description`, `model`, `thinking`, `can_spawn`, `spec_digest` (never `prompt`). |
+| `larva_persona_switch` | `{ persona_id: string, reason: string, continue_task?: boolean }` | **Pi main only** (hidden in `manual` mode) | Request turn-scoped borrow (`confirm`/`auto`) or persistent switch (`free`); solo-call enforced when `continue_task: true`. |
+| `larva_subagent` | `{ persona_id: string, task: string, task_id?: string, cwd?: string, no_progress_timeout_ms?: 120000..86400000, stall_alert_ms?: 0 \| 60000..86400000 }` *(MCP adds `wait_for_completion?: boolean`, `parent_persona_id?: string`)* | Pi & MCP | Spawn or resume isolated Persona-bound `pi` process. Returns accepted receipt (`status: "accepted"`, `task_id`, `run_epoch`, `cwd`) or enriched terminal output when `wait_for_completion: true` in MCP. |
+| `larva_subagent_wait` | `{ task_ids: string[1..25], return_when?: "all" \| "any" \| "first_error" (default "all"), timeout_ms?: 0..86400000 (default 10000) }` | Pi & MCP | Deterministic barrier bound to ingress `run_epoch` instances (`timeout_ms: 0` = immediate non-blocking snapshot). In MCP, enriches ready tasks with `terminal_outputs` keyed by `task_id` (with explicit `output_state`). |
+| `larva_subagent_status` | `{ task_id?: string, scope?: "active" \| "recent" \| "disk" (default "recent"), limit?: 1..25 (default 10) }` *(`task_id` is mutually exclusive with `scope` and `limit`)* | Pi & MCP | Point-in-time `ps` snapshot: exact handle lookup (in-memory or contained `state/sessions/` disk record fallback), process-local `active`/`recent` runs + `startup_failures`, or contained on-disk recorded sessions (`scope: "disk"`, including `cwd`, `cwd_exists`, and `lock_state: "unlocked" \| "active_local" \| "active_external" \| "unreconciled"`). |
+| `larva_subagent_activity` | `{ task_id: string, limit?: 1..20 (default 5), cursor?: string, tool_name?: string, since_timestamp?: string, until_timestamp?: string, tool_call_id?: string, disambiguation_index?: int, entry_id?: string, result_index?: int, segment_part?: "args" \| "result", offset?: int, length?: 1..4000, source_version?: string }` | Pi & MCP | Read-only $\le 8192$-byte recorded tool-call/result inspector over a canonical child `.jsonl` file contained inside `LARVA_HOME/state/sessions/`. |
+| `larva_subagent_cancel` | `{ task_ids: string[1..25], reason: string (1..500 code points), expected_run_epochs?: Record<string, string> }` | Pi & MCP | Terminate and reap active process-local runs (when `expected_run_epochs[id]` is supplied and mismatches the current run on `id`, returns `already_terminal` without touching the newer run); per-handle `outcome` is `"cancelled" \| "already_terminal" \| "not_found" \| "cleanup_unconfirmed"`, with `isError: true` iff input validation fails or any handle returns `"cleanup_unconfirmed"`. |
+
+### 3.3 Native Pi Interactive & Extension Interop Surface
+
+- **Slash Commands & Shortcut** (all command outcomes emitted via `ctx.ui.notify` in TUI mode and structured custom/status events in RPC mode):
+  - `/larva-persona [id]` & `Ctrl+Alt+P`: Interactive TUI Persona selector or atomic manual switch (preempts active lease, clears `restore_failed` / `route_uncertain` latches, persists `larva-active-persona-commit`).
+  - `/larva-mode [manual|confirm|auto|free]`: Inspect (when omitted, non-mutating) or set session-local autonomous switch mode.
+  - `/larva-model-map [default|<profile>]`: Inspect (when omitted) or switch active `model-map` profile (reporting parent state and per-child `fenced_for_startup` / `in_flight_until_run_settles` / `ended_during_switch` / `failed` counts).
+  - `/larva-subagent [task_id | --cancel <task_id>]`: Open fullscreen TUI Subagent Console Workbench (binding row `Cancel` actions with `expected_run_epochs`), or in command `--cancel <task_id>` capture the target's active `run_epoch` at command submission **before** any TUI confirmation so confirming after an A$\to$B replacement reports `already_terminal` without cancelling B.
+- **Editor Autocomplete**: `/larva-persona <query>` argument completion and `@<query>` (native Pi file suggestions first, followed by `@persona:<id>` matches) / `@persona:<query>` completion from in-memory `PersonaStore`.
+- **Startup Flags & Status Badges**: `--larva-persona <id>`, `--larva-mode <manual|confirm|auto|free>`; `larva: <id>` / `larva: none` status badge; event-driven active subagent counter (hidden when `0`).
+- **Same-Runtime Extension Event**: `larva:resolve-system-prompt:v1` (`scope: "main"`) preserved for peer Pi extensions.
+
+### 3.4 Codex Plugin & External MCP App UI Contract (`plugins/codex/`)
+
+1. **Role & Shipped Guidance (`SKILL.md` + MCP `initialize.instructions`)**:
+   - Launches and manages real Persona-bound `pi` OS processes from Codex.
+   - Both `SKILL.md` and `initialize.instructions` enforce one identical mention and workspace contract: an exact `@larva:<persona_id>`, `@persona:<persona_id>`, or `larva://personas/<persona_id>` resource delegates directly to `larva_subagent` with `persona_id`; a generic `@larva` / `@Larva Subagents` mention without an ID calls `larva_personas` first; ordinary work without a Larva/Persona request uses Codex's native tools. `cwd` may be omitted on fresh spawn **only** when the host reports a single usable workspace root (`roots.length === 1` and existing local directory); whenever the host has zero roots, multiple roots, an unusable root, or unsupported `roots/list`, Codex MUST pass an explicit authorized absolute `cwd` (or ask the user if ambiguous). On `resume`, omit `cwd` so the session's recorded workspace is used. All examples use `larva_subagent_wait(return_when: "any")`, unified `larva_subagent_status`, `larva_subagent_activity(task_id)`, and `larva_subagent_cancel(task_ids, reason)`.
+2. **Separate Standalone Thread Entrypoint vs. Scoped Inline Tool Cards**:
+   - `search_mentions` (`_meta["openai/extensions"]["mentions/search"] = { preload: true }`, `ui.visibility: ["app"]`) + `larva://personas/{persona_id}` resources power composer `@larva:<id>` completion.
+   - `larva_subagent_panel` (`ui.visibility: ["app"]`, `_meta["openai/ui"].entrypoints = [{ type: "thread" }]`, `resourceUri: "ui://larva-pi-subagent/panel-v4"`): accepts `{ task_id?, run_epochs?: Record<string, string>, scope?, limit? }` to serve both the unbound thread-level fullscreen workbench (`availableDisplayModes: ["fullscreen"]`, observing `active`/`recent` live runs and `disk` recorded sessions) and epoch-pinned refreshes for inline cards.
+   - Model tools `larva_subagent`, `larva_subagent_wait`, and `larva_subagent_status` keep `visibility: ["model", "app"]` and attach `ui://larva-pi-subagent/widget-v4` (`preferredModelDisplayMode: "inline"`, `availableDisplayModes: ["inline", "fullscreen"]`).
+3. **Run-Pinned vs. Latest-Following Scopes, Output States, Cancel Guard, and View Teardown**:
+   - **Card Scope & Retention**: Pre-acceptance pending or rejected `larva_subagent` / `larva_subagent_wait` cards with no bound `(task_id, run_epoch)` display only their own pending or error state with zero fallback to unrelated runs and no `Cancel` control. Accepted `larva_subagent` and `larva_subagent_wait` cards pin refreshes to their initiating `(task_id, run_epoch)` pair(s) via `larva_subagent_panel({ run_epochs })` across hide/reopen cycles: while retained in the server's 25-completed-epoch window, reopen recovers that exact epoch's terminal status and output even if `task_id` was resumed as a newer epoch; if evicted while hidden before terminal capture, the card renders a read-only `Run snapshot expired (inspect recorded transcript)` notice and never displays or cancels a newer epoch. `larva_subagent_status` cards and standalone `panel-v4` follow their requested query (`task_id` or `scope: "active" | "recent" | "disk"`). Recorded `disk` rows display `cwd` and explicit `Busy` (`active_external` / `unreconciled`) or `Missing workspace` (`cwd_exists: false`) indicators, and never render `Cancel` for non-local runs.
+   - **Explicit Output State Rendering**: Result panes render `output_state` distinctly: `"pending"` (run active / delivery in flight), `"inline"` / `"artifactized"` (showing text/preview and artifact path), `"delivery_failed"` (showing execution succeeded with the bounded artifact-write error), and `"evicted"` (directing to `full_output_artifact.path` or recorded `.jsonl` transcript rather than `"No terminal output yet"`).
+   - **Visible Stall & Epoch-Guarded Cancel**: `phase === "stall_suspected"` renders visibly on inline cards and workbench headers (clearing on progress). Clicking `Cancel` sends `expected_run_epochs: { [task_id]: row.run_epoch }`, suppresses duplicate clicks across poll rerenders and display-mode toggles until settled, and renders `"cleanup_unconfirmed"` or `"not_found"` as explicit warning/error states rather than clean cancellation.
+   - **Observer-Only View Teardown**: Document hide or `ui/resource-teardown` stops polling and ignores late replies without cancelling child `pi` processes; reopening fetches fresh state, while bridge disconnect displays a read-only connection-lost notice.
+
+### 3.5 Packaging, Single-File Bundles, Codex Distribution, and CI Contract
+
+1. **Single Package & Single Version Authority**:
+   - Root `package.json` owns `"name": "pi-larva"`, `"version": "0.9.0"`, `"type": "module"`, `"bin": { "larva": "./dist/cli.mjs" }`, `"pi": { "extensions": ["./dist/pi-extension.js"] }`, `"files": ["dist/", "README.md", "LICENSE"]`, and `"peerDependencies": { "@earendil-works/pi-tui": "*" }`.
+   - Build-time constant injection populates the version from root `package.json` into `dist/cli.mjs`, `dist/mcp-server.mjs`, and `plugins/codex/.codex-plugin/plugin.json`.
+2. **Self-Contained Precompiled Bundles (No Shared Chunks, Zero `node_modules` Type-Stripping)**:
+   - Each runtime entrypoint is bundled (`splitting: false`, pure ESM, bundling pure-JS YAML frontmatter parsing so zero runtime npm `dependencies` are required; externalizing only `node:*` builtins, plus `@earendil-works/pi-tui` in `pi-extension.js` only):
+     - `dist/pi-extension.js` — `.js` suffix required for Pi `loader.js` `isExtensionFile` discovery and `jiti` `@earendil-works/pi-tui` alias injection.
+     - `dist/cli.mjs` — `#!/usr/bin/env node` CLI; zero `@earendil-works/pi-tui` imports.
+     - `dist/mcp-server.mjs` — Headless MCP server; zero `@earendil-works/pi-tui` imports.
+     - `dist/child-rpc-preload.mjs` — Child stdout 1 MiB JSONL frame bridge (`node:*` builtins only).
+     - `dist/timeline-worker.mjs` — Worker-thread `.jsonl` excerpt scanner (`node:*` builtins only).
+3. **Codex Marketplace Self-Contained Bundle & Environment Forwarding (`plugins/codex/`)**:
+   - `.agents/plugins/marketplace.json` points `"source": "local"` to `./plugins/codex`.
+   - `npm run build` populates tracked `plugins/codex/dist/{mcp-server.mjs, pi-extension.js, child-rpc-preload.mjs, timeline-worker.mjs, package.json}` (`{"type":"module"}`), allowing `mcp-server.mjs` inside `~/.codex/plugins/cache/...` to launch child `pi` with sibling `./pi-extension.js` and `./child-rpc-preload.mjs` without any global `pi-larva` install.
+   - `plugins/codex/.mcp.json` runs `node ./dist/mcp-server.mjs` and forwards `LARVA_HOME`, `LARVA_PI_CLI_SCRIPT`, `LARVA_MCP_PARENT_PERSONA`, `PI_CODING_AGENT_DIR`, standard OS/XDG/proxy variables, and provider credential variables.
+4. **CI & Release Gate Contract (`.github/workflows/`)**:
+   - `.github/workflows/ci.yml`: Node-only CI running `tsc --noEmit`, `npm run build && git diff --exit-code plugins/codex/`, schema conformance against `contracts/persona_spec.schema.json`, unit/contract suites, and real installed-Pi headless RPC/extension integration suites under hermetic temporary `LARVA_HOME`.
+   - `.github/workflows/publish.yml`: Tag/Release-triggered npm publication workflow verifying clean build, zero `plugins/codex/` drift, `npm pack` contents, and bare-`node` execution from an installed tarball inside `node_modules/` before publishing `pi-larva`.
+
+---
+
+## 4. Implementation Notes & Hazard Map (`ADVISORY`)
+
+### 4.1 Module Decomposition Target (`src/` -> `dist/`)
+
+- `src/core/`: Pure validation and state-free algebra (`paths.ts`, `spec.ts`, `config.ts`, `model-map.ts`, `tool-policy.ts`, `prompt-composer.ts`).
+- `src/store/`: Filesystem persistence (`persona-store.ts` with stat/hash invalidation; `gc.ts` with `<basename>.jsonl.lock/` mutual exclusion and capsule PID liveness checks).
+- `src/runtime/`: Headless Pi process & session supervisor with zero `@earendil-works/pi-tui` imports (`pi-discovery.ts`, `capsule.ts`, `session-lock.ts`, `child-rpc.ts`, `supervisor.ts`, `activity.ts`, `persona-switch.ts`, `timeline-worker.ts`, `child-rpc-preload.ts`).
+- `src/surfaces/`: Transport & UI bindings (`cli.ts`, `mcp-server.ts`, `mcp-panel-ui.ts`, `pi-extension.ts`, `tui-console.ts`).
+
+### 4.2 Known Source Traps & Required Guardrails
+
+1. **Pi Extension `.js` Suffix (`@earendil-works/pi-coding-agent` `dist/core/extensions/loader.js:isExtensionFile`)**: Keep `pi-extension.js` as `.js` with `"type": "module"` while keeping bare-Node entrypoints (`cli.mjs`, `mcp-server.mjs`, `child-rpc-preload.mjs`, `timeline-worker.mjs`) as `.mjs`.
+2. **Node 22+/26 `node_modules` Type-Stripping**: Never `import("./*.ts")` in runtime or packaged files; test `node node_modules/pi-larva/dist/cli.mjs` and `mcp-server.mjs` directly in CI.
+3. **Preload `LARVA_HOME` Capsule Root Derivation**: Derive expected orphan capsule parent from `LARVA_HOME/state/capsules` rather than hardcoded `$HOME/.pi/larva/runtime`.
+4. **Codex Plugin Cache `cwd` & Resume Relative Header `cwd` Traps**: Never inherit `mcp-server` `process.cwd()` on spawn, never read `process.cwd()/.pi/settings.json` in MCP mode, and reject non-absolute `cwd` values in resumed `.jsonl` session headers before resolving `realpath`.
+5. **Child Startup `pi.setModel()` Shared-Settings Trap**: Pass `--model` and `--thinking` on child CLI argv with copied private `0600` `settings.json` inside the child capsule, and commit child startup persona with `applyModel: false`.
+6. **Multi-Hop Settlement vs. Stall Alert Race**: Keep non-terminal `larva-subagent-alert` steers out of `childSettlementBarrier.callbackTurns` and clear pending stall timers immediately in `finalizeSubagentRun`.
+7. **In-Process Reload State Continuity**: A process-global symbol table in `supervisor.ts` is an advisory mechanism to preserve live runs across native Pi `/reload`, rebinding UI/session references to the new extension generation.
+8. **Activity & Status Disk Path Containment**: Both `larva_subagent_activity` and `larva_subagent_status` (`task_id` disk fallback and `scope: "disk"`) share one `realpath` containment check under `realpath(LARVA_HOME/state/sessions)` before opening `O_RDONLY | O_NONBLOCK`.
