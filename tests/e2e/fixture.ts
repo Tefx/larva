@@ -127,7 +127,8 @@ async function setup(root: string, cleanup: (() => Promise<unknown>)[], options:
     XDG_CONFIG_HOME: join(root, "config"), XDG_CACHE_HOME: join(root, "xdg-cache"), XDG_DATA_HOME: join(root, "data"),
     XDG_STATE_HOME: join(root, "xdg-state"), PI_OFFLINE: "1", PI_SKIP_VERSION_CHECK: "1", PI_CODING_AGENT_DIR: agent,
     LARVA_HOME: configuredHome, LARVA_PI_CLI_SCRIPT: piScript };
-  const cli = (...args: string[]) => start([join(dist, "cli.mjs"), ...args], host, env, cleanup);
+  const cli = (args: string[], larvaHome = configuredHome) =>
+    start([join(dist, "cli.mjs"), ...args], host, { ...env, LARVA_HOME: larvaHome }, cleanup);
   return { home, configuredHome, cwd, host, sessions, personaFile, config, modelCatalog, requests: requests.entries,
     provider(from: number, text: string, timeout?: number) {
       return requests.find(`provider request containing ${text}`, () => requests.entries.slice(from).find(r => r.last.includes(text)),
@@ -138,9 +139,11 @@ async function setup(root: string, cleanup: (() => Promise<unknown>)[], options:
         "--model", "fixture/native", ...args], cwd, env, cleanup));
     },
     mcp() { return mcpClient(start([join(cache, "mcp-server.mjs")], host, env, cleanup)); },
-    cliMcp() { return mcpClient(cli("mcp")); },
-    doctor() { return cli("doctor", "--json"); },
-    gc(dryRun = false) { return cli("gc", "--max-age", "1", "--json", ...(dryRun ? ["--dry-run"] : [])); },
+    cliMcp() { return mcpClient(cli(["mcp"])); },
+    doctor() { return cli(["doctor", "--json"]); },
+    gc(dryRun = false, larvaHome = configuredHome) {
+      return cli(["gc", "--max-age", "1", "--json", ...(dryRun ? ["--dry-run"] : [])], larvaHome);
+    },
   };
 }
 

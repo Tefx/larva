@@ -5,6 +5,7 @@ import { parseLarvaConfig } from "../core/config.ts";
 import { LarvaError } from "../core/errors.ts";
 import { getLarvaHomePaths } from "../core/paths.ts";
 import type { GcConfig, GcReport, SessionLeaseRecord } from "../core/types.ts";
+import { canonicalPath } from "./session-index.ts";
 
 type GcOptions = Partial<GcConfig> & {
   dry_run?: boolean;
@@ -47,7 +48,7 @@ async function names(path: string): Promise<string[]> {
 
 export async function runGc(options: GcOptions): Promise<GcReport> {
   const { dry_run, leases, capsules } = options;
-  const home = leases.home;
+  const home = await canonicalPath(leases.home);
   const paths = getLarvaHomePaths(home);
   const { max_age_days, max_bytes } = parseLarvaConfig({ gc: {
     ...(options.max_age_days === undefined ? {} : { max_age_days: options.max_age_days }),

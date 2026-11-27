@@ -369,12 +369,28 @@ test("wait binds at ingress across same-task resume and uses one deadline even d
     assert.equal((await s.cancel({ task_ids: [a.task_id], reason: "already done" })).results[0].outcome, "already_terminal");
     const next = await f.spawn({ task_id: a.task_id }, s); assert.notEqual(next.run_epoch, a.run_epoch);
     assert.ok(f.peers[2].commands.some(q => q.type === "switch_session"));
-    const stale = await s.cancel({ task_ids: [a.task_id], reason: "stale", expected_run_epochs: { [a.task_id]: a.run_epoch } });
+    const stale = await s.cancel({ task_ids: [a.task_id], reason: "stale", expected_run_epochs: [{ task_id: a.task_id, run_epoch: a.run_epoch }] });
     assert.equal(stale.results[0].outcome, "already_terminal"); assert.equal((await s.status({ task_id: a.task_id })).runs[0].status, "running");
     f.peers[1].emit({ type: "agent_settled", aborted: true });
     const r = await both; assert.deepEqual(r.runs.map(x => x.run_epoch), [a.run_epoch, b.run_epoch]); assert.deepEqual(r.runs.map(x => x.status), ["success", "cancelled"]);
     block.resolve(); await turn(); assert.equal((await s.pinned(a.task_id, a.run_epoch)).output_state, "inline");
   } finally { block.resolve(); }
+}));
+
+test("cancel validates the entire closed guard list before touching a run; an empty list is unguarded", () => fixture(async f => {
+  const { task_id, run_epoch } = await f.spawn();
+  const s = f.supervisor, args = { task_ids: [task_id], reason: "stop" };
+  const guard = { task_id, run_epoch };
+  for (const invalid of [null, { [task_id]: run_epoch }, [guard, { ...guard, run_epoch: "other" }],
+    [{ ...guard, task_id: join(f.root, "unrequested.jsonl") }], [{ ...guard, run_epoch: "" }],
+    [{ ...guard, extra: true }], [{ task_id }], Array(26).fill(guard)]) {
+    await assert.rejects(s.cancel({ ...args, expected_run_epochs: invalid as unknown as NonNullable<Parameters<typeof s.cancel>[0]["expected_run_epochs"]> }),
+      { code: "LARVA_BAD_INPUT", message: "Invalid expected_run_epochs." });
+  }
+  assert.equal((await s.status({ task_id })).runs[0].status, "running");
+  assert.deepEqual(await s.cancel({ ...args, expected_run_epochs: [] }), {
+    results: [{ task_id, outcome: "cancelled" }], isError: false,
+  });
 }));
 
 test("an artifact write failure is not a first_error execution failure", () => fixture(async f => {

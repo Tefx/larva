@@ -60,8 +60,8 @@ function toErrorEnvelope(err) {
 
 // src/runtime/supervisor.ts
 import { randomUUID as randomUUID4 } from "node:crypto";
-import { lstat as lstat7, realpath as realpath6, rename as rename5, rm as rm3, stat as stat5 } from "node:fs/promises";
-import { basename as basename8, dirname as dirname5, isAbsolute as isAbsolute4, join as join10, resolve as resolve4 } from "node:path";
+import { lstat as lstat7, realpath as realpath5, rename as rename5, rm as rm3, stat as stat5 } from "node:fs/promises";
+import { basename as basename8, dirname as dirname6, isAbsolute as isAbsolute4, join as join10, resolve as resolve4 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // src/core/config.ts
@@ -296,11 +296,11 @@ function assertContainedRealpath(realRoot, realCandidate) {
     throw new LarvaError("LARVA_SESSION_INVALID", "The resolved path is outside the permitted directory.");
   }
 }
-async function resolveContainedPath(root, candidate, realpath7) {
+async function resolveContainedPath(root, candidate, realpath6) {
   if (!isLexicallyContained(root, candidate)) {
     throw new LarvaError("LARVA_SESSION_INVALID", "The path is outside the permitted directory.");
   }
-  const [realRoot, realCandidate] = await Promise.all([realpath7(root), realpath7(candidate)]);
+  const [realRoot, realCandidate] = await Promise.all([realpath6(root), realpath6(candidate)]);
   assertContainedRealpath(realRoot, realCandidate);
   return realCandidate;
 }
@@ -859,83 +859,24 @@ function assertCanSpawnTarget(effectiveCanSpawn, targetPersonaId) {
 
 // src/store/artifacts.ts
 import { createHash as createHash2, randomUUID } from "node:crypto";
-import { chmod, lstat, mkdir, open, rename, unlink } from "node:fs/promises";
-import { join as join4 } from "node:path";
-var inlineCodePoints = 36e3;
-var previewCodePoints = 2e3;
-async function writeOutputSnapshot(home, text2) {
-  let points = 0;
-  let previewEnd = 0;
-  for (const char of text2) {
-    points++;
-    if (points <= previewCodePoints) previewEnd += char.length;
-    if (points > inlineCodePoints) break;
-  }
-  if (points <= inlineCodePoints) return { output_state: "inline", result_text: text2 };
-  let staged;
-  try {
-    const bytes = Buffer.from(text2, "utf8");
-    const sha256 = createHash2("sha256").update(bytes).digest("hex");
-    let lines = bytes[bytes.length - 1] === 10 ? 0 : 1;
-    for (const byte of bytes) if (byte === 10) lines++;
-    const directory2 = getLarvaHomePaths(home).artifacts;
-    await mkdir(directory2, { recursive: true, mode: 448 });
-    const metadata = await lstat(directory2);
-    if (!metadata.isDirectory()) throw new Error("Artifact path is not a directory.");
-    if ((metadata.mode & 4095) !== 448) await chmod(directory2, 448);
-    const name = randomUUID();
-    const path = join4(directory2, `${name}.txt`);
-    const temporary = join4(directory2, `.${name}.tmp`);
-    const file = await open(temporary, "wx", 384);
-    staged = temporary;
-    try {
-      await file.chmod(384);
-      await file.writeFile(bytes);
-    } finally {
-      await file.close();
-    }
-    await rename(temporary, path);
-    return {
-      output_state: "artifactized",
-      result_preview: text2.slice(0, previewEnd),
-      full_output_artifact: { path, bytes: bytes.length, sha256, lines }
-    };
-  } catch {
-    if (staged !== void 0) await unlink(staged).catch(() => void 0);
-    return {
-      output_state: "delivery_failed",
-      output_diagnostic: { code: "LARVA_STORE_WRITE_FAILED", message: "Could not persist full output artifact." }
-    };
-  }
-}
+import { chmod, lstat as lstat4, mkdir as mkdir2, open as open4, rename as rename2, unlink } from "node:fs/promises";
+import { join as join6 } from "node:path";
 
-// src/store/capsule.ts
-var capsule_exports = {};
-__export(capsule_exports, {
-  capsuleParentPid: () => capsuleParentPid,
-  createCapsule: () => createCapsule,
-  inspectCapsule: () => inspectCapsule,
-  isErrno: () => isErrno,
-  isPid: () => isPid,
-  linkedCapsuleRoots: () => linkedCapsuleRoots,
-  metadataObject: () => metadataObject,
-  pidExited: () => pidExited,
-  privateDirectory: () => privateDirectory,
-  readMetadata: () => readMetadata,
-  writeMetadata: () => writeMetadata
-});
-import { randomBytes } from "node:crypto";
-import { constants as constants2 } from "node:fs";
-import { access, lstat as lstat2, mkdir as mkdir2, open as open3, opendir, realpath, rename as rename2, rm, stat, symlink, writeFile } from "node:fs/promises";
-import { homedir as homedir2 } from "node:os";
-import { basename as basename3, dirname, join as join5 } from "node:path";
+// src/store/session-index.ts
+import { constants as constants4 } from "node:fs";
+import { lstat as lstat3, open as open3, readdir, realpath as realpath3, stat as stat2 } from "node:fs/promises";
+import { basename as basename4, dirname as dirname2, isAbsolute as isAbsolute2, join as join5, resolve as resolve2 } from "node:path";
+
+// src/store/model-map.ts
+import { constants as constants3 } from "node:fs";
+import { lstat as lstat2, realpath as realpath2 } from "node:fs/promises";
 
 // src/store/bounded-read.ts
 import { constants } from "node:fs";
-import { open as open2 } from "node:fs/promises";
+import { open } from "node:fs/promises";
 var decoder = new TextDecoder("utf-8", { fatal: true });
 async function readBoundedRegularBytes(path, { maxBytes, flags = 0 }) {
-  const file = await open2(path, constants.O_RDONLY | constants.O_NONBLOCK | flags);
+  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK | flags);
   try {
     const metadata = await file.stat({ bigint: true });
     if (!metadata.isFile() || metadata.size > maxBytes) throw new Error("Invalid regular file size or type.");
@@ -957,6 +898,25 @@ async function readBoundedRegularText(path, options) {
 }
 
 // src/store/capsule.ts
+var capsule_exports = {};
+__export(capsule_exports, {
+  capsuleParentPid: () => capsuleParentPid,
+  createCapsule: () => createCapsule,
+  inspectCapsule: () => inspectCapsule,
+  isErrno: () => isErrno,
+  isPid: () => isPid,
+  linkedCapsuleRoots: () => linkedCapsuleRoots,
+  metadataObject: () => metadataObject,
+  pidExited: () => pidExited,
+  privateDirectory: () => privateDirectory,
+  readMetadata: () => readMetadata,
+  writeMetadata: () => writeMetadata
+});
+import { randomBytes } from "node:crypto";
+import { constants as constants2 } from "node:fs";
+import { access, lstat, mkdir, open as open2, opendir, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { homedir as homedir2 } from "node:os";
+import { basename as basename3, dirname, join as join4 } from "node:path";
 var { O_RDONLY, O_NONBLOCK, O_NOFOLLOW, R_OK, X_OK } = constants2;
 var CAPSULE_NAME = /^child-([1-9][0-9]*)-[a-f0-9]+$/;
 var MAX_TREE_DEPTH = 100;
@@ -977,18 +937,18 @@ function pidExited(pid) {
 }
 async function privateDirectory(path) {
   const parent = dirname(path);
-  await mkdir2(parent, { recursive: true, mode: 448 });
-  if (!(await lstat2(parent)).isDirectory()) {
+  await mkdir(parent, { recursive: true, mode: 448 });
+  if (!(await lstat(parent)).isDirectory()) {
     throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Expected a real state directory.");
   }
-  await mkdir2(path, { recursive: true, mode: 448 });
-  const entry = await lstat2(path);
+  await mkdir(path, { recursive: true, mode: 448 });
+  const entry = await lstat(path);
   if (!entry.isDirectory() || (entry.mode & 63) !== 0) {
     throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Expected a private state directory.");
   }
 }
 async function readMetadata(path) {
-  const file = await open3(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
+  const file = await open2(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
   try {
     const buffer = Buffer.alloc(65537);
     if (!(await file.stat()).isFile()) throw new Error("Expected regular metadata file.");
@@ -1010,14 +970,14 @@ async function writeMetadata(path, value) {
   const bytes = Buffer.from(JSON.stringify(value));
   if (bytes.length > 65536) throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Metadata exceeds the write limit.");
   const temp = `${path}.tmp.${process.pid}.${randomBytes(16).toString("hex")}`;
-  const file = await open3(temp, "wx", 384);
+  const file = await open2(temp, "wx", 384);
   try {
     try {
       await file.writeFile(bytes);
     } finally {
       await file.close();
     }
-    await rename2(temp, path);
+    await rename(temp, path);
   } catch (error) {
     await rm(temp, { force: true }).catch(() => {
     });
@@ -1026,10 +986,10 @@ async function writeMetadata(path, value) {
 }
 var missingBase = (error) => isErrno(error, "ENOENT") || isErrno(error, "ENOTDIR");
 async function snapshotPiConfig(agentDir, name) {
-  const path = join5(agentDir, name);
+  const path = join4(agentDir, name);
   try {
     if (name === "models.json") {
-      const entry = await lstat2(path).catch((error) => {
+      const entry = await lstat(path).catch((error) => {
         if (!missingBase(error)) throw error;
       });
       if (!entry) return void 0;
@@ -1052,22 +1012,23 @@ async function projectPiResources(base, agentDir) {
     if (privatePiEntries.has(name) || name.endsWith("-debug.log") || name.endsWith(".lock")) continue;
     let target, info;
     try {
-      target = await realpath(join5(base, name));
+      target = await realpath(join4(base, name));
       info = await stat(target);
     } catch (error) {
       if (missingBase(error) || isErrno(error, "ELOOP")) continue;
       throw error;
     }
-    if (info.isFile() || info.isDirectory()) await symlink(target, join5(agentDir, name), info.isDirectory() ? "dir" : "file");
+    if (info.isFile() || info.isDirectory()) await symlink(target, join4(agentDir, name), info.isDirectory() ? "dir" : "file");
   }
 }
 async function createCapsule(options) {
-  const capsules = getLarvaHomePaths(options.home).capsules;
-  const root = join5(capsules, `child-${process.pid}-${randomBytes(16).toString("hex")}`);
+  const home = await canonicalPath(options.home);
+  const capsules = getLarvaHomePaths(home).capsules;
+  const root = join4(capsules, `child-${process.pid}-${randomBytes(16).toString("hex")}`);
   await privateDirectory(capsules);
   const [extension_sources, settings, models] = await Promise.all([
     resolveExtensionSources(options.extension_sources, {
-      larvaHome: options.home,
+      larvaHome: home,
       userHome: options.user_home ?? homedir2(),
       piAgentDir: options.pi_agent_dir,
       realpath,
@@ -1080,17 +1041,17 @@ async function createCapsule(options) {
     snapshotPiConfig(options.pi_agent_dir, "settings.json"),
     snapshotPiConfig(options.pi_agent_dir, "models.json")
   ]);
-  const agent_dir = join5(root, "agent");
-  const settings_path = join5(agent_dir, "settings.json");
-  const models_path = models === void 0 ? void 0 : join5(agent_dir, "models.json");
-  await mkdir2(root, { mode: 448 });
+  const agent_dir = join4(root, "agent");
+  const settings_path = join4(agent_dir, "settings.json");
+  const models_path = models === void 0 ? void 0 : join4(agent_dir, "models.json");
+  await mkdir(root, { mode: 448 });
   try {
-    await mkdir2(join5(root, "descendants"), { mode: 448 });
-    await mkdir2(agent_dir, { mode: 448 });
+    await mkdir(join4(root, "descendants"), { mode: 448 });
+    await mkdir(agent_dir, { mode: 448 });
     await writeFile(settings_path, settings ?? "{}\n", { mode: 384, flag: "wx" });
     if (models !== void 0 && models_path !== void 0) await writeFile(models_path, models, { mode: 384, flag: "wx" });
     await projectPiResources(options.pi_agent_dir, agent_dir);
-    await writeMetadata(join5(root, "owner.json"), { owner_pid: process.pid, state: "reserving" });
+    await writeMetadata(join4(root, "owner.json"), { owner_pid: process.pid, state: "reserving" });
     return { root, agent_dir, settings_path, models_path, extension_sources };
   } catch (error) {
     await rm(root, { recursive: true, force: true });
@@ -1100,7 +1061,7 @@ async function createCapsule(options) {
 function capsuleParentPid(home, root) {
   if (dirname(root) !== getLarvaHomePaths(home).capsules) return void 0;
   const match = CAPSULE_NAME.exec(basename3(root));
-  if (!match || join5(dirname(root), match[0]) !== root) return void 0;
+  if (!match || join4(dirname(root), match[0]) !== root) return void 0;
   const pid = Number(match[1]);
   return isPid(pid) ? pid : void 0;
 }
@@ -1116,7 +1077,7 @@ function parseOwner(value) {
 }
 async function* readDescendants(home, dir, names) {
   for (const name of names) {
-    const record2 = await readMetadata(join5(dir, name)).catch(() => void 0);
+    const record2 = await readMetadata(join4(dir, name)).catch(() => void 0);
     if (!metadataObject(record2)) {
       yield void 0;
       continue;
@@ -1138,11 +1099,12 @@ function descendantCensus() {
   };
 }
 async function linkedCapsuleRoots(home, root) {
-  const dir = join5(root, "descendants");
+  const dir = join4(root, "descendants");
   const links = /* @__PURE__ */ new Set();
   try {
-    if (!(await lstat2(root)).isDirectory() || !(await lstat2(dir)).isDirectory()) return links;
-    for await (const record2 of readDescendants(home, dir, await descendantCensus()(dir))) {
+    if (!(await lstat(root)).isDirectory() || !(await lstat(dir)).isDirectory()) return links;
+    const canonicalHome = await canonicalPath(home);
+    for await (const record2 of readDescendants(canonicalHome, dir, await descendantCensus()(dir))) {
       if (record2?.linked) links.add(record2.linked.root);
     }
   } catch (error) {
@@ -1153,20 +1115,20 @@ async function linkedCapsuleRoots(home, root) {
 async function inspectCapsule(home, root, leaseChildPid, ownerMode = "exited") {
   const seen = /* @__PURE__ */ new Set();
   const records = descendantCensus();
-  async function inspect(root2, ppid, expectedPid, depth) {
-    if (depth > MAX_TREE_DEPTH || seen.has(root2) || !(await lstat2(root2)).isDirectory()) {
+  async function inspect(canonicalHome, root2, ppid, expectedPid, depth) {
+    if (depth > MAX_TREE_DEPTH || seen.has(root2) || !(await lstat(root2)).isDirectory()) {
       throw new Error("Invalid capsule tree.");
     }
     seen.add(root2);
     const ownedHere = depth === 0 && ownerMode === "live";
     const ownerSettled = ownedHere ? ppid === process.pid : pidExited(ppid);
-    const owner = parseOwner(await readMetadata(join5(root2, "owner.json")));
+    const owner = parseOwner(await readMetadata(join4(root2, "owner.json")));
     if (owner.owner_pid !== ppid) throw new Error("Capsule owner does not match its path.");
     const childPids = /* @__PURE__ */ new Set();
     if (expectedPid != null) childPids.add(expectedPid);
     if (owner.child_pid != null) childPids.add(owner.child_pid);
     try {
-      const self = await readMetadata(join5(root2, "child_self.json"));
+      const self = await readMetadata(join4(root2, "child_self.json"));
       if (!metadataObject(self) || !isPid(self.pid)) throw new Error("Invalid capsule PID record.");
       childPids.add(self.pid);
     } catch (error) {
@@ -1175,11 +1137,11 @@ async function inspectCapsule(home, root, leaseChildPid, ownerMode = "exited") {
     const proof = { all_exited: false, has_child: childPids.size > 0, state: owner.state };
     if (!ownerSettled || ownedHere && expectedPid != null && childPids.size !== 1) return proof;
     if (![...childPids].every(pidExited)) return proof;
-    const descendants = join5(root2, "descendants");
-    const before = await lstat2(descendants, { bigint: true });
+    const descendants = join4(root2, "descendants");
+    const before = await lstat(descendants, { bigint: true });
     if (!before.isDirectory()) throw new Error("Invalid descendant directory.");
     const names = await records(descendants);
-    for await (const record2 of readDescendants(home, descendants, names)) {
+    for await (const record2 of readDescendants(canonicalHome, descendants, names)) {
       if (!record2) throw new Error("Invalid descendant record.");
       const { pid, linked } = record2;
       if (pid !== void 0 && !isPid(pid) || pid === void 0 && !linked) throw new Error("Invalid descendant PID record.");
@@ -1187,34 +1149,33 @@ async function inspectCapsule(home, root, leaseChildPid, ownerMode = "exited") {
       if (!linked) continue;
       if (seen.has(linked.root)) return proof;
       try {
-        await lstat2(linked.root);
+        await lstat(linked.root);
       } catch (error) {
         if (!isErrno(error, "ENOENT")) throw error;
         if (pid === void 0 || !pidExited(linked.owner)) return proof;
         continue;
       }
-      const nested = await inspect(linked.root, linked.owner, pid ?? null, depth + 1);
+      const nested = await inspect(canonicalHome, linked.root, linked.owner, pid ?? null, depth + 1);
       if (!nested.all_exited || !nested.has_child && pid === void 0) return proof;
     }
     const finalNames = await records(descendants);
-    const after = await lstat2(descendants, { bigint: true });
+    const after = await lstat(descendants, { bigint: true });
     proof.all_exited = before.dev === after.dev && before.ino === after.ino && before.mtimeNs === after.mtimeNs && before.ctimeNs === after.ctimeNs && finalNames.length === names.length && finalNames.every((name, index) => name === names[index]);
     return proof;
   }
   try {
-    const ppid = capsuleParentPid(home, root);
-    if (ppid !== void 0 && (await lstat2(dirname(root))).isDirectory()) return await inspect(root, ppid, leaseChildPid, 0);
+    const canonicalHome = await canonicalPath(home);
+    const ppid = capsuleParentPid(canonicalHome, root);
+    if (ppid !== void 0 && (await lstat(dirname(root))).isDirectory()) return await inspect(canonicalHome, root, ppid, leaseChildPid, 0);
   } catch {
   }
   return void 0;
 }
 
 // src/store/model-map.ts
-import { constants as constants3 } from "node:fs";
-import { lstat as lstat3, realpath as realpath2 } from "node:fs/promises";
 async function entryExists(path) {
   try {
-    await lstat3(path);
+    await lstat2(path);
     return true;
   } catch (error) {
     if (isErrno(error, "ENOENT")) return false;
@@ -1236,11 +1197,161 @@ function loadDiskModelMap(home, path) {
   return loadModelMap(home, path, diskModelMapReader(home));
 }
 
+// src/store/session-index.ts
+var HEADER_LIMIT = 1048576;
+function invalid5() {
+  return new LarvaError("LARVA_SESSION_INVALID", "Invalid Pi session header or transcript path.");
+}
+function parseHeader(bytes, task_id) {
+  let value;
+  try {
+    value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    throw invalid5();
+  }
+  if (value === null || typeof value !== "object" || !("type" in value) || value.type !== "session" || !("version" in value) || !("cwd" in value)) throw invalid5();
+  const { version, cwd } = value;
+  if (version !== 2 && version !== 3 || typeof cwd !== "string" || !isAbsolute2(cwd) || cwd.includes("\0")) {
+    throw invalid5();
+  }
+  return { task_id, version, cwd };
+}
+function sessionReadError(error) {
+  if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    return new LarvaError("LARVA_SESSION_NOT_FOUND", "Session transcript is missing.");
+  }
+  return error instanceof LarvaError ? error : invalid5();
+}
+async function canonicalPath(path) {
+  if (await entryExists(path)) return realpath3(path);
+  return join5(await canonicalPath(dirname2(path)), basename4(path));
+}
+async function resolveCanonicalSessionPath(home, taskId) {
+  if (taskId.includes("\0") || !isAbsolute2(taskId) || resolve2(taskId) !== taskId || !taskId.endsWith(".jsonl")) throw invalid5();
+  try {
+    const root = await canonicalPath(getLarvaHomePaths(home).sessions);
+    if (!isLexicallyContained(root, taskId) || await canonicalPath(taskId) !== taskId) throw invalid5();
+    const info = await lstat3(taskId).catch((error) => {
+      throw sessionReadError(error);
+    });
+    if (!info.isFile() || await realpath3(taskId) !== taskId) throw invalid5();
+    return taskId;
+  } catch (error) {
+    throw error instanceof LarvaError ? error : invalid5();
+  }
+}
+async function readSessionHeader(home, taskId) {
+  const task_id = await resolveCanonicalSessionPath(home, taskId);
+  try {
+    const file = await open3(task_id, constants4.O_RDONLY | constants4.O_NONBLOCK | constants4.O_NOFOLLOW);
+    try {
+      if (!(await file.stat()).isFile()) throw invalid5();
+      const buffer = Buffer.alloc(HEADER_LIMIT + 1);
+      let used = 0;
+      while (used < buffer.length) {
+        const { bytesRead } = await file.read(buffer, used, Math.min(8192, buffer.length - used), used);
+        if (bytesRead === 0) return parseHeader(buffer.subarray(0, used), task_id);
+        const newline = buffer.subarray(used, used + bytesRead).indexOf(10);
+        if (newline !== -1) return parseHeader(buffer.subarray(0, used + newline), task_id);
+        used += bytesRead;
+      }
+      throw invalid5();
+    } finally {
+      await file.close();
+    }
+  } catch (error) {
+    throw sessionReadError(error);
+  }
+}
+async function sessionCwdExists(cwd) {
+  try {
+    return (await stat2(cwd)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function readDiskSession(home, taskId, leases) {
+  const { task_id, cwd } = await readSessionHeader(home, taskId);
+  const [cwd_exists, lock_state] = await Promise.all([sessionCwdExists(cwd), leases.diskLockState(task_id)]);
+  return { task_id, cwd, cwd_exists, lock_state };
+}
+async function scanDiskSessions(home, leases) {
+  let root, names;
+  try {
+    root = await realpath3(getLarvaHomePaths(home).sessions);
+    names = await readdir(root);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return [];
+    throw error;
+  }
+  const sessions = [];
+  for (const name of names.sort()) {
+    if (!name.endsWith(".jsonl")) continue;
+    try {
+      sessions.push(await readDiskSession(home, join5(root, name), leases));
+    } catch (error) {
+      if (!(error instanceof LarvaError) || error.code !== "LARVA_SESSION_INVALID" && error.code !== "LARVA_SESSION_NOT_FOUND") {
+        throw error;
+      }
+    }
+  }
+  return sessions;
+}
+
+// src/store/artifacts.ts
+var inlineCodePoints = 36e3;
+var previewCodePoints = 2e3;
+async function writeOutputSnapshot(home, text2) {
+  let points = 0;
+  let previewEnd = 0;
+  for (const char of text2) {
+    points++;
+    if (points <= previewCodePoints) previewEnd += char.length;
+    if (points > inlineCodePoints) break;
+  }
+  if (points <= inlineCodePoints) return { output_state: "inline", result_text: text2 };
+  let staged;
+  try {
+    const bytes = Buffer.from(text2, "utf8");
+    const sha256 = createHash2("sha256").update(bytes).digest("hex");
+    let lines = bytes[bytes.length - 1] === 10 ? 0 : 1;
+    for (const byte of bytes) if (byte === 10) lines++;
+    const directory2 = getLarvaHomePaths(await canonicalPath(home)).artifacts;
+    await mkdir2(directory2, { recursive: true, mode: 448 });
+    const metadata = await lstat4(directory2);
+    if (!metadata.isDirectory()) throw new Error("Artifact path is not a directory.");
+    if ((metadata.mode & 4095) !== 448) await chmod(directory2, 448);
+    const name = randomUUID();
+    const path = join6(directory2, `${name}.txt`);
+    const temporary = join6(directory2, `.${name}.tmp`);
+    const file = await open4(temporary, "wx", 384);
+    staged = temporary;
+    try {
+      await file.chmod(384);
+      await file.writeFile(bytes);
+    } finally {
+      await file.close();
+    }
+    await rename2(temporary, path);
+    return {
+      output_state: "artifactized",
+      result_preview: text2.slice(0, previewEnd),
+      full_output_artifact: { path, bytes: bytes.length, sha256, lines }
+    };
+  } catch {
+    if (staged !== void 0) await unlink(staged).catch(() => void 0);
+    return {
+      output_state: "delivery_failed",
+      output_diagnostic: { code: "LARVA_STORE_WRITE_FAILED", message: "Could not persist full output artifact." }
+    };
+  }
+}
+
 // src/store/persona-store.ts
 import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
-import { constants as constants4 } from "node:fs";
-import { lstat as lstat4, mkdir as mkdir3, open as open4, readdir, rename as rename3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
-import { basename as basename4, extname as extname2, join as join6 } from "node:path";
+import { constants as constants5 } from "node:fs";
+import { lstat as lstat5, mkdir as mkdir3, open as open5, readdir as readdir2, rename as rename3, stat as stat3, unlink as unlink2 } from "node:fs/promises";
+import { basename as basename5, extname as extname2, join as join7 } from "node:path";
 var MAX_PERSONA_BYTES = 1048576;
 var formats = ["md", "json"];
 var maxDiagnostics = 100;
@@ -1262,7 +1373,7 @@ function candidates(directory2, names) {
     if (name.startsWith(".")) continue;
     const format = fileFormat(name);
     if (!format) continue;
-    files.push({ path: join6(directory2, name), id: basename4(name, `.${format}`), format });
+    files.push({ path: join7(directory2, name), id: basename5(name, `.${format}`), format });
   }
   return files.sort((a, b) => compareIds(a.id, b.id) || compareIds(a.format, b.format));
 }
@@ -1282,7 +1393,7 @@ async function readPersonaFile(path, installed = false) {
   try {
     return await readBoundedRegularBytes(path, {
       maxBytes: MAX_PERSONA_BYTES,
-      flags: installed ? constants4.O_NOFOLLOW : 0
+      flags: installed ? constants5.O_NOFOLLOW : 0
     });
   } catch {
     throw unreadable(path);
@@ -1311,11 +1422,11 @@ async function loadInput(target, { prune, stdinText }) {
   }
   let files;
   try {
-    const targetStat = await stat2(target);
+    const targetStat = await stat3(target);
     if (prune && !targetStat.isDirectory()) throw badPrune();
     files = [target];
     if (targetStat.isDirectory()) {
-      const entries = await readdir(target, { withFileTypes: true });
+      const entries = await readdir2(target, { withFileTypes: true });
       const batch = candidates(target, entries.filter((entry) => !entry.isDirectory()).map((entry) => entry.name));
       for (let i = 1; i < batch.length; i++) {
         if (batch[i - 1].id === batch[i].id && isValidPersonaId(batch[i].id)) throw conflict(batch[i].id);
@@ -1345,15 +1456,15 @@ async function unlinkIfPresent(path) {
   }
 }
 async function stageAndRename(directory2, { spec, format, bytes }) {
-  const temporary = join6(directory2, `.${spec.id}.${randomUUID2()}.tmp`);
-  const file = await open4(temporary, "wx", 384);
+  const temporary = join7(directory2, `.${spec.id}.${randomUUID2()}.tmp`);
+  const file = await open5(temporary, "wx", 384);
   try {
     try {
       await file.writeFile(bytes);
     } finally {
       await file.close();
     }
-    await rename3(temporary, join6(directory2, `${spec.id}.${format}`));
+    await rename3(temporary, join7(directory2, `${spec.id}.${format}`));
   } catch (error) {
     await unlinkIfPresent(temporary).catch(() => void 0);
     throw error;
@@ -1383,9 +1494,9 @@ var PersonaStore = class {
   async #installed(id) {
     const found = [];
     for (const format of formats) {
-      const path = join6(this.#directory, `${id}.${format}`);
+      const path = join7(this.#directory, `${id}.${format}`);
       try {
-        await lstat4(path);
+        await lstat5(path);
         found.push({ path, id, format });
       } catch (error) {
         if (!isMissing(error)) throw unreadable(path);
@@ -1425,7 +1536,7 @@ var PersonaStore = class {
     const diagnostics = [];
     let files = [];
     try {
-      files = candidates(this.#directory, await readdir(this.#directory));
+      files = candidates(this.#directory, await readdir2(this.#directory));
     } catch (error) {
       if (!isMissing(error)) diagnostics.push({
         code: "LARVA_PERSONA_INVALID",
@@ -1485,12 +1596,12 @@ var PersonaStore = class {
           await stageAndRename(this.#directory, input);
           committed_ids.push(failed_id);
           const other = input.format === "md" ? "json" : "md";
-          await unlinkIfPresent(join6(this.#directory, `${failed_id}.${other}`));
+          await unlinkIfPresent(join7(this.#directory, `${failed_id}.${other}`));
         }
         if (prune) {
           failed_id = null;
           const incoming = new Set(committed_ids);
-          const files = candidates(this.#directory, await readdir(this.#directory));
+          const files = candidates(this.#directory, await readdir2(this.#directory));
           for (const { path, id } of files) {
             if (incoming.has(id)) continue;
             failed_id = id;
@@ -1518,7 +1629,7 @@ var PersonaStore = class {
       for (const id of requested) {
         this.#cache.delete(id);
         try {
-          for (const format of formats) await unlinkIfPresent(join6(this.#directory, `${id}.${format}`));
+          for (const format of formats) await unlinkIfPresent(join7(this.#directory, `${id}.${format}`));
         } catch {
           throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Could not remove persona ${id}.`, { failed_id: id });
         }
@@ -1527,145 +1638,30 @@ var PersonaStore = class {
   }
 };
 
-// src/store/session-index.ts
-import { constants as constants5 } from "node:fs";
-import { lstat as lstat5, open as open5, readdir as readdir2, realpath as realpath3, stat as stat3 } from "node:fs/promises";
-import { basename as basename5, dirname as dirname2, isAbsolute as isAbsolute2, join as join7, resolve as resolve2 } from "node:path";
-var HEADER_LIMIT = 1048576;
-function invalid5() {
-  return new LarvaError("LARVA_SESSION_INVALID", "Invalid Pi session header or transcript path.");
-}
-function parseHeader(bytes, task_id) {
-  let value;
-  try {
-    value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-  } catch {
-    throw invalid5();
-  }
-  if (value === null || typeof value !== "object" || !("type" in value) || value.type !== "session" || !("version" in value) || !("cwd" in value)) throw invalid5();
-  const { version, cwd } = value;
-  if (version !== 2 && version !== 3 || typeof cwd !== "string" || !isAbsolute2(cwd) || cwd.includes("\0")) {
-    throw invalid5();
-  }
-  return { task_id, version, cwd };
-}
-function sessionReadError(error) {
-  if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-    return new LarvaError("LARVA_SESSION_NOT_FOUND", "Session transcript is missing.");
-  }
-  return error instanceof LarvaError ? error : invalid5();
-}
-async function canonicalPath(path) {
-  if (await entryExists(path)) return realpath3(path);
-  return join7(await canonicalPath(dirname2(path)), basename5(path));
-}
-async function resolveCanonicalSessionPath(home, taskId) {
-  if (taskId.includes("\0") || !isAbsolute2(taskId) || resolve2(taskId) !== taskId || !taskId.endsWith(".jsonl")) throw invalid5();
-  try {
-    const root = await canonicalPath(getLarvaHomePaths(home).sessions);
-    if (!isLexicallyContained(root, taskId) || await canonicalPath(taskId) !== taskId) throw invalid5();
-    const info = await lstat5(taskId).catch((error) => {
-      throw sessionReadError(error);
-    });
-    if (!info.isFile() || await realpath3(taskId) !== taskId) throw invalid5();
-    return taskId;
-  } catch (error) {
-    throw error instanceof LarvaError ? error : invalid5();
-  }
-}
-async function readSessionHeader(home, taskId) {
-  const task_id = await resolveCanonicalSessionPath(home, taskId);
-  try {
-    const file = await open5(task_id, constants5.O_RDONLY | constants5.O_NONBLOCK | constants5.O_NOFOLLOW);
-    try {
-      if (!(await file.stat()).isFile()) throw invalid5();
-      const buffer = Buffer.alloc(HEADER_LIMIT + 1);
-      let used = 0;
-      while (used < buffer.length) {
-        const { bytesRead } = await file.read(buffer, used, Math.min(8192, buffer.length - used), used);
-        if (bytesRead === 0) return parseHeader(buffer.subarray(0, used), task_id);
-        const newline = buffer.subarray(used, used + bytesRead).indexOf(10);
-        if (newline !== -1) return parseHeader(buffer.subarray(0, used + newline), task_id);
-        used += bytesRead;
-      }
-      throw invalid5();
-    } finally {
-      await file.close();
-    }
-  } catch (error) {
-    throw sessionReadError(error);
-  }
-}
-async function sessionCwdExists(cwd) {
-  try {
-    return (await stat3(cwd)).isDirectory();
-  } catch {
-    return false;
-  }
-}
-async function readDiskSession(home, taskId, leases) {
-  const { task_id, cwd } = await readSessionHeader(home, taskId);
-  const [cwd_exists, lock_state] = await Promise.all([sessionCwdExists(cwd), leases.diskLockState(task_id)]);
-  return { task_id, cwd, cwd_exists, lock_state };
-}
-async function scanDiskSessions(home, leases) {
-  let root, names;
-  try {
-    root = await realpath3(getLarvaHomePaths(home).sessions);
-    names = await readdir2(root);
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return [];
-    throw error;
-  }
-  const sessions = [];
-  for (const name of names.sort()) {
-    if (!name.endsWith(".jsonl")) continue;
-    try {
-      sessions.push(await readDiskSession(home, join7(root, name), leases));
-    } catch (error) {
-      if (!(error instanceof LarvaError) || error.code !== "LARVA_SESSION_INVALID" && error.code !== "LARVA_SESSION_NOT_FOUND") {
-        throw error;
-      }
-    }
-  }
-  return sessions;
-}
-
 // src/store/session-lease.ts
 import { createHash as createHash4, randomBytes as randomBytes2 } from "node:crypto";
-import { link, lstat as lstat6, mkdir as mkdir4, realpath as realpath4, rename as rename4, rm as rm2 } from "node:fs/promises";
-import { basename as basename6, join as join8 } from "node:path";
+import { link, lstat as lstat6, mkdir as mkdir4, rename as rename4, rm as rm2 } from "node:fs/promises";
+import { basename as basename6, dirname as dirname3, join as join8 } from "node:path";
 var LEASE_KEYS = ["lease_id", "owner_pid", "state", "child_pid", "capsule_root"];
 var randomId = () => randomBytes2(16).toString("hex");
 function createSessionLeaseStore(home, io) {
-  const sessions = getLarvaHomePaths(home).sessions;
+  const configuredSessions = getLarvaHomePaths(home).sessions;
   async function lockPath(taskId) {
-    const name = basename6(taskId);
-    if (!taskId.endsWith(".jsonl") || taskId.includes("\0")) {
+    const canonicalHome = await canonicalPath(home);
+    const sessions = getLarvaHomePaths(canonicalHome).sessions;
+    if (!taskId.endsWith(".jsonl") || taskId.includes("\0") || !isLexicallyContained(sessions, taskId) && !isLexicallyContained(configuredSessions, taskId)) {
       throw new LarvaError("LARVA_SESSION_INVALID", "Expected a contained .jsonl task_id.");
     }
-    if (!isLexicallyContained(sessions, taskId)) {
-      let canonical;
-      try {
-        canonical = await realpath4(sessions);
-      } catch (error) {
-        if (io.isErrno(error, "ENOENT")) canonical = sessions;
-        else throw error;
-      }
-      if (!isLexicallyContained(canonical, taskId)) {
-        throw new LarvaError("LARVA_SESSION_INVALID", "Expected a contained .jsonl task_id.");
-      }
-    }
-    return join8(sessions, `${name}.lock`);
+    return { path: join8(sessions, `${basename6(taskId)}.lock`), canonicalHome };
   }
-  function parseRecord(value) {
+  function parseRecord(value, canonicalHome) {
     if (!io.metadataObject(value) || Object.keys(value).some((key) => !LEASE_KEYS.includes(key))) return void 0;
     const { lease_id, state, owner_pid, child_pid, capsule_root } = value;
     if (typeof lease_id !== "string" || !lease_id.trim() || !io.isPid(owner_pid)) return void 0;
     if ((state === "reserving" || state === "gc_unlinking") && child_pid === null && capsule_root === null) {
       return { lease_id, state, owner_pid, child_pid, capsule_root };
     }
-    if (typeof capsule_root !== "string" || io.capsuleParentPid(home, capsule_root) !== owner_pid) return void 0;
+    if (typeof capsule_root !== "string" || io.capsuleParentPid(canonicalHome, capsule_root) !== owner_pid) return void 0;
     if (state === "spawning" && child_pid === null) return { lease_id, state, owner_pid, child_pid, capsule_root };
     if (state === "running" && io.isPid(child_pid)) return { lease_id, state, owner_pid, child_pid, capsule_root };
     if (state === "unreconciled" && (child_pid === null || io.isPid(child_pid))) {
@@ -1673,28 +1669,29 @@ function createSessionLeaseStore(home, io) {
     }
     return void 0;
   }
-  async function read(path) {
+  async function read(path, canonicalHome) {
     try {
-      if (!(await lstat6(sessions)).isDirectory() || !(await lstat6(path)).isDirectory()) return "invalid";
+      if (!(await lstat6(dirname3(path))).isDirectory() || !(await lstat6(path)).isDirectory()) return "invalid";
     } catch (error) {
       return io.isErrno(error, "ENOENT") ? "missing" : "invalid";
     }
     try {
-      return parseRecord(await io.readMetadata(join8(path, "lease.json"))) ?? "invalid";
+      return parseRecord(await io.readMetadata(join8(path, "lease.json")), canonicalHome) ?? "invalid";
     } catch {
       return "invalid";
     }
   }
-  async function assess(record2) {
+  async function assess(record2, canonicalHome) {
     if (!io.pidExited(record2.owner_pid)) return record2.state === "unreconciled" ? "uncertain" : "active";
     if (record2.capsule_root === null) return "stale";
-    const capsule = await io.inspectCapsule(home, record2.capsule_root, record2.child_pid);
+    const capsule = await io.inspectCapsule(canonicalHome, record2.capsule_root, record2.child_pid);
     return capsule?.all_exited && capsule.has_child ? "stale" : "uncertain";
   }
   async function inspect(taskId) {
-    const record2 = await read(await lockPath(taskId));
+    const { path, canonicalHome } = await lockPath(taskId);
+    const record2 = await read(path, canonicalHome);
     if (typeof record2 === "string") return { disposition: record2 };
-    return { disposition: await assess(record2), record: record2 };
+    return { disposition: await assess(record2, canonicalHome), record: record2 };
   }
   async function diskLockState(taskId) {
     const lease = await inspect(taskId);
@@ -1708,11 +1705,10 @@ function createSessionLeaseStore(home, io) {
     await rm2(detached2, { recursive: true, force: true }).catch(() => {
     });
   }
-  async function reclaim(taskId, observedId) {
-    const path = await lockPath(taskId);
-    const observed = await read(path);
+  async function reclaimLock({ path, canonicalHome }, observedId) {
+    const observed = await read(path, canonicalHome);
     if (typeof observed === "string" || observed.lease_id !== observedId || !io.pidExited(observed.owner_pid)) return false;
-    const disposition = await assess(observed);
+    const disposition = await assess(observed, canonicalHome);
     if (disposition !== "stale" && observed.state !== "spawning") return false;
     const prefix = createHash4("sha256").update(observedId).digest("hex");
     const stage = `${path}.guard.tmp.${process.pid}.${randomId()}`;
@@ -1737,9 +1733,9 @@ function createSessionLeaseStore(home, io) {
         }
         if (!io.metadataObject(guard) || !(guard.done === true || io.isPid(guard.pid) && io.pidExited(guard.pid))) return false;
       }
-      const current = await read(path);
+      const current = await read(path, canonicalHome);
       if (typeof current === "string" || current.lease_id !== observedId || !io.pidExited(current.owner_pid)) return false;
-      if (await assess(current) === "stale") {
+      if (await assess(current, canonicalHome) === "stale") {
         await detach(path);
         claim = void 0;
         return true;
@@ -1751,7 +1747,7 @@ function createSessionLeaseStore(home, io) {
     } finally {
       try {
         if (claim !== void 0) {
-          const current = await read(path);
+          const current = await read(path, canonicalHome);
           if (typeof current !== "string" && current.lease_id === observedId) await io.writeMetadata(claim, { done: true });
         }
       } finally {
@@ -1761,19 +1757,20 @@ function createSessionLeaseStore(home, io) {
     }
   }
   async function acquire(taskId, state = "reserving") {
-    const path = await lockPath(taskId);
+    const target = await lockPath(taskId);
+    const { path, canonicalHome } = target;
     const lease_id = randomId();
     const temp = `${path}.tmp.${process.pid}.${lease_id}`;
     const owner_pid = process.pid;
     const initial = { lease_id, owner_pid, state, child_pid: null, capsule_root: null };
     const busy = () => new LarvaError("LARVA_SESSION_BUSY", "Session already has an active or unreconciled lease.");
-    await io.privateDirectory(sessions);
+    await io.privateDirectory(dirname3(path));
     await mkdir4(temp, { mode: 448 });
     try {
       await io.writeMetadata(join8(temp, "lease.json"), initial);
-      const current = await read(path);
+      const current = await read(path, canonicalHome);
       if (current === "invalid") throw busy();
-      if (typeof current !== "string" && !await reclaim(taskId, current.lease_id)) throw busy();
+      if (typeof current !== "string" && !await reclaimLock(target, current.lease_id)) throw busy();
       try {
         await rename4(temp, path);
       } catch (error) {
@@ -1787,7 +1784,7 @@ function createSessionLeaseStore(home, io) {
     let settled = Promise.resolve();
     function mutate(operation) {
       const next = settled.then(async () => {
-        const current = await read(path);
+        const current = await read(path, canonicalHome);
         if (typeof current === "string" || current.lease_id !== lease_id) throw busy();
         await operation(current);
       });
@@ -1801,7 +1798,7 @@ function createSessionLeaseStore(home, io) {
     return {
       lease_id,
       markSpawning: (capsule_root) => mutate(async (current) => {
-        if (current.state !== "reserving" || io.capsuleParentPid(home, capsule_root) !== process.pid) throw busy();
+        if (current.state !== "reserving" || io.capsuleParentPid(canonicalHome, capsule_root) !== process.pid) throw busy();
         if (!(await lstat6(capsule_root)).isDirectory()) throw busy();
         await io.writeMetadata(join8(capsule_root, "owner.json"), { owner_pid, state: "spawning" });
         await publish({ ...current, state: "spawning", capsule_root });
@@ -1819,12 +1816,20 @@ function createSessionLeaseStore(home, io) {
       release: () => mutate(() => detach(path))
     };
   }
-  return { home, acquire, inspect, reclaim, diskLockState };
+  return {
+    home,
+    acquire,
+    inspect,
+    diskLockState,
+    async reclaim(taskId, observedId) {
+      return reclaimLock(await lockPath(taskId), observedId);
+    }
+  };
 }
 
 // src/runtime/child-rpc-client.ts
 import { spawn } from "node:child_process";
-import { dirname as dirname3 } from "node:path";
+import { dirname as dirname4 } from "node:path";
 import { pathToFileURL } from "node:url";
 var MAX_RECORD = 1048576;
 var GRACE_MS = 1500;
@@ -1881,7 +1886,7 @@ function launchChild(options, progress, telemetry) {
     "--thinking",
     thinking,
     "--session-dir",
-    dirname3(taskId),
+    dirname4(taskId),
     "--session",
     taskId
   ], {
@@ -2116,8 +2121,8 @@ function terminalOutput(snapshot) {
 
 // src/runtime/pi-binary.ts
 import { constants as constants6 } from "node:fs";
-import { access as access2, realpath as realpath5, stat as stat4 } from "node:fs/promises";
-import { basename as basename7, delimiter, dirname as dirname4, isAbsolute as isAbsolute3, join as join9, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
+import { access as access2, realpath as realpath4, stat as stat4 } from "node:fs/promises";
+import { basename as basename7, delimiter, dirname as dirname5, isAbsolute as isAbsolute3, join as join9, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 var PI_PACKAGE = "@earendil-works/pi-coding-agent";
 var MAX_MANIFEST_BYTES = 1048576;
@@ -2133,7 +2138,7 @@ async function registryEntry(directory2, pkg) {
   const entry = typeof exported === "string" ? exported : isRecord(exported) ? exported.import : pkg.main;
   if (typeof entry !== "string" || entry.length === 0 || isAbsolute3(entry)) return void 0;
   try {
-    const path = await realpath5(resolve3(directory2, entry));
+    const path = await realpath4(resolve3(directory2, entry));
     return isWithin(directory2, path) && (await stat4(path)).isFile() ? path : void 0;
   } catch {
     return void 0;
@@ -2141,21 +2146,21 @@ async function registryEntry(directory2, pkg) {
 }
 async function inspectPiScript(candidate) {
   try {
-    const path = await realpath5(candidate);
+    const path = await realpath4(candidate);
     if (!(await stat4(path)).isFile()) return void 0;
     await access2(path, constants6.R_OK);
-    let directory2 = dirname4(path);
+    let directory2 = dirname5(path);
     for (; ; ) {
       let raw;
       try {
         raw = await readBoundedRegularText(join9(directory2, "package.json"), { maxBytes: MAX_MANIFEST_BYTES });
       } catch (error) {
-        if (!isRecord(error) || error.code !== "ENOENT" || dirname4(directory2) === directory2) return void 0;
-        directory2 = dirname4(directory2);
+        if (!isRecord(error) || error.code !== "ENOENT" || dirname5(directory2) === directory2) return void 0;
+        directory2 = dirname5(directory2);
         continue;
       }
       const pkg = JSON.parse(raw);
-      if (!isRecord(pkg) || pkg.name !== PI_PACKAGE || !isRecord(pkg.bin) || typeof pkg.bin.pi !== "string" || !pkg.bin.pi.trim() || isAbsolute3(pkg.bin.pi) || await realpath5(resolve3(directory2, pkg.bin.pi)) !== path) return void 0;
+      if (!isRecord(pkg) || pkg.name !== PI_PACKAGE || !isRecord(pkg.bin) || typeof pkg.bin.pi !== "string" || !pkg.bin.pi.trim() || isAbsolute3(pkg.bin.pi) || await realpath4(resolve3(directory2, pkg.bin.pi)) !== path) return void 0;
       const entry = await registryEntry(directory2, pkg);
       return {
         path,
@@ -2169,9 +2174,9 @@ async function inspectPiScript(candidate) {
 }
 async function inspectManagedLauncher(candidate) {
   try {
-    const launcher = await realpath5(candidate);
-    if (basename7(launcher) !== "pi" || basename7(dirname4(launcher)) !== "bin" || !(await stat4(launcher)).isFile()) return void 0;
-    const install = await realpath5(join9(dirname4(dirname4(launcher)), "install"));
+    const launcher = await realpath4(candidate);
+    if (basename7(launcher) !== "pi" || basename7(dirname5(launcher)) !== "bin" || !(await stat4(launcher)).isFile()) return void 0;
+    const install = await realpath4(join9(dirname5(dirname5(launcher)), "install"));
     const release = (await readBoundedRegularText(join9(install, "current-version"), { maxBytes: 256 })).trim();
     if (!/^[0-9A-Za-z._+-]+$/.test(release) || release === "." || release === "..") return void 0;
     const releaseRoot = join9(install, "releases", release);
@@ -2299,7 +2304,7 @@ function keys(value, names) {
 }
 async function directory(path, code) {
   try {
-    if (isAbsolute4(path) && (await stat5(path)).isDirectory()) return await realpath6(path);
+    if (isAbsolute4(path) && (await stat5(path)).isDirectory()) return await realpath5(path);
   } catch {
   }
   throw new LarvaError(code, "Workspace must be an existing absolute directory.");
@@ -2343,7 +2348,7 @@ async function lineage(env, root, self) {
   for (const id of [...ids, ...self !== void 0 && (depth > 0 || isLexicallyContained(root, self)) ? [self] : []]) {
     if (typeof id !== "string" || !isLexicallyContained(root, id) || resolve4(id) !== id || !id.endsWith(".jsonl")) return invalid6();
     try {
-      if (join10(await realpath6(dirname5(id)), basename8(id)) !== id || await entryExists(id) && (!(await lstat7(id)).isFile() || await realpath6(id) !== id)) return invalid6();
+      if (join10(await realpath5(dirname6(id)), basename8(id)) !== id || await entryExists(id) && (!(await lstat7(id)).isFile() || await realpath5(id) !== id)) return invalid6();
     } catch {
       return invalid6();
     }
@@ -2422,7 +2427,6 @@ var SubagentSupervisor = class {
   #opts;
   #env;
   #baseCwd = process.cwd();
-  #root;
   #personas;
   #leases;
   #active = /* @__PURE__ */ new Map();
@@ -2441,7 +2445,6 @@ var SubagentSupervisor = class {
     this.#opts = options;
     this.#env = options.env ?? process.env;
     this.home = options.home ?? resolveLarvaHome(this.#env);
-    this.#root = getLarvaHomePaths(this.home).sessions;
     this.#leases = createSessionLeaseStore(this.home, capsule_exports);
     this.#personas = new PersonaStore(this.home);
     this.#profile = this.#env.LARVA_PI_MODEL_MAP_PROFILE ?? "default";
@@ -2516,7 +2519,8 @@ var SubagentSupervisor = class {
       resolveWatchdogTimeouts(input, { stall_alert_ms: 0 });
       if (input.task_id !== void 0) this.#taskSyntax(input.task_id);
       const { cwd, taskId } = await workspace(this.home, input, ctx);
-      const root = await canonicalPath(this.#root);
+      const home = await canonicalPath(this.home);
+      const root = getLarvaHomePaths(home).sessions;
       const chain = await lineage(this.#env, root, ctx.selfTaskId ?? this.#env.LARVA_PI_TASK_ID);
       const config = await loadLarvaConfig(this.home, async (p) => await entryExists(p) ? readBoundedRegularText2(p) : void 0);
       if (config.subagent.max_depth !== void 0 && chain.depth + 1 > config.subagent.max_depth) throw new LarvaError("LARVA_SPAWN_NOT_ALLOWED", "Configured maximum depth exceeded.");
@@ -2565,7 +2569,7 @@ var SubagentSupervisor = class {
         parent: parentSession
       };
       this.#active.set(id, run);
-      void this.#drive(run, spec, input, chain, config);
+      void this.#drive(run, spec, input, chain, config, home);
       this.#notify();
       const accepted = await run.accepted.promise;
       if (!input.wait_for_completion) return accepted;
@@ -2586,7 +2590,7 @@ var SubagentSupervisor = class {
       throw failure;
     }
   }
-  async #drive(run, spec, input, chain, config) {
+  async #drive(run, spec, input, chain, config, home) {
     const s = run.s, id = s.task_id;
     let lease, box, manifest;
     let accepted = false, failure;
@@ -2633,14 +2637,14 @@ var SubagentSupervisor = class {
       this.#notify();
       const basePiAgentDir = this.#opts.piAgentDir === void 0 ? resolveBasePiAgentDir(this.#env, void 0, this.#baseCwd) : resolve4(this.#baseCwd, this.#opts.piAgentDir);
       box = await createCapsule({
-        home: this.home,
+        home,
         pi_agent_dir: basePiAgentDir,
         user_home: this.#env.HOME,
         extension_sources: config.subagent.extension_sources
       });
       const parent = this.#env.LARVA_PI_CAPSULE_ROOT;
       if (parent !== void 0) {
-        if (!capsuleParentPid(this.home, parent)) throw new LarvaError("LARVA_CHILD_START_FAILED", "Invalid parent capsule.");
+        if (!capsuleParentPid(home, parent)) throw new LarvaError("LARVA_CHILD_START_FAILED", "Invalid parent capsule.");
         manifest = join10(parent, "descendants", `${basename8(box.root)}.json`);
         await writeMetadata(manifest, { capsule_root: box.root });
       }
@@ -2652,7 +2656,7 @@ var SubagentSupervisor = class {
         preload: this.#opts.preload ?? fileURLToPath(new URL("./child-rpc-preload.mjs", import.meta.url)),
         extensionSources: box.extension_sources,
         env: { ...this.#env, LARVA_PI_TASK_ID: id, LARVA_PI_MODEL_MAP_PROFILE: this.#profile },
-        home: this.home,
+        home,
         basePiAgentDir,
         capsule: box.root,
         agentDir: box.agent_dir,
@@ -2704,8 +2708,8 @@ var SubagentSupervisor = class {
         try {
           if (run.rpc && !await run.rpc.stop(!!failure) && !(run.rpc.pid && pidExited(run.rpc.pid))) throw new Error("Unconfirmed child exit.");
           if (box) {
-            if (!(await inspectCapsule(this.home, box.root, run.rpc?.pid, "live"))?.all_exited) throw new Error("Unconfirmed capsule exit.");
-            const staged = join10(this.#root, `${basename8(id)}.lock`, "capsule");
+            if (!(await inspectCapsule(home, box.root, run.rpc?.pid, "live"))?.all_exited) throw new Error("Unconfirmed capsule exit.");
+            const staged = join10(getLarvaHomePaths(home).sessions, `${basename8(id)}.lock`, "capsule");
             await rename5(box.root, staged);
             try {
               await lease.release();
@@ -2833,12 +2837,22 @@ var SubagentSupervisor = class {
     keys(input, ["task_ids", "reason", "expected_run_epochs"]);
     this.#ids(input.task_ids);
     if (typeof input.reason !== "string" || !input.reason.trim() || [...input.reason].length > 500) bad("Invalid cancel reason.");
-    const guards = input.expected_run_epochs;
-    if (guards !== void 0 && (!metadataObject(guards) || Object.entries(guards).some(([id, epoch]) => !input.task_ids.includes(id) || typeof epoch !== "string" || !epoch))) bad("Invalid expected_run_epochs.");
+    const guards = /* @__PURE__ */ new Map();
+    const expected = input.expected_run_epochs;
+    if (expected !== void 0) {
+      if (!Array.isArray(expected) || expected.length > 25) return bad("Invalid expected_run_epochs.");
+      for (const guard of expected) {
+        if (!metadataObject(guard) || Object.keys(guard).length !== 2 || !Object.hasOwn(guard, "task_id") || !Object.hasOwn(guard, "run_epoch")) return bad("Invalid expected_run_epochs.");
+        const { task_id, run_epoch } = guard;
+        if (typeof task_id !== "string" || !input.task_ids.includes(task_id) || guards.has(task_id) || typeof run_epoch !== "string" || !run_epoch) return bad("Invalid expected_run_epochs.");
+        guards.set(task_id, run_epoch);
+      }
+    }
     const results = await Promise.all(input.task_ids.map(async (task_id) => {
       const run = this.#active.get(task_id), s = this.#lookup(task_id);
       if (!s) return { task_id, outcome: "not_found" };
-      if (!run || guards?.[task_id] !== void 0 && guards[task_id] !== s.run_epoch) return { task_id, outcome: "already_terminal" };
+      const epoch = guards.get(task_id);
+      if (!run || epoch !== void 0 && epoch !== s.run_epoch) return { task_id, outcome: "already_terminal" };
       const terminal = isTerminal(s.status);
       this.#abort(run, input.reason.trim());
       return { task_id, outcome: !await (run.reconcile?.() ?? run.cleaned.promise) ? "cleanup_unconfirmed" : terminal ? "already_terminal" : "cancelled" };
@@ -3901,7 +3915,7 @@ var app = String.raw`function (surface, modes) {
     if (!observing() || poll || (target.kind !== 'pinned' && target.kind !== 'latest')) return;
     clearTimeout(pollTimer);
     const ticket = poll = {};
-    const args = target.kind === 'pinned' ? { run_epochs: Object.fromEntries(target.pairs) } : target.query;
+    const args = target.kind === 'pinned' ? { run_epochs: Array.from(target.pairs, ([task_id, run_epoch]) => ({ task_id, run_epoch })) } : target.query;
     try {
       const response = await tool('larva_subagent_panel', args);
       if (poll !== ticket) return;
@@ -3965,7 +3979,7 @@ var app = String.raw`function (surface, modes) {
     try {
       const response = await tool('larva_subagent_cancel', {
         task_ids: [run.task_id], reason: 'Cancelled from Larva Subagents',
-        expected_run_epochs: { [run.task_id]: run.run_epoch },
+        expected_run_epochs: [{ task_id: run.task_id, run_epoch: run.run_epoch }],
       }, 'cancel');
       if (token !== view || !observing()) return;
       const item = dataOf(response)?.results?.find?.(result => result?.task_id === run.task_id);
@@ -4379,11 +4393,7 @@ function matches(schema, value) {
       return Array.isArray(value) && value.length >= (schema.minItems ?? 0) && value.length <= (schema.maxItems ?? Infinity) && (!schema.uniqueItems || new Set(value).size === value.length) && value.every((item) => matches(schema.items, item));
     case "object": {
       if (!isPlainObject(value) || !hasRequired(value, schema.required ?? []) || schema.not && matches(schema.not, value)) return false;
-      const entries = Object.entries(value);
-      return entries.length >= (schema.minProperties ?? 0) && entries.length <= (schema.maxProperties ?? Infinity) && entries.every(([key, field2]) => {
-        const rule = schema.properties && Object.hasOwn(schema.properties, key) ? schema.properties[key] : schema.additionalProperties;
-        return rule !== false && matches(rule, field2);
-      });
+      return Object.entries(value).every(([key, field2]) => Object.hasOwn(schema.properties, key) && matches(schema.properties[key], field2));
     }
   }
 }
@@ -4398,7 +4408,8 @@ var integer2 = (minimum, maximum = Number.MAX_SAFE_INTEGER) => ({ type: "integer
 var choice = (...values) => ({ ...string, enum: values });
 var object4 = (properties, ...required) => ({ type: "object", properties, required, additionalProperties: false });
 var taskIds = { type: "array", items: text, minItems: 1, maxItems: 25, uniqueItems: true };
-var epochs = { type: "object", additionalProperties: text, maxProperties: 25 };
+var epochGuard = object4({ task_id: text, run_epoch: text }, "task_id", "run_epoch");
+var epochs = { type: "array", items: epochGuard, maxItems: 25 };
 var maxMs = 864e5;
 var commonToolSchemas = {
   larva_personas: object4({ query: string, limit: integer2(1, 50) }),
@@ -4495,7 +4506,7 @@ function createMcpTools(supervisor, personas) {
     ),
     tool(
       "larva_subagent_cancel",
-      "Cancel owned runs with optional epoch guards.",
+      "Cancel active local runs by exact task_id (omit expected_run_epochs unless guarding against a concurrent resume).",
       commonToolSchemas.larva_subagent_cancel,
       modelUi,
       async (args) => {
@@ -4516,18 +4527,20 @@ function createMcpTools(supervisor, personas) {
     tool(
       "larva_subagent_panel",
       "View sessions or recover exact run epochs for an inline card.",
-      { ...statusSchema, properties: { ...statusSchema.properties, run_epochs: { ...epochs, minProperties: 1 } } },
+      { ...statusSchema, properties: { ...statusSchema.properties, run_epochs: { ...epochs, minItems: 1 } } },
       {
         ui: { visibility: ["app"], resourceUri: CODEX_PANEL_URI },
         "openai/ui": { entrypoints: [{ type: "thread" }], availableDisplayModes: CODEX_PANEL_DISPLAY_MODES }
       },
       async ({ run_epochs, ...query }) => {
         if (!run_epochs) return result(await supervisor.status(query));
-        const entries = Object.entries(run_epochs);
-        if (query.task_id !== void 0 && (entries.length !== 1 || entries[0][0] !== query.task_id)) {
+        if (new Set(run_epochs.map(({ task_id }) => task_id)).size !== run_epochs.length) {
+          return bad2("Pinned epochs must have unique task_ids.");
+        }
+        if (query.task_id !== void 0 && (run_epochs.length !== 1 || run_epochs[0].task_id !== query.task_id)) {
           return bad2("Pinned epochs must match the requested task_id.");
         }
-        const runs = (await Promise.all(entries.map(([id, epoch]) => supervisor.pinned(id, epoch)))).flatMap((run) => run.output_state !== "evicted" ? [run] : []);
+        const runs = (await Promise.all(run_epochs.map(({ task_id, run_epoch }) => supervisor.pinned(task_id, run_epoch)))).flatMap((run) => run.output_state !== "evicted" ? [run] : []);
         const terminal_outputs = Object.fromEntries(runs.flatMap((run) => isTerminal(run.status) ? [[run.task_id, terminalOutput(run)]] : []));
         return result({ runs, startup_failures: [], terminal_outputs });
       }

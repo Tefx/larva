@@ -110,7 +110,7 @@ export function registerPiCommands(pi: ExtensionAPI, current: () => {
           data = { results: [{ task_id: taskId, outcome: status?.runs.length ? "already_terminal" : "not_found" }], isError: false };
         } else if (ctx.mode !== "tui" || await ctx.ui.confirm("Cancel subagent?", terminalText(taskId))) {
           data = await supervisor.cancel({ task_ids: [taskId], reason: "Cancelled by user command.",
-            expected_run_epochs: { [taskId]: pinned.run_epoch } });
+            expected_run_epochs: [{ task_id: taskId, run_epoch: pinned.run_epoch }] });
         } else data = { status: "dismissed", task_id: taskId };
       } else if (ctx.mode === "tui") {
         await openSubagentConsole(ctx, supervisor, taskId);

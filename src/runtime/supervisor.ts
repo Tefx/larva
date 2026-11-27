@@ -163,7 +163,6 @@ export class SubagentSupervisor {
   readonly #opts: Options;
   readonly #env: NodeJS.ProcessEnv;
   readonly #baseCwd = process.cwd();
-  readonly #root: string;
   readonly #personas: PersonaStore;
   readonly #leases: ReturnType<typeof createSessionLeaseStore>;
   readonly #active = new Map<string, Run>(); // Includes startup and unconfirmed ownership.
@@ -182,7 +181,6 @@ export class SubagentSupervisor {
     this.#opts = options;
     this.#env = options.env ?? process.env;
     this.home = options.home ?? resolveLarvaHome(this.#env);
-    this.#root = getLarvaHomePaths(this.home).sessions;
     this.#leases = createSessionLeaseStore(this.home, capsule);
     this.#personas = new PersonaStore(this.home);
     this.#profile = this.#env.LARVA_PI_MODEL_MAP_PROFILE ?? "default";
@@ -242,7 +240,8 @@ export class SubagentSupervisor {
       resolveWatchdogTimeouts(input, { stall_alert_ms: 0 });
       if (input.task_id !== undefined) this.#taskSyntax(input.task_id);
       const { cwd, taskId } = await workspace(this.home, input, ctx);
-      const root = await canonicalPath(this.#root);
+      const home = await canonicalPath(this.home);
+      const root = getLarvaHomePaths(home).sessions;
       const chain = await lineage(this.#env, root, ctx.selfTaskId ?? this.#env.LARVA_PI_TASK_ID);
       const config = await loadLarvaConfig(this.home, async p => await entryExists(p) ? readBoundedRegularText(p) : undefined);
       if (config.subagent.max_depth !== undefined && chain.depth + 1 > config.subagent.max_depth) throw new LarvaError("LARVA_SPAWN_NOT_ALLOWED", "Configured maximum depth exceeded.");
@@ -265,7 +264,7 @@ export class SubagentSupervisor {
         activeTools: new Map(), accepted: Promise.withResolvers(), cleaned: Promise.withResolvers(),
         prompted: false, parent: parentSession };
       this.#active.set(id, run); // No await between capacity check and reservation.
-      void this.#drive(run, spec, input, chain, config);
+      void this.#drive(run, spec, input, chain, config, home);
       this.#notify();
       const accepted = await run.accepted.promise;
       if (!input.wait_for_completion) return accepted;
@@ -281,7 +280,7 @@ export class SubagentSupervisor {
     }
   }
 
-  async #drive(run: Run, spec: PersonaSpec, input: McpSubagentToolInput, chain: Awaited<ReturnType<typeof lineage>>, config: LarvaConfig) {
+  async #drive(run: Run, spec: PersonaSpec, input: McpSubagentToolInput, chain: Awaited<ReturnType<typeof lineage>>, config: LarvaConfig, home: string) {
     const s = run.s, id = s.task_id;
     let lease: Lease | undefined, box: Awaited<ReturnType<typeof capsule.createCapsule>> | undefined, manifest: string | undefined;
     let accepted = false, failure: unknown;
@@ -320,11 +319,11 @@ export class SubagentSupervisor {
       const basePiAgentDir = this.#opts.piAgentDir === undefined
         ? resolveBasePiAgentDir(this.#env, undefined, this.#baseCwd)
         : resolve(this.#baseCwd, this.#opts.piAgentDir);
-      box = await capsule.createCapsule({ home: this.home, pi_agent_dir: basePiAgentDir,
+      box = await capsule.createCapsule({ home, pi_agent_dir: basePiAgentDir,
         user_home: this.#env.HOME, extension_sources: config.subagent.extension_sources });
       const parent = this.#env.LARVA_PI_CAPSULE_ROOT;
       if (parent !== undefined) {
-        if (!capsule.capsuleParentPid(this.home, parent)) throw new LarvaError("LARVA_CHILD_START_FAILED", "Invalid parent capsule.");
+        if (!capsule.capsuleParentPid(home, parent)) throw new LarvaError("LARVA_CHILD_START_FAILED", "Invalid parent capsule.");
         manifest = join(parent, "descendants", `${basename(box.root)}.json`);
         await capsule.writeMetadata(manifest, { capsule_root: box.root }); // intent before fork
       }
@@ -333,7 +332,7 @@ export class SubagentSupervisor {
       const rpc = run.rpc = launchChild({ piScript: installation.path,
         extension: this.#opts.extension ?? fileURLToPath(new URL("./pi-extension.js", import.meta.url)),
         preload: this.#opts.preload ?? fileURLToPath(new URL("./child-rpc-preload.mjs", import.meta.url)), extensionSources: box.extension_sources,
-        env: { ...this.#env, LARVA_PI_TASK_ID: id, LARVA_PI_MODEL_MAP_PROFILE: this.#profile }, home: this.home, basePiAgentDir,
+        env: { ...this.#env, LARVA_PI_TASK_ID: id, LARVA_PI_MODEL_MAP_PROFILE: this.#profile }, home, basePiAgentDir,
         capsule: box.root, agentDir: box.agent_dir, cwd: s.cwd,
         taskId: id, depth: chain.depth + 1, ancestors: chain.ancestors, persona: spec.id, route, thinking: spec.thinking }, progress, telemetry);
       if (rpc.pid === undefined) throw new LarvaError("LARVA_CHILD_START_FAILED", "Child did not start.");
@@ -373,10 +372,10 @@ export class SubagentSupervisor {
         try {
           if (run.rpc && !await run.rpc.stop(!!failure) && !(run.rpc.pid && capsule.pidExited(run.rpc.pid))) throw new Error("Unconfirmed child exit.");
           if (box) {
-            if (!(await capsule.inspectCapsule(this.home, box.root, run.rpc?.pid, "live"))?.all_exited) throw new Error("Unconfirmed capsule exit.");
+            if (!(await capsule.inspectCapsule(home, box.root, run.rpc?.pid, "live"))?.all_exited) throw new Error("Unconfirmed capsule exit.");
             // Detach capsule + lease in ONE commit (release renames the complete directory).
             // Roll back a pre-commit failure rather than unlinking ownership evidence piecemeal.
-            const staged = join(this.#root, `${basename(id)}.lock`, "capsule");
+            const staged = join(getLarvaHomePaths(home).sessions, `${basename(id)}.lock`, "capsule");
             await rename(box.root, staged);
             try { await lease!.release(); } catch (e) { await rename(staged, box.root); throw e; }
           } else await lease?.release();
@@ -473,12 +472,24 @@ export class SubagentSupervisor {
   async cancel(input: SubagentCancelToolInput): Promise<SubagentCancelOutput> {
     keys(input, ["task_ids", "reason", "expected_run_epochs"]); this.#ids(input.task_ids);
     if (typeof input.reason !== "string" || !input.reason.trim() || [...input.reason].length > 500) bad("Invalid cancel reason.");
-    const guards = input.expected_run_epochs;
-    if (guards !== undefined && (!capsule.metadataObject(guards) || Object.entries(guards).some(([id, epoch]) => !input.task_ids.includes(id) || typeof epoch !== "string" || !epoch))) bad("Invalid expected_run_epochs.");
+    const guards = new Map<string, string>();
+    const expected: unknown = input.expected_run_epochs;
+    if (expected !== undefined) {
+      if (!Array.isArray(expected) || expected.length > 25) return bad("Invalid expected_run_epochs.");
+      for (const guard of expected) {
+        if (!capsule.metadataObject(guard) || Object.keys(guard).length !== 2
+            || !Object.hasOwn(guard, "task_id") || !Object.hasOwn(guard, "run_epoch")) return bad("Invalid expected_run_epochs.");
+        const { task_id, run_epoch } = guard;
+        if (typeof task_id !== "string" || !input.task_ids.includes(task_id) || guards.has(task_id)
+            || typeof run_epoch !== "string" || !run_epoch) return bad("Invalid expected_run_epochs.");
+        guards.set(task_id, run_epoch);
+      }
+    }
     const results = await Promise.all(input.task_ids.map(async task_id => {
       const run = this.#active.get(task_id), s = this.#lookup(task_id);
       if (!s) return { task_id, outcome: "not_found" as const };
-      if (!run || (guards?.[task_id] !== undefined && guards[task_id] !== s.run_epoch)) return { task_id, outcome: "already_terminal" as const };
+      const epoch = guards.get(task_id);
+      if (!run || (epoch !== undefined && epoch !== s.run_epoch)) return { task_id, outcome: "already_terminal" as const };
       const terminal = isTerminal(s.status);
       this.#abort(run, input.reason.trim());
       return { task_id, outcome: !await (run.reconcile?.() ?? run.cleaned.promise) ? "cleanup_unconfirmed" as const : terminal ? "already_terminal" as const : "cancelled" as const };

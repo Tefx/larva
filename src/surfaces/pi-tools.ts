@@ -98,6 +98,6 @@ export function registerPiTools(pi: ExtensionAPI, bindings: {
     commonToolSchemas.larva_subagent_status, (input, { supervisor }) => supervisor.status(input));
   register<ActivityQuery>("larva_subagent_activity", "Inspect bounded recorded tool activity for an exact child task ID.",
     commonToolSchemas.larva_subagent_activity, (input, { supervisor }) => inspectSubagentActivity(supervisor.home, input));
-  register<SubagentCancelToolInput>("larva_subagent_cancel", "Cancel local runs. Supply the observed run epoch to avoid cancelling a replacement.",
+  register<SubagentCancelToolInput>("larva_subagent_cancel", "Cancel active local runs by exact task_id (omit expected_run_epochs unless guarding against a concurrent resume).",
     commonToolSchemas.larva_subagent_cancel, (input, { supervisor }) => supervisor.cancel(input));
 }

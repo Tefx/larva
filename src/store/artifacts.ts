@@ -3,6 +3,7 @@ import { chmod, lstat, mkdir, open, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { getLarvaHomePaths } from "../core/paths.ts";
 import type { OutputSnapshot } from "../core/types.ts";
+import { canonicalPath } from "./session-index.ts";
 
 const inlineCodePoints = 36_000;
 const previewCodePoints = 2_000;
@@ -26,7 +27,7 @@ export async function writeOutputSnapshot(home: string, text: string): Promise<O
     let lines = bytes[bytes.length - 1] === 0x0a ? 0 : 1;
     for (const byte of bytes) if (byte === 0x0a) lines++;
 
-    const directory = getLarvaHomePaths(home).artifacts;
+    const directory = getLarvaHomePaths(await canonicalPath(home)).artifacts;
     await mkdir(directory, { recursive: true, mode: 0o700 });
     const metadata = await lstat(directory);
     if (!metadata.isDirectory()) throw new Error("Artifact path is not a directory.");

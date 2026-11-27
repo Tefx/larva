@@ -161,7 +161,7 @@ test("a resumed spawn card ignores a hidden reply and expires rather than follow
   const app = mount(renderCodexWidgetHtml());
   await app.init(["inline", "fullscreen"]);
   accept(app);
-  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: { [id]: "old" } });
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: [{ task_id: id, run_epoch: "old" }] });
   await app.reply(app.lastCall(panelTool), snapshot([run({ phase: "stall_suspected" })]));
   assert.match(app.text, /Stall suspected/);
   app.fire(2500);
@@ -173,7 +173,7 @@ test("a resumed spawn card ignores a hidden reply and expires rather than follow
   assert.equal(app.text, beforeHide);
   app.visibility("visible");
   assert.equal(app.button("Cancel")?.disabled, true);
-  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: { [id]: "old" } });
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: [{ task_id: id, run_epoch: "old" }] });
   await app.reply(app.lastCall(panelTool), snapshot([run({ run_epoch: "new", persona_id: "new persona" })], {
     terminal_outputs: { [id]: run({ run_epoch: "new", status: "success", output_state: "inline", result_text: "new output" }) },
   }));
@@ -189,7 +189,7 @@ test("wait cards pin every initiating pair and recover retained terminal output 
   await app.init(["inline", "fullscreen"]);
   app.input({ task_ids: [id, second], return_when: "any" });
   app.result({ ready: false, timed_out: true, runs: [run(), run({ task_id: second, run_epoch: "second", persona_id: "tester" })], terminal_outputs: {} });
-  const pins = { run_epochs: { [id]: "old", [second]: "second" } };
+  const pins = { run_epochs: [{ task_id: id, run_epoch: "old" }, { task_id: second, run_epoch: "second" }] };
   assert.deepEqual(app.lastCall(panelTool).params?.arguments, pins);
   app.visibility("hidden");
   app.visibility("visible");
@@ -221,7 +221,7 @@ test("a terminal spawn failure with a receipt stays attached to its own epoch", 
   app.input({ task: "Review", persona_id: "reviewer" });
   app.result({ task_id: id, run_epoch: "old", status: "failed", output_state: "inline", result_text: "Partial result",
     error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "Child stopped" } }, true);
-  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: { [id]: "old" } });
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: [{ task_id: id, run_epoch: "old" }] });
   await app.reply(app.lastCall(panelTool), snapshot([]));
   app.click("Details");
   assert.match(app.text, /Failed.*Child stopped.*Partial result/);
@@ -242,7 +242,7 @@ test("status cards follow the exact requested task, including a newer epoch and 
   assert.doesNotMatch(app.text, /unrelated|old terminal output/);
   app.click("Cancel");
   assert.deepEqual(app.lastCall(cancelTool).params?.arguments, {
-    task_ids: [id], reason: "Cancelled from Larva Subagents", expected_run_epochs: { [id]: "new" },
+    task_ids: [id], reason: "Cancelled from Larva Subagents", expected_run_epochs: [{ task_id: id, run_epoch: "new" }],
   });
   await app.reply(app.lastCall(cancelTool), { structuredContent: { results: [{ task_id: id, outcome: "already_terminal" }] } });
   await app.reply(app.lastCall(panelTool), snapshot([], { disk_sessions: [
@@ -450,7 +450,7 @@ test("cancel sends an epoch guard and remains disabled across polling and displa
   const oldButton = app.button("Cancel");
   app.click("Cancel");
   const cancel = app.lastCall(cancelTool);
-  assert.deepEqual(cancel.params?.arguments, { task_ids: [id], reason: "Cancelled from Larva Subagents", expected_run_epochs: { [id]: "old" } });
+  assert.deepEqual(cancel.params?.arguments, { task_ids: [id], reason: "Cancelled from Larva Subagents", expected_run_epochs: [{ task_id: id, run_epoch: "old" }] });
   assert.equal(app.button("Cancel")?.disabled, true);
   app.fire(2500);
   await app.reply(app.lastCall(panelTool), snapshot([run()]));

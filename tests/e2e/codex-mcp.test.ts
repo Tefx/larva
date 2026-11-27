@@ -19,6 +19,7 @@ const age = async (path: string) => {
 };
 
 test("external-cache MCP uses singleton roots, recorded resume cwd and contained real Pi activity", { timeout: 30_000 }, () => fixture(async f => {
+  await rm(f.sessions, { recursive: true });
   const mcp = f.mcp();
   await mcp.initialize();
   const good = pathToFileURL(f.cwd).href, missing = pathToFileURL(join(f.host, "missing")).href;
@@ -68,7 +69,7 @@ test("external-cache MCP uses singleton roots, recorded resume cwd and contained
   const missingId = join(f.sessions, "missing.jsonl"), directoryAlias = join(f.sessions, "alias-dir");
   await symlink(id, alias);
   await symlink(f.sessions, directoryAlias, "dir");
-  const pin = (task_id: string) => ({ task_id, run_epochs: { [task_id]: accepted.run_epoch } });
+  const pin = (task_id: string) => ({ task_id, run_epochs: [{ task_id, run_epoch: accepted.run_epoch }] });
   for (const [task_id, code] of [[alias, "LARVA_SESSION_INVALID"], [aliasedHomeId, "LARVA_SESSION_INVALID"],
     [join(directoryAlias, "missing.jsonl"), "LARVA_SESSION_INVALID"], [missingId, "LARVA_SESSION_NOT_FOUND"]]) {
     for (const tool of [status, activity, panel]) await mcp.error(tool, { task_id }, code);
@@ -288,7 +289,7 @@ test("MCP stale epochs cannot cancel replacements; a live deep descendant retain
   const unrelated = await mcp.ok(spawn, { ...worker, cwd: f.cwd, task: "Hold unrelated run" });
   await f.provider(2, "Hold unrelated run");
   const cancellation = { task_ids: [id], reason: "User requested cancellation" };
-  const guarded = await mcp.ok(cancel, { ...cancellation, expected_run_epochs: { [id]: seed.run_epoch } });
+  const guarded = await mcp.ok(cancel, { ...cancellation, expected_run_epochs: [{ task_id: id, run_epoch: seed.run_epoch }] });
   assert.deepEqual(guarded.results, [{ task_id: id, outcome: "already_terminal" }]);
   const current = (await mcp.ok(status, { task_id: id })).runs[0];
   assert.equal(current.run_epoch, next.run_epoch);
@@ -312,7 +313,7 @@ test("MCP stale epochs cannot cancel replacements; a live deep descendant retain
   const evidence = join(capsule_root, "descendants", `child-${child_pid}-aa.json`);
   await writeFile(evidence, JSON.stringify({ pid: midPid, capsule_root: midRoot }));
   await writeFile(join(midRoot, "descendants", `child-${midPid}-bb.json`), JSON.stringify({ capsule_root: leafRoot }));
-  const declined = await mcp.call(cancel, { ...cancellation, expected_run_epochs: { [id]: next.run_epoch } });
+  const declined = await mcp.call(cancel, { ...cancellation, expected_run_epochs: [{ task_id: id, run_epoch: next.run_epoch }] });
   assert.equal(declined.isError, true);
   assert.deepEqual(declined.structuredContent.results, [{ task_id: id, outcome: "cleanup_unconfirmed" }]);
   await held.waitClosed();

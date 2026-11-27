@@ -260,10 +260,11 @@ export type SubagentStatusOutput = {
 };
 export type SubagentActivityToolInput = ActivityQuery;
 export type SubagentActivityOutput = ActivityResponse;
-export type SubagentCancelToolInput = { task_ids: string[]; reason: string; expected_run_epochs?: Record<string, string> };
+export type RunEpochGuard = { task_id: string; run_epoch: string };
+export type SubagentCancelToolInput = { task_ids: string[]; reason: string; expected_run_epochs?: RunEpochGuard[] };
 export type SubagentCancelItem = { task_id: string; outcome: CancelOutcome; error?: ErrorInfo };
 export type SubagentCancelOutput = { results: SubagentCancelItem[]; isError: boolean };
-export type SubagentPanelToolInput = SubagentStatusToolInput & { run_epochs?: Record<string, string> };
+export type SubagentPanelToolInput = SubagentStatusToolInput & { run_epochs?: RunEpochGuard[] };
 export type SubagentPanelOutput = SubagentStatusOutput & { terminal_outputs?: Record<string, SubagentTerminalOutput> };
 export type SearchMentionsToolInput = { query: string; preload?: boolean; path?: string[] };
 export type SearchMentionsToolOutput = {

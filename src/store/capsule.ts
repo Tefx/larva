@@ -6,6 +6,7 @@ import { basename, dirname, join } from "node:path";
 import { LarvaError } from "../core/errors.ts";
 import { getLarvaHomePaths, resolveExtensionSources } from "../core/paths.ts";
 import { readBoundedRegularBytes } from "./bounded-read.ts";
+import { canonicalPath } from "./session-index.ts";
 
 const { O_RDONLY, O_NONBLOCK, O_NOFOLLOW, R_OK, X_OK } = constants;
 const CAPSULE_NAME = /^child-([1-9][0-9]*)-[a-f0-9]+$/;
@@ -133,12 +134,13 @@ async function projectPiResources(base: string, agentDir: string) {
 export type CapsulePaths = { root: string; agent_dir: string; settings_path: string; models_path?: string; extension_sources: string[] };
 
 export async function createCapsule(options: CapsuleOptions): Promise<CapsulePaths> {
-  const capsules = getLarvaHomePaths(options.home).capsules;
+  const home = await canonicalPath(options.home);
+  const capsules = getLarvaHomePaths(home).capsules;
   const root = join(capsules, `child-${process.pid}-${randomBytes(16).toString("hex")}`);
   await privateDirectory(capsules);
   const [extension_sources, settings, models] = await Promise.all([
     resolveExtensionSources(options.extension_sources, {
-      larvaHome: options.home,
+      larvaHome: home,
       userHome: options.user_home ?? homedir(),
       piAgentDir: options.pi_agent_dir,
       realpath,
@@ -224,7 +226,8 @@ export async function linkedCapsuleRoots(home: string, root: string): Promise<Se
   const links = new Set<string>();
   try {
     if (!(await lstat(root)).isDirectory() || !(await lstat(dir)).isDirectory()) return links;
-    for await (const record of readDescendants(home, dir, await descendantCensus()(dir))) {
+    const canonicalHome = await canonicalPath(home);
+    for await (const record of readDescendants(canonicalHome, dir, await descendantCensus()(dir))) {
       if (record?.linked) links.add(record.linked.root);
     }
   } catch (error) {
@@ -242,7 +245,7 @@ export async function inspectCapsule(
   const seen = new Set<string>();
   const records = descendantCensus();
 
-  async function inspect(root: string, ppid: number, expectedPid: number | null | undefined, depth: number): Promise<CapsuleProof> {
+  async function inspect(canonicalHome: string, root: string, ppid: number, expectedPid: number | null | undefined, depth: number): Promise<CapsuleProof> {
     if (depth > MAX_TREE_DEPTH || seen.has(root) || !(await lstat(root)).isDirectory()) {
       throw new Error("Invalid capsule tree.");
     }
@@ -271,7 +274,7 @@ export async function inspectCapsule(
     const before = await lstat(descendants, { bigint: true });
     if (!before.isDirectory()) throw new Error("Invalid descendant directory.");
     const names = await records(descendants);
-    for await (const record of readDescendants(home, descendants, names)) {
+    for await (const record of readDescendants(canonicalHome, descendants, names)) {
       if (!record) throw new Error("Invalid descendant record.");
       const { pid, linked } = record;
       if ((pid !== undefined && !isPid(pid)) || (pid === undefined && !linked)) throw new Error("Invalid descendant PID record.");
@@ -286,7 +289,7 @@ export async function inspectCapsule(
         if (pid === undefined || !pidExited(linked.owner)) return proof;
         continue;
       }
-      const nested = await inspect(linked.root, linked.owner, pid ?? null, depth + 1);
+      const nested = await inspect(canonicalHome, linked.root, linked.owner, pid ?? null, depth + 1);
       if (!nested.all_exited || (!nested.has_child && pid === undefined)) return proof;
     }
     const finalNames = await records(descendants);
@@ -298,8 +301,9 @@ export async function inspectCapsule(
   }
 
   try {
-    const ppid = capsuleParentPid(home, root);
-    if (ppid !== undefined && (await lstat(dirname(root))).isDirectory()) return await inspect(root, ppid, leaseChildPid, 0);
+    const canonicalHome = await canonicalPath(home);
+    const ppid = capsuleParentPid(canonicalHome, root);
+    if (ppid !== undefined && (await lstat(dirname(root))).isDirectory()) return await inspect(canonicalHome, root, ppid, leaseChildPid, 0);
   } catch {
     // Missing, partial, malformed, or over-limit evidence is not proof.
   }

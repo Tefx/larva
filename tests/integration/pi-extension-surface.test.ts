@@ -16,7 +16,7 @@ import larvaExtension, { formatSubagentMessage } from "../../src/pi-extension.ts
 import { SPAWN_TOOLS } from "../../src/core/tool-policy.ts";
 import { registerPiCommands } from "../../src/surfaces/pi-commands.ts";
 import type { SubagentSupervisor } from "../../src/runtime/supervisor.ts";
-import type { RunSnapshot } from "../../src/core/types.ts";
+import type { RunSnapshot, SubagentCancelToolInput } from "../../src/core/types.ts";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const spec = (id: string, extra = {}) => ({ id, description: `Persona ${id}`, prompt: `private prompt ${id}`, model: `surface/${id}`, thinking: "off", can_spawn: true, ...extra });
@@ -451,9 +451,10 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   const supervisor = {
     captureFleet: () => [active()], status: async () => ({ runs: [{ ...row }], startup_failures: [] }),
     subscribe: (cb: () => void) => { updates.on("change", cb); return () => updates.off("change", cb); },
-    cancel: async (request: any) => {
+    cancel: async (request: SubagentCancelToolInput) => {
       requests.push(request);
-      return { results: [{ task_id, outcome: request.expected_run_epochs[task_id] === row.run_epoch ? "cancelled" : "already_terminal" }], isError: false };
+      const guard = request.expected_run_epochs?.find(item => item.task_id === task_id);
+      return { results: [{ task_id, outcome: guard?.run_epoch === row.run_epoch ? "cancelled" : "already_terminal" }], isError: false };
     },
   } as unknown as SubagentSupervisor;
   f.ctx.ui.confirm = () => confirm.promise;
@@ -463,7 +464,7 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   row.run_epoch = "replacement";
   confirm.resolve(true);
   await pending;
-  assert.deepEqual(requests[0].expected_run_epochs, { [task_id]: "incoming" });
+  assert.deepEqual(requests[0].expected_run_epochs, [{ task_id, run_epoch: "incoming" }]);
   assert.match(f.notifications.at(-1)!, /already_terminal/);
 
   const opened = command("", f.ctx);
@@ -513,7 +514,7 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   await updated();
   input("c"); input("y");
   await settleInput();
-  assert.deepEqual(requests[1].expected_run_epochs, { [task_id]: "too-late" });
+  assert.deepEqual(requests[1].expected_run_epochs, [{ task_id, run_epoch: "too-late" }]);
   row.run_epoch = "mouse-target";
   await updated();
   f.dialog().handleMouse({ type: "click", button: "left", x: 3, y: 2 });
@@ -522,7 +523,7 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   input("\r"); input("\r");
   await settleInput();
   assert.equal(requests.length, 3);
-  assert.deepEqual(requests[2].expected_run_epochs, { [task_id]: "mouse-target" });
+  assert.deepEqual(requests[2].expected_run_epochs, [{ task_id, run_epoch: "mouse-target" }]);
   input("\x1b");
   await opened;
   assert.equal(updates.listenerCount("change"), 0);

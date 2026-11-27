@@ -2,8 +2,8 @@ import { LarvaError } from "../core/errors.ts";
 
 type Required = { required: readonly string[] };
 type ObjectSchema = {
-  type: "object"; properties?: Record<string, Schema>; required?: readonly string[];
-  additionalProperties: false | Schema; minProperties?: number; maxProperties?: number; not?: Schema;
+  type: "object"; properties: Record<string, Schema>; required?: readonly string[];
+  additionalProperties: false; not?: Schema;
 };
 export type Schema =
   | { type: "string"; minLength?: 1; maxLength?: number; enum?: readonly string[] }
@@ -39,12 +39,7 @@ function matches(schema: Schema, value: unknown): boolean {
       && (!schema.uniqueItems || new Set(value).size === value.length) && value.every(item => matches(schema.items, item));
     case "object": {
       if (!isPlainObject(value) || !hasRequired(value, schema.required ?? []) || (schema.not && matches(schema.not, value))) return false;
-      const entries = Object.entries(value);
-      return entries.length >= (schema.minProperties ?? 0) && entries.length <= (schema.maxProperties ?? Infinity)
-        && entries.every(([key, field]) => {
-          const rule = schema.properties && Object.hasOwn(schema.properties, key) ? schema.properties[key] : schema.additionalProperties;
-          return rule !== false && matches(rule, field);
-        });
+      return Object.entries(value).every(([key, field]) => Object.hasOwn(schema.properties, key) && matches(schema.properties[key], field));
     }
   }
 }
@@ -62,7 +57,8 @@ const integer = (minimum: number, maximum = Number.MAX_SAFE_INTEGER) => ({ type:
 const choice = (...values: string[]) => ({ ...string, enum: values });
 export const object = (properties: Record<string, Schema>, ...required: string[]) => ({ type: "object", properties, required, additionalProperties: false } as const);
 const taskIds = { type: "array", items: text, minItems: 1, maxItems: 25, uniqueItems: true } as const;
-export const epochs = { type: "object", additionalProperties: text, maxProperties: 25 } as const;
+export const epochGuard = object({ task_id: text, run_epoch: text }, "task_id", "run_epoch");
+export const epochs = { type: "array", items: epochGuard, maxItems: 25 } as const;
 const maxMs = 86_400_000;
 
 export const commonToolSchemas = {

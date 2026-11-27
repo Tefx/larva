@@ -7,6 +7,7 @@ import { basename, join } from "node:path";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { getLarvaHomePaths } from "../../src/core/paths.ts";
+import { writeOutputSnapshot } from "../../src/store/artifacts.ts";
 import * as capsules from "../../src/store/capsule.ts";
 import { runGc } from "../../src/store/gc.ts";
 import { readDiskSession, readSessionHeader, resolveCanonicalSessionPath, scanDiskSessions } from "../../src/store/session-index.ts";
@@ -21,7 +22,7 @@ async function fixture<T>(run: (f: {
   leases: ReturnType<typeof createSessionLeaseStore>;
   piAgentDir: string;
 }) => Promise<T>): Promise<T> {
-  const home = await mkdtemp(join(tmpdir(), "larva-store-"));
+  const home = await realpath(await mkdtemp(join(tmpdir(), "larva-store-")));
   try {
     const paths = getLarvaHomePaths(home);
     const piAgentDir = join(home, "pi-agent");
@@ -59,6 +60,41 @@ async function agedFile(path: string, bytes: number, age: number): Promise<void>
 async function fileNames(path: string): Promise<string[]> {
   return (await readdir(path)).sort();
 }
+
+test("cold lease acquisition and GC share canonical paths across a symlinked home ancestor", async t => {
+  const base = await realpath(await mkdtemp(join(tmpdir(), "larva-cold-store-")));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const real = join(base, "real"), alias = join(base, "alias");
+  await mkdir(real);
+  await symlink(real, alias, "dir");
+  const paths = getLarvaHomePaths(join(real, "larva"));
+  const home = join(alias, "larva"), piAgentDir = join(base, "agent");
+  const aliased = createSessionLeaseStore(home, capsules), canonical = createSessionLeaseStore(paths.home, capsules);
+  const task = join(paths.sessions, "cold.jsonl");
+  await assert.rejects(lstat(paths.sessions), { code: "ENOENT" });
+  const owner = await leaseFromExitedOwner(home, task, piAgentDir);
+  assert.ok(owner.root);
+  assert.equal(owner.root, await realpath(owner.root));
+  assert.equal((await capsules.inspectCapsule(home, owner.root))?.state, "spawning");
+  await agedFile(task, 83, DAY * 3);
+  for (const leases of [aliased, canonical]) {
+    assert.equal((await leases.inspect(task)).disposition, "uncertain");
+    const dry = await runGc({ leases, capsules, max_age_days: 1, dry_run: true });
+    assert.deepEqual(dry.unreconciled_capsules, [owner.root]);
+    assert.equal(dry.protected_bytes, 83);
+    assert.equal(dry.deleted_sessions, 0);
+  }
+  const output = await writeOutputSnapshot(home, "x".repeat(36_001));
+  assert.equal(output.output_state, "artifactized");
+  assert.ok(output.full_output_artifact);
+  assert.equal(output.full_output_artifact.path, await realpath(output.full_output_artifact.path));
+
+  await capsules.writeMetadata(join(owner.root, "child_self.json"), { pid: owner.pid });
+  const reclaimed = await runGc({ leases: aliased, capsules, max_age_days: 1 });
+  assert.equal(reclaimed.deleted_sessions, 1);
+  assert.deepEqual(await fileNames(paths.capsules), []);
+  assert.deepEqual(await fileNames(paths.sessions), []);
+});
 
 test("atomic acquisitions install one private populated lock", () => fixture(async ({ paths, leases }) => {
   const task = join(paths.sessions, "shared.jsonl");
@@ -159,7 +195,9 @@ test("GC and lease contenders preserve a crashed ancestor until the full linked 
     await capsules.writeMetadata(join(local.root, "child_self.json"), { pid: ancestor.pid });
     const localLink = join(local.root, "descendants", `${basename(ancestor.root)}.json`);
     await capsules.writeMetadata(localLink, { pid: child.pid, capsule_root: ancestor.root });
-    const gc = { leases, capsules, max_age_days: 1 };
+    const aliasedHome = join(paths.home, "gc-home-alias");
+    await symlink(paths.home, aliasedHome, "dir");
+    const gc = { leases: createSessionLeaseStore(aliasedHome, capsules), capsules, max_age_days: 1 };
     const allCapsules = [local.root, ...tree.map(({ root }) => root)].map(root => basename(root)).sort();
     const leafOwner = join(grandchild.root, "owner.json");
     for (const state of ["reserving", "spawning"]) {

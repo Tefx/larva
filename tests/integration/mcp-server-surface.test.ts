@@ -177,10 +177,17 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     const { result: { tools } } = await c.request("tools/list");
     const model = ["larva_personas", "larva_subagent", "larva_subagent_wait", "larva_subagent_status", "larva_subagent_activity", "larva_subagent_cancel"];
     assert.deepEqual(tools.map((tool: { name: string }) => tool.name), [...model, "search_mentions", "larva_subagent_panel"]);
+    function assertClosedObjects(schema: unknown, path: string): void {
+      if (schema === null || typeof schema !== "object") return;
+      if ("type" in schema && schema.type === "object") {
+        assert.equal("additionalProperties" in schema && schema.additionalProperties, false, path);
+      }
+      for (const [key, child] of Object.entries(schema)) assertClosedObjects(child, `${path}/${key}`);
+    }
     for (const tool of tools) {
       assert.deepEqual(tool._meta.ui.visibility, model.includes(tool.name) ? ["model", "app"] : ["app"]);
       assert.equal(tool.inputSchema.type, "object");
-      assert.equal(tool.inputSchema.additionalProperties, false);
+      assertClosedObjects(tool.inputSchema, `MCP/${tool.name}`);
     }
     for (const tool of tools.slice(1, 4)) {
       assert.equal(tool._meta.ui.resourceUri, widgetUri);
@@ -196,6 +203,7 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     registerPiTools({ on() {}, registerTool: ({ name, parameters }: ToolDefinition) => piSchemas.set(name, parameters) } as unknown as ExtensionAPI, {
       current: () => assert.fail("registration must not need a live Pi session"), async authorize() {},
     });
+    for (const [name, schema] of piSchemas) assertClosedObjects(schema, `Pi/${name}`);
     for (const tool of tools.slice(0, model.length)) {
       const schema = structuredClone(tool.inputSchema);
       if (tool.name === "larva_subagent") {
@@ -206,11 +214,14 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     }
     assert.deepEqual(tools[4].inputSchema.required, ["task_id"]);
     assert.equal(tools[4].inputSchema.properties.session_path, undefined);
-    assert.equal(tools[5].inputSchema.properties.expected_run_epochs.additionalProperties.type, "string");
+    const cancelGuards = tools[5].inputSchema.properties.expected_run_epochs;
+    assert.equal(cancelGuards.type, "array");
+    assert.equal(cancelGuards.maxItems, 25);
+    assert.deepEqual(cancelGuards.items.required, ["task_id", "run_epoch"]);
     assert.deepEqual(tools[6]._meta["openai/extensions"], { "mentions/search": { preload: true } });
     assert.equal(tools[7]._meta.ui.resourceUri, panelUri);
     assert.deepEqual(tools[7]._meta["openai/ui"], { entrypoints: [{ type: "thread" }], availableDisplayModes: ["fullscreen"] });
-    assert.equal(tools[7].inputSchema.properties.run_epochs.maxProperties, 25);
+    assert.deepEqual(tools[7].inputSchema.properties.run_epochs, { ...cancelGuards, minItems: 1 });
 
     const uri = "larva://personas/worker";
     const { result: { resources } } = await c.request("resources/list", {}, "length");
@@ -242,7 +253,22 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
       assert.equal(reply.isError, true);
       assert.equal(reply.structuredContent.error.code, "LARVA_BAD_INPUT");
     }
-    const absent = await c.call("larva_subagent_cancel", { task_ids: ["/unused.jsonl"], reason: "not tracked" });
+    const cancel = "larva_subagent_cancel", task_id = "/unused.jsonl", guard = { task_id, run_epoch: "first" };
+    const cancelArgs = { task_ids: [task_id], reason: "not tracked" };
+    const validator = compile(piSchemas.get(cancel)!);
+    for (const [expected_run_epochs, shapeValid, admitted] of [
+      [[], true, true], [[guard], true, true],
+      [[guard, { ...guard, run_epoch: "second" }], true, false],
+      [[{ ...guard, task_id: "/unrequested.jsonl" }], true, false],
+      [[{ ...guard, extra: true }], false, false], [{ [task_id]: guard.run_epoch }, false, false],
+    ] as const) {
+      const args = { ...cancelArgs, expected_run_epochs };
+      assert.equal(validator.check(args), shapeValid, JSON.stringify(args));
+      const reply = await c.call(cancel, args);
+      assert.equal(reply.isError, !admitted, JSON.stringify(args));
+      if (!admitted) assert.equal(reply.structuredContent.error.code, "LARVA_BAD_INPUT");
+    }
+    const absent = await c.call(cancel, { ...cancelArgs, expected_run_epochs: [] });
     assert.equal(absent.isError, false);
     assert.equal(absent.structuredContent.results[0].outcome, "not_found");
     c.child.stdin.end();
@@ -348,7 +374,16 @@ test("MCP wait applies one deadline to readiness and output; panel pins and evic
     assert.deepEqual(again.terminal_outputs, ready.terminal_outputs);
     const settle = async () => call("larva_subagent_cancel", { task_ids, reason: "Join completed ownership cleanup" });
     await settle();
-    const pinned = (epoch: string) => call("larva_subagent_panel", { task_id, run_epochs: { [task_id]: epoch } });
+    const guard = { task_id, run_epoch };
+    for (const args of [{ run_epochs: [] }, { run_epochs: { [task_id]: run_epoch } },
+      { run_epochs: [guard, { ...guard, run_epoch: "other" }] }, { run_epochs: [{ ...guard, extra: true }] },
+      { task_id, run_epochs: [{ ...guard, task_id: join(dirname(task_id), "unrequested.jsonl") }] },
+      { run_epochs: Array(26).fill(guard) }]) {
+      const reply = await c.call("larva_subagent_panel", args);
+      assert.equal(reply.isError, true);
+      assert.equal(reply.structuredContent.error.code, "LARVA_BAD_INPUT");
+    }
+    const pinned = (epoch: string) => call("larva_subagent_panel", { task_id, run_epochs: [{ task_id, run_epoch: epoch }] });
     const resume = (n: number) => call("larva_subagent", { ...input, task_id, task: `complete-${n}`, wait_for_completion: true });
     const newer = await resume(2);
     assert.notEqual(newer.run_epoch, run_epoch);
@@ -361,7 +396,7 @@ test("MCP wait applies one deadline to readiness and output; panel pins and evic
     await symlink(sessions, dirAlias, "dir");
     await symlink(moved, task_id);
     for (const id of [task_id, join(dirAlias, "missing.jsonl")]) {
-      const result = await c.call("larva_subagent_panel", { run_epochs: { [id]: newer.run_epoch } });
+      const result = await c.call("larva_subagent_panel", { run_epochs: [{ task_id: id, run_epoch: newer.run_epoch }] });
       assert.equal(result.isError, true);
       assert.equal(result.structuredContent.error.code, "LARVA_SESSION_INVALID");
     }
@@ -383,7 +418,7 @@ for (const how of ["EOF", "SIGTERM"] as const) {
       // A live descendant PID is deliberately retained through shutdown. No unrelated process is signalled.
       const evidence = join(capsule_root, "descendants", "unconfirmed.json");
       await writeFile(evidence, JSON.stringify({ pid: process.pid }));
-      const cancelled = await c.call("larva_subagent_cancel", { task_ids: [first.task_id], reason: "cancel", expected_run_epochs: { [first.task_id]: first.run_epoch } });
+      const cancelled = await c.call("larva_subagent_cancel", { task_ids: [first.task_id], reason: "cancel", expected_run_epochs: [{ task_id: first.task_id, run_epoch: first.run_epoch }] });
       assert.equal(cancelled.isError, true);
       assert.deepEqual(cancelled.structuredContent.results, [{ task_id: first.task_id, outcome: "cleanup_unconfirmed" }]);
       assert.equal((await c.call("larva_subagent_status", { task_id: second.task_id })).structuredContent.runs[0].status, "running");

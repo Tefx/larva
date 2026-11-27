@@ -58,7 +58,7 @@ export function createMcpTools(supervisor: SubagentSupervisor, personas: Persona
       const data = await inspectSubagentActivity(supervisor.home, args);
       return result(data, data.status === "failed" || data.status === "not_found");
     }),
-    tool<SubagentCancelToolInput>("larva_subagent_cancel", "Cancel owned runs with optional epoch guards.",
+    tool<SubagentCancelToolInput>("larva_subagent_cancel", "Cancel active local runs by exact task_id (omit expected_run_epochs unless guarding against a concurrent resume).",
       commonToolSchemas.larva_subagent_cancel, modelUi, async args => {
         const data = await supervisor.cancel(args);
         return result(data, data.isError);
@@ -71,18 +71,20 @@ export function createMcpTools(supervisor: SubagentSupervisor, personas: Persona
         return { content: data.items, structuredContent: data, isError: false };
       }),
     tool<SubagentPanelToolInput>("larva_subagent_panel", "View sessions or recover exact run epochs for an inline card.",
-      { ...statusSchema, properties: { ...statusSchema.properties, run_epochs: { ...epochs, minProperties: 1 } } }, {
+      { ...statusSchema, properties: { ...statusSchema.properties, run_epochs: { ...epochs, minItems: 1 } } }, {
         ui: { visibility: ["app"], resourceUri: CODEX_PANEL_URI },
         "openai/ui": { entrypoints: [{ type: "thread" }], availableDisplayModes: CODEX_PANEL_DISPLAY_MODES },
       }, async ({ run_epochs, ...query }) => {
         if (!run_epochs) return result(await supervisor.status(query));
-        const entries = Object.entries(run_epochs);
-        if (query.task_id !== undefined && (entries.length !== 1 || entries[0][0] !== query.task_id)) {
+        if (new Set(run_epochs.map(({ task_id }) => task_id)).size !== run_epochs.length) {
+          return bad("Pinned epochs must have unique task_ids.");
+        }
+        if (query.task_id !== undefined && (run_epochs.length !== 1 || run_epochs[0].task_id !== query.task_id)) {
           return bad("Pinned epochs must match the requested task_id.");
         }
         // An absent pinned pair tells the app to recover its captured output
         // or show the expired notice. Never substitute a newer run's metadata.
-        const runs = (await Promise.all(entries.map(([id, epoch]) => supervisor.pinned(id, epoch))))
+        const runs = (await Promise.all(run_epochs.map(({ task_id, run_epoch }) => supervisor.pinned(task_id, run_epoch))))
           .flatMap(run => run.output_state !== "evicted" ? [run] : []);
         const terminal_outputs = Object.fromEntries(runs.flatMap(run => isTerminal(run.status)
           ? [[run.task_id, terminalOutput(run)]] : []));

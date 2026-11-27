@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, unlink, utimes, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -216,7 +216,7 @@ test("output threshold counts Unicode code points and artifacts have private mod
   assert.equal(output.result_text, undefined);
   const ref = output.full_output_artifact;
   assert.ok(ref);
-  assert.equal(dirname(ref.path), artifacts);
+  assert.equal(dirname(ref.path), await realpath(artifacts));
   assert.match(ref.path, /\.txt$/);
   assert.deepEqual(await readFile(ref.path), Buffer.from(full));
   assert.deepEqual(ref, {

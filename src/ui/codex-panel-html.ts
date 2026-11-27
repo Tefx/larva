@@ -259,7 +259,7 @@ const app = String.raw`function (surface, modes) {
     if (!observing() || poll || (target.kind !== 'pinned' && target.kind !== 'latest')) return;
     clearTimeout(pollTimer);
     const ticket = poll = {};
-    const args = target.kind === 'pinned' ? { run_epochs: Object.fromEntries(target.pairs) } : target.query;
+    const args = target.kind === 'pinned' ? { run_epochs: Array.from(target.pairs, ([task_id, run_epoch]) => ({ task_id, run_epoch })) } : target.query;
     try {
       const response = await tool('larva_subagent_panel', args);
       if (poll !== ticket) return;
@@ -323,7 +323,7 @@ const app = String.raw`function (surface, modes) {
     try {
       const response = await tool('larva_subagent_cancel', {
         task_ids: [run.task_id], reason: 'Cancelled from Larva Subagents',
-        expected_run_epochs: { [run.task_id]: run.run_epoch },
+        expected_run_epochs: [{ task_id: run.task_id, run_epoch: run.run_epoch }],
       }, 'cancel');
       if (token !== view || !observing()) return;
       const item = dataOf(response)?.results?.find?.(result => result?.task_id === run.task_id);

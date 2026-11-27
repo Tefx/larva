@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, lstat, mkdir, readFile, readdir, readlink, rm, symlink, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, readdir, readlink, realpath, rm, stat, symlink, utimes, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { test } from "node:test";
 import { fixture, tool } from "./fixture.ts";
@@ -8,6 +8,7 @@ const spawn = "larva_subagent";
 const launch = (persona_id: string, task: string, timing: object = {}) => [tool(spawn, { persona_id, task, ...timing })];
 
 for (const base of ["relative", "absolute", "tilde"] as const) test(`real Pi base (${base}) survives two child hops and reload`, { timeout: 30_000 }, () => fixture(async f => {
+  if (base === "relative") await rm(f.sessions, { recursive: true });
   await f.config({ subagent: { extension_sources: ["pi-agent:provider.mjs"] } });
   const agent = dirname(f.modelCatalog), override = join(f.cwd, "agent-env.mjs");
   await symlink(agent, join(f.cwd, "agent"), "dir");
@@ -25,6 +26,7 @@ for (const base of ["relative", "absolute", "tilde"] as const) test(`real Pi bas
   (await f.provider(1, "LARVA_SPAWN_NOT_ALLOWED")).reply("Allowlist denied direct leaf");
   await pi.settled(forbidden);
 
+  if (base === "relative") await assert.rejects(access(f.sessions), { code: "ENOENT" });
   const start = f.requests.length;
   const from = await pi.prompt("Start the multi-hop process tree");
   const initial = await f.provider(start, "Start the multi-hop process tree");
@@ -66,8 +68,31 @@ for (const base of ["relative", "absolute", "tilde"] as const) test(`real Pi bas
   const leafLease = JSON.parse(await readFile(`${grandchild.task_id}.lock/lease.json`, "utf8"));
   assert.equal(workerLease.owner_pid, pi.child.pid);
   assert.equal(leafLease.owner_pid, workerLease.child_pid);
-  for (const { capsule_root } of [workerLease, leafLease]) {
+  for (const { capsule_root, child_pid } of [workerLease, leafLease]) {
+    assert.equal(capsule_root, await realpath(capsule_root));
+    assert.deepEqual(JSON.parse(await readFile(join(capsule_root, "child_self.json"), "utf8")), { pid: child_pid });
     assert.equal(await readFile(join(capsule_root, "agent", "models.json"), "utf8"), catalog);
+  }
+  if (base === "relative") {
+    const task = accepted.task_id;
+    assert.equal(dirname(task), f.sessions);
+    const old = new Date(Date.now() - 3 * 86_400_000);
+    await utimes(task, old, old);
+    const disk = f.mcp(); // Open the same running lease via the configured symlink.
+    await disk.initialize();
+    const status = await disk.ok("larva_subagent_status", { task_id: task });
+    assert.equal(status.disk_sessions[0].lock_state, "active_external");
+    assert.equal((await disk.close()).code, 0);
+    const reports = await Promise.all([f.configuredHome, f.home].map(async home => {
+      const gc = f.gc(false, home);
+      assert.equal((await gc.exited()).code, 0);
+      assert.equal(gc.frames[0].ok, true);
+      return gc.frames[0].data;
+    }));
+    assert.deepEqual(reports[0], reports[1]);
+    assert.equal(reports[0].deleted_sessions, 0);
+    assert.ok(reports[0].protected_bytes >= (await stat(task)).size);
+    assert.deepEqual(reports[0].unreconciled_capsules, []);
   }
   const record = join(workerLease.capsule_root, "descendants", `${basename(leafLease.capsule_root)}.json`);
   assert.deepEqual(JSON.parse(await readFile(record, "utf8")), { capsule_root: leafLease.capsule_root, pid: leafLease.child_pid });
@@ -96,7 +121,8 @@ for (const base of ["relative", "absolute", "tilde"] as const) test(`real Pi bas
   assert.deepEqual(childEntries.filter(entry => entry.customType === "larva-subagent-result").map(entry => entry.details.callback_id), [grandchild.run_epoch]);
   for (const id of [accepted.task_id, grandchild.task_id]) await assert.rejects(access(`${id}.lock`), { code: "ENOENT" });
   assert.deepEqual(await readdir(join(f.home, "state", "capsules")), []);
-}));
+  for (const { child_pid } of [workerLease, leafLease]) assert.throws(() => process.kill(child_pid, 0), { code: "ESRCH" });
+}, { aliasedHome: base === "relative" }));
 
 test("real Pi uses projected auth and resources, returns empty text, and reports native startup failures", { timeout: 30_000 }, () => fixture(async f => {
   const base = dirname(f.modelCatalog), auth = join(base, "auth.json");

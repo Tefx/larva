@@ -9,6 +9,7 @@ import type { EffectiveCanSpawn, LarvaConfig, PersonaSpec } from "./core/types.t
 import { SessionContext, type ChildProfileReport, type SessionAdapter } from "./runtime/session-context.ts";
 import type { FrameBridge } from "./runtime/settlement-barrier.ts";
 import { getNativeSupervisor, type NativeBinding, type SubagentSupervisor } from "./runtime/supervisor.ts";
+import { canonicalPath } from "./store/session-index.ts";
 import { LARVA_RESOLVE_SYSTEM_PROMPT_EVENT } from "./runtime/system-prompt.ts";
 import { metadataObject } from "./store/capsule.ts";
 import { loadDiskModelMap } from "./store/model-map.ts";
@@ -331,7 +332,7 @@ export default function larvaExtension(pi: ExtensionAPI): void {
     delete host[handoverKey];
     try {
       const key = `${ctx.sessionManager.getSessionId()}\0${ctx.sessionManager.getSessionFile() ?? ""}`;
-      const home = resolveLarvaHome(env);
+      const home = await canonicalPath(resolveLarvaHome(env));
       const saved = reason === "reload" && key === retained?.key && home === retained.home ? retained : undefined;
       const baseline = pi.getActiveTools();
       const personas = saved?.personas ?? new PersonaStore(home);

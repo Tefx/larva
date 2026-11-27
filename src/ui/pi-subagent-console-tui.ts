@@ -2,13 +2,12 @@ import { basename } from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { toErrorEnvelope } from "../core/errors.ts";
-import type { DiskSessionSummary, RunSnapshot, SubagentStatusOutput, SubagentStatusScope } from "../core/types.ts";
+import type { DiskSessionSummary, RunEpochGuard, RunSnapshot, SubagentStatusOutput, SubagentStatusScope } from "../core/types.ts";
 import type { SubagentSupervisor } from "../runtime/supervisor.ts";
 import { isTerminal } from "../runtime/outbox.ts";
 import { terminalText } from "./pi-selector-tui.ts";
 
 type Row = RunSnapshot | DiskSessionSummary;
-type CancelTarget = Pick<RunSnapshot, "task_id" | "run_epoch">;
 const scopes: SubagentStatusScope[] = ["recent", "active", "disk"];
 const canCancel = (row: Row | undefined): row is RunSnapshot => !!row && "run_epoch" in row && !isTerminal(row.status) && row.status !== "cancelling";
 const rowKey = (row: Row) => "run_epoch" in row ? row.run_epoch : row.task_id;
@@ -52,7 +51,7 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
       let displayed: Row | undefined;
       let loadError: string | undefined;
       let actionStatus: string | undefined;
-      let confirmCancel: (CancelTarget & { label: string }) | undefined;
+      let confirmCancel: (RunEpochGuard & { label: string }) | undefined;
       let cancelling = false;
       let detailOffset = 0;
       let detailHeight = 1;
@@ -116,7 +115,7 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
           actionStatus = "Cancelling…";
           tui.requestRender();
           const { results } = await supervisor.cancel({ task_ids: [task_id], reason: "Cancelled from the Subagent Console.",
-            expected_run_epochs: { [task_id]: run_epoch } });
+            expected_run_epochs: [{ task_id, run_epoch }] });
           actionStatus = `Cancel: ${results[0].outcome}`;
         } catch (error) { actionStatus = toErrorEnvelope(error).error.message; }
         finally { cancelling = false; if (!closed) { void refresh(); tui.requestRender(); } }
