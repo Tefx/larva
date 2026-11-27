@@ -57,7 +57,7 @@ jobs:
           assert.equal(manifest.name, 'pi-larva');
           assert.deepEqual(manifest.files.map(file => file.path).sort(), [
             'LICENSE', 'README.md', 'dist/child-rpc-preload.mjs', 'dist/cli.mjs', 'dist/mcp-server.mjs',
-            'dist/pi-extension.js', 'dist/timeline-worker.mjs', 'package.json',
+            'dist/pi-extension.js', 'package.json',
           ]);
           console.log(`Verified ${manifest.name}@${manifest.version} manifest (${manifest.files.length} files).`);
 

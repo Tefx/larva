@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { constants } from "node:fs";
-import { access, lstat, mkdir, open, opendir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, open, opendir, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { LarvaError } from "../core/errors.ts";
-import { getLarvaHomePaths, resolveContainedPath, resolveExtensionSources } from "../core/paths.ts";
+import { getLarvaHomePaths, resolveExtensionSources } from "../core/paths.ts";
+import { readBoundedRegularBytes } from "./bounded-read.ts";
 
 const { O_RDONLY, O_NONBLOCK, O_NOFOLLOW, R_OK, X_OK } = constants;
 const CAPSULE_NAME = /^child-([1-9][0-9]*)-[a-f0-9]+$/;
@@ -92,44 +93,46 @@ export async function writeMetadata(path: string, value: object): Promise<void> 
   }
 }
 
-async function readPiConfig(path: string, name: string, flags: number): Promise<Buffer> {
-  const file = await open(path, O_RDONLY | O_NONBLOCK | flags);
+const missingBase = (error: unknown) => isErrno(error, "ENOENT") || isErrno(error, "ENOTDIR");
+
+async function snapshotPiConfig(agentDir: string, name: "settings.json" | "models.json") {
+  const path = join(agentDir, name);
   try {
-    const limit = 1_048_576;
-    const entry = await file.stat();
-    if (!entry.isFile() || entry.size > limit) {
-      throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} must be a regular file of at most 1 MiB.`);
+    if (name === "models.json") {
+      // Distinguish an absent entry from a present but invalid/dangling symlink.
+      const entry = await lstat(path).catch(error => { if (!missingBase(error)) throw error; });
+      if (!entry) return undefined;
+      return (await readBoundedRegularBytes(await realpath(path), { maxBytes: 1_048_576, flags: O_NOFOLLOW })).bytes;
     }
-    const bytes = Buffer.alloc(limit + 1);
-    let used = 0;
-    while (used < bytes.length) {
-      const { bytesRead } = await file.read(bytes, used, bytes.length - used, used);
-      if (bytesRead === 0) return bytes.subarray(0, used);
-      used += bytesRead;
-    }
-    throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} exceeds 1 MiB.`);
-  } finally {
-    await file.close();
+    return (await readBoundedRegularBytes(path, { maxBytes: 1_048_576 }).catch(error => {
+      if (!missingBase(error)) throw error;
+    }))?.bytes;
+  } catch {
+    throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} must be a readable regular file of at most 1 MiB.`);
   }
 }
 
-async function readModels(agentDir: string): Promise<Buffer | undefined> {
-  const root = resolve(agentDir);
-  const path = join(root, "models.json");
-  try {
+const privatePiEntries = new Set(["settings.json", "models.json", "sessions", "backups", "crashes.json"]);
+async function projectPiResources(base: string, agentDir: string) {
+  const entries = await opendir(base).catch(error => { if (!missingBase(error)) throw error; });
+  if (!entries) return;
+  for await (const { name } of entries) {
+    if (privatePiEntries.has(name) || name.endsWith("-debug.log") || name.endsWith(".lock")) continue;
+    let target: string, info: Awaited<ReturnType<typeof stat>>;
     try {
-      await lstat(path);
+      target = await realpath(join(base, name));
+      info = await stat(target);
     } catch (error) {
-      if (isErrno(error, "ENOENT")) return undefined;
+      if (missingBase(error) || isErrno(error, "ELOOP")) continue;
       throw error;
     }
-    return await readPiConfig(await resolveContainedPath(root, path, realpath), "models.json", O_NOFOLLOW);
-  } catch {
-    throw new LarvaError("LARVA_CONFIG_INVALID", "Pi models.json must be a readable, contained regular file of at most 1 MiB.");
+    if (info.isFile() || info.isDirectory()) await symlink(target, join(agentDir, name), info.isDirectory() ? "dir" : "file");
   }
 }
 
-export async function createCapsule(options: CapsuleOptions): Promise<{ root: string; extension_sources: string[] }> {
+export type CapsulePaths = { root: string; agent_dir: string; settings_path: string; models_path?: string; extension_sources: string[] };
+
+export async function createCapsule(options: CapsuleOptions): Promise<CapsulePaths> {
   const capsules = getLarvaHomePaths(options.home).capsules;
   const root = join(capsules, `child-${process.pid}-${randomBytes(16).toString("hex")}`);
   await privateDirectory(capsules);
@@ -145,19 +148,21 @@ export async function createCapsule(options: CapsuleOptions): Promise<{ root: st
         await access(path, entry.isDirectory() ? R_OK | X_OK : R_OK);
       },
     }),
-    readPiConfig(join(options.pi_agent_dir, "settings.json"), "settings.json", 0).catch(error => {
-      if (isErrno(error, "ENOENT")) return Buffer.from("{}\n");
-      throw error;
-    }),
-    readModels(options.pi_agent_dir),
+    snapshotPiConfig(options.pi_agent_dir, "settings.json"),
+    snapshotPiConfig(options.pi_agent_dir, "models.json"),
   ]);
+  const agent_dir = join(root, "agent");
+  const settings_path = join(agent_dir, "settings.json");
+  const models_path = models === undefined ? undefined : join(agent_dir, "models.json");
   await mkdir(root, { mode: 0o700 });
   try {
     await mkdir(join(root, "descendants"), { mode: 0o700 });
-    await writeFile(join(root, "settings.json"), settings, { mode: 0o600, flag: "wx" });
-    if (models !== undefined) await writeFile(join(root, "models.json"), models, { mode: 0o600, flag: "wx" });
+    await mkdir(agent_dir, { mode: 0o700 });
+    await writeFile(settings_path, settings ?? "{}\n", { mode: 0o600, flag: "wx" });
+    if (models !== undefined && models_path !== undefined) await writeFile(models_path, models, { mode: 0o600, flag: "wx" });
+    await projectPiResources(options.pi_agent_dir, agent_dir);
     await writeMetadata(join(root, "owner.json"), { owner_pid: process.pid, state: "reserving" } satisfies CapsuleOwner);
-    return { root, extension_sources };
+    return { root, agent_dir, settings_path, models_path, extension_sources };
   } catch (error) {
     await rm(root, { recursive: true, force: true });
     throw error;

@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { toErrorEnvelope } from "../core/errors.ts";
@@ -7,6 +8,7 @@ import { isTerminal } from "../runtime/outbox.ts";
 import { terminalText } from "./pi-selector-tui.ts";
 
 type Row = RunSnapshot | DiskSessionSummary;
+type CancelTarget = Pick<RunSnapshot, "task_id" | "run_epoch">;
 const scopes: SubagentStatusScope[] = ["recent", "active", "disk"];
 const canCancel = (row: Row | undefined): row is RunSnapshot => !!row && "run_epoch" in row && !isTerminal(row.status) && row.status !== "cancelling";
 const rowKey = (row: Row) => "run_epoch" in row ? row.run_epoch : row.task_id;
@@ -14,7 +16,20 @@ const rowKey = (row: Row) => "run_epoch" in row ? row.run_epoch : row.task_id;
 function detail(row: Row): string[] {
   if (!("run_epoch" in row)) return [row.task_id, row.cwd, !row.cwd_exists ? "Missing workspace" : "",
     row.lock_state === "unlocked" ? "Recorded session" : `Busy (${row.lock_state})`];
-  const heading = [row.task_id, row.cwd, `${row.status} · ${row.phase}`, ...(row.error ? [row.error.message] : [])];
+  const route = [row.model, row.thinking && `thinking: ${row.thinking}`].filter(Boolean).join(" · ");
+  const activity = [row.active_tool && `${row.active_tool.name} (${row.active_tool.status})`, row.live_thinking && "Thinking…"]
+    .filter(Boolean).join(" · ");
+  const heading = [
+    `${row.status} · ${row.phase}`,
+    route && terminalText(`Route: ${route}`),
+    row.task_preview ? terminalText(`Task: ${row.task_preview}`) : "",
+    activity && terminalText(`Activity: ${activity}`),
+    row.live_assistant_preview ? terminalText(`Assistant: ${row.live_assistant_preview}`) : "",
+    ...(row.error ? [row.error.message] : []),
+    ...(row.tool_snapshots ?? []).toReversed().map(tool => terminalText(
+      `Tool: ${tool.name} (${tool.status})${tool.args_preview ? ` · ${tool.args_preview}` : ""}`)),
+    row.task_id, row.cwd,
+  ];
   switch (row.output_state) {
     case "pending": return [...heading, "Output pending"];
     case "inline": return [...heading, row.result_text || "No output text"];
@@ -37,7 +52,10 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
       let displayed: Row | undefined;
       let loadError: string | undefined;
       let actionStatus: string | undefined;
+      let confirmCancel: (CancelTarget & { label: string }) | undefined;
       let cancelling = false;
+      let detailOffset = 0;
+      let detailHeight = 1;
       let closed = false;
       let refreshQueued = false;
       let refreshing = false;
@@ -75,16 +93,30 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
         const list = rows();
         const cursor = Math.max(0, list.findIndex(row => rowKey(row) === selected));
         selected = rowKeyOrUndefined(list[Math.max(0, Math.min(list.length - 1, cursor + delta))]);
+        detailOffset = 0;
         tui.requestRender();
       };
-      const cancel = async (row: RunSnapshot) => {
+      const askCancel = (row: RunSnapshot) => {
         if (cancelling) return;
+        confirmCancel = { task_id: row.task_id, run_epoch: row.run_epoch, label: `${row.persona_id} · ${basename(row.task_id)}` };
+        actionStatus = undefined;
+        tui.requestRender();
+      };
+      const onCancel = async (task_id: string, run_epoch: string) => {
         cancelling = true;
-        actionStatus = "Cancelling…";
+        actionStatus = "Checking run…";
         tui.requestRender();
         try {
-          const { results } = await supervisor.cancel({ task_ids: [row.task_id], reason: "Cancelled from the Subagent Console.",
-            expected_run_epochs: { [row.task_id]: row.run_epoch } });
+          const { runs } = await supervisor.status({ task_id });
+          if (closed) return;
+          if (!runs.some(run => run.task_id === task_id && run.run_epoch === run_epoch && canCancel(run))) {
+            actionStatus = "Cancel skipped: the run settled or was replaced.";
+            return;
+          }
+          actionStatus = "Cancelling…";
+          tui.requestRender();
+          const { results } = await supervisor.cancel({ task_ids: [task_id], reason: "Cancelled from the Subagent Console.",
+            expected_run_epochs: { [task_id]: run_epoch } });
           actionStatus = `Cancel: ${results[0].outcome}`;
         } catch (error) { actionStatus = toErrorEnvelope(error).error.message; }
         finally { cancelling = false; if (!closed) { void refresh(); tui.requestRender(); } }
@@ -96,13 +128,17 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
           const height = tui.terminal.rows;
           const list = rows();
           const index = Math.max(0, list.findIndex(row => rowKey(row) === selected));
-          selected = rowKeyOrUndefined(list[index]);
-          const rowCount = Math.max(0, Math.floor((height - 3) / 2));
+          const next = rowKeyOrUndefined(list[index]);
+          if (selected !== next) detailOffset = 0;
+          selected = next;
+          const rowCount = Math.max(0, Math.floor((height - 3) / 3));
           const start = Math.max(0, index - rowCount + 1);
           visible = list.slice(start, start + rowCount);
           displayed = rowCount ? list[index] : undefined;
           const lines = [theme.fg("accent", `Larva Subagent Console — ${exact ? "task" : scopes[scopeIndex]} (${list.length})`),
-            "↑/↓ Select · Tab Scope · C Cancel · R Refresh · Esc Close"];
+            "↑/↓ Select · Tab Scope · C Cancel · PgUp/PgDn Detail · R Refresh · Esc Close"];
+          if (confirmCancel) lines.push(theme.fg("accent", terminalText(`Confirm cancel ${confirmCancel.label}?`)),
+            "[y/Enter = confirm, n/Esc = abort]");
           for (const row of visible) {
             const marker = row === displayed ? "›" : " ";
             const line = "run_epoch" in row ? `${row.persona_id} · ${row.phase} · ${row.task_id}` : `${row.lock_state} · ${row.task_id}`;
@@ -113,11 +149,12 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
           else if (!snapshot) lines.push("Loading…");
           else if (!list.length) lines.push(snapshot.startup_failures.length
             ? terminalText(`Startup failed: ${snapshot.startup_failures[0].error.message}`) : "No subagent sessions in this scope.");
-          if (displayed) for (const line of detail(displayed)) {
-            for (const part of line.split(/\r?\n/, height)) {
-              if (lines.length >= height) break;
-              if (part) lines.push(terminalText(part));
-            }
+          if (displayed) {
+            const parts = detail(displayed).flatMap(line => line.split(/\r?\n/)).filter(Boolean);
+            detailHeight = Math.max(1, height - lines.length);
+            const offset = Math.min(detailOffset, Math.max(0, parts.length - detailHeight));
+            if (!confirmCancel) detailOffset = offset;
+            lines.push(...parts.slice(offset, offset + detailHeight).map(terminalText));
           }
           return Array.from({ length: height }, (_, i) => {
             const line = lines[i] ?? "";
@@ -125,10 +162,23 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
           });
         },
         handleInput(data) {
+          if (confirmCancel) {
+            const pending = confirmCancel;
+            const confirmed = matchesKey(data, "y") || matchesKey(data, "enter");
+            if (confirmed || matchesKey(data, "n") || matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
+              confirmCancel = undefined;
+              if (confirmed) void onCancel(pending.task_id, pending.run_epoch);
+              else tui.requestRender();
+            }
+            return;
+          }
           if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) done();
           else if (matchesKey(data, "up")) move(-1);
           else if (matchesKey(data, "down")) move(1);
-          else if (matchesKey(data, "c") && canCancel(displayed) && rowKey(displayed) === selected) void cancel(displayed);
+          else if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
+            detailOffset = Math.max(0, detailOffset + (matchesKey(data, "pageUp") ? -detailHeight : detailHeight));
+            tui.requestRender();
+          } else if (matchesKey(data, "c") && canCancel(displayed) && rowKey(displayed) === selected) askCancel(displayed);
           else if (matchesKey(data, "r")) void refresh();
           else if (matchesKey(data, "tab")) {
             if (!exact) scopeIndex = (scopeIndex + 1) % scopes.length;
@@ -136,6 +186,7 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
             queryGeneration++;
             snapshot = displayed = selected = loadError = undefined;
             visible = [];
+            detailOffset = 0;
             void refresh();
             tui.requestRender();
           }
@@ -143,12 +194,15 @@ export async function openSubagentConsole(ctx: ExtensionContext, supervisor: Sub
         // Fullscreen Pi owns mouse mode and dispatches normalized events.
         // Regular Pi does not dispatch them; keyboard actions still work there.
         handleMouse(event) {
+          if (confirmCancel) return { handled: true };
           if (event.type === "wheel") { move(event.wheelDelta ?? 0); return { handled: true }; }
           if (event.type === "click" && event.button === "left") {
             const row = visible[event.y - 2];
             if (row) {
               selected = rowKey(row);
-              if (event.x >= 2 && event.x < 10 && canCancel(row)) void cancel(row);
+              detailOffset = 0;
+              if (event.x >= 2 && event.x < 10 && canCancel(row)) askCancel(row);
+              else tui.requestRender();
             }
           }
           return { handled: true };

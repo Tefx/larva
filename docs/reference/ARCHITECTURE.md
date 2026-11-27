@@ -29,11 +29,11 @@ Equivalent Markdown and JSON normalize to the same object and `sha256:<64-hex>` 
 
 ## Store and runtime ownership
 
-- The store reads persona files in-process. Exact reads inspect only the target ID's two possible files. Listing ignores dotfiles, sorts valid records by ID, and omits invalid or conflicted definitions while recording bounded diagnostics for `larva doctor`.
+- The store reads persona files in-process. Persona input and installed definitions are limited to 1 MiB per persona. Exact reads inspect only the target ID's two possible files. Listing ignores dotfiles, sorts valid records by ID, and omits invalid or conflicted definitions while recording bounded diagnostics for `larva doctor`.
 - `put` validates all incoming definitions before writing. Each persona commits by atomic rename of a hidden staging file, then removes the other format. A pruned directory import removes unlisted personas only after all incoming commits. A partial I/O failure reports `LARVA_STORE_WRITE_FAILED` with `committed_ids`, `pruned_ids`, and `failed_id`. `rm` checks that all targets exist before unlinking either format. Both writes can repair a dual-format conflict.
 - Native Pi owns active identity and model state. See [persona switching](PI_AGENT_PERSONA_SWITCH_POLICY.md) for temporary leases and persistent selection. A single idempotent prompt composer replaces Larva identity and persona blocks across hooks and the peer prompt event.
 - The supervisor owns child processes, capsules, transcript leases, deadlines, and terminal output. An accepted run has passed route and prompt checks; it is not a completion receipt. See [asynchronous subagents](PI_EXTENSION_ASYNC_SUBAGENTS.md).
 
 ## Distribution
 
-The root `pi-larva` package builds independent ESM bundles without shared chunks or runtime npm dependencies. `dist/pi-extension.js` is the Pi-loadable extension and the only bundle that imports Pi TUI. `dist/cli.mjs` and `dist/mcp-server.mjs` are headless, `dist/child-rpc-preload.mjs` bridges child output, and `dist/timeline-worker.mjs` scans recorded activity. The Codex plugin ships its own MCP server and sibling runtime bundles in `plugins/codex/dist/`.
+The root `pi-larva` package builds independent ESM bundles without shared chunks or runtime npm dependencies. `dist/pi-extension.js` is the Pi-loadable extension and the only bundle that imports Pi TUI. `dist/cli.mjs` and `dist/mcp-server.mjs` are headless, and `dist/child-rpc-preload.mjs` bridges child output. The Codex plugin ships its own MCP server and sibling runtime bundles in `plugins/codex/dist/`.

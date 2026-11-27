@@ -116,6 +116,15 @@ export type RunSnapshot = OutputSnapshot & {
   started_at: string;
   updated_at: string;
   error?: ErrorInfo;
+  /** Live telemetry supplied by the producer; previews are bounded. */
+  model?: string;
+  thinking?: ThinkingLevel;
+  task_preview?: string;
+  active_tool?: { tool_call_id: string; name: string; status: "running" | "done" | "error" } | null;
+  live_thinking?: boolean;
+  live_assistant_preview?: string;
+  /** At most the 25 most recent tools, with bounded argument previews. */
+  tool_snapshots?: ReadonlyArray<{ tool_call_id: string; name: string; status: "running" | "done" | "error"; args_preview?: string }>;
 };
 export type StartupFailureRecord = {
   startup_id: string;

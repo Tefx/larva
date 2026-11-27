@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
+import { homedir } from "node:os";
+import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toErrorEnvelope } from "./core/errors.ts";
 import { SubagentSupervisor } from "./runtime/supervisor.ts";
@@ -103,14 +105,22 @@ const apps = [
 }));
 
 /** Run one headless MCP host. Exit status belongs to the executable, not a tool call. */
-export async function runMcpServer(): Promise<0 | 1> {
+export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promise<0 | 1> {
   const { stdin, stdout } = process;
+  const home = env.HOME || homedir();
+  const path = env.PATH ? env.PATH.split(delimiter) : [];
+  for (const dir of [join(home, ".local", "bin"), join(home, ".pi", "agent", "bin"), "/opt/homebrew/bin", "/usr/local/bin"]) {
+    if (!path.includes(dir) && (await stat(dir).catch(() => undefined))?.isDirectory()) path.push(dir);
+  }
   // Bundles use the supervisor's sibling JS entrypoints. Direct Node execution
   // uses the equivalent source siblings, not paths relative to src/runtime/.
-  const supervisor = new SubagentSupervisor(import.meta.url.endsWith(".ts") ? {
-    extension: fileURLToPath(new URL("./pi-extension.ts", import.meta.url)),
-    preload: fileURLToPath(new URL("./child-rpc-preload.ts", import.meta.url)),
-  } : undefined);
+  const supervisor = new SubagentSupervisor({
+    env: { ...env, PATH: path.join(delimiter) },
+    ...(import.meta.url.endsWith(".ts") && {
+      extension: fileURLToPath(new URL("./pi-extension.ts", import.meta.url)),
+      preload: fileURLToPath(new URL("./child-rpc-preload.ts", import.meta.url)),
+    }),
+  });
   const personas = new PersonaStore(supervisor.home);
   const tools = createMcpTools(supervisor, personas);
   let rootsSupported = false, inFlight = 0, stopping = false;

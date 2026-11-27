@@ -9,13 +9,14 @@ import {
   assertSoloCall, confirmSwitch, larva_persona_switch, PERSONA_SWITCH_AUDIT, PersonaLeaseState,
   type Continuation, type PersonaSwitchContext, type PersonaSwitchOutcome,
 } from "./persona-lease.ts";
-import { composeSystemPrompt, type ResolveSystemPromptResult } from "./system-prompt.ts";
+import { composeSystemPrompt, type ResolveSystemPromptResult, type SwitchContinuation } from "./system-prompt.ts";
 
 const PERSONA_COMMIT = "larva-active-persona-commit";
 const MODE_OVERRIDE = "larva-agent-persona-switch-mode";
 
 type Awaitable<T> = T | Promise<T>;
 export type NativeRoute = { model: ModelMapEntry | null; thinking: ThinkingLevel };
+type RouteTarget = Partial<NativeRoute> & { preserveThinking?: ThinkingLevel };
 export type ModelMapProfile = { name: string; generation: number; map?: ModelMapDoc };
 export type ChildProfileReport = Record<
   "fenced_for_startup" | "in_flight_until_run_settles" | "ended_during_switch" | "failed", number
@@ -39,8 +40,6 @@ export type SessionAdapter = {
   appendEntry: (customType: string, data: Record<string, unknown>) => void;
   /** Adapt to Pi's UI notification or structured RPC status surface. */
   report: (event: { action: string; data: unknown }) => void;
-  /** Install the startup fence synchronously; do not change already-accepted runs. */
-  notifyChildren?: (profile: Readonly<ModelMapProfile>) => ChildProfileReport;
 };
 
 type SessionOptions = {
@@ -60,14 +59,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function latestEntry(branch: readonly unknown[], customType: string): Record<string, unknown> | null | undefined {
-  for (let index = branch.length - 1; index >= 0; index--) {
-    const entry = branch[index];
-    if (isRecord(entry) && entry.type === "custom" && entry.customType === customType) {
-      return isRecord(entry.data) ? entry.data : null;
-    }
-  }
-  return undefined;
+function latestEntryIndex(branch: readonly unknown[], customType: string): number {
+  return branch.findLastIndex(entry => isRecord(entry) && entry.type === "custom" && entry.customType === customType);
+}
+
+function entryData(entry: unknown): Record<string, unknown> | null {
+  return isRecord(entry) && isRecord(entry.data) ? entry.data : null;
+}
+
+function isThinkingLevel(value: unknown): value is ThinkingLevel {
+  return value === "off" || value === "minimal" || value === "low" || value === "medium"
+    || value === "high" || value === "xhigh" || value === "max";
 }
 
 function sameModel(a: NativeRoute["model"], b: NativeRoute["model"]): boolean {
@@ -92,6 +94,9 @@ export class SessionContext {
   #profile: ModelMapProfile = { name: "default", generation: 0 };
   #config?: LarvaConfig;
   #modeOverride?: SwitchMode;
+  // The lease owns the pending dispatch; capture its source before changing personas.
+  #switchFrom: string | null = null;
+  #continuation?: SwitchContinuation;
   #restoreFailed?: LarvaError;
   #routeUncertain?: LarvaError;
   #request?: AbortController;
@@ -140,6 +145,8 @@ export class SessionContext {
 
   #preempt(): void {
     this.#lease.clearLease();
+    this.#switchFrom = null;
+    this.endContinuationTurn();
     this.#restoreFailed = undefined;
     this.#routeUncertain = undefined;
     this.#request?.abort();
@@ -154,30 +161,37 @@ export class SessionContext {
     return { model: model && { ...model }, thinking };
   }
 
-  #routeMatches(target: NativeRoute): boolean {
+  #routeMatches({ model, thinking }: RouteTarget): boolean {
     const current = this.#adapter.readRoute();
-    return sameModel(current.model, target.model) && current.thinking === target.thinking;
+    return (model === undefined || sameModel(current.model, model)) && (thinking === undefined || current.thinking === thinking);
   }
 
-  async #applyRoute(target: NativeRoute, operation: "activate" | "restore" | "rollback"): Promise<void> {
+  async #applyRoute(target: RouteTarget, operation: "activate" | "restore" | "rollback"): Promise<void> {
+    const { model, thinking, preserveThinking } = target;
     try {
       // Pi's model setter is also the native availability/auth check. A model
       // already selected in Pi isn't evidence that a new activation can use it.
-      if (((operation === "activate" && target.model !== null) || !sameModel(this.#adapter.readRoute().model, target.model))
-          && !await this.#adapter.setModel(target.model)) throw modelUnavailable();
+      if (model !== undefined && ((operation === "activate" && model !== null) || !sameModel(this.#adapter.readRoute().model, model))
+          && !await this.#adapter.setModel(model)) throw modelUnavailable();
     } catch {
-      if (operation !== "rollback") throw modelUnavailable();
-      // A rejected model rollback should not prevent best-effort thinking restoration.
-      try { await this.#adapter.setThinking(target.thinking); } catch { /* Report the unverified pair. */ }
+      if (operation === "rollback" && thinking !== undefined) {
+        // A rejected model rollback should not prevent best-effort thinking restoration.
+        try { await this.#adapter.setThinking(thinking); } catch { /* Report the unverified pair. */ }
+      }
       throw modelUnavailable();
     }
     try {
-      if (this.#adapter.readRoute().thinking !== target.thinking) await this.#adapter.setThinking(target.thinking);
+      const desiredThinking = thinking ?? preserveThinking;
+      if (desiredThinking !== undefined && (thinking !== undefined || this.#routeMatches({ model }))
+          && this.#adapter.readRoute().thinking !== desiredThinking) {
+        try { await this.#adapter.setThinking(desiredThinking); }
+        catch (error) { if (thinking !== undefined) throw error; }
+      }
       if (!this.#routeMatches(target)) throw modelUnavailable();
     } catch { throw modelUnavailable(); }
   }
 
-  async #moveRoute(target: NativeRoute, before: NativeRoute, options?: { commit?: () => void; restoreExact?: boolean }): Promise<void> {
+  async #moveRoute(target: RouteTarget, before: NativeRoute, options?: { commit?: () => void; restoreExact?: boolean }): Promise<void> {
     try {
       await this.#applyRoute(target, options?.restoreExact ? "restore" : "activate");
       options?.commit?.();
@@ -193,20 +207,24 @@ export class SessionContext {
   }
 
   /** Start or restore using the selected Pi branch, not all entries in the session tree. */
-  async initialize(config: LarvaConfig, branch: readonly unknown[] = []): Promise<{ applyModel: boolean }> {
+  async initialize(config: LarvaConfig, branch: readonly unknown[] = [], source: "startup" | "tree" = "startup"): Promise<{ applyModel: boolean }> {
     return this.#exclusive(async () => {
-      const flags = this.#options.flags;
-      const flagPersona = flags?.persona?.trim();
+      this.endContinuationTurn();
+      const flagPersona = source === "startup" || this.#child ? this.#options.flags?.persona?.trim() : undefined;
       const explicit = this.#child ? this.#options.env?.LARVA_PI_INITIAL_PERSONA_ID ?? flagPersona : flagPersona;
       if (this.#child && (!explicit || (flagPersona !== undefined && flagPersona !== explicit))) {
         throw new LarvaError("LARVA_BAD_INPUT", "Child launch requires a matching launch-bound persona.", undefined, 2);
       }
-      const flagMode = flags?.mode;
-      if (!this.#child && flagMode !== undefined && !isSwitchMode(flagMode)) {
+      const flagMode = this.#child ? undefined : this.#options.flags?.mode;
+      if (flagMode !== undefined && !isSwitchMode(flagMode)) {
         throw new LarvaError("LARVA_BAD_INPUT", "Invalid --larva-mode value.", undefined, 2);
       }
-      const override = this.#child ? undefined : flagMode ?? latestEntry(branch, MODE_OVERRIDE)?.mode;
-      const stored = this.#child || explicit !== undefined ? undefined : latestEntry(branch, PERSONA_COMMIT);
+      // A launch mode and subsequent explicit changes outlive branch navigation.
+      const override = this.#child ? undefined : flagMode !== undefined
+        ? (source === "tree" ? this.#modeOverride ?? flagMode : flagMode)
+        : entryData(branch[latestEntryIndex(branch, MODE_OVERRIDE)])?.mode;
+      const commitIndex = this.#child || explicit !== undefined ? -1 : latestEntryIndex(branch, PERSONA_COMMIT);
+      const stored = commitIndex === -1 ? undefined : entryData(branch[commitIndex]);
       const id = explicit ?? (stored === undefined ? config.default_persona : stored?.persona_id);
       const profile = this.#config ? this.#profile : { ...this.#profile, map: await this.#options.loadProfile("default") };
       let persona: PersonaSpec | null = null;
@@ -220,9 +238,23 @@ export class SessionContext {
         const commit = () => {
           if (this.#child || explicit !== undefined) this.#persistPersona(persona, "startup");
         };
-        if (persona && !this.#child) {
-          const target = this.#routeFor(persona, profile);
-          await this.#moveRoute(target, this.#readRoute(), { commit });
+        // Native Pi restores its own startup route for larva:none, including CLI
+        // overrides, but retains the previous route on tree navigation.
+        const afterCommit = !this.#child && (persona ? commitIndex !== -1 : source === "tree")
+          ? branch.slice(commitIndex + 1).filter(isRecord) : [];
+        const model = afterCommit.findLast(entry => entry.type === "model_change");
+        const thinking = afterCommit.findLast(entry => entry.type === "thinking_level_change");
+        if (!this.#child && (persona || model || thinking)) {
+          const before = this.#readRoute();
+          // Without a persona, only recorded components constrain the native route.
+          const target: RouteTarget = persona ? this.#routeFor(persona, profile) : {};
+          if (model) target.model = typeof model.provider === "string" && typeof model.modelId === "string"
+            ? { provider: model.provider, model_id: model.modelId } : before.model;
+          if (thinking) target.thinking = isThinkingLevel(thinking.thinkingLevel) ? thinking.thinkingLevel : before.thinking;
+          // A model switch can reset thinking to a Pi default. Carry it over
+          // when possible, without requiring a level the new model may clamp.
+          else if (!persona && model) target.preserveThinking = before.thinking;
+          await this.#moveRoute(target, before, { commit, restoreExact: !persona || model !== undefined });
           applyModel = true;
         } else commit();
       } catch (error) {
@@ -236,6 +268,7 @@ export class SessionContext {
       // Preserve a new rollback-uncertain latch when startup degraded after a failed transition.
       this.#lease.clearLease();
       this.#lease.beginUserTurn();
+      this.#switchFrom = null;
       this.#request?.abort();
       this.#restoreFailed = undefined;
       if (warning?.code !== "LARVA_ROUTE_UNCERTAIN") this.#routeUncertain = undefined;
@@ -259,7 +292,8 @@ export class SessionContext {
   }
 
   composeSystemPrompt(base: string): string {
-    return composeSystemPrompt({ activePersona: this.#persona }, base);
+    return composeSystemPrompt({ activePersona: this.#persona, launched: this.#child,
+      switchMode: this.switchMode, continuation: this.#continuation }, base);
   }
 
   /** Bind this handler to larva:resolve-system-prompt:v1; no prompt data in unavailable replies. */
@@ -346,10 +380,7 @@ export class SessionContext {
       } catch (error) {
         return report({ status: this.#routeUncertain ? "route_uncertain" : "failed", ...current(), error: toErrorEnvelope(error).error });
       }
-      const outcome: ModelMapOutcome = { status: "switched", ...current() };
-      try { if (this.#adapter.notifyChildren) outcome.children = this.#adapter.notifyChildren(this.#profile); }
-      catch { outcome.child_notification_error = { code: "LARVA_INTERNAL_ERROR", message: "Could not report the model-map change to live children." }; }
-      return report(outcome);
+      return report({ status: "switched", ...current() });
     });
   }
 
@@ -396,6 +427,7 @@ export class SessionContext {
         this.#persona = persona;
         if (persistent) this.#preempt();
         this.#lease.recordSwitch(input, origin);
+        if (input.continue_task) this.#switchFrom = from;
         this.#audit({ mode, from_persona_id: from, to_persona_id: persona.id, persistent, continue_task: input.continue_task });
         this.#report("persona-switch", { persona_id: persona.id, persistent, switch_mode: this.switchMode });
         return { ok: true, persona_id: persona.id, persistent, ...(input.continue_task ? { terminate: true } : {}) };
@@ -426,11 +458,19 @@ export class SessionContext {
     }
   }
 
-  /** Call at agent-end, and again at continuation-end (or if continuation delivery fails). */
-  async settleTurn(): Promise<TurnSettlement> {
+  /** Prompt context lasts one model turn, independently of the borrow lease. */
+  endContinuationTurn(): void { this.#continuation = undefined; }
+
+  /** Dispatch an immediate continuation, or restore the lease at agent settlement. */
+  async settleTurn({ allowContinuation = true } = {}): Promise<TurnSettlement> {
     return this.#exclusive(() => {
       this.#request?.abort();
-      const continuation = this.#lease.takeContinuation();
+      const pending = this.#lease.takeContinuation();
+      const continuation = allowContinuation ? pending : null;
+      this.#continuation = continuation ? {
+        fromPersona: this.#switchFrom, toPersona: continuation.persona_id, reason: continuation.reason,
+      } : undefined;
+      this.#switchFrom = null;
       return continuation ? { status: "continue", continuation } : this.#restoreLease();
     });
   }
@@ -440,6 +480,8 @@ export class SessionContext {
     return this.#exclusive(() => {
       this.#request?.abort();
       this.#lease.beginUserTurn();
+      this.#switchFrom = null;
+      this.endContinuationTurn();
       return this.#restoreLease();
     });
   }

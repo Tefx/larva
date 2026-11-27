@@ -8,6 +8,7 @@ import { join, relative } from "node:path";
 import { createInterface } from "node:readline";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import { sanitizeRpcError } from "../../src/runtime/child-rpc-client.ts";
 import { RunOutbox, mintRunEpoch, terminalOutput } from "../../src/runtime/outbox.ts";
 import { childSettlementBarrier } from "../../src/runtime/settlement-barrier.ts";
 import { getNativeSupervisor, SubagentSupervisor, type NativeBinding } from "../../src/runtime/supervisor.ts";
@@ -19,6 +20,10 @@ import * as capsule from "../../src/store/capsule.ts";
 // pipe lets tests park a specific RPC reply or emit a native event without sleeps.
 const fakePi = `import { createConnection } from 'node:net';
 import { writeFileSync } from 'node:fs';
+if (process.env.TEST_STARTUP_ERROR) {
+  process.stdout.end();
+  process.stderr.write('noise'.repeat(2000) + '\\n' + process.env.TEST_STARTUP_ERROR + '\\nignored diagnostic\\n', () => process.exit(2));
+} else {
 const argv = process.argv.slice(2), arg = k => argv[argv.indexOf(k)+1];
 const id = arg('--session');
 try { writeFileSync(id, JSON.stringify({type:'session', version:3, cwd:process.cwd(), id:'test'})+'\\n',{flag:'wx'}); } catch(e) { if(e.code!=='EEXIST') throw e; }
@@ -27,7 +32,8 @@ control.on('error', () => process.exit(2));
 control.on('close', () => process.exit(0));
 control.write(JSON.stringify({hello:true,id,argv,pid:process.pid,agentDir:process.env.PI_CODING_AGENT_DIR,baseAgentDir:process.env.LARVA_PI_BASE_AGENT_DIR,root:process.env.LARVA_PI_CAPSULE_ROOT,persona:process.env.LARVA_PI_INITIAL_PERSONA_ID,launched:process.env.LARVA_PI_LAUNCHED,home:process.env.LARVA_HOME,depth:process.env.LARVA_PI_SUBAGENT_DEPTH,ancestors:process.env.LARVA_PI_ANCESTOR_TASK_IDS})+'\\n');
 control.pipe(process.stdout);
-process.stdin.pipe(control,{end:false}); process.stdin.on('end',()=>{if(!process.env.TEST_IGNORE_EOF) control.end()});`;
+process.stdin.pipe(control,{end:false}); process.stdin.on('end',()=>{if(!process.env.TEST_IGNORE_EOF) control.end()});
+}`;
 const marker = { capability: "larva-child-rpc-frame-preload-v1", terminal: "agent_settled", framing: "lf-only", max_record_bytes: 1048576 };
 type Frame = Record<string, any>;
 type Peer = { hello: Frame; emit(frame: Frame): void; commands: Frame[] };
@@ -141,7 +147,7 @@ test("ordered admission: syntax, roots and recorded workspace precede lineage, c
   const receipt = await s.spawn(input, { ...mcp, listRoots: async () => ({ roots: [{ uri: pathToFileURL(work).href }] }) });
   assert.equal((receipt as SubagentAcceptedReceipt).cwd, work); await assert.rejects(f.spawn(), err("LARVA_CHILD_START_FAILED"));
   const p = f.peers[0].hello;
-  assert.equal(p.home, f.home); assert.equal(p.launched, "1"); assert.equal(p.persona, "worker"); assert.equal(p.depth, "1"); assert.equal(p.agentDir, p.root); assert.equal(p.baseAgentDir, f.agent);
+  assert.equal(p.home, f.home); assert.equal(p.launched, "1"); assert.equal(p.persona, "worker"); assert.equal(p.depth, "1"); assert.equal(p.agentDir, join(p.root, "agent")); assert.equal(p.baseAgentDir, f.agent);
   assert.equal(await readFile(join(p.agentDir, "settings.json"), "utf8"), '{"theme":"dark"}');
   assert.equal((await lstat(join(p.agentDir, "settings.json"))).mode & 0o777, 0o600);
   assert.equal(f.peers.length, 1); assert.ok((await s.status()).startup_failures.length > 0);
@@ -175,7 +181,7 @@ test("explicit base Pi directory overrides inherited directories without changin
   await f.spawn({}, s);
   const { baseAgentDir, agentDir, root } = f.peers[0].hello;
   assert.equal(baseAgentDir, f.agent);
-  assert.equal(agentDir, root);
+  assert.equal(agentDir, join(root, "agent"));
   assert.notEqual(agentDir, baseAgentDir);
   assert.equal(await readFile(join(agentDir, "settings.json"), "utf8"), '{"theme":"dark"}');
 }));
@@ -186,12 +192,129 @@ test("mismatched preload/route and rejected or handled prompts never produce an 
       if (q.type === "get_state" && (mode === "marker" || mode === "route")) {
         reply({ sessionFile: p.hello.id, persona_id: "worker", model: { provider: "x", id: "two" }, thinkingLevel: "medium", larvaChildRpcFrame: mode === "route" ? marker : { ...marker, terminal: "agent_end" } }); return true;
       }
-      if (q.type === "prompt") { reply({ disposition: "handled" }, mode !== "rejected"); return true; }
+      if (q.type === "prompt") {
+        if (mode === "rejected") p.emit({ id: q.id, type: "response", command: q.type, success: false,
+          error: "Configure the fixture provider.\nkey=fixture-placeholder Authorization: Bearer fixture-private" });
+        else reply({ disposition: "handled" });
+        return true;
+      }
     };
-    await assert.rejects(f.spawn(), err(mode === "route" ? "LARVA_MODEL_UNAVAILABLE" : "LARVA_CHILD_PROTOCOL_FAILED"));
+    await assert.rejects(f.spawn(), {
+      code: mode === "route" ? "LARVA_MODEL_UNAVAILABLE" : "LARVA_CHILD_PROTOCOL_FAILED",
+      ...(mode === "rejected" && { message: "Child rejected prompt: Configure the fixture provider. [REDACTED] [REDACTED]" }),
+    });
     assert.deepEqual(await readdir(join(f.home, "state", "capsules")), []);
     assert.ok(!(await readdir(f.root)).some(p => p.endsWith(".lock")));
   }
+}));
+
+test("RPC diagnostics redact credential patterns before clipping Unicode code points", () => {
+  const detail = sanitizeRpcError(`\n  Bad request\tBearer opaque-one Authorization: Bearer sk-example_123456
+    authorization=Bearer opaque-two sk-keyabcdefgh AIzaabcdefghijklmnop api_key=key-three
+    access-token='access four' refresh_token="refresh five" token=token-six secret='secret seven'
+    password="pass eight" https://user-nine:pass-nine@example.com/path   `);
+  assert.equal(detail, "Bad request [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] [REDACTED] https://[REDACTED]@example.com/path");
+  assert.equal(sanitizeRpcError('Use provider fixture: key:fixture-one; {"key":"fixture two", "provider":"fixture"}'),
+    'Use provider fixture: [REDACTED] {[REDACTED], "provider":"fixture"}');
+  assert.equal(sanitizeRpcError("😀".repeat(301)), "😀".repeat(300));
+});
+
+test("non-zero startup exit preserves a known redacted stderr envelope and reaps ownership", () => fixture(async f => {
+  f.env.TEST_STARTUP_ERROR = JSON.stringify({ ok: false, error: { code: "LARVA_MODEL_UNAVAILABLE", message: "Model unavailable.\nkey=fixture-placeholder" } });
+  const expected = { code: "LARVA_MODEL_UNAVAILABLE", message: "Model unavailable. [REDACTED]" };
+  await assert.rejects(f.spawn(), expected);
+  assert.deepEqual((await f.supervisor.status()).startup_failures[0].error, expected);
+  assert.deepEqual(await readdir(join(f.home, "state", "capsules")), []);
+  assert.deepEqual(await readdir(f.root), []);
+  f.env.TEST_STARTUP_ERROR = JSON.stringify({ ok: false, error: { code: "LARVA_UNKNOWN", message: "not admitted" } });
+  await assert.rejects(f.spawn(), { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "Child exited before RPC completed." });
+}));
+
+test("omitted and null assistant text settle as empty inline output", () => fixture(async f => {
+  for (const [data, output_state] of [[{}, "inline"], [{ text: null }, "inline"], [{ text: 42 }, "delivery_failed"]] as const) {
+    f.hook.command = (q, _, reply) => {
+      if (q.type === "get_last_assistant_text") { reply(data); return true; }
+    };
+    const receipt = await f.spawn();
+    f.peers.at(-1)!.emit({ type: "agent_settled", aborted: false });
+    const { runs: [run] } = await f.supervisor.wait({ task_ids: [receipt.task_id] });
+    assert.deepEqual([run.status, run.output_state, run.result_text], ["success", output_state, output_state === "inline" ? "" : undefined]);
+  }
+}));
+
+test("live telemetry publishes bounded text and tool history, then clears transient state on turn and cancel", { timeout: 5000 }, () => fixture(async f => {
+  const s = f.supervisor, receipt = await f.spawn({ task: `  Do\n\t${"🌱".repeat(150)} ` });
+  const snapshot = async () => (await s.status({ task_id: receipt.task_id })).runs[0];
+  const emit = f.peers[0].emit;
+  const observing = async (done: (run: RunSnapshot) => boolean, produce: () => void) => {
+    const observed = Promise.withResolvers<RunSnapshot>();
+    const off = s.subscribe(() => { void snapshot().then(run => { if (done(run)) observed.resolve(run); }, observed.reject); });
+    const timer = setTimeout(() => observed.reject(new Error("No telemetry observer notification")), 2000);
+    try { produce(); return await observed.promise; } finally { clearTimeout(timer); off(); }
+  };
+  const initial = await snapshot();
+  assert.deepEqual([initial.model, initial.thinking, initial.task_preview], ["local/one", "medium", `Do ${"🌱".repeat(137)}`]);
+  const thinking = () => emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
+  await observing(run => run.live_thinking === true, thinking);
+  const text = await observing(run => run.live_assistant_preview?.endsWith("end") === true, () => {
+    for (const delta of ["old" + "🚀".repeat(599), "end"]) emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta } });
+  });
+  assert.equal(text.live_thinking, false);
+  assert.equal(text.live_assistant_preview, "🚀".repeat(597) + "end");
+  const tool = { toolCallId: "latest", toolName: "example" };
+  const running = await observing(run => run.active_tool?.tool_call_id === "latest" && run.tool_snapshots?.at(-1)?.args_preview?.includes("updated") === true, () => {
+    for (let i = 0; i < 25; i++) emit({ type: "tool_execution_start", toolCallId: `call-${i}`, toolName: "example" });
+    emit({ type: "tool_execution_start", ...tool });
+    emit({ type: "tool_execution_update", ...tool, args: { token: "never-show", value: "updated" + "🚀".repeat(180) } });
+  });
+  assert.deepEqual(running.active_tool, { tool_call_id: "latest", name: "example", status: "running" });
+  assert.equal(running.tool_snapshots?.length, 25);
+  assert.equal(running.tool_snapshots?.[0].tool_call_id, "call-1");
+  const args = running.tool_snapshots?.at(-1)?.args_preview ?? "";
+  assert.match(args, /\[REDACTED\]/); assert.doesNotMatch(args, /never-show/); assert.equal([...args].length, 160);
+  const ended = await observing(run => run.tool_snapshots?.at(-1)?.status === "error", () => emit({ type: "tool_execution_end", ...tool, isError: true }));
+  assert.equal(ended.tool_snapshots?.at(-1)?.args_preview, args);
+  assert.deepEqual(ended.active_tool, { tool_call_id: "call-24", name: "example", status: "running" });
+  const held = await observing(run => run.tool_snapshots?.every(row => row.status !== "running") === true, () => {
+    for (let i = 1; i < 25; i++) emit({ type: "tool_execution_end", toolCallId: `call-${i}`, toolName: "example" });
+  });
+  assert.equal(held.tool_snapshots?.length, 25);
+  assert.deepEqual(held.active_tool, { tool_call_id: "call-0", name: "example", status: "running" });
+  const marker = (delta: string) => emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta } });
+  const drained = await observing(run => run.live_assistant_preview?.endsWith("drained") === true, () => {
+    emit({ type: "tool_execution_end", toolCallId: "call-0", toolName: "example" });
+    marker("drained");
+  });
+  assert.equal(drained.active_tool, null);
+  assert.deepEqual(drained.tool_snapshots, held.tool_snapshots);
+  assert.equal(drained.status, "running");
+  // A turn boundary clears the live registry, even when some starts had no end.
+  const reset = await observing(run => run.live_assistant_preview?.endsWith("reset") === true, () => {
+    for (const toolCallId of ["stale-1", "stale-2"]) emit({ type: "tool_execution_start", toolCallId, toolName: "example" });
+    emit({ type: "turn_end" });
+    emit({ type: "tool_execution_end", toolCallId: "stale-2", toolName: "example" });
+    marker("reset");
+  });
+  assert.equal(reset.active_tool, null);
+  const first = { toolCallId: "first", toolName: "example" }, second = { toolCallId: "second", toolName: "another" };
+  await observing(run => run.tool_snapshots?.at(-1)?.tool_call_id === "second", () => {
+    emit({ type: "tool_execution_start", ...first });
+    emit({ type: "tool_execution_start", ...second });
+    emit({ type: "tool_execution_update", ...first });
+  }).then(run => assert.equal(run.active_tool?.tool_call_id, "first"));
+  const partial = await observing(run => run.tool_snapshots?.at(-2)?.status === "done",
+    () => emit({ type: "tool_execution_end", ...first }));
+  assert.deepEqual(partial.active_tool, { tool_call_id: "second", name: "another", status: "running" });
+  const finished = await observing(run => run.tool_snapshots?.at(-1)?.status === "error",
+    () => emit({ type: "tool_execution_end", ...second, isError: true }));
+  assert.equal(finished.status, "running");
+  assert.equal(finished.active_tool, null);
+  await observing(run => run.live_thinking === true && run.active_tool?.status === "running", () => {
+    thinking(); emit({ type: "tool_execution_start", toolCallId: "pending", toolName: "example" });
+  });
+  await s.cancel({ task_ids: [receipt.task_id], reason: "settle active telemetry" });
+  const final = await snapshot();
+  assert.deepEqual([final.status, final.active_tool, final.live_thinking, final.live_assistant_preview], ["cancelled", null, false, reset.live_assistant_preview]);
 }));
 
 test("callback barrier requires the consuming assistant settlement; alerts and failed/stale/suppressed callbacks cannot park it", () => {
@@ -313,6 +436,8 @@ test("profile fence updates starting children only and reports a captured epoch 
   const rows = Object.fromEntries((await switched).map(r => [r.task_id, r.state]));
   assert.deepEqual(rows, { [ended.task_id]: "ended_during_switch", [live.task_id]: "in_flight_until_run_settles", [next.task_id]: "fenced_for_startup" });
   assert.ok(!f.peers[0].commands.some(q => q.type === "set_model")); assert.deepEqual(f.peers[2].commands.map(q => q.type), ["get_state", "set_model", "set_thinking_level", "get_state", "prompt"]);
+  assert.equal((await f.supervisor.status({ task_id: live.task_id })).runs[0].model, "local/one");
+  assert.equal((await f.supervisor.status({ task_id: next.task_id })).runs[0].model, "local/two");
   await f.spawn(); assert.ok(f.peers[3].hello.argv.includes("local/two"));
   const failedFence = Promise.withResolvers<() => void>();
   f.hook.command = (q, p, reply) => {

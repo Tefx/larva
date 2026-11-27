@@ -228,10 +228,12 @@ test("managed launcher discovery verifies the selected release and refuses trave
   }
 });
 
-test("registry resolves exact routes from the selected Pi package and rereads private models without writes", () => {
+test("registry uses the base Pi agent dir instead of the capsule and rereads private models without writes", () => {
   const root = temporaryRoot();
   try {
-    const { agent, env, run } = fixture(root);
+    const { agent: capsuleAgent, env, run } = fixture(root);
+    const agent = join(root, "base-agent");
+    mkdirSync(agent);
     const moduleUrl = new URL("../../src/runtime/pi-binary.ts", import.meta.url).href;
     const models = join(agent, "models.json");
     const settings = join(agent, "settings.json");
@@ -248,6 +250,8 @@ test("registry resolves exact routes from the selected Pi package and rereads pr
       } } });
       writeFileSync(models, config);
       assert.deepEqual(await resolveModelInRegistry(pi, route), route);
+      assert.deepEqual(await resolveModelInRegistry(pi, route, '~/base-agent'), route);
+      assert.equal(await resolveModelInRegistry(pi, route, process.env.PI_CODING_AGENT_DIR), null);
       assert.equal(await resolveModelInRegistry(pi, { ...route, model_id: 'test-model' }), null);
       assert.equal(readFileSync(models, 'utf8'), config);
       writeFileSync(models, '{"providers":{}}');
@@ -255,8 +259,9 @@ test("registry resolves exact routes from the selected Pi package and rereads pr
       writeFileSync(models, '{"private-data":');
       await assert.rejects(resolveModelInRegistry(pi, route), error =>
         error.code === 'LARVA_MODEL_UNAVAILABLE' && !error.message.includes('private-data'));
-    `, { ...env, PATH: npmBin }, []);
+    `, { ...env, PATH: npmBin, LARVA_PI_BASE_AGENT_DIR: "~/base-agent" }, []);
     assert.equal(child.status, 0, child.stderr);
+    assert.deepEqual(readdirSync(capsuleAgent), []);
     assert.deepEqual(readdirSync(agent).sort(), ["models.json", "settings.json"]);
     assert.equal(readFileSync(settings, "utf8"), "{}\n");
   } finally {

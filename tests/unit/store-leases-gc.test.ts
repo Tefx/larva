@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { test } from "node:test";
@@ -228,8 +228,12 @@ test("capsule settings are private copies and extension paths resolve before sta
     home: paths.home, pi_agent_dir: piAgentDir, user_home: paths.home,
     extension_sources: ["one.ts", "pi-agent:two.ts", "~/one.ts", "npm:example"],
   });
-  const copy = join(capsule.root, "settings.json");
+  const copy = capsule.settings_path;
+  assert.equal(capsule.agent_dir, join(capsule.root, "agent"));
+  assert.equal(copy, join(capsule.agent_dir, "settings.json"));
   assert.equal((await lstat(capsule.root)).mode & 0o777, 0o700);
+  assert.equal((await lstat(capsule.agent_dir)).mode & 0o777, 0o700);
+  assert.deepEqual(await fileNames(capsule.root), ["agent", "descendants", "owner.json"]);
   assert.equal((await lstat(copy)).mode & 0o777, 0o600);
   assert.equal(await readFile(copy, "utf8"), settings);
   await writeFile(copy, '{"defaultThinkingLevel":"low"}\n');
@@ -248,33 +252,51 @@ test("capsule settings are private copies and extension paths resolve before sta
   await lease.release();
 }));
 
-test("capsule snapshots a contained base models.json without sharing writes", () => fixture(async ({ paths, piAgentDir }) => {
-  const create = () => capsules.createCapsule({ home: paths.home, pi_agent_dir: piAgentDir, extension_sources: [] });
+test("capsule projects canonical shared resources and snapshots an external models.json without sharing writes", () => fixture(async ({ paths, piAgentDir }) => {
+  const create = (base = piAgentDir) => capsules.createCapsule({ home: paths.home, pi_agent_dir: base, extension_sources: [] });
   const modelPath = join(piAgentDir, "models.json");
-  const absent = await create();
-  await assert.rejects(lstat(join(absent.root, "models.json")), { code: "ENOENT" });
+  const auth = join(piAgentDir, "auth.json"), skills = join(piAgentDir, "skills");
+  const agents = join(paths.home, "shared-instructions.md");
+  await mkdir(skills);
+  await writeFile(join(skills, "example.md"), "shared skill");
+  await writeFile(auth, "shared auth", { mode: 0o600 });
+  await writeFile(agents, "shared instructions");
+  await symlink(agents, join(piAgentDir, "AGENTS.md"));
+  await symlink("absent", join(piAgentDir, "dangling"));
+  await symlink("loop", join(piAgentDir, "loop"));
+  for (const name of ["sessions", "backups"]) await mkdir(join(piAgentDir, name));
+  for (const name of ["crashes.json", "pi-debug.log", "auth.json.lock"]) await writeFile(join(piAgentDir, name), "");
+  for (const base of [piAgentDir, join(paths.home, "missing"), auth]) {
+    const absent = await create(base);
+    assert.equal(absent.models_path, undefined);
+    assert.equal(await readFile(absent.settings_path, "utf8"), "{}\n");
+    if (base !== piAgentDir) assert.deepEqual(await fileNames(absent.agent_dir), ["settings.json"]);
+  }
   const contents = '{"providers":{"example":{"models":[]}}}\n';
-  const original = join(piAgentDir, "catalog.json");
+  const original = join(paths.home, "catalog.json");
   await writeFile(original, contents);
   await symlink(original, modelPath);
-  const copy = join((await create()).root, "models.json");
+  const box = await create();
+  const copy = join(box.agent_dir, "models.json");
+  assert.equal(box.models_path, copy);
+  assert.deepEqual(await fileNames(box.agent_dir), ["AGENTS.md", "auth.json", "models.json", "settings.json", "skills"]);
+  for (const [name, target] of [["AGENTS.md", agents], ["auth.json", auth], ["skills", skills]]) {
+    assert.equal(await readlink(join(box.agent_dir, name)), await realpath(target));
+  }
   assert.equal((await lstat(copy)).mode & 0o777, 0o600);
   assert.equal(await readFile(copy, "utf8"), contents);
   await writeFile(copy, "{}\n");
   assert.equal(await readFile(original, "utf8"), contents);
+  await rm(box.root, { recursive: true, force: true });
+  assert.equal(await readFile(auth, "utf8"), "shared auth");
+  assert.equal(await readFile(join(skills, "example.md"), "utf8"), "shared skill");
 
   const before = await fileNames(paths.capsules);
   await writeFile(original, Buffer.alloc(MIB + 1));
   await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID" });
-  await rm(modelPath);
-  await mkdir(modelPath);
+  await rm(original);
   await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID" });
-  await rm(modelPath, { recursive: true });
-  const outside = join(paths.home, "outside-models.json");
-  await writeFile(outside, contents);
-  await symlink(outside, modelPath);
-  await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID" });
-  await rm(outside);
+  await mkdir(original);
   await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID" });
   assert.deepEqual(await fileNames(paths.capsules), before);
 }));

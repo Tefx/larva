@@ -45,6 +45,8 @@ main { display: grid; gap: 12px; align-items: start }
 article { border: 1px solid var(--border); border-radius: var(--border-radius-md, 8px); padding: 10px; min-width: 0 }
 article .controls { margin-bottom: 8px }
 article .controls h2 { margin: 0 }
+.telemetry { list-style: none; padding: 0; margin: 0 0 8px }
+.telemetry li + li { border-top: 1px solid var(--border); padding-top: 6px }
 .notice { padding: 8px 10px; background: var(--subtle); border-inline-start: 3px solid }
 .warning { color: var(--color-text-warning, light-dark(#7b4b00, #ffd17a)) }
 .error, .cancel { color: var(--color-text-danger, light-dark(#a82323, #ff9e9e)) }
@@ -74,8 +76,10 @@ const app = String.raw`function (surface, modes) {
   const same = (a, b) => pair(a) && pair(b) && a.task_id === b.task_id && a.run_epoch === b.run_epoch;
   const captured = new Map();
   const cancelling = new Set();
+  const detailsOpen = new Set();
   const requests = new Map();
-  let sequence = 0, view = 0, pollTimer, poll, displayRequest, mode = modes[0];
+  let activity;
+  let sequence = 0, view = 0, renderVersion = 0, pollTimer, poll, displayRequest, mode = modes[0];
   let connection = 'connecting';
   let target = panel ? { kind: 'latest', query: { scope: 'recent' } } : { kind: 'pending' };
   let toolInput, initialResult;
@@ -109,10 +113,17 @@ const app = String.raw`function (surface, modes) {
     }
   }
 
+  function clearActivity() {
+    if (!activity) return;
+    activity = undefined;
+    retireRequests(kind => kind === 'activity');
+  }
+
   function stopObserving() {
     view++;
     clearTimeout(pollTimer);
     poll = undefined;
+    clearActivity();
     retireRequests(kind => kind === 'observer');
   }
 
@@ -122,6 +133,7 @@ const app = String.raw`function (surface, modes) {
     finishInvocation();
     stopObserving();
     retireRequests(() => true);
+    observer.disconnect();
     render();
   }
 
@@ -349,12 +361,45 @@ const app = String.raw`function (surface, modes) {
 
   function button(name, action, parent, options = {}) {
     const node = element('button', name, parent);
+    const version = renderVersion;
+    const current = () => version === renderVersion && visible() && connection !== 'closed';
     node.type = 'button';
-    node.onclick = action;
+    node.onclick = () => { if (current() && !node.disabled) action(current); };
     node.disabled = options.disabled ?? false;
     node.dataset.focusKey = options.key ?? name;
     if (options.pressed !== undefined) node.setAttribute('aria-pressed', String(options.pressed));
+    if (options.expanded !== undefined) node.setAttribute('aria-expanded', String(options.expanded));
     return node;
+  }
+
+  function copyButton(label, text, parent, id) {
+    if (typeof text !== 'string' || !text) return;
+    const feedback = element('span', '', parent);
+    feedback.setAttribute('role', 'status');
+    button(label, async current => {
+      let copied = false;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        }
+      } catch { /* A sandbox may deny Clipboard API access. */ }
+      if (!current()) return;
+      if (!copied) {
+        const focus = document.activeElement;
+        const field = element('textarea', undefined, parent);
+        field.value = text;
+        field.readOnly = true;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        try {
+          field.select();
+          copied = document.execCommand?.('copy') === true;
+        } catch { /* Fall back to user selection. */ }
+        finally { field.remove(); focus?.focus({ preventScroll: true }); }
+      }
+      feedback.textContent = copied ? 'Copied.' : 'Copy unavailable. Select the text to copy it manually.';
+    }, parent, { key: label + ':' + id });
   }
 
   function notice(text, style, parent = root) {
@@ -372,16 +417,27 @@ const app = String.raw`function (surface, modes) {
   function output(run, parent) {
     element('h3', 'Result', parent);
     const artifact = run.full_output_artifact?.path;
+    const text = run.result_text ?? run.result_preview;
+    const preview = run.result_preview ?? run.result_text;
+    const show = value => {
+      const pre = element('pre', value, parent);
+      pre.dataset.scrollKey = 'output:' + key(run);
+    };
     switch (run.output_state) {
-      case 'inline': element('pre', run.result_text ?? run.result_preview ?? '', parent); break;
+      case 'inline':
+        show(text ?? '');
+        copyButton('Copy output', text, parent, key(run));
+        break;
       case 'artifactized':
-        if (run.result_preview ?? run.result_text) element('pre', run.result_preview ?? run.result_text, parent);
+        if (preview) show(preview);
+        copyButton('Copy output preview', preview, parent, key(run));
         pathLine(artifact ? 'Full output artifact' : 'Recorded transcript', artifact ?? run.task_id, parent);
         break;
       case 'delivery_failed':
         notice((run.status === 'success' ? 'Execution succeeded, but output delivery failed.' : 'Output delivery failed.') +
           (run.output_diagnostic?.message ? ' ' + run.output_diagnostic.message : ''), 'warning', parent);
-        if (run.result_preview) element('pre', run.result_preview, parent);
+        if (run.result_preview) show(run.result_preview);
+        copyButton('Copy output preview', run.result_preview, parent, key(run));
         pathLine('Recorded transcript', run.task_id, parent);
         break;
       case 'evicted':
@@ -392,7 +448,62 @@ const app = String.raw`function (surface, modes) {
     }
   }
 
+  async function inspect(run, toolCall, part) {
+    if (!observing()) return;
+    clearActivity();
+    const request = activity = { runKey: key(run), callId: toolCall.tool_call_id, part, state: 'loading' };
+    render();
+    try {
+      const result = await tool('larva_subagent_activity', {
+        task_id: run.task_id, tool_call_id: request.callId, segment_part: part,
+      }, 'activity');
+      if (activity !== request || !observing()) return;
+      const data = dataOf(result);
+      const segment = data?.call?.segment;
+      if (result?.isError || data?.error) throw new Error(errorOf(result) ?? 'Recorded activity unavailable.');
+      if (data?.status === 'ambiguous') throw new Error('Multiple recorded calls match this tool ID. Inspect the recorded transcript.');
+      if (part === 'result' && data?.call?.result_state === 'ambiguous') throw new Error('The recorded result is ambiguous. Inspect the recorded transcript.');
+      if (data?.status !== 'success' || data.call?.call_id !== request.callId || segment?.part !== part || typeof segment.text !== 'string') {
+        throw new Error('No recorded ' + part + ' available for this call yet.');
+      }
+      Object.assign(request, { state: 'ready', text: segment.text, partial: segment.has_more || segment.upstream_truncated || data.inspection_complete === false });
+    } catch (error) {
+      if (activity !== request || !observing()) return;
+      Object.assign(request, { state: 'error', text: error.message });
+    }
+    render();
+  }
+
+  function recentTools(run, parent) {
+    if (!run.tool_snapshots?.length) return;
+    element('h3', 'Recent tool calls', parent);
+    const list = element('ul', undefined, parent);
+    list.className = 'telemetry';
+    for (const call of run.tool_snapshots.slice().reverse()) {
+      const item = element('li', undefined, list);
+      element('p', call.name + ' (' + call.status + ')', item);
+      if (call.args_preview) element('pre', call.args_preview, item);
+      const controls = element('div', undefined, item);
+      controls.className = 'controls';
+      const current = activity?.callId === call.tool_call_id ? activity : undefined;
+      const callKey = key(run) + ':' + call.tool_call_id;
+      for (const part of ['args', 'result']) button(part === 'args' ? 'Recorded args' : 'Recorded result', () => void inspect(run, call, part), controls, {
+        key: part + ':' + callKey, disabled: !observing() || (current?.part === part && current.state === 'loading'),
+      });
+      if (!current) continue;
+      button('Close recording', () => { clearActivity(); render(); }, controls, { key: 'close:' + callKey });
+      if (current.state === 'loading') notice('Loading recorded ' + current.part + '…', '', item);
+      else if (current.state === 'error') notice(current.text, 'error', item);
+      else {
+        element('h3', 'Recorded ' + current.part, item);
+        element('pre', current.text, item).dataset.scrollKey = current.part + ':' + callKey;
+        if (current.partial) notice('Partial recording. Inspect the transcript for more.', 'warning', item);
+      }
+    }
+  }
+
   const rowKey = row => row.kind === 'disk' ? 'disk:' + row.disk.task_id : key(row.run);
+  const selectedRow = () => rows.find(row => rowKey(row) === selected) ?? rows[0];
   const diskStatus = disk => ['active_external', 'unreconciled'].includes(disk.lock_state) ? 'Busy' : '';
   function rowLabel(row) {
     if (row.kind === 'disk') return [row.disk.task_id, row.disk.cwd, diskStatus(row.disk),
@@ -428,7 +539,7 @@ const app = String.raw`function (surface, modes) {
       return;
     }
     const main = element('main');
-    const row = rows.find(item => rowKey(item) === selected) ?? rows[0];
+    const row = selectedRow();
     selected = rowKey(row);
     if (panel || mode === 'fullscreen' || rows.length > 1) {
       const list = element('nav', undefined, main);
@@ -443,6 +554,7 @@ const app = String.raw`function (surface, modes) {
     if (row.kind === 'expired') {
       notice('Run snapshot expired (inspect recorded transcript)', 'warning', detail);
       pathLine('Recorded transcript', row.run.task_id, detail);
+      copyButton('Copy task_id', row.run.task_id, detail, key(row.run));
       return;
     }
     const run = row.run;
@@ -452,28 +564,65 @@ const app = String.raw`function (surface, modes) {
       pathLine('Recorded transcript', row.disk.task_id, detail);
       if (diskStatus(row.disk)) notice('Busy', 'warning', detail);
       if (row.disk.cwd_exists === false) notice('Missing workspace', 'warning', detail);
-      if (!run) return;
+      if (!run) {
+        copyButton('Copy task_id', row.disk.task_id, detail, rowKey(row));
+        return;
+      }
     }
     const bar = element('div', undefined, detail);
     bar.className = 'controls';
     const heading = element('h2', run.persona_id ?? 'Subagent run', bar);
     heading.dir = 'auto';
-    element('span', phase(run) ?? 'Pending', bar).className = run.phase === 'stall_suspected' ? 'warning' : '';
+    const status = ({ accepted: 'Accepted', running: 'Running' })[run.status];
+    element('span', [status, phase(run) ?? 'Pending'].filter(Boolean).join(' · '), bar)
+      .className = run.phase === 'stall_suspected' ? 'warning' : '';
+    const route = [run.model, run.thinking && 'thinking: ' + run.thinking].filter(Boolean).join(' · ');
+    if (route) element('span', route, bar);
+    if (run.active_tool) element('span', run.active_tool.name + ' (' + run.active_tool.status + ')', bar);
+    if (run.live_thinking) element('span', 'Thinking…', bar);
+    const id = key(run);
     if (active(run) && observing()) button('Cancel', () => void cancel(run), bar, {
-      key: 'cancel:' + key(run), disabled: loading || !!readError || cancelling.has(key(run)),
+      key: 'cancel:' + id, disabled: loading || !!readError || cancelling.has(id),
     }).className = 'cancel';
+    if (!panel) {
+      const open = detailsOpen.has(id);
+      button(open ? 'Hide details' : 'Details', () => {
+        if (open) detailsOpen.delete(id);
+        else detailsOpen.add(id);
+        render();
+      }, bar, { key: 'details:' + id, expanded: open });
+      if (!open) return;
+    }
     if (row.kind !== 'disk') {
       pathLine('Workspace', run.cwd, detail);
       pathLine('Session', run.task_id, detail);
     }
+    copyButton('Copy task_id', run.task_id, detail, id);
     if (run.error?.message) notice(run.error.message, 'error', detail);
+    if (run.task_preview) {
+      element('h3', 'Task preview', detail);
+      element('pre', run.task_preview, detail);
+      copyButton('Copy prompt', run.task_preview, detail, id);
+    }
+    if (run.live_assistant_preview) {
+      element('h3', 'Live assistant preview', detail);
+      element('pre', run.live_assistant_preview, detail);
+    }
+    recentTools(run, detail);
     output(run, detail);
-    const result = detail.querySelector('pre');
-    if (result) result.dataset.scrollKey = 'output:' + key(run);
   }
 
   function render() {
     if (!visible() || connection === 'closed') return;
+    renderVersion++;
+    const liveKeys = new Set(rows.filter(row => row.kind !== 'expired' && row.run).map(row => key(row.run)));
+    for (const id of detailsOpen) if (!liveKeys.has(id)) detailsOpen.delete(id);
+    if (activity) {
+      const row = selectedRow();
+      const run = row?.run;
+      if (row?.kind === 'expired' || !run || key(run) !== activity.runKey || (!panel && !detailsOpen.has(activity.runKey)) ||
+          !run.tool_snapshots?.some(call => call.tool_call_id === activity.callId)) clearActivity();
+    }
     const focus = document.activeElement?.dataset?.focusKey;
     const scroll = new Map(Array.from(root.querySelectorAll('[data-scroll-key]'), node => [node.dataset.scrollKey, node.scrollTop]));
     document.documentElement.dataset.mode = mode;

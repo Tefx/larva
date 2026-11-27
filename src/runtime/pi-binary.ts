@@ -1,10 +1,11 @@
 import { constants } from "node:fs";
-import { access, open, realpath, stat } from "node:fs/promises";
-import { homedir } from "node:os";
+import { access, realpath, stat } from "node:fs/promises";
 import { basename, delimiter, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { LarvaError } from "../core/errors.ts";
+import { resolveBasePiAgentDir } from "../core/paths.ts";
 import type { ResolvedModelRoute } from "../core/types.ts";
+import { readBoundedRegularText } from "../store/bounded-read.ts";
 
 const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 const MAX_MANIFEST_BYTES = 1_048_576;
@@ -23,24 +24,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isWithin(root: string, path: string): boolean {
   const rel = relative(root, path);
   return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
-}
-
-async function readSmallFile(path: string, limit: number): Promise<string> {
-  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK);
-  try {
-    const info = await file.stat();
-    if (!info.isFile() || info.size > limit) throw new Error("Invalid Pi metadata file.");
-    const bytes = Buffer.allocUnsafe(info.size + 1);
-    let used = 0;
-    while (used < bytes.length) {
-      const { bytesRead } = await file.read(bytes, used, bytes.length - used, null);
-      if (bytesRead === 0) return new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used));
-      used += bytesRead;
-    }
-    throw new Error("Pi metadata changed while being read.");
-  } finally {
-    await file.close();
-  }
 }
 
 async function registryEntry(directory: string, pkg: Record<string, unknown>): Promise<string | undefined> {
@@ -64,7 +47,7 @@ async function inspectPiScript(candidate: string): Promise<PiInstallation | unde
     for (;;) {
       let raw: string;
       try {
-        raw = await readSmallFile(join(directory, "package.json"), MAX_MANIFEST_BYTES);
+        raw = await readBoundedRegularText(join(directory, "package.json"), { maxBytes: MAX_MANIFEST_BYTES });
       } catch (error) {
         if (!isRecord(error) || error.code !== "ENOENT" || dirname(directory) === directory) return undefined;
         directory = dirname(directory);
@@ -92,7 +75,7 @@ async function inspectManagedLauncher(candidate: string): Promise<PiInstallation
     if (basename(launcher) !== "pi" || basename(dirname(launcher)) !== "bin"
       || !(await stat(launcher)).isFile()) return undefined;
     const install = await realpath(join(dirname(dirname(launcher)), "install"));
-    const release = (await readSmallFile(join(install, "current-version"), 256)).trim();
+    const release = (await readBoundedRegularText(join(install, "current-version"), { maxBytes: 256 })).trim();
     if (!/^[0-9A-Za-z._+-]+$/.test(release) || release === "." || release === "..") return undefined;
     const releaseRoot = join(install, "releases", release);
     const bin = join(releaseRoot, "node_modules", ".bin", "pi");
@@ -132,7 +115,7 @@ export async function discoverPiInstallation(env: NodeJS.ProcessEnv = process.en
 export async function resolveModelInRegistry(
   installation: PiInstallation,
   route: ResolvedModelRoute,
-  agentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"),
+  agentDir?: string,
 ): Promise<ResolvedModelRoute | null> {
   try {
     if (installation.registryEntry === undefined) throw new Error("No Pi registry entry.");
@@ -140,7 +123,9 @@ export async function resolveModelInRegistry(
     if (!isRecord(sdk) || typeof sdk.ModelRegistry !== "function"
       || typeof sdk.ModelRuntime !== "function" || !("create" in sdk.ModelRuntime)
       || typeof sdk.ModelRuntime.create !== "function") throw new Error("No Pi registry API.");
-    const dir = agentDir.startsWith("~/") ? join(homedir(), agentDir.slice(2)) : resolve(agentDir);
+    const dir = resolveBasePiAgentDir(agentDir === undefined ? process.env : {
+      HOME: process.env.HOME, PI_CODING_AGENT_DIR: agentDir || ".",
+    });
     const modelsPath = join(dir, "models.json");
     const info = await stat(modelsPath).catch((error: unknown) => {
       if (!isRecord(error) || error.code !== "ENOENT") throw error;

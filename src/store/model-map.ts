@@ -1,11 +1,10 @@
 import { constants } from "node:fs";
-import { lstat, open, realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { loadModelMap, type ModelMapReader } from "../core/model-map.ts";
 import { resolveContainedPath } from "../core/paths.ts";
 import type { ModelMapDoc } from "../core/types.ts";
+import { readBoundedRegularText as readRegularText } from "./bounded-read.ts";
 import { isErrno } from "./capsule.ts";
-
-const MAX_CONFIG_BYTES = 1_048_576;
 
 export async function entryExists(path: string): Promise<boolean> {
   try {
@@ -17,22 +16,8 @@ export async function entryExists(path: string): Promise<boolean> {
   }
 }
 
-export async function readBoundedRegularText(path: string, flags = 0): Promise<string> {
-  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK | flags);
-  try {
-    const info = await file.stat();
-    if (!info.isFile() || info.size > MAX_CONFIG_BYTES) throw new Error("Invalid configuration file size or type.");
-    const bytes = Buffer.allocUnsafe(info.size + 1);
-    let used = 0;
-    while (used < bytes.length) {
-      const { bytesRead } = await file.read(bytes, used, bytes.length - used, null);
-      if (bytesRead === 0) return new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used));
-      used += bytesRead;
-    }
-    throw new Error("Configuration file grew while being read.");
-  } finally {
-    await file.close();
-  }
+export function readBoundedRegularText(path: string, flags = 0): Promise<string> {
+  return readRegularText(path, { maxBytes: 1_048_576, flags });
 }
 
 export function diskModelMapReader(home: string): ModelMapReader {

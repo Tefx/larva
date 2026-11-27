@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { access, mkdir, mkdtemp, readFile, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -34,7 +34,7 @@ const send = frame => process.stdout.write(JSON.stringify(frame)+'\\n');
 const settled = () => send({type:'agent_settled', aborted:false});
 let task, outputRequest, outputReleased = false;
 const reply = (q, data) => send({type:'response', id:q.id, command:q.type, success:true, data});
-const output = q => reply(q, {text:'result: '+task});
+const output = q => reply(q, {text:task === 'complete-path' ? process.env.PATH : 'result: '+task});
 process.on('SIGUSR2', settled);
 process.on('SIGWINCH', () => { outputReleased = true; if (outputRequest) output(outputRequest); });
 createInterface({input:process.stdin}).on('line', line => {
@@ -66,7 +66,7 @@ async function setup(home: string) {
     writeFile(join(pi, "registry.mjs"), `export class ModelRuntime { static async create() { return {}; } }
       export class ModelRegistry { getError() {} find(provider,id) { if (provider === 'local' && id === 'one') return {provider,id}; } }`),
   ]);
-  const env = { HOME: home, PATH: process.env.PATH, LARVA_HOME: home, PI_CODING_AGENT_DIR: agent, LARVA_PI_CLI_SCRIPT: join(pi, "cli.mjs") };
+  const env: NodeJS.ProcessEnv = { HOME: home, PATH: process.env.PATH, LARVA_HOME: home, PI_CODING_AGENT_DIR: agent, LARVA_PI_CLI_SCRIPT: join(pi, "cli.mjs") };
   return { home, work, host, env, async bundle() {
     await build({
       absWorkingDir: repo, entryPoints: ["src/mcp-server.ts", "src/child-rpc-preload.ts"], outdir: home,
@@ -247,6 +247,26 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     assert.equal(absent.structuredContent.results[0].outcome, "not_found");
     c.child.stdin.end();
     assert.deepEqual(await c.exit, { code: 0, signal: null, stderr: "" });
+  });
+}));
+
+test("MCP appends existing GUI PATH fallbacks without duplicating a supplied directory", () => fixture(async f => {
+  const local = join(f.home, ".local", "bin"), configured = join(f.home, ".pi", "agent", "bin");
+  await Promise.all([local, configured].map(dir => mkdir(dir, { recursive: true })));
+  const script = f.env.LARVA_PI_CLI_SCRIPT!;
+  await chmod(script, 0o700);
+  await symlink(script, join(local, "pi"));
+  delete f.env.LARVA_PI_CLI_SCRIPT;
+  f.env.PATH = configured;
+  const expected = [configured, local];
+  for (const dir of ["/opt/homebrew/bin", "/usr/local/bin"]) {
+    if ((await stat(dir).catch(() => undefined))?.isDirectory()) expected.push(dir);
+  }
+  await withServer(f, server, async c => {
+    const { isError, structuredContent } = await c.call("larva_subagent", { ...input, task: "complete-path", cwd: f.work, wait_for_completion: true });
+    assert.equal(isError, false, JSON.stringify(structuredContent));
+    assert.equal(structuredContent.status, "success");
+    assert.equal(structuredContent.result_text, expected.join(delimiter));
   });
 }));
 

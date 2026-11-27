@@ -1,10 +1,9 @@
 import { readdir } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadLarvaConfig } from "../core/config.ts";
 import { LarvaError, toErrorEnvelope } from "../core/errors.ts";
 import { isValidProfileName, resolveModelRoute } from "../core/model-map.ts";
-import { getLarvaHomePaths, modelMapProfilePath, resolveLarvaHome } from "../core/paths.ts";
+import { getLarvaHomePaths, modelMapProfilePath, resolveBasePiAgentDir, resolveLarvaHome } from "../core/paths.ts";
 import type { DoctorReport, ModelMapDoc, PersonaSpec } from "../core/types.ts";
 import { discoverPiInstallation, resolveModelInRegistry } from "../runtime/pi-binary.ts";
 import { isErrno } from "../store/capsule.ts";
@@ -86,10 +85,7 @@ export async function runDoctor({ env = process.env, profile }: DoctorOptions = 
     const pi = await discoverPiInstallation(env);
     report.pi = { path: pi.path, ...(pi.version === undefined ? {} : { version: pi.version }) };
     if (selected !== undefined) {
-      const userHome = env.HOME || homedir();
-      const configuredDir = env.PI_CODING_AGENT_DIR;
-      const agentDir = configuredDir?.startsWith("~/") ? join(userHome, configuredDir.slice(2))
-        : configuredDir || join(userHome, ".pi", "agent");
+      const agentDir = resolveBasePiAgentDir(env);
       for (const persona of personas) {
         try {
           const route = resolveModelRoute(persona.model, selected.map);

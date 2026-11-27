@@ -116,7 +116,7 @@ async function setup(root: string, cleanup: (() => Promise<unknown>)[], options:
     subagent: { extension_sources: options.modelsOnly ? [] : [provider] }, ...fields,
   }));
   await config({});
-  for (const file of ["mcp-server.mjs", "pi-extension.js", "child-rpc-preload.mjs", "timeline-worker.mjs"]) {
+  for (const file of ["mcp-server.mjs", "pi-extension.js", "child-rpc-preload.mjs"]) {
     await copyFile(join(dist, file), join(cache, file));
   }
   await writeFile(join(cache, "package.json"), '{"type":"module"}\n');

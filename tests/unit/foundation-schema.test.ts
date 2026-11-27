@@ -153,7 +153,7 @@ test("build check rejects TUI references in headless source, old bundles, and ne
   assert.match(bareBuiltin.stderr, /forbidden external import: util/);
 });
 
-test("dist-only and full modes emit self-contained bundles and only full mode updates Codex", t => {
+test("dist-only and full replace stale bundles, only full updates Codex, and check-only leaves outputs alone", t => {
   const fixture = buildFixture(t);
   const pluginManifest = "plugins/codex/.codex-plugin/plugin.json";
   const packageVersion: string = JSON.parse(fixture.read("package.json")).version;
@@ -161,12 +161,32 @@ test("dist-only and full modes emit self-contained bundles and only full mode up
   fixture.write("src/pi-extension.ts", 'export { Text } from "@earendil-works/pi-tui";\n');
   fixture.write("src/cli.ts", '#!/usr/bin/env node\nconsole.log(__LARVA_VERSION__);\n');
   fixture.write("src/mcp-server.ts", 'export const version = __LARVA_VERSION__;\n');
-  fixture.write("src/child-rpc-preload.ts", 'export { format } from "node:util";\n');
-  fixture.write("src/timeline-worker.ts", 'export { parentPort } from "node:worker_threads";\n');
+  const preloadSource = "src/child-rpc-preload.ts";
+  const shared = ["child-rpc-preload.mjs", "mcp-server.mjs", "pi-extension.js"];
+  const rootBundles = [...shared, "cli.mjs"].sort();
+  const rootStale = "dist/.gitignore";
+  const codexStale = "plugins/codex/dist/old.mjs";
+  const previous = "previous output\n";
+  fixture.write(rootStale, previous);
+  fixture.write(codexStale, previous);
+  fixture.write("dist/cli.mjs", previous);
+
+  const failed = runBuild(fixture.path);
+  assert.equal(failed.status, 1, failed.stderr);
+  assert.match(failed.stderr, /child-rpc-preload\.ts/);
+  for (const path of [rootStale, codexStale, "dist/cli.mjs"]) assert.equal(fixture.read(path), previous);
+  fixture.write(preloadSource, 'export { format } from "node:util";\n');
+
+  const check = runBuild(fixture.path, "--check-only");
+  assert.equal(check.status, 0, check.stderr);
+  assert.deepEqual(readdirSync(join(fixture.path, "dist")).sort(), [".gitignore", "cli.mjs"]);
+  for (const path of [rootStale, codexStale, "dist/cli.mjs"]) assert.equal(fixture.read(path), previous);
 
   const dist = runBuild(fixture.path, "--dist-only");
   assert.equal(dist.status, 0, dist.stderr);
-  assert.deepEqual(readdirSync(join(fixture.path, "plugins/codex")), [".codex-plugin"]);
+  assert.deepEqual(readdirSync(join(fixture.path, "dist")).sort(), rootBundles);
+  assert.deepEqual(readdirSync(join(fixture.path, "plugins/codex/dist")), ["old.mjs"]);
+  assert.equal(fixture.read(codexStale), previous);
   assert.equal(JSON.parse(fixture.read(pluginManifest)).version, "0.0.0");
   const cli = join(fixture.path, "dist/cli.mjs");
   assert.match(fixture.read("dist/cli.mjs"), /^#!\/usr\/bin\/env node\n[^#]/);
@@ -176,11 +196,12 @@ test("dist-only and full modes emit self-contained bundles and only full mode up
   assert.equal(invoked.status, 0, invoked.stderr);
   assert.equal(invoked.stdout.trim(), packageVersion);
 
+  fixture.write(rootStale, previous);
+  fixture.write("dist/stale.mjs", 'import "@earendil-works/pi-tui";\n');
   const full = runBuild(fixture.path);
   assert.equal(full.status, 0, full.stderr);
   assert.equal(JSON.parse(fixture.read(pluginManifest)).version, packageVersion);
-  const shared = ["child-rpc-preload.mjs", "mcp-server.mjs", "pi-extension.js", "timeline-worker.mjs"];
-  assert.deepEqual(readdirSync(join(fixture.path, "dist")).sort(), [...shared, "cli.mjs"].sort());
+  assert.deepEqual(readdirSync(join(fixture.path, "dist")).sort(), rootBundles);
   assert.deepEqual(readdirSync(join(fixture.path, "plugins/codex/dist")).sort(), [...shared, "package.json"].sort());
   for (const name of shared) assert.equal(fixture.read(`plugins/codex/dist/${name}`), fixture.read(`dist/${name}`));
   assert.deepEqual(JSON.parse(fixture.read("plugins/codex/dist/package.json")), { type: "module" });

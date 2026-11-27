@@ -6,6 +6,9 @@ import { LarvaError, type ErrorInfo } from "../core/errors.ts";
 import { getLarvaHomePaths, resolveLarvaHome } from "../core/paths.ts";
 import { isValidPersonaId, parsePersonaInput, toPersonaSummary } from "../core/persona.ts";
 import type { PersonaInputFormat, PersonaSpec, PersonaSummary, PersonasToolInput } from "../core/types.ts";
+import { readBoundedRegularBytes } from "./bounded-read.ts";
+
+const MAX_PERSONA_BYTES = 1_048_576;
 
 const formats = ["md", "json"] as const;
 const maxDiagnostics = 100;
@@ -62,16 +65,10 @@ function assertId(id: string): void {
 
 async function readPersonaFile(path: string, installed = false) {
   try {
-    // Non-blocking open prevents a non-regular entry (e.g. a FIFO) from stalling a reader.
-    const flags = constants.O_RDONLY | constants.O_NONBLOCK | (installed ? constants.O_NOFOLLOW : 0);
-    const file = await open(path, flags);
-    try {
-      const metadata = await file.stat({ bigint: true });
-      if (!metadata.isFile()) throw new Error("Expected a regular persona file.");
-      return { bytes: await file.readFile(), metadata };
-    } finally {
-      await file.close();
-    }
+    return await readBoundedRegularBytes(path, {
+      maxBytes: MAX_PERSONA_BYTES,
+      flags: installed ? constants.O_NOFOLLOW : 0,
+    });
   } catch {
     throw unreadable(path);
   }
@@ -92,6 +89,9 @@ async function loadInput(target: string, { prune, stdinText }: PersonaPutOptions
   if (target === "-") {
     if (prune) throw badPrune();
     if (stdinText === undefined) throw new LarvaError("LARVA_BAD_INPUT", "Persona stdin text is required.");
+    if (Buffer.byteLength(stdinText, "utf8") > MAX_PERSONA_BYTES) {
+      throw new LarvaError("LARVA_PERSONA_INVALID", "Persona stdin exceeds 1 MiB.");
+    }
     const bytes = Buffer.from(stdinText, "utf8");
     const text = bytes.toString("utf8");
     return [{ spec: parsePersonaInput(text), format: text.trimStart().startsWith("{") ? "json" : "md", bytes }];

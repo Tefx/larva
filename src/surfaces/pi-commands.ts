@@ -1,8 +1,12 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { readdir } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { LarvaError, toErrorEnvelope } from "../core/errors.ts";
+import { isValidProfileName } from "../core/model-map.ts";
+import { modelMapProfilePath } from "../core/paths.ts";
 import type { ModelMapOutcome, SessionContext } from "../runtime/session-context.ts";
 import type { SubagentSupervisor } from "../runtime/supervisor.ts";
+import { loadDiskModelMap } from "../store/model-map.ts";
 import type { PersonaStore } from "../store/persona-store.ts";
 import { selectPersona, terminalText } from "../ui/pi-selector-tui.ts";
 import { openSubagentConsole } from "../ui/pi-subagent-console-tui.ts";
@@ -45,15 +49,41 @@ export function registerPiCommands(pi: ExtensionAPI, current: () => {
     getArgumentCompletions: async query => current().session.personaCandidates(query, "command"),
     handler: choosePersona,
   });
-  pi.registerShortcut("ctrl+alt+p", { description: "Open the Larva persona selector", handler: ctx => choosePersona("", ctx) });
+  pi.registerShortcut("ctrl+alt+p", {
+    description: "Open the Larva persona selector",
+    handler(ctx) {
+      if (typeof ctx.isIdle === "function" && !ctx.isIdle()) {
+        ctx.ui.notify("Wait for the active turn to finish before changing personas.", "warning");
+        return;
+      }
+      return choosePersona("", ctx);
+    },
+  });
+  const completions = (names: string[], query: string) => names.filter(name => name.startsWith(query.trim().toLowerCase()))
+    .map(value => ({ value, label: value }));
   pi.registerCommand("larva-mode", {
     description: "Inspect or set the Larva switch mode (manual, confirm, auto, free)",
+    getArgumentCompletions: query => completions(["manual", "confirm", "auto", "free"], query),
     handler: handle("larva-mode", async args => {
       await current().session.setMode(args || undefined).catch(() => { /* Already reported. */ });
     }),
   });
   pi.registerCommand("larva-model-map", {
     description: "Inspect or switch the Larva model-map profile",
+    async getArgumentCompletions(query) {
+      const { home } = current().supervisor;
+      const names = (await readdir(home).catch(() => [])).flatMap(file => {
+        const name = /^model-map\.(.+)\.json$/.exec(file)?.[1];
+        return isValidProfileName(name) ? [name] : [];
+      }).sort();
+      const matches = [];
+      for (const item of completions(["default", ...names], query)) {
+        if (item.value === "default" || await loadDiskModelMap(home, modelMapProfilePath(home, item.value)).catch(() => undefined)) {
+          matches.push(item);
+        }
+      }
+      return matches;
+    },
     handler: handle("larva-model-map", async (profile, ctx) => {
       reportPiOutcome(ctx, "larva-model-map", await modelMap(profile || undefined));
     }),

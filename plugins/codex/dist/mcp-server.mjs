@@ -6,10 +6,38 @@ var __export = (target, all) => {
 
 // src/mcp-server.ts
 import { randomUUID as randomUUID5 } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, stat as stat7 } from "node:fs/promises";
+import { homedir as homedir3 } from "node:os";
+import { delimiter as delimiter2, join as join11 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/core/errors.ts
+var ALL_LARVA_ERROR_CODES = [
+  "LARVA_BAD_INPUT",
+  "LARVA_CONFIG_INVALID",
+  "LARVA_MODEL_MAP_INVALID",
+  "LARVA_MODEL_UNAVAILABLE",
+  "LARVA_PERSONA_INVALID",
+  "LARVA_PERSONA_NOT_FOUND",
+  "LARVA_PERSONA_CONFLICT",
+  "LARVA_STORE_WRITE_FAILED",
+  "LARVA_NO_ACTIVE_PERSONA",
+  "LARVA_TOOL_DENIED",
+  "LARVA_SPAWN_NOT_ALLOWED",
+  "LARVA_CONFIRMATION_UNAVAILABLE",
+  "LARVA_SWITCH_CHAIN_LIMIT",
+  "LARVA_ROUTE_UNCERTAIN",
+  "LARVA_RESTORE_FAILED",
+  "LARVA_CWD_REQUIRED",
+  "LARVA_SESSION_INVALID",
+  "LARVA_SESSION_NOT_FOUND",
+  "LARVA_SESSION_BUSY",
+  "LARVA_CHILD_START_FAILED",
+  "LARVA_CHILD_PROTOCOL_FAILED",
+  "LARVA_CHILD_CANCELLED",
+  "LARVA_INTERNAL_ERROR",
+  "LARVA_CLI_USAGE"
+];
 var LarvaError = class extends Error {
   code;
   details;
@@ -33,7 +61,7 @@ function toErrorEnvelope(err) {
 // src/runtime/supervisor.ts
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { lstat as lstat7, realpath as realpath6, rename as rename5, rm as rm3, stat as stat5 } from "node:fs/promises";
-import { basename as basename8, dirname as dirname5, isAbsolute as isAbsolute4, join as join10, resolve as resolve5 } from "node:path";
+import { basename as basename8, dirname as dirname5, isAbsolute as isAbsolute4, join as join10, resolve as resolve4 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // src/core/config.ts
@@ -897,11 +925,39 @@ __export(capsule_exports, {
   writeMetadata: () => writeMetadata
 });
 import { randomBytes } from "node:crypto";
-import { constants } from "node:fs";
-import { access, lstat as lstat2, mkdir as mkdir2, open as open2, opendir, realpath, rename as rename2, rm, stat, writeFile } from "node:fs/promises";
+import { constants as constants2 } from "node:fs";
+import { access, lstat as lstat2, mkdir as mkdir2, open as open3, opendir, realpath, rename as rename2, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { homedir as homedir2 } from "node:os";
-import { basename as basename3, dirname, join as join5, resolve as resolve2 } from "node:path";
-var { O_RDONLY, O_NONBLOCK, O_NOFOLLOW, R_OK, X_OK } = constants;
+import { basename as basename3, dirname, join as join5 } from "node:path";
+
+// src/store/bounded-read.ts
+import { constants } from "node:fs";
+import { open as open2 } from "node:fs/promises";
+var decoder = new TextDecoder("utf-8", { fatal: true });
+async function readBoundedRegularBytes(path, { maxBytes, flags = 0 }) {
+  const file = await open2(path, constants.O_RDONLY | constants.O_NONBLOCK | flags);
+  try {
+    const metadata = await file.stat({ bigint: true });
+    if (!metadata.isFile() || metadata.size > maxBytes) throw new Error("Invalid regular file size or type.");
+    const bytes = Buffer.allocUnsafe(Number(metadata.size) + 1);
+    let used = 0;
+    while (used < bytes.length) {
+      const { bytesRead } = await file.read(bytes, used, bytes.length - used, null);
+      if (bytesRead === 0) return { bytes: bytes.subarray(0, used), metadata };
+      used += bytesRead;
+    }
+    throw new Error("File grew while being read.");
+  } finally {
+    await file.close();
+  }
+}
+async function readBoundedRegularText(path, options) {
+  const { bytes } = await readBoundedRegularBytes(path, options);
+  return decoder.decode(bytes);
+}
+
+// src/store/capsule.ts
+var { O_RDONLY, O_NONBLOCK, O_NOFOLLOW, R_OK, X_OK } = constants2;
 var CAPSULE_NAME = /^child-([1-9][0-9]*)-[a-f0-9]+$/;
 var MAX_TREE_DEPTH = 100;
 var MAX_CENSUS_ENTRIES = 1e4;
@@ -932,7 +988,7 @@ async function privateDirectory(path) {
   }
 }
 async function readMetadata(path) {
-  const file = await open2(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
+  const file = await open3(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
   try {
     const buffer = Buffer.alloc(65537);
     if (!(await file.stat()).isFile()) throw new Error("Expected regular metadata file.");
@@ -954,7 +1010,7 @@ async function writeMetadata(path, value) {
   const bytes = Buffer.from(JSON.stringify(value));
   if (bytes.length > 65536) throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Metadata exceeds the write limit.");
   const temp = `${path}.tmp.${process.pid}.${randomBytes(16).toString("hex")}`;
-  const file = await open2(temp, "wx", 384);
+  const file = await open3(temp, "wx", 384);
   try {
     try {
       await file.writeFile(bytes);
@@ -968,39 +1024,41 @@ async function writeMetadata(path, value) {
     throw error;
   }
 }
-async function readPiConfig(path, name, flags) {
-  const file = await open2(path, O_RDONLY | O_NONBLOCK | flags);
+var missingBase = (error) => isErrno(error, "ENOENT") || isErrno(error, "ENOTDIR");
+async function snapshotPiConfig(agentDir, name) {
+  const path = join5(agentDir, name);
   try {
-    const limit = 1048576;
-    const entry = await file.stat();
-    if (!entry.isFile() || entry.size > limit) {
-      throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} must be a regular file of at most 1 MiB.`);
+    if (name === "models.json") {
+      const entry = await lstat2(path).catch((error) => {
+        if (!missingBase(error)) throw error;
+      });
+      if (!entry) return void 0;
+      return (await readBoundedRegularBytes(await realpath(path), { maxBytes: 1048576, flags: O_NOFOLLOW })).bytes;
     }
-    const bytes = Buffer.alloc(limit + 1);
-    let used = 0;
-    while (used < bytes.length) {
-      const { bytesRead } = await file.read(bytes, used, bytes.length - used, used);
-      if (bytesRead === 0) return bytes.subarray(0, used);
-      used += bytesRead;
-    }
-    throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} exceeds 1 MiB.`);
-  } finally {
-    await file.close();
+    return (await readBoundedRegularBytes(path, { maxBytes: 1048576 }).catch((error) => {
+      if (!missingBase(error)) throw error;
+    }))?.bytes;
+  } catch {
+    throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} must be a readable regular file of at most 1 MiB.`);
   }
 }
-async function readModels(agentDir) {
-  const root = resolve2(agentDir);
-  const path = join5(root, "models.json");
-  try {
+var privatePiEntries = /* @__PURE__ */ new Set(["settings.json", "models.json", "sessions", "backups", "crashes.json"]);
+async function projectPiResources(base, agentDir) {
+  const entries = await opendir(base).catch((error) => {
+    if (!missingBase(error)) throw error;
+  });
+  if (!entries) return;
+  for await (const { name } of entries) {
+    if (privatePiEntries.has(name) || name.endsWith("-debug.log") || name.endsWith(".lock")) continue;
+    let target, info;
     try {
-      await lstat2(path);
+      target = await realpath(join5(base, name));
+      info = await stat(target);
     } catch (error) {
-      if (isErrno(error, "ENOENT")) return void 0;
+      if (missingBase(error) || isErrno(error, "ELOOP")) continue;
       throw error;
     }
-    return await readPiConfig(await resolveContainedPath(root, path, realpath), "models.json", O_NOFOLLOW);
-  } catch {
-    throw new LarvaError("LARVA_CONFIG_INVALID", "Pi models.json must be a readable, contained regular file of at most 1 MiB.");
+    if (info.isFile() || info.isDirectory()) await symlink(target, join5(agentDir, name), info.isDirectory() ? "dir" : "file");
   }
 }
 async function createCapsule(options) {
@@ -1019,19 +1077,21 @@ async function createCapsule(options) {
         await access(path, entry.isDirectory() ? R_OK | X_OK : R_OK);
       }
     }),
-    readPiConfig(join5(options.pi_agent_dir, "settings.json"), "settings.json", 0).catch((error) => {
-      if (isErrno(error, "ENOENT")) return Buffer.from("{}\n");
-      throw error;
-    }),
-    readModels(options.pi_agent_dir)
+    snapshotPiConfig(options.pi_agent_dir, "settings.json"),
+    snapshotPiConfig(options.pi_agent_dir, "models.json")
   ]);
+  const agent_dir = join5(root, "agent");
+  const settings_path = join5(agent_dir, "settings.json");
+  const models_path = models === void 0 ? void 0 : join5(agent_dir, "models.json");
   await mkdir2(root, { mode: 448 });
   try {
     await mkdir2(join5(root, "descendants"), { mode: 448 });
-    await writeFile(join5(root, "settings.json"), settings, { mode: 384, flag: "wx" });
-    if (models !== void 0) await writeFile(join5(root, "models.json"), models, { mode: 384, flag: "wx" });
+    await mkdir2(agent_dir, { mode: 448 });
+    await writeFile(settings_path, settings ?? "{}\n", { mode: 384, flag: "wx" });
+    if (models !== void 0 && models_path !== void 0) await writeFile(models_path, models, { mode: 384, flag: "wx" });
+    await projectPiResources(options.pi_agent_dir, agent_dir);
     await writeMetadata(join5(root, "owner.json"), { owner_pid: process.pid, state: "reserving" });
-    return { root, extension_sources };
+    return { root, agent_dir, settings_path, models_path, extension_sources };
   } catch (error) {
     await rm(root, { recursive: true, force: true });
     throw error;
@@ -1150,9 +1210,8 @@ async function inspectCapsule(home, root, leaseChildPid, ownerMode = "exited") {
 }
 
 // src/store/model-map.ts
-import { constants as constants2 } from "node:fs";
-import { lstat as lstat3, open as open3, realpath as realpath2 } from "node:fs/promises";
-var MAX_CONFIG_BYTES = 1048576;
+import { constants as constants3 } from "node:fs";
+import { lstat as lstat3, realpath as realpath2 } from "node:fs/promises";
 async function entryExists(path) {
   try {
     await lstat3(path);
@@ -1162,29 +1221,15 @@ async function entryExists(path) {
     throw error;
   }
 }
-async function readBoundedRegularText(path, flags = 0) {
-  const file = await open3(path, constants2.O_RDONLY | constants2.O_NONBLOCK | flags);
-  try {
-    const info = await file.stat();
-    if (!info.isFile() || info.size > MAX_CONFIG_BYTES) throw new Error("Invalid configuration file size or type.");
-    const bytes = Buffer.allocUnsafe(info.size + 1);
-    let used = 0;
-    while (used < bytes.length) {
-      const { bytesRead } = await file.read(bytes, used, bytes.length - used, null);
-      if (bytesRead === 0) return new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used));
-      used += bytesRead;
-    }
-    throw new Error("Configuration file grew while being read.");
-  } finally {
-    await file.close();
-  }
+function readBoundedRegularText2(path, flags = 0) {
+  return readBoundedRegularText(path, { maxBytes: 1048576, flags });
 }
 function diskModelMapReader(home) {
   return {
     entryExists,
     resolveContainedPath: (_root, path) => resolveContainedPath(home, path, realpath2),
     // The selected entry can be a symlink; open its resolved target instead.
-    readText: (path) => readBoundedRegularText(path, constants2.O_NOFOLLOW)
+    readText: (path) => readBoundedRegularText2(path, constants3.O_NOFOLLOW)
   };
 }
 function loadDiskModelMap(home, path) {
@@ -1193,13 +1238,14 @@ function loadDiskModelMap(home, path) {
 
 // src/store/persona-store.ts
 import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
-import { constants as constants3 } from "node:fs";
+import { constants as constants4 } from "node:fs";
 import { lstat as lstat4, mkdir as mkdir3, open as open4, readdir, rename as rename3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
 import { basename as basename4, extname as extname2, join as join6 } from "node:path";
+var MAX_PERSONA_BYTES = 1048576;
 var formats = ["md", "json"];
 var maxDiagnostics = 100;
 var maxCachedPersonas = 128;
-var decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+var decoder2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 function isMissing(error) {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
@@ -1234,15 +1280,10 @@ function assertId(id) {
 }
 async function readPersonaFile(path, installed = false) {
   try {
-    const flags = constants3.O_RDONLY | constants3.O_NONBLOCK | (installed ? constants3.O_NOFOLLOW : 0);
-    const file = await open4(path, flags);
-    try {
-      const metadata = await file.stat({ bigint: true });
-      if (!metadata.isFile()) throw new Error("Expected a regular persona file.");
-      return { bytes: await file.readFile(), metadata };
-    } finally {
-      await file.close();
-    }
+    return await readBoundedRegularBytes(path, {
+      maxBytes: MAX_PERSONA_BYTES,
+      flags: installed ? constants4.O_NOFOLLOW : 0
+    });
   } catch {
     throw unreadable(path);
   }
@@ -1250,7 +1291,7 @@ async function readPersonaFile(path, installed = false) {
 function parseFile(bytes, path) {
   let text2;
   try {
-    text2 = decoder.decode(bytes);
+    text2 = decoder2.decode(bytes);
   } catch {
     throw new LarvaError("LARVA_PERSONA_INVALID", `Persona input is not UTF-8: ${path}`);
   }
@@ -1261,6 +1302,9 @@ async function loadInput(target, { prune, stdinText }) {
   if (target === "-") {
     if (prune) throw badPrune();
     if (stdinText === void 0) throw new LarvaError("LARVA_BAD_INPUT", "Persona stdin text is required.");
+    if (Buffer.byteLength(stdinText, "utf8") > MAX_PERSONA_BYTES) {
+      throw new LarvaError("LARVA_PERSONA_INVALID", "Persona stdin exceeds 1 MiB.");
+    }
     const bytes = Buffer.from(stdinText, "utf8");
     const text2 = bytes.toString("utf8");
     return [{ spec: parsePersonaInput(text2), format: text2.trimStart().startsWith("{") ? "json" : "md", bytes }];
@@ -1484,9 +1528,9 @@ var PersonaStore = class {
 };
 
 // src/store/session-index.ts
-import { constants as constants4 } from "node:fs";
+import { constants as constants5 } from "node:fs";
 import { lstat as lstat5, open as open5, readdir as readdir2, realpath as realpath3, stat as stat3 } from "node:fs/promises";
-import { basename as basename5, dirname as dirname2, isAbsolute as isAbsolute2, join as join7, resolve as resolve3 } from "node:path";
+import { basename as basename5, dirname as dirname2, isAbsolute as isAbsolute2, join as join7, resolve as resolve2 } from "node:path";
 var HEADER_LIMIT = 1048576;
 function invalid5() {
   return new LarvaError("LARVA_SESSION_INVALID", "Invalid Pi session header or transcript path.");
@@ -1516,7 +1560,7 @@ async function canonicalPath(path) {
   return join7(await canonicalPath(dirname2(path)), basename5(path));
 }
 async function resolveCanonicalSessionPath(home, taskId) {
-  if (taskId.includes("\0") || !isAbsolute2(taskId) || resolve3(taskId) !== taskId || !taskId.endsWith(".jsonl")) throw invalid5();
+  if (taskId.includes("\0") || !isAbsolute2(taskId) || resolve2(taskId) !== taskId || !taskId.endsWith(".jsonl")) throw invalid5();
   try {
     const root = await canonicalPath(getLarvaHomePaths(home).sessions);
     if (!isLexicallyContained(root, taskId) || await canonicalPath(taskId) !== taskId) throw invalid5();
@@ -1532,7 +1576,7 @@ async function resolveCanonicalSessionPath(home, taskId) {
 async function readSessionHeader(home, taskId) {
   const task_id = await resolveCanonicalSessionPath(home, taskId);
   try {
-    const file = await open5(task_id, constants4.O_RDONLY | constants4.O_NONBLOCK | constants4.O_NOFOLLOW);
+    const file = await open5(task_id, constants5.O_RDONLY | constants5.O_NONBLOCK | constants5.O_NOFOLLOW);
     try {
       if (!(await file.stat()).isFile()) throw invalid5();
       const buffer = Buffer.alloc(HEADER_LIMIT + 1);
@@ -1785,8 +1829,41 @@ import { pathToFileURL } from "node:url";
 var MAX_RECORD = 1048576;
 var GRACE_MS = 1500;
 var protocol = (message) => new LarvaError("LARVA_CHILD_PROTOCOL_FAILED", message);
-function launchChild(options, progress) {
-  const { piScript, extension, preload, extensionSources, env, home, basePiAgentDir, capsule, cwd, taskId, depth, ancestors, persona, route, thinking } = options;
+var STDERR_LIMIT = 8192;
+var SECRET_NAMES = "(?:api[_-]?key|key|access[_-]?token|refresh[_-]?token|token|secret|password|authorization)";
+var SECRET_KEY = new RegExp(`^${SECRET_NAMES}$`, "i");
+var SECRET_ASSIGNMENT = new RegExp(String.raw`["']?\b${SECRET_NAMES}\b["']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|Bearer\s+\S+|\S+)`, "gi");
+function redactCredentials(raw) {
+  return raw.replace(/(https?:\/\/)[^/\s:@]+:[^/\s@]+@/gi, "$1[REDACTED]@").replace(SECRET_ASSIGNMENT, "[REDACTED]").replace(/\bBearer\s+\S+|\bsk-[A-Za-z0-9_-]{8,}|\bAIza[0-9A-Za-z_-]{16,}/gi, "[REDACTED]");
+}
+function sanitizeRpcError(raw) {
+  const clean = redactCredentials(raw.replace(/\s+/g, " ").trim());
+  return Array.from(clean.slice(0, 600)).slice(0, 300).join("");
+}
+function previewToolArgs(args) {
+  try {
+    const serialized = JSON.stringify(args, (key, value) => SECRET_KEY.test(key) ? "[REDACTED]" : typeof value === "string" ? redactCredentials(value) : value);
+    return serialized === void 0 ? void 0 : Array.from(serialized.slice(0, 320)).slice(0, 160).join("");
+  } catch {
+    return void 0;
+  }
+}
+function startupError(stderr) {
+  for (const line of stderr.toString("utf8").split("\n").reverse()) {
+    let frame;
+    try {
+      frame = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!metadataObject(frame) || frame.ok !== false || !metadataObject(frame.error)) continue;
+    const { code, message } = frame.error;
+    const knownCode = ALL_LARVA_ERROR_CODES.find((value) => value === code);
+    if (knownCode && typeof message === "string") return new LarvaError(knownCode, sanitizeRpcError(message) || "Pi startup failed.");
+  }
+}
+function launchChild(options, progress, telemetry) {
+  const { piScript, extension, preload, extensionSources, env, home, basePiAgentDir, capsule, agentDir, cwd, taskId, depth, ancestors, persona, route, thinking } = options;
   const child = spawn(process.execPath, [
     piScript,
     "--mode",
@@ -1818,12 +1895,12 @@ function launchChild(options, progress) {
       LARVA_PI_INITIAL_PERSONA_ID: persona,
       LARVA_PI_CAPSULE_ROOT: capsule,
       [BASE_PI_AGENT_DIR_ENV]: basePiAgentDir,
-      PI_CODING_AGENT_DIR: capsule,
+      PI_CODING_AGENT_DIR: agentDir,
       LARVA_PI_SUBAGENT_DEPTH: String(depth),
       LARVA_PI_ANCESTOR_TASK_IDS: JSON.stringify(ancestors)
     }
   });
-  return new ChildRpcClient(child, progress);
+  return new ChildRpcClient(child, progress, telemetry);
 }
 var ChildRpcClient = class {
   #child;
@@ -1834,25 +1911,36 @@ var ChildRpcClient = class {
   #shutdown;
   #sequence = 0;
   #promptSent = false;
+  #ready = false;
   get pid() {
     return this.#child.pid;
   }
   get settled() {
     return this.#terminal.promise;
   }
-  constructor(child, progress) {
+  constructor(child, progress, telemetry) {
     this.#child = child;
     this.settled.catch(() => {
     });
-    child.stderr.resume();
-    child.on("error", () => this.#fail(new LarvaError("LARVA_CHILD_START_FAILED", "Could not launch the Pi child.")));
-    child.stdin.on("error", () => this.#fail(protocol("Child RPC input closed.")));
-    child.once("exit", () => this.#exit.resolve());
-    child.once("close", () => {
-      this.#exit.resolve();
-      this.#fail(protocol("Child exited before RPC completed."));
+    let stderr = Buffer.alloc(0);
+    child.stderr.on("data", (chunk) => {
+      if (this.#ready) return;
+      const tail = chunk.subarray(-STDERR_LIMIT);
+      stderr = Buffer.concat([stderr.subarray(Math.max(0, stderr.length + tail.length - STDERR_LIMIT)), tail]);
     });
-    void this.#read(progress).catch(() => this.#fail(protocol("Malformed or oversized child RPC frame.")));
+    child.on("error", () => this.#fail(new LarvaError("LARVA_CHILD_START_FAILED", "Could not launch the Pi child.")));
+    child.stdin.on("error", () => {
+      if (this.#ready) this.#fail(protocol("Child RPC input closed."));
+    });
+    child.once("exit", () => this.#exit.resolve());
+    const read = this.#read(progress, telemetry).catch(() => this.#fail(protocol("Malformed or oversized child RPC frame.")));
+    child.once("close", (code) => {
+      this.#exit.resolve();
+      void read.then(() => {
+        const diagnostic = !this.#ready && code !== null && code !== 0 ? startupError(stderr) : void 0;
+        this.#fail(diagnostic ?? protocol("Child exited before RPC completed."));
+      });
+    });
   }
   #fail(error) {
     this.#error ??= error;
@@ -1860,9 +1948,9 @@ var ChildRpcClient = class {
     for (const request of this.#requests.values()) request.reject(this.#error);
     this.#requests.clear();
   }
-  async #read(progress) {
+  async #read(progress, telemetry) {
     const buffer = Buffer.allocUnsafe(MAX_RECORD);
-    const decoder4 = new TextDecoder("utf-8", { fatal: true });
+    const decoder5 = new TextDecoder("utf-8", { fatal: true });
     let used = 0;
     let stopReason;
     for await (const chunk of this.#child.stdout) {
@@ -1873,7 +1961,7 @@ var ChildRpcClient = class {
         used += chunk.copy(buffer, used, start, end);
         if (lf === -1) break;
         start = lf + 1;
-        const frame = JSON.parse(decoder4.decode(buffer.subarray(0, used)));
+        const frame = JSON.parse(decoder5.decode(buffer.subarray(0, used)));
         used = 0;
         if (!metadataObject(frame) || typeof frame.type !== "string" || frame.type === "larva_rpc_frame_error") throw protocol("Invalid frame.");
         if (frame.type === "response") {
@@ -1882,10 +1970,15 @@ var ChildRpcClient = class {
           if (frame.command !== request.type || typeof frame.success !== "boolean") throw protocol("Invalid response.");
           if (frame.success && frame.data != null && !metadataObject(frame.data)) throw protocol("Invalid response data.");
           this.#requests.delete(frame.id);
-          if (!frame.success) request.reject(protocol(`Child rejected ${request.type}.`));
-          else request.resolve(frame.data ?? {});
-        } else if (!this.#promptSent) continue;
-        else if (frame.type === "agent_settled") {
+          if (!frame.success) {
+            const detail2 = typeof frame.error === "string" ? sanitizeRpcError(frame.error) : "";
+            request.reject(protocol(detail2 ? `Child rejected ${request.type}: ${detail2}` : `Child rejected ${request.type}.`));
+          } else request.resolve(frame.data ?? {});
+          continue;
+        }
+        if (!this.#promptSent || this.#error) continue;
+        telemetry(frame);
+        if (frame.type === "agent_settled") {
           if (typeof frame.aborted !== "boolean") throw protocol("Malformed terminal frame.");
           if (frame.aborted || stopReason === "aborted") this.#terminal.reject(new LarvaError("LARVA_CHILD_CANCELLED", "Child aborted."));
           else if (stopReason === "error") this.#terminal.reject(protocol("Child assistant turn failed."));
@@ -1902,7 +1995,7 @@ var ChildRpcClient = class {
         }
       }
     }
-    this.#fail(protocol("Child RPC stream closed."));
+    if (this.#ready) this.#fail(protocol("Child RPC stream closed."));
   }
   async #command(type, fields = {}) {
     if (this.#error) throw this.#error;
@@ -1933,6 +2026,7 @@ var ChildRpcClient = class {
     if (!metadataObject(s.model) || s.model.provider !== route.provider || s.model.id !== route.model_id || s.thinkingLevel !== thinking) {
       throw new LarvaError("LARVA_MODEL_UNAVAILABLE", "Child did not verify the required model and thinking level.");
     }
+    this.#ready = true;
   }
   async setRoute(route, thinking) {
     await this.#command("set_model", { provider: route.provider, modelId: route.model_id });
@@ -1944,6 +2038,7 @@ var ChildRpcClient = class {
   }
   async output() {
     const { text: text2 } = await this.#command("get_last_assistant_text");
+    if (text2 == null) return "";
     if (typeof text2 !== "string") throw protocol("Child did not return assistant text.");
     return text2;
   }
@@ -2020,10 +2115,9 @@ function terminalOutput(snapshot) {
 }
 
 // src/runtime/pi-binary.ts
-import { constants as constants5 } from "node:fs";
-import { access as access2, open as open6, realpath as realpath5, stat as stat4 } from "node:fs/promises";
-import { homedir as homedir3 } from "node:os";
-import { basename as basename7, delimiter, dirname as dirname4, isAbsolute as isAbsolute3, join as join9, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
+import { constants as constants6 } from "node:fs";
+import { access as access2, realpath as realpath5, stat as stat4 } from "node:fs/promises";
+import { basename as basename7, delimiter, dirname as dirname4, isAbsolute as isAbsolute3, join as join9, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 var PI_PACKAGE = "@earendil-works/pi-coding-agent";
 var MAX_MANIFEST_BYTES = 1048576;
@@ -2034,29 +2128,12 @@ function isWithin(root, path) {
   const rel = relative2(root, path);
   return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute3(rel);
 }
-async function readSmallFile(path, limit) {
-  const file = await open6(path, constants5.O_RDONLY | constants5.O_NONBLOCK);
-  try {
-    const info = await file.stat();
-    if (!info.isFile() || info.size > limit) throw new Error("Invalid Pi metadata file.");
-    const bytes = Buffer.allocUnsafe(info.size + 1);
-    let used = 0;
-    while (used < bytes.length) {
-      const { bytesRead } = await file.read(bytes, used, bytes.length - used, null);
-      if (bytesRead === 0) return new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, used));
-      used += bytesRead;
-    }
-    throw new Error("Pi metadata changed while being read.");
-  } finally {
-    await file.close();
-  }
-}
 async function registryEntry(directory2, pkg) {
   const exported = isRecord(pkg.exports) ? pkg.exports["."] : pkg.exports;
   const entry = typeof exported === "string" ? exported : isRecord(exported) ? exported.import : pkg.main;
   if (typeof entry !== "string" || entry.length === 0 || isAbsolute3(entry)) return void 0;
   try {
-    const path = await realpath5(resolve4(directory2, entry));
+    const path = await realpath5(resolve3(directory2, entry));
     return isWithin(directory2, path) && (await stat4(path)).isFile() ? path : void 0;
   } catch {
     return void 0;
@@ -2066,19 +2143,19 @@ async function inspectPiScript(candidate) {
   try {
     const path = await realpath5(candidate);
     if (!(await stat4(path)).isFile()) return void 0;
-    await access2(path, constants5.R_OK);
+    await access2(path, constants6.R_OK);
     let directory2 = dirname4(path);
     for (; ; ) {
       let raw;
       try {
-        raw = await readSmallFile(join9(directory2, "package.json"), MAX_MANIFEST_BYTES);
+        raw = await readBoundedRegularText(join9(directory2, "package.json"), { maxBytes: MAX_MANIFEST_BYTES });
       } catch (error) {
         if (!isRecord(error) || error.code !== "ENOENT" || dirname4(directory2) === directory2) return void 0;
         directory2 = dirname4(directory2);
         continue;
       }
       const pkg = JSON.parse(raw);
-      if (!isRecord(pkg) || pkg.name !== PI_PACKAGE || !isRecord(pkg.bin) || typeof pkg.bin.pi !== "string" || !pkg.bin.pi.trim() || isAbsolute3(pkg.bin.pi) || await realpath5(resolve4(directory2, pkg.bin.pi)) !== path) return void 0;
+      if (!isRecord(pkg) || pkg.name !== PI_PACKAGE || !isRecord(pkg.bin) || typeof pkg.bin.pi !== "string" || !pkg.bin.pi.trim() || isAbsolute3(pkg.bin.pi) || await realpath5(resolve3(directory2, pkg.bin.pi)) !== path) return void 0;
       const entry = await registryEntry(directory2, pkg);
       return {
         path,
@@ -2095,11 +2172,11 @@ async function inspectManagedLauncher(candidate) {
     const launcher = await realpath5(candidate);
     if (basename7(launcher) !== "pi" || basename7(dirname4(launcher)) !== "bin" || !(await stat4(launcher)).isFile()) return void 0;
     const install = await realpath5(join9(dirname4(dirname4(launcher)), "install"));
-    const release = (await readSmallFile(join9(install, "current-version"), 256)).trim();
+    const release = (await readBoundedRegularText(join9(install, "current-version"), { maxBytes: 256 })).trim();
     if (!/^[0-9A-Za-z._+-]+$/.test(release) || release === "." || release === "..") return void 0;
     const releaseRoot = join9(install, "releases", release);
     const bin = join9(releaseRoot, "node_modules", ".bin", "pi");
-    await access2(bin, constants5.X_OK);
+    await access2(bin, constants6.X_OK);
     const verified = await inspectPiScript(bin);
     return verified && isWithin(releaseRoot, verified.path) ? verified : void 0;
   } catch {
@@ -2119,7 +2196,7 @@ async function discoverPiInstallation(env = process.env) {
     if (!isAbsolute3(directory2)) continue;
     const candidate = join9(directory2, "pi");
     try {
-      await access2(candidate, constants5.X_OK);
+      await access2(candidate, constants6.X_OK);
     } catch {
       continue;
     }
@@ -2264,7 +2341,7 @@ async function lineage(env, root, self) {
   if (!Array.isArray(ids) || ids.length > 100) return invalid6();
   const ancestors = /* @__PURE__ */ new Set();
   for (const id of [...ids, ...self !== void 0 && (depth > 0 || isLexicallyContained(root, self)) ? [self] : []]) {
-    if (typeof id !== "string" || !isLexicallyContained(root, id) || resolve5(id) !== id || !id.endsWith(".jsonl")) return invalid6();
+    if (typeof id !== "string" || !isLexicallyContained(root, id) || resolve4(id) !== id || !id.endsWith(".jsonl")) return invalid6();
     try {
       if (join10(await realpath6(dirname5(id)), basename8(id)) !== id || await entryExists(id) && (!(await lstat7(id)).isFile() || await realpath6(id) !== id)) return invalid6();
     } catch {
@@ -2278,6 +2355,66 @@ async function lineage(env, root, self) {
 function clearTimers(run) {
   clearTimeout(run.stall);
   clearTimeout(run.watchdog);
+}
+function clearLive(run) {
+  run.activeTools.clear();
+  run.s.active_tool = null;
+  run.s.live_thinking = false;
+}
+function applyTelemetry(run, frame) {
+  const { s, activeTools } = run;
+  switch (frame.type) {
+    case "turn_end":
+    case "agent_settled": {
+      const changed = !!(s.active_tool || s.live_thinking);
+      clearLive(run);
+      return changed;
+    }
+    case "message_update": {
+      const e = frame.assistantMessageEvent;
+      if (!metadataObject(e)) return false;
+      if (e.type === "text_delta" && typeof e.delta === "string") {
+        s.live_thinking = false;
+        s.live_assistant_preview = Array.from(((s.live_assistant_preview ?? "") + e.delta.slice(-1200)).slice(-1200)).slice(-600).join("");
+        return true;
+      }
+      if (e.type === "thinking_start" || e.type === "thinking_end") {
+        s.live_thinking = e.type === "thinking_start";
+        return true;
+      }
+      return false;
+    }
+    case "tool_execution_start":
+    case "tool_execution_update":
+    case "tool_execution_end": {
+      const { toolCallId, toolName } = frame;
+      if (typeof toolCallId !== "string" || typeof toolName !== "string") return false;
+      const tool2 = {
+        tool_call_id: toolCallId,
+        name: toolName,
+        status: frame.type === "tool_execution_end" ? frame.isError === true ? "error" : "done" : "running"
+      };
+      const snapshots = [...s.tool_snapshots ?? []];
+      const index = snapshots.findIndex((t) => t.tool_call_id === toolCallId);
+      if (index !== -1 || frame.type === "tool_execution_start") {
+        const args_preview = frame.args === void 0 ? snapshots[index]?.args_preview : previewToolArgs(frame.args);
+        const row = { ...tool2, ...args_preview === void 0 ? {} : { args_preview } };
+        if (index !== -1) snapshots[index] = row;
+        else snapshots.push(row);
+        s.tool_snapshots = snapshots.slice(-25);
+      }
+      activeTools.delete(toolCallId);
+      if (frame.type === "tool_execution_end") {
+        if (s.active_tool?.tool_call_id === toolCallId) s.active_tool = [...activeTools.values()].at(-1) ?? null;
+      } else {
+        activeTools.set(toolCallId, tool2);
+        s.active_tool = tool2;
+      }
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 var SubagentSupervisor = class {
   home;
@@ -2299,6 +2436,7 @@ var SubagentSupervisor = class {
   #closing = false;
   #profile;
   #generation = 0;
+  #telemetryTimer;
   constructor(options = {}) {
     this.#opts = options;
     this.#env = options.env ?? process.env;
@@ -2320,12 +2458,14 @@ var SubagentSupervisor = class {
     if (session) this.barrier.bind(session.bridge, () => session.branch(), () => session.activePersona(), session);
     this.#deliver();
   }
-  /** Observe lifecycle transitions without resetting child deadlines. */
+  /** Observe lifecycle and batched live updates without resetting child deadlines. */
   subscribe(onChange) {
     this.#observers.add(onChange);
     return () => this.#observers.delete(onChange);
   }
   #notify() {
+    clearTimeout(this.#telemetryTimer);
+    this.#telemetryTimer = void 0;
     for (const f of [...this.#observers]) {
       try {
         f();
@@ -2350,7 +2490,7 @@ var SubagentSupervisor = class {
     }
   }
   #taskSyntax(id) {
-    if (typeof id !== "string" || !isAbsolute4(id) || resolve5(id) !== id || id.includes("\0") || !id.endsWith(".jsonl")) bad("Expected a canonical .jsonl task_id.");
+    if (typeof id !== "string" || !isAbsolute4(id) || resolve4(id) !== id || id.includes("\0") || !id.endsWith(".jsonl")) bad("Expected a canonical .jsonl task_id.");
   }
   #ids(ids) {
     if (!Array.isArray(ids) || !ids.length || ids.length > 25 || new Set(ids).size !== ids.length) bad("Expected 1..25 distinct task_ids.");
@@ -2378,7 +2518,7 @@ var SubagentSupervisor = class {
       const { cwd, taskId } = await workspace(this.home, input, ctx);
       const root = await canonicalPath(this.#root);
       const chain = await lineage(this.#env, root, ctx.selfTaskId ?? this.#env.LARVA_PI_TASK_ID);
-      const config = await loadLarvaConfig(this.home, async (p) => await entryExists(p) ? readBoundedRegularText(p) : void 0);
+      const config = await loadLarvaConfig(this.home, async (p) => await entryExists(p) ? readBoundedRegularText2(p) : void 0);
       if (config.subagent.max_depth !== void 0 && chain.depth + 1 > config.subagent.max_depth) throw new LarvaError("LARVA_SPAWN_NOT_ALLOWED", "Configured maximum depth exceeded.");
       const descendant = this.#env.LARVA_PI_LAUNCHED === "1" || chain.depth > 0;
       if (ctx.surface === "pi" && !descendant && !ctx.activePersona) throw new LarvaError("LARVA_NO_ACTIVE_PERSONA", "No active persona.");
@@ -2410,8 +2550,15 @@ var SubagentSupervisor = class {
           persona_id: spec.id,
           phase: "starting",
           status: "running",
-          output_state: "pending"
+          output_state: "pending",
+          thinking: spec.thinking,
+          task_preview: Array.from(input.task.replace(/\s+/g, " ").trim().slice(0, 280)).slice(0, 140).join(""),
+          active_tool: null,
+          live_thinking: false,
+          live_assistant_preview: "",
+          tool_snapshots: []
         },
+        activeTools: /* @__PURE__ */ new Map(),
         accepted: Promise.withResolvers(),
         cleaned: Promise.withResolvers(),
         prompted: false,
@@ -2447,6 +2594,10 @@ var SubagentSupervisor = class {
       if (run.abort) throw run.abort;
     };
     const times = resolveWatchdogTimeouts(input, config.subagent);
+    const telemetry = (frame) => {
+      if (s.status !== "running" || !applyTelemetry(run, frame)) return;
+      this.#telemetryTimer ??= setTimeout(() => this.#notify(), 50);
+    };
     const progress = () => {
       if (!accepted || s.status !== "running") return;
       const phaseChanged = s.phase !== "waiting_for_child";
@@ -2478,7 +2629,9 @@ var SubagentSupervisor = class {
       const installation = await discoverPiInstallation(this.#env);
       let generation = this.#generation;
       let route = resolveModelRoute(spec.model, await this.#map(this.#profile));
-      const basePiAgentDir = this.#opts.piAgentDir === void 0 ? resolveBasePiAgentDir(this.#env, void 0, this.#baseCwd) : resolve5(this.#baseCwd, this.#opts.piAgentDir);
+      s.model = `${route.provider}/${route.model_id}`;
+      this.#notify();
+      const basePiAgentDir = this.#opts.piAgentDir === void 0 ? resolveBasePiAgentDir(this.#env, void 0, this.#baseCwd) : resolve4(this.#baseCwd, this.#opts.piAgentDir);
       box = await createCapsule({
         home: this.home,
         pi_agent_dir: basePiAgentDir,
@@ -2502,6 +2655,7 @@ var SubagentSupervisor = class {
         home: this.home,
         basePiAgentDir,
         capsule: box.root,
+        agentDir: box.agent_dir,
         cwd: s.cwd,
         taskId: id,
         depth: chain.depth + 1,
@@ -2509,7 +2663,7 @@ var SubagentSupervisor = class {
         persona: spec.id,
         route,
         thinking: spec.thinking
-      }, progress);
+      }, progress, telemetry);
       if (rpc.pid === void 0) throw new LarvaError("LARVA_CHILD_START_FAILED", "Child did not start.");
       await lease.markRunning(rpc.pid);
       if (manifest) await writeMetadata(manifest, { capsule_root: box.root, pid: rpc.pid });
@@ -2526,6 +2680,7 @@ var SubagentSupervisor = class {
         check();
         if (generation === this.#generation) break;
       }
+      s.model = `${route.provider}/${route.model_id}`;
       run.prompted = true;
       await rpc.prompt(input.task);
       check();
@@ -2578,6 +2733,7 @@ var SubagentSupervisor = class {
       }
       run.cleaned.resolve(confirmed);
       if (!accepted) {
+        clearLive(run);
         s.status = s.phase = run.abort ? "cancelled" : "failed";
         s.error = toErrorEnvelope(failure).error;
         Object.assign(s, { output_state: "inline", result_text: "" });
@@ -2588,6 +2744,7 @@ var SubagentSupervisor = class {
   }
   #finalize(run, status, error) {
     clearTimers(run);
+    clearLive(run);
     Object.assign(run.s, { status, phase: status, updated_at: now() }, error ? { error: toErrorEnvelope(error).error } : {});
     this.#outbox.retain(run.s);
     this.#notify();
@@ -2744,8 +2901,8 @@ var shared = /* @__PURE__ */ Symbol.for("larva.0.9.native-subagent-supervisor");
 
 // src/activity/inspector.ts
 import { createHash as createHash5 } from "node:crypto";
-import { constants as constants6 } from "node:fs";
-import { open as open7, stat as stat6 } from "node:fs/promises";
+import { constants as constants7 } from "node:fs";
+import { open as open6, stat as stat6 } from "node:fs/promises";
 import { isAbsolute as isAbsolute5, normalize as normalize2 } from "node:path";
 var RESPONSE_BYTES = 8192;
 var READ_BYTES = 64 * 1024;
@@ -2753,7 +2910,7 @@ var RECORD_BYTES = 8 * 1024 * 1024;
 var SNAPSHOT_BYTES = 128 * 1024 * 1024;
 var INDEX_UNITS = 48 * 1024 * 1024;
 var JOIN_STEPS = 1e6;
-var decoder2 = new TextDecoder("utf-8", { fatal: true });
+var decoder3 = new TextDecoder("utf-8", { fatal: true });
 var hash = (value) => createHash5("sha256").update(value).digest("hex");
 var object3 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var nonempty = (value) => typeof value === "string" && value.length > 0;
@@ -2897,7 +3054,7 @@ function parse2(input) {
 function record(bytes) {
   let text2;
   try {
-    text2 = decoder2.decode(bytes);
+    text2 = decoder3.decode(bytes);
   } catch {
     return { kind: "invalid_utf8", message: "Invalid UTF-8 record." };
   }
@@ -3388,7 +3545,7 @@ async function inspectSubagentActivity(larvaHome, input) {
   try {
     const q = parse2(input);
     const target = await resolveCanonicalSessionPath(larvaHome, q.path);
-    const file = await open7(target, constants6.O_RDONLY | constants6.O_NONBLOCK | constants6.O_NOFOLLOW);
+    const file = await open6(target, constants7.O_RDONLY | constants7.O_NONBLOCK | constants7.O_NOFOLLOW);
     try {
       const initial = await file.stat({ bigint: true });
       if (!initial.isFile()) invalidSession("Target is not a regular session file.");
@@ -3533,6 +3690,8 @@ main { display: grid; gap: 12px; align-items: start }
 article { border: 1px solid var(--border); border-radius: var(--border-radius-md, 8px); padding: 10px; min-width: 0 }
 article .controls { margin-bottom: 8px }
 article .controls h2 { margin: 0 }
+.telemetry { list-style: none; padding: 0; margin: 0 0 8px }
+.telemetry li + li { border-top: 1px solid var(--border); padding-top: 6px }
 .notice { padding: 8px 10px; background: var(--subtle); border-inline-start: 3px solid }
 .warning { color: var(--color-text-warning, light-dark(#7b4b00, #ffd17a)) }
 .error, .cancel { color: var(--color-text-danger, light-dark(#a82323, #ff9e9e)) }
@@ -3559,8 +3718,10 @@ var app = String.raw`function (surface, modes) {
   const same = (a, b) => pair(a) && pair(b) && a.task_id === b.task_id && a.run_epoch === b.run_epoch;
   const captured = new Map();
   const cancelling = new Set();
+  const detailsOpen = new Set();
   const requests = new Map();
-  let sequence = 0, view = 0, pollTimer, poll, displayRequest, mode = modes[0];
+  let activity;
+  let sequence = 0, view = 0, renderVersion = 0, pollTimer, poll, displayRequest, mode = modes[0];
   let connection = 'connecting';
   let target = panel ? { kind: 'latest', query: { scope: 'recent' } } : { kind: 'pending' };
   let toolInput, initialResult;
@@ -3594,10 +3755,17 @@ var app = String.raw`function (surface, modes) {
     }
   }
 
+  function clearActivity() {
+    if (!activity) return;
+    activity = undefined;
+    retireRequests(kind => kind === 'activity');
+  }
+
   function stopObserving() {
     view++;
     clearTimeout(pollTimer);
     poll = undefined;
+    clearActivity();
     retireRequests(kind => kind === 'observer');
   }
 
@@ -3607,6 +3775,7 @@ var app = String.raw`function (surface, modes) {
     finishInvocation();
     stopObserving();
     retireRequests(() => true);
+    observer.disconnect();
     render();
   }
 
@@ -3834,12 +4003,45 @@ var app = String.raw`function (surface, modes) {
 
   function button(name, action, parent, options = {}) {
     const node = element('button', name, parent);
+    const version = renderVersion;
+    const current = () => version === renderVersion && visible() && connection !== 'closed';
     node.type = 'button';
-    node.onclick = action;
+    node.onclick = () => { if (current() && !node.disabled) action(current); };
     node.disabled = options.disabled ?? false;
     node.dataset.focusKey = options.key ?? name;
     if (options.pressed !== undefined) node.setAttribute('aria-pressed', String(options.pressed));
+    if (options.expanded !== undefined) node.setAttribute('aria-expanded', String(options.expanded));
     return node;
+  }
+
+  function copyButton(label, text, parent, id) {
+    if (typeof text !== 'string' || !text) return;
+    const feedback = element('span', '', parent);
+    feedback.setAttribute('role', 'status');
+    button(label, async current => {
+      let copied = false;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        }
+      } catch { /* A sandbox may deny Clipboard API access. */ }
+      if (!current()) return;
+      if (!copied) {
+        const focus = document.activeElement;
+        const field = element('textarea', undefined, parent);
+        field.value = text;
+        field.readOnly = true;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        try {
+          field.select();
+          copied = document.execCommand?.('copy') === true;
+        } catch { /* Fall back to user selection. */ }
+        finally { field.remove(); focus?.focus({ preventScroll: true }); }
+      }
+      feedback.textContent = copied ? 'Copied.' : 'Copy unavailable. Select the text to copy it manually.';
+    }, parent, { key: label + ':' + id });
   }
 
   function notice(text, style, parent = root) {
@@ -3857,16 +4059,27 @@ var app = String.raw`function (surface, modes) {
   function output(run, parent) {
     element('h3', 'Result', parent);
     const artifact = run.full_output_artifact?.path;
+    const text = run.result_text ?? run.result_preview;
+    const preview = run.result_preview ?? run.result_text;
+    const show = value => {
+      const pre = element('pre', value, parent);
+      pre.dataset.scrollKey = 'output:' + key(run);
+    };
     switch (run.output_state) {
-      case 'inline': element('pre', run.result_text ?? run.result_preview ?? '', parent); break;
+      case 'inline':
+        show(text ?? '');
+        copyButton('Copy output', text, parent, key(run));
+        break;
       case 'artifactized':
-        if (run.result_preview ?? run.result_text) element('pre', run.result_preview ?? run.result_text, parent);
+        if (preview) show(preview);
+        copyButton('Copy output preview', preview, parent, key(run));
         pathLine(artifact ? 'Full output artifact' : 'Recorded transcript', artifact ?? run.task_id, parent);
         break;
       case 'delivery_failed':
         notice((run.status === 'success' ? 'Execution succeeded, but output delivery failed.' : 'Output delivery failed.') +
           (run.output_diagnostic?.message ? ' ' + run.output_diagnostic.message : ''), 'warning', parent);
-        if (run.result_preview) element('pre', run.result_preview, parent);
+        if (run.result_preview) show(run.result_preview);
+        copyButton('Copy output preview', run.result_preview, parent, key(run));
         pathLine('Recorded transcript', run.task_id, parent);
         break;
       case 'evicted':
@@ -3877,7 +4090,62 @@ var app = String.raw`function (surface, modes) {
     }
   }
 
+  async function inspect(run, toolCall, part) {
+    if (!observing()) return;
+    clearActivity();
+    const request = activity = { runKey: key(run), callId: toolCall.tool_call_id, part, state: 'loading' };
+    render();
+    try {
+      const result = await tool('larva_subagent_activity', {
+        task_id: run.task_id, tool_call_id: request.callId, segment_part: part,
+      }, 'activity');
+      if (activity !== request || !observing()) return;
+      const data = dataOf(result);
+      const segment = data?.call?.segment;
+      if (result?.isError || data?.error) throw new Error(errorOf(result) ?? 'Recorded activity unavailable.');
+      if (data?.status === 'ambiguous') throw new Error('Multiple recorded calls match this tool ID. Inspect the recorded transcript.');
+      if (part === 'result' && data?.call?.result_state === 'ambiguous') throw new Error('The recorded result is ambiguous. Inspect the recorded transcript.');
+      if (data?.status !== 'success' || data.call?.call_id !== request.callId || segment?.part !== part || typeof segment.text !== 'string') {
+        throw new Error('No recorded ' + part + ' available for this call yet.');
+      }
+      Object.assign(request, { state: 'ready', text: segment.text, partial: segment.has_more || segment.upstream_truncated || data.inspection_complete === false });
+    } catch (error) {
+      if (activity !== request || !observing()) return;
+      Object.assign(request, { state: 'error', text: error.message });
+    }
+    render();
+  }
+
+  function recentTools(run, parent) {
+    if (!run.tool_snapshots?.length) return;
+    element('h3', 'Recent tool calls', parent);
+    const list = element('ul', undefined, parent);
+    list.className = 'telemetry';
+    for (const call of run.tool_snapshots.slice().reverse()) {
+      const item = element('li', undefined, list);
+      element('p', call.name + ' (' + call.status + ')', item);
+      if (call.args_preview) element('pre', call.args_preview, item);
+      const controls = element('div', undefined, item);
+      controls.className = 'controls';
+      const current = activity?.callId === call.tool_call_id ? activity : undefined;
+      const callKey = key(run) + ':' + call.tool_call_id;
+      for (const part of ['args', 'result']) button(part === 'args' ? 'Recorded args' : 'Recorded result', () => void inspect(run, call, part), controls, {
+        key: part + ':' + callKey, disabled: !observing() || (current?.part === part && current.state === 'loading'),
+      });
+      if (!current) continue;
+      button('Close recording', () => { clearActivity(); render(); }, controls, { key: 'close:' + callKey });
+      if (current.state === 'loading') notice('Loading recorded ' + current.part + '…', '', item);
+      else if (current.state === 'error') notice(current.text, 'error', item);
+      else {
+        element('h3', 'Recorded ' + current.part, item);
+        element('pre', current.text, item).dataset.scrollKey = current.part + ':' + callKey;
+        if (current.partial) notice('Partial recording. Inspect the transcript for more.', 'warning', item);
+      }
+    }
+  }
+
   const rowKey = row => row.kind === 'disk' ? 'disk:' + row.disk.task_id : key(row.run);
+  const selectedRow = () => rows.find(row => rowKey(row) === selected) ?? rows[0];
   const diskStatus = disk => ['active_external', 'unreconciled'].includes(disk.lock_state) ? 'Busy' : '';
   function rowLabel(row) {
     if (row.kind === 'disk') return [row.disk.task_id, row.disk.cwd, diskStatus(row.disk),
@@ -3913,7 +4181,7 @@ var app = String.raw`function (surface, modes) {
       return;
     }
     const main = element('main');
-    const row = rows.find(item => rowKey(item) === selected) ?? rows[0];
+    const row = selectedRow();
     selected = rowKey(row);
     if (panel || mode === 'fullscreen' || rows.length > 1) {
       const list = element('nav', undefined, main);
@@ -3928,6 +4196,7 @@ var app = String.raw`function (surface, modes) {
     if (row.kind === 'expired') {
       notice('Run snapshot expired (inspect recorded transcript)', 'warning', detail);
       pathLine('Recorded transcript', row.run.task_id, detail);
+      copyButton('Copy task_id', row.run.task_id, detail, key(row.run));
       return;
     }
     const run = row.run;
@@ -3937,28 +4206,65 @@ var app = String.raw`function (surface, modes) {
       pathLine('Recorded transcript', row.disk.task_id, detail);
       if (diskStatus(row.disk)) notice('Busy', 'warning', detail);
       if (row.disk.cwd_exists === false) notice('Missing workspace', 'warning', detail);
-      if (!run) return;
+      if (!run) {
+        copyButton('Copy task_id', row.disk.task_id, detail, rowKey(row));
+        return;
+      }
     }
     const bar = element('div', undefined, detail);
     bar.className = 'controls';
     const heading = element('h2', run.persona_id ?? 'Subagent run', bar);
     heading.dir = 'auto';
-    element('span', phase(run) ?? 'Pending', bar).className = run.phase === 'stall_suspected' ? 'warning' : '';
+    const status = ({ accepted: 'Accepted', running: 'Running' })[run.status];
+    element('span', [status, phase(run) ?? 'Pending'].filter(Boolean).join(' · '), bar)
+      .className = run.phase === 'stall_suspected' ? 'warning' : '';
+    const route = [run.model, run.thinking && 'thinking: ' + run.thinking].filter(Boolean).join(' · ');
+    if (route) element('span', route, bar);
+    if (run.active_tool) element('span', run.active_tool.name + ' (' + run.active_tool.status + ')', bar);
+    if (run.live_thinking) element('span', 'Thinking…', bar);
+    const id = key(run);
     if (active(run) && observing()) button('Cancel', () => void cancel(run), bar, {
-      key: 'cancel:' + key(run), disabled: loading || !!readError || cancelling.has(key(run)),
+      key: 'cancel:' + id, disabled: loading || !!readError || cancelling.has(id),
     }).className = 'cancel';
+    if (!panel) {
+      const open = detailsOpen.has(id);
+      button(open ? 'Hide details' : 'Details', () => {
+        if (open) detailsOpen.delete(id);
+        else detailsOpen.add(id);
+        render();
+      }, bar, { key: 'details:' + id, expanded: open });
+      if (!open) return;
+    }
     if (row.kind !== 'disk') {
       pathLine('Workspace', run.cwd, detail);
       pathLine('Session', run.task_id, detail);
     }
+    copyButton('Copy task_id', run.task_id, detail, id);
     if (run.error?.message) notice(run.error.message, 'error', detail);
+    if (run.task_preview) {
+      element('h3', 'Task preview', detail);
+      element('pre', run.task_preview, detail);
+      copyButton('Copy prompt', run.task_preview, detail, id);
+    }
+    if (run.live_assistant_preview) {
+      element('h3', 'Live assistant preview', detail);
+      element('pre', run.live_assistant_preview, detail);
+    }
+    recentTools(run, detail);
     output(run, detail);
-    const result = detail.querySelector('pre');
-    if (result) result.dataset.scrollKey = 'output:' + key(run);
   }
 
   function render() {
     if (!visible() || connection === 'closed') return;
+    renderVersion++;
+    const liveKeys = new Set(rows.filter(row => row.kind !== 'expired' && row.run).map(row => key(row.run)));
+    for (const id of detailsOpen) if (!liveKeys.has(id)) detailsOpen.delete(id);
+    if (activity) {
+      const row = selectedRow();
+      const run = row?.run;
+      if (row?.kind === 'expired' || !run || key(run) !== activity.runKey || (!panel && !detailsOpen.has(activity.runKey)) ||
+          !run.tool_snapshots?.some(call => call.tool_call_id === activity.callId)) clearActivity();
+    }
     const focus = document.activeElement?.dataset?.focusKey;
     const scroll = new Map(Array.from(root.querySelectorAll('[data-scroll-key]'), node => [node.dataset.scrollKey, node.scrollTop]));
     document.documentElement.dataset.mode = mode;
@@ -4247,7 +4553,7 @@ var maxMessageBytes = 8 * 1024 * 1024;
 var maxHeaderBytes = 8192;
 var maxConcurrentRequests = 128;
 var rootsTimeoutMs = 5e3;
-var decoder3 = new TextDecoder("utf-8", { fatal: true });
+var decoder4 = new TextDecoder("utf-8", { fatal: true });
 var isId = (value) => value === null || typeof value === "string" || typeof value === "number" && Number.isFinite(value);
 function stdioReader(message) {
   let buffer = Buffer.alloc(0), used = 0;
@@ -4333,12 +4639,20 @@ var apps = [
   },
   render
 }));
-async function runMcpServer() {
+async function runMcpServer(env = process.env) {
   const { stdin, stdout } = process;
-  const supervisor = new SubagentSupervisor(import.meta.url.endsWith(".ts") ? {
-    extension: fileURLToPath2(new URL("./pi-extension.ts", import.meta.url)),
-    preload: fileURLToPath2(new URL("./child-rpc-preload.ts", import.meta.url))
-  } : void 0);
+  const home = env.HOME || homedir3();
+  const path = env.PATH ? env.PATH.split(delimiter2) : [];
+  for (const dir of [join11(home, ".local", "bin"), join11(home, ".pi", "agent", "bin"), "/opt/homebrew/bin", "/usr/local/bin"]) {
+    if (!path.includes(dir) && (await stat7(dir).catch(() => void 0))?.isDirectory()) path.push(dir);
+  }
+  const supervisor = new SubagentSupervisor({
+    env: { ...env, PATH: path.join(delimiter2) },
+    ...import.meta.url.endsWith(".ts") && {
+      extension: fileURLToPath2(new URL("./pi-extension.ts", import.meta.url)),
+      preload: fileURLToPath2(new URL("./child-rpc-preload.ts", import.meta.url))
+    }
+  });
   const personas = new PersonaStore(supervisor.home);
   const tools = createMcpTools(supervisor, personas);
   let rootsSupported = false, inFlight = 0, stopping = false;
@@ -4458,7 +4772,7 @@ ${spec.description}
     if (stopping) return;
     let message;
     try {
-      message = JSON.parse(decoder3.decode(body));
+      message = JSON.parse(decoder4.decode(body));
     } catch {
       return rpcError(null, -32700, "Parse error", framing);
     }

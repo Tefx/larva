@@ -1,19 +1,31 @@
-import type { PersonaSpec } from "../core/types.ts";
+import type { PersonaSpec, SwitchMode } from "../core/types.ts";
 
 export const LARVA_RESOLVE_SYSTEM_PROMPT_EVENT = "larva:resolve-system-prompt:v1";
-export type SystemPromptSnapshot = { activePersona: Pick<PersonaSpec, "id" | "spec_digest" | "prompt"> | null };
+export type SwitchContinuation = { fromPersona: string | null; toPersona: string; reason: string };
+export type SystemPromptSnapshot = {
+  activePersona: Pick<PersonaSpec, "id" | "spec_digest" | "prompt"> | null;
+  launched?: boolean;
+  switchMode?: SwitchMode;
+  continuation?: SwitchContinuation;
+};
+
+const switchGuidance = {
+  confirm: "Switches require user confirmation in the TUI.",
+  auto: "Switches borrow the target persona for the turn, then restore the origin.",
+  free: "Switches persist until another persona is selected.",
+};
 export type ResolveSystemPromptResult =
   | { status: "ok"; systemPrompt: string }
   | { status: "unavailable"; reason: string };
 
-type Block = "identity-policy" | "active-persona";
+type Block = "identity-policy" | "active-persona" | "persona-switch-continuation";
 const marker = (block: Block, edge: "begin" | "end") => `<!-- larva:${block}:${edge} -->`;
-const tokens = /<!-- larva:(identity-policy|active-persona):(begin|end) -->/g;
+const tokens = /<!-- larva:(identity-policy|active-persona|persona-switch-continuation):(begin|end) -->/g;
 const opaqueHeader = /\n<!-- larva:opaque-body:(\d+) -->\n/y;
 
 function managedBlock(block: Block, body: string): string {
   // Persona Markdown can contain literal examples of these very delimiters.
-  const header = /<!-- larva:(?:(?:identity-policy|active-persona):|opaque-body:)/.test(body)
+  const header = new RegExp(tokens).test(body) || body.startsWith("<!-- larva:opaque-body:")
     ? `<!-- larva:opaque-body:${body.length} -->\n` : "";
   return `${marker(block, "begin")}\n${header}${body}\n${marker(block, "end")}`;
 }
@@ -55,14 +67,18 @@ function stripManaged(base: string): string {
 }
 
 /** All three Pi prompt surfaces compose against the current session snapshot. */
-export function composeSystemPrompt({ activePersona }: SystemPromptSnapshot, basePrompt: string): string {
+export function composeSystemPrompt({ activePersona, launched, switchMode = "manual", continuation }: SystemPromptSnapshot, basePrompt: string): string {
   let base = basePrompt;
   // Removing a block embedded in a delimiter can expose a newly adjacent delimiter.
   for (let stripped = stripManaged(base); stripped !== base; stripped = stripManaged(base)) base = stripped;
   if (activePersona === null) return base;
+  const guidance = !launched && switchMode !== "manual"
+    ? `\n\nUse larva_persona_switch when another persona is better suited (${switchMode} mode). ${switchGuidance[switchMode]} To continue immediately, call it alone with continue_task: true.` : "";
   return [
     ...(base ? [base] : []),
     managedBlock("identity-policy", "Active Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only."),
-    managedBlock("active-persona", `<!-- larva-spec: ${activePersona.id}@${activePersona.spec_digest} -->\n${activePersona.prompt}`),
+    managedBlock("active-persona", `<!-- larva-spec: ${activePersona.id}@${activePersona.spec_digest} -->\n${activePersona.prompt}${guidance}`),
+    ...(continuation ? [managedBlock("persona-switch-continuation",
+      `Switched from ${continuation.fromPersona ?? "larva:none"} to ${continuation.toPersona}. Reason: ${continuation.reason}${/[.!?]$/.test(continuation.reason) ? "" : "."} Treat the persona switch as a hard boundary: the new persona's instructions and tool boundaries now govern. Continue the existing task within those boundaries.`)] : []),
   ].join("\n\n");
 }

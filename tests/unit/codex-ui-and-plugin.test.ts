@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import type { RunSnapshot } from "../../src/core/types.ts";
@@ -18,6 +18,8 @@ class Element {
   disabled = false;
   onclick?: () => void;
   scrollTop = 0;
+  value = "";
+  parent?: Element;
   style = { setProperty: () => {} };
   readonly tag: string;
   readonly #focusNode: (node: Element) => void;
@@ -27,8 +29,10 @@ class Element {
   }
   set textContent(value: string) { this.#text = String(value); }
   get textContent(): string { return [this.#text, ...this.children.map(node => node.textContent)].filter(Boolean).join(" "); }
-  append(node: Element) { this.children.push(node); }
+  append(node: Element) { node.parent = this; this.children.push(node); }
+  remove() { if (this.parent) this.parent.children = this.parent.children.filter(node => node !== this); }
   replaceChildren() { this.children = []; this.#text = ""; }
+  select() { this.focus(); }
   setAttribute(key: string, value: string) { this.attributes.set(key, value); }
   focus() { this.#focusNode(this); }
   querySelectorAll(selector: string): Element[] {
@@ -43,8 +47,9 @@ class Element {
 type Rpc = { id?: number; method?: string; params?: Record<string, unknown>; result?: unknown };
 const turn = () => new Promise<void>(resolve => setImmediate(resolve));
 
-function mount(html: string) {
+function mount(html: string, clipboard: "native" | "legacy" | "unavailable" = "unavailable") {
   const sent: Rpc[] = [];
+  const copied: string[] = [];
   const winEvents = new Map<string, (event: unknown) => void>();
   const docEvents = new Map<string, () => void>();
   const timers = new Map<number, { callback: () => void; delay: number }>();
@@ -58,11 +63,18 @@ function mount(html: string) {
     getElementById: () => root, createElement: create, documentElement: create("html"),
     get activeElement() { return focus; }, visibilityState: "visible",
     addEventListener: (name: string, fn: () => void) => docEvents.set(name, fn),
+    ...(clipboard === "legacy" && { execCommand(command: string) {
+      assert.equal(command, "copy");
+      assert.equal(focus?.tag, "textarea");
+      copied.push(focus!.value);
+      return true;
+    } }),
   };
   const script = /<script>([\s\S]+)<\/script>/.exec(html)?.[1];
   assert.ok(script);
   runInNewContext(script, {
     document: doc, window: { parent, addEventListener: (name: string, fn: (event: unknown) => void) => winEvents.set(name, fn) },
+    ...(clipboard === "native" && { navigator: { clipboard: { async writeText(value: string) { copied.push(value); } } } }),
     ResizeObserver: class { observe() {} disconnect() { resizeDisconnected = true; } },
     setTimeout(callback: () => void, delay: number) { timers.set(++sequence, { callback, delay }); return sequence; },
     clearTimeout(id: number) { timers.delete(id); },
@@ -75,7 +87,8 @@ function mount(html: string) {
   function lastCall(name: string) { const request = calls(name).at(-1); assert.ok(request); return request; }
   async function reply(request: Rpc, result: unknown) { send({ id: request.id, result }); await turn(); }
   return {
-    root, sent, calls, lastCall, reply, button,
+    root, sent, calls, lastCall, reply, button, copied,
+    disconnect() { winEvents.get("messageerror")?.({ source: parent }); },
     get text() { return root.textContent; }, get timerCount() { return timers.size; },
     get mode() { return doc.documentElement.dataset.mode; }, get resizeDisconnected() { return resizeDisconnected; },
     async init(modes: string[]) {
@@ -186,6 +199,7 @@ test("wait cards pin every initiating pair and recover retained terminal output 
   await app.reply(app.lastCall(panelTool), snapshot([run({ run_epoch: "new", persona_id: "new persona" }), done], {
     terminal_outputs: { [id]: terminalOutput },
   }));
+  app.click("Details");
   assert.match(app.text, /original output/);
   assert.doesNotMatch(app.text, /new persona/);
   assert.equal(app.button("Cancel"), undefined);
@@ -209,6 +223,7 @@ test("a terminal spawn failure with a receipt stays attached to its own epoch", 
     error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "Child stopped" } }, true);
   assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: { [id]: "old" } });
   await app.reply(app.lastCall(panelTool), snapshot([]));
+  app.click("Details");
   assert.match(app.text, /Failed.*Child stopped.*Partial result/);
   assert.equal(app.button("Cancel"), undefined);
 });
@@ -314,6 +329,7 @@ test("all output states are distinct and progress clears a visible stall", async
   accept(app);
   await app.reply(app.lastCall(panelTool), snapshot([run({ phase: "stall_suspected" })]));
   assert.match(app.text, /Stall suspected/);
+  app.click("Details");
   assert.match(app.text, /Output pending/);
   app.fire(2500);
   await app.reply(app.lastCall(panelTool), snapshot([run()]));
@@ -336,6 +352,94 @@ test("all output states are distinct and progress clears a visible stall", async
     assert.equal(app.button("Cancel"), undefined);
   }
   assert.equal(app.root.querySelectorAll("img").length, 0);
+});
+
+const activityTool = "larva_subagent_activity";
+const telemetry = run({ model: "fixture/model", thinking: "high", task_preview: "Widget task preview", live_thinking: true,
+  active_tool: { tool_call_id: "read-42", name: "read", status: "running" }, live_assistant_preview: "Working <em>safely</em>",
+  tool_snapshots: [{ tool_call_id: "read-42", name: "read", status: "running", args_preview: '{"path":"example.ts"}' }],
+});
+function recording(part: "args" | "result", text: string) {
+  return { structuredContent: { status: "success", call: { call_id: "read-42", segment: { part, text } } } };
+}
+
+test("widget keeps only compact telemetry visible until Details is opened, per run epoch", async () => {
+  const app = mount(renderCodexWidgetHtml(), "legacy");
+  await app.init(["inline", "fullscreen"]);
+  app.input({ task_id: id });
+  app.result(snapshot([telemetry]).structuredContent);
+  await app.reply(app.lastCall(panelTool), snapshot([telemetry]));
+  assert.match(app.text, /reviewer.*Working.*fixture\/model · thinking: high.*read \(running\).*Thinking…/);
+  assert.ok(app.button("Cancel"));
+  assert.equal(app.button("Details")?.attributes.get("aria-expanded"), "false");
+  assert.doesNotMatch(app.text, /Widget task preview|Working <em>|example\.ts|Output pending/);
+  assert.equal(app.button("Copy task_id"), undefined);
+  app.click("Details");
+  assert.equal(app.button("Hide details")?.attributes.get("aria-expanded"), "true");
+  assert.match(app.text, /Widget task preview.*Working <em>safely<\/em>.*example\.ts.*Output pending/);
+  assert.equal(app.root.querySelectorAll("em").length, 0);
+  app.click("Copy task_id");
+  app.click("Copy prompt");
+  assert.deepEqual(app.copied, [id, telemetry.task_preview]);
+  assert.equal(app.root.querySelectorAll("textarea").length, 0);
+
+  const replaced = app.button("Recorded args");
+  app.fire(2500);
+  const done = run({ ...telemetry, status: "success", phase: "success", active_tool: null, live_thinking: false,
+    tool_snapshots: [{ ...telemetry.tool_snapshots![0], status: "done" }], output_state: "inline", result_text: "Completed output" });
+  await app.reply(app.lastCall(panelTool), snapshot([done]));
+  assert.ok(app.button("Hide details"));
+  assert.match(app.text, /read \(done\).*Completed output/);
+  assert.doesNotMatch(app.text, /Thinking…/);
+  replaced?.onclick?.();
+  assert.deepEqual(app.calls(activityTool), []);
+  app.click("Copy output");
+  assert.deepEqual(app.copied, [id, telemetry.task_preview, done.result_text]);
+  app.click("Hide details");
+  assert.doesNotMatch(app.text, /Completed output/);
+  app.click("Details");
+  app.click("Recorded args");
+  assert.deepEqual(app.lastCall(activityTool).params?.arguments, { task_id: id, tool_call_id: "read-42", segment_part: "args" });
+  await app.reply(app.lastCall(activityTool), recording("args", "Exact recorded args"));
+  assert.match(app.text, /Exact recorded args/);
+  app.click("Recorded result");
+  const late = app.lastCall(activityTool);
+  assert.deepEqual(late.params?.arguments, { task_id: id, tool_call_id: "read-42", segment_part: "result" });
+  app.fire(2500);
+  await app.reply(app.lastCall(panelTool), snapshot([{ ...telemetry, run_epoch: "new" }]));
+  assert.equal(app.button("Hide details"), undefined);
+  app.click("Details");
+  await app.reply(late, recording("result", "Result from superseded epoch"));
+  assert.doesNotMatch(app.text, /superseded epoch|Loading recorded|Exact recorded args/);
+  app.teardown();
+});
+
+test("panel shows recorded tool results on demand and retires inspection on teardown or disconnect", async () => {
+  for (const close of ["teardown", "disconnect"] as const) {
+    const app = mount(renderCodexPanelHtml(), close === "teardown" ? "native" : "unavailable");
+    await app.init(["fullscreen"]);
+    await app.reply(app.lastCall(panelTool), snapshot([telemetry]));
+    app.click("Copy prompt");
+    await turn();
+    if (close === "teardown") assert.deepEqual(app.copied, [telemetry.task_preview]);
+    else assert.match(app.text, /Copy unavailable/);
+    app.click("Recorded result");
+    const result = app.lastCall(activityTool);
+    app.fire(2500);
+    await app.reply(app.lastCall(panelTool), snapshot([telemetry]));
+    assert.equal(app.calls(activityTool).length, 1, "polling must not request activity");
+    assert.equal(app.button("Recorded result")?.disabled, true);
+    await app.reply(result, recording("result", "Exact recorded result"));
+    assert.match(app.text, /Exact recorded result/);
+    app.click("Recorded args");
+    const pending = app.lastCall(activityTool);
+    app[close]();
+    assert.equal(app.timerCount, 0);
+    assert.equal(app.resizeDisconnected, true);
+    await app.reply(pending, recording("args", "Late recorded args"));
+    assert.doesNotMatch(app.text, /Late recorded args/);
+    if (close === "disconnect") assert.equal(app.button("Recorded result")?.disabled, true);
+  }
 });
 
 test("cancel sends an epoch guard and remains disabled across polling and display modes", async () => {
@@ -437,6 +541,9 @@ test("Codex manifests target the 0.9 bundle, forward approved environments, and 
   assert.equal(mcp.command, "node");
   assert.deepEqual(mcp.args, ["./dist/mcp-server.mjs"]);
   assert.equal(mcp.cwd, ".");
+  assert.deepEqual(readdirSync(new URL("../../plugins/codex/dist/", import.meta.url)).sort(), [
+    "child-rpc-preload.mjs", "mcp-server.mjs", "package.json", "pi-extension.js",
+  ]);
   const env = new Set<string>(mcp.env_vars);
   for (const name of ["LARVA_HOME", "LARVA_PI_CLI_SCRIPT", "LARVA_MCP_PARENT_PERSONA", "PI_CODING_AGENT_DIR", "PATH", "HOME", "USER",
     "LOGNAME", "SHELL", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "XDG_RUNTIME_DIR", "HTTP_PROXY",

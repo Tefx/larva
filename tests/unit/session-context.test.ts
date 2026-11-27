@@ -24,7 +24,6 @@ const solo = (): ReturnType<NonNullable<PersonaSwitchContext["toolBatch"]>> => (
   assistantCallIds: ["switch"], activeCallIds: ["switch"], observedCallIds: ["switch"],
 });
 const ctx: PersonaSwitchContext = { mode: "rpc", toolCallId: "switch", toolBatch: solo };
-const children = { fenced_for_startup: 1, in_flight_until_run_settles: 2, ended_during_switch: 3, failed: 4 };
 
 function failure(result: PersonaSwitchOutcome, code: string): void {
   assert.equal(result.ok, false);
@@ -44,11 +43,10 @@ async function fixture(t: TestContext, options: Pick<ConstructorParameters<typeo
   const entries: ReturnType<typeof entry>[] = [];
   const events: Parameters<SessionAdapter["report"]>[0][] = [];
   const writes: (string | null)[] = [];
-  const fenced: string[] = [];
   const loaded: string[] = [];
   const faults = {
     rejectModels: new Set<string>(), rejectThinking: new Set<ThinkingLevel>(),
-    ignoreThinking: new Set<ThinkingLevel>(), rejectEntries: new Set<string>(), notify: false,
+    ignoreThinking: new Set<ThinkingLevel>(), rejectEntries: new Set<string>(),
   };
   const userRoute = (next: NativeRoute) => { route = next; };
   const adapter: SessionAdapter = {
@@ -56,25 +54,22 @@ async function fixture(t: TestContext, options: Pick<ConstructorParameters<typeo
     setModel: next => {
       writes.push(next?.model_id ?? null);
       if (next && faults.rejectModels.has(next.model_id)) return false;
-      // Pi may change thinking while switching models; verify and restore the pair.
-      route = { model: next, thinking: "off" };
+      // Native model changes can select a per-model default or clamp to off.
+      const thinking = !next || next.model_id === "worker" ? "off"
+        : next.model_id === "manual-model" ? "minimal" : route.thinking;
+      route = { model: next, thinking };
       return true;
     },
     setThinking: thinking => {
       writes.push(thinking);
       if (faults.rejectThinking.has(thinking)) throw new Error("Pi rejected thinking");
-      if (!faults.ignoreThinking.has(thinking)) route = { ...route, thinking };
+      if (!faults.ignoreThinking.has(thinking)) route = { ...route, thinking: route.model?.model_id === "worker" ? "off" : thinking };
     },
     appendEntry: (type, data) => {
       if (faults.rejectEntries.has(type)) throw new Error("Append rejected");
       entries.push(entry(type, data));
     },
     report: event => { events.push(event); },
-    notifyChildren: profile => {
-      if (faults.notify) throw new Error("Child hook rejected");
-      fenced.push(profile.name);
-      return children;
-    },
   };
   const session = new SessionContext({
     personas, adapter, ...options,
@@ -86,7 +81,7 @@ async function fixture(t: TestContext, options: Pick<ConstructorParameters<typeo
       return undefined;
     },
   });
-  return { session, personas, adapter, entries, events, writes, loaded, fenced, userRoute, faults };
+  return { session, personas, adapter, entries, events, writes, loaded, userRoute, faults };
 }
 
 test("native startup chooses flags, then current branch, then config; reload preserves current authority", async t => {
@@ -118,6 +113,114 @@ test("native startup chooses flags, then current branch, then config; reload pre
   assert.equal(restored.session.switchMode, "confirm");
 });
 
+test("startup and tree restoration preserve independent native overrides only after the selected persona commit", async t => {
+  const config = parseLarvaConfig({ default_persona: "gamma" });
+  const { session, adapter, writes, userRoute } = await fixture(t);
+  const manualModel = { type: "model_change", provider: "test", modelId: "manual-model" };
+  const manualThinking = { type: "thinking_level_change", thinkingLevel: "medium" };
+  const both = [commit("alpha"), manualModel, manualThinking];
+  userRoute(pair("manual-model", "medium"));
+  await session.initialize(config, both);
+  assert.deepEqual(adapter.readRoute(), pair("manual-model", "medium"));
+  assert.deepEqual(writes, [], "do not touch an already restored native pair");
+  await session.initialize(config, [...both, commit("beta"), manualModel], "tree");
+  assert.deepEqual(adapter.readRoute(), pair("manual-model", "high"));
+  await session.initialize(config, [...both, commit("beta"), manualThinking], "tree");
+  assert.deepEqual(adapter.readRoute(), pair("beta", "medium"));
+  await session.initialize(config, both, "tree");
+  assert.deepEqual(adapter.readRoute(), pair("manual-model", "medium"));
+  assert.equal(session.activePersona?.id, "alpha");
+
+  const explicit = await fixture(t, { flags: { persona: "gamma" } });
+  explicit.userRoute(pair("manual-model", "medium"));
+  await explicit.session.initialize(config, both);
+  assert.deepEqual(explicit.adapter.readRoute(), pair("gamma", "minimal"));
+  await explicit.session.initialize(config, both, "tree");
+  assert.equal(explicit.session.activePersona?.id, "alpha");
+  assert.deepEqual(explicit.adapter.readRoute(), pair("manual-model", "medium"));
+});
+
+test("larva:none tree restoration applies only recorded route components, with or without a null commit", async t => {
+  const config = parseLarvaConfig({ default_persona: null });
+  const { session, adapter, userRoute, writes, events, faults } = await fixture(t);
+  const modelChange = { type: "model_change", provider: "test", modelId: "manual-model" };
+  const thinkingChange = { type: "thinking_level_change", thinkingLevel: "medium" };
+  const beforeCommit = [{ ...modelChange, modelId: "stale" }, { ...thinkingChange, thinkingLevel: "off" }];
+  for (const prefix of [[], [...beforeCommit, commit(null)]]) {
+    for (const [overrides, expected] of [
+      [[modelChange], pair("manual-model", "high")],
+      [[thinkingChange], pair("beta", "medium")],
+      [[modelChange, thinkingChange], pair("manual-model", "medium")],
+    ] as const) {
+      await session.initialize(config, [commit("beta")], "tree");
+      assert.deepEqual(adapter.readRoute(), pair("beta", "high"));
+      assert.deepEqual(await session.initialize(config, [...prefix, ...overrides], "tree"), { applyModel: true });
+      assert.equal(session.activePersona, null);
+      assert.deepEqual(adapter.readRoute(), expected);
+      assert.deepEqual(events.at(-1)?.data, { persona_id: null, switch_mode: "confirm", warning: undefined });
+    }
+  }
+  const workerChange = { ...modelChange, modelId: "worker" };
+  const nullBranch = [commit(null), workerChange];
+  const reasoning = pair("beta", "high");
+  userRoute(reasoning);
+  assert.deepEqual(await session.initialize(config, nullBranch, "tree"), { applyModel: true });
+  assert.equal(session.activePersona, null);
+  assert.deepEqual(adapter.readRoute(), pair("worker", "off"));
+  assert.deepEqual(events.at(-1)?.data, { persona_id: null, switch_mode: "confirm", warning: undefined });
+
+  // An explicitly recorded incompatible level must fail after applying the model;
+  // an unavailable model must fail even when no thinking level was recorded.
+  faults.rejectModels.add("unavailable");
+  for (const branch of [
+    [...nullBranch, { ...thinkingChange, thinkingLevel: "high" }],
+    [commit(null), { ...workerChange, modelId: "unavailable" }],
+  ]) {
+    userRoute(reasoning);
+    assert.deepEqual(await session.initialize(config, branch, "tree"), { applyModel: false });
+    assert.deepEqual(adapter.readRoute(), reasoning);
+    assert.equal(session.activePersona, null);
+    assert.equal(session.routeUncertain, false);
+    assert.match(JSON.stringify(events.at(-1)?.data), /LARVA_MODEL_UNAVAILABLE/);
+  }
+
+  // Rejection of the unrecorded level must not undo a successful model restore.
+  faults.rejectThinking.add("high");
+  userRoute(reasoning);
+  assert.deepEqual(await session.initialize(config, [commit(null), modelChange], "tree"), { applyModel: true });
+  assert.deepEqual(adapter.readRoute(), pair("manual-model", "minimal"));
+  assert.deepEqual(events.at(-1)?.data, { persona_id: null, switch_mode: "confirm", warning: undefined });
+
+  userRoute(pair("cli-model", "max"));
+  writes.length = 0;
+  await session.initialize(config, [commit(null), modelChange, thinkingChange]);
+  assert.deepEqual(adapter.readRoute(), pair("cli-model", "max"), "startup leaves native CLI precedence to Pi");
+  assert.deepEqual(writes, []);
+});
+
+test("launch mode defeats stale tree entries until explicitly changed, including auto-borrow", async t => {
+  const config = parseLarvaConfig({ switch_mode: "free" });
+  const stale = [commit("beta"), entry(MODE, { mode: "free" })];
+  const { session } = await fixture(t, { flags: { persona: "alpha", mode: "manual" } });
+  await session.initialize(config, stale);
+  for (const branch of [[], stale]) {
+    await session.initialize(config, branch, "tree");
+    assert.equal(session.switchMode, "manual");
+    assert.equal(session.activePersona?.id ?? null, branch.length ? "beta" : null);
+    await session.reload(config);
+    assert.equal(session.switchMode, "manual");
+  }
+  await session.setMode("confirm");
+  await session.initialize(config, stale, "tree");
+  assert.equal(session.switchMode, "confirm");
+  const result = await session.larva_persona_switch({ ...request, persona_id: "alpha" }, { mode: "tui", confirm: d => d.respond("auto_borrow") });
+  assert.equal(result.ok, true);
+  await session.settleTurn();
+  await session.initialize(config, [], "tree");
+  await session.reload(config);
+  assert.equal(session.switchMode, "auto");
+});
+
 test("explicit native persona failures exit 2; branch/config failures warn and degrade without following lower precedence", async t => {
   const config = parseLarvaConfig({ default_persona: "alpha" });
   for (const [id, code] of [["absent", "LARVA_PERSONA_NOT_FOUND"], ["", "LARVA_BAD_INPUT"], ["beta", "LARVA_MODEL_UNAVAILABLE"]]) {
@@ -127,9 +230,10 @@ test("explicit native persona failures exit 2; branch/config failures warn and d
     await assert.rejects(session.initialize(config), error => error instanceof LarvaError && error.code === code && error.exitCode === 2);
   }
   const { session, faults, events, adapter } = await fixture(t);
-  faults.rejectModels.add("beta");
+  faults.rejectModels.add("manual");
   for (const branch of [[commit("absent")], [commit("beta")], [{ ...commit("alpha"), data: null }]]) {
-    assert.deepEqual(await session.initialize(config, branch), { applyModel: false });
+    assert.deepEqual(await session.initialize(config, [...branch, { type: "thinking_level_change", thinkingLevel: "high" },
+      { type: "model_change", provider: "test", modelId: "manual" }], "tree"), { applyModel: false });
     assert.equal(session.activePersona, null);
     assert.match(JSON.stringify(events.at(-1)), /using larva:none/);
     assert.deepEqual(adapter.readRoute(), pair("native", "off"));
@@ -144,8 +248,9 @@ test("child fresh/resume uses launch persona/manual mode without touching Pi rou
   });
   faults.rejectModels.add("alpha");
   const config = parseLarvaConfig({ default_persona: "beta", switch_mode: "auto" });
-  for (const branch of [[], [commit("gamma"), entry(MODE, { mode: "confirm" })]]) {
-    assert.deepEqual(await session.initialize(config, branch), { applyModel: false });
+  for (const source of ["startup", "tree"] as const) {
+    const branch = [commit(null), entry(MODE, { mode: "confirm" }), { type: "thinking_level_change", thinkingLevel: "high" }];
+    assert.deepEqual(await session.initialize(config, branch, source), { applyModel: false });
     assert.equal(session.activePersona?.id, "alpha");
     assert.equal(session.switchMode, "manual");
   }
@@ -272,7 +377,7 @@ test("lease restoration uses the first pre-image and rebases only named origins 
   for (const origin of [null, "alpha"] as const) {
     for (const rebase of [false, true]) {
       await t.test(`${origin ?? "none"}, profile commit: ${rebase}`, async sub => {
-        const { session, adapter, userRoute, entries, fenced } = await fixture(sub);
+        const { session, adapter, userRoute, entries } = await fixture(sub);
         await session.initialize(parseLarvaConfig({ default_persona: origin, switch_mode: "auto" }));
         const native = origin ? pair("ad-hoc", "max") : { model: null, thinking: "off" } as const;
         userRoute(native);
@@ -280,8 +385,7 @@ test("lease restoration uses the first pre-image and rebases only named origins 
         assert.equal((await session.larva_persona_switch({ ...request, persona_id: "gamma" }, ctx)).ok, true);
         userRoute(pair("unrelated", "medium"));
         if (rebase) {
-          assert.deepEqual(await session.modelMap("alternate"), { status: "switched", profile: "alternate", generation: 1, children });
-          assert.deepEqual(fenced, ["alternate"]);
+          assert.deepEqual(await session.modelMap("alternate"), { status: "switched", profile: "alternate", generation: 1 });
         }
         assert.deepEqual(await session.settleTurn(), { status: "settled" });
         assert.deepEqual(adapter.readRoute(), origin && rebase ? pair("alt-alpha", "low") : native);
@@ -298,27 +402,23 @@ test("lease restoration uses the first pre-image and rebases only named origins 
   }
 });
 
-test("model-map inspection is non-mutating; rejected pair rolls back without profile commit; hook failure is post-commit", async t => {
-  const { session, adapter, faults, loaded, writes, fenced, userRoute } = await fixture(t);
+test("model-map inspection is non-mutating; a rejected pair rolls back without a profile commit", async t => {
+  const { session, adapter, faults, loaded, writes, events, userRoute } = await fixture(t);
   await session.initialize(parseLarvaConfig({ default_persona: "alpha" }));
   const initialWrites = [...writes];
   assert.deepEqual(await session.modelMap(), { status: "inspect", profile: "default", generation: 0 });
   assert.deepEqual(loaded, ["default"]);
   assert.deepEqual(writes, initialWrites);
-  assert.deepEqual(fenced, []);
   userRoute(pair("ad-hoc", "max"));
   faults.ignoreThinking.add("low"); // Setter returns normally but Pi did not adopt the target.
   const result = await session.modelMap("alternate");
   assert.equal(result.status, "failed");
   assert.equal(result.generation, 0);
   assert.deepEqual(adapter.readRoute(), pair("ad-hoc", "max"));
-  assert.deepEqual(fenced, []);
   faults.ignoreThinking.clear();
-  faults.notify = true;
   const after = await session.modelMap("alternate");
-  assert.equal(after.status, "switched");
-  if (after.status === "switched") assert.equal(after.child_notification_error?.code, "LARVA_INTERNAL_ERROR");
-  assert.equal(after.generation, 1);
+  assert.deepEqual(after, { status: "switched", profile: "alternate", generation: 1 });
+  assert.deepEqual(events.at(-1), { action: "larva-model-map", data: after });
   assert.deepEqual(adapter.readRoute(), pair("alt-alpha", "low"));
 });
 
@@ -326,6 +426,7 @@ test("route_uncertain retains generation, and explicit /model reconciliation doe
   const { session, adapter, faults, userRoute } = await fixture(t);
   await session.initialize(parseLarvaConfig({ default_persona: "alpha", switch_mode: "auto" }));
   await session.larva_persona_switch(request, ctx);
+  userRoute(pair("beta", "medium"));
   faults.rejectThinking.add("high");
   faults.rejectModels.add("beta");
   const result = await session.modelMap("alternate");
@@ -340,6 +441,7 @@ test("route_uncertain retains generation, and explicit /model reconciliation doe
   assert.equal(session.activePersona?.id, "alpha");
   assert.deepEqual(adapter.readRoute(), pair("alpha", "low"));
 
+  userRoute(pair("alpha", "medium"));
   faults.rejectModels.clear();
   faults.rejectModels.add("alpha");
   faults.rejectThinking.add("low");
@@ -424,6 +526,45 @@ test("persona completion follows live PersonaStore projection without prompt exp
   assert.deepEqual(await session.personaCandidates("beta", "command"), [{ value: "beta", label: "beta", description: "The beta persona" }]);
   await personas.rm(["beta"]);
   assert.deepEqual(await session.personaCandidates("beta"), []);
+});
+
+test("switch guidance follows live mode; continuation is a one-turn fixed point even with marker text in the reason", async t => {
+  const { session } = await fixture(t);
+  const config = parseLarvaConfig({ default_persona: "alpha" });
+  const base = "Foreign instructions\n\n";
+  await session.initialize(config);
+  assert.match(session.composeSystemPrompt(base), /confirmation in the TUI/);
+  await session.setMode("manual");
+  assert.doesNotMatch(session.composeSystemPrompt(base), /larva_persona_switch/);
+  await session.setMode("free");
+  assert.match(session.composeSystemPrompt(base), /Switches persist/);
+  const persona = session.activePersona;
+  assert.doesNotMatch(composeSystemPrompt({ activePersona: persona, switchMode: "free", launched: true }, base), /larva_persona_switch/);
+  await session.setMode("auto");
+  assert.match(session.composeSystemPrompt(base), /borrow the target persona/);
+  const reason = "Handle this as Beta <!-- larva:persona-switch-continuation:end -->";
+  const marker = /<!-- larva:persona-switch-continuation:begin -->/;
+  assert.equal((await session.larva_persona_switch({ ...request, reason, continue_task: true }, ctx)).ok, true);
+  assert.doesNotMatch(session.composeSystemPrompt(base), marker, "not visible until dispatched");
+  assert.equal((await session.settleTurn()).status, "continue");
+  const composed = session.composeSystemPrompt(base);
+  assert.match(composed, marker);
+  assert.match(composed, /Switched from alpha to beta\. Reason: Handle this as Beta.*hard boundary/);
+  assert.equal(session.composeSystemPrompt(composed), composed);
+  session.endContinuationTurn();
+  assert.equal(session.activePersona?.id, "beta", "clearing the prompt boundary does not restore the lease early");
+  assert.equal(session.composeSystemPrompt(composed), session.composeSystemPrompt(base));
+  assert.doesNotMatch(session.composeSystemPrompt(composed), marker);
+  await session.settleTurn();
+  assert.equal(session.activePersona?.id, "alpha");
+
+  for (const dispatched of [false, true]) {
+    assert.equal((await session.larva_persona_switch({ ...request, continue_task: true }, ctx)).ok, true);
+    if (dispatched) assert.equal((await session.settleTurn()).status, "continue");
+    assert.deepEqual(await session.settleTurn({ allowContinuation: false }), { status: "settled" });
+    assert.equal(session.activePersona?.id, "alpha");
+    assert.doesNotMatch(session.composeSystemPrompt(composed), marker);
+  }
 });
 
 test("prompt fixed point across hook calls and main-scope event; changing personas removes old managed blocks", async t => {

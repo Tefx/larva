@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, readdir, readlink, rm, symlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { test } from "node:test";
 import { fixture, tool } from "./fixture.ts";
@@ -67,7 +67,7 @@ for (const base of ["relative", "absolute", "tilde"] as const) test(`real Pi bas
   assert.equal(workerLease.owner_pid, pi.child.pid);
   assert.equal(leafLease.owner_pid, workerLease.child_pid);
   for (const { capsule_root } of [workerLease, leafLease]) {
-    assert.equal(await readFile(join(capsule_root, "models.json"), "utf8"), catalog);
+    assert.equal(await readFile(join(capsule_root, "agent", "models.json"), "utf8"), catalog);
   }
   const record = join(workerLease.capsule_root, "descendants", `${basename(leafLease.capsule_root)}.json`);
   assert.deepEqual(JSON.parse(await readFile(record, "utf8")), { capsule_root: leafLease.capsule_root, pid: leafLease.child_pid });
@@ -97,6 +97,69 @@ for (const base of ["relative", "absolute", "tilde"] as const) test(`real Pi bas
   for (const id of [accepted.task_id, grandchild.task_id]) await assert.rejects(access(`${id}.lock`), { code: "ENOENT" });
   assert.deepEqual(await readdir(join(f.home, "state", "capsules")), []);
 }));
+
+test("real Pi uses projected auth and resources, returns empty text, and reports native startup failures", { timeout: 30_000 }, () => fixture(async f => {
+  const base = dirname(f.modelCatalog), auth = join(base, "auth.json");
+  const catalog = JSON.parse(await readFile(f.modelCatalog, "utf8"));
+  delete catalog.providers.fixture.apiKey;
+  const redactionProbe = "sk-fixture_provider";
+  catalog.providers[redactionProbe] = catalog.providers.fixture;
+  await writeFile(f.modelCatalog, JSON.stringify(catalog));
+  // The fixture's child environment is an explicit allowlist with no API key variables.
+  const credential = { type: "api_key", key: "local-test-auth-file-only" };
+  const credentials = JSON.stringify({ fixture: credential });
+  await writeFile(auth, credentials, { mode: 0o600 });
+  const agents = join(base, "AGENTS.md"), skills = join(base, "skills");
+  await mkdir(skills);
+  await writeFile(agents, "Fixture global instructions marker");
+  await writeFile(join(skills, "probe.md"), "---\nname: probe\ndescription: Fixture skill discovery marker\n---\nA fixture skill.");
+
+  const mcp = f.mcp();
+  await mcp.initialize();
+  const args = { persona_id: "worker", cwd: f.cwd };
+  const receipt = await mcp.ok(spawn, { ...args, task: "Return no assistant text" });
+  const request = await f.provider(0, "Return no assistant text");
+  assert.equal(request.payload.model, "worker");
+  const messages = JSON.stringify(request.payload.messages);
+  assert.match(messages, /Fixture global instructions marker/);
+  assert.match(messages, /Fixture skill discovery marker/);
+  const { capsule_root } = JSON.parse(await readFile(`${receipt.task_id}.lock/lease.json`, "utf8"));
+  for (const path of [auth, agents, skills]) assert.equal(await readlink(join(capsule_root, "agent", basename(path))), path);
+  assert.equal((await lstat(auth)).mode & 0o777, 0o600);
+  request.reply("");
+  const { terminal_outputs } = await mcp.ok("larva_subagent_wait", { task_ids: [receipt.task_id] });
+  const terminal = terminal_outputs[receipt.task_id];
+  assert.deepEqual([terminal.status, terminal.output_state, terminal.result_text], ["success", "inline", ""]);
+  await mcp.ok("larva_subagent_cancel", { task_ids: [receipt.task_id], reason: "Join child cleanup" });
+  assert.equal(await readFile(auth, "utf8"), credentials);
+
+  // This catalog entry has no credential. Pi can verify the route, but the
+  // native prompt preflight must reject without contacting the provider.
+  const worker = JSON.parse(await readFile(f.personaFile("worker"), "utf8"));
+  await writeFile(f.personaFile("worker"), JSON.stringify({ ...worker, model: `${redactionProbe}/worker` }));
+  const missing = await mcp.call(spawn, { ...args, task: "Reject at preflight with missing auth" });
+  assert.equal(missing.isError, true);
+  assert.equal(missing.structuredContent.error.code, "LARVA_CHILD_PROTOCOL_FAILED");
+  const diagnostic = missing.structuredContent.error.message;
+  assert.match(diagnostic, /^Child rejected prompt: No API key found for \[REDACTED\]/);
+  assert.doesNotMatch(diagnostic, /[\r\n]|sk-fixture_provider|local-test-auth-file-only/);
+  assert.equal(f.requests.length, 1, "missing auth must reject before requesting the provider");
+
+  // Inject a structured startup failure in a real Pi extension. A launched
+  // child takes its route from the CLI; it does not activate it in Larva init.
+  const failStartup = join(base, "fail-startup.mjs");
+  await writeFile(failStartup, `export default pi => pi.on('session_start', () => {
+    const error = { code: 'LARVA_MODEL_UNAVAILABLE', message: 'Fixture startup model unavailable. password=fixture-only' };
+    process.stderr.write(JSON.stringify({ ok: false, error }) + '\\n', () => process.exit(2));
+  });`);
+  await f.config({ subagent: { extension_sources: [failStartup] } });
+  const startup = await mcp.call(spawn, { ...args, task: "Fail at persona startup" });
+  assert.equal(startup.isError, true, JSON.stringify(startup));
+  assert.deepEqual(startup.structuredContent.error, { code: "LARVA_MODEL_UNAVAILABLE",
+    message: "Fixture startup model unavailable. [REDACTED]" });
+  assert.equal(f.requests.length, 1);
+  assert.deepEqual(await readdir(join(f.home, "state", "capsules")), []);
+}, { modelsOnly: true }));
 
 // The closed wire schema has no faster legal settings. Drive both real
 // deadlines from a silent local provider, not sleeps or a replaced timer.

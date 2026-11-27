@@ -18,10 +18,10 @@ context: 'Deliver the converged Larva 0.9.0 single-stack TypeScript rewrite (pi-
   historical 0.8.x phases and evidence remain immutable.'
 project_guidance: 'Authoritative 0.9.0 contract: design/larva-0.9-architecture.md
   (superseding 0.8.x Python/Invar/Web/OpenCode/compaction/persona-invocation rules
-  for larva_0_9_rewrite). Single-stack Node.js/TypeScript ESM with zero npm runtime
-  dependencies: run npm run typecheck, targeted node --test suites, and npm run build.
-  Keep @earendil-works/pi-tui imports strictly inside Pi extension/TUI modules (zero
-  pi-tui references in dist/{cli,mcp-server,child-rpc-preload,timeline-worker}.mjs).
+  for larva_0_9_rewrite and larva_0_9_parity_closure). Single-stack Node.js/TypeScript
+  ESM with zero npm runtime dependencies: run npm run typecheck, targeted node --test
+  suites, and npm run build. Keep @earendil-works/pi-tui imports strictly inside Pi
+  extension/TUI modules (zero pi-tui references in dist/{cli,mcp-server,child-rpc-preload}.mjs).
   All tests must be hermetic using disposable temp LARVA_HOME directories; never mutate
   real host ~/.larva, ~/.pi/agent/settings.json, or publish npm/GitHub releases or
   git tags. Pi dependency locks reproduce local builds only—never add runtime Pi version
@@ -155173,3 +155173,1010 @@ phases:
 
       - npm pack --dry-run (exact 8 files) + bare-node tarball smoke -> pass (temp
       dir removed)'
+- id: larva_0_9_parity_closure
+  name: Larva 0.9 Parity Closure & Simplification
+  status: done
+  gate: All 14 ledger items (B1-01..B1-11, B2-01..B2-03) closed against design/larva-0.9-architecture.md
+    (91bbab8e) with FULL gate.report.v2 PASS, clean build/bundle sync, exact 7-file
+    npm pack manifest, 0 pi-tui refs in headless .mjs bundles, and full hermetic npm
+    test PASS.
+  depends_on:
+  - larva_0_9_rewrite
+  steps:
+  - id: larva_0_9_parity.wave1_simplify_and_seam
+    name: 'Wave 1: Simplify dead worker/helpers, clean build dirs, and lock RunSnapshot
+      telemetry seam'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [B2-01] Delete orphaned `src/timeline-worker.ts` and `plugins/codex/dist/timeline-worker.mjs`.
+      Remove `timeline-worker.mjs` from `scripts/build.mjs`, `.github/workflows/ci.yml`
+      (update `npm pack` expected manifest from 8 to 7 files: `LICENSE`, `README.md`,
+      `package.json`, `dist/{child-rpc-preload.mjs,cli.mjs,mcp-server.mjs,pi-extension.js}`),
+      `docs/reference/ARCHITECTURE.md`, `tests/e2e/fixture.ts`, `tests/unit/foundation-schema.test.ts`,
+      and prune the dead-worker test from `tests/unit/activity-inspector.test.ts`;
+      grep `package.json`, `README.md`, `docs/**`, `src/**`, `tests/**` for any stale
+      `timeline-worker` references and remove them.
+
+      - [B1-11] `scripts/build.mjs:main`: clean `dist/` via `rm(dist, { recursive:
+      true, force: true })` before writing `dist/` bundles (after bundling succeeds;
+      never in `--check-only`), and clean `plugins/codex/dist/` before writing Codex
+      dist unless `--dist-only`.
+
+      - [B2-02] Extract one shared `O_RDONLY | O_NONBLOCK` bounded regular-file UTF-8
+      text reader helper in `src/store/` (configurable `maxBytes` and open `flags`
+      such as `O_NOFOLLOW`), reused by `src/store/model-map.ts` and `src/store/persona-store.ts`
+      and ready for `src/store/capsule.ts` in Wave 2A.
+
+      - [B2-03] `src/surfaces/doctor.ts`, `src/runtime/pi-binary.ts`: deduplicate
+      base Pi agent dir resolution by reusing `resolveBasePiAgentDir` from `src/core/paths.ts`
+      instead of ad-hoc `~/` slicing.
+
+      - [Telemetry Seam] `src/core/types.ts:RunSnapshot`: add optional bounded live-telemetry
+      fields (`model?: string`, `thinking?: ThinkingLevel`, `task_preview?: string`,
+      `active_tool?: { tool_call_id: string; name: string; status: "running" | "done"
+      | "error" } | null`, `live_thinking?: boolean`, `live_assistant_preview?: string`,
+      `tool_snapshots?: ReadonlyArray<{ tool_call_id: string; name: string; status:
+      "running" | "done" | "error"; args_preview?: string }>`) locking the Wave 2A
+      producer / Wave 3 UI consumer seam (`delta s|_boundary = 0`).
+
+
+      Implementation Notes:
+
+      - Leave `src/store/capsule.ts` untouched in Wave 1 (Wave 2A migrates capsule
+      reads to the new helper); leave `SessionAdapter.notifyChildren` removal for
+      Wave 2B (`src/runtime/session-context.ts`).
+
+      - Run `npm run build:dist` (not full `npm run build`) in Wave 1 so Wave 3 handles
+      full `plugins/codex/dist/` bundle sync after Wave 2A/2B merge.
+
+      - Keep `scripts/build.mjs --check-only` strictly read-only.
+
+
+      Boundary:
+
+      - owner: `software-engineer`; target: repo worktree; rollback: git revert.
+
+      - scope.allowed_paths: `src/timeline-worker.ts`, `scripts/build.mjs`, `.github/workflows/ci.yml`,
+      `docs/reference/ARCHITECTURE.md`, `src/store/**` (excluding `src/store/capsule.ts`),
+      `src/surfaces/doctor.ts`, `src/runtime/pi-binary.ts`, `src/core/types.ts`, `plugins/codex/dist/timeline-worker.mjs`,
+      `tests/e2e/fixture.ts`, `tests/unit/activity-inspector.test.ts`, `tests/unit/codex-ui-and-plugin.test.ts`,
+      `tests/unit/cli-and-doctor.test.ts`, `tests/unit/preload-and-pi-bin.test.ts`,
+      `tests/unit/foundation-schema.test.ts` (plus any uncontested caller/doc file
+      with stale `timeline-worker` references found by grep).
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - Preserve `src/core/**` purity (no side-effect I/O) and zero `@earendil-works/pi-tui`
+      references outside Pi extension/TUI modules.
+
+
+      Admit:
+
+      - Typecheck, `build:dist`, and targeted unit suites pass; stale files planted
+      in `dist/` are wiped by `build:dist`; zero `timeline-worker` references remain
+      outside historical `plan.yaml`.
+
+
+      Recovery:
+
+      - Revert incomplete edits in worktree; pause and report if an undocumented external
+      consumer of `timeline-worker` is found.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/foundation-schema.test.ts
+      tests/unit/activity-inspector.test.ts tests/unit/cli-and-doctor.test.ts tests/unit/preload-and-pi-bin.test.ts
+      tests/unit/codex-ui-and-plugin.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T11:16:32.806564Z'
+    done_at: '2026-11-27T11:23:04.838565+00:00'
+    evidence: 'Artifact:
+
+      - Commit: ae0d4ac426f15c1ef3d33a25303418f507274118 (ff onto v0.9; worktree removed;
+      +147/-637 lines)
+
+
+      Changes:
+
+      - [B2-01] Deleted orphaned src/timeline-worker.ts and plugins/codex/dist/timeline-worker.mjs;
+      removed stale references from scripts/build.mjs, .github/workflows/ci.yml (7-file
+      npm pack manifest), docs/reference/ARCHITECTURE.md, tests/e2e/fixture.ts, tests/unit/foundation-schema.test.ts,
+      tests/unit/activity-inspector.test.ts, and tests/unit/codex-ui-and-plugin.test.ts.
+
+      - [B1-11] scripts/build.mjs: cleans dist/ (and codexDist unless --dist-only)
+      via rm(..., { recursive: true, force: true }) after bundling succeeds; regression
+      tested in foundation-schema.test.ts.
+
+      - [B2-02] Extracted shared O_RDONLY | O_NONBLOCK bounded regular-file reader
+      in src/store/bounded-read.ts, reused by model-map.ts, persona-store.ts, and
+      pi-binary.ts.
+
+      - [B2-03] Deduplicated base Pi agent dir resolution in src/surfaces/doctor.ts
+      and src/runtime/pi-binary.ts via resolveBasePiAgentDir.
+
+      - [Telemetry Seam] Added bounded optional live telemetry fields on RunSnapshot
+      in src/core/types.ts.
+
+
+      Verification:
+
+      - npm run typecheck -> exit 0
+
+      - npm run build:dist -> exit 0
+
+      - 5 targeted unit suites -> 45/45 pass; 4 additional core/store/supervisor suites
+      -> 67/67 pass
+
+      - npm pack --dry-run --json -> 7 files; 0 pi-tui refs in dist/*.mjs; git grep
+      timeline-worker outside plan.yaml -> 0 matches'
+  - id: larva_0_9_parity.wave2a_capsule_rpc_telemetry
+    name: 'Wave 2A: Capsule agent/ symlinks, RPC error/stderr/text parity, MCP PATH
+      fallback, and live telemetry producer'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [B1-01] `src/store/capsule.ts`, `src/runtime/child-rpc-client.ts`, `src/runtime/supervisor.ts`:
+      keep `owner.json`, `child_self.json`, `descendants/` at `capsuleRoot` (`LARVA_PI_CAPSULE_ROOT`);
+      create `join(capsuleRoot, "agent")` (`0700`) as child `PI_CODING_AGENT_DIR`;
+      update `CapsulePaths` to `{ root, agent_dir, settings_path, models_path }`;
+      write private `0600` `settings.json` and `models.json` into `agent_dir` (allowing
+      `models.json` symlinked to a regular file <= 1 MiB via `realpath`, reusing Wave
+      1''s shared bounded reader); symlink all other `baseAgentDir` entries (`auth.json`,
+      `AGENTS.md`, `skills`, `prompts`, `themes`, `bin`, `mcp*`, `models-store.json`,
+      `trust.json`, `npm`, `git`, etc.) by `realpath` into `agent_dir/`, excluding
+      `settings.json`, `models.json`, `sessions`, `backups`, `crashes.json`, `*-debug.log`,
+      `*.lock`, and cleanly skipping dangling symlinks (`ENOENT`).
+
+      - [B1-02] `src/runtime/child-rpc-client.ts`: on RPC `response` `success: false`,
+      extract `frame.error`, redact credentials (`Bearer ...`, `sk-...`, `AIza...`,
+      `key=...`, `token=...`, `secret=...`, `password=...`, URL `user:pass@`), bound
+      to 300 chars, and include in `Child rejected ${request.type}: ${redacted}`.
+      Buffer bounded child `stderr` tail (8 KB UTF-8); if child exits non-zero before
+      initial `get_state` readiness, scan `stderr` tail for JSON `{ ok: false, error:
+      { code: "LARVA_...", message } }` and reject with `LarvaError(code, redact(message))`.
+
+      - [B1-03] `src/runtime/child-rpc-client.ts`: normalize `get_last_assistant_text`
+      `data.text === undefined || data.text === null` to `""`; throw `LARVA_CHILD_PROTOCOL_FAILED`
+      only when `text` is non-string and non-nullish.
+
+      - [B1-04] `src/mcp-server.ts`: keep `discoverPiInstallation(env)` strictly bound
+      to `env.PATH`; in `runMcpServer(env = process.env)` append existing dirs from
+      `[join(home, ".local/bin"), join(home, ".pi/agent/bin"), "/opt/homebrew/bin",
+      "/usr/local/bin"]` not already in `env.PATH`.
+
+      - [B1-10 producer] `src/runtime/child-rpc-client.ts`, `src/runtime/supervisor.ts`:
+      populate Wave 1 `RunSnapshot` telemetry (`model`, `thinking`, `task_preview`
+      <= 140 chars, `active_tool`, `live_thinking`, `live_assistant_preview` tail
+      <= 600 chars, last 25 `tool_snapshots` with `args_preview` <= 160 chars) across
+      live RPC events and settle/clear `active_tool` and `live_thinking` on tool/run
+      end.
+
+      - Add hermetic regressions in `tests/unit/store-leases-gc.test.ts`, `tests/unit/supervisor.test.ts`,
+      `tests/integration/mcp-server-surface.test.ts`, `tests/e2e/pi-subagents.test.ts`
+      (auth-only via `PI_CODING_AGENT_DIR/auth.json` + symlinked `AGENTS.md`/`skills/`
+      + dangling-link skip, missing-credential redacted diagnostic, stderr `LARVA_MODEL_UNAVAILABLE`
+      propagation, empty assistant text `status: "success", output_state: "inline"`,
+      MCP PATH fallback, live telemetry bounds).
+
+
+      Implementation Notes:
+
+      - Replace local open/read duplication in `src/store/capsule.ts` with Wave 1''s
+      shared bounded regular-file reader.
+
+      - Redact credentials uniformly on both RPC `frame.error` and stderr JSON error
+      messages.
+
+      - Verify capsule inspection/GC paths remain anchored on `capsuleRoot` while
+      child Pi receives `PI_CODING_AGENT_DIR = capsule.agent_dir`.
+
+
+      Boundary:
+
+      - owner: `software-engineer`; target: repo worktree; rollback: git revert.
+
+      - scope.allowed_paths: `src/store/capsule.ts`, `src/runtime/child-rpc-client.ts`,
+      `src/runtime/supervisor.ts`, `src/mcp-server.ts`, `tests/unit/store-leases-gc.test.ts`,
+      `tests/unit/supervisor.test.ts`, `tests/integration/mcp-server-surface.test.ts`,
+      `tests/e2e/pi-subagents.test.ts`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - File-disjoint from Wave 2B; zero `@earendil-works/pi-tui` references; hermetic
+      temp fixtures only.
+
+
+      Admit:
+
+      - Typecheck, `build:dist`, and all 4 targeted suites pass with zero child process
+      leaks and zero host mutations.
+
+
+      Recovery:
+
+      - Tear down child processes in `finally`; revert incomplete worktree changes
+      on conflict.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/store-leases-gc.test.ts
+      tests/unit/supervisor.test.ts tests/integration/mcp-server-surface.test.ts tests/e2e/pi-subagents.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave1_simplify_and_seam
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T11:23:14.008742Z'
+    done_at: '2026-11-27T11:40:25.689730+00:00'
+    evidence: 'Artifact:
+
+      - Commit: b4e8c67b659ce5bd2f7d114407b5bac3a897a5ab (ff onto v0.9; worktree removed;
+      +423/-93 lines)
+
+
+      Changes:
+
+      - [B1-01] src/store/capsule.ts, src/runtime/child-rpc-client.ts, src/runtime/supervisor.ts:
+      separated capsule root (LARVA_PI_CAPSULE_ROOT) from dedicated agent/ subdir
+      (PI_CODING_AGENT_DIR); reused src/store/bounded-read.ts; symlinked base Pi resources
+      via realpath excluding private/ephemeral/dangling entries; private 0600 settings.json
+      & models.json (supporting valid symlinks <= 1 MiB).
+
+      - [B1-02] src/runtime/child-rpc-client.ts: added sanitizeRpcError (whitespace
+      collapse, credential redaction, <= 300 code points) on failed RPC responses
+      and bounded 8 KB stderr tail JSON LarvaError propagation before readiness.
+
+      - [B1-03] src/runtime/child-rpc-client.ts: normalized nullish get_last_assistant_text
+      text to "".
+
+      - [B1-04] src/mcp-server.ts: appended existing GUI PATH fallbacks in runMcpServer(env)
+      without altering discoverPiInstallation(env).
+
+      - [B1-10 producer] src/runtime/child-rpc-client.ts, src/runtime/supervisor.ts:
+      populated bounded RunSnapshot live telemetry (model, thinking, task_preview,
+      active_tool, live_thinking, live_assistant_preview, tool_snapshots <= 25).
+
+
+      Verification:
+
+      - npm run typecheck && npm run build:dist -> exit 0
+
+      - tests/unit/store-leases-gc.test.ts, tests/unit/supervisor.test.ts, tests/integration/mcp-server-surface.test.ts,
+      tests/e2e/pi-subagents.test.ts -> 41/41 pass (including auth.json-only real-Pi
+      E2E, missing-auth diagnostic, stderr LARVA_MODEL_UNAVAILABLE, empty text inline)
+
+      - Note for Wave 3: tests/e2e/codex-mcp.test.ts:120-121 needs <capsule>/agent/models.json
+      path update alongside Codex bundle rebuild.'
+  - id: larva_0_9_parity.wave2b_pi_session_ux
+    name: 'Wave 2B: Pi callbacks/renderers, switch guidance/continuation, restore
+      overrides, autocomplete, and command UX'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [B1-05] `src/pi-extension.ts`, `src/surfaces/pi-tools.ts`: format `larva-subagent-result`
+      with untrusted-data boundary header, structured metadata (`task_id`, `persona_id`,
+      `status`, `phase`, `output_state`, `callback_id`, plus `full_output_artifact`
+      `{ path, bytes, lines, sha256 }` when artifactized), and collision-safe fenced
+      output (` ```text ` or longer backtick fence); include `persona_id` + silence
+      context in `larva-subagent-alert`; include concise anti-sleep-polling / push-callback
+      + exact `task_id` reuse guidance in `larva_subagent` `accepted` ToolResult text;
+      add compact `renderCall` / `renderResult` TUI renderers on `larva_subagent`
+      using lazy/optional `@earendil-works/pi-tui` `Text` only inside Pi surface.
+
+      - [B1-06] + [B2-02] `src/runtime/system-prompt.ts`, `src/runtime/session-context.ts`,
+      `src/pi-extension.ts`: include mode-specific `larva_persona_switch` guidance
+      in `larva:active-persona` when `!launched && switchMode !== "manual"`; add idempotent
+      `<!-- larva:persona-switch-continuation:begin --> ... <!-- larva:persona-switch-continuation:end
+      -->` block (`C(S, C(S, B)) = C(S, B)`) consumed via `settleTurn().continuation`
+      for the single `pi.sendUserMessage(...)` continuation turn and cleared after
+      settlement; remove dead `SessionAdapter.notifyChildren` from `src/runtime/session-context.ts`
+      and its test double in `tests/unit/session-context.test.ts`.
+
+      - [B1-07] `src/runtime/session-context.ts`, `src/pi-extension.ts`: when `initialize()`
+      restores `stored` (`larva-active-persona-commit`) from `branch` (startup without
+      `--larva-persona` and `session_tree`), apply persona default model only if no
+      subsequent `model_change` exists after that commit''s index, and apply default
+      thinking only if no subsequent `thinking_level_change` exists (explicit `--larva-persona`,
+      child launches, `/larva-persona`, `Ctrl+Alt+P` continue applying both).
+
+      - [B1-08] `src/pi-extension.ts`: guard `ctx.ui.addAutocompleteProvider` with
+      a `WeakSet<object>` on `ctx.ui` delegating to current `live?.session` so `/new`
+      / `/resume` never stack duplicate wrappers; pass `query = ""` when `"@persona:".startsWith(token.toLowerCase())
+      && token.length > 1`; support non-ASCII/CJK and opening delimiters `(`, `[`,
+      `{`, `"`, `''` before `@`, deduplicating merged items by `value`.
+
+      - [B1-09] `src/surfaces/pi-commands.ts`: add `ctx.isIdle()` guard on `Ctrl+Alt+P`
+      (warn via `ctx.ui.notify` without mutating active streaming turn); add `getArgumentCompletions`
+      on `/larva-mode` (`manual`, `confirm`, `auto`, `free`) and `/larva-model-map`
+      (`default` + valid `model-map.<profile>.json` names in `LARVA_HOME`).
+
+      - Add/update hermetic regressions in `tests/unit/session-context.test.ts`, `tests/integration/pi-extension-surface.test.ts`,
+      `tests/e2e/pi-rpc.test.ts`.
+
+
+      Implementation Notes:
+
+      - Keep `src/runtime/**` free of `@earendil-works/pi-tui` references.
+
+      - Compute backtick fence length dynamically above the longest backtick run in
+      child output so fenced blocks cannot be broken by output text.
+
+      - Clear pending continuation state across normal turn end, error, and abort/reset
+      transitions.
+
+
+      Boundary:
+
+      - owner: `software-engineer`; target: repo worktree; rollback: git revert.
+
+      - scope.allowed_paths: `src/runtime/system-prompt.ts`, `src/runtime/session-context.ts`,
+      `src/pi-extension.ts`, `src/surfaces/pi-tools.ts`, `src/surfaces/pi-commands.ts`,
+      `tests/unit/session-context.test.ts`, `tests/integration/pi-extension-surface.test.ts`,
+      `tests/e2e/pi-rpc.test.ts`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - File-disjoint from Wave 2A; hermetic temp fixtures only.
+
+
+      Admit:
+
+      - Typecheck, `build:dist`, and all 3 targeted suites pass; zero `@earendil-works/pi-tui`
+      references in headless `.mjs` bundles.
+
+
+      Recovery:
+
+      - Revert incomplete worktree edits on conflict; preserve explicit `--larva-persona`
+      and interactive switch behavior.'
+    verification: npm run typecheck && npm run build:dist && node --test tests/unit/session-context.test.ts
+      tests/integration/pi-extension-surface.test.ts tests/e2e/pi-rpc.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave1_simplify_and_seam
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T11:23:14.011407Z'
+    done_at: '2026-11-27T11:41:22.621259+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 505adf5e2e31d6e29370807549b06ab632becef1 (rebased cleanly from 2e0b9b79
+      onto v0.9; worktree removed; +437/-100 lines)
+
+
+      Changes:
+
+      - [B1-05] src/pi-extension.ts, src/surfaces/pi-tools.ts: untrusted-data boundary
+      header, structured metadata (with epoch-pinned persona_id/phase lookup), collision-safe
+      Markdown backtick fences on larva-subagent-result; persona_id + silence context
+      on larva-subagent-alert; acceptedGuidance + renderCall/renderResult on larva_subagent.
+
+      - [B1-06] + [B2-02] src/runtime/system-prompt.ts, src/runtime/session-context.ts,
+      src/pi-extension.ts: mode-specific switch guidance in larva:active-persona;
+      single-turn idempotent larva:persona-switch-continuation block cleared after
+      turn settlement; removed dead SessionAdapter.notifyChildren.
+
+      - [B1-07] src/runtime/session-context.ts, src/pi-extension.ts: startup/tree
+      restore preserves post-commit model_change and thinking_level_change entries.
+
+      - [B1-08] src/pi-extension.ts: WeakSet-guarded autocomplete wrapper across /new
+      & /resume, @persona prefix query="" fix, CJK/open-delimiter boundaries, value
+      deduplication.
+
+      - [B1-09] src/surfaces/pi-commands.ts: Ctrl+Alt+P ctx.isIdle() guard; /larva-mode
+      and /larva-model-map getArgumentCompletions.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build:dist -> exit 0
+
+      - 53/53 requested tests + supervisor, real 2-hop reload, and 121s soft-stall-to-cancel
+      watchdog E2E tests pass
+
+      - 0 @earendil-works/pi-tui references in src/runtime or dist/{cli,mcp-server,child-rpc-preload}.mjs'
+  - id: larva_0_9_parity.wave3_ui_and_bundles
+    name: 'Wave 3: TUI workbench & Codex live telemetry UI, cancel confirmation, bundle
+      sync, and full suite consolidation'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [B1-10 TUI] `src/ui/pi-subagent-console-tui.ts`: render Wave 1/2A `RunSnapshot`
+      telemetry (`model` + `thinking`, `task_preview`, `active_tool` / `live_thinking`,
+      `live_assistant_preview`, recent `tool_snapshots`) in the detail pane; require
+      explicit inline confirmation (`y`/`Enter` to confirm cancel, `n`/`Esc` to abort,
+      capturing `run_epoch` at initial `c`/click and refusing cancel if epoch changed
+      or run settled) before cancelling from TUI workbench.
+
+      - [B1-10 Codex UI] `src/ui/codex-panel-html.ts`, `src/ui/codex-widget-html.ts`:
+      collapse verbose inline widget output/detail panes behind a `[Details]` / `[Hide
+      details]` toggle by default while keeping status, persona, model/thinking, active
+      tool, stall badge, and `[Cancel]` visible; render live `task_preview`, `active_tool`,
+      `live_assistant_preview`, recent `tool_snapshots`, copy helpers, and on-demand
+      tool `args` / `result` drill-down via `tools/call` -> `larva_subagent_activity({
+      task_id, tool_call_id, segment_part })`.
+
+      - [Consolidate & Bundle Sync] Run full `npm run build` to rebuild `dist/` and
+      sync tracked `plugins/codex/dist/*` (closing any `[DEFER_TO_CONSOLIDATE]` items
+      from Wave 2 if present); update/run `tests/unit/codex-ui-and-plugin.test.ts`,
+      `tests/integration/pi-extension-surface.test.ts`, and `tests/e2e/codex-mcp.test.ts`;
+      verify `npm run typecheck`, `npm run build -- --check-only`, clean `git diff
+      --exit-code plugins/codex/` on committed bundles, zero `@earendil-works/pi-tui`
+      references in `.mjs` files across `dist/` and `plugins/codex/dist/`, exact 7-file
+      `npm pack --dry-run` manifest, and full hermetic `npm test`.
+
+
+      Implementation Notes:
+
+      - Keep `src/ui/codex-*.ts` free of `@earendil-works/pi-tui` imports.
+
+      - Ensure Codex drill-down and copy actions respect bridge disconnect, `ui/resource-teardown`,
+      and replaced DOM controls.
+
+      - Confirm `npm pack --dry-run` lists exactly `LICENSE`, `README.md`, `package.json`,
+      and `dist/{child-rpc-preload.mjs,cli.mjs,mcp-server.mjs,pi-extension.js}`.
+
+
+      Boundary:
+
+      - owner: `frontend-engineer`; target: repo worktree; rollback: git revert.
+
+      - scope.allowed_paths: `src/ui/pi-subagent-console-tui.ts`, `src/ui/codex-panel-html.ts`,
+      `src/ui/codex-widget-html.ts`, `plugins/codex/dist/**`, `tests/unit/codex-ui-and-plugin.test.ts`,
+      `tests/integration/pi-extension-surface.test.ts`, `tests/e2e/codex-mcp.test.ts`.
+
+      - scope.blocked_paths: `["plan.yaml"]`.
+
+      - Hermetic fixtures only; never mutate host `~/.larva` or `~/.pi/agent/settings.json`.
+
+
+      Admit:
+
+      - Typecheck, full build + `--check-only`, clean `plugins/codex/` diff after
+      build, exact 7-file `npm pack --dry-run`, zero headless `pi-tui` refs, and full
+      `npm test` pass.
+
+
+      Recovery:
+
+      - Re-run `npm run build` on bundle drift; escalate if Wave 2 `RunSnapshot` telemetry
+      fields differ from the locked seam.'
+    verification: npm run typecheck && npm run build && npm run build -- --check-only
+      && git diff --exit-code plugins/codex/ && npm test && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave2a_capsule_rpc_telemetry
+    - larva_0_9_parity.wave2b_pi_session_ux
+    agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-27T11:41:29.803518Z'
+    done_at: '2026-11-27T11:55:08.349912+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 041e4b50771aa9c51d50a04499a3815474263650 (ff onto v0.9; worktree removed;
+      +1434/-408 lines)
+
+
+      Changes:
+
+      - [B1-10 TUI] src/ui/pi-subagent-console-tui.ts: rendered live RunSnapshot telemetry
+      (model/thinking route, task_preview, active_tool/live_thinking, live_assistant_preview,
+      tool_snapshots, PgUp/PgDn detail scroll) and inline cancel confirmation (y/Enter
+      vs n/Esc) capturing {task_id, run_epoch} and rechecking active run state before
+      cancel.
+
+      - [B1-10 Codex UI] src/ui/codex-panel-html.ts (shared with widget-v4): collapsed
+      inline widget details behind [Details]/[Hide details] by default (persisting
+      per epoch), rendered live telemetry + copy helpers + on-demand larva_subagent_activity
+      args/result drill-down guarded against polling, teardown, disconnect, and replaced
+      DOM controls.
+
+      - [Sync & Consolidation] Updated tests/e2e/codex-mcp.test.ts (<capsule>/agent/models.json)
+      + tests/unit/codex-ui-and-plugin.test.ts + tests/integration/pi-extension-surface.test.ts;
+      rebuilt dist/ and plugins/codex/dist/*.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> exit 0
+
+      - Full hermetic npm test -> 177/177 pass, 0 failed/skipped, 0 leaked processes,
+      ~/.larva & ~/.pi/agent/settings.json unchanged
+
+      - 0 @earendil-works/pi-tui references across all 5 headless .mjs bundles; npm
+      pack --dry-run exact 7-file manifest.'
+  - id: larva_0_9_parity.gate
+    name: 'Wave 4: Full parity closure gate review and tarball smoke verification'
+    status: done
+    description: 'step_type: gate
+
+      repo_change_policy: no_repo_change
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - Independent `FULL` `gate.report.v2` auditing 100% closure of `B1-01..B1-11`
+      and `B2-01..B2-03` across `91bbab8e42946ca218f3dbd53573de1f91a40641..HEAD` against
+      `design/larva-0.9-architecture.md` (`91bbab8e`) and baseline `54582742`.
+
+      - Verify build, packaging, and runtime integrity: `npm run typecheck`, `npm
+      run build && npm run build -- --check-only`, `git diff --exit-code plugins/codex/`,
+      0 `@earendil-works/pi-tui` references in headless `.mjs` bundles (`dist/*.mjs`,
+      `plugins/codex/dist/*.mjs`), exact 7-file `npm pack --dry-run` manifest (`LICENSE`,
+      `README.md`, `package.json`, `dist/{child-rpc-preload.mjs,cli.mjs,mcp-server.mjs,pi-extension.js}`)
+      + bare-`node` tarball unpack/CLI/MCP smoke in a disposable temp dir, and full
+      hermetic `npm test` (0 failures, 0 process leaks, 0 host `~/.larva` or `~/.pi/agent`
+      mutations).
+
+      - Audit `(D, S, E)` conservation and `[SIMPLICITY / DE-BLOAT]` across all modified
+      production/test files and their 1-hop peer/consumer orbits.
+
+
+      Boundary:
+
+      - owner: `gate-reviewer`; read-only (`no_repo_change`); `scope.blocked_paths:
+      ["plan.yaml"]`.
+
+      - Never edit tracked repository files; clean up temporary tarball smoke directories
+      in `finally`.
+
+
+      Admit:
+
+      - `gate.report.v2` PASS with witnessed command receipts, tarball smoke output,
+      and zero Tier 1 `[CONTRACT / WIRE]` or `[SIMPLICITY / DE-BLOAT]` blockers.
+
+
+      Recovery:
+
+      - Report any blocker with `file:line`, violated invariant, and minimal closure
+      fix without mutating the repository.'
+    verification: npm run typecheck && npm run build -- --check-only && git diff --exit-code
+      plugins/codex/ && npm pack --dry-run && npm test
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave4c_gate_repair
+    agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-11-27T12:55:32.958039Z'
+    done_at: '2026-11-27T12:59:26.325202+00:00'
+    evidence: 'Artifact:
+
+      - Gate target commit: 7e02846e0a7f8ba923d26a88fbdefcbe11bcd6da (phase range
+      91bbab8e42946ca218f3dbd53573de1f91a40641..7e02846e0a7f8ba923d26a88fbdefcbe11bcd6da)
+
+      - Validated gate.report.v2 (DELTA PASS after FULL + 2 DELTA rounds): valid=true,
+      binding_checked=true, evidence_disposition=POSITIVE_GATE_EVIDENCE, all 6 bound
+      requirement families PROVEN (PARITY.B1_01..B1_11, B2_01..B2_03, PACKAGING_HERMETIC_SUITE_AND_DSE_CLOSURE),
+      0 blocking findings.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> exit 0 (pre-write cleanup verified, --check-only
+      read-only verified)
+
+      - Full hermetic npm test -> 182/182 pass, 0 failed/skipped/cancelled, 0 leaked
+      sandbox processes, 0 host ~/.larva or ~/.pi/agent/settings.json changes
+
+      - Headless bundle & source scans -> 0 @earendil-works/pi-tui references across
+      5 headless .mjs bundles & 27 headless source files; 0 timeline-worker / notifyChildren
+      matches outside plan.yaml
+
+      - npm pack --dry-run -> exact 7-file manifest (LICENSE, README.md, package.json,
+      dist/{child-rpc-preload.mjs,cli.mjs,mcp-server.mjs,pi-extension.js}); 4/4 bare-Node
+      tarball unpack/CLI/MCP smokes passed
+
+      - Independent live Pi 1.6.1 probes verified bare key= redaction, --larva-mode
+      manual across tree/reload, all 4 larva:none model/thinking tree-restore cases,
+      and 25/26/27 parallel tool active_tool tracking.
+
+
+      Spec link:
+
+      - design/larva-0.9-architecture.md (91bbab8e) and contracts/persona_spec.schema.json'
+  - id: larva_0_9_parity.wave4_gate_repair
+    name: 'Wave 4A: Close gate parity findings (PARITY-F01..F04)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [PARITY-F01 / B1-02] `src/runtime/child-rpc-client.ts` (`SECRET_NAMES`, `redactCredentials`,
+      `sanitizeRpcError`, `startupError`, `previewToolArgs`): add bare `key` credential
+      pattern (`key=...` / `key:...`) redaction across both RPC error responses and
+      structured startup stderr envelopes while preserving error codes, actionable
+      diagnostic context, and 300-code-point clipping.
+
+      - [PARITY-F02 / B1-07] `src/runtime/session-context.ts` (`SessionContext.initialize`):
+      restore branch-recorded `model_change` and `thinking_level_change` overrides
+      (model-only, thinking-only, and paired) when navigating to or restoring a `larva:none`
+      (`persona_id: null`) branch without breaking named-persona branches, explicitly
+      pinned `--larva-persona` startup, or launched-child behavior.
+
+      - [PARITY-F03 / B1-06/B1-07] `src/runtime/session-context.ts` (`SessionContext.initialize`,
+      `reload`, `setMode`) & `src/pi-extension.ts` (`session_tree`, `refreshTools`):
+      preserve explicit `--larva-mode` startup flag authority across `session_tree`
+      navigation and `/reload` until changed in-session by `/larva-mode` or `auto_borrow`,
+      syncing Pi tool visibility (`refreshTools`) and badge immediately on `session_tree`.
+
+      - [PARITY-F04 / B1-10] `src/runtime/supervisor.ts` (`applyTelemetry`): settle
+      `RunSnapshot.active_tool` when `tool_execution_end` fires — switching to the
+      latest remaining `"running"` tool snapshot if concurrent calls remain, or `null`
+      when no live calls remain (keeping completed/error states in `tool_snapshots`
+      history).
+
+      - Add discriminating unit + real-Pi RPC/E2E regression tests covering `PARITY-F01..F04`,
+      rebuild `dist/` and `plugins/codex/dist/*`, and verify `npm run typecheck &&
+      npm run build -- --check-only && git diff --exit-code plugins/codex/ && npm
+      test`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - In `src/runtime/child-rpc-client.ts`, check bare `key` matching in `SECRET_ASSIGNMENT`
+      (and `SECRET_KEY` as appropriate) so non-credential wording and error codes
+      stay intact.
+
+      - In `src/runtime/session-context.ts`, cover both `larva:none` branches with
+      a prior `larva-persona-commit` (`persona_id: null`) and branches without one
+      (`default_persona: null`), while preserving explicit `--larva-persona` and launched-child
+      guards. Track in-session mode changes (`/larva-mode`, `auto_borrow`) distinctly
+      from startup `--larva-mode` so tree navigation and `/reload` retain startup
+      flag authority until explicitly overridden in-session.
+
+      - In `src/pi-extension.ts`, `syncTools()` reuses cached `state.visible`, so
+      `session_tree` must invoke `refreshTools(live)` to recompute active tools immediately.
+
+      - In `src/runtime/supervisor.ts`, compute `active_tool` from the updated `tool_snapshots`
+      (latest row with `status === "running"`, else `null`) on `tool_execution_end`.
+
+
+      Boundary:
+
+      - owner: `software-engineer` (diagnosed gate-repair batch); `modifies_repo`.
+
+      - `scope.allowed_paths`: `src/runtime/child-rpc-client.ts`, `src/runtime/session-context.ts`,
+      `src/pi-extension.ts`, `src/runtime/supervisor.ts`, `plugins/codex/dist/**`,
+      `tests/unit/supervisor.test.ts`, `tests/unit/session-context.test.ts`, `tests/integration/pi-extension-surface.test.ts`,
+      `tests/e2e/pi-rpc.test.ts`, `tests/e2e/codex-mcp.test.ts`.
+
+      - `scope.blocked_paths`: `["plan.yaml"]`.
+
+      - Preserve 0 `@earendil-works/pi-tui` references in headless `.mjs` bundles
+      and keep all tests hermetic (never touch `~/.larva` or `~/.pi/agent/settings.json`).
+
+
+      Admit:
+
+      - Discriminating regression tests cover all four fixes (`PARITY-F01..F04`),
+      `npm run typecheck && npm run build -- --check-only && git diff --exit-code
+      plugins/codex/ && npm test` passes cleanly, and `larva_0_9_parity.gate` consumes
+      the resulting state.
+
+
+      Recovery:
+
+      - Preserve worktree and receipts on failure; stop and report if any requirement
+      contradicts `design/larva-0.9-architecture.md` or requires scope beyond `allowed_paths`.'
+    verification: npm run typecheck && npm run build -- --check-only && git diff --exit-code
+      plugins/codex/ && npm test
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave3_ui_and_bundles
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T12:10:29.004522Z'
+    done_at: '2026-11-27T12:24:20.439665+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 9a767901b9ea4897c79d038887b4a8408a9eec80 (ff onto v0.9; worktree removed;
+      +318/-46 lines across 11 files)
+
+
+      Changes:
+
+      - [PARITY-F01 / B1-02] src/runtime/child-rpc-client.ts: added bare `key` to
+      SECRET_NAMES and optional opening quote in SECRET_ASSIGNMENT so both RPC rejection
+      diagnostics and structured stderr startup envelopes redact key=.../key:... while
+      keeping error codes, actionable text, and 300-code-point clipping.
+
+      - [PARITY-F02 / B1-07] src/runtime/session-context.ts: restored post-commit
+      (and tree no-commit) model_change / thinking_level_change overrides on larva:none
+      branches while preserving named, explicit startup, and child behaviors.
+
+      - [PARITY-F03 / B1-06/07] src/runtime/session-context.ts & src/pi-extension.ts:
+      separated flagPersona from flagMode so --larva-mode persists across session_tree
+      and /reload until explicitly changed in-session, and called refreshTools(state)
+      immediately in session_tree.
+
+      - [PARITY-F04 / B1-10] src/runtime/supervisor.ts: settled active_tool on tool_execution_end
+      to the latest remaining running tool in tool_snapshots, or null when none remain.
+
+      - Tests & Bundles: added unit + integration + real-Pi RPC/MCP E2E tests (tests/unit/{supervisor,session-context}.test.ts,
+      tests/integration/pi-extension-surface.test.ts, tests/e2e/{pi-rpc,codex-mcp}.test.ts)
+      and rebuilt dist/ + plugins/codex/dist/*.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> exit 0
+
+      - Full hermetic npm test -> 182/182 pass, 0 failed/skipped, 0 leaked processes,
+      ~/.larva & ~/.pi/agent/settings.json unchanged
+
+      - 0 @earendil-works/pi-tui references across all 5 headless .mjs bundles; npm
+      pack --dry-run exact 7-file manifest.'
+  - id: larva_0_9_parity.wave4b_gate_repair
+    name: 'Wave 4B: Close remaining DELTA gate edges (PARITY-F02 model-only null route
+      & PARITY-F04 >25 parallel tools)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [PARITY-F02] `src/runtime/session-context.ts` (`SessionContext.initialize`,
+      `#applyRoute`, `#moveRoute`, `#routeMatches`): on `larva:none` (`persona ===
+      null`) route restoration, apply and verify only the route component(s) actually
+      recorded on the selected branch (`model_change` and/or `thinking_level_change`)
+      instead of copying `before.thinking` (or `before.model`) into a partial restore.
+      Restoring a non-reasoning model-only branch from a reasoning `high` route must
+      succeed with zero warning when Pi clamps thinking to `off`, while preserving
+      compatible unrecorded components, explicit thinking overrides, named-persona
+      routes, and genuine unavailable-model failure/rollback (`LARVA_MODEL_UNAVAILABLE`
+      / `LARVA_ROUTE_UNCERTAIN`).
+
+      - [PARITY-F04] `src/runtime/supervisor.ts` (`Run`, `applyTelemetry`, `clearLive`,
+      `#drive`, `#finalize`): track live running tool invocations on `Run` independently
+      of the 25-entry `tool_snapshots` display window (`activeTools` map keyed by
+      `tool_call_id`, cleared on `turn_end`, `agent_settled`, terminal `#finalize`,
+      and pre-accept failure). When >25 parallel tool calls run and the newest 25
+      complete while an older call stays live, `RunSnapshot.active_tool` must still
+      report a live `"running"` tool, settling to `null` once all live calls end,
+      while keeping `tool_snapshots` bounded to 25.
+
+      - Add discriminating unit + real-Pi 1.6.1 RPC & Codex MCP E2E regression tests
+      covering both edge cases (`reasoning high` -> `null`-commit non-reasoning model-only
+      restore; 26+ parallel tools with oldest held while newest 25 end), rebuild `dist/`
+      + `plugins/codex/dist/*`, and verify `npm run typecheck && npm run build --
+      --check-only && git diff --exit-code plugins/codex/ && npm test`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - In `src/runtime/session-context.ts`, accept partial restore targets (`{ model?:
+      ..., thinking?: ... }`) for `restore` operations so model-only restores skip
+      `setThinking` and thinking equality verification while rollback still restores
+      the full `before` route. Ignore malformed `model_change` / `thinking_level_change`
+      entries rather than synthesizing a partial mismatch.
+
+      - In `src/runtime/supervisor.ts`, update `activeTools` on `tool_execution_start`/`tool_execution_update`/`tool_execution_end`
+      (preserving Map insertion order so the latest remaining running entry is deterministic)
+      and route all live-state resets (`turn_end`, `agent_settled`, `#finalize`, pre-accept
+      failure) through a shared helper clearing both `RunSnapshot` live fields and
+      `activeTools`.
+
+
+      Boundary:
+
+      - owner: `software-engineer` (diagnosed DELTA gate repair); `modifies_repo`.
+
+      - `scope.allowed_paths`: `src/runtime/session-context.ts`, `src/runtime/supervisor.ts`,
+      `plugins/codex/dist/**`, `tests/unit/session-context.test.ts`, `tests/unit/supervisor.test.ts`,
+      `tests/e2e/pi-rpc.test.ts`, `tests/e2e/codex-mcp.test.ts`.
+
+      - `scope.blocked_paths`: `["plan.yaml"]`.
+
+      - Preserve 0 `@earendil-works/pi-tui` references in headless `.mjs` bundles
+      and keep all tests hermetic (never touch `~/.larva` or `~/.pi/agent/settings.json`).
+
+
+      Admit:
+
+      - Discriminating unit and real-Pi RPC/Codex MCP E2E regressions cover `PARITY-F02`
+      and `PARITY-F04`, `npm run typecheck && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ && npm test` passes cleanly, and `larva_0_9_parity.gate`
+      consumes the resulting state.
+
+
+      Recovery:
+
+      - Preserve worktree and receipts on failure; stop and report if any requirement
+      contradicts `design/larva-0.9-architecture.md` or requires edits outside `allowed_paths`.'
+    verification: npm run typecheck && npm run build -- --check-only && git diff --exit-code
+      plugins/codex/ && npm test
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave4_gate_repair
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T12:31:07.727208Z'
+    done_at: '2026-11-27T12:42:03.670290+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 90c60710818ca30a235d2692ff3d055df5e52c2b (ff onto v0.9; worktree removed;
+      +180/-82 lines across 8 files)
+
+
+      Changes:
+
+      - [PARITY-F02 / B1-07] src/runtime/session-context.ts: introduced RouteTarget
+      = Partial<NativeRoute> so larva:none restoration applies and verifies only the
+      recorded route components (model and/or thinking), allowing non-reasoning model
+      restores to clamp thinking to off cleanly while preserving compatible missing
+      components, explicit thinking overrides, and full-pair rollback on unavailable-model
+      failure.
+
+      - [PARITY-F04 / B1-10] src/runtime/supervisor.ts: tracked all active running
+      tool calls on Run.activeTools independently of the 25-entry tool_snapshots display
+      window so >25 concurrent calls keep active_tool accurate when newer calls finish
+      while older calls remain live, settling to null when all live calls end.
+
+      - Tests & Bundles: added discriminating unit + real-Pi 1.6.1 RPC / Codex MCP
+      E2E regressions (tests/unit/{session-context,supervisor}.test.ts, tests/e2e/{pi-rpc,codex-mcp}.test.ts)
+      and rebuilt dist/ + plugins/codex/dist/*.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> exit 0
+
+      - Full hermetic npm test -> 100% pass (137s), 0 sandbox processes, ~/.larva
+      & ~/.pi/agent/settings.json unchanged, 0 pi-tui in 5 headless bundles, exact
+      7-file npm pack.'
+  - id: larva_0_9_parity.wave4c_gate_repair
+    name: 'Wave 4C: Preserve compatible thinking on model-only larva:none restore
+      (PARITY-F02)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [PARITY-F02] `src/runtime/session-context.ts` (`SessionContext.initialize`,
+      `#applyRoute`, `#moveRoute`, `#routeMatches`): on `larva:none` (`persona ===
+      null`) model-only branch restore (`model_change` recorded, `thinking_level_change`
+      not recorded), apply and verify the recorded `model`, then best-effort restore
+      `before.thinking` whenever Pi''s per-model (`modelThinkingLevels`) or global
+      default changed it, without rejecting Pi''s clamp to `off` on non-reasoning
+      models. Keep explicit `thinking_level_change` overrides mandatory, keep named-persona
+      routes mandatory, and retain full `before` rollback (`LARVA_MODEL_UNAVAILABLE`
+      / `LARVA_ROUTE_UNCERTAIN`) when the target model is unavailable.
+
+      - Add discriminating unit (`tests/unit/session-context.test.ts`) and real-Pi
+      1.6.1 RPC `ctx.navigateTree` (`tests/e2e/pi-rpc.test.ts`) regression tests covering:
+      (1) compatible reasoning model with `modelThinkingLevels` default `minimal`
+      preserving prior `high` thinking, (2) non-reasoning model clamping `high` to
+      `off` with zero warning, (3) explicit `thinking_level_change` override remaining
+      authoritative, and (4) unavailable-model rollback restoring the full `before`
+      route.
+
+      - Rebuild `dist/` and `plugins/codex/dist/*` and verify `npm run typecheck &&
+      npm run build -- --check-only && git diff --exit-code plugins/codex/ && npm
+      test`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - In `SessionContext.initialize` / `#applyRoute`, distinguish mandatory `target.thinking`
+      (explicit `thinking_level_change` or named persona) from best-effort `preserveThinking`
+      (`before.thinking` on `larva:none` model-only restore): after `setModel` succeeds,
+      if `readRoute().thinking !== before.thinking`, invoke `setThinking(before.thinking)`
+      best-effort and verify only the mandatory `target` fields via `#routeMatches(target)`
+      so a non-reasoning clamp to `off` still succeeds while a compatible reasoning
+      model restores `high`.
+
+
+      Boundary:
+
+      - owner: `software-engineer` (diagnosed DELTA gate repair); `modifies_repo`.
+
+      - `scope.allowed_paths`: `src/runtime/session-context.ts`, `plugins/codex/dist/**`,
+      `tests/unit/session-context.test.ts`, `tests/e2e/pi-rpc.test.ts`.
+
+      - `scope.blocked_paths`: `["plan.yaml"]`.
+
+      - Preserve 0 `@earendil-works/pi-tui` references in headless `.mjs` bundles
+      and keep all tests hermetic (never mutate `~/.larva` or `~/.pi/agent/settings.json`).
+
+
+      Admit:
+
+      - Discriminating unit and real-Pi 1.6.1 RPC `ctx.navigateTree` tests cover all
+      four `PARITY-F02` cases, `npm run typecheck && npm run build -- --check-only
+      && git diff --exit-code plugins/codex/ && npm test` passes cleanly, and `larva_0_9_parity.gate`
+      consumes the resulting state.
+
+
+      Recovery:
+
+      - Preserve worktree and receipts on failure; stop and report if any requirement
+      contradicts `design/larva-0.9-architecture.md` or requires edits outside `allowed_paths`.'
+    verification: npm run typecheck && npm run build -- --check-only && git diff --exit-code
+      plugins/codex/ && npm test
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - larva_0_9_parity.wave4b_gate_repair
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T12:48:33.964330Z'
+    done_at: '2026-11-27T12:55:23.433142+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 8e530e65f5559311e9e0617c2432b2787da60601 (ff onto v0.9; worktree removed;
+      +83/-25 lines across 4 files)
+
+
+      Changes:
+
+      - [PARITY-F02 / B1-07] src/runtime/session-context.ts: added optional preserveThinking
+      on RouteTarget so model-only larva:none restores best-effort preserve before.thinking
+      after applying model (restoring high on compatible reasoning models even when
+      Pi per-model default is minimal, while allowing non-reasoning models to clamp
+      to off without warning); explicit thinking_level_change entries stay strictly
+      verified and unavailable models roll back full before route.
+
+      - Tests & Bundles: added 4-case unit + real-Pi 1.6.1 RPC regressions in tests/unit/session-context.test.ts
+      & tests/e2e/pi-rpc.test.ts; rebuilt plugins/codex/dist/pi-extension.js.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> exit 0
+
+      - Full hermetic npm test -> 182/182 pass, 0 leaked processes, ~/.larva & ~/.pi/agent/settings.json
+      unchanged, 0 pi-tui in 5 headless bundles, exact 7-file npm pack.'

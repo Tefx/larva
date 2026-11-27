@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { isBuiltin } from "node:module";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,6 @@ const entries = {
   "cli.mjs": "src/cli.ts",
   "mcp-server.mjs": "src/mcp-server.ts",
   "child-rpc-preload.mjs": "src/child-rpc-preload.ts",
-  "timeline-worker.mjs": "src/timeline-worker.ts",
 };
 const shebang = "#!/usr/bin/env node";
 
@@ -106,14 +105,9 @@ async function main(args) {
   for (const dir of ["core", "store", "runtime", "activity"]) {
     await scan(join(root, "src", dir), () => true);
   }
-  const pluginDist = join(plugin, "dist");
-  for (const dir of mode === "--dist-only" ? [dist] : [dist, pluginDist]) {
-    // Written outputs are checked below before any files are replaced. A stale
-    // extra bundle would still ship, so check those files on every build.
-    await scan(dir, path => path.endsWith(".mjs") && (
-      mode === "--check-only" || !Object.hasOwn(entries, relative(dir, path))
-      || (dir === pluginDist && relative(dir, path) === "cli.mjs")
-    ));
+  const codexDist = join(plugin, "dist");
+  if (mode === "--check-only") {
+    for (const dir of [dist, codexDist]) await scan(dir, path => path.endsWith(".mjs"));
   }
 
   const outputs = new Map();
@@ -130,16 +124,18 @@ async function main(args) {
     throw new Error("Expected a Codex plugin manifest object.");
   }
 
+  await rm(dist, { recursive: true, force: true });
   await mkdir(dist, { recursive: true });
   for (const [name, text] of outputs) await writeFile(join(dist, name), text);
   await chmod(join(dist, "cli.mjs"), 0o755);
   if (mode === "--dist-only") return;
 
-  await mkdir(pluginDist, { recursive: true });
+  await rm(codexDist, { recursive: true, force: true });
+  await mkdir(codexDist, { recursive: true });
   for (const [name, text] of outputs) {
-    if (name !== "cli.mjs") await writeFile(join(pluginDist, name), text);
+    if (name !== "cli.mjs") await writeFile(join(codexDist, name), text);
   }
-  await writeFile(join(pluginDist, "package.json"), '{"type":"module"}\n');
+  await writeFile(join(codexDist, "package.json"), '{"type":"module"}\n');
   if (manifest !== undefined && manifest.version !== pkg.version) {
     manifest.version = pkg.version;
     await writeFile(pluginManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);

@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
-import { once } from "node:events";
 import { appendFile, mkdir, mkdtemp, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { Worker } from "node:worker_threads";
 import { inspectSubagentActivity } from "../../src/activity/inspector.ts";
 import type { ActivityQuery, ActivityResponse, ActivitySegment } from "../../src/core/types.ts";
 
@@ -21,8 +19,6 @@ const result = (toolCallId: string, content: string, parentId: string, timestamp
   line({ type: "message", id: `result-${toolCallId}-${parentId}`, parentId, timestamp, message: {
     role: "toolResult", toolCallId, toolName: "tool", content, isError: false,
   } });
-const assistant = (id: string, text: string) => line({ type: "message", id, message: { role: "assistant", timestamp: 12,
-  content: [{ type: "thinking", thinking: "hidden" }, { type: "text", text }, { type: "toolCall", id: "call", arguments: { hidden: true } }] } });
 
 async function fixture(run: (home: string, path: string) => Promise<void>) {
   const dir = await mkdtemp(join(tmpdir(), "larva-activity-"));
@@ -214,52 +210,4 @@ test("an unterminated tail is incomplete until its newline is visible", () => fi
   const next = listing(await inspect(home, path, { cursor: first.cursor }));
   assert.deepEqual(next.items.map(x => x.call_id), ["pending"]);
   assert.equal(next.inspection_complete, undefined);
-}));
-
-type TimelinePage = { invocation: number; generation: number; excerpts: { id: string; text: string; toolCallIds: string[] }[];
-  more: boolean; reset: boolean; bytesRead: number; sourceVersion: string; diagnostic?: string; contextCount: number };
-
-test("timeline worker reads bounded slices, caps incomplete records, and resets on changed prefix", { timeout: 10000 }, () => fixture(async (_home, path) => {
-  const huge = line({ type: "custom", value: "x".repeat(2 * 1024 * 1024 + 1) });
-  const initial = header + assistant("old", "old") + huge + assistant("split", "\x1b[31mvisible\x1b[0m😀").trimEnd();
-  await writeFile(path, initial);
-  const worker = new Worker(new URL("../../src/timeline-worker.ts", import.meta.url));
-  try {
-    const scan = async (generation: number): Promise<TimelinePage> => {
-      const reply = once(worker, "message", { signal: AbortSignal.timeout(2500) });
-      worker.postMessage({ kind: "scan", path, invocation: 7, generation });
-      const [page] = await reply;
-      assert.equal(page.invocation, 7);
-      assert.equal(page.generation, generation);
-      assert.ok(page.bytesRead <= 512 * 1024);
-      assert.equal(page.diagnostic, undefined);
-      assert.match(page.sourceVersion, /^[a-f0-9]{64}$/);
-      return page;
-    };
-    const drain = async (generation: number) => {
-      const pages = [];
-      do {
-        assert.ok(pages.length < 12);
-        pages.push(await scan(generation));
-      } while (pages.at(-1)?.more);
-      return pages;
-    };
-    let pages = await drain(1);
-    assert.ok(pages.length > 1);
-    assert.deepEqual(pages.flatMap(p => p.excerpts.map(e => e.id)), ["old"]);
-    const originalVersion = pages.at(-1)?.sourceVersion;
-    await appendFile(path, "\n");
-    pages = await drain(2);
-    assert.ok(!pages.some(page => page.reset));
-    const excerpts = pages.flatMap(page => page.excerpts);
-    assert.deepEqual(excerpts.map(e => [e.id, e.text, e.toolCallIds]), [["split", "visible😀", ["call"]]]);
-    assert.notEqual(pages.at(-1)?.sourceVersion, originalVersion);
-    await writeFile(path, initial.replace('"old"', '"new"') + "\n"); // Same inode and byte length.
-    pages = await drain(3);
-    assert.ok(pages.some(page => page.reset));
-    assert.deepEqual(pages.flatMap(page => page.excerpts.map(e => e.id)), ["new", "split"]);
-    const dropped = once(worker, "message", { signal: AbortSignal.timeout(2500) });
-    worker.postMessage({ kind: "drop", invocation: 7 });
-    assert.deepEqual((await dropped)[0], { kind: "dropped", invocation: 7, contextCount: 0 });
-  } finally { await worker.terminate(); }
 }));

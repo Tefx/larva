@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { access, mkdir, readFile, rename, rm, stat, symlink, utimes, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { once } from "node:events";
+import { createServer, type ServerResponse } from "node:http";
+import { basename, dirname, join } from "node:path";
 import { test } from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { fixture, tool } from "./fixture.ts";
 
@@ -49,6 +52,16 @@ test("external-cache MCP uses singleton roots, recorded resume cwd and contained
   assert.equal(evidence.status, "success");
   assert.equal(evidence.items.length, 1);
   assert.match(evidence.items[0].result, /authorized workspace contents/);
+  const readCall = completed.runs[0].tool_snapshots.find((call: { name: string }) => call.name === "read");
+  assert.equal(readCall?.status, "done");
+  assert.equal(readCall.tool_call_id, evidence.items[0].call_id);
+  const detail = (segment_part: "args" | "result") => mcp.ok(activity, { task_id: id, tool_call_id: readCall.tool_call_id, segment_part });
+  const args = (await detail("args")).call.segment;
+  assert.equal(args.part, "args");
+  assert.deepEqual(JSON.parse(args.text), { path: "probe.txt" });
+  const recorded = (await detail("result")).call.segment;
+  assert.equal(recorded.part, "result");
+  assert.match(recorded.text, /authorized workspace contents/);
 
   const escaped = join(f.sessions, "escaped.jsonl"), outside = join(f.host, "outside.jsonl"), relative = join(f.sessions, "relative.jsonl");
   const alias = join(f.sessions, "alias.jsonl"), aliasedHomeId = join(f.configuredHome, "state", "sessions", basename(id));
@@ -101,6 +114,76 @@ test("external-cache MCP uses singleton roots, recorded resume cwd and contained
   assert.equal((await mcp.close()).code, 0);
 }, { aliasedHome: true }));
 
+test("MCP status tracks a live Pi tool evicted from display history until it ends", { timeout: 30_000 }, () => fixture(async f => {
+  const names = Array.from({ length: 26 }, (_, index) => `call-${index}`);
+  const gates = new Map(names.map(name => [`/${name}`, Promise.withResolvers<ServerResponse>()]));
+  const server = createServer((request, response) => {
+    const gate = gates.get(request.url ?? "");
+    if (gate) gate.resolve(response);
+    else response.writeHead(404).end();
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const extension = join(f.host, "parallel.mjs"), name = "fixture_parallel";
+    await writeFile(extension, `export default pi => pi.registerTool({
+      name: '${name}', label: 'Parallel fixture', description: 'Wait for the test to release this call', executionMode: 'parallel',
+      parameters: { type: 'object', properties: { gate: { type: 'string', enum: ${JSON.stringify(names)} } }, required: ['gate'] },
+      async execute(_, { gate }, signal) {
+        const reply = await fetch('http://127.0.0.1:${address.port}/' + gate, { signal });
+        return { content: [{ type: 'text', text: await reply.text() }], details: {} };
+      },
+    });`);
+    const agent = dirname(f.modelCatalog);
+    await f.config({ subagent: { extension_sources: [join(agent, "provider.mjs"), extension] } });
+    const mcp = f.mcp();
+    await mcp.initialize();
+    const task = "Execute 26 parallel fixture calls";
+    const { task_id } = await mcp.ok(spawn, { ...worker, cwd: f.cwd, task });
+    const { child_pid } = await lease(task_id);
+    (await f.provider(0, task)).reply(names.map(gate => tool(name, { gate })));
+    const deadline = AbortSignal.timeout(5_000);
+    const reached = new AbortController();
+    const [oldest, ...newer] = await Promise.race([
+      Promise.all(names.map(gate => gates.get(`/${gate}`)!.promise)),
+      once(deadline, "abort", { signal: reached.signal }).then(() => assert.fail("All 26 Pi tools must reach their gates concurrently")),
+    ]).finally(() => reached.abort());
+    const snapshot = async () => (await mcp.ok(status, { task_id })).runs[0];
+    const observe = async (status: string) => {
+      const deadline = performance.now() + 5_000;
+      for (;;) {
+        const run = await snapshot();
+        if (run.tool_snapshots.length === 25 && run.tool_snapshots.every((call: { status: string }) => call.status === status)) return run;
+        assert.ok(performance.now() < deadline, JSON.stringify(run));
+        await delay(10);
+      }
+    };
+    const running = await observe("running");
+    assert.deepEqual(running.tool_snapshots.map((row: { args_preview: string }) => JSON.parse(row.args_preview).gate), names.slice(1));
+    assert.equal(running.active_tool.tool_call_id, running.tool_snapshots.at(-1).tool_call_id);
+    for (const response of newer) response.end("Newer tool completed");
+    const partial = await observe("done");
+    assert.equal(partial.status, "running");
+    assert.equal(f.requests.length, 1, "the evicted tool still holds the tool batch open");
+    assert.deepEqual(partial.active_tool, { tool_call_id: "e2e-0-0", name, status: "running" });
+    oldest.end("Oldest tool completed");
+    const continuation = await f.provider(1, "");
+    const ended = await snapshot();
+    assert.deepEqual(ended.tool_snapshots, partial.tool_snapshots);
+    assert.equal(ended.status, "running", "the provider continuation is still held");
+    assert.equal(ended.active_tool, null);
+    continuation.reply("Parallel calls completed");
+    assert.equal((await mcp.ok(wait, { task_ids: [task_id] })).terminal_outputs[task_id].status, "success");
+    assert.equal((await mcp.close()).code, 0);
+    assert.throws(() => process.kill(child_pid, 0), { code: "ESRCH" });
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+}));
+
 test("base models.json alone supplies doctor, native Pi, and the bundled MCP child route", { timeout: 30_000 }, () => fixture(async f => {
   const catalog = await readFile(f.modelCatalog);
   const doctor = f.doctor();
@@ -117,8 +200,9 @@ test("base models.json alone supplies doctor, native Pi, and the bundled MCP chi
   const run = await mcp.ok(spawn, { ...worker, cwd: f.cwd, task: "Use only the base model catalog" });
   assert.equal(run.status, "accepted");
   const { capsule_root } = await lease(run.task_id);
-  assert.deepEqual(await readFile(join(capsule_root, "models.json")), catalog);
-  assert.equal((await stat(join(capsule_root, "models.json"))).mode & 0o777, 0o600);
+  const capsuleCatalog = join(capsule_root, "agent", "models.json");
+  assert.deepEqual(await readFile(capsuleCatalog), catalog);
+  assert.equal((await stat(capsuleCatalog)).mode & 0o777, 0o600);
   const request = await f.provider(0, "Use only the base model catalog");
   assert.equal(request.payload.model, "worker");
   request.reply("Model catalog route worked");

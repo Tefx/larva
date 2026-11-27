@@ -17,7 +17,7 @@ import { entryExists, loadDiskModelMap, readBoundedRegularText } from "../store/
 import { PersonaStore } from "../store/persona-store.ts";
 import { canonicalPath, readDiskSession, readSessionHeader, resolveCanonicalSessionPath, scanDiskSessions } from "../store/session-index.ts";
 import { createSessionLeaseStore } from "../store/session-lease.ts";
-import { launchChild, type ChildRpcClient } from "./child-rpc-client.ts";
+import { launchChild, previewToolArgs, type ChildRpcClient } from "./child-rpc-client.ts";
 import { isTerminal, mintRunEpoch, RunOutbox, terminalOutput } from "./outbox.ts";
 import { discoverPiInstallation } from "./pi-binary.ts";
 import { childSettlementBarrier, type FrameBridge } from "./settlement-barrier.ts";
@@ -41,6 +41,7 @@ type Options = {
 type Lease = Awaited<ReturnType<ReturnType<typeof createSessionLeaseStore>["acquire"]>>;
 type Run = {
   s: RunSnapshot; parent?: string; rpc?: ChildRpcClient; abort?: LarvaError; prompted: boolean;
+  activeTools: Map<string, NonNullable<RunSnapshot["active_tool"]>>;
   accepted: PromiseWithResolvers<SubagentAcceptedReceipt>; cleaned: PromiseWithResolvers<boolean>;
   stall?: NodeJS.Timeout; watchdog?: NodeJS.Timeout;
   reconcile?: () => Promise<boolean>;
@@ -96,6 +97,65 @@ async function lineage(env: NodeJS.ProcessEnv, root: string, self?: string) {
   return { depth, ancestors: [...ancestors] };
 }
 function clearTimers(run: Run) { clearTimeout(run.stall); clearTimeout(run.watchdog); }
+function clearLive(run: Run) {
+  run.activeTools.clear();
+  run.s.active_tool = null;
+  run.s.live_thinking = false;
+}
+
+function applyTelemetry(run: Run, frame: Record<string, unknown>): boolean {
+  const { s, activeTools } = run;
+  switch (frame.type) {
+    case "turn_end":
+    case "agent_settled": {
+      const changed = !!(s.active_tool || s.live_thinking);
+      clearLive(run);
+      return changed;
+    }
+    case "message_update": {
+      const e = frame.assistantMessageEvent;
+      if (!capsule.metadataObject(e)) return false;
+      if (e.type === "text_delta" && typeof e.delta === "string") {
+        s.live_thinking = false;
+        // At most two UTF-16 code units per code point. Limit the slice before spreading it.
+        s.live_assistant_preview = Array.from(((s.live_assistant_preview ?? "") + e.delta.slice(-1200)).slice(-1200)).slice(-600).join("");
+        return true;
+      }
+      if (e.type === "thinking_start" || e.type === "thinking_end") {
+        s.live_thinking = e.type === "thinking_start";
+        return true;
+      }
+      return false;
+    }
+    case "tool_execution_start":
+    case "tool_execution_update":
+    case "tool_execution_end": {
+      const { toolCallId, toolName } = frame;
+      if (typeof toolCallId !== "string" || typeof toolName !== "string") return false;
+      const tool: NonNullable<RunSnapshot["active_tool"]> = { tool_call_id: toolCallId, name: toolName,
+        status: frame.type === "tool_execution_end" ? (frame.isError === true ? "error" : "done") : "running" };
+      const snapshots = [...(s.tool_snapshots ?? [])];
+      const index = snapshots.findIndex(t => t.tool_call_id === toolCallId);
+      if (index !== -1 || frame.type === "tool_execution_start") {
+        const args_preview = frame.args === undefined ? snapshots[index]?.args_preview : previewToolArgs(frame.args);
+        const row = { ...tool, ...(args_preview === undefined ? {} : { args_preview }) };
+        if (index !== -1) snapshots[index] = row;
+        else snapshots.push(row);
+        s.tool_snapshots = snapshots.slice(-25);
+      }
+      // The display window can evict a tool that is still running.
+      activeTools.delete(toolCallId);
+      if (frame.type === "tool_execution_end") {
+        if (s.active_tool?.tool_call_id === toolCallId) s.active_tool = [...activeTools.values()].at(-1) ?? null;
+      } else {
+        activeTools.set(toolCallId, tool);
+        s.active_tool = tool;
+      }
+      return true;
+    }
+    default: return false;
+  }
+}
 
 export class SubagentSupervisor {
   readonly home: string;
@@ -116,6 +176,7 @@ export class SubagentSupervisor {
   #closing = false;
   #profile: string;
   #generation = 0;
+  #telemetryTimer?: NodeJS.Timeout;
 
   constructor(options: Options = {}) {
     this.#opts = options;
@@ -134,12 +195,16 @@ export class SubagentSupervisor {
     if (session) this.barrier.bind(session.bridge, () => session.branch(), () => session.activePersona(), session);
     this.#deliver();
   }
-  /** Observe lifecycle transitions without resetting child deadlines. */
+  /** Observe lifecycle and batched live updates without resetting child deadlines. */
   subscribe(onChange: () => void) {
     this.#observers.add(onChange);
     return () => this.#observers.delete(onChange);
   }
-  #notify() { for (const f of [...this.#observers]) { try { f(); } catch { /* observers do not own the transition */ } } }
+  #notify() {
+    clearTimeout(this.#telemetryTimer);
+    this.#telemetryTimer = undefined;
+    for (const f of [...this.#observers]) { try { f(); } catch { /* observers do not own the transition */ } }
+  }
   #deliver() {
     for (const [s, key] of this.#callbacks) {
       if (this.#reloading) return;
@@ -194,7 +259,10 @@ export class SubagentSupervisor {
       if (this.#closing || this.#active.size >= (config.subagent.max_active_runs ?? Infinity)) throw new LarvaError("LARVA_CHILD_START_FAILED", "Supervisor cannot admit another child.");
       const started_at = now();
       const run: Run = { s: { task_id: id, run_epoch: epoch, cwd, started_at, updated_at: started_at, persona_id: spec.id,
-        phase: "starting", status: "running", output_state: "pending" }, accepted: Promise.withResolvers(), cleaned: Promise.withResolvers(),
+        phase: "starting", status: "running", output_state: "pending", thinking: spec.thinking,
+        task_preview: Array.from(input.task.replace(/\s+/g, " ").trim().slice(0, 280)).slice(0, 140).join(""),
+        active_tool: null, live_thinking: false, live_assistant_preview: "", tool_snapshots: [] },
+        activeTools: new Map(), accepted: Promise.withResolvers(), cleaned: Promise.withResolvers(),
         prompted: false, parent: parentSession };
       this.#active.set(id, run); // No await between capacity check and reservation.
       void this.#drive(run, spec, input, chain, config);
@@ -219,6 +287,10 @@ export class SubagentSupervisor {
     let accepted = false, failure: unknown;
     const check = () => { if (run.abort) throw run.abort; };
     const times = resolveWatchdogTimeouts(input, config.subagent);
+    const telemetry = (frame: Record<string, unknown>) => {
+      if (s.status !== "running" || !applyTelemetry(run, frame)) return;
+      this.#telemetryTimer ??= setTimeout(() => this.#notify(), 50);
+    };
     const progress = () => {
       if (!accepted || s.status !== "running") return;
       const phaseChanged = s.phase !== "waiting_for_child";
@@ -243,6 +315,8 @@ export class SubagentSupervisor {
       const installation = await discoverPiInstallation(this.#env);
       let generation = this.#generation;
       let route = resolveModelRoute(spec.model, await this.#map(this.#profile));
+      s.model = `${route.provider}/${route.model_id}`;
+      this.#notify();
       const basePiAgentDir = this.#opts.piAgentDir === undefined
         ? resolveBasePiAgentDir(this.#env, undefined, this.#baseCwd)
         : resolve(this.#baseCwd, this.#opts.piAgentDir);
@@ -259,8 +333,9 @@ export class SubagentSupervisor {
       const rpc = run.rpc = launchChild({ piScript: installation.path,
         extension: this.#opts.extension ?? fileURLToPath(new URL("./pi-extension.js", import.meta.url)),
         preload: this.#opts.preload ?? fileURLToPath(new URL("./child-rpc-preload.mjs", import.meta.url)), extensionSources: box.extension_sources,
-        env: { ...this.#env, LARVA_PI_TASK_ID: id, LARVA_PI_MODEL_MAP_PROFILE: this.#profile }, home: this.home, basePiAgentDir, capsule: box.root, cwd: s.cwd,
-        taskId: id, depth: chain.depth + 1, ancestors: chain.ancestors, persona: spec.id, route, thinking: spec.thinking }, progress);
+        env: { ...this.#env, LARVA_PI_TASK_ID: id, LARVA_PI_MODEL_MAP_PROFILE: this.#profile }, home: this.home, basePiAgentDir,
+        capsule: box.root, agentDir: box.agent_dir, cwd: s.cwd,
+        taskId: id, depth: chain.depth + 1, ancestors: chain.ancestors, persona: spec.id, route, thinking: spec.thinking }, progress, telemetry);
       if (rpc.pid === undefined) throw new LarvaError("LARVA_CHILD_START_FAILED", "Child did not start.");
       await lease.markRunning(rpc.pid);
       if (manifest) await capsule.writeMetadata(manifest, { capsule_root: box.root, pid: rpc.pid });
@@ -277,6 +352,7 @@ export class SubagentSupervisor {
         check();
         if (generation === this.#generation) break;
       }
+      s.model = `${route.provider}/${route.model_id}`;
       run.prompted = true; // Fence linearization point: prompt write precedes the next await.
       await rpc.prompt(input.task); check();
       accepted = true; s.status = "running"; progress();
@@ -318,6 +394,7 @@ export class SubagentSupervisor {
       }
       run.cleaned.resolve(confirmed);
       if (!accepted) {
+        clearLive(run);
         s.status = s.phase = run.abort ? "cancelled" : "failed";
         s.error = toErrorEnvelope(failure).error;
         Object.assign(s, { output_state: "inline", result_text: "" });
@@ -329,6 +406,7 @@ export class SubagentSupervisor {
 
   #finalize(run: Run, status: SubagentTerminalStatus, error?: unknown) {
     clearTimers(run);
+    clearLive(run);
     Object.assign(run.s, { status, phase: status, updated_at: now() }, error ? { error: toErrorEnvelope(error).error } : {});
     this.#outbox.retain(run.s); this.#notify();
   }

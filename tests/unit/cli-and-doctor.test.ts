@@ -123,6 +123,23 @@ test("persona validates and installs file and directory inputs; get and list pro
   });
 });
 
+test("persona puts and reads accept exactly 1 MiB and reject oversized persona files before commit", async () => {
+  await fixture(async ({ root, home, env }) => {
+    const input = join(root, "alice.json");
+    const text = JSON.stringify(persona("alice"));
+    const exact = text.padEnd(text.length + 1_048_576 - Buffer.byteLength(text));
+    await writeFile(input, exact);
+    await success(["persona", "put", input], env);
+    assert.equal((await success<PersonaSpec>(["persona", "get", "alice"], env)).id, "alice");
+    await writeFile(input, exact + " ");
+    await failure(["persona", "put", input], env, 1, "LARVA_PERSONA_INVALID");
+    const installed = join(home, "personas", "alice.json");
+    assert.equal(await readFile(installed, "utf8"), exact);
+    await writeFile(installed, exact + " ");
+    await failure(["persona", "get", "alice"], env, 1, "LARVA_PERSONA_INVALID");
+  });
+});
+
 test("persona stdin preserves split UTF-8, prune requires a directory, and rm prechecks every ID", async () => {
   await fixture(async ({ root, home, env }) => {
     const bob = persona("bob");
@@ -216,6 +233,18 @@ test("doctor checks the selected profile against the real Pi catalog and stays r
     assert.deepEqual((await readdir(agent)).sort(), ["models.json"]);
     assert.equal(await readFile(installed, "utf8"), JSON.stringify(literal));
     assert.equal(await readFile(bobPath, "utf8"), JSON.stringify(bob));
+  });
+});
+
+test("doctor uses the base Pi catalog instead of the capsule and expands tilde paths against its supplied HOME", async () => {
+  await fixture(async ({ home, agent, env }) => {
+    await mkdir(join(home, "personas"));
+    await writeJson(join(home, "personas", "alice.json"), persona("alice"));
+    await registry(agent);
+    const capsule = { ...env, PI_CODING_AGENT_DIR: "~/capsule/agent", LARVA_PI_BASE_AGENT_DIR: "~/.pi/agent" };
+    assert.equal((await success<DoctorReport>(["doctor"], capsule)).personas_checked, 1);
+    await failure(["doctor"], { ...capsule, LARVA_PI_BASE_AGENT_DIR: undefined }, 1, "LARVA_MODEL_UNAVAILABLE");
+    assert.equal((await success<DoctorReport>(["doctor"], { ...env, PI_CODING_AGENT_DIR: "~/.pi/agent" })).ok, true);
   });
 });
 
