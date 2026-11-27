@@ -8,7 +8,8 @@ import type { ModelMapOutcome, SessionContext } from "../runtime/session-context
 import type { SubagentSupervisor } from "../runtime/supervisor.ts";
 import { loadDiskModelMap } from "../store/model-map.ts";
 import type { PersonaStore } from "../store/persona-store.ts";
-import { selectOption, selectPersona, terminalText } from "../ui/pi-selector-tui.ts";
+import { selectOption, selectPersona } from "../ui/pi-selector-tui.ts";
+import { terminalText } from "../ui/pi-tui-chrome.ts";
 import { openSubagentConsole } from "../ui/pi-subagent-console-tui.ts";
 
 export function reportPiOutcome(ctx: ExtensionContext, action: string, data: unknown): void {
@@ -70,7 +71,13 @@ export function registerPiCommands(pi: ExtensionAPI, current: () => {
     handler: choosePersona,
   });
   pi.registerShortcut("ctrl+alt+p", { description: "Open the Larva persona selector", handler: ctx => choosePersona("", ctx) });
-  const modes = ["manual", "confirm", "auto", "free"] as const;
+  const modeDescriptions = {
+    manual: "Only you can switch personas.",
+    confirm: "Ask before a persona switch.",
+    auto: "Allow a temporary borrow for the current turn.",
+    free: "Allow persistent persona switches.",
+  };
+  const modes = Object.keys(modeDescriptions) as (keyof typeof modeDescriptions)[];
   pi.registerCommand("larva-mode", {
     description: "Inspect or set the Larva switch mode (manual, confirm, auto, free)",
     getArgumentCompletions: query => completions(query.startsWith("-") ? ["--status"] : modes, query),
@@ -80,7 +87,10 @@ export function registerPiCommands(pi: ExtensionAPI, current: () => {
       if (!args) {
         const check = guard(state, ctx);
         check();
-        const choice = await selectOption(ctx, "Larva switch mode", modes.map(value => ({ value, label: value, current: value === session.switchMode })));
+        const choice = await selectOption(ctx, "Larva switch mode", modes.map(value => ({ value, label: value,
+          current: value === session.switchMode, preview: modeDescriptions[value],
+          details: [["Mode", value], ["Status", value === session.switchMode ? "Current" : "Available"], ["Description", modeDescriptions[value]]],
+        })));
         if (choice === undefined) return reportPiOutcome(ctx, "larva-mode", { status: "dismissed" });
         check();
         args = choice;
@@ -114,11 +124,13 @@ export function registerPiCommands(pi: ExtensionAPI, current: () => {
           const row = { label: name, current: active === name };
           try {
             const route = persona && resolveModelRoute(persona.model, map);
-            return { ...row, value: { name }, preview: `Parent route: ${route
-              ? `${route.provider}/${route.model_id} · Thinking: ${persona.thinking}` : ctx.model ? `${ctx.model.provider}/${ctx.model.id} (unchanged)` : "None"}` };
+            const preview = route ? `${route.provider}/${route.model_id}` : ctx.model ? `${ctx.model.provider}/${ctx.model.id} (unchanged)` : "None";
+            return { ...row, value: { name }, preview, details: [["Profile", name], ["Parent route", preview],
+              ["Status", row.current ? "Current" : "Available"], ["Thinking", persona?.thinking ?? "Unchanged"]] as const };
           } catch (error) {
             const failure = toErrorEnvelope(error);
-            return { ...row, label: `${name} (invalid route)`, value: { name, failure }, preview: failure.error.message };
+            return { ...row, label: `${name} (invalid route)`, value: { name, failure }, preview: failure.error.message,
+              details: [["Profile", name], ["Error", failure.error.message]] as const };
           }
         });
         check();

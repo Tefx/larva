@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { runInNewContext } from "node:vm";
 import { PersonaStore } from "../../src/store/persona-store.ts";
 import type { RunSnapshot } from "../../src/core/types.ts";
@@ -68,6 +71,7 @@ function mount(html: string, clipboard: "native" | "legacy" | "unavailable" = "u
   const parent = { postMessage: (message: Rpc) => sent.push(JSON.parse(JSON.stringify(message))) };
   const doc = {
     getElementById: () => root, createElement: create, documentElement: create("html"),
+    createElementNS: (namespaceURI: string, tag: string) => Object.assign(create(tag), { namespaceURI }),
     get activeElement() { return focus; }, visibilityState: "visible",
     getSelection: () => ({ isCollapsed: !selected, anchorNode: selected }),
     addEventListener: (name: string, fn: () => void) => docEvents.set(name, fn),
@@ -93,7 +97,7 @@ function mount(html: string, clipboard: "native" | "legacy" | "unavailable" = "u
   function send(message: Rpc, source: object = parent) {
     winEvents.get("message")?.({ data: { jsonrpc: "2.0", ...message }, source });
   }
-  function button(name: string) { return root.querySelectorAll("button").find(node => node.textContent === name); }
+  function button(name: string) { return root.querySelectorAll("button").find(node => (node.attributes.get("aria-label") ?? node.textContent) === name); }
   const calls = (name: string) => sent.filter(message => message.method === "tools/call" && message.params?.name === name);
   function lastCall(name: string) { const request = calls(name).at(-1); assert.ok(request); return request; }
   const answered = new Set<Rpc>();
@@ -333,7 +337,7 @@ test("standalone workbench switches scopes, shows disk metadata and does not can
   assert.deepEqual(app.lastCall(panelTool).params?.arguments, { scope: "recent", limit: 25 });
   await app.grouped(snapshot([run({ phase: "stall_suspected" })]));
   assert.match(app.text, /Stall suspected/);
-  app.click("Active");
+  app.click("Active · 1");
   const previousScope = app.lastCall(panelTool);
   assert.deepEqual(previousScope.params?.arguments, { scope: "active" });
   app.click("Disk");
@@ -520,7 +524,8 @@ test("widget keeps only compact telemetry visible until Details is opened, per r
     tool_snapshots: [{ ...telemetry.tool_snapshots![0], status: "done" }], output_state: "inline", result_text: "Completed output" });
   await app.reply(app.lastCall(panelTool), snapshot([done]));
   assert.ok(app.button("Hide details"));
-  assert.match(app.text, /read \(done\).*Completed output/);
+  assert.ok(app.button("read (done)"));
+  assert.match(app.text, /Completed output/);
   assert.doesNotMatch(app.text, /Thinking…/);
   replaced?.onclick?.();
   assert.deepEqual(app.calls(activityTool), []);
@@ -636,6 +641,226 @@ test("teardown silences all polling and a disconnected bridge leaves the view re
   assert.equal(lost.button("Refresh")?.disabled, true);
   assert.equal(lost.timerCount, 0);
   assert.equal(lost.calls(cancelTool).length, 0);
+});
+
+test("Chrome renders the ported workbench and measures widget growth and shrinkage", {
+  skip: !process.env.LARVA_TEST_CHROME && "Set LARVA_TEST_CHROME to a Chromium executable.", timeout: 30_000,
+}, async t => {
+  const home = mkdtempSync(join(tmpdir(), "larva-codex-ui-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const file = join(home, "browser.html");
+  const literal = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c");
+  const running = { ...telemetry, task_preview: "Preview\n".repeat(30), tool_call_count: 1 };
+  const completed = (["success", "failed", "cancelled"] as const).map(status => run({
+    task_id: `/example/${status}.jsonl`, persona_id: status, status, phase: status,
+    output_state: status === "success" ? "artifactized" : "inline",
+    result_preview: "Output\n".repeat(30), cleanup_unconfirmed: status === "success",
+  }));
+  const stalled = { ...running, task_id: second, persona_id: "stalled", phase: "stall_suspected" };
+  const recent = [
+    run({ task_preview: "Quiet run task preview", live_assistant_preview: "", active_tool: null, live_thinking: false }),
+    run({ task_id: "/example/sessions/2026-11-27T14-32-18-123Z_7c7f13dd-f466-4322-9f19-afcc1c0ae196.jsonl",
+      run_epoch: "completed-epoch", persona_id: "reviewer", status: "success", phase: "success", output_state: "inline",
+      model: "openai-codex/gpt-5.4-mini", result_preview: "Actual completed output" }),
+  ];
+  writeFileSync(file, String.raw`<!doctype html><meta charset="utf-8"><div id="report">waiting</div><script>
+const report = document.querySelector('#report');
+const assert = (value, label) => { if (!value) throw Error(label); };
+const until = async (predicate, label) => {
+  for (let i = 0; i < 80; i++) {
+    if (predicate()) return;
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  throw Error('Timed out: ' + label);
+};
+const running = ${literal(running)}, stalled = ${literal(stalled)}, done = ${literal(completed)};
+const snapshot = runs => ({ structuredContent: { runs, startup_failures: [] } });
+function mount(html, displayMode, width, recent = done) {
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'height:600px;width:' + width + 'px';
+  const state = { frame, ready: false, heights: [], calls: [], expire: false };
+  const send = data => frame.contentWindow.postMessage({ jsonrpc: '2.0', ...data }, '*');
+  state.notify = (method, params) => send({ method, params });
+  window.addEventListener('message', ({ source, data }) => {
+    if (source !== frame.contentWindow) return;
+    const reply = result => send({ id: data.id, result });
+    if (data.method === 'ui/initialize') {
+      reply({ hostContext: { displayMode, theme: 'light', availableDisplayModes: [displayMode, 'pip'] } });
+    } else if (data.method === 'ui/notifications/initialized') {
+      state.ready = true;
+    } else if (data.method === 'ui/notifications/size-changed') {
+      state.heights.push(data.params.height);
+      frame.style.height = data.params.height + 'px';
+    } else if (data.method === 'tools/call') {
+      const { name, arguments: args } = data.params;
+      state.calls.push({ name, args });
+      if (name === 'larva_subagent_panel') {
+        if (args.slice) {
+          const { source, offset } = args.slice;
+          reply({ structuredContent: { slice: { state: 'ok', offset, text: source + '-' + offset, ...(offset === 0 && { continuation_offset: 8 }) } } });
+        } else if (args.scope === 'disk') reply({ structuredContent: { runs: [], startup_failures: [], disk_sessions: [
+          { task_id: '/example/recorded.jsonl', cwd: '/example', cwd_exists: true, lock_state: 'unlocked' },
+        ] } });
+        else if (args.run_epochs) reply(snapshot(state.expire ? [{ ...running, run_epoch: 'replacement' }] : [running, stalled]));
+        else reply(snapshot(args.scope === 'active' ? [running, stalled] : recent));
+      } else if (name === 'larva_subagent_activity') {
+        const { tool_call_id, segment_part, disambiguation_index, offset = 0 } = args;
+        const data = disambiguation_index === undefined ? { status: 'ambiguous', candidates: [{ index: 1, line_number: 12 }] }
+          : { status: 'success', call: { call_id: tool_call_id, segment: { part: segment_part, text: 'Recording page ' + offset,
+            offset, source_version: 'fixed', ...(offset === 0 && { continuation_offset: 16 }) } } };
+        reply({ structuredContent: data });
+      } else if (name === 'larva_subagent_cancel') {
+        reply({ structuredContent: { results: [{ task_id: args.task_ids[0], outcome: 'cleanup_unconfirmed' }] } });
+      }
+    }
+  });
+  frame.srcdoc = html;
+  document.body.append(frame);
+  state.find = selector => [...frame.contentDocument.querySelectorAll(selector)];
+  state.get = selector => state.find(selector)[0];
+  state.button = (text, within = '') => state.find(within ? within + ' button' : 'button').find(b => b.textContent === text);
+  state.click = (text, within) => {
+    const control = state.button(text, within);
+    assert(control && !control.disabled, 'Missing enabled ' + text);
+    control.click();
+  };
+  state.text = () => state.get('#app').textContent;
+  return state;
+}
+(async () => {
+  const panel = mount(${literal(renderCodexPanelHtml())}, 'fullscreen', 960);
+  const widget = mount(${literal(renderCodexWidgetHtml())}, 'inline', 420);
+  await until(() => panel.ready && widget.ready, 'initialization');
+  assert(!panel.calls.length && !widget.calls.length, 'Poll before tool input');
+  panel.notify('ui/notifications/tool-input', { arguments: {} });
+  widget.notify('ui/notifications/tool-result', { structuredContent: { ready: true, timed_out: false, runs: [running, stalled] } });
+  await until(() => panel.get('.workbench') && widget.heights.length, 'panel data and widget sizing');
+  assert(!widget.calls.length, 'Widget polled before tool input');
+  widget.notify('ui/notifications/tool-input', { arguments: { task_ids: [running.task_id, stalled.task_id] } });
+  await until(() => widget.get('.compact-list') && widget.calls.length, 'pinned widget data');
+  assert(widget.calls[0].args.run_epochs?.every(pair => pair.run_epoch === running.run_epoch) && widget.calls[0].args.run_epochs.length === 2, 'Widget did not poll both pinned epochs');
+  assert(!widget.button('Fullscreen'), 'Host mode intersection');
+
+  const css = node => node.ownerDocument.defaultView.getComputedStyle(node);
+  const root = panel.get('html');
+  const tokens = 'background foreground secondary tertiary card muted muted-foreground border input primary accent success success-bg warning warning-bg danger danger-bg ring radius-sm radius-md radius-lg app-font-sans app-font-mono';
+  for (const token of tokens.split(' ')) assert(css(root).getPropertyValue('--' + token).trim(), 'Missing token ' + token);
+  assert(css(root).backgroundColor === 'rgb(255, 255, 255)' && css(root).fontSize === '13px', 'Light palette/font');
+  const layout = panel.get('.workbench');
+  const columns = css(layout).gridTemplateColumns.split(' ').map(parseFloat);
+  assert(css(layout).display === 'grid' && columns.length === 2 && Math.abs(columns[0] / layout.clientWidth - .30) < .01, 'Wide 30% workbench column');
+  panel.frame.style.width = '700px';
+  assert(css(layout).display === 'grid' && parseFloat(css(layout).gridTemplateColumns) === 220, '220px minimum track');
+  panel.frame.style.width = '679px';
+  assert(css(layout).display === 'flex' && css(layout).flexDirection === 'column' && css(panel.get('.run-list')).maxHeight === '148px', '679px stacking');
+  panel.frame.style.width = '960px';
+  const colors = { running: 'rgb(51, 156, 255)', success: 'rgb(22, 163, 74)', failed: 'rgb(220, 38, 38)', cancelled: 'rgb(217, 119, 6)', stall_suspected: 'rgb(217, 119, 6)' };
+  const paths = new Set();
+  for (const [status, color] of Object.entries(colors)) {
+    const icon = panel.get('.run-card .status[data-status=' + status + ']');
+    const path = icon?.querySelector('svg path');
+    assert(path?.namespaceURI === 'http://www.w3.org/2000/svg' && css(path).stroke === color, 'SVG/color for ' + status);
+    paths.add(path.getAttribute('d'));
+  }
+  assert(paths.size === 5, 'Status glyphs must be distinct');
+  const reduced = panel.frame.contentWindow.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  assert(css(panel.get('.status[data-status=running]')).animationName === (reduced ? 'none' : 'pulse'), 'Running animation');
+  assert(css(panel.get('.status[data-status=stall_suspected]')).animationName === 'none', 'Stall should not pulse');
+  panel.notify('ui/notifications/host-context-changed', { theme: 'dark' });
+  await until(() => css(root).backgroundColor === 'rgb(24, 24, 24)', 'dark palette');
+  panel.notify('ui/notifications/host-context-changed', { styles: { variables: { '--color-background-primary': '#233344' } } });
+  await until(() => css(root).backgroundColor === 'rgb(35, 51, 68)', 'host theme override');
+
+  const tabs = panel.find('.tabs button');
+  assert(tabs.map(b => b.textContent).join('/') === 'All/Timeline/Result/Task & Session' && css(panel.get('.tabs')).position === 'sticky', 'Four sticky tabs');
+  assert(tabs.every(b => Math.abs(b.offsetWidth - tabs[0].offsetWidth) <= 1 && b.offsetWidth > 0), 'Equal visible tab widths');
+  assert(panel.get('.metadata').tagName === 'DL' && css(panel.get('.metadata')).gridTemplateColumns.split(' ').length === 4, 'Metadata grid');
+  assert(css(panel.get('.elapsed')).fontVariantNumeric === 'tabular-nums' && css(panel.get('.model')).borderTopLeftRadius === '999px', 'Toolbar telemetry chips');
+  assert(panel.find('.section-card .section-header').length >= 4 && css(panel.get('.stream')).borderTopWidth === '1px', 'Section and stream styling');
+  assert(css(panel.get('.prompt-box')).maxHeight === '110px', 'Collapsed prompt');
+  panel.click('Expand prompt');
+  assert(css(panel.get('.prompt-box')).maxHeight === 'none', 'Expanded prompt');
+  panel.click('Load full prompt');
+  await until(() => panel.button('Copy full prompt'), 'full prompt copy control');
+  assert(panel.text().includes('prompt-0prompt-8') && panel.calls.filter(call => call.args.slice?.source === 'prompt')
+    .every(call => call.args.slice.run_epoch === running.run_epoch), 'Prompt pages combined for the selected epoch');
+  panel.click('Timeline', '.tabs');
+  assert(!panel.get('.prompt-box') && panel.button('Recorded args'), 'Isolated Timeline tab');
+  panel.get('.tool-row').click();
+  assert(panel.get('.tool-row').getAttribute('aria-expanded') === 'false' && !panel.get('.tool-content'), 'Collapsed tool row');
+  panel.get('.tool-row').click();
+  assert(panel.button('Recorded args') && panel.button('Recorded result'), 'Expanded tool controls');
+  for (const part of ['args', 'result']) {
+    panel.click('Recorded ' + part);
+    await until(() => panel.button('Recording 2 · line 12'), 'duplicate call candidate');
+    panel.click('Recording 2 · line 12');
+    await until(() => panel.button('Next recorded page'), 'recorded page cursor');
+    panel.click('Next recorded page');
+    await until(() => panel.text().includes('Recording page 16'), 'recorded page rendered');
+    const { args } = panel.calls.filter(call => call.name === 'larva_subagent_activity').at(-1);
+    assert(args.segment_part === part && args.disambiguation_index === 1 && args.source_version === 'fixed' && args.offset === 16, 'Recording cursor/identity');
+  }
+  panel.click('Done · 3', '.toolbar');
+  assert(panel.find('.run-card').length === 3 && !panel.get('.run-card .status[data-status=running]'), 'Done filters merged rows');
+  panel.click('Result', '.tabs');
+  assert(css(panel.get('.result')).borderTopWidth === '1px' && !panel.button('Copy task_id'), 'Isolated bordered Result');
+  panel.click('Read full output');
+  await until(() => panel.button('Next output page'), 'output page cursor');
+  panel.click('Next output page');
+  await until(() => panel.text().includes('output-8'), 'second output page rendered');
+  assert(!panel.text().includes('output-0'), 'Output pages are displayed separately');
+  panel.click('Retry cleanup');
+  await until(() => panel.calls.some(call => call.name === 'larva_subagent_cancel'), 'retry cleanup');
+  const retry = panel.calls.find(call => call.name === 'larva_subagent_cancel').args;
+  assert(retry.expected_run_epochs[0].task_id === done[0].task_id && retry.expected_run_epochs[0].run_epoch === done[0].run_epoch, 'Cleanup epoch guard');
+  panel.click('Disk');
+  await until(() => panel.text().includes('Recorded session'), 'separate Disk scope');
+  assert(panel.find('.run-card').length === 1 && !panel.button('Cancel'), 'Disk rows not merged with live runs');
+
+  await until(() => widget.button('Details') && widget.get('.preview.summary'), 'collapsed widget');
+  assert(css(widget.get('.compact-list .run-card')).display === 'flex' && widget.get('.toolbar .model'), 'Compact cards and toolbar');
+  const before = widget.heights.at(-1);
+  widget.click('Details');
+  await until(() => widget.heights.at(-1) > before, 'widget growth');
+  assert(widget.get('.drawer') && css(widget.get('.drawer')).maxHeight === '340px' && widget.get('.switcher'), 'Elevated drawer and switcher');
+  widget.click('Hide details');
+  await until(() => widget.heights.at(-1) === before, 'widget shrink after host resize');
+  widget.expire = true;
+  widget.click('Refresh');
+  await until(() => widget.text().includes('Run snapshot expired'), 'expired pinned epoch');
+  assert(!widget.text().includes('replacement') && !widget.button('Cancel'), 'Expired widget followed replacement');
+  for (const app of [panel, widget]) app.notify('ui/resource-teardown', {});
+
+  const recent = ${literal(recent)};
+  const status = mount(${literal(renderCodexWidgetHtml())}, 'inline', 420, recent);
+  await until(() => status.ready, 'recent status initialization');
+  status.notify('ui/notifications/tool-input', { arguments: { scope: 'recent' } });
+  status.notify('ui/notifications/tool-result', snapshot(recent));
+  await until(() => status.find('.compact-list .run-card').length === 2, 'recent status rows');
+  const [quiet, finished] = status.find('.compact-list .run-card');
+  const result = finished.querySelector('.preview');
+  assert(result?.textContent === recent[1].result_preview && css(result).whiteSpace === 'nowrap' &&
+    result.clientWidth >= result.scrollWidth && result.clientWidth > 0,
+    'Completed preview must fit on one line: ' + result?.clientWidth + 'px available, ' + result?.scrollWidth + 'px needed');
+  assert(quiet.querySelector('.preview')?.textContent === recent[0].task_preview, 'Missing quiet run row preview');
+  assert(status.get('.preview.summary')?.textContent === recent[0].task_preview, 'Missing quiet run inspector preview');
+  assert(finished.title.includes(recent[1].task_id) && finished.title.includes(recent[1].run_epoch) &&
+    finished.getAttribute('aria-label').includes(recent[1].task_id.split('/').pop()), 'Missing compact run identity');
+  assert(finished.querySelector('.status[data-status=success] svg path')?.getBoundingClientRect().width > 0, 'Missing compact status icon');
+  finished.click();
+  assert(status.get('.preview.summary')?.textContent === recent[1].result_preview &&
+    status.get('article .model')?.textContent === recent[1].model, 'Missing completed run inspector metadata');
+  status.notify('ui/resource-teardown', {});
+  report.textContent = 'verified';
+})().catch(error => { report.textContent = error.message; });
+</script>`);
+  const { stdout } = await promisify(execFile)(process.env.LARVA_TEST_CHROME!, ["--headless", "--no-first-run", "--no-default-browser-check",
+    "--disable-gpu", "--disable-background-networking", "--disable-component-update", "--use-mock-keychain", `--user-data-dir=${join(home, "profile")}`,
+    "--virtual-time-budget=8000", "--dump-dom", pathToFileURL(file).href], { timeout: 20_000, maxBuffer: 2 * 1024 * 1024 }).catch(error => {
+    if (error.code === 2 && error.stdout && error.stderr?.includes("Teardown watchdog expired")) return { stdout: String(error.stdout) };
+    throw error;
+  });
+  assert.equal(/<div id="report">([^<]*)<\/div>/.exec(stdout)?.[1], "verified");
 });
 
 test("persona resource links share the store's ranking and do not leak prompts", async t => {

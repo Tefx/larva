@@ -26,13 +26,15 @@ export function registerPiTools(pi: ExtensionAPI, bindings: {
   });
 
   type Invocation = ReturnType<typeof bindings.current>;
-  function register<Input>(name: string, description: string, schema: Schema, run: (input: Input, state: Invocation,
+  type ToolName = keyof typeof commonToolSchemas | "larva_persona_switch";
+  function register<Input>(name: ToolName, description: string, schema: Schema, run: (input: Input, state: Invocation,
     ctx: ExtensionContext, toolCallId: string, signal?: AbortSignal) => unknown,
     acceptedGuidance?: string) {
     const admit = (input: unknown) => admitToolInput<Input>(name, schema, input);
     pi.registerTool({ name, label: name, description, parameters: schema as ToolDefinition["parameters"],
       // Pi otherwise coerces wrong-type model inputs before calling execute().
       prepareArguments: admit,
+      // The Pi views consume structured details; the content below remains model-facing.
       ...piToolRenderers(name, description),
       async execute(toolCallId, params, signal, _update, ctx) {
         try {

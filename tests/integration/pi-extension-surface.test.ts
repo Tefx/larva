@@ -9,7 +9,7 @@ import { createInterface } from "node:readline";
 import { test, type TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
 import { compile } from "@earendil-works/pi-schema";
-import { CombinedAutocompleteProvider, visibleWidth } from "@earendil-works/pi-tui";
+import { CombinedAutocompleteProvider, CURSOR_MARKER, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import larvaExtension, { formatSubagentMessage } from "../../src/pi-extension.ts";
 import { SPAWN_TOOLS } from "../../src/core/tool-policy.ts";
@@ -46,11 +46,29 @@ function isolateLarvaHome(home: string): () => void {
   };
 }
 
+const fgColors: Record<string, number> = { accent: 96, muted: 90, dim: 90, warning: 93, success: 92, error: 91 };
+const bgColors: Record<string, number> = { toolSuccessBg: 22, toolPendingBg: 58, toolErrorBg: 52 };
+const tuiTheme = {
+  // Deliberately use both reset spellings: the next visible cell must stay on the surface.
+  fg: (name: string, text: string) => `\x1b[${fgColors[name]}m${text}\x1b[m`,
+  bg: (name: string, text: string) => `\x1b[48;5;${bgColors[name]}m${text}\x1b[49m`,
+  bold: (text: string) => `\x1b[1m${text}\x1b[0m`,
+};
+const plain = (value: string) => stripTerminalSequences(value);
+function assertChrome(frame: string) {
+  assert.match(frame, /\x1b\[48;5;235m\x1b\[38;5;116m╭/);
+  assert.match(frame, /\x1b\[38;5;232m█/);
+  assert.match(frame, /\x1b\[38;5;232m ▀/);
+  for (const glyph of "╭╮╰╯├┤") assert.ok(frame.includes(glyph), `missing ${glyph}`);
+  assert.match(frame, /\x1b\[0m\x1b\[48;5;235m/);
+}
+
 // Drive the production extension through Pi's public callback surface. The fake
 // terminal implements only the host I/O boundary; SessionContext and PersonaStore are real.
 function tuiHost(workspace: string) {
   const handlers = new Map<string, Function[]>();
   const tools = new Map<string, any>(), commands = new Map<string, any>(), shortcuts = new Map<string, any>();
+  const renderers = new Map<string, Function>();
   const notifications: string[] = [], statuses = new Map<string, string | undefined>();
   const entries: any[] = [], events = new EventEmitter();
   let active = ["read", "write"];
@@ -88,9 +106,13 @@ function tuiHost(workspace: string) {
         });
       },
       custom: (factory: Function, options: any) => new Promise(resolve => {
+        assert.equal(options.overlay, true);
+        assert.deepEqual(options.overlayOptions, { anchor: "center", width: "90%", maxHeight: "90%", margin: 1 });
         dialog = factory({ mode: mouseMode, terminal, requestRender: () => events.emit("paint", render()) },
-          { fg: (_: string, text: string) => text }, {}, (value: unknown) => resolve(value));
-        options.onHandle?.({});
+          tuiTheme, {}, (value: unknown) => resolve(value));
+        let focused = false;
+        options.onHandle?.({ focus: () => { focused = true; if ("focused" in dialog) dialog.focused = true; } });
+        assert.ok(focused, "custom overlay requests keyboard focus");
         events.emit("dialog-opened");
       }),
     },
@@ -98,7 +120,7 @@ function tuiHost(workspace: string) {
   const pi = {
     on: (event: string, fn: Function) => handlers.set(event, [...(handlers.get(event) ?? []), fn]),
     events: { on: (topic: string, listener: (data: unknown) => void) => { events.on(topic, listener); return () => events.off(topic, listener); } },
-    registerFlag() {}, getFlag() {}, registerMessageRenderer() {},
+    registerFlag() {}, getFlag() {}, registerMessageRenderer: (type: string, render: Function) => renderers.set(type, render),
     registerTool: (tool: { name: string }) => { tools.set(tool.name, tool); active.push(tool.name); },
     registerCommand: (name: string, command: unknown) => commands.set(name, command),
     registerShortcut: (name: string, shortcut: unknown) => shortcuts.set(name, shortcut),
@@ -113,7 +135,7 @@ function tuiHost(workspace: string) {
     for (const handler of handlers.get(event) ?? []) output.push(await handler(payload, ctx));
     return output.at(-1);
   };
-  return { pi, ctx, commands, shortcuts, tools, events, emit, entries, notifications, statuses, writes, render,
+  return { pi, ctx, commands, shortcuts, tools, renderers, events, emit, entries, notifications, statuses, writes, render,
     setHeight: (value: number) => { height = value; }, dialog: () => dialog, autocomplete: () => autocomplete, autocompleteInstalls: () => autocompleteInstalls,
     setIdle: (next: boolean) => { idle = next; }, setMouseMode: (mode: typeof mouseMode) => { mouseMode = mode; },
     setApi: (api: string) => { selectedModel = { ...selectedModel, api }; } };
@@ -130,7 +152,7 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
       "larva_subagent_status", "larva_subagent_activity", "larva_subagent_cancel"]);
     for (const tool of f.tools.values()) assert.equal(tool.parameters.additionalProperties, false);
     assert.ok(!f.pi.getActiveTools().includes("larva_subagent"));
-    const execute = (name: string, input: unknown, id = "c1") => f.tools.get(name).execute(id, input, undefined, undefined, f.ctx);
+    const execute = (name: string, input: unknown, id = "c1", signal?: AbortSignal) => f.tools.get(name).execute(id, input, signal, undefined, f.ctx);
     assert.equal((await execute("larva_subagent", { persona_id: "alice", task: "test" })).details.error.code, "LARVA_NO_ACTIVE_PERSONA");
     assert.equal((await execute("larva_personas", { limit: "2" })).details.error.code, "LARVA_BAD_INPUT");
     assert.equal((await execute("larva_personas", {})).details.some((persona: object) => "prompt" in persona), false);
@@ -152,16 +174,33 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
     assert.equal((await execute("larva_persona_switch", input)).details.error.code, "LARVA_BAD_INPUT");
     assert.equal(f.dialog(), undefined, "mixed batch was rejected before confirmation");
     assistant.message.content.pop();
-    const openConfirmation = async () => {
+    const openConfirmation = async (request = input, signal?: AbortSignal) => {
       const opened = once(f.events, "dialog-opened");
-      const result = execute("larva_persona_switch", input);
+      const result = execute("larva_persona_switch", request, "c1", signal);
       await Promise.race([opened, result.then(() => assert.fail("Switch settled before opening confirmation"))]);
       return { result };
     };
     const { result: pending } = await openConfirmation();
-    assert.deepEqual(f.render().slice(2), ["› Borrow once", "  Deny", "  Auto-borrow for this session", "  Switch persistently"]);
+    const confirmation = f.render().join("\n");
+    assertChrome(confirmation);
+    assert.match(plain(confirmation), /⚠ Borrow persona\?[\s\S]*alice → bob[\s\S]*Reason · PgUp\/PgDn[\s\S]*Use Bob/);
+    assert.deepEqual(f.render().map((line: string) => plain(line).slice(1, -2).trim()).filter((line: string) =>
+      /Borrow once|Deny|Auto-borrow for this session|Switch persistently/.test(line)),
+    ["› Borrow once", "Deny", "Auto-borrow for this session", "Switch persistently"]);
     f.dialog().handleInput("\x1b");
     assert.equal((await pending).details.error.code, "LARVA_BAD_INPUT");
+    const abort = new AbortController();
+    const reason = Array.from({ length: 8 }, (_, i) => `Reason line ${i + 1}`).join("\n");
+    const { result: aborted } = await openConfirmation({ ...input, reason }, abort.signal);
+    assert.match(plain(f.render().join("\n")), /Reason line 1/);
+    assert.doesNotMatch(plain(f.render().join("\n")), /Reason line 8/);
+    for (let i = 0; i < 4; i++) f.dialog().handleInput("\x1b[6~");
+    assert.match(plain(f.render().join("\n")), /Reason line 8/);
+    assert.match(plain(f.render().join("\n")), /› Borrow once/);
+    abort.abort();
+    f.dialog().handleInput("\r"); // An Enter after abort cannot settle again.
+    assert.equal((await aborted).details.error.code, "LARVA_BAD_INPUT");
+    assert.equal(f.statuses.get("larva"), "🎭 alice");
     const { result: borrowed } = await openConfirmation();
     f.dialog().handleInput("\r");
     const switchResult = await borrowed;
@@ -190,8 +229,20 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
       const menu = once(f.events, "dialog-opened");
       const selected = f.shortcuts.get("ctrl+alt+p").handler(f.ctx);
       await menu;
-      f.dialog().handleInput("bob");
-      assert.match(f.render().join("\n"), /Route: surface\/bob · Thinking: off · Spawn: allowed/);
+      f.setHeight(30);
+      assert.match(plain(f.render().join("\n")), /alice \(current\)\s+surface\/alice \| Persona alice/);
+      f.dialog().handleInput("\x1b[200~bo\x1b[2Job\x1b[201~");
+      assert.doesNotMatch(f.render().join("\n"), /\x1b\[2J/, "pasted input cannot write terminal commands");
+      assert.match(plain(f.render().join("\n")), /No matches/);
+      f.dialog().handleInput("\x1b[D"); // edit in place using the native Input cursor
+      f.dialog().handleInput("\x7f");
+      const frame = f.render().join("\n");
+      assertChrome(frame);
+      assert.ok(frame.includes(CURSOR_MARKER));
+      const visible = plain(frame);
+      assert.match(visible, /Filter: bob/);
+      assert.match(visible, /bob\s+surface\/bob \| Persona bob/);
+      assert.match(visible, /Detail[\s\S]*ID:\s+bob[\s\S]*Status:\s+Available[\s\S]*Model:\s+surface\/bob[\s\S]*Thinking:\s+off[\s\S]*Spawn:\s+allowed[\s\S]*Description:\s+Persona bob[\s\S]*Digest:\s+\S/);
       return { selected };
     };
     assert.match(f.notifications.find(msg => /dismissed/.test(msg))!, /Do not retry/);
@@ -300,6 +351,16 @@ test("autocomplete remains single-wrapped across session starts and supports per
     const mode = f.commands.get("larva-mode").getArgumentCompletions;
     assert.deepEqual(mode("").map((item: { value: string }) => item.value), ["manual", "confirm", "auto", "free"]);
     assert.deepEqual(mode("co"), [{ value: "confirm", label: "confirm" }]);
+    const modeOpened = once(f.events, "dialog-opened");
+    const modePending = f.commands.get("larva-mode").handler("", f.ctx);
+    await modeOpened;
+    assertChrome(f.render().join("\n"));
+    assert.match(plain(f.render().join("\n")), /confirm \(current\)\s+Ask before a persona switch/);
+    f.dialog().handleInput("\x1b[B");
+    assert.match(plain(f.render().join("\n")), /Detail[\s\S]*Mode:\s+confirm/);
+    f.dialog().handleInput("\x1b");
+    await modePending;
+    assert.match(f.notifications.at(-1)!, /dismissed/);
     assert.deepEqual((await f.autocomplete().getSuggestions(["/larva-mode co"], 0, 14, { force: true, signal: AbortSignal.timeout(1000) })).items,
       [{ value: "confirm", label: "confirm" }]);
     await writeFile(join(home, "model-map.team.json"), "{}");
@@ -340,9 +401,10 @@ test("model-map selector rejects a broken parent route without hiding healthy pr
     };
     const input = (key: string) => f.dialog().handleInput(key);
     const broken = await open();
-    assert.match(f.render().join("\n"), /default \(current\)[\s\S]*broken \(invalid route\)[\s\S]*healthy/);
+    assertChrome(f.render().join("\n"));
+    assert.match(plain(f.render().join("\n")), /default \(current\)[\s\S]*broken \(invalid route\)[\s\S]*healthy/);
     input("\x1b[B");
-    assert.match(f.render().join("\n"), /Invalid resolved model_id/);
+    assert.match(plain(f.render().join("\n")), /Error:\s+Invalid resolved model_id/);
     input("\r");
     await broken.pending;
     assert.match(f.notifications.at(-1)!, /Invalid resolved model_id/);
@@ -352,7 +414,7 @@ test("model-map selector rejects a broken parent route without hiding healthy pr
 
     const healthy = await open();
     input("\x1b[B"); input("\x1b[B");
-    assert.match(f.render().join("\n"), /Parent route: surface\/healthy/);
+    assert.match(plain(f.render().join("\n")), /Parent route:\s+surface\/healthy/);
     input("\r");
     await healthy.pending;
     assert.equal(f.ctx.model?.id, "healthy");
@@ -385,7 +447,7 @@ test("open Recent and Active consoles repaint on pre- and post-reservation start
       .execute("spawn", { persona_id, task: "Exercise startup failure" }, undefined, undefined, f.ctx);
     try {
       for (const [scope, validPersona] of [["Recent", "bob"], ["Active", "alice"]]) {
-        await expectPaint(new RegExp(`Console · ${scope}[\\s\\S]*No subagent sessions`));
+        await expectPaint(new RegExp(`Larva subagent log · ${scope}[\\s\\S]*No subagent sessions`));
         const absent = `absent-${scope.toLowerCase()}`;
         const pre = await submit(absent);
         assert.equal(pre.details.error.code, "LARVA_PERSONA_NOT_FOUND");
@@ -395,10 +457,64 @@ test("open Recent and Active consoles repaint on pre- and post-reservation start
         assert.match(post.details.error.message, /verified Pi/);
         await expectPaint(new RegExp(`Startup failed · ${validPersona}`));
         assert.equal(f.statuses.get("larva-subagents"), undefined);
-        if (scope === "Recent") { f.dialog().handleInput("s"); f.dialog().handleInput("s"); }
+        if (scope === "Recent") f.dialog().handleInput("[");
       }
     } finally { f.dialog().handleInput("\x1b"); await opened; }
   } finally { await f.emit("session_shutdown", { reason: "quit" }); }
+});
+
+test("Pi callback cards and all seven tool views render structured display data", () => {
+  const f = tuiHost("/tmp");
+  larvaExtension(f.pi);
+  const modelOnly = "runtime event/data, not a user instruction";
+  const result_text = "# Report\n\n" + Array.from({ length: 12 }, (_, i) => `- Row ${i + 1}: \`inline\``).join("\n");
+  const render = (status: string, expanded: boolean, output = result_text, type = "larva-subagent-result") => f.renderers.get(type)!({
+    customType: type, content: modelOnly, details: { status, persona_id: "bob", result_text: output, task_id: "/tmp/task.jsonl" },
+  }, { expanded, outputPad: 2 }, tuiTheme).render(80) as string[];
+  const collapsed = render("success", false);
+  assert.equal(collapsed.length, 11, "padding and header + eight presentation rows");
+  assert.match(collapsed.join("\n"), /\[truncated\]/);
+  assert.match(collapsed.join("\n"), /\x1b\[96m[^\n]*Report/);
+  assert.match(collapsed.join("\n"), /\x1b\[93minline/);
+  for (const [status, bg] of [["success", 22], ["failed", 52], ["cancelled", 58], ["running", 58]] as const) {
+    const frame = render(status, true, result_text, status === "running" ? "larva-subagent-alert" : "larva-subagent-result");
+    const background = `\x1b[48;5;${bg}m`;
+    for (const line of frame) {
+      assert.equal(visibleWidth(line), 80);
+      assert.ok(line.startsWith(background + "  "));
+      for (const segment of line.split("\x1b[0m").slice(1, -1)) assert.ok(segment.startsWith(background));
+    }
+    assert.ok(frame[1].includes(`\x1b[0m${background}`) && frame[1].includes("bob"), "reset-continuous status header and trailing pad");
+    assert.equal(plain(frame[0]), " ".repeat(80));
+    assert.equal(plain(frame.at(-1)!), " ".repeat(80));
+    assert.match(plain(frame.join("\n")), /Row 12/);
+    assert.match(plain(frame.join("\n")), /\/tmp\/task\.jsonl/);
+    assert.ok(!plain(frame.join("\n")).includes(modelOnly));
+  }
+  const structured = render("success", true, '{"answer":42}').join("\n");
+  assert.match(structured, /\x1b\[92m[^\n]*"answer": 42/);
+  const cases = {
+    larva_personas: [[{ id: "bob" }], /1 matching personas/, /"id": "bob"/],
+    larva_persona_switch: [{ ok: true, persona_id: "bob", persistent: false }, /Borrowed: bob/, /"persistent": false/],
+    larva_subagent: [{ status: "accepted", task_id: "/tmp/task.jsonl", run_epoch: "id" }, /Accepted.*callback/, /"run_epoch": "id"/],
+    larva_subagent_wait: [{ ready: false, timed_out: true }, /Wait timed out/, /"timed_out": true/],
+    larva_subagent_status: [{ runs: [], startup_failures: [] }, /0 sessions/, /"startup_failures": \[\]/],
+    larva_subagent_activity: [{ status: "success", items: [] }, /0 recorded calls/, /"items": \[\]/],
+    larva_subagent_cancel: [{ results: [{ outcome: "cleanup_unconfirmed" }] }, /cleanup unconfirmed/, /"outcome": "cleanup_unconfirmed"/],
+  } as const;
+  assert.deepEqual([...f.tools.keys()], Object.keys(cases));
+  for (const [name, [details, summary, payload]] of Object.entries(cases)) {
+    const tool = f.tools.get(name);
+    const render = (expanded: boolean) => tool.renderResult({ details, content: [{ type: "text", text: modelOnly }] },
+      { expanded }, tuiTheme).render(80).join("\n") as string;
+    assert.match(plain(render(false)), summary);
+    assert.doesNotMatch(plain(render(false)), payload);
+    assert.match(render(true), /\x1b\[92m/);
+    assert.match(plain(render(true)), payload);
+    assert.ok(!plain(render(true)).includes(modelOnly));
+  }
+  const resume = f.tools.get("larva_subagent").renderCall({ persona_id: "bob", task_id: "/tmp/task.jsonl", task: "review\nagain" }, tuiTheme);
+  assert.match(plain(resume.render(80).join("\n")), /larva_subagent -> bob \[resume\] review again *\ntask_id: \/tmp\/task\.jsonl/);
 });
 
 test("stall alerts name the persona and distinguish a silence episode from a terminal outcome", () => {
@@ -554,10 +670,21 @@ test("provider request reconciliation narrows native tool shapes and composes on
   }
 });
 
-test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mouse state alone", async () => {
-  const f = tuiHost("/tmp");
-  const task_id = "/tmp/one.jsonl";
-  const row: RunSnapshot = { task_id, run_epoch: "incoming", status: "running", phase: "waiting_for_child", cwd: "/tmp", persona_id: "alice",
+test("TUI log separates selector and detail, preserves short-viewport pages and pins cancellation at ingress", { timeout: 5000 }, async t => {
+  const { home, workspace } = await fixture(t);
+  const f = tuiHost(workspace);
+  const task_id = join(home, "state", "sessions", "one.jsonl");
+  await mkdir(dirname(task_id), { recursive: true });
+  const timestamp = "2026-02-01T12:00:00.000Z";
+  await writeFile(task_id, [
+    { type: "session", id: "fixture", version: 3, cwd: workspace },
+    { type: "message", id: "call", parentId: null, timestamp, message: { role: "assistant", content: [
+      { type: "toolCall", id: "saved-read", name: "read", arguments: { path: "saved-widget.ts" } },
+    ] } },
+    { type: "message", id: "result", parentId: "call", timestamp, message: { role: "toolResult", toolCallId: "saved-read",
+      toolName: "read", isError: false, content: [{ type: "text", text: "saved widget contents" }] } },
+  ].map(entry => JSON.stringify(entry)).join("\n") + "\n");
+  const row: RunSnapshot = { task_id, run_epoch: "incoming", status: "running", phase: "waiting_for_child", cwd: workspace, persona_id: "alice",
     started_at: "now", updated_at: "now", output_state: "pending", tool_call_count: 6, model: "surface/\x1b[31malice\x1b[0m", thinking: "high",
     task_preview: "inspect the widget", active_tool: { tool_call_id: "read-1", name: "read", status: "running" }, live_thinking: true,
     live_assistant_preview: "working on the preview", tool_snapshots: [
@@ -572,10 +699,12 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   const settleInput = () => new Promise<void>(resolve => setImmediate(resolve));
   const active = () => ({ task_id, run_epoch: row.run_epoch });
   const supervisor = {
-    captureFleet: () => [active()], status: async () => ({ runs: [{ ...row }], startup_failures: [] }),
-    readRunTextSlice: async ({ source }: { source: string }) => source === "prompt"
-      ? { state: "ok", text: "First line\n\nThird line", offset: 0, length: 22 }
-      : { state: "unavailable" },
+    home, captureFleet: () => [active()], status: async () => ({ runs: [{ ...row }], startup_failures: [] }),
+    readRunTextSlice: async ({ source, offset }: { source: string; offset: number }) => source === "prompt"
+      ? offset === 22 ? { state: "ok", text: "# Page two\n\n`inline`", offset, length: 19 }
+        : { state: "ok", text: "First line\n\nThird line", offset: 0, length: 22, continuation_offset: 22 }
+      : row.output_state === "pending" ? { state: "unavailable" }
+        : { state: "ok", text: '{"answer":42}', offset: 0, length: 13 },
     subscribe: (cb: () => void) => { updates.on("change", cb); return () => updates.off("change", cb); },
     cancel: async (request: SubagentCancelToolInput) => {
       requests.push(request);
@@ -595,40 +724,62 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
 
   const opened = command("", f.ctx);
   await settleInput();
-  const visible = () => f.render()?.join("\n") as string;
+  const screen = () => f.render()?.join("\n") as string;
+  const visible = () => plain(screen());
   const input = (key: string) => f.dialog().handleInput(key);
+  assertChrome(screen());
+  assert.match(visible(), /Select subagent.*○ Active   ● Recent   ○ Disk/);
   assert.match(visible(), /\[Cancel\]/);
-  assert.match(visible(), /\[Summary\] \/ Output \/ Prompt \/ Timeline \/ Metadata/);
-  assert.match(visible(), /Route: surface\/alice · thinking: high/);
-  assert.doesNotMatch(visible(), /\x1b/);
+  assert.doesNotMatch(visible(), /● 1 Summary/);
+  input("\r");
+  assert.match(visible(), /● 1 Summary   ○ 2 Prompt   ○ 3 Output   ○ 4 Timeline   ○ 5 Metadata/);
+  assert.match(visible(), /─ Run ─+[\s\S]*Route:\s+surface\/alice · thinking: high[\s\S]*─ Prompt ─+[\s\S]*─ Result ─+/);
+  assert.doesNotMatch(screen(), /\x1b\[31m|\x1b\[2J/, "sanitize child text without stripping trusted chrome");
+  for (const width of [1, 3, 4, 7]) {
+    const narrow: string[] = f.render(width);
+    assert.ok(narrow.every(line => visibleWidth(line) === width));
+    assert.doesNotMatch(narrow.join(""), /[█▀]/);
+  }
   f.setHeight(5);
-  input("\t");
+  input("3");
   await settleInput();
   assert.match(visible(), /Output pending/);
-  input("\t");
+  input("\x1b[D"); // Prompt is left of Output
   await settleInput();
   assert.match(visible(), /First line/);
-  assert.equal(f.render().length, 5);
+  assert.equal(f.render().length, 3, "fits Pi's one-row margins at 5×80");
   assert.ok(f.render().every((line: string) => visibleWidth(line) === 80));
   input("\x1b[6~");
-  assert.match(f.render()[3], /^│ +│$/, "blank line is a real screen row");
+  assert.match(plain(f.render()[1]), /^│ +│$/, "blank line is a real screen row");
   input("\x1b[6~");
   assert.match(visible(), /Third line/);
-  input("\t");
+  input("n");
+  await settleInput();
+  assert.match(screen(), /\x1b\[96m[^\n]*Page two/);
+  input("\t"); input("\t");
   assert.match(visible(), /Following tail/);
   input("f");
   assert.match(visible(), /Tail paused/);
-  f.setHeight(15);
-  const prompt = /Confirm cancel alice · one\?/;
+  f.setHeight(24);
+  assert.match(visible(), /• assistant working on the preview[\s\S]*~ thinking hidden[\s\S]*↳ bash \(error\)/);
+  assert.doesNotMatch(screen(), /\x1b\[2J/);
+  input("s");
+  const prompt = /⚠ CANCEL SUBAGENT\?/;
   input("c"); assert.match(visible(), prompt);
+  assert.match(screen(), /\x1b\[91m\[ Enter \/ y \]/);
+  assert.match(screen(), /\x1b\[92m\[ Esc \/ n \]/);
+  assert.match(visible(), /━━━━━━/);
   input("n"); assert.doesNotMatch(visible(), prompt);
   assert.equal(requests.length, 1);
 
-  f.dialog().handleMouse({ type: "press", button: "left", x: 3, y: 2 });
+  const mouse = (type: string, x: number, y = 3) => f.dialog().handleMouse({ type, button: "left", x, y });
+  mouse("press", 4); mouse("click", 5);
+  assert.doesNotMatch(visible(), prompt, "a different release cell does not arm a destructive confirmation");
+  mouse("press", 4);
   row.run_epoch = "replacement-after-press";
   await updated();
   visible();
-  f.dialog().handleMouse({ type: "click", button: "left", x: 3, y: 2 });
+  mouse("click", 4);
   assert.match(visible(), prompt);
   input("\r"); input("\r");
   await settleInput();
@@ -640,9 +791,27 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   await updated();
   input("\x1b[B");
   assert.match(visible(), /\[Retry cleanup\]/);
-  input("c"); input("y");
+  input("c"); assert.match(visible(), /⚠ RETRY CLEANUP\?/); input("y");
   await settleInput();
   assert.deepEqual(requests[2].expected_run_epochs, [{ task_id, run_epoch: "replacement-after-press" }]);
+  row.output_state = "inline";
+  await updated();
+  input("3"); await settleInput();
+  assert.match(screen(), /\x1b\[92m[^\n]*"answer": 42/);
+  input("\x1b[Z"); assert.match(visible(), /● 2 Prompt/);
+  input("4"); assert.match(visible(), /✓ success/);
+  const painted = async (text: RegExp) => {
+    const signal = AbortSignal.timeout(1500);
+    while (!text.test(visible())) {
+      try { await once(f.events, "paint", { signal }); }
+      catch { assert.fail(`Missing recorded view for ${text}:\n${visible()}`); }
+    }
+  };
+  input("\r"); await painted(/Recorded tools.*\n[\s\S]*↳ read/);
+  input("\r"); await painted(/Recorded args[\s\S]*"path":\s*"saved-widget\.ts"/);
+  input("\x1b"); assert.match(visible(), /Recorded tools/);
+  input("v"); await painted(/Recorded result[\s\S]*saved widget contents/);
+  input("5"); assert.match(visible(), /─ Metadata ─+[\s\S]*Epoch:\s+replacement-after-press/);
   input("\x1b");
   await opened;
   assert.equal(updates.listenerCount("change"), 0);
@@ -1063,8 +1232,8 @@ export default function(pi) {
   const tui = tuiHost(workspace);
   larvaExtension(tui.pi);
   const tool = tui.tools.get("larva_subagent");
-  const theme = { fg: (_: string, text: string) => text };
-  assert.match(tool.renderCall({ persona_id: "bob", task: "do not show the task in the headline" }, theme).render(90).join("\n"), /^Start Larva subagent: bob\s*$/);
+  const theme = tuiTheme;
+  assert.match(plain(tool.renderCall({ persona_id: "bob", task: "inspect the widget" }, theme).render(90).join("\n")), /^larva_subagent -> bob \[spawn\] inspect the widget\s*$/);
   const compact = tool.renderResult(receipt.result, { expanded: false }, theme).render(90).join("\n");
   assert.match(compact, /Accepted.*callback/);
   assert.ok(!compact.includes(task_id));

@@ -96,7 +96,10 @@ export async function resolveExtensionSources(
       if (source.startsWith("pi-agent:")) {
         const suffix = source.slice("pi-agent:".length);
         if (!suffix || isAbsolute(suffix)) throw new Error("Expected a relative path.");
-        realPath = await resolveContainedPath(context.piAgentDir, resolve(context.piAgentDir, suffix), context.realpath);
+        const candidate = resolve(context.piAgentDir, suffix);
+        if (!isLexicallyContained(context.piAgentDir, candidate)) throw new Error("Expected a path inside the Pi agent directory.");
+        // Pi agent extensions may be symlinked to files or directories outside the agent directory.
+        realPath = await context.realpath(candidate);
       } else if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
         if (!/^(?:builtin|npm|git):/.test(source)) {
           const url = new URL(source);

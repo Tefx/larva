@@ -7700,7 +7700,9 @@ async function resolveExtensionSources(sources, context) {
       if (source.startsWith("pi-agent:")) {
         const suffix = source.slice("pi-agent:".length);
         if (!suffix || isAbsolute(suffix)) throw new Error("Expected a relative path.");
-        realPath = await resolveContainedPath(context.piAgentDir, resolve(context.piAgentDir, suffix), context.realpath);
+        const candidate = resolve(context.piAgentDir, suffix);
+        if (!isLexicallyContained(context.piAgentDir, candidate)) throw new Error("Expected a path inside the Pi agent directory.");
+        realPath = await context.realpath(candidate);
       } else if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
         if (!/^(?:builtin|npm|git):/.test(source)) {
           const url = new URL(source);
@@ -11187,48 +11189,115 @@ function renderCodexAppHtml(surface, modes, version = "source") {
 var styles = `
 :root {
   color-scheme: light dark;
-  font: 14px/1.5 var(--font-sans, system-ui, sans-serif);
-  color: var(--color-text-primary, CanvasText);
-  background: var(--color-background-primary, Canvas);
-  --border: var(--color-border-secondary, color-mix(in srgb, currentColor 23%, transparent));
-  --subtle: var(--color-background-secondary, color-mix(in srgb, currentColor 6%, Canvas));
+  --background: var(--color-background-primary, light-dark(#ffffff, #181818));
+  --foreground: var(--color-text-primary, light-dark(#1a1c1f, #ffffff));
+  --secondary: var(--color-background-secondary, light-dark(rgba(255,255,255,.96), rgba(54,54,54,.96)));
+  --tertiary: var(--color-background-tertiary, color-mix(in srgb, var(--foreground) 4%, var(--background)));
+  --card: color-mix(in srgb, var(--foreground) 5%, var(--background));
+  --muted: color-mix(in srgb, var(--foreground) 8%, transparent);
+  --muted-foreground: var(--color-text-secondary, light-dark(rgba(26,28,31,.55), rgba(255,255,255,.55)));
+  --border: var(--color-border-secondary, light-dark(rgba(26,28,31,.09), rgba(255,255,255,.09)));
+  --input: var(--color-border-primary, light-dark(rgba(26,28,31,.13), rgba(255,255,255,.13)));
+  --primary: var(--color-text-info, light-dark(#339cff, #83c3ff));
+  --accent: var(--color-background-info, color-mix(in srgb, var(--primary) 14%, transparent));
+  --success: var(--color-text-success, light-dark(#16a34a, #4ade80));
+  --success-bg: var(--color-background-success, color-mix(in srgb, var(--success) 14%, transparent));
+  --warning: var(--color-text-warning, light-dark(#d97706, #fbbf24));
+  --warning-bg: var(--color-background-warning, color-mix(in srgb, var(--warning) 14%, transparent));
+  --danger: var(--color-text-danger, light-dark(#dc2626, #f87171));
+  --danger-bg: var(--color-background-danger, color-mix(in srgb, var(--danger) 14%, transparent));
+  --ring: var(--color-ring-primary, var(--primary));
+  --radius-sm: var(--border-radius-sm, 6px);
+  --radius-md: var(--border-radius-md, 8px);
+  --radius-lg: var(--border-radius-lg, 12px);
+  --app-font-sans: var(--font-sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif);
+  --app-font-mono: var(--font-mono, ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace);
+  font: 13px/1.5 var(--app-font-sans);
+  color: var(--foreground);
+  background: var(--background);
 }
 [data-theme=light] { color-scheme: light }
 [data-theme=dark] { color-scheme: dark }
 * { box-sizing: border-box }
 body { margin: 0 }
+/* Keep inline height intrinsic even after the host resizes the iframe. */
 #app { padding: calc(12px + var(--safe-top, 0px)) calc(12px + var(--safe-right, 0px)) calc(12px + var(--safe-bottom, 0px)) calc(12px + var(--safe-left, 0px)); overflow-wrap: anywhere }
-header, .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
-header { margin-bottom: 12px; justify-content: space-between }
-h1, h2, h3, p { margin: 0 0 8px }
-h1 { font-size: 1rem; margin: 0 }
-h2 { font-size: 1rem }
-h3 { font-size: .9rem }
-button { background: transparent; color: inherit; font: inherit; border: 1px solid var(--border); border-radius: var(--border-radius-sm, 6px); padding: 5px 9px; min-height: 32px; cursor: pointer }
-button:focus-visible { outline: 2px solid var(--color-ring-primary, Highlight); outline-offset: 2px }
-button[aria-pressed=true] { background: var(--subtle); border-color: currentColor }
-button:disabled { opacity: .6; cursor: default }
-main { display: grid; gap: 12px; align-items: start }
-[data-mode=fullscreen] main:has(> nav) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) }
-.list { display: grid; gap: 6px; overflow: auto; max-height: 180px; padding: 3px }
-[data-mode=fullscreen] .list { max-height: 75dvh }
-.list button { text-align: start }
-article { border: 1px solid var(--border); border-radius: var(--border-radius-md, 8px); padding: 10px; min-width: 0 }
-article .controls { margin-bottom: 8px }
-article .controls h2 { margin: 0 }
-.summary { overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
-.badge { border: 1px solid var(--border); border-radius: 6px; padding-inline: 5px }
-.telemetry { list-style: none; padding: 0; margin: 0 0 8px }
-.telemetry li + li { border-top: 1px solid var(--border); padding-top: 6px }
-.notice { padding: 8px 10px; background: var(--subtle); border-inline-start: 3px solid }
-.warning { color: var(--color-text-warning, light-dark(#7b4b00, #ffd17a)) }
-.error, .cancel { color: var(--color-text-danger, light-dark(#a82323, #ff9e9e)) }
-code, pre { font: .9em/1.5 var(--font-mono, ui-monospace, monospace) }
-pre { margin: 0 0 8px; padding: 8px; background: var(--subtle); white-space: pre-wrap; overflow: auto; max-height: 55dvh }
-[data-mode=inline] pre { max-height: 200px }
-@media (max-width: 600px) {
-  [data-mode=fullscreen] main:has(> nav) { grid-template-columns: minmax(0, 1fr) }
-  [data-mode=fullscreen] .list { max-height: 28dvh }
+[data-mode=fullscreen] #app { display: flex; flex-direction: column; height: 100dvh }
+button { font: inherit; color: inherit; cursor: pointer; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 9px; min-height: 30px }
+button:hover { background: var(--muted) }
+button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px }
+button:disabled { opacity: .5; cursor: wait }
+button[aria-pressed=true] { background: var(--accent); border-color: var(--primary) }
+.toolbar, .row, .controls, .tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.toolbar { padding-bottom: 10px }
+.toolbar > :is(h1, strong) { margin-inline-end: auto }
+.toolbar > strong, .run-card strong, .tool-row strong, .preview { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.model, .badge { border-radius: 999px; background: var(--muted); padding: 1px 6px; font-size: 11px }
+.elapsed { font-variant-numeric: tabular-nums; white-space: nowrap; margin-inline-start: auto; color: var(--muted-foreground) }
+.summary, .muted { color: var(--muted-foreground) }
+.status { display: inline-flex; flex: none; color: var(--muted-foreground) }
+.status svg { display: block }
+.status[data-status=running], .status[data-status=accepted] { color: var(--primary) }
+.status[data-status=running] { animation: pulse 2s ease-in-out infinite }
+@keyframes pulse { 50% { opacity: .45 } }
+@media (prefers-reduced-motion: reduce) { .status[data-status=running] { animation: none } }
+.status[data-status=success] { color: var(--success) }
+.status[data-status=failed], .error, .cancel { color: var(--danger) }
+.status[data-status=cancelled], .status[data-status=stall_suspected], .warning { color: var(--warning) }
+.workbench { display: grid; grid-template-columns: minmax(220px, 30%) minmax(0, 1fr); flex: 1; min-height: 280px; border-top: 1px solid var(--border) }
+.run-list { min-width: 0; overflow: auto; padding: 12px 12px 12px 0; border-inline-end: 1px solid var(--border) }
+.run-card { display: block; width: 100%; text-align: start; padding: 10px; margin-bottom: 6px; background: var(--tertiary); border-radius: var(--radius-md); overflow: hidden }
+.run-card .row { flex-wrap: nowrap }
+.run-card .preview { display: block; color: var(--muted-foreground); margin-top: 4px }
+.inspector { overflow: auto; padding: 16px; min-width: 0 }
+.detail-header { margin-bottom: 16px }
+h1, h2 { font-size: 17px; margin: 0 }
+h3 { font-size: 12px; margin: 14px 0 8px }
+h4 { font-size: 11px; color: var(--muted-foreground); margin: 10px 0 4px }
+p { margin: 0 0 8px }
+.tabs { border-bottom: 1px solid var(--border); padding-bottom: 8px; position: sticky; top: 0; background: var(--background); z-index: 1; flex-wrap: nowrap }
+.tabs button { flex: 1 1 0; min-width: 0 }
+.tab-body { padding-top: 12px; min-width: 0 }
+code, pre { font: 12px/1.6 var(--app-font-mono) }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; margin: 6px 0 12px }
+.stream, .result { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--tertiary) }
+.stream { max-height: 160px }
+.result { max-height: 55dvh }
+.activity { color: var(--primary); background: var(--accent); border-radius: var(--radius-sm); padding: 8px }
+.drawer { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--secondary); box-shadow: 0 2px 6px var(--muted); max-height: 340px; overflow-y: auto }
+[data-mode=inline] .result { max-height: 220px }
+.telemetry { list-style: none; padding: 0; margin: 0 }
+.telemetry li { border: 1px solid var(--border); border-radius: var(--radius-md); margin: 6px 0 }
+.tool-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: start; border: 0 }
+.tool-row .preview { flex: 1; color: var(--muted-foreground) }
+.tool-content { padding: 0 12px 12px }
+.tool-content pre { max-height: 260px }
+.metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); gap: 4px 10px; font-size: 11px }
+.metadata dt { color: var(--muted-foreground) }
+.metadata dd { margin: 0; overflow-wrap: anywhere }
+.metadata .session-label { grid-column: 1 }
+.metadata .session-value { grid-column: 2 / -1 }
+.section-card { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--tertiary); padding: 10px; margin-bottom: 10px }
+.section-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap }
+.section-header h3 { margin: 0 auto 0 0 }
+.section-header button { font-size: 11px; min-height: 26px; padding: 3px 7px }
+.prompt-box { max-height: 110px; overflow: auto; padding: 8px; background: var(--background); border: 1px solid var(--border); border-radius: var(--radius-sm) }
+.prompt-box[data-expanded=true] { max-height: none }
+.compact-list, .switcher { max-height: 180px; overflow: auto; padding: 3px }
+.compact-list .run-card { display: flex; gap: 12px; padding: 6px }
+.compact-list .run-card > .row { flex: 0 1 auto; min-width: 0 }
+.compact-list .run-card:has(> .preview) > .row { max-inline-size: 50% }
+.compact-list .run-card > .preview { flex: 1 }
+.switcher { display: flex; gap: 6px; margin-top: 8px }
+.switcher .run-card { flex: 0 0 180px }
+.notice { padding: 8px 10px; background: var(--muted); border-inline-start: 3px solid }
+.notice.warning { background: var(--warning-bg) }
+.notice.error { background: var(--danger-bg) }
+@media (max-width: 679px) {
+  .workbench { display: flex; flex-direction: column }
+  .run-list { flex: 0 0 auto; max-height: 148px; overflow-y: auto; border-inline-end: 0; border-bottom: 1px solid var(--border); padding: 8px 0 }
+  .inspector { flex: 1; min-height: 0; padding: 12px 0 }
+  .toolbar { gap: 6px }
 }
 `;
 var app = String.raw`function (surface, modes, version) {
@@ -11237,7 +11306,6 @@ var app = String.raw`function (surface, modes, version) {
   const terminal = new Set(['success', 'failed', 'cancelled']);
   const active = run => run.status === 'accepted' || run.status === 'running';
   const scopes = ['active', 'recent', 'disk'];
-  const labels = { active: 'Active', recent: 'Recent', disk: 'Disk' };
   const pair = row => typeof row?.task_id === 'string' && row.task_id.length > 0 &&
     typeof row.run_epoch === 'string' && row.run_epoch.length > 0;
   const key = row => JSON.stringify([row.task_id, row.run_epoch]);
@@ -11247,10 +11315,12 @@ var app = String.raw`function (surface, modes, version) {
   const captured = new Map();
   const cancelling = new Set();
   const detailsOpen = new Set();
+  const expandedPrompts = new Set();
+  const collapsedTools = new Map();
   const requests = new Map();
   const cancelNotices = new Map();
   const tabs = ['All', 'Timeline', 'Result', 'Task & Session'];
-  let tab = tabs[0], activity, textRead;
+  let tab = tabs[0], doneOnly = false, activity, textRead;
   let sequence = 0, view = 0, renderVersion = 0, pollTimer, clockTimer, poll, displayRequest, mode = modes[0], availableModes = modes;
   let connection = 'connecting';
   let target = { kind: 'pending' };
@@ -11499,7 +11569,8 @@ var app = String.raw`function (surface, modes, version) {
     void refresh();
   }
 
-  function setQuery(query) {
+  function setQuery(query, showDone = false) {
+    doneOnly = showDone;
     stopObserving();
     target = { kind: 'latest', query };
     rows = []; failures = []; selected = undefined; readError = undefined;
@@ -11626,6 +11697,15 @@ var app = String.raw`function (surface, modes, version) {
     element('code', path, line);
   }
 
+  function section(title, parent) {
+    const card = element('section', undefined, parent);
+    card.className = 'section-card';
+    const heading = element('div', undefined, card);
+    heading.className = 'section-header';
+    element('h3', title, heading);
+    return { card, heading };
+  }
+
   function clearTextRead() {
     textRead = undefined;
     retireRequests(kind => kind === 'slice');
@@ -11670,7 +11750,9 @@ var app = String.raw`function (surface, modes, version) {
     if (current?.state === 'loading') notice('Reading ' + source + '…', '', parent);
     if (current?.state === 'error') notice(current.message, 'error', parent);
     if (current?.state !== 'ready') return;
-    element('pre', current.text, parent).dataset.scrollKey = 'full:' + source + ':' + key(run);
+    const page = element('pre', current.text, parent);
+    page.className = source === 'prompt' ? 'prompt-box' : 'result';
+    page.dataset.scrollKey = 'full:' + source + ':' + key(run);
     if (source === 'prompt') copyButton('Copy full prompt', current.text, parent, key(run));
     else {
       copyButton('Copy output page', current.text, parent, key(run));
@@ -11679,23 +11761,25 @@ var app = String.raw`function (surface, modes, version) {
     }
   }
 
-  function output(run, parent) {
-    element('h3', 'Result', parent);
+  function output(run, container) {
+    const { card: parent, heading } = section('Result', container);
+    if (run.error?.message) notice(run.error.message, 'error', parent);
     const artifact = run.full_output_artifact?.path;
     const text = run.result_text ?? run.result_preview;
     const preview = run.result_preview ?? run.result_text;
     const show = value => {
       const pre = element('pre', value, parent);
+      pre.className = 'result';
       pre.dataset.scrollKey = 'output:' + key(run);
     };
     switch (run.output_state) {
       case 'inline':
         show(text ?? '');
-        copyButton('Copy output', text, parent, key(run));
+        copyButton('Copy output', text, heading, key(run));
         break;
       case 'artifactized':
         if (preview) show(preview);
-        copyButton('Copy output preview', preview, parent, key(run));
+        copyButton('Copy output preview', preview, heading, key(run));
         pathLine(artifact ? 'Full output artifact' : 'Recorded transcript', artifact ?? run.task_id, parent);
         textReader(run, 'output', parent);
         break;
@@ -11703,7 +11787,7 @@ var app = String.raw`function (surface, modes, version) {
         notice((run.status === 'success' ? 'Execution succeeded, but output delivery failed.' : 'Output delivery failed.') +
           (run.output_diagnostic?.message ? ' ' + run.output_diagnostic.message : ''), 'warning', parent);
         if (run.result_preview) show(run.result_preview);
-        copyButton('Copy output preview', run.result_preview, parent, key(run));
+        copyButton('Copy output preview', run.result_preview, heading, key(run));
         pathLine('Recorded transcript', run.task_id, parent);
         break;
       case 'evicted':
@@ -11753,39 +11837,62 @@ var app = String.raw`function (surface, modes, version) {
     const calls = new Map(run.tool_snapshots.map(call => [call.tool_call_id, call]));
     for (const call of [...calls.values()].reverse()) {
       const item = element('li', undefined, list);
-      element('p', call.name + ' (' + call.status + ')', item);
-      for (const text of [call.args_preview, call.output_preview, call.error_preview]) if (text) element('pre', text, item);
-      const controls = element('div', undefined, item);
-      controls.className = 'controls';
+      const callKey = JSON.stringify([key(run), call.tool_call_id]);
       const current = activity?.callId === call.tool_call_id ? activity : undefined;
-      const callKey = key(run) + ':' + call.tool_call_id;
+      const collapsed = collapsedTools.get(key(run));
+      const open = !collapsed?.has(call.tool_call_id);
+      const control = button(undefined, () => {
+        if (current) clearActivity();
+        if (open) {
+          const next = collapsed ?? new Set();
+          next.add(call.tool_call_id);
+          collapsedTools.set(key(run), next);
+        } else collapsed.delete(call.tool_call_id);
+        render();
+      }, item, { key: 'tool:' + callKey, expanded: open });
+      control.className = 'tool-row';
+      control.setAttribute('aria-label', call.name + ' (' + call.status + ')');
+      element('strong', call.name, control);
+      element('span', call.status, control).className = 'badge';
+      if (!open && call.args_preview) element('span', call.args_preview, control).className = 'preview';
+      if (!open) continue;
+      const content = element('div', undefined, item);
+      content.className = 'tool-content';
+      for (const [label, text] of [['Arguments', call.args_preview], ['Output', call.output_preview], ['Error', call.error_preview]]) {
+        if (text) { element('h4', label, content); element('pre', text, content); }
+      }
+      const controls = element('div', undefined, content);
+      controls.className = 'controls';
       for (const part of ['args', 'result']) button(part === 'args' ? 'Recorded args' : 'Recorded result', () => void inspect(run, call.tool_call_id, part), controls, {
         key: part + ':' + callKey, disabled: !observing() || (current?.part === part && current.state === 'loading'),
       });
       if (!current) continue;
       button('Close recording', () => { clearActivity(); render(); }, controls, { key: 'close:' + callKey });
-      if (current.state === 'loading') notice('Loading recorded ' + current.part + '…', '', item);
-      else if (current.state === 'error') notice(current.text, 'error', item);
+      if (current.state === 'loading') notice('Loading recorded ' + current.part + '…', '', content);
+      else if (current.state === 'error') notice(current.text, 'error', content);
       else if (current.state === 'choose') {
-        notice('Multiple recordings match; select a candidate.', 'warning', item);
+        notice('Multiple recordings match; select a candidate.', 'warning', content);
         for (const candidate of current.candidates ?? []) button('Recording ' + (candidate.index + 1) + ' · line ' + candidate.line_number,
-          () => void inspect(run, current.callId, current.part, { ...current.selection, [current.coordinate]: candidate.index }), item,
+          () => void inspect(run, current.callId, current.part, { ...current.selection, [current.coordinate]: candidate.index }), content,
           { disabled: !observing() });
       } else {
-        element('h3', 'Recorded ' + current.part, item);
+        element('h3', 'Recorded ' + current.part, content);
         const segment = current.segment;
-        element('pre', segment.text, item).dataset.scrollKey = current.part + ':' + callKey;
+        element('pre', segment.text, content).dataset.scrollKey = current.part + ':' + callKey;
         if (Number.isSafeInteger(segment.continuation_offset) && segment.continuation_offset > segment.offset && segment.source_version) {
           button('Next recorded page', () => void inspect(run, current.callId, current.part, { ...current.selection,
-            offset: segment.continuation_offset, source_version: segment.source_version }), item, { disabled: !observing() });
+            offset: segment.continuation_offset, source_version: segment.source_version }), content, { disabled: !observing() });
         }
-        if (current.partial) notice('Partial recording. Inspect the transcript for more.', 'warning', item);
+        if (current.partial) notice('Partial recording. Inspect the transcript for more.', 'warning', content);
       }
     }
   }
 
   const rowKey = row => row.kind === 'disk' ? 'disk:' + row.disk.task_id : key(row.run);
-  const selectedRow = () => rows.find(row => rowKey(row) === selected) ?? rows[0];
+  const activeRow = row => row.kind === 'run' && !terminal.has(row.run.status);
+  const doneRow = row => row.kind !== 'disk' && !activeRow(row);
+  const shownRows = () => doneOnly ? rows.filter(doneRow) : rows;
+  const selectedRow = (items = shownRows()) => items.find(row => rowKey(row) === selected) ?? items[0];
   const diskStatus = disk => ['active_external', 'unreconciled'].includes(disk.lock_state) ? 'Busy' : '';
   function rowLabel(row) {
     if (row.kind === 'disk') return [row.disk.task_id, row.disk.cwd, diskStatus(row.disk),
@@ -11793,6 +11900,78 @@ var app = String.raw`function (surface, modes, version) {
     const run = row.run;
     return [run.persona_id, run.task_id.split('/').pop(), run.run_epoch?.slice(0, 8),
       row.kind === 'expired' ? 'Snapshot expired' : row.kind === 'fault' ? 'Refresh failed' : phase(run) ?? 'Pending'].filter(Boolean).join(' · ');
+  }
+
+  const route = run => [run.model, run.thinking && 'thinking: ' + run.thinking].filter(Boolean).join(' · ');
+  function summary(run) {
+    const livePreview = run.live_assistant_preview?.trim() ||
+      (active(run) && !run.active_tool && !run.live_thinking ? run.task_preview : undefined);
+    return [run.error?.message, run.output_diagnostic?.message, run.active_tool?.name,
+      run.result_text ?? run.result_preview ?? livePreview].filter(Boolean).map(text => text.slice(0, 180)).join(' · ').replace(/\s+/g, ' ');
+  }
+
+  function statusIcon(run, parent) {
+    const node = element('span', undefined, parent);
+    const status = run.phase === 'stall_suspected' ? 'stall_suspected' : run.status ?? 'pending';
+    node.className = 'status'; node.dataset.status = status; node.title = phase(run) ?? 'Pending';
+    node.setAttribute('aria-hidden', 'true'); // The adjacent text carries the label.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [name, value] of Object.entries({ width: '14', height: '14', viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.5' })) svg.setAttribute(name, value);
+    const path = document.createElementNS(svg.namespaceURI, 'path');
+    path.setAttribute('d', ({ success: 'M3 8l3 3 7-7', failed: 'M4 4l8 8M12 4l-8 8',
+      cancelled: 'M5 5h6v6H5z', stall_suspected: 'M8 2l6 11H2zM8 6v3m0 1v1' })[status] ?? 'M8 2a6 6 0 1 0 6 6');
+    svg.append(path); node.append(svg);
+  }
+
+  function elapsed(run, parent) {
+    if (!Number.isFinite(Date.parse(run.started_at)) || terminal.has(run.status)) return;
+    const node = element('span', undefined, parent);
+    node.className = 'elapsed'; node.dataset.startedAt = run.started_at;
+  }
+
+  function runCard(row, selectedRow, list, compact = false) {
+    const control = button(undefined, () => { selected = rowKey(row); render(); }, list, {
+      key: rowKey(row), pressed: row === selectedRow,
+    });
+    const label = rowLabel(row);
+    control.className = 'run-card';
+    control.setAttribute('aria-label', label);
+    control.title = [row.run?.task_id ?? row.disk?.task_id, row.run?.run_epoch].filter(Boolean).join(' · ');
+    const top = element('span', undefined, control); top.className = 'row';
+    const run = row.run;
+    if (row.kind === 'run') statusIcon(run, top);
+    element('strong', compact && row.kind === 'run' ? (run.persona_id ?? 'Subagent run') : label, top).dir = 'auto';
+    if (row.kind === 'run') {
+      const model = !compact && route(run), preview = summary(run);
+      if (model) element('span', model, control).className = 'model';
+      if (preview) element('span', preview, control).className = 'preview';
+    }
+  }
+
+  function taskAndSession(run, parent) {
+    const id = key(run);
+    const { card, heading } = section('Task preview', parent);
+    if (run.task_preview) {
+      copyButton('Copy prompt preview', run.task_preview, heading, id);
+      const open = expandedPrompts.has(id);
+      button(open ? 'Collapse prompt' : 'Expand prompt', () => {
+        if (open) expandedPrompts.delete(id);
+        else expandedPrompts.add(id);
+        render();
+      }, heading, { expanded: open, key: 'prompt:' + id });
+      const preview = element('pre', run.task_preview, card);
+      preview.className = 'prompt-box'; preview.dataset.expanded = String(open); preview.dataset.scrollKey = 'prompt:' + id;
+    }
+    textReader(run, 'prompt', card);
+    const { card: session, heading: sessionHeader } = section('Session Metadata', parent);
+    copyButton('Copy task_id', run.task_id, sessionHeader, id);
+    const grid = element('dl', undefined, session); grid.className = 'metadata';
+    for (const [label, value] of [['Persona', run.persona_id], ['Status', run.status], ['Phase', phase(run)],
+      ['Model', run.model], ['Thinking', run.thinking], ['Started', run.started_at], ['Updated', run.updated_at],
+      ['Workspace', run.cwd], ['Epoch', run.run_epoch], ['Session', run.task_id]]) {
+      const term = element('dt', label, grid), description = element('dd', value ?? '—', grid);
+      if (label === 'Session') { term.className = 'session-label'; description.className = 'session-value'; }
+    }
   }
 
   function tick() {
@@ -11804,13 +11983,23 @@ var app = String.raw`function (surface, modes, version) {
 
   function renderContent() {
     const header = element('header');
+    header.className = 'toolbar';
     element('h1', 'Larva Subagents', header);
     const controls = element('div', undefined, header);
     controls.className = 'controls';
     if (panel && target.kind === 'latest') {
-      for (const scope of scopes) button(labels[scope], () => setQuery({ scope, ...(target.query.limit ? { limit: target.query.limit } : {}) }), controls, {
-        pressed: !target.query.task_id && target.query.scope === scope, disabled: !observing(),
-      });
+      const query = target.query;
+      const filters = element('nav', undefined, controls);
+      filters.className = 'controls'; filters.setAttribute('aria-label', 'Run filters');
+      const all = !query.task_id && (!query.scope || query.scope === 'recent');
+      const filter = (label, focusKey, scope, pressed, done = false) => button(label, () => {
+        if (scope === 'recent' && all) { doneOnly = done; render(); }
+        else setQuery({ scope, ...(query.limit ? { limit: query.limit } : {}) }, done);
+      }, filters, { key: 'filter:' + focusKey, pressed, disabled: !observing() });
+      filter('All', 'all', 'recent', all && !doneOnly);
+      filter('Active · ' + rows.filter(activeRow).length, 'active', 'active', !query.task_id && query.scope === 'active');
+      filter('Done · ' + rows.filter(doneRow).length, 'done', 'recent', all && doneOnly, true);
+      filter('Disk', 'disk', 'disk', !query.task_id && query.scope === 'disk');
     }
     if (target.kind === 'latest' || target.kind === 'pinned') button('Refresh', refresh, controls, { disabled: !observing() });
     if (!panel && availableModes.includes(mode === 'inline' ? 'fullscreen' : 'inline')) button(mode === 'inline' ? 'Fullscreen' : 'Inline', changeMode, controls, {
@@ -11824,32 +12013,38 @@ var app = String.raw`function (surface, modes, version) {
     for (const failure of failures) {
       if (failure?.error?.message) notice('Startup failed · ' + failure.persona_id + ' · ' + failure.error.message, 'error');
     }
-    if (!rows.length) {
+    const items = shownRows(), row = selectedRow(items);
+    if (!row) {
       if (!readError) notice(loading ? 'Loading runs…' : 'No runs in this view.', '');
       return;
     }
+    const fullscreen = mode === 'fullscreen';
+    const run = row.run;
+    const id = run ? key(run) : rowKey(row);
+    const open = detailsOpen.has(id);
     const main = element('main');
-    const row = selectedRow();
+    if (fullscreen) main.className = 'workbench';
     selected = rowKey(row);
-    if (panel || mode === 'fullscreen' || rows.length > 1) {
+    if (fullscreen || items.length > 1) {
       const list = element('nav', undefined, main);
-      list.className = 'list';
+      list.className = fullscreen ? 'run-list' : open ? 'switcher' : 'compact-list';
       list.dataset.scrollKey = 'list';
       list.setAttribute('aria-label', 'Subagent runs');
-      const group = (title, items) => {
-        if (!items.length) return;
-        if (title) element('h3', title, list);
-        for (const item of items) button(rowLabel(item), () => { selected = rowKey(item); render(); }, list, {
-          key: rowKey(item), pressed: item === row,
-        }).title = [item.run?.task_id ?? item.disk?.task_id, item.run?.run_epoch].filter(Boolean).join(' · ');
+      const group = (title, groupRows) => {
+        if (!groupRows.length) return;
+        element('h3', title + ' · ' + groupRows.length, list);
+        for (const item of groupRows) runCard(item, row, list);
       };
-      if (mode === 'fullscreen') {
-        group('Active', rows.filter(row => row.kind === 'run' && !terminal.has(row.run.status)));
-        group('Done', rows.filter(row => row.kind !== 'disk' && (row.kind !== 'run' || terminal.has(row.run.status))));
-        group('Disk', rows.filter(row => row.kind === 'disk'));
-      } else group(undefined, rows);
+      if (fullscreen) {
+        group('Active', items.filter(activeRow));
+        group('Done', items.filter(doneRow));
+        group('Disk', items.filter(item => item.kind === 'disk'));
+      } else for (const item of items) runCard(item, row, list, !open);
     }
     const detail = element('article', undefined, main);
+    if (fullscreen) {
+      detail.className = 'inspector'; detail.dataset.scrollKey = 'detail:' + id;
+    }
     if (row.kind === 'expired') {
       notice('Run snapshot expired (inspect recorded transcript)', 'warning', detail);
       pathLine('Recorded transcript', row.run.task_id, detail);
@@ -11857,7 +12052,6 @@ var app = String.raw`function (surface, modes, version) {
       return;
     }
     if (row.kind === 'fault') notice(row.error.message, 'error', detail);
-    const run = row.run;
     if (row.kind === 'disk') {
       element('h2', 'Recorded session', detail);
       pathLine('Workspace', row.disk.cwd, detail);
@@ -11866,30 +12060,29 @@ var app = String.raw`function (surface, modes, version) {
       if (row.disk.cwd_exists === false) notice('Missing workspace', 'warning', detail);
       if (!run) {
         copyButton('Copy task_id', row.disk.task_id, detail, rowKey(row));
-        textReader(row.disk, 'prompt', detail);
+        const { card } = section('Task prompt', detail);
+        textReader(row.disk, 'prompt', card);
         return;
       }
     }
     const bar = element('div', undefined, detail);
-    bar.className = 'controls';
-    const heading = element('h2', run.persona_id ?? 'Subagent run', bar);
+    bar.className = fullscreen ? 'row detail-header' : 'toolbar';
+    statusIcon(run, bar);
+    const heading = element(fullscreen ? 'h2' : 'strong', run.persona_id ?? 'Subagent run', bar);
     heading.dir = 'auto';
     const status = ({ accepted: 'Accepted', running: 'Running' })[run.status];
     element('span', [status, phase(run) ?? 'Pending'].filter(Boolean).join(' · '), bar)
-      .className = run.phase === 'stall_suspected' ? 'badge warning' : '';
-    if (Number.isFinite(Date.parse(run.started_at)) && !terminal.has(run.status)) {
-      element('span', undefined, bar).dataset.startedAt = run.started_at;
-    }
-    if (Number.isSafeInteger(run.tool_call_count)) element('span', run.tool_call_count + ' tool calls', bar);
+      .className = run.phase === 'stall_suspected' ? 'badge warning' : 'badge';
+    elapsed(run, bar);
+    if (Number.isSafeInteger(run.tool_call_count)) element('span', run.tool_call_count + ' tool calls', bar).className = 'badge';
     for (const [state, label] of [['delivery_failed', 'Delivery failed'], ['evicted', 'Output evicted']]) {
       if (run.output_state === state) element('span', label, bar).className = 'badge warning';
     }
     if (run.cleanup_unconfirmed) element('span', 'Cleanup unconfirmed', bar).className = 'badge warning';
-    const route = [run.model, run.thinking && 'thinking: ' + run.thinking].filter(Boolean).join(' · ');
-    if (route) element('span', route, bar);
+    const model = route(run);
+    if (model) element('span', model, bar).className = 'model';
     if (run.active_tool) element('span', run.active_tool.name + ' (' + run.active_tool.status + ')', bar);
     if (run.live_thinking) element('span', 'Thinking…', bar);
-    const id = key(run);
     if (row.kind === 'run' && pair(run) && (active(run) || run.cleanup_unconfirmed) && observing()) {
       button(run.cleanup_unconfirmed ? 'Retry cleanup' : 'Cancel', () => void cancel(run), bar, {
         key: 'cancel:' + id, disabled: loading || cancelling.has(id),
@@ -11897,48 +12090,41 @@ var app = String.raw`function (surface, modes, version) {
     }
     const cancelNotice = cancelNotices.get(id);
     if (cancelNotice) notice(cancelNotice.text, cancelNotice.style, detail);
-    if (mode === 'inline') {
-      const open = detailsOpen.has(id);
+    if (!fullscreen) {
       button(open ? 'Hide details' : 'Details', () => {
         if (open) detailsOpen.delete(id);
         else detailsOpen.add(id);
         render();
       }, bar, { key: 'details:' + id, expanded: open });
       if (!open) {
-        const summary = [run.error?.message, run.output_diagnostic?.message, run.active_tool?.name,
-          run.result_text ?? run.result_preview ?? run.live_assistant_preview].filter(Boolean).map(text => text.slice(0, 180)).join(' · ').replace(/\s+/g, ' ');
-        if (summary) element('p', summary, detail).className = 'summary';
+        const preview = summary(run);
+        if (preview) element('p', preview, detail).className = 'preview summary';
         return;
       }
     } else {
       const inspector = element('nav', undefined, detail);
-      inspector.className = 'controls';
+      inspector.className = 'tabs';
       inspector.setAttribute('aria-label', 'Run inspector');
-      for (const label of tabs) button(label, () => { tab = label; render(); }, inspector, { pressed: tab === label });
+      for (const label of tabs) button(label, () => { tab = label; render(); }, inspector, { key: 'tab:' + label, pressed: tab === label });
     }
-    const shows = label => mode === 'inline' || tab === 'All' || tab === label;
-    if (shows('Task & Session')) {
-      pathLine('Workspace', run.cwd, detail);
-      pathLine('Session', run.task_id, detail);
-      copyButton('Copy task_id', run.task_id, detail, id);
-      if (run.task_preview) {
-        element('h3', 'Task preview', detail);
-        element('pre', run.task_preview, detail);
-        copyButton('Copy prompt preview', run.task_preview, detail, id);
-      }
-      textReader(run, 'prompt', detail);
-    }
+    const body = element('div', undefined, detail);
+    body.className = fullscreen ? 'tab-body' : 'drawer';
+    if (!fullscreen) body.dataset.scrollKey = 'drawer:' + id;
+    const shows = label => !fullscreen || tab === 'All' || tab === label;
+    if (shows('Task & Session')) taskAndSession(run, body);
     if (shows('Timeline')) {
+      const { card } = section('Timeline', body);
+      if (active(run)) element('p', run.active_tool ? 'Active tool: ' + run.active_tool.name
+        : run.live_thinking ? 'Thinking…' : phase(run), card).className = 'activity';
       if (run.live_assistant_preview) {
-        element('h3', 'Live assistant preview', detail);
-        element('pre', run.live_assistant_preview, detail);
+        element('h3', 'Live assistant preview', card);
+        const preview = element('pre', run.live_assistant_preview, card);
+        preview.className = 'stream'; preview.dataset.scrollKey = 'stream:' + id;
       }
-      recentTools(run, detail);
+      if (run.tool_snapshots?.length) recentTools(run, card);
+      else element('p', 'No tool calls yet.', card).className = 'muted';
     }
-    if (shows('Result')) {
-      if (run.error?.message) notice(run.error.message, 'error', detail);
-      output(run, detail);
-    }
+    if (shows('Result')) output(run, body);
   }
 
   function render(background = false) {
@@ -11950,9 +12136,15 @@ var app = String.raw`function (surface, modes, version) {
     }
     renderDeferred = false;
     renderVersion++;
-    const liveKeys = new Set(rows.filter(row => row.kind !== 'expired' && row.run).map(row => key(row.run)));
-    for (const id of detailsOpen) if (!liveKeys.has(id)) detailsOpen.delete(id);
-    for (const id of cancelNotices.keys()) if (!liveKeys.has(id)) cancelNotices.delete(id);
+    const liveRuns = new Map(rows.filter(row => row.kind !== 'expired' && row.run).map(row => [key(row.run), row.run]));
+    for (const state of [detailsOpen, expandedPrompts, cancelNotices]) {
+      for (const id of state.keys()) if (!liveRuns.has(id)) state.delete(id);
+    }
+    for (const [id, collapsed] of collapsedTools) {
+      const calls = liveRuns.get(id)?.tool_snapshots;
+      for (const callId of collapsed) if (!calls?.some(call => call.tool_call_id === callId)) collapsed.delete(callId);
+      if (!collapsed.size) collapsedTools.delete(id);
+    }
     if (textRead) {
       const row = selectedRow(), run = row?.run ?? row?.disk;
       if (!run || row.kind === 'expired' || key(run) !== textRead.runKey) clearTextRead();

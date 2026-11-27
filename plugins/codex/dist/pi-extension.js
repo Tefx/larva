@@ -7368,7 +7368,7 @@ var require_dist = __commonJS({
 });
 
 // src/ui/pi-message-views.ts
-import { Markdown, Text, truncateToWidth as truncateToWidth2, wrapTextWithAnsi as wrapTextWithAnsi2 } from "@earendil-works/pi-tui";
+import { Text, truncateToWidth as truncateToWidth2 } from "@earendil-works/pi-tui";
 
 // src/core/predicates.ts
 var THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
@@ -7379,125 +7379,128 @@ function isValidPersonaId(value) {
   return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
-// src/ui/pi-selector-tui.ts
-import { matchesKey, truncateToWidth, replaceControlCharacters, stripTerminalSequences, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+// src/ui/pi-tui-chrome.ts
+import { Markdown, replaceControlCharacters, stripTerminalSequences, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+var RESET = "\x1B[0m";
+var SURFACE_BG = "\x1B[48;5;235m";
+var BORDER_FG = "\x1B[38;5;116m";
+var SHADOW_FG = "\x1B[38;5;232m";
+var centeredOverlay = {
+  overlay: true,
+  overlayOptions: { anchor: "center", width: "90%", maxHeight: "90%", margin: 1 },
+  onHandle: (handle) => handle.focus?.()
+};
+function paintSurface(line, paint = (text2) => SURFACE_BG + text2) {
+  return line.split(/\x1b\[(?:0)?m/g).map(paint).join(RESET) + RESET;
+}
 function terminalText(value) {
   return replaceControlCharacters(stripTerminalSequences(value)).replace(/[\r\n\t]/g, " ");
 }
+function safeSource(value) {
+  return stripTerminalSequences(value).replace(/\r\n?/g, "\n").replaceAll("	", "   ").split("\n").map(replaceControlCharacters).join("\n");
+}
+function plainLines(safe, width) {
+  return safe.split("\n").flatMap((line) => line ? wrapTextWithAnsi(line, width) : [""]);
+}
 function terminalLines(value, width) {
-  return value.split(/\r\n|\r|\n/).flatMap((line) => wrapTextWithAnsi(terminalText(line), Math.max(1, width)));
+  return plainLines(safeSource(value), Math.max(1, width));
 }
-function selectOption(ctx, title, options, search = false) {
-  return ctx.ui.custom((tui, theme, _keys, done) => {
-    let index = 0, query = "", settled = false;
-    const matches3 = () => options.filter((row) => `${row.label} ${row.preview ?? ""}`.toLowerCase().includes(query.toLowerCase()));
-    const finish = (result) => {
-      if (!settled) {
-        settled = true;
-        done(result);
+function modalFrame(width, rows, maxRows = Infinity) {
+  const height = Math.max(1, Math.min(maxRows, Math.floor(rows * 0.9), rows - 2));
+  const shadow = width >= 8 && height >= 4;
+  const box = width - Number(shadow);
+  const bordered = box >= 3 && height >= 3;
+  const inset = bordered ? box >= 5 ? 2 : 1 : 0;
+  const inner = Math.max(1, box - inset * 2);
+  const room = height - 2 * Number(bordered) - Number(shadow);
+  const color = (text2) => `${BORDER_FG}${text2}\x1B[39m`;
+  const edge = (left, middle, right) => {
+    const clipped = truncateToWidth(middle, box - 2, "");
+    return color(left + clipped + "\u2500".repeat(box - 2 - visibleWidth(clipped)) + right);
+  };
+  const shade = (text2) => SHADOW_FG + text2 + RESET;
+  return { inner, room, inset, top: Number(bordered), render(title, lines, divider = -1) {
+    const body = lines.slice(0, room).map((line, i) => {
+      if (bordered && i === divider) return edge("\u251C", "", "\u2524");
+      const text2 = truncateToWidth(line, inner, "\u2026", true);
+      const pad = inset === 2 ? " " : "";
+      return bordered ? `${color("\u2502")}${pad}${text2}${pad}${color("\u2502")}` : text2;
+    });
+    const frame = bordered ? [edge("\u256D", `\u2500 ${title} `, "\u256E"), ...body, edge("\u2570", "", "\u256F")] : body.length ? body : [truncateToWidth(title, inner, "\u2026", true)];
+    return [
+      ...frame.map((line) => paintSurface(line) + (shadow ? shade("\u2588") : "")),
+      ...shadow ? [shade(" " + "\u2580".repeat(box))] : []
+    ];
+  } };
+}
+function fieldLines(label, value, width, style, columns) {
+  const prefix = `${label}:`.padEnd(columns - 1) + " ";
+  const indent = visibleWidth(prefix);
+  if (width - indent < 6) return terminalLines(`${label}: ${value || "\u2014"}`, width);
+  return terminalLines(value || "\u2014", width - indent).map((line, i) => (i === 0 ? style(prefix) : " ".repeat(indent)) + line);
+}
+var sgr = (start, end) => (text2) => `\x1B[${start}m${text2}\x1B[${end}m`;
+var DEFAULT_MARKDOWN_THEME = {
+  heading: sgr(96, 39),
+  link: sgr(94, 39),
+  linkUrl: sgr(90, 39),
+  code: sgr(93, 39),
+  codeBlock: sgr(92, 39),
+  codeBlockBorder: sgr(90, 39),
+  codeBlockIndent: "  ",
+  quote: sgr(36, 39),
+  quoteBorder: sgr(96, 39),
+  hr: sgr(90, 39),
+  listBullet: (text2) => sgr(96, 39)(text2 === "- " ? "\u2022 " : text2),
+  bold: sgr(1, 22),
+  italic: sgr(3, 23),
+  strikethrough: sgr(9, 29),
+  underline: sgr(4, 24)
+};
+function hasCompleteMarkdownFence(value) {
+  let opening;
+  for (const line of value.split("\n")) {
+    if (opening === void 0) opening = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    else {
+      const closing = /^ {0,3}(`{3,}|~{3,}) *$/.exec(line)?.[1];
+      if (closing && closing[0] === opening[0] && closing.length >= opening.length) return true;
+    }
+  }
+  return false;
+}
+function markdownLooksIntentionallyFormatted(value) {
+  return hasCompleteMarkdownFence(value) || /^ {0,3}(?:#{1,6}\s|(?:[-+*]|\d+[.)])\s|> *)\S/m.test(value) || /^ *\|?.+\|.+\|? *\n *\|? *:?-{3,}:? *(?:\| *:?-{3,}:? *)+\|? *$/m.test(value) || /^\S[^\n]*\n *(?:={3,}|-{3,}) *$/m.test(value) || /\[[^\]\n]+\]\([^\n)]+\)|\*\*[^\n]+?\*\*|__[^\n]+?__|~~[^\n]+?~~|`[^`\n]+`|(?:^|[\s(])\*[^*\n]+\*(?=$|[\s).,!?:;])/m.test(value);
+}
+function presentSubagentResult(source) {
+  let json;
+  try {
+    json = JSON.stringify(JSON.parse(source), null, 2);
+  } catch {
+  }
+  const safe = safeSource(source);
+  const partialJson = /^\s*(?:\{|\[\s*(?:["{\[\d-]|true\b|false\b|null\b|$))/.test(safe);
+  const markdown = json !== void 0 ? new Markdown(`\`\`\`json
+${safeSource(json)}
+\`\`\``, 0, 0, DEFAULT_MARKDOWN_THEME) : !partialJson && markdownLooksIntentionallyFormatted(safe) ? new Markdown(safe, 0, 0, DEFAULT_MARKDOWN_THEME) : void 0;
+  return {
+    invalidate: () => markdown?.invalidate(),
+    render(width) {
+      width = Math.max(1, width);
+      let lines;
+      try {
+        lines = markdown?.render(width);
+      } catch {
       }
-    };
-    return {
-      invalidate() {
-      },
-      dispose: () => finish(),
-      render(width) {
-        const rows = matches3(), row = rows[index];
-        const height = Math.min(14, tui.terminal.rows);
-        const header = [theme.fg("accent", title), ...search ? [`Search: ${query}`] : []].slice(0, Math.max(0, height - 1));
-        const preview = row?.preview ? terminalLines(row.preview, width).slice(0, Math.min(4, Math.max(0, height - header.length - 1))) : [];
-        const capacity = Math.max(1, height - header.length - preview.length);
-        const start = Math.max(0, index - capacity + 1);
-        const list = rows.slice(start, start + capacity).map((item, i) => {
-          const label = `${item.label}${item.current ? " (current)" : ""}`;
-          return i + start === index ? theme.fg("accent", `\u203A ${label}`) : `  ${label}`;
-        });
-        return [...header, ...list.length ? list : ["No matches"], ...preview].slice(0, height).map((line) => truncateToWidth(line, width));
-      },
-      handleInput(data) {
-        if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) return finish();
-        const rows = matches3();
-        if (matchesKey(data, "enter")) {
-          if (rows[index]) finish(rows[index].value);
-          return;
-        }
-        if (matchesKey(data, "up")) index = Math.max(0, index - 1);
-        else if (matchesKey(data, "down")) index = Math.max(0, Math.min(rows.length - 1, index + 1));
-        else if (search && matchesKey(data, "backspace")) {
-          query = [...query].slice(0, -1).join("");
-          index = 0;
-        } else if (search && data && data === terminalText(data)) {
-          query += data;
-          index = 0;
-        }
-        tui.requestRender();
-      }
-    };
-  }, { overlay: true, overlayOptions: { width: "90%", maxHeight: 14 } });
-}
-function selectPersona(ctx, personas, current) {
-  return selectOption(ctx, "Larva persona \xB7 \u2191/\u2193 Select \xB7 Enter \xB7 Esc", [
-    { value: null, label: "None", current: current === null, preview: "Clear the active persona." },
-    ...personas.map(({ id, description, model, thinking, can_spawn }) => ({
-      value: id,
-      label: id,
-      current: current === id,
-      preview: `Route: ${model} \xB7 Thinking: ${thinking} \xB7 Spawn: ${Array.isArray(can_spawn) ? can_spawn.join(", ") : can_spawn ? "allowed" : "disabled"}
-${description}`
-    }))
-  ], true);
-}
-function confirmPersonaSwitch(ctx, from) {
-  return async ({ persona_id, reason, choices, signal, respond }) => {
-    const selected = await ctx.ui.custom((tui, theme, _keys, done) => {
-      let index = 0, offset = 0, reasonHeight = 1, maxOffset = 0, settled = false;
-      const finish = (choice2) => {
-        if (settled) return;
-        settled = true;
-        signal.removeEventListener("abort", abort);
-        done(choice2);
-      };
-      const abort = () => finish(null);
-      if (signal.aborted) abort();
-      else signal.addEventListener("abort", abort, { once: true });
-      return {
-        invalidate() {
-        },
-        dispose: abort,
-        render(width) {
-          const height = Math.min(tui.terminal.rows, 12);
-          const choiceHeight = Math.max(1, Math.min(choices.length, height - 2));
-          reasonHeight = Math.max(0, height - choiceHeight - 1);
-          const parts = terminalLines(reason, width);
-          maxOffset = Math.max(0, parts.length - reasonHeight);
-          offset = Math.min(maxOffset, offset);
-          const start = Math.max(0, index - choiceHeight + 1);
-          return [
-            `${from ?? "None"} \u2192 ${persona_id}  (PgUp/PgDn reason)`,
-            ...parts.slice(offset, offset + reasonHeight),
-            ...choices.slice(start, start + choiceHeight).map(({ label }, row) => row + start === index ? theme.fg("accent", `\u203A ${label}`) : `  ${label}`)
-          ].slice(-height).map((line) => truncateToWidth(line, width));
-        },
-        handleInput(data) {
-          if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) return abort();
-          if (matchesKey(data, "enter")) return finish(choices[index].id);
-          if (matchesKey(data, "up") || matchesKey(data, "down")) {
-            index = (index + choices.length + (matchesKey(data, "up") ? -1 : 1)) % choices.length;
-          } else if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
-            offset = Math.max(0, Math.min(maxOffset, offset + Math.max(1, reasonHeight) * (matchesKey(data, "pageUp") ? -1 : 1)));
-          }
-          tui.requestRender();
-        }
-      };
-    }, { overlay: true, overlayOptions: { width: "90%", maxHeight: 12 } });
-    respond(selected);
+      return (lines?.length ? lines : plainLines(safe, width)).map((line) => truncateToWidth(line, width, ""));
+    }
   };
 }
 
 // src/ui/pi-message-views.ts
+var PREVIEW_LINES = 8;
 function registerSubagentMessageRenderers(pi) {
   for (const type of ["larva-subagent-result", "larva-subagent-alert"]) {
-    pi.registerMessageRenderer(type, (message, { expanded }, theme) => {
+    pi.registerMessageRenderer(type, (message, { expanded, outputPad }, theme) => {
       const details = isRecord(message.details) ? message.details : {};
       const alert = type === "larva-subagent-alert";
       const status = alert ? "stall suspected" : String(details.status ?? "result");
@@ -7505,38 +7508,23 @@ function registerSubagentMessageRenderers(pi) {
       const error = isRecord(details.error) ? details.error.message : void 0;
       const diagnostic = isRecord(details.output_diagnostic) ? details.output_diagnostic.message : void 0;
       const artifact = isRecord(details.full_output_artifact) ? details.full_output_artifact.path : void 0;
-      const body = [error, diagnostic, output].filter((value) => typeof value === "string" && !!value).join("\n");
+      const metadata = expanded ? [details.task_id, artifact] : [];
+      const notes = [...metadata, error, diagnostic].filter((value) => typeof value === "string" && !!value);
       const title = terminalText(`Larva subagent ${status}: ${details.persona_id ?? "unknown"}`);
-      const bg = alert ? "toolPendingBg" : status === "failed" || status === "cancelled" || diagnostic ? "toolErrorBg" : "toolSuccessBg";
-      const safe = body.split(/\r\n|\r|\n/).map(terminalText).join("\n");
-      const identity = (text2) => text2;
-      const markdown = expanded && safe && /^\s*(?:#{1,6}\s|[-*]\s|```|>\s)|\*\*|\[[^\]]+\]\(/m.test(safe) ? new Markdown(safe, 0, 0, {
-        heading: identity,
-        link: identity,
-        linkUrl: identity,
-        code: identity,
-        codeBlock: identity,
-        codeBlockBorder: identity,
-        quote: identity,
-        quoteBorder: identity,
-        hr: identity,
-        listBullet: identity,
-        bold: identity,
-        italic: identity,
-        strikethrough: identity,
-        underline: identity
-      }) : void 0;
+      const failed = status === "failed" || !!diagnostic;
+      const pending = !failed && status !== "success";
+      const bg = failed ? "toolErrorBg" : pending ? "toolPendingBg" : "toolSuccessBg";
+      const fg = failed ? "error" : pending ? "warning" : "success";
+      const presentation = presentSubagentResult(typeof output === "string" && output ? output : alert ? "No recognized progress. The run can still recover." : notes.length ? "" : "No final subagent output is available.");
       return {
-        invalidate: () => markdown?.invalidate(),
+        invalidate: () => presentation.invalidate(),
         render(width) {
-          const out = [title];
-          if (expanded) {
-            for (const line of [details.task_id, artifact]) if (typeof line === "string") out.push(...wrapTextWithAnsi2(terminalText(line), width));
-            if (markdown) out.push(...markdown.render(width).map(terminalText));
-            else if (safe) out.push(...wrapTextWithAnsi2(safe, width));
-          } else if (body) out.push(terminalText(body));
-          else if (alert) out.push("No recognized progress. The run can still recover.");
-          return out.map((line) => theme.bg(bg, truncateToWidth2(line, width, "\u2026", true)));
+          const padding = Math.min(outputPad ?? 0, Math.max(0, Math.floor((width - 1) / 2)));
+          const inner = Math.max(1, width - padding * 2);
+          const pad = " ".repeat(padding);
+          const body = [...notes.flatMap((note) => terminalLines(note, inner)), ...presentation.render(inner)];
+          const preview = expanded || body.length <= PREVIEW_LINES ? body : [...body.slice(0, PREVIEW_LINES - 1), "\u2026 [truncated]"];
+          return ["", theme.fg(fg, theme.bold(title)), ...preview, ""].map((line) => paintSurface(`${pad}${truncateToWidth2(line, inner, "\u2026", true)}${pad}`, (text2) => theme.bg(bg, text2)));
         }
       };
     });
@@ -7546,16 +7534,33 @@ function piToolRenderers(name, description) {
   return {
     renderCall(args, theme) {
       const input = isRecord(args) ? args : {};
-      const persona = typeof input.persona_id === "string" ? `: ${input.persona_id}` : "";
-      const label = name === "larva_subagent" ? `${input.task_id ? "Resume" : "Start"} Larva subagent${persona}` : name === "larva_persona_switch" ? `Switch persona${persona}` : `${name.replace(/^larva_/, "").replaceAll("_", " ")}${typeof input.scope === "string" ? ` \xB7 ${input.scope}` : ""}`;
+      const persona = typeof input.persona_id === "string" ? terminalText(input.persona_id) : "";
+      if (name === "larva_subagent") {
+        const resume = typeof input.task_id === "string";
+        const header = `larva_subagent -> ${persona} [${resume ? "resume" : "spawn"}]`;
+        const task = typeof input.task === "string" ? terminalText(input.task).replace(/\s+/g, " ").trim() : "";
+        const preview = truncateToWidth2(task, Math.max(1, 119 - header.length), "\u2026");
+        const handle = resume ? terminalText(String(input.task_id)) : "";
+        const idLine = handle ? `
+${theme.fg("dim", `task_id: ${handle.length > 80 ? `\u2026${handle.slice(-79)}` : handle}`)}` : "";
+        return new Text(`${theme.fg("accent", header)}${preview ? ` ${preview}` : ""}${idLine}`, 0, 0);
+      }
+      const label = name === "larva_persona_switch" ? `Switch persona${persona ? `: ${persona}` : ""}` : `${name.replace(/^larva_/, "").replaceAll("_", " ")}${typeof input.scope === "string" ? ` \xB7 ${input.scope}` : ""}`;
       return new Text(theme.fg("accent", terminalText(label)), 0, 0);
     },
-    renderResult({ details, isError }, { expanded, isPartial }, theme) {
+    renderResult({ details, isError }, { expanded, isPartial }, theme, context) {
       const d = isRecord(details) ? details : {};
       const error = isRecord(d.error) ? d.error.message : void 0;
-      const summary2 = typeof error === "string" ? error : isPartial ? "Working\u2026" : d.status === "accepted" ? "Accepted \u2014 result will arrive by callback" : Array.isArray(details) ? `${details.length} matching personas` : Array.isArray(d.results) ? d.results.map((row) => String(row.outcome).replaceAll("_", " ")).join(", ") : typeof d.ready === "boolean" ? d.ready ? "Wait ready" : d.timed_out ? "Wait timed out" : "Wait not ready" : Array.isArray(d.runs) ? `${d.disk_sessions instanceof Array ? d.disk_sessions.length : d.runs.length} sessions \xB7 ${Array.isArray(d.startup_failures) ? d.startup_failures.length : 0} startup failures` : Array.isArray(d.items) ? `${d.items.length} recorded calls` : d.ok === true ? `${d.persistent ? "Switched" : "Borrowed"}: ${d.persona_id}` : typeof d.status === "string" ? d.status.replaceAll("_", " ") : description;
-      const body = expanded && details !== void 0 && !isPartial ? d.status === "accepted" ? String(d.task_id) : JSON.stringify(details, null, 2) : "";
-      return new Text(theme.fg(isError || error ? "warning" : "accent", terminalText(summary2)) + (body ? "\n" + body.split("\n").map(terminalText).join("\n") : ""), 0, 0);
+      const summary = typeof error === "string" ? error : isPartial ? "Working\u2026" : d.status === "accepted" ? "Accepted \u2014 result will arrive by callback" : Array.isArray(details) ? `${details.length} matching personas` : Array.isArray(d.results) ? d.results.flatMap((row) => isRecord(row) && typeof row.outcome === "string" ? [row.outcome.replaceAll("_", " ")] : []).join(", ") || "No cancellation outcomes" : typeof d.ready === "boolean" ? d.ready ? "Wait ready" : d.timed_out ? "Wait timed out" : "Wait not ready" : Array.isArray(d.runs) ? `${Array.isArray(d.disk_sessions) ? d.disk_sessions.length : d.runs.length} sessions \xB7 ${Array.isArray(d.startup_failures) ? d.startup_failures.length : 0} startup failures` : Array.isArray(d.items) ? `${d.items.length} recorded calls` : isRecord(d.call) ? "Recorded call details" : d.ok === true ? `${d.persistent ? "Switched" : "Borrowed"}: ${d.persona_id}` : typeof d.status === "string" ? d.status.replaceAll("_", " ") : description;
+      const header = theme.fg(context?.isError || isError || error ? "error" : isPartial || d.status === "accepted" ? "warning" : "accent", terminalText(summary));
+      if (!expanded || details === void 0 || isPartial) return new Text(header, 0, 0);
+      const { task_id, ...receipt } = d;
+      const accepted = d.status === "accepted" && typeof task_id === "string";
+      const body = presentSubagentResult(JSON.stringify(accepted ? receipt : details, null, 2));
+      return {
+        invalidate: () => body.invalidate(),
+        render: (width) => [...new Text(header, 0, 0).render(width), ...accepted ? terminalLines(task_id, width) : [], ...body.render(width)]
+      };
     }
   };
 }
@@ -7776,7 +7781,9 @@ async function resolveExtensionSources(sources, context) {
       if (source.startsWith("pi-agent:")) {
         const suffix = source.slice("pi-agent:".length);
         if (!suffix || isAbsolute(suffix)) throw new Error("Expected a relative path.");
-        realPath = await resolveContainedPath(context.piAgentDir, resolve(context.piAgentDir, suffix), context.realpath);
+        const candidate = resolve(context.piAgentDir, suffix);
+        if (!isLexicallyContained(context.piAgentDir, candidate)) throw new Error("Expected a path inside the Pi agent directory.");
+        realPath = await context.realpath(candidate);
       } else if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
         if (!/^(?:builtin|npm|git):/.test(source)) {
           const url = new URL(source);
@@ -11421,9 +11428,200 @@ async function readConfigTextIfPresent(path) {
 import { readdir as readdir4 } from "node:fs/promises";
 import { isAbsolute as isAbsolute6, resolve as resolve7 } from "node:path";
 
+// src/ui/pi-selector-tui.ts
+import { Input, SelectList, matchesKey, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth2 } from "@earendil-works/pi-tui";
+var CURRENT = " (current)";
+function selectOption(ctx, title, options, search = false) {
+  return ctx.ui.custom((tui, theme, _keys, done) => {
+    const input = search ? new Input({ prompt: "Filter: " }) : void 0;
+    let rows = options, index = 0, settled = false;
+    let detailOffset = 0, detailRoom = 0, detailMax = 0;
+    const finish = (result) => {
+      if (!settled) {
+        settled = true;
+        done(result);
+      }
+    };
+    const dim = (line) => theme.fg("dim", line);
+    const accent = (line) => theme.fg("accent", theme.bold(line));
+    const listTheme = {
+      selectedPrefix: accent,
+      selectedText: accent,
+      description: (text2) => theme.fg("muted", text2),
+      scrollInfo: dim,
+      noMatch: () => theme.fg("warning", "No matches")
+    };
+    let list, maxVisible = 0;
+    const filter = (value) => {
+      const query = value.trim().toLocaleLowerCase();
+      rows = options.filter((row) => `${row.label} ${row.preview ?? ""}`.toLocaleLowerCase().includes(query));
+      if (query) {
+        const rank2 = (row) => {
+          const id = row.label.toLocaleLowerCase();
+          return id.startsWith(query) ? 0 : id.includes(query) ? 1 : 2;
+        };
+        rows = [...rows].sort((left, right) => rank2(left) - rank2(right));
+      }
+      index = detailOffset = 0;
+      list = void 0;
+    };
+    return {
+      get focused() {
+        return input?.focused ?? true;
+      },
+      set focused(value) {
+        if (input) input.focused = value;
+      },
+      invalidate() {
+        input?.invalidate();
+        list?.invalidate();
+      },
+      dispose: () => finish(),
+      render(width) {
+        const frame = modalFrame(width, tui.terminal.rows, 36);
+        const { inner, room } = frame;
+        const row = rows[index];
+        const details = row ? (row.details ?? (row.preview ? [["Description", row.preview]] : [])).flatMap(([label, value]) => fieldLines(label, value, inner, accent, 13)) : [];
+        const header = input && room >= 2 ? input.render(inner) : [];
+        if (input && room >= 12) header.push(dim("Type to filter persona IDs/descriptions."));
+        const footer = room >= 7 ? [dim("\u2191\u2193 navigate \xB7 Enter confirm \xB7 Esc cancel \xB7 PgUp/PgDn detail")] : [];
+        const usable = room - header.length - footer.length;
+        const showDetail = usable >= 5;
+        const listRoom = showDetail ? Math.min(Math.max(2, rows.length + 1), Math.max(2, Math.floor(usable / 2))) : usable;
+        const capacity = Math.max(1, listRoom - Number(listRoom > 1 && rows.length > listRoom));
+        if (!list || capacity !== maxVisible) {
+          maxVisible = capacity;
+          list = new SelectList(rows.map(({ label, preview, current }, i) => ({
+            value: String(i),
+            label: terminalText(`${label}${current ? CURRENT : ""}`),
+            description: preview ? terminalText(preview) : void 0
+          })), capacity, listTheme, {
+            minPrimaryColumnWidth: 18,
+            maxPrimaryColumnWidth: 34,
+            truncatePrimary: ({ item, text: text2, maxWidth }) => rows[Number(item.value)]?.current && maxWidth > CURRENT.length && visibleWidth2(text2) > maxWidth ? truncateToWidth3(text2.slice(0, -CURRENT.length), maxWidth - CURRENT.length, "\u2026") + CURRENT : truncateToWidth3(text2, maxWidth, "\u2026")
+          });
+        }
+        list.setSelectedIndex(index);
+        const body = [...header, ...list.render(inner).slice(0, listRoom)];
+        const divider = showDetail ? body.length : -1;
+        detailRoom = showDetail ? usable - (body.length - header.length) - 2 : 0;
+        detailMax = Math.max(0, details.length - detailRoom);
+        detailOffset = Math.min(detailMax, detailOffset);
+        if (showDetail) body.push(
+          "",
+          accent(`Detail${detailMax ? ` \xB7 ${detailOffset + 1}\u2013${Math.min(details.length, detailOffset + detailRoom)}/${details.length}` : ""}`),
+          ...row ? details.slice(detailOffset, detailOffset + detailRoom) : [dim("No matching option.")]
+        );
+        return frame.render(title, [...body, ...footer], divider);
+      },
+      handleInput(data) {
+        if (settled) return;
+        if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) return finish();
+        if (matchesKey(data, "enter")) {
+          if (rows[index]) finish(rows[index].value);
+          return;
+        }
+        if (matchesKey(data, "up") || matchesKey(data, "down")) {
+          index = Math.max(0, Math.min(rows.length - 1, index + (matchesKey(data, "up") ? -1 : 1)));
+          detailOffset = 0;
+        } else if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
+          detailOffset = Math.max(0, Math.min(detailMax, detailOffset + Math.max(1, detailRoom) * (matchesKey(data, "pageUp") ? -1 : 1)));
+        } else if (input) {
+          const before = input.getValue();
+          const paste = /^\x1b\[200~([\s\S]*)\x1b\[201~$/.exec(data);
+          input.handleInput(paste ? `\x1B[200~${terminalText(paste[1])}\x1B[201~` : data);
+          if (input.getValue() !== before) filter(input.getValue());
+        }
+        tui.requestRender();
+      }
+    };
+  }, centeredOverlay);
+}
+function selectPersona(ctx, personas, current) {
+  return selectOption(ctx, "Select Larva persona", [
+    {
+      value: null,
+      label: "None",
+      current: current === null,
+      preview: "Clear the active persona.",
+      details: [["ID", "None"], ["Status", current === null ? "Current" : "Inactive"], ["Description", "Clear the active persona."]]
+    },
+    ...personas.map(({ id, description, model, thinking, can_spawn, spec_digest }) => ({
+      value: id,
+      label: id,
+      current: current === id,
+      preview: `${model} | ${description}`,
+      details: [
+        ["ID", id],
+        ["Status", current === id ? "Current" : "Available"],
+        ["Model", model],
+        ["Thinking", thinking],
+        ["Spawn", Array.isArray(can_spawn) ? can_spawn.join(", ") || "disabled" : can_spawn ? "allowed" : "disabled"],
+        ["Description", description],
+        ["Digest", spec_digest]
+      ]
+    }))
+  ], true);
+}
+function confirmPersonaSwitch(ctx, from) {
+  return async ({ persona_id, reason, choices, signal, respond }) => {
+    if (signal.aborted) {
+      respond(null);
+      return;
+    }
+    const selected = await ctx.ui.custom((tui, theme, _keys, done) => {
+      let index = 0, offset = 0, reasonHeight = 0, maxOffset = 0, settled = false;
+      const finish = (choice2) => {
+        if (settled) return;
+        settled = true;
+        signal.removeEventListener("abort", abort);
+        done(choice2);
+      };
+      const abort = () => finish(null);
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+      return {
+        invalidate() {
+        },
+        dispose: abort,
+        render(width) {
+          const frame = modalFrame(width, tui.terminal.rows, 22);
+          const { inner, room } = frame;
+          const route = terminalText(`${from ?? "None"} \u2192 ${persona_id}`);
+          const choiceHeight = Math.min(choices.length, Math.max(1, room - Number(room > 1)));
+          const spare = room - choiceHeight;
+          const parts = terminalLines(reason, inner);
+          reasonHeight = Math.max(0, Math.min(parts.length, spare - (spare >= 4 ? 3 : 2)));
+          maxOffset = Math.max(0, parts.length - reasonHeight);
+          offset = Math.min(maxOffset, offset);
+          const start = Math.max(0, index - choiceHeight + 1);
+          const header = spare ? [theme.fg("accent", route) + (spare === 3 ? theme.fg("dim", " \xB7 Reason: PgUp/PgDn") : "")] : [];
+          if (spare >= 4) header.push(theme.fg("dim", "Reason \xB7 PgUp/PgDn"));
+          header.push(...parts.slice(offset, offset + reasonHeight));
+          const divider = spare >= 2 ? header.length : -1;
+          if (divider >= 0) header.push("");
+          return frame.render("\u26A0 Borrow persona?", [...header, ...choices.slice(start, start + choiceHeight).map(({ label }, i) => i + start === index ? theme.fg("accent", theme.bold(`\u203A ${label}`)) : `  ${label}`)], divider);
+        },
+        handleInput(data) {
+          if (settled) return;
+          if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) return abort();
+          if (matchesKey(data, "enter")) return finish(choices[index].id);
+          if (matchesKey(data, "up") || matchesKey(data, "down")) {
+            index = (index + choices.length + (matchesKey(data, "up") ? -1 : 1)) % choices.length;
+          } else if (matchesKey(data, "pageUp") || matchesKey(data, "pageDown")) {
+            offset = Math.max(0, Math.min(maxOffset, offset + Math.max(1, reasonHeight) * (matchesKey(data, "pageUp") ? -1 : 1)));
+          }
+          tui.requestRender();
+        }
+      };
+    }, centeredOverlay);
+    respond(selected);
+  };
+}
+
 // src/ui/pi-subagent-console-tui.ts
 import { basename as basename10 } from "node:path";
-import { matchesKey as matchesKey2, truncateToWidth as truncateToWidth3 } from "@earendil-works/pi-tui";
+import { matchesKey as matchesKey2, visibleWidth as visibleWidth3, wrapTextWithAnsi as wrapTextWithAnsi2 } from "@earendil-works/pi-tui";
 
 // src/activity/inspector.ts
 import { createHash as createHash5 } from "node:crypto";
@@ -12096,7 +12294,8 @@ async function inspectSubagentActivity(larvaHome, input) {
 
 // src/ui/pi-subagent-console-tui.ts
 var scopes = ["Active", "Recent", "Disk"];
-var tabs = ["Summary", "Output", "Prompt", "Timeline", "Metadata"];
+var tabs = ["Summary", "Prompt", "Output", "Timeline", "Metadata"];
+var terminalMarker = { success: "\u2713", failed: "\u2717", cancelled: "\u26A0" };
 var key = (row) => JSON.stringify([row.task_id, "run_epoch" in row ? row.run_epoch : null]);
 var actionFor = (row) => row && "run_epoch" in row ? row.cleanup_unconfirmed ? "Retry cleanup" : !isTerminal(row.status) && row.status !== "cancelling" ? "Cancel" : void 0 : void 0;
 var short = (row) => {
@@ -12104,17 +12303,7 @@ var short = (row) => {
   return name.length <= 14 ? name : `${name.slice(0, 5)}\u2026${name.slice(-8)}`;
 };
 var time = (value) => /^\d{4}-\d\d-\d\dT/.test(value) ? `${value.slice(5, 10)} ${value.slice(11, 19)}` : value;
-var summary = (row) => "run_epoch" in row ? [
-  `${row.persona_id} \xB7 ${row.status} \xB7 ${row.phase}`,
-  row.model && `Route: ${row.model} \xB7 thinking: ${row.thinking ?? "unknown"}`,
-  row.task_preview && `Task: ${row.task_preview}`,
-  row.active_tool && `${row.active_tool.name} (${row.active_tool.status})`,
-  row.live_thinking && "Thinking\u2026",
-  row.live_assistant_preview && `Assistant: ${row.live_assistant_preview}`,
-  row.error?.message,
-  `Output: ${row.output_state.replaceAll("_", " ")}`,
-  `Tool calls: ${row.tool_call_count}`
-] : [row.lock_state === "unlocked" ? "Recorded session" : `Busy (${row.lock_state})`, !row.cwd_exists && "Missing workspace"];
+var diskStatus = (row) => row.lock_state === "unlocked" ? "Recorded session" : `Busy (${row.lock_state})`;
 async function listScope(supervisor, scope) {
   if (scope === "Disk") return { runs: [], startup_failures: [], disk_sessions: await scanDiskSessions(supervisor.home, createSessionLeaseStore(supervisor.home, capsule_exports)) };
   const fleet = supervisor.captureFleet();
@@ -12132,13 +12321,19 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
   try {
     await ctx.ui.custom((tui, theme, _keys, done) => {
       let scope = 1, tab = 0, exact = taskId2;
+      let mode = taskId2 ? "detail" : "selector";
+      const activeTab = () => tabs[tab];
+      const textSource = () => activeTab() === "Prompt" ? "prompt" : activeTab() === "Output" ? "output" : void 0;
+      const dim = (text2) => theme.fg("dim", text2);
+      const accent = (text2) => theme.fg("accent", theme.bold(text2));
       let snapshot, loadError;
       let closed = false, generation = 0;
       let refresh;
       let selected, scroll = 0, viewport = 1;
       let action;
-      let actionStatus, pressed;
-      let hitRows = /* @__PURE__ */ new Map();
+      let actionStatus;
+      let pressed;
+      const hitRows = /* @__PURE__ */ new Map();
       let following = true;
       let textPage;
       let recorded;
@@ -12159,23 +12354,24 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
         const id = next && key(next);
         if (selected !== id) {
           selected = id;
+          following = true;
           resetDetail();
         }
       };
       const readPage = async (offset = 0) => {
-        const current = row();
-        if (!current || tab !== 1 && tab !== 2) return;
+        const current = row(), source = textSource();
+        if (mode !== "detail" || !current || !source) return;
         const id = ++detailRequest;
         textPage = {};
         repaint();
         const result = await supervisor.readRunTextSlice({
           task_id: current.task_id,
           run_epoch: "run_epoch" in current ? current.run_epoch : void 0,
-          source: tab === 1 ? "output" : "prompt",
+          source,
           offset
         }).catch(() => ({ state: "unavailable" }));
         if (closed || detailRequest !== id) return;
-        textPage = { result };
+        textPage = { result, view: result.state === "ok" ? presentSubagentResult(result.text) : void 0 };
         scroll = 0;
         repaint();
       };
@@ -12183,6 +12379,7 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
         const epoch = ++generation, task = exact, view = scopes[scope];
         snapshot = void 0;
         loadError = void 0;
+        pressed = void 0;
         select(void 0);
         resetDetail();
         let refreshing = false, queued = false;
@@ -12202,7 +12399,7 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
                 loadError = void 0;
                 if (!selected) select(rows()[0]);
                 const after = row();
-                if (after && (!textPage || tab === 1 && "run_epoch" in after && before && "run_epoch" in before && before.output_state !== after.output_state)) void readPage();
+                if (after && (!textPage || activeTab() === "Output" && "run_epoch" in after && before && "run_epoch" in before && before.output_state !== after.output_state)) void readPage();
               } catch (error) {
                 if (!current()) return;
                 loadError = toErrorEnvelope(error).error.message;
@@ -12232,10 +12429,29 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
         void readPage();
         repaint();
       };
-      const changeTab = (delta) => {
-        tab = (tab + tabs.length + delta) % tabs.length;
+      const changeTab = (next) => {
+        if (mode === "detail" && tab === next) return;
+        mode = "detail";
+        tab = next;
+        pressed = void 0;
         resetDetail();
         void readPage();
+        repaint();
+      };
+      const setMode = (next) => {
+        mode = next;
+        pressed = void 0;
+        resetDetail();
+        void readPage();
+        repaint();
+      };
+      const scrollBy = (delta) => {
+        if (mode === "selector" && rows().length && !loadError) {
+          move(delta);
+          return;
+        }
+        if (mode === "detail" && activeTab() === "Timeline" && !recorded) following = false;
+        scroll = Math.max(0, scroll + delta);
         repaint();
       };
       const ask = (target) => {
@@ -12289,6 +12505,8 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
             segment = result.status === "success" && "call" in result && result.call.segment ? { part, page: result.call.segment } : { part, message: "error" in result ? result.error.message : "No unambiguous saved segment." };
           } else actionStatus = "error" in result ? result.error.message : "No recorded activity.";
           scroll = 0;
+        } catch (error) {
+          if (!closed && detailRequest === id) actionStatus = toErrorEnvelope(error).error.message;
         } finally {
           if (detailRequest === id) {
             detailLoading = false;
@@ -12296,68 +12514,159 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
           }
         }
       };
-      const body = (current) => {
-        if (loadError) return [loadError];
-        if (!snapshot) return ["Loading\u2026"];
-        const failures = snapshot.startup_failures.map((f) => `Startup failed \xB7 ${f.persona_id} \xB7 ${time(f.updated_at)} \xB7 ${f.error.message}`);
-        if (!current) return [...failures, selected ? "Selected run no longer in this scope. Use \u2191/\u2193 to select another." : "No subagent sessions in this scope."];
-        if (tab === 0) return [...failures, ...summary(current).filter((v) => typeof v === "string" && !!v)];
-        if (tab === 4) return [current.task_id, `Workspace: ${current.cwd}`, ..."run_epoch" in current ? [`Epoch: ${current.run_epoch}`, `Started: ${current.started_at}`, `Updated: ${current.updated_at}`] : summary(current).filter((value) => typeof value === "string")];
-        if (tab === 3) {
-          if (segment) return [`Recorded ${segment.part} \xB7 Esc back${segment.page?.has_more ? " \xB7 N next page" : ""}`, segment.page?.text ?? segment.message ?? ""];
-          if (recorded) return [
-            "Recorded tools \xB7 J/K select \xB7 Enter args \xB7 V result \xB7 Esc live",
-            ...recorded.items.map((item, i) => `${i === recorded?.index ? "\u203A" : " "} ${item.action} \xB7 ${item.is_error ? "error" : item.result_state ?? "recorded"}`),
-            ...recorded.items.length ? [] : ["No recorded tool calls."]
-          ];
-          return [`${following ? "Following tail" : "Tail paused"} \xB7 F toggle \xB7 Enter recorded tools`, ..."run_epoch" in current ? [
-            ...(current.tool_snapshots ?? []).map((item) => `${item.name} (${item.status}) \xB7 ${item.args_preview ?? ""}`),
-            ...current.live_thinking ? ["Thinking\u2026"] : [],
-            ...current.live_assistant_preview ? [current.live_assistant_preview] : []
-          ] : []];
+      const unavailable = () => loadError ?? (!snapshot ? "Loading\u2026" : selected ? "Selected run no longer in this scope. Press s to select another." : "No subagent sessions in this scope.");
+      const detailLines = (current, inner, compact) => {
+        const rule = (title) => compact ? [] : [accent(`\u2500 ${title} ${"\u2500".repeat(Math.max(0, inner - visibleWidth3(title) - 3))}`)];
+        const fields = (...pairs) => pairs.flatMap(([label, value]) => fieldLines(label, value ?? "\u2014", inner, accent, 16));
+        const run = "run_epoch" in current ? current : void 0;
+        const location = () => fields(["Task ID", current.task_id], ["Workspace", current.cwd]);
+        switch (activeTab()) {
+          case "Summary":
+            return [
+              ...rule("Run"),
+              ..."run_epoch" in current ? fields(
+                ["Status", `${current.status} \xB7 ${current.phase}`],
+                ["Persona", current.persona_id],
+                ["Route", `${current.model ?? "unknown"} \xB7 thinking: ${current.thinking ?? "unknown"}`]
+              ) : fields(["Status", diskStatus(current)]),
+              ...rule("Prompt"),
+              ...fields(["Task", run?.task_preview ?? "Open the Prompt tab"]),
+              ...rule("Result"),
+              ...fields(["Output", run?.output_state.replaceAll("_", " ")], ["Tool calls", run && String(run.tool_call_count)]),
+              ...run?.active_tool ? fields(["Live tool", `${run.active_tool.name} (${run.active_tool.status})`]) : [],
+              ...run?.error ? fields(["Error", run.error.message]) : [],
+              ...rule("Metadata"),
+              ...location()
+            ];
+          case "Metadata":
+            return [...rule("Metadata"), ...location(), ..."run_epoch" in current ? fields(["Epoch", current.run_epoch], ["Started", current.started_at], ["Updated", current.updated_at]) : fields(["Session", diskStatus(current)], ["Path status", current.cwd_exists ? "Present" : "Missing workspace"])];
+          case "Timeline": {
+            if (segment) return [
+              accent(`Recorded ${segment.part} \xB7 Esc back${segment.page?.has_more ? " \xB7 N next page" : ""}`),
+              ...terminalLines(segment.page?.text ?? segment.message ?? "", inner)
+            ];
+            if (recorded) return [accent("Recorded tools \xB7 J/K select \xB7 Enter args \xB7 V result \xB7 Esc live"), ...recorded.items.map((item, i) => {
+              const text2 = terminalText(`${i === recorded?.index ? "\u203A" : " "} \u21B3 ${item.action} \xB7 ${item.is_error ? "error" : item.result_state ?? "recorded"}`);
+              return theme.fg(i === recorded?.index ? "accent" : item.is_error ? "error" : "muted", text2);
+            }), ...recorded.items.length ? [] : ["No recorded tool calls."]];
+            const terminal = run && isTerminal(run.status) ? run.status : void 0;
+            const items = [
+              ...run?.live_assistant_preview ? wrapTextWithAnsi2(`${accent("\u2022 assistant")} ${terminalText(run.live_assistant_preview)}`, inner) : [],
+              ...run?.live_thinking ? [dim("~ thinking hidden")] : [],
+              ...(run?.tool_snapshots ?? []).flatMap((item) => [
+                theme.fg(item.status === "error" ? "error" : "muted", terminalText(`  \u21B3 ${item.name} (${item.status})${item.args_preview ? ` \xB7 ${item.args_preview}` : ""}`)),
+                ...[item.output_preview, item.error_preview].filter((preview) => !!preview).map((preview) => dim(`    ${terminalText(preview)}`))
+              ]),
+              ...terminal ? [theme.fg(
+                terminal === "failed" ? "error" : terminal === "success" ? "success" : "warning",
+                theme.bold(`${terminalMarker[terminal]} ${terminal}`)
+              )] : []
+            ];
+            return [...rule("Timeline"), ...items.length ? items : [dim("No live timeline observed. Enter opens recorded tools.")]];
+          }
+          case "Prompt":
+          case "Output": {
+            const page = textPage?.result;
+            const content = page?.state === "ok" ? textPage?.view?.render(inner) ?? [] : terminalLines(!page ? "Loading text\u2026" : run && activeTab() === "Output" ? run.output_diagnostic?.message ?? (run.output_state === "pending" ? "Output pending" : `Output ${run.output_state.replaceAll("_", " ")} (text unavailable)`) : "Text unavailable for this run.", inner);
+            return [...rule(activeTab() === "Output" ? "Result" : "Prompt"), ...content];
+          }
         }
-        const page = textPage?.result;
-        if (page?.state === "ok") return [page.text, ...page.continuation_offset !== void 0 ? ["N: next text page"] : []];
-        if (!page) return ["Loading text\u2026"];
-        if (tab === 1 && "run_epoch" in current) return [current.output_diagnostic?.message ?? (current.output_state === "pending" ? "Output pending" : `Output ${current.output_state.replaceAll("_", " ")} (text unavailable)`)];
-        return ["Text unavailable for this run."];
+      };
+      const confirmation = (inner, target) => {
+        const title = target.label === "Cancel" ? "\u26A0 CANCEL SUBAGENT?" : "\u26A0 RETRY CLEANUP?";
+        const decision = `${theme.fg("error", "[ Enter / y ]")}     ${theme.fg("success", "[ Esc / n ]")}`;
+        return [
+          theme.fg("warning", theme.bold(title)),
+          decision,
+          ...terminalLines(`${target.row.persona_id} \xB7 ${target.row.task_id}`, inner),
+          theme.fg("warning", "\u2501".repeat(inner))
+        ];
+      };
+      const changeScope = (delta) => {
+        if (!exact) scope = (scope + delta + scopes.length) % scopes.length;
+        exact = void 0;
+        mode = "selector";
+        actionStatus = void 0;
+        loadScope();
       };
       return {
         invalidate() {
+          textPage?.view?.invalidate();
         },
         dispose: cleanup,
         render(width) {
-          const height = tui.terminal.rows, inner = Math.max(1, width - 2);
-          const line = (text2) => `\u2502${truncateToWidth3(text2, inner, "\u2026", true)}\u2502`;
-          const border = (text2, start, end) => `${start}${truncateToWidth3(text2.padEnd(inner, "\u2500"), inner, "", true)}${end}`;
-          const list = rows(), index = list.findIndex((item) => key(item) === selected);
-          const listHeight = Math.min(list.length, Math.max(0, Math.floor((height - 3) / 2)));
-          const first = Math.max(0, Math.min(index - listHeight + 1, list.length - listHeight));
-          const active = row();
-          const tail = tab === 3 && !recorded ? ` \xB7 ${following ? "Following tail" : "Tail paused"} (F)` : "";
-          const header = ` Larva Subagent Console \xB7 ${exact ? "Task" : scopes[scope]}${index >= 0 ? ` ${index + 1}/${list.length}` : ""}${tail} `;
-          const lines = [border(header, "\u250C", "\u2510"), line(tabs.map((label, i) => i === tab ? theme.fg("accent", `[${label}]`) : label).join(" / "))];
-          hitRows = /* @__PURE__ */ new Map();
-          for (const item of list.slice(first, first + listHeight)) {
-            const mark = item === active ? "\u203A " : "  ";
-            const button = actionFor(item);
-            hitRows.set(lines.length, { row: item, button: !!button });
-            const description = "run_epoch" in item ? `${time(item.started_at)} ${short(item)} ${item.persona_id} \xB7 ${item.task_preview || item.phase}` : `${short(item)} ${item.lock_state} \xB7 ${item.cwd}`;
-            lines.push(line(terminalText(`${mark}${button ? `[${button}] ` : ""}${description}`)));
+          const frame = modalFrame(width, tui.terminal.rows, 90);
+          const { inner, room } = frame;
+          const active = row(), list = rows(), index = list.findIndex((item) => key(item) === selected);
+          const tail = mode === "detail" && activeTab() === "Timeline" && !recorded ? following ? "Following tail" : "Tail paused" : "";
+          const scopeName = exact ? "Task" : scopes[scope];
+          const title = `Larva subagent log \xB7 ${scopeName}${room < 4 && mode === "detail" ? ` \xB7 ${tail || activeTab()}` : ""}`;
+          const lines = [];
+          hitRows.clear();
+          if (action?.kind === "confirm") {
+            lines.push(...confirmation(inner, action));
+            return frame.render(title, lines);
           }
-          viewport = Math.max(1, height - lines.length - 1);
-          const status = action?.kind === "confirm" ? `Confirm ${action.label.toLowerCase()} ${action.row.persona_id} \xB7 ${short(action.row)}? (Y/N)` : action ? `${action.label} in progress\u2026` : actionStatus;
-          const content = body(active).flatMap((text2) => terminalLines(text2, inner));
-          const room = Math.max(0, viewport - Number(!!status));
-          const max = Math.max(0, content.length - room);
-          scroll = Math.min(max, tab === 3 && following && !recorded ? Math.max(0, max) : scroll);
-          if (status) lines.push(line(theme.fg("accent", terminalText(status))));
-          lines.push(...content.slice(scroll, scroll + room).map(line));
-          while (lines.length < height - 1) lines.push(line(""));
-          lines.push(border(` Tab: tabs \xB7 S: scope \xB7 \u2191/\u2193: runs \xB7 PgUp/PgDn \xB7 C: action \xB7 Esc `, "\u2514", "\u2518"));
-          return lines.slice(0, height).map((value) => truncateToWidth3(value, width));
+          if (room >= 3) {
+            if (mode === "selector") lines.push(accent(`Select subagent \xB7 [ / ] scope \xB7 ${scopes.map((name) => name === scopeName ? `\u25CF ${name}` : `\u25CB ${name}`).join("   ")}${exact ? "   \u25CF Task" : ""}`));
+            else {
+              const labels = tabs.map((label, i) => i === tab ? accent(`\u25CF ${i + 1} ${label}`) : dim(`\u25CB ${i + 1} ${label}`));
+              const bar = wrapTextWithAnsi2(labels.join(inner >= 64 ? "   " : " "), inner);
+              lines.push(...bar.length <= (room >= 7 ? 2 : 1) ? bar : [labels[tab] + dim(" \xB7 1\u20135/\u2190\u2192")]);
+              if (room >= 5 && tail) lines.push(dim(`${tail} \xB7 F toggle \xB7 Enter recorded tools`));
+            }
+          }
+          const divider = room >= 7 ? lines.length : -1;
+          if (divider >= 0) lines.push("");
+          const failures = (snapshot?.startup_failures ?? []).map((f) => theme.fg(
+            "warning",
+            terminalText(`Startup failed \xB7 ${f.persona_id} \xB7 ${time(f.updated_at)} \xB7 ${f.error.message}`)
+          ));
+          const status = action ? `${action.label} in progress\u2026` : actionStatus ?? (detailLoading ? "Loading recorded activity\u2026" : void 0);
+          if (status && room > lines.length) lines.push(accent(terminalText(status)));
+          const footer = room >= 5;
+          viewport = Math.max(0, room - lines.length - Number(footer));
+          if (viewport > 1 && failures.length && (active || list.length)) {
+            const budget = Math.min(2, viewport - 1);
+            lines.push(...failures.slice(0, budget));
+            viewport -= Math.min(budget, failures.length);
+          }
+          let range = "";
+          if (mode === "selector" && list.length && !loadError) {
+            const first = Math.max(0, Math.min(index - Math.floor(viewport / 2), list.length - viewport));
+            for (const item of list.slice(first, first + viewport)) {
+              const button = actionFor(item);
+              const text2 = "run_epoch" in item ? `${time(item.started_at)} ${short(item)} ${item.persona_id} \xB7 ${item.task_preview || item.phase}` : `${short(item)} ${item.lock_state} \xB7 ${item.cwd}`;
+              const prefix = item === active ? "\u203A " : "  ";
+              const actionText = button ? `[${button}] ` : "";
+              const label = terminalText(prefix + actionText + text2);
+              hitRows.set(frame.top + lines.length, {
+                row: item,
+                start: frame.inset,
+                end: frame.inset + Math.min(visibleWidth3(label), inner),
+                actionEnd: button && visibleWidth3(prefix + actionText) <= inner ? frame.inset + 2 + actionText.length - 1 : 0
+              });
+              lines.push(item === active ? accent(label) : label);
+            }
+            if (list.length > viewport) range = ` \xB7 ${Math.max(0, index + 1)}/${list.length}`;
+          } else {
+            const content = mode === "detail" && active && !loadError ? detailLines(active, inner, room < 3) : [...terminalLines(unavailable(), inner), ...failures];
+            const max = Math.max(0, content.length - viewport);
+            const follow = mode === "detail" && active && activeTab() === "Timeline" && following && !recorded && !loadError;
+            scroll = follow ? max : Math.min(scroll, max);
+            lines.push(...content.slice(scroll, scroll + viewport));
+            if (max > 0 && viewport > 0) range = ` \xB7 ${scroll + 1}\u2013${Math.min(content.length, scroll + viewport)}/${content.length}`;
+          }
+          const more = segment?.page?.has_more || !segment && recorded?.more || textPage?.result?.state === "ok" && textPage.result.continuation_offset !== void 0;
+          if (footer) {
+            while (lines.length < room - 1) lines.push("");
+            lines.push(dim((more ? "N next \xB7 " : "") + (mode === "selector" ? "Enter detail \xB7 S toggle \xB7 [/] scope \xB7 C action \xB7 Esc close" : "1\u20135/\u2190\u2192/Tab tabs \xB7 S selector \xB7 [/] scope \xB7 C action \xB7 Esc") + range));
+          }
+          return frame.render(title, lines, divider);
         },
         handleInput(data) {
+          if (closed) return;
+          pressed = void 0;
           if (action) {
             if (action.kind === "confirm") {
               if (matchesKey2(data, "y") || matchesKey2(data, "enter")) void cancel(action.row, action.label);
@@ -12379,28 +12688,27 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
               resetDetail();
               repaint();
             } else cleanup?.();
-          } else if (matchesKey2(data, "up")) move(-1);
-          else if (matchesKey2(data, "down")) move(1);
-          else if (matchesKey2(data, "tab")) changeTab(1);
-          else if (matchesKey2(data, "shift+tab")) changeTab(-1);
-          else if (matchesKey2(data, "s")) {
-            if (!exact) scope = (scope + 1) % scopes.length;
-            exact = void 0;
-            loadScope();
-          } else if (matchesKey2(data, "r")) {
+          } else if (matchesKey2(data, "s")) setMode(mode === "selector" ? "detail" : "selector");
+          else if (data === "[" || data === "]") changeScope(data === "[" ? -1 : 1);
+          else if (/^[1-5]$/.test(data)) changeTab(Number(data) - 1);
+          else if (matchesKey2(data, "tab") || matchesKey2(data, "right")) changeTab((tab + 1) % tabs.length);
+          else if (matchesKey2(data, "shift+tab") || matchesKey2(data, "left")) changeTab((tab + tabs.length - 1) % tabs.length);
+          else if (matchesKey2(data, "r")) {
             actionStatus = void 0;
             resetDetail();
             void refresh();
           } else if (matchesKey2(data, "c")) ask(row());
-          else if (matchesKey2(data, "pageUp") || matchesKey2(data, "pageDown")) {
-            if (tab === 3) following = false;
-            scroll = Math.max(0, scroll + viewport * (matchesKey2(data, "pageUp") ? -1 : 1));
-            repaint();
+          else if (matchesKey2(data, "up")) scrollBy(-1);
+          else if (matchesKey2(data, "down")) scrollBy(1);
+          else if (matchesKey2(data, "pageUp")) scrollBy(-Math.max(1, viewport));
+          else if (matchesKey2(data, "pageDown")) scrollBy(Math.max(1, viewport));
+          else if (matchesKey2(data, "enter") && mode === "selector") {
+            if (row()) setMode("detail");
           } else if (matchesKey2(data, "n")) {
             if (segment?.page?.has_more) void inspectRecorded(segment.part, segment.page);
             else if (!segment && recorded?.more) void inspectRecorded();
             else if (textPage?.result?.state === "ok" && textPage.result.continuation_offset !== void 0) void readPage(textPage.result.continuation_offset);
-          } else if (tab === 3) {
+          } else if (mode === "detail" && activeTab() === "Timeline") {
             if (matchesKey2(data, "f")) {
               following = !following;
               repaint();
@@ -12414,30 +12722,38 @@ async function openSubagentConsole(ctx, supervisor, taskId2) {
           }
         },
         handleMouse(event) {
-          if (action) {
+          if (action || closed) {
             pressed = void 0;
             return { handled: true };
           }
-          if (event.type === "wheel") move(event.wheelDelta ?? 0);
+          if (event.type === "wheel" && event.wheelDelta && Number.isFinite(event.wheelDelta)) {
+            pressed = void 0;
+            scrollBy(Math.trunc(event.wheelDelta));
+          }
           if (event.type === "press" && event.button === "left") {
             const hit = hitRows.get(event.y);
-            const label = actionFor(hit?.row);
-            pressed = hit && { row: hit.row, button: !!label && event.x >= 3 && event.x < 5 + label.length };
+            pressed = hit && event.x >= hit.start && event.x < hit.end ? {
+              row: hit.row,
+              button: event.x >= hit.start + 2 && event.x < hit.actionEnd,
+              x: event.x,
+              y: event.y
+            } : void 0;
           }
           if (event.type === "click" && event.button === "left") {
             const hit = pressed;
             pressed = void 0;
-            if (hit?.button) ask(hit.row);
-            else if (hit) {
-              select(hit.row);
-              void readPage();
-              repaint();
+            if (hit && event.x === hit.x && event.y === hit.y) {
+              if (hit.button) ask(hit.row);
+              else if (rows().some((item) => key(item) === key(hit.row))) {
+                select(hit.row);
+                repaint();
+              }
             }
           }
           return { handled: true };
         }
       };
-    }, { overlay: true, overlayOptions: { anchor: "top-left", width: "100%", maxHeight: "100%" } });
+    }, centeredOverlay);
   } finally {
     cleanup?.();
   }
@@ -12495,7 +12811,13 @@ function registerPiCommands(pi, current, modelMap) {
     handler: choosePersona
   });
   pi.registerShortcut("ctrl+alt+p", { description: "Open the Larva persona selector", handler: (ctx) => choosePersona("", ctx) });
-  const modes = ["manual", "confirm", "auto", "free"];
+  const modeDescriptions = {
+    manual: "Only you can switch personas.",
+    confirm: "Ask before a persona switch.",
+    auto: "Allow a temporary borrow for the current turn.",
+    free: "Allow persistent persona switches."
+  };
+  const modes = Object.keys(modeDescriptions);
   pi.registerCommand("larva-mode", {
     description: "Inspect or set the Larva switch mode (manual, confirm, auto, free)",
     getArgumentCompletions: (query) => completions(query.startsWith("-") ? ["--status"] : modes, query),
@@ -12508,7 +12830,13 @@ function registerPiCommands(pi, current, modelMap) {
       if (!args) {
         const check = guard(state, ctx);
         check();
-        const choice2 = await selectOption(ctx, "Larva switch mode", modes.map((value) => ({ value, label: value, current: value === session.switchMode })));
+        const choice2 = await selectOption(ctx, "Larva switch mode", modes.map((value) => ({
+          value,
+          label: value,
+          current: value === session.switchMode,
+          preview: modeDescriptions[value],
+          details: [["Mode", value], ["Status", value === session.switchMode ? "Current" : "Available"], ["Description", modeDescriptions[value]]]
+        })));
         if (choice2 === void 0) return reportPiOutcome(ctx, "larva-mode", { status: "dismissed" });
         check();
         args = choice2;
@@ -12543,10 +12871,22 @@ function registerPiCommands(pi, current, modelMap) {
           const row = { label: name, current: active === name };
           try {
             const route = persona && resolveModelRoute(persona.model, map);
-            return { ...row, value: { name }, preview: `Parent route: ${route ? `${route.provider}/${route.model_id} \xB7 Thinking: ${persona.thinking}` : ctx.model ? `${ctx.model.provider}/${ctx.model.id} (unchanged)` : "None"}` };
+            const preview = route ? `${route.provider}/${route.model_id}` : ctx.model ? `${ctx.model.provider}/${ctx.model.id} (unchanged)` : "None";
+            return { ...row, value: { name }, preview, details: [
+              ["Profile", name],
+              ["Parent route", preview],
+              ["Status", row.current ? "Current" : "Available"],
+              ["Thinking", persona?.thinking ?? "Unchanged"]
+            ] };
           } catch (error) {
             const failure = toErrorEnvelope(error);
-            return { ...row, label: `${name} (invalid route)`, value: { name, failure }, preview: failure.error.message };
+            return {
+              ...row,
+              label: `${name} (invalid route)`,
+              value: { name, failure },
+              preview: failure.error.message,
+              details: [["Profile", name], ["Error", failure.error.message]]
+            };
           }
         });
         check();
@@ -12751,6 +13091,7 @@ function registerPiTools(pi, bindings) {
       parameters: schema,
       // Pi otherwise coerces wrong-type model inputs before calling execute().
       prepareArguments: admit,
+      // The Pi views consume structured details; the content below remains model-facing.
       ...piToolRenderers(name, description),
       async execute(toolCallId, params, signal, _update, ctx) {
         try {

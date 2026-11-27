@@ -157852,3 +157852,534 @@ phases:
 
       - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       npm test -> 233/233 passed, 0 failed, 0 skipped.'
+- id: larva_0_9_ui_visual_parity
+  name: Larva 0.9.0 UI Visual Parity & pi-agent Symlink Fix
+  status: done
+  gate: 'l09u.gate passes: independent cross-version visual and functional parity
+    against 54582742 verified for Pi TUI ANSI frames and headless Chrome Codex panel-v4/widget-v4,
+    pi-agent: symlink resolution passes unit tests, plugins/codex/dist/** matches
+    build with clean git diff, npm pack --dry-run ships exact 7 files (zero @earendil-works/pi-tui
+    in .mjs, zero YAML in child-rpc-preload.mjs), and full npm test with Chrome passes.'
+  depends_on:
+  - larva_0_9_completion
+  steps:
+  - id: l09u.pi_agent_symlink_fix
+    name: 'Fix pi-agent: symlink resolution in resolveExtensionSources'
+    status: done
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths: [\"src/core/paths.ts\", \"tests/unit/core-routing-policy.test.ts\"\
+      ]\n  blocked_paths: [\"plan.yaml\", \"package.json\", \"tsconfig.json\", \"\
+      plugins/codex/**\"]\n\nDeliver:\n- [U1] src/core/paths.ts:resolveExtensionSources\
+      \ (lines 93-96): for `pi-agent:` entries, validate `suffix` is non-empty, non-absolute\
+      \ (`!isAbsolute(suffix)`), and lexically contained via `isLexicallyContained(context.piAgentDir,\
+      \ resolve(context.piAgentDir, suffix))`; then resolve `realPath = await context.realpath(resolve(context.piAgentDir,\
+      \ suffix))` and `await context.assertReadable(realPath)` without rejecting symlink\
+      \ targets whose resolved `realpath` lies outside `piAgentDir`.\n- [U2] tests/unit/core-routing-policy.test.ts:\
+      \ verify `pi-agent:../managed/relative.ts`, `pi-agent:.`, `pi-agent:`, `pi-agent:/abs`,\
+      \ and dangling symlinks still reject with `LARVA_CONFIG_INVALID`, while a symlink\
+      \ inside `piAgentDir` pointing to a readable external file or directory resolves\
+      \ to its canonical `realpath`.\n\nImplementation Notes:\n- Keep `src/core/**`\
+      \ pure (no side-effect I/O; use supplied `context.realpath` and `context.assertReadable`).\n\
+      - Do not weaken `resolveContainedPath` for other callers that require realpath\
+      \ containment; apply lexical containment + realpath + readability specifically\
+      \ to the `pi-agent:` branch in `resolveExtensionSources`.\n\nBoundary:\n- Owner:\
+      \ software-engineer. Authority: repo edits within `scope.allowed_paths`. Material\
+      \ effects: local git changes in `src/core/paths.ts` and `tests/unit/core-routing-policy.test.ts`.\
+      \ Protected state: `plan.yaml`, manifests, `plugins/codex/**`, host `~/.larva`\
+      \ and `~/.pi/agent`. Rollback: git revert/reset on worktree.\n\nAdmit:\n- Inputs:\
+      \ `src/core/paths.ts`, `tests/unit/core-routing-policy.test.ts`.\n- Checks:\
+      \ `npm run typecheck && node --test tests/unit/core-routing-policy.test.ts`.\n\
+      - Dependencies: none (parallel Wave 1). Downstream consumer: `l09u.sync_bundles`.\n\
+      \nRecovery:\n- Reconcile any failing assertions in `core-routing-policy.test.ts`\
+      \ within `scope.allowed_paths`; stop and report `BLOCKED` if an outside caller\
+      \ requires conflicting semantics."
+    verification: npm run typecheck && node --test tests/unit/core-routing-policy.test.ts
+    evidence_template: typecheck + core-routing-policy.test.ts pass counts; commit
+      SHA; verified pi-agent symlink-to-external-target resolution and lexical-escape/dangling
+      rejections.
+    refs:
+    - src/core/paths.ts
+    - tests/unit/core-routing-policy.test.ts
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T19:10:53.152786Z'
+    done_at: '2026-11-27T19:12:51.542116+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 896949486e25cb5bb816086dd36a1680e9c13e5e (rebased & ff onto v0.9;
+      worktree removed; 2 files)
+
+
+      Changes:
+
+      - [U1] src/core/paths.ts:resolveExtensionSources: validated non-empty, non-absolute,
+      lexically contained suffix under piAgentDir, then resolved realpath + assertReadable
+      without rejecting symlink targets outside piAgentDir; kept resolveContainedPath
+      unchanged.
+
+      - [U2] tests/unit/core-routing-policy.test.ts: added regression verifying symlink
+      inside piAgentDir targeting external readable file/dir resolves to realpath,
+      while pi-agent:../..., pi-agent:., pi-agent:, pi-agent:/abs, and dangling symlinks
+      reject with LARVA_CONFIG_INVALID.
+
+
+      Verification:
+
+      - Regression failed before fix; npm run typecheck && node --test tests/unit/core-routing-policy.test.ts
+      -> 12/12 (+2 capsule tests) pass; npm run build -- --check-only -> pass.'
+  - id: l09u.pi_tui_visual_port
+    name: Port v0.8.12 Pi TUI visual chrome, selectors, 5-tab console, and message/tool
+      cards
+    status: done
+    description: "[REQUIRES_SKILL: system-rewrite]\nstep_type: implementation\nrepo_change_policy:\
+      \ modifies_repo\nscope:\n  allowed_paths: [\"src/ui/pi-tui-chrome.ts\", \"src/ui/pi-selector-tui.ts\"\
+      , \"src/ui/pi-subagent-console-tui.ts\", \"src/ui/pi-message-views.ts\", \"\
+      src/surfaces/pi-commands.ts\", \"src/surfaces/pi-tools.ts\", \"tests/integration/pi-extension-surface.test.ts\"\
+      ]\n  blocked_paths: [\"plan.yaml\", \"package.json\", \"tsconfig.json\", \"\
+      src/ui/codex-*\", \"plugins/codex/**\"]\n\nDeliver:\nStrict Port-Then-Trim from\
+      \ `git show 54582742:contrib/pi-extension/larva.ts`:\n- [T1] src/ui/pi-tui-chrome.ts\
+      \ (54582742:larva.ts:652,1150-1255,1655-1840,1924+): opaque surface bg `\\x1b[48;5;235m`\
+      \ re-applied across internal `\\x1b[0?m` resets, cyan-blue rounded border `\\\
+      x1b[38;5;116m` (`╭─ Title ───╮`, `│ ... │`, `├──────┤`, `╰──────╯`), drop shadow\
+      \ `\\x1b[38;5;232m` (right `█` + bottom `▀`), centered overlay (`anchor: \"\
+      center\", width: \"90%\", maxHeight: \"90%\", margin: 1`, `onHandle: handle\
+      \ => handle.focus?.()`), full colored `DEFAULT_MARKDOWN_THEME`, `presentSubagentResult`\
+      \ (JSON pretty-print + colored Markdown); `@earendil-works/pi-tui` only (zero\
+      \ runtime `@earendil-works/pi-coding-agent` import); narrow/short viewport safety\
+      \ (`width < 8` drops shadow; `rows <= 5` never crashes).\n- [T2] src/ui/pi-selector-tui.ts\
+      \ & src/surfaces/pi-commands.ts (54582742:larva.ts:1265-1480): port `LarvaPersonaSelector`\
+      \ with `@earendil-works/pi-tui` `Input` (`Filter: ` + live cursor + dim hint)\
+      \ + two-column `SelectList` (`minPrimaryColumnWidth: 18, maxPrimaryColumnWidth:\
+      \ 34`, right muted `model | description`, scroll indicator, `(current)`), `├──────┤`\
+      \ divider, bold accent `Detail` section with aligned wrapped `Label: value`\
+      \ rows (`ID`, `Status`, `Model`, `Thinking`, `Spawn`, `Description`, `Digest`),\
+      \ dim footer keybinding line; apply identical centered opaque rounded-border\
+      \ shadowed modal chrome to `/larva-mode` (concise mode descriptions in `pi-commands.ts`),\
+      \ `/larva-model-map` (route preview + Detail rows), and `confirmPersonaSwitch`\
+      \ (`⚠ Borrow persona?`, `from → to`, scrollable wrapped `Reason` pane with `PgUp/PgDn`,\
+      \ `├──────┤` divider, highlighted 4-choice list preserving abort/timeout/dismissal\
+      \ settlement and idle guards).\n- [T3] src/ui/pi-subagent-console-tui.ts (54582742:larva.ts:2580-3140):\
+      \ port `SubagentPresentationLogOverlay` onto 0.9.0 `SubagentSupervisor`: centered\
+      \ opaque rounded-border shadowed frame, radio-dot tab bar `● 1 Summary   ○ 2\
+      \ Prompt   ○ 3 Output   ○ 4 Timeline   ○ 5 Metadata` (`1-5`, `←/→`, `Tab`/`Shift+Tab`),\
+      \ clean full-viewport Selector Mode (`s` toggle) vs Detail Mode (with `Active\
+      \ / Recent / Disk` scope switcher and visible `startup_failures` banner), accent\
+      \ bold section rules (`─ Run ─────────`, `─ Prompt ─────────`, `─ Result ─────────`,\
+      \ `─ Metadata ─────────`), 16-col aligned bold field labels, colored `Markdown`/JSON\
+      \ rendering in `Output` & `Prompt` wired to `supervisor.readRunTextSlice` paging\
+      \ (preserving blank lines and pagination), colored hierarchical `Timeline` (`•\
+      \ assistant`, `~ thinking hidden`, `  ↳ tool`, `✓ success` / `✗ failed` / `⚠\
+      \ cancelled` + recorded args/result drill-down & `Following tail`), high-contrast\
+      \ `⚠ CANCEL SUBAGENT?` / `⚠ RETRY CLEANUP?` confirmation banner (`[ Enter /\
+      \ y ]` red, `[ Esc / n ]` green, `━━━━━━` rule), mouse wheel/click safety, and\
+      \ `Retry cleanup` for `cleanup_unconfirmed`.\n- [T4] src/ui/pi-message-views.ts\
+      \ & src/surfaces/pi-tools.ts (54582742:larva.ts:1695-1820,10470-10550): port\
+      \ `LarvaSubagentResultMessageView` (top/bottom blank padding lines, horizontal\
+      \ `outputPad`, full-width ANSI-reset-continuous status background `toolSuccessBg`/`toolErrorBg`/`toolPendingBg`,\
+      \ colored status header, full colored `DEFAULT_MARKDOWN_THEME` + JSON formatting,\
+      \ 8-line collapsed preview with truncation marker, full expanded view without\
+      \ model anti-injection preamble) and `renderLarvaSubagentCall` (`larva_subagent\
+      \ -> <id> [spawn/resume] <preview>`) + structured colored `renderResult` across\
+      \ all 7 `larva_*` tools.\n- [T5] tests/integration/pi-extension-surface.test.ts:\
+      \ assert `\\x1b[48;5;235m`, `╭`/`╮`/`╰`/`╯`/`├`/`┤`, `█`/`▀`, `SelectList`/`Input`\
+      \ detail pane, `● 1 Summary` radio-dot tabs + section rules, colored Markdown\
+      \ ANSI codes, and reset-continuous status background on message cards.\n\nImplementation\
+      \ Notes:\n- Inspect `git show 54582742:contrib/pi-extension/larva.ts` directly\
+      \ at the cited line ranges before editing.\n- Keep `@earendil-works/pi-tui`\
+      \ confined to `src/ui/pi-*.ts` and `src/surfaces/pi-*.ts`; never import `@earendil-works/pi-tui`\
+      \ from `src/core/**`, `src/store/**`, `src/runtime/**`, `src/activity/**`, or\
+      \ any `.mjs` bundle.\n- Do not touch `src/ui/codex-*` or `plugins/codex/**`\
+      \ (owned by sibling steps).\n\nBoundary:\n- Owner: frontend-engineer. Authority:\
+      \ repo edits within `scope.allowed_paths` (creating `src/ui/pi-tui-chrome.ts`).\
+      \ Material effects: local git changes in Pi UI/surface modules and integration\
+      \ tests. Protected state: `plan.yaml`, manifests, `src/ui/codex-*`, `plugins/codex/**`,\
+      \ host `~/.larva` and `~/.pi/agent`. Rollback: git revert/reset on worktree.\n\
+      \nAdmit:\n- Inputs: `54582742:contrib/pi-extension/larva.ts` baseline and current\
+      \ 0.9.0 Pi UI/surface modules.\n- Checks: `npm run typecheck && node --test\
+      \ tests/integration/pi-extension-surface.test.ts`.\n- Dependencies: none (parallel\
+      \ Wave 1). Downstream consumer: `l09u.sync_bundles`.\n\nRecovery:\n- Fix typecheck\
+      \ or Pi surface regression failures within `scope.allowed_paths`; stop and report\
+      \ `BLOCKED` if an upstream `SubagentSupervisor` runtime contract prevents porting\
+      \ without out-of-scope edits."
+    verification: npm run typecheck && node --test tests/integration/pi-extension-surface.test.ts
+    evidence_template: typecheck + pi-extension-surface.test.ts pass counts; commit
+      SHA; verified ANSI chrome (\x1b[48;5;235m, rounded borders, shadows), SelectList/Input
+      detail pane, 5-tab console radio-dot tabs & section rules, colored Markdown/JSON,
+      and reset-continuous status bg cards.
+    refs:
+    - src/ui/pi-selector-tui.ts
+    - src/ui/pi-subagent-console-tui.ts
+    - src/ui/pi-message-views.ts
+    - src/surfaces/pi-commands.ts
+    - src/surfaces/pi-tools.ts
+    - tests/integration/pi-extension-surface.test.ts
+    agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-27T19:10:53.154011Z'
+    done_at: '2026-11-27T19:30:43.693568+00:00'
+    evidence: 'Artifact:
+
+      - Commit: a014db5e43472f3a06deb1540a21b3d084113e79 (rebased from 671915807937d0a0371ce6e01e70f5642ca86dae
+      & ff onto v0.9; worktree removed; +694/-214 lines across 7 files)
+
+
+      Changes:
+
+      - [T1] src/ui/pi-tui-chrome.ts: ported opaque \x1b[48;5;235m bg re-applied across
+      internal resets, cyan-blue rounded border \x1b[38;5;116m, drop shadow \x1b[38;5;232m
+      (█/▀), centered overlay, colored DEFAULT_MARKDOWN_THEME, presentSubagentResult,
+      and narrow/short viewport safety.
+
+      - [T2] src/ui/pi-selector-tui.ts & src/surfaces/pi-commands.ts: ported LarvaPersonaSelector
+      (Input + two-column SelectList + Detail section + footer), /larva-mode descriptions,
+      /larva-model-map route preview + F-03 isolation, and confirmPersonaSwitch scrollable
+      modal.
+
+      - [T3] src/ui/pi-subagent-console-tui.ts: ported 5-Tab console with radio-dot
+      tab bar (● 1 Summary ...), full-viewport Selector vs Detail toggle, Active/Recent/Disk
+      scopes, startup_failures banner, section rules, 16-col labels, colored Markdown/JSON,
+      readRunTextSlice paging, hierarchical Timeline, high-contrast cancel/cleanup
+      confirmation, and epoch-pinned Retry cleanup.
+
+      - [T4/T5] src/ui/pi-message-views.ts, src/surfaces/pi-tools.ts, & tests/integration/pi-extension-surface.test.ts:
+      ported LarvaSubagentResultMessageView (reset-continuous status bg, colored Markdown/JSON,
+      8-line preview) and renderCall/renderResult across all 7 tools, plus ANSI chrome
+      & PTY integration assertions.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build:dist && node --test tests/integration/pi-extension-surface.test.ts
+      -> 22/22 Pi surface + 80/80 targeted session/activity/supervisor tests pass;
+      isolated native Pi 1.6.1 PTY smoke passed; 0 Codex edits.'
+  - id: l09u.codex_ui_visual_port
+    name: Port v0.8.12 Codex panel & widget visual tokens and styling onto 0.9.0 behavior
+    status: done
+    description: "[REQUIRES_SKILL: system-rewrite]\nstep_type: implementation\nrepo_change_policy:\
+      \ modifies_repo\nscope:\n  allowed_paths: [\"src/ui/codex-panel-html.ts\", \"\
+      src/ui/codex-widget-html.ts\", \"tests/unit/codex-ui-and-plugin.test.ts\"]\n\
+      \  blocked_paths: [\"plan.yaml\", \"package.json\", \"tsconfig.json\", \"src/ui/pi-*\"\
+      , \"plugins/codex/**\"]\n\nDeliver:\nStrict Port-Then-Trim from `git show 54582742:contrib/pi-extension/subagent-mcp-server.mjs:230-495`:\n\
+      - [C1] src/ui/codex-panel-html.ts & src/ui/codex-widget-html.ts: port complete\
+      \ v0.8.12 CSS design tokens & component styling: light/dark semantic tokens\
+      \ (`--background`, `--foreground`, `--secondary`, `--tertiary`, `--card`, `--muted`,\
+      \ `--muted-foreground`, `--border`, `--input`, `--primary`, `--accent`, `--success`/`--success-bg`,\
+      \ `--warning`/`--warning-bg`, `--danger`/`--danger-bg`, `--ring`, `--radius-sm/md/lg`,\
+      \ `--app-font-sans/mono`), SVG status icons (pulsing `.status[data-status=running]`\
+      \ with `prefers-reduced-motion`, green checkmark for `success`, red X for `failed`,\
+      \ amber icon for `cancelled`/`stall_suspected`), `.toolbar` with pill `.model`/`.badge`\
+      \ chips + tabular-nums `.elapsed` + `.preview.summary`, inline `.compact-list`/`.switcher`/elevated\
+      \ `.drawer`, fullscreen 2-col `.workbench` (`minmax(220px, 30%) minmax(0, 1fr)`,\
+      \ left `.run-list` `.run-card` cards with `All / Active · N / Done · N / Disk`\
+      \ filters, right `.inspector` with `.detail-header`, sticky equal-width `.tabs`,\
+      \ `.section-card` + `.section-header`, collapsible `.prompt-box`, bordered `.stream`/`.result`\
+      \ panels, interactive `.tool-row` accordion cards with `.tool-content`, 4-column\
+      \ `<dl class=\"metadata\">` grid), and `@media (max-width: 679px)` responsive\
+      \ stacking.\n- [C2] Preserve 100% of 0.9.0 behavioral contracts: epoch-pinned\
+      \ refreshes & expired notice, `Retry cleanup`, `1s` clock + `1s` active polling,\
+      \ `Active/Done` merged list + separate `Disk`, `All / Timeline / Result / Task\
+      \ & Session` 4-Tab inspector, `larva_subagent_panel.slice` full prompt copy\
+      \ & paged output, recorded `args`/`result` drill-down with `continuation_offset`\
+      \ paging & duplicate `tool_call_id` disambiguation, per-request/per-row fault\
+      \ isolation, `tool-input`-gated initial poll, `hostContext.availableDisplayModes`\
+      \ intersection, and shrink-capable intrinsic content height measurement (`size-changed`).\n\
+      - [C3] tests/unit/codex-ui-and-plugin.test.ts: verify ported CSS tokens, SVG\
+      \ status icons, workbench/toolbar/responsive classes, computed styles, and preserved\
+      \ 0.9.0 behavioral contracts in headless Chrome.\n\nImplementation Notes:\n\
+      - Inspect `git show 54582742:contrib/pi-extension/subagent-mcp-server.mjs` lines\
+      \ 230-495 directly before editing.\n- Keep `codex-panel-html.ts` and `codex-widget-html.ts`\
+      \ free of `@earendil-works/pi-tui` references.\n- Do not modify `plugins/codex/**`\
+      \ (regenerated in `l09u.sync_bundles`).\n\nBoundary:\n- Owner: frontend-engineer.\
+      \ Authority: repo edits within `scope.allowed_paths`. Material effects: local\
+      \ git changes in Codex UI HTML generators and unit/headless-Chrome tests. Protected\
+      \ state: `plan.yaml`, manifests, `src/ui/pi-*`, `plugins/codex/**`, host `~/.larva`.\
+      \ Rollback: git revert/reset on worktree.\n\nAdmit:\n- Inputs: `54582742:contrib/pi-extension/subagent-mcp-server.mjs:230-495`\
+      \ baseline and current 0.9.0 Codex UI files.\n- Checks: `npm run typecheck &&\
+      \ LARVA_TEST_CHROME=\"/Applications/Google Chrome.app/Contents/MacOS/Google\
+      \ Chrome\" node --test tests/unit/codex-ui-and-plugin.test.ts`.\n- Dependencies:\
+      \ none (parallel Wave 1). Downstream consumer: `l09u.sync_bundles`.\n\nRecovery:\n\
+      - Reconcile Chrome/DOM or CSS parity test failures within `scope.allowed_paths`;\
+      \ stop and report `BLOCKED` if Chrome is unavailable or an MCP server contract\
+      \ change outside `scope.allowed_paths` is required."
+    verification: npm run typecheck && LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google
+      Chrome" node --test tests/unit/codex-ui-and-plugin.test.ts
+    evidence_template: typecheck + headless Chrome codex-ui-and-plugin.test.ts pass
+      counts; commit SHA; verified v0.8.12 CSS tokens, SVG status icons, workbench/toolbar/responsive
+      styling, and preserved 0.9.0 behavioral contracts.
+    refs:
+    - src/ui/codex-panel-html.ts
+    - src/ui/codex-widget-html.ts
+    - tests/unit/codex-ui-and-plugin.test.ts
+    agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-27T19:10:53.154699Z'
+    done_at: '2026-11-27T19:19:35.613848+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 18da8e87b4d95989150f955fd0cf42a017d186a3 (rebased onto v0.9 & ff;
+      worktree removed; 3 files)
+
+
+      Changes:
+
+      - [C1/C2] src/ui/{codex-panel-html,codex-widget-html}.ts: ported complete v0.8.12
+      CSS design tokens (light/dark), pulsing SVG status icons (prefers-reduced-motion),
+      .toolbar/.model/.badge/.elapsed/.preview.summary, inline .compact-list/.switcher/.drawer,
+      fullscreen 2-col .workbench (.run-list .run-card + .inspector .detail-header
+      + sticky .tabs + .section-card + collapsible .prompt-box + .stream/.result +
+      .tool-row accordion + 4-col .metadata grid), and @media (max-width: 679px) stacking
+      while preserving 100% of 0.9.0 behavior.
+
+      - [C3] tests/unit/codex-ui-and-plugin.test.ts: verified computed styles, 679px
+      breakpoint, inline widget growth & shrink, epoch pinning/expiry, cleanup retry,
+      and paged prompt/output/tool recordings in headless Chrome.
+
+
+      Verification:
+
+      - npm run typecheck && LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google
+      Chrome" node --test tests/unit/codex-ui-and-plugin.test.ts -> 20/20 passed,
+      0 skipped; npm run build -- --dist-only -> pass (0 plugins/codex/ edits).'
+  - id: l09u.sync_bundles
+    name: Rebuild and commit plugins/codex/dist bundles and run full test consolidation
+    status: done
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths: [\"plugins/codex/dist/**\"]\n  blocked_paths: [\"plan.yaml\"\
+      , \"package.json\", \"tsconfig.json\"]\n\nDeliver:\n- [B1] Rebuild and sync\
+      \ tracked Codex bundles: run `npm run typecheck && npm run build`, commit regenerated\
+      \ `plugins/codex/dist/**`, and verify `git diff --exit-code plugins/codex/`\
+      \ is clean after build.\n- [B2] Packaging and bundle boundary verification:\
+      \ verify `npm pack --dry-run` reports the exact 7 files, 0 `@earendil-works/pi-tui`\
+      \ references in any `.mjs` bundle, and 0 YAML parser/code references in `child-rpc-preload.mjs`.\n\
+      - [B3] Full regression verification: run `LARVA_TEST_CHROME=\"/Applications/Google\
+      \ Chrome.app/Contents/MacOS/Google Chrome\" npm test` with zero failures.\n\n\
+      Implementation Notes:\n- Do not edit `src/**`, `tests/**`, `package.json`, or\
+      \ `tsconfig.json`; this step strictly rebuilds and commits `plugins/codex/dist/**`\
+      \ and runs full-suite consolidation checks.\n- Verify bundle purity on both\
+      \ `dist/**` and `plugins/codex/dist/**` `.mjs` artifacts.\n\nBoundary:\n- Owner:\
+      \ executor. Authority: build execution and git commits strictly within `plugins/codex/dist/**`.\
+      \ Material effects: regenerated tracked Codex plugin bundles. Protected state:\
+      \ `plan.yaml`, `package.json`, `tsconfig.json`, `src/**`, host `~/.larva` and\
+      \ `~/.pi/agent`. Rollback: git revert/reset on worktree.\n\nAdmit:\n- Inputs:\
+      \ merged outputs of `l09u.pi_agent_symlink_fix`, `l09u.pi_tui_visual_port`,\
+      \ and `l09u.codex_ui_visual_port`.\n- Checks: `npm run typecheck && npm run\
+      \ build && git diff --exit-code plugins/codex/ && npm pack --dry-run && LARVA_TEST_CHROME=\"\
+      /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" npm test`.\n\
+      - Dependencies: `l09u.pi_agent_symlink_fix`, `l09u.pi_tui_visual_port`, `l09u.codex_ui_visual_port`.\
+      \ Downstream consumer: `l09u.gate`.\n\nRecovery:\n- If `npm test` or bundle\
+      \ purity checks fail due to an upstream source defect, do not patch `src/**`;\
+      \ record exact failure output and report `BLOCKED` for upstream repair."
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && npm pack --dry-run && LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google
+      Chrome" npm test
+    evidence_template: typecheck/build exit 0; commit SHA for plugins/codex/dist/**;
+      git diff --exit-code plugins/codex/ clean; npm pack --dry-run exact 7 files;
+      0 pi-tui in .mjs; 0 YAML in child-rpc-preload.mjs; full npm test with Chrome
+      pass counts.
+    refs:
+    - plugins/codex/dist/mcp-server.mjs
+    - plugins/codex/dist/pi-extension.js
+    - plugins/codex/dist/child-rpc-preload.mjs
+    - plugins/codex/dist/package.json
+    depends_on:
+    - l09u.pi_agent_symlink_fix
+    - l09u.pi_tui_visual_port
+    - l09u.codex_ui_visual_port
+    agent: executor
+    claimed_by: executor
+    claimed_at: '2026-11-27T19:30:49.460395Z'
+    done_at: '2026-11-27T19:34:09.669603+00:00'
+    evidence: 'Artifact:
+
+      - Commit: c91c02591dc281c920d5e45b95d9a77a87e968f3 (ff onto v0.9; worktree removed;
+      plugins/codex/dist/{mcp-server.mjs,pi-extension.js})
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> pass (0 drift)
+
+      - Bundle purity -> 0 @earendil-works/pi-tui in dist/*.mjs & plugins/codex/dist/*.mjs;
+      0 YAML in both child-rpc-preload.mjs; npm pack --dry-run exact 7 files
+
+      - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      npm test -> 235/235 passed, 0 failed, 0 skipped.'
+  - id: l09u.gate
+    name: Independent cross-version visual and functional parity gate vs 54582742
+    status: done
+    description: "step_type: gate\nrepo_change_policy: no_repo_change\nscope:\n  allowed_paths:\
+      \ []\n  blocked_paths: [\"plan.yaml\", \"src/**\", \"docs/**\", \"plugins/**\"\
+      , \"package.json\", \"tsconfig.json\"]\n\nDeliver:\nIndependent cross-version\
+      \ visual and functional parity gate (`system-rewrite` §4) comparing `HEAD` directly\
+      \ against baseline `54582742`:\n- [G1] Pi TUI visual parity vs `54582742:contrib/pi-extension/larva.ts`:\
+      \ directly compare rendered Pi TUI ANSI frames for persona selector, `/larva-mode`,\
+      \ `/larva-model-map`, `confirmPersonaSwitch`, 5-Tab `/larva-subagent` console\
+      \ (Selector Mode & Detail Mode, radio-dot tabs, section rules, timeline hierarchy,\
+      \ confirm banners), result/alert message cards (reset-continuous status background,\
+      \ padding, colored Markdown/JSON, 8-line collapse), and all 7 tool cards, plus\
+      \ narrow/short viewport safety and `@earendil-works/pi-tui`-only runtime boundary.\n\
+      - [G2] Codex UI visual & functional parity vs `54582742:contrib/pi-extension/subagent-mcp-server.mjs:230-495`:\
+      \ directly compare headless Chrome Codex `panel-v4` & `widget-v4` rendered structure\
+      \ and computed styles (light/dark CSS tokens, SVG status icons, toolbar/compact-list/drawer,\
+      \ 2-col workbench, 4-col metadata grid, responsive stacking) while verifying\
+      \ 100% of 0.9.0 behavioral contracts remain intact.\n- [G3] Functional & packaging\
+      \ gate: verify `pi-agent:` symlink-to-external-target resolution and lexical-escape/dangling\
+      \ rejections, full `LARVA_TEST_CHROME=\"/Applications/Google Chrome.app/Contents/MacOS/Google\
+      \ Chrome\" npm test`, `git diff --exit-code plugins/codex/`, and `npm pack --dry-run`\
+      \ (exact 7 files, 0 `@earendil-works/pi-tui` in `.mjs`, 0 YAML in `child-rpc-preload.mjs`).\n\
+      \nImplementation Notes:\n- Run read-only inspection (`git show 54582742:...`,\
+      \ `git diff`, test/probe commands); never rely solely on unit mock assertions\
+      \ or new-spec wording without baseline `54582742` comparison.\n- Emit explicit\
+      \ `PASS` or `FAIL` verdict with concrete evidence pointers.\n\nBoundary:\n-\
+      \ Owner: gate-reviewer. Authority: strictly read-only (`no_repo_change`). Material\
+      \ effects: none. Protected state: entire repository, `plan.yaml`, host `~/.larva`\
+      \ and `~/.pi/agent`. Rollback: n/a.\n\nAdmit:\n- Inputs: integrated branch after\
+      \ `l09u.sync_bundles` and `l09u.r1_codex_compact_preview`, and git baseline\
+      \ `54582742`.\n- Checks: `LARVA_TEST_CHROME=\"/Applications/Google Chrome.app/Contents/MacOS/Google\
+      \ Chrome\" npm test && git diff --exit-code plugins/codex/ && npm pack --dry-run`\
+      \ plus direct baseline visual/ANSI/computed-style comparison against `54582742`.\n\
+      - Dependencies: `l09u.sync_bundles`, `l09u.r1_codex_compact_preview`.\n\nRecovery:\n\
+      - On any visual, behavioral, symlink, or packaging discrepancy, fail the gate\
+      \ with exact file/symbol/frame diffs and reproduction commands so Orchestrator\
+      \ can schedule targeted repair steps without mutating the repo in this gate."
+    verification: LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google
+      Chrome" npm test && git diff --exit-code plugins/codex/ && npm pack --dry-run
+    evidence_template: Gate verdict (PASS/FAIL); Pi TUI ANSI frame comparison vs 54582742;
+      headless Chrome Codex panel-v4/widget-v4 DOM & computed-style comparison vs
+      54582742; pi-agent symlink verification; full npm test, git diff --exit-code
+      plugins/codex/, and npm pack --dry-run receipts.
+    refs:
+    - src/core/paths.ts
+    - src/ui/pi-selector-tui.ts
+    - src/ui/pi-subagent-console-tui.ts
+    - src/ui/pi-message-views.ts
+    - src/ui/codex-panel-html.ts
+    - src/ui/codex-widget-html.ts
+    - src/surfaces/pi-commands.ts
+    - src/surfaces/pi-tools.ts
+    depends_on:
+    - l09u.sync_bundles
+    - l09u.r1_codex_compact_preview
+    agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-11-27T19:51:19.877256Z'
+    done_at: '2026-11-27T19:54:27.562439+00:00'
+    evidence: 'Gate: PASS (DELTA Phase Gate at git:cbcef139fd46d25b2eb0df90ddbc17cfab368359;
+      validator valid:true, binding_checked:true, evidence_disposition:POSITIVE_GATE_EVIDENCE)
+
+      Report: /tmp/larva-0.9-ui-visual-parity-gate/report-delta.json (prior FULL:
+      report.json)
+
+
+      Verification:
+
+      - G1-PI-TUI-VISUAL-PARITY: PROVEN vs 54582742 (opaque \x1b[48;5;235m bg, cyan-blue
+      rounded borders, drop shadow, Input+SelectList+Detail, radio-dot 5-Tab console,
+      colored Markdown/JSON, reset-continuous status bg cards, 100x36 & 7x5 & isolated
+      Pi 1.6.1 PTY).
+
+      - G2-CODEX-UI-VISUAL-PARITY: PROVEN vs 54582742 (420px quiet running task_preview
+      fallback + 223/223px completed preview fit, light/dark tokens, pulsing SVG icons,
+      2-col workbench, 4-col metadata, 680/679px breakpoint, 297->644->297px grow+shrink).
+
+      - G3-SYMLINK-BUILD-PACK: PROVEN (12/12 routing-policy symlink/escape tests,
+      npm run typecheck && npm run build -- --check-only && git diff --exit-code plugins/codex/,
+      exact 7-file npm pack --dry-run, 0 pi-tui in .mjs, 0 YAML in preload, 235/235
+      hermetic npm test with Chrome, 0 skipped).'
+    rejection_reason: Premature orchestrator completion before gate-reviewer DELTA
+      report-delta.json returned; restoring until actual gate-reviewer PASS arrives.
+    rejection_history:
+    - reason: Premature orchestrator completion before gate-reviewer DELTA report-delta.json
+        returned; restoring until actual gate-reviewer PASS arrives.
+      timestamp: '2026-11-27T19:50:50.382725+00:00'
+      reviewer: vectl-orchestrator
+  - id: l09u.r1_codex_compact_preview
+    name: Fix Codex compact preview fallback and 420px inline row parity
+    status: done
+    description: "step_type: implementation\nrepo_change_policy: modifies_repo\nscope:\n\
+      \  allowed_paths: [\"src/ui/codex-panel-html.ts\", \"tests/unit/codex-ui-and-plugin.test.ts\"\
+      , \"plugins/codex/dist/**\"]\n  blocked_paths: [\"plan.yaml\", \"package.json\"\
+      , \"tsconfig.json\", \"src/ui/pi-*\"]\n\nDeliver:\n- [CODEX-COMPACT-PREVIEW-PARITY]\
+      \ src/ui/codex-panel-html.ts (`summary`, `runCard`, `renderContent`, `.compact-list\
+      \ .run-card`, `.preview.summary`) compared directly against `54582742:contrib/pi-extension/subagent-mcp-server.mjs:258,307-317,406-427,493`:\n\
+      \  - Fall back to `run.task_preview` in `summary(run)` when a live run has `task_preview`\
+      \ and no live telemetry yet, so both `.compact-list` rows and the collapsed\
+      \ inline inspector `.preview.summary` show the task preview.\n  - Keep a readable\
+      \ one-line preview (`clientWidth` / `scrollWidth` fit) in 420px inline widget\
+      \ `.compact-list` rows with realistic date+UUID handles and model names (e.g.,\
+      \ `openai-codex/gpt-5.4-mini`) without squeezing `.preview` behind long handles\
+      \ or `.model` chips.\n  - Preserve exact 0.9.0 epoch scoping, SVG status icons\
+      \ (`statusIcon`), and inline grow+shrink `measure()` / `ui/notifications/size-changed`\
+      \ measurement.\n- [R1-TEST] tests/unit/codex-ui-and-plugin.test.ts: add a 420px\
+      \ headless Chrome regression matching the gate reproduction (quiet running row\
+      \ with `task_preview` + completed row with realistic date+UUID handle, `openai-codex/gpt-5.4-mini`,\
+      \ and `result_preview`) asserting fallback text and readable one-line preview\
+      \ geometry.\n- [R1-BUILD] plugins/codex/dist/**: run `npm run typecheck && npm\
+      \ run build`, commit regenerated `plugins/codex/dist/**`, verify `git diff --exit-code\
+      \ plugins/codex/` is clean, and pass `LARVA_TEST_CHROME=\"/Applications/Google\
+      \ Chrome.app/Contents/MacOS/Google Chrome\" npm test`.\n\nImplementation Notes:\n\
+      - Inspect `git show 54582742:contrib/pi-extension/subagent-mcp-server.mjs` at\
+      \ lines 258, 307-317, 406-427, and 493 directly before editing.\n- Keep `src/ui/codex-panel-html.ts`\
+      \ and all built `.mjs` bundles free of `@earendil-works/pi-tui`.\n- Note how\
+      \ 54582742 separates compact row identity from secondary metadata (`.compact-list\
+      \ .run-card .row.muted { display: none }`) so the preview text retains horizontal\
+      \ room at 420px while preserving epoch identity in labels/tooltips/inspector.\n\
+      \nBoundary:\n- Owner: frontend-engineer. Authority: repo edits and Codex dist\
+      \ rebuild strictly within `scope.allowed_paths`. Material effects: local git\
+      \ changes in `src/ui/codex-panel-html.ts`, `tests/unit/codex-ui-and-plugin.test.ts`,\
+      \ and rebuilt `plugins/codex/dist/**`. Protected state: `plan.yaml`, `package.json`,\
+      \ `tsconfig.json`, `src/ui/pi-*`, host `~/.larva` and `~/.pi/agent`. Rollback:\
+      \ git revert/reset on worktree.\n\nAdmit:\n- Inputs: `l09u.gate` failure on\
+      \ `G2-CODEX-UI-VISUAL-PARITY` (`CODEX-COMPACT-PREVIEW-PARITY`) at `git:35f9368bcd6a8583daf9737bf5c7c407309ec461`\
+      \ and baseline `54582742:contrib/pi-extension/subagent-mcp-server.mjs`.\n- Checks:\
+      \ `npm run typecheck && npm run build && git diff --exit-code plugins/codex/\
+      \ && LARVA_TEST_CHROME=\"/Applications/Google Chrome.app/Contents/MacOS/Google\
+      \ Chrome\" npm test`.\n- Dependencies: `l09u.sync_bundles`. Downstream consumer:\
+      \ `l09u.gate`.\n\nRecovery:\n- Reconcile Chrome/DOM, CSS layout, or bundle drift\
+      \ failures within `scope.allowed_paths`; report `BLOCKED` if Chrome is unavailable\
+      \ or an MCP server contract change outside `scope.allowed_paths` is required."
+    verification: npm run typecheck && npm run build && git diff --exit-code plugins/codex/
+      && LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google
+      Chrome" npm test
+    refs:
+    - src/ui/codex-panel-html.ts
+    - tests/unit/codex-ui-and-plugin.test.ts
+    - plugins/codex/dist/mcp-server.mjs
+    - plugins/codex/dist/pi-extension.js
+    depends_on:
+    - l09u.sync_bundles
+    agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-27T19:44:25.347785Z'
+    done_at: '2026-11-27T19:49:53.403558+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 9cea34f3172da9b61728acc8eb02528c71062b00 (ff onto v0.9; worktree removed;
+      +59/-18 lines across 3 files including regenerated plugins/codex/dist/mcp-server.mjs)
+
+
+      Changes:
+
+      - [CODEX-COMPACT-PREVIEW-PARITY] src/ui/codex-panel-html.ts: restored task_preview
+      fallback in summary(run) for quiet live runs (both .compact-list rows and collapsed
+      inspector) and reserved horizontal preview room at 420px with realistic date+UUID
+      handles & openai-codex/gpt-5.4-mini while preserving epoch identity in accessible
+      labels/tooltips & model metadata in inspector.
+
+      - [R1-TEST] tests/unit/codex-ui-and-plugin.test.ts: added 420px headless Chrome
+      regression verifying quiet running task_preview fallback + clientWidth >= scrollWidth
+      one-line fit for "Actual completed output".
+
+      - [R1-BUILD] Regenerated plugins/codex/dist/mcp-server.mjs.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> pass (0 drift)
+
+      - tests/unit/codex-ui-and-plugin.test.ts -> 20/20 pass
+
+      - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      npm test -> 235/235 passed, 0 failed, 0 skipped.'

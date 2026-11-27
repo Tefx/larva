@@ -118,10 +118,11 @@ test("extension source resolution supports local directories and each source for
     await mkdir(piAgentDir);
     await writeFile(localFile, "");
     await writeFile(agent, "");
-    const insideLink = join(piAgentDir, "inside.ts"), escapeLink = join(piAgentDir, "outside.ts");
     const aliasAgentDir = join(dir, "linked-agent");
-    await symlink(agent, insideLink);
-    await symlink(localFile, escapeLink);
+    await symlink(agent, join(piAgentDir, "inside.ts"));
+    await symlink(localFile, join(piAgentDir, "outside.ts"));
+    await symlink(localDir, join(piAgentDir, "outside-dir"));
+    await symlink(join(dir, "missing.ts"), join(piAgentDir, "dangling.ts"));
     await symlink(piAgentDir, aliasAgentDir);
     const schemes = ["builtin:larva", "npm:example", "git:example/repo", "https://example.com/ext.ts",
       "http://localhost/ext.ts", "file:///opt/extensions/ext.ts"];
@@ -137,8 +138,10 @@ test("extension source resolution supports local directories and each source for
       [...await Promise.all([localFile, localDir, agent, localFile].map(path => realpath(path))), ...schemes]);
     assert.deepEqual(await resolveExtensionSources(["pi-agent:inside.ts"], { ...context, piAgentDir: aliasAgentDir }),
       [await realpath(agent)]);
-    for (const source of ["missing.ts", "pi-agent:", "pi-agent:.", `pi-agent:${agent}`,
-      "pi-agent:../managed/relative.ts", "pi-agent:outside.ts", "https://[bad]/ext.ts", "https://", "ftp://example.com/ext.ts",
+    assert.deepEqual(await resolveExtensionSources(["pi-agent:outside.ts", "pi-agent:outside-dir"], context),
+      [await realpath(localFile), await realpath(localDir)]);
+    for (const source of ["missing.ts", "pi-agent:", "pi-agent:.", "pi-agent:/abs", `pi-agent:${agent}`,
+      "pi-agent:../managed/relative.ts", "pi-agent:dangling.ts", "https://[bad]/ext.ts", "https://", "ftp://example.com/ext.ts",
       "data:text/plain,extension", "javascript:alert(1)", "https://example.com/a\0b", "\0"]) {
       await assert.rejects(resolveExtensionSources([source], context), { code: "LARVA_CONFIG_INVALID" });
     }
