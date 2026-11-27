@@ -4,22 +4,22 @@ import { dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ALL_LARVA_ERROR_CODES, LarvaError } from "../core/errors.ts";
 import { BASE_PI_AGENT_DIR_ENV } from "../core/paths.ts";
+import { isRecord } from "../core/predicates.ts";
 import type { ResolvedModelRoute, ThinkingLevel } from "../core/types.ts";
-import { metadataObject } from "../store/capsule.ts";
 
 const MAX_RECORD = 1_048_576;
-const GRACE_MS = 1500;
+export const GRACE_MS = 1500;
 const protocol = (message: string) => new LarvaError("LARVA_CHILD_PROTOCOL_FAILED", message);
 type Frame = Record<string, unknown>;
 const STDERR_LIMIT = 8192;
-const SECRET_NAMES = "(?:api[_-]?key|key|access[_-]?token|refresh[_-]?token|token|secret|password|authorization)";
+const SECRET_NAMES = "(?:(?:[a-z0-9]+[_-])*api[_-]?key|key|access[_-]?token|refresh[_-]?token|token|secret|password|authorization)";
 const SECRET_KEY = new RegExp(`^${SECRET_NAMES}$`, "i");
-const SECRET_ASSIGNMENT = new RegExp(String.raw`["']?\b${SECRET_NAMES}\b["']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|Bearer\s+\S+|\S+)`, "gi");
+const SECRET_ASSIGNMENT = new RegExp(String.raw`["']?\b${SECRET_NAMES}\b["']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|(?:Bearer|Basic)\s+\S+|\S+)`, "gi");
 
 function redactCredentials(raw: string): string {
   return raw.replace(/(https?:\/\/)[^/\s:@]+:[^/\s@]+@/gi, "$1[REDACTED]@")
     .replace(SECRET_ASSIGNMENT, "[REDACTED]")
-    .replace(/\bBearer\s+\S+|\bsk-[A-Za-z0-9_-]{8,}|\bAIza[0-9A-Za-z_-]{16,}/gi, "[REDACTED]");
+    .replace(/\b(?:Bearer|Basic)\s+\S+|\bsk-[A-Za-z0-9_-]{8,}|\bAIza[0-9A-Za-z_-]{16,}/gi, "[REDACTED]");
 }
 
 export function sanitizeRpcError(raw: string): string {
@@ -35,15 +35,18 @@ export function previewToolArgs(args: unknown): string | undefined {
   } catch { return undefined; }
 }
 
-function startupError(stderr: Buffer): LarvaError | undefined {
-  for (const line of stderr.toString("utf8").split("\n").reverse()) {
-    let frame: unknown;
-    try { frame = JSON.parse(line); } catch { continue; }
-    if (!metadataObject(frame) || frame.ok !== false || !metadataObject(frame.error)) continue;
-    const { code, message } = frame.error;
-    const knownCode = ALL_LARVA_ERROR_CODES.find(value => value === code);
-    if (knownCode && typeof message === "string") return new LarvaError(knownCode, sanitizeRpcError(message) || "Pi startup failed.");
-  }
+function startupError(line: Buffer): LarvaError | undefined {
+  let frame: unknown;
+  try { frame = JSON.parse(line.toString("utf8")); } catch { return; }
+  if (!isRecord(frame) || frame.ok !== false || !isRecord(frame.error)) return;
+  const { code, message } = frame.error;
+  const knownCode = ALL_LARVA_ERROR_CODES.find(value => value === code);
+  if (knownCode && typeof message === "string") return new LarvaError(knownCode, sanitizeRpcError(message) || "Pi startup failed.");
+}
+
+export function fitsPrompt(message: string): boolean {
+  // Reserve enough room for any request ID produced by the client's sequence.
+  return message.length < MAX_RECORD && Buffer.byteLength(JSON.stringify({ type: "prompt", id: "0".repeat(24), message })) <= MAX_RECORD;
 }
 
 export type ChildLaunch = {
@@ -70,7 +73,8 @@ export class ChildRpcClient {
   readonly #child: ChildProcessWithoutNullStreams;
   readonly #terminal = Promise.withResolvers<void>();
   readonly #exit = Promise.withResolvers<void>();
-  readonly #requests = new Map<string, { type: string; resolve(data: Frame): void; reject(error: Error): void }>();
+  readonly #readinessDeadline = performance.now() + 60_000;
+  readonly #requests = new Map<string, { type: string; chunks?: string[]; resolve(data: Frame): void; reject(error: Error): void }>();
   #error?: Error;
   #shutdown?: Promise<boolean>;
   #sequence = 0;
@@ -82,22 +86,33 @@ export class ChildRpcClient {
   constructor(child: ChildProcessWithoutNullStreams, progress: () => void, telemetry: (frame: Frame) => void) {
     this.#child = child;
     this.settled.catch(() => {}); // May fail during startup, before a collector attaches.
-    let stderr = Buffer.alloc(0);
+    let stderr = Buffer.alloc(0), discarding = false;
+    let diagnostic: LarvaError | undefined, readError: Error | undefined;
     child.stderr.on("data", (chunk: Buffer) => {
-      if (this.#ready) return;
-      const tail = chunk.subarray(-STDERR_LIMIT);
-      stderr = Buffer.concat([stderr.subarray(Math.max(0, stderr.length + tail.length - STDERR_LIMIT)), tail]);
+      if (this.#ready || diagnostic) return;
+      for (let start = 0; start < chunk.length;) {
+        const lf = chunk.indexOf(10, start), end = lf < 0 ? chunk.length : lf;
+        discarding ||= end - start > STDERR_LIMIT - stderr.length;
+        if (!discarding) stderr = Buffer.concat([stderr, chunk.subarray(start, end)]);
+        if (lf < 0) break;
+        if (!discarding && (diagnostic = startupError(stderr))) break;
+        stderr = Buffer.alloc(0); discarding = false; start = lf + 1;
+      }
     });
     child.on("error", () => this.#fail(new LarvaError("LARVA_CHILD_START_FAILED", "Could not launch the Pi child.")));
     // Startup can close stdin/stdout before the diagnostic on stderr arrives.
     child.stdin.on("error", () => { if (this.#ready) this.#fail(protocol("Child RPC input closed.")); });
     child.once("exit", () => this.#exit.resolve());
-    const read = this.#read(progress, telemetry).catch(() => this.#fail(protocol("Malformed or oversized child RPC frame.")));
+    const read = this.#read(progress, telemetry).catch(error => {
+      readError = error instanceof LarvaError ? error : protocol("Malformed or oversized child RPC frame.");
+      if (this.#ready) this.#fail(readError);
+    });
     child.once("close", (code: number | null) => {
       this.#exit.resolve();
       void read.then(() => {
-        const diagnostic = !this.#ready && code !== null && code !== 0 ? startupError(stderr) : undefined;
-        this.#fail(diagnostic ?? protocol("Child exited before RPC completed."));
+        const startup = !this.#ready && code !== null && code !== 0
+          ? diagnostic ?? (!discarding ? startupError(stderr) : undefined) : undefined;
+        this.#fail(startup ?? readError ?? protocol("Child exited before RPC completed."));
       });
     });
   }
@@ -124,17 +139,34 @@ export class ChildRpcClient {
         start = lf + 1;
         const frame: unknown = JSON.parse(decoder.decode(buffer.subarray(0, used)));
         used = 0;
-        if (!metadataObject(frame) || typeof frame.type !== "string" || frame.type === "larva_rpc_frame_error") throw protocol("Invalid frame.");
-        if (frame.type === "response") {
+        if (!isRecord(frame) || typeof frame.type !== "string") throw protocol("Invalid frame.");
+        if (frame.type === "larva_rpc_frame_error") {
+          throw protocol(isRecord(frame.error) && typeof frame.error.message === "string" ? sanitizeRpcError(frame.error.message) : "Invalid frame.");
+        }
+        if (frame.type === "larva_assistant_text_chunk") {
           const request = typeof frame.id === "string" && this.#requests.get(frame.id);
           if (!request) continue;
+          if (!request.chunks || typeof frame.text !== "string") throw protocol("Invalid assistant text chunk.");
+          request.chunks.push(frame.text);
+          continue;
+        }
+        if (frame.type === "response") {
+          if (typeof frame.id !== "string") continue;
+          const request = this.#requests.get(frame.id);
+          if (!request) continue;
           if (frame.command !== request.type || typeof frame.success !== "boolean") throw protocol("Invalid response.");
-          if (frame.success && frame.data != null && !metadataObject(frame.data)) throw protocol("Invalid response data.");
-          this.#requests.delete(frame.id as string);
+          if (frame.success && frame.data != null && !isRecord(frame.data)) throw protocol("Invalid response data.");
+          this.#requests.delete(frame.id);
           if (!frame.success) {
             const detail = typeof frame.error === "string" ? sanitizeRpcError(frame.error) : "";
             request.reject(protocol(detail ? `Child rejected ${request.type}: ${detail}` : `Child rejected ${request.type}.`));
-          } else request.resolve((frame.data ?? {}) as Frame);
+          } else {
+            const data = isRecord(frame.data) ? frame.data : {};
+            if (request.type === "prompt" && data.disposition !== "handled") this.#promptSent = true;
+            if (request.chunks && data.chunked === true && request.chunks.length) request.resolve({ text: request.chunks.join("") });
+            else if (request.chunks && (data.chunked === true || request.chunks.length)) request.reject(protocol("Incomplete assistant text response."));
+            else request.resolve(data);
+          }
           continue;
         }
         if (!this.#promptSent || this.#error) continue; // Session-switch events cannot settle a new prompt.
@@ -145,12 +177,12 @@ export class ChildRpcClient {
           else if (stopReason === "error") this.#terminal.reject(protocol("Child assistant turn failed."));
           else this.#terminal.resolve();
         } else if (frame.type === "agent_start") stopReason = undefined;
-        else if (frame.type === "message_end" && metadataObject(frame.message) && frame.message.role === "assistant") stopReason = frame.message.stopReason;
+        else if (frame.type === "message_end" && isRecord(frame.message) && frame.message.role === "assistant") stopReason = frame.message.stopReason;
         else if (frame.type === "agent_end") {
-          if (Array.isArray(frame.messages)) stopReason = frame.messages.findLast(m => metadataObject(m) && m.role === "assistant")?.stopReason ?? stopReason;
+          if (Array.isArray(frame.messages)) stopReason = frame.messages.findLast(m => isRecord(m) && m.role === "assistant")?.stopReason ?? stopReason;
           progress();
-        } else if (["tool_execution_start", "tool_execution_update", "tool_execution_end"].includes(frame.type)) progress();
-        else if (frame.type === "message_update" && metadataObject(frame.assistantMessageEvent)) {
+        } else if (["tool_execution_start", "tool_execution_update", "tool_execution_end", "larva_descendant_progress"].includes(frame.type)) progress();
+        else if (frame.type === "message_update" && isRecord(frame.assistantMessageEvent)) {
           const e = frame.assistantMessageEvent;
           if (e.type === "thinking_start" || e.type === "thinking_end" ||
               (["text_delta", "thinking_delta", "toolcall_delta"].includes(String(e.type)) && typeof e.delta === "string" && e.delta.trim())) progress();
@@ -160,14 +192,15 @@ export class ChildRpcClient {
     if (this.#ready) this.#fail(protocol("Child RPC stream closed."));
   }
 
-  async #command(type: string, fields: Frame = {}): Promise<Frame> {
+  async #command(type: string, fields: Frame = {}, timeoutMs = 30_000): Promise<Frame> {
     if (this.#error) throw this.#error;
+    if (timeoutMs <= 0) throw protocol(`Child ${type} timed out.`);
     const id = String(++this.#sequence);
     const response = Promise.withResolvers<Frame>();
     const line = JSON.stringify({ type, id, ...fields });
     if (Buffer.byteLength(line) > MAX_RECORD) throw protocol("RPC command exceeds the record limit.");
-    this.#requests.set(id, { type, ...response });
-    const timer = setTimeout(() => response.reject(protocol(`Child ${type} timed out.`)), 30_000);
+    this.#requests.set(id, { type, ...response, ...(type === "get_last_assistant_text" && { chunks: [] }) });
+    const timer = setTimeout(() => response.reject(protocol(`Child ${type} timed out.`)), timeoutMs);
     try {
       this.#child.stdin.write(`${line}\n`);
       return await response.promise;
@@ -175,29 +208,30 @@ export class ChildRpcClient {
   }
 
   async resume(taskId: string) {
-    const reply = await this.#command("switch_session", { sessionPath: taskId });
+    const reply = await this.#command("switch_session", { sessionPath: taskId }, this.#readinessDeadline - performance.now());
     if (reply.cancelled !== false) throw protocol("Child did not confirm session switch.");
   }
 
   async verify(route: ResolvedModelRoute, thinking: ThinkingLevel, taskId: string, persona: string) {
-    const s = await this.#command("get_state");
+    const s = await this.#command("get_state", {}, this.#readinessDeadline - performance.now());
     const cap = s.larvaChildRpcFrame;
-    if (!metadataObject(cap) || cap.capability !== "larva-child-rpc-frame-preload-v1" || cap.framing !== "lf-only"
+    if (!isRecord(cap) || cap.capability !== "larva-child-rpc-frame-preload-v1" || cap.framing !== "lf-only"
         || cap.max_record_bytes !== MAX_RECORD || cap.terminal !== "agent_settled") throw protocol("Missing child preload capability.");
     if (s.sessionFile !== taskId || s.persona_id !== persona) throw protocol("Child session or persona mismatch.");
-    if (!metadataObject(s.model) || s.model.provider !== route.provider || s.model.id !== route.model_id || s.thinkingLevel !== thinking) {
+    if (!isRecord(s.model) || s.model.provider !== route.provider || s.model.id !== route.model_id
+      || s.thinkingLevel !== (s.model.reasoning === false ? "off" : thinking)) {
       throw new LarvaError("LARVA_MODEL_UNAVAILABLE", "Child did not verify the required model and thinking level.");
     }
     this.#ready = true;
+    return s.model.reasoning === false ? "off" : thinking;
   }
 
   async setRoute(route: ResolvedModelRoute, thinking: ThinkingLevel) {
-    await this.#command("set_model", { provider: route.provider, modelId: route.model_id });
-    await this.#command("set_thinking_level", { level: thinking });
+    await this.#command("set_model", { provider: route.provider, modelId: route.model_id }, this.#readinessDeadline - performance.now());
+    await this.#command("set_thinking_level", { level: thinking }, this.#readinessDeadline - performance.now());
   }
 
   async prompt(message: string) {
-    this.#promptSent = true;
     if ((await this.#command("prompt", { message })).disposition === "handled") throw protocol("Child handled prompt without starting a run.");
   }
 
@@ -209,7 +243,7 @@ export class ChildRpcClient {
   }
 
   stop(abort: boolean): Promise<boolean> {
-    if (abort) this.#fail(new LarvaError("LARVA_CHILD_CANCELLED", "Child is stopping."));
+    this.#fail(abort ? new LarvaError("LARVA_CHILD_CANCELLED", "Child is stopping.") : protocol("Child RPC is closing."));
     return this.#shutdown ??= this.#stop(abort).catch(() => false);
   }
 

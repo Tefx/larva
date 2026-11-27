@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
+import { PersonaStore } from "../../src/store/persona-store.ts";
 import type { RunSnapshot } from "../../src/core/types.ts";
 import { CODEX_PANEL_URI, renderCodexPanelHtml } from "../../src/ui/codex-panel-html.ts";
 import { CODEX_WIDGET_URI, renderCodexWidgetHtml } from "../../src/ui/codex-widget-html.ts";
@@ -37,11 +40,13 @@ class Element {
   focus() { this.#focusNode(this); }
   querySelectorAll(selector: string): Element[] {
     return this.children.flatMap(node => {
-      const matches = selector === "[data-scroll-key]" ? !!node.dataset.scrollKey : selector === node.tag;
+      const matches = selector === "[data-scroll-key]" ? !!node.dataset.scrollKey
+        : selector === "[data-started-at]" ? !!node.dataset.startedAt : selector === node.tag;
       return [...(matches ? [node] : []), ...node.querySelectorAll(selector)];
     });
   }
   querySelector(selector: string) { return this.querySelectorAll(selector)[0]; }
+  contains(node: Element): boolean { return node === this || this.children.some(child => child.contains(node)); }
 }
 
 type Rpc = { id?: number; method?: string; params?: Record<string, unknown>; result?: unknown };
@@ -55,13 +60,16 @@ function mount(html: string, clipboard: "native" | "legacy" | "unavailable" = "u
   const timers = new Map<number, { callback: () => void; delay: number }>();
   let sequence = 0;
   let focus: Element | undefined;
-  let resizeDisconnected = false;
+  let resizeDisconnected = false, measuredHeight = 300;
+  let selected: Element | undefined, now = Date.parse("2026-01-01T00:00:05Z");
+  let resize: () => void, clock: (() => void) | undefined;
   const create = (tag: string) => new Element(tag, node => { focus = node; });
-  const root = create("div");
+  const root = Object.assign(create("div"), { getBoundingClientRect: () => ({ height: measuredHeight }) });
   const parent = { postMessage: (message: Rpc) => sent.push(JSON.parse(JSON.stringify(message))) };
   const doc = {
     getElementById: () => root, createElement: create, documentElement: create("html"),
     get activeElement() { return focus; }, visibilityState: "visible",
+    getSelection: () => ({ isCollapsed: !selected, anchorNode: selected }),
     addEventListener: (name: string, fn: () => void) => docEvents.set(name, fn),
     ...(clipboard === "legacy" && { execCommand(command: string) {
       assert.equal(command, "copy");
@@ -75,7 +83,10 @@ function mount(html: string, clipboard: "native" | "legacy" | "unavailable" = "u
   runInNewContext(script, {
     document: doc, window: { parent, addEventListener: (name: string, fn: (event: unknown) => void) => winEvents.set(name, fn) },
     ...(clipboard === "native" && { navigator: { clipboard: { async writeText(value: string) { copied.push(value); } } } }),
-    ResizeObserver: class { observe() {} disconnect() { resizeDisconnected = true; } },
+    ResizeObserver: class { constructor(callback: () => void) { resize = callback; } observe() {} disconnect() { resizeDisconnected = true; } },
+    Date: class extends Date { static now() { return now; } },
+    setInterval(callback: () => void, delay: number) { assert.equal(delay, 1000); clock = callback; return 1; },
+    clearInterval() { clock = undefined; },
     setTimeout(callback: () => void, delay: number) { timers.set(++sequence, { callback, delay }); return sequence; },
     clearTimeout(id: number) { timers.delete(id); },
   }, { timeout: 1000 });
@@ -85,22 +96,41 @@ function mount(html: string, clipboard: "native" | "legacy" | "unavailable" = "u
   function button(name: string) { return root.querySelectorAll("button").find(node => node.textContent === name); }
   const calls = (name: string) => sent.filter(message => message.method === "tools/call" && message.params?.name === name);
   function lastCall(name: string) { const request = calls(name).at(-1); assert.ok(request); return request; }
-  async function reply(request: Rpc, result: unknown) { send({ id: request.id, result }); await turn(); }
+  const answered = new Set<Rpc>();
+  async function reply(request: Rpc, result: unknown) {
+    answered.add(request);
+    send({ id: request.id, result });
+    await turn();
+  }
+  const input = (args: object) => send({ method: "ui/notifications/tool-input", params: { arguments: args } });
   return {
-    root, sent, calls, lastCall, reply, button, copied,
+    root, sent, calls, lastCall, reply, button, copied, input,
+    async grouped(result: unknown, active: unknown = snapshot([])) {
+      const requests = calls(panelTool).filter(request => !answered.has(request));
+      const recent = requests.findLast(request => (request.params?.arguments as { scope?: string }).scope === 'recent');
+      assert.ok(recent);
+      const live = requests.at(requests.indexOf(recent) - 1);
+      assert.ok(live && (live.params?.arguments as { scope?: string }).scope === 'active');
+      await reply(live, active);
+      await reply(recent, result);
+    },
+    get focus() { return focus; },
+    select(node?: Element) { selected = node; docEvents.get("selectionchange")?.(); },
+    resize(height: number) { measuredHeight = height; resize(); },
+    tick() { now += 1000; clock?.(); },
     disconnect() { winEvents.get("messageerror")?.({ source: parent }); },
     get text() { return root.textContent; }, get timerCount() { return timers.size; },
     get mode() { return doc.documentElement.dataset.mode; }, get resizeDisconnected() { return resizeDisconnected; },
-    async init(modes: string[]) {
+    async init(modes: string[], autoInput = true) {
       const init = sent[0];
       assert.equal(init.method, "ui/initialize");
       assert.deepEqual(init.params?.appCapabilities, { availableDisplayModes: modes });
       await reply(init, { hostContext: { displayMode: modes[0] } });
       assert.ok(sent.some(message => message.method === "ui/notifications/initialized"));
+      if (autoInput && modes.length === 1) input({});
     },
     notify(method: string, params: Record<string, unknown>) { send({ method, params }); },
     foreign(message: Rpc) { send(message, {}); },
-    input(args: object) { send({ method: "ui/notifications/tool-input", params: { arguments: args } }); },
     result(data: object, isError = false) {
       send({ method: "ui/notifications/tool-result", params: { structuredContent: data, isError } });
     },
@@ -119,7 +149,7 @@ const panelTool = "larva_subagent_panel", cancelTool = "larva_subagent_cancel";
 const id = "/example/sessions/a.jsonl", second = "/example/sessions/b.jsonl";
 function run(overrides: Partial<RunSnapshot> = {}): RunSnapshot {
   return { task_id: id, run_epoch: "old", persona_id: "reviewer", cwd: "/repo", status: "running",
-    phase: "waiting_for_child", output_state: "pending", started_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:01Z", ...overrides };
+    phase: "waiting_for_child", output_state: "pending", tool_call_count: 0, started_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:01Z", ...overrides };
 }
 function snapshot(runs: RunSnapshot[], extras = {}) {
   return { structuredContent: { runs, startup_failures: [], ...extras } };
@@ -164,7 +194,7 @@ test("a resumed spawn card ignores a hidden reply and expires rather than follow
   assert.deepEqual(app.lastCall(panelTool).params?.arguments, { run_epochs: [{ task_id: id, run_epoch: "old" }] });
   await app.reply(app.lastCall(panelTool), snapshot([run({ phase: "stall_suspected" })]));
   assert.match(app.text, /Stall suspected/);
-  app.fire(2500);
+  app.fire(1000);
   const retired = app.lastCall(panelTool);
   const beforeHide = app.text;
   app.visibility("hidden");
@@ -206,12 +236,12 @@ test("wait cards pin every initiating pair and recover retained terminal output 
   app.click("Refresh");
   await app.reply(app.lastCall(panelTool), snapshot([done]));
   assert.match(app.text, /original output/);
-  app.click(`${second} · Snapshot expired`);
+  app.click("b.jsonl · second · Snapshot expired");
   assert.match(app.text, /Run snapshot expired/);
   app.visibility("hidden");
   app.visibility("visible");
   await app.reply(app.lastCall(panelTool), snapshot([run({ run_epoch: "new" })]));
-  app.click("reviewer · Completed");
+  app.click("reviewer · a.jsonl · old · Completed");
   assert.match(app.text, /original output/);
 });
 
@@ -267,7 +297,7 @@ test("a rejected exact handle stays scoped to its error instead of following a c
 
   const panel = mount(renderCodexPanelHtml());
   await panel.init(["fullscreen"]);
-  await panel.reply(panel.lastCall(panelTool), snapshot([run()]));
+  await panel.grouped(snapshot([run()]));
   panel.input({ task_id: alias });
   assert.deepEqual(panel.lastCall(panelTool).params?.arguments, { task_id: alias });
   await panel.reply(panel.lastCall(panelTool), { isError: true, structuredContent: { error } });
@@ -300,8 +330,8 @@ test("standalone workbench switches scopes, shows disk metadata and does not can
   await app.init(["fullscreen"]);
   assert.equal(app.mode, "fullscreen");
   assert.equal(app.button("Inline"), undefined);
-  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { scope: "recent" });
-  await app.reply(app.lastCall(panelTool), snapshot([run({ phase: "stall_suspected" })]));
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { scope: "recent", limit: 25 });
+  await app.grouped(snapshot([run({ phase: "stall_suspected" })]));
   assert.match(app.text, /Stall suspected/);
   app.click("Active");
   const previousScope = app.lastCall(panelTool);
@@ -323,6 +353,107 @@ test("standalone workbench switches scopes, shows disk metadata and does not can
   assert.equal(app.root.querySelector("article").textContent.includes("Missing workspace"), false);
 });
 
+test("fullscreen waits for input, merges both groups, and preserves selected text and focus during polling", async () => {
+  const app = mount(renderCodexPanelHtml());
+  await app.init(["fullscreen"], false);
+  assert.match(app.text, /Waiting for panel input/);
+  assert.equal(app.calls(panelTool).length, 0);
+  app.input({});
+  const completed = Array.from({ length: 25 }, (_, index) => run({ task_id: `/example/sessions/done-${index}.jsonl`,
+    status: "success", phase: "success", output_state: "inline", result_text: "done" }));
+  const live = run({ task_preview: "Original preview", tool_call_count: 42 });
+  await app.grouped(snapshot(completed), snapshot([live]));
+  assert.match(app.text, /Active.*reviewer · a\.jsonl · old · Working.*Done.*done-24/);
+  assert.match(app.text, /5s elapsed.*42 tool calls/);
+  app.tick();
+  assert.match(app.text, /6s elapsed/);
+  app.click("Task & Session");
+  assert.equal(app.button("Result")?.attributes.get("aria-pressed"), "false");
+  assert.equal(app.root.querySelectorAll("h3").some(node => node.textContent === "Result"), false);
+  app.button("Task & Session")?.focus();
+  app.select(app.root.querySelector("pre"));
+  app.fire(1000);
+  const before = app.calls(panelTool).length;
+  app.click("Refresh");
+  assert.equal(app.calls(panelTool).length, before);
+  await app.grouped({ isError: true, structuredContent: { error: { message: "Catalog unavailable" } } },
+    snapshot([{ ...live, task_preview: "Updated preview" }]));
+  assert.match(app.text, /Original preview/);
+  app.select();
+  assert.match(app.text, /Updated preview/);
+  assert.match(app.text, /Done: Catalog unavailable/);
+  assert.ok(app.button("Cancel") && !app.button("Cancel")?.disabled);
+  assert.equal(app.focus, app.button("Task & Session"));
+  app.teardown();
+});
+
+test("widget uses host modes and reports shrinking intrinsic height with collapsed wait telemetry", async () => {
+  const app = mount(renderCodexWidgetHtml());
+  await app.init(["inline", "fullscreen"]);
+  app.notify("ui/notifications/host-context-changed", { displayMode: "fullscreen", availableDisplayModes: ["inline", "pip"] });
+  assert.equal(app.mode, "inline");
+  assert.equal(app.button("Fullscreen"), undefined);
+  app.result({ ready: true, timed_out: false, runs: [run()] });
+  assert.equal(app.calls(panelTool).length, 0);
+  app.input({ task_ids: [id] });
+  const done = run({ status: "success", phase: "success", output_state: "delivery_failed", tool_call_count: 30,
+    output_diagnostic: { code: "LARVA_STORE_WRITE_FAILED", message: "Disk quota exceeded" } });
+  await app.reply(app.lastCall(panelTool), snapshot([done]));
+  assert.match(app.text, /Wait ready.*30 tool calls.*Delivery failed.*Disk quota exceeded/);
+  app.click("Details");
+  app.resize(504.1);
+  app.click("Hide details");
+  app.resize(120);
+  const heights = app.sent.filter(item => item.method === "ui/notifications/size-changed").map(item => item.params?.height);
+  assert.deepEqual(heights, [300, 505, 120]);
+});
+
+test("fullscreen inspector pages epoch-bound text and disambiguates recorded segments", async () => {
+  const app = mount(renderCodexPanelHtml(), "legacy");
+  await app.init(["fullscreen"]);
+  const finished = { ...telemetry, status: "success", phase: "success", output_state: "artifactized", cleanup_unconfirmed: true,
+    result_preview: "Bounded output" } satisfies RunSnapshot;
+  await app.grouped(snapshot([finished]));
+  app.click("Task & Session");
+  app.click("Load full prompt");
+  const query = { task_id: id, run_epoch: "old", source: "prompt" };
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { slice: { ...query, offset: 0 } });
+  const page = (text: string, offset: number, continuation_offset?: number) =>
+    ({ structuredContent: { slice: { state: "ok", text, offset, length: Array.from(text).length, continuation_offset } } });
+  await app.reply(app.lastCall(panelTool), page("原\n\n", 0, 3));
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { slice: { ...query, offset: 3 } });
+  await app.reply(app.lastCall(panelTool), page("文", 3));
+  app.click("Copy full prompt");
+  assert.deepEqual(app.copied, ["原\n\n文"]);
+  app.click("Result");
+  assert.match(app.text, /Bounded output/);
+  app.click("Read full output");
+  await app.reply(app.lastCall(panelTool), page("page one", 0, 8));
+  app.click("Next output page");
+  assert.deepEqual(app.lastCall(panelTool).params?.arguments, { slice: { ...query, source: "output", offset: 8 } });
+  await app.reply(app.lastCall(panelTool), page("page two", 8));
+  assert.match(app.text, /page two/);
+  assert.doesNotMatch(app.text, /page one/);
+
+  app.click("Timeline");
+  app.click("Recorded args");
+  await app.reply(app.lastCall(activityTool), { structuredContent: { status: "ambiguous", candidates: [{ index: 1, line_number: 12 }] } });
+  app.click("Recording 2 · line 12");
+  const exact = { task_id: id, tool_call_id: "read-42", segment_part: "args", disambiguation_index: 1 };
+  assert.deepEqual(app.lastCall(activityTool).params?.arguments, exact);
+  const segment = (text: string, offset: number, continuation_offset?: number) => ({ structuredContent: { status: "success",
+    call: { call_id: "read-42", segment: { part: "args", text, source_version: "fixed", offset, continuation_offset } } } });
+  await app.reply(app.lastCall(activityTool), segment("first", 0, 5));
+  app.click("Next recorded page");
+  assert.deepEqual(app.lastCall(activityTool).params?.arguments, { ...exact, source_version: "fixed", offset: 5 });
+  await app.reply(app.lastCall(activityTool), segment("second", 5));
+  assert.match(app.text, /Recorded args.*second/);
+  app.click("Retry cleanup");
+  assert.deepEqual((app.lastCall(cancelTool).params?.arguments as { expected_run_epochs?: unknown }).expected_run_epochs,
+    [{ task_id: id, run_epoch: "old" }]);
+  app.teardown();
+});
+
 test("all output states are distinct and progress clears a visible stall", async () => {
   const app = mount(renderCodexWidgetHtml());
   await app.init(["inline", "fullscreen"]);
@@ -331,7 +462,7 @@ test("all output states are distinct and progress clears a visible stall", async
   assert.match(app.text, /Stall suspected/);
   app.click("Details");
   assert.match(app.text, /Output pending/);
-  app.fire(2500);
+  app.fire(1000);
   await app.reply(app.lastCall(panelTool), snapshot([run()]));
   assert.doesNotMatch(app.text, /Stall suspected/);
   const path = "/example/artifacts/full.txt";
@@ -372,19 +503,19 @@ test("widget keeps only compact telemetry visible until Details is opened, per r
   assert.match(app.text, /reviewer.*Working.*fixture\/model · thinking: high.*read \(running\).*Thinking…/);
   assert.ok(app.button("Cancel"));
   assert.equal(app.button("Details")?.attributes.get("aria-expanded"), "false");
-  assert.doesNotMatch(app.text, /Widget task preview|Working <em>|example\.ts|Output pending/);
+  assert.doesNotMatch(app.text, /Widget task preview|example\.ts|Output pending/);
   assert.equal(app.button("Copy task_id"), undefined);
   app.click("Details");
   assert.equal(app.button("Hide details")?.attributes.get("aria-expanded"), "true");
   assert.match(app.text, /Widget task preview.*Working <em>safely<\/em>.*example\.ts.*Output pending/);
   assert.equal(app.root.querySelectorAll("em").length, 0);
   app.click("Copy task_id");
-  app.click("Copy prompt");
+  app.click("Copy prompt preview");
   assert.deepEqual(app.copied, [id, telemetry.task_preview]);
   assert.equal(app.root.querySelectorAll("textarea").length, 0);
 
   const replaced = app.button("Recorded args");
-  app.fire(2500);
+  app.fire(1000);
   const done = run({ ...telemetry, status: "success", phase: "success", active_tool: null, live_thinking: false,
     tool_snapshots: [{ ...telemetry.tool_snapshots![0], status: "done" }], output_state: "inline", result_text: "Completed output" });
   await app.reply(app.lastCall(panelTool), snapshot([done]));
@@ -396,7 +527,8 @@ test("widget keeps only compact telemetry visible until Details is opened, per r
   app.click("Copy output");
   assert.deepEqual(app.copied, [id, telemetry.task_preview, done.result_text]);
   app.click("Hide details");
-  assert.doesNotMatch(app.text, /Completed output/);
+  assert.match(app.text, /Completed output/);
+  assert.equal(app.root.querySelector("pre"), undefined);
   app.click("Details");
   app.click("Recorded args");
   assert.deepEqual(app.lastCall(activityTool).params?.arguments, { task_id: id, tool_call_id: "read-42", segment_part: "args" });
@@ -405,7 +537,7 @@ test("widget keeps only compact telemetry visible until Details is opened, per r
   app.click("Recorded result");
   const late = app.lastCall(activityTool);
   assert.deepEqual(late.params?.arguments, { task_id: id, tool_call_id: "read-42", segment_part: "result" });
-  app.fire(2500);
+  app.fire(1000);
   await app.reply(app.lastCall(panelTool), snapshot([{ ...telemetry, run_epoch: "new" }]));
   assert.equal(app.button("Hide details"), undefined);
   app.click("Details");
@@ -418,15 +550,15 @@ test("panel shows recorded tool results on demand and retires inspection on tear
   for (const close of ["teardown", "disconnect"] as const) {
     const app = mount(renderCodexPanelHtml(), close === "teardown" ? "native" : "unavailable");
     await app.init(["fullscreen"]);
-    await app.reply(app.lastCall(panelTool), snapshot([telemetry]));
-    app.click("Copy prompt");
+    await app.grouped(snapshot([telemetry]));
+    app.click("Copy prompt preview");
     await turn();
     if (close === "teardown") assert.deepEqual(app.copied, [telemetry.task_preview]);
     else assert.match(app.text, /Copy unavailable/);
     app.click("Recorded result");
     const result = app.lastCall(activityTool);
-    app.fire(2500);
-    await app.reply(app.lastCall(panelTool), snapshot([telemetry]));
+    app.fire(1000);
+    await app.grouped(snapshot([telemetry]));
     assert.equal(app.calls(activityTool).length, 1, "polling must not request activity");
     assert.equal(app.button("Recorded result")?.disabled, true);
     await app.reply(result, recording("result", "Exact recorded result"));
@@ -452,7 +584,7 @@ test("cancel sends an epoch guard and remains disabled across polling and displa
   const cancel = app.lastCall(cancelTool);
   assert.deepEqual(cancel.params?.arguments, { task_ids: [id], reason: "Cancelled from Larva Subagents", expected_run_epochs: [{ task_id: id, run_epoch: "old" }] });
   assert.equal(app.button("Cancel")?.disabled, true);
-  app.fire(2500);
+  app.fire(1000);
   await app.reply(app.lastCall(panelTool), snapshot([run()]));
   app.click("Fullscreen");
   const display = app.sent.find(message => message.method === "ui/request-display-mode");
@@ -475,8 +607,8 @@ test("cancel sends an epoch guard and remains disabled across polling and displa
 test("teardown silences all polling and a disconnected bridge leaves the view read-only", async () => {
   const app = mount(renderCodexPanelHtml());
   await app.init(["fullscreen"]);
-  await app.reply(app.lastCall(panelTool), snapshot([run()]));
-  app.fire(2500);
+  await app.grouped(snapshot([run()]));
+  app.fire(1000);
   const pending = app.lastCall(panelTool), shown = app.text;
   app.teardown();
   assert.equal(app.resizeDisconnected, true);
@@ -493,9 +625,9 @@ test("teardown silences all polling and a disconnected bridge leaves the view re
   await lost.init(["inline", "fullscreen"]);
   accept(lost);
   await lost.reply(lost.lastCall(panelTool), snapshot([run()]));
-  lost.fire(2500);
+  lost.fire(1000);
   const unanswered = lost.lastCall(panelTool);
-  lost.fire(15000);
+  lost.disconnect();
   await lost.reply(unanswered, snapshot([run({ persona_id: "late after connection loss" })]));
   assert.match(lost.text, /Connection lost. This view is read-only/);
   assert.match(lost.text, /reviewer/);
@@ -506,11 +638,17 @@ test("teardown silences all polling and a disconnected bridge leaves the view re
   assert.equal(lost.calls(cancelTool).length, 0);
 });
 
-test("persona resource links rank exact, prefix, substring and description matches without leaking prompts", () => {
-  const persona = (id: string, description = "Component owner") => ({ id, description, model: "provider/model", prompt: "private prompt" });
-  const personas = [persona("designer", "Review interfaces"), persona("ui-review"), persona("reviewer"), persona("review"), persona("tester")];
-  const { items } = buildSearchMentionsOutput(personas, { query: " @LaRVa:REVIEW " });
-  assert.deepEqual(items.map(item => item.name), ["review", "reviewer", "ui-review", "designer"]);
+test("persona resource links share the store's ranking and do not leak prompts", async t => {
+  const home = mkdtempSync(join(tmpdir(), "larva-mentions-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  mkdirSync(join(home, "personas"));
+  const persona = (id: string, description = "Component owner", model = "provider/model") =>
+    writeFileSync(join(home, "personas", id + ".json"), JSON.stringify({ id, description, model, prompt: "private prompt" }));
+  persona("designer", "Review interfaces"); persona("ui-review"); persona("reviewer"); persona("review");
+  persona("tester", "Component owner", "provider/review");
+  const personas = new PersonaStore(home);
+  const { items } = await buildSearchMentionsOutput(personas, { query: " @LaRVa:REVIEW " });
+  assert.deepEqual(items.map(item => item.name), ["review", "reviewer", "ui-review", "designer", "tester"]);
   assert.deepEqual(items[0], { type: "resource_link", uri: "larva://personas/review", name: "review", title: "@larva:review",
     searchTerms: ["review", "@larva:review", "Component owner", "provider/model"], mimeType: "text/markdown", description: "Component owner" });
   assert.doesNotMatch(JSON.stringify(items), /prompt/i);
@@ -519,9 +657,9 @@ test("persona resource links rank exact, prefix, substring and description match
   for (const uri of ["larva://personas", "larva://personas/a?b", "larva://personas/a#b", "larva://personas/%2f", "larva://personas/a\n"]) {
     assert.equal(parsePersonaResourceUri(uri), undefined);
   }
-  const catalog = Array.from({ length: 205 }, (_, index) => persona(`engineer-${index}`));
-  assert.equal(buildSearchMentionsOutput(catalog, { query: "@larva" }).items.length, 30);
-  assert.equal(buildSearchMentionsOutput(catalog, { query: "", preload: true }).items.length, 200);
+  for (let index = 0; index < 205; index++) persona(`engineer-${index}`);
+  assert.equal((await buildSearchMentionsOutput(personas, { query: "@Larva Subagents" })).items.length, 30);
+  assert.equal((await buildSearchMentionsOutput(personas, { query: "", preload: true })).items.length, 200);
 });
 
 test("Codex manifests target the 0.9 bundle, forward approved environments, and ship the canonical skill", () => {
@@ -551,7 +689,7 @@ test("Codex manifests target the 0.9 bundle, forward approved environments, and 
     "ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY", "CEREBRAS_API_KEY", "XAI_API_KEY",
     "OPENROUTER_API_KEY", "MISTRAL_API_KEY", "AWS_PROFILE", "AWS_REGION", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
     "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION", "ANTHROPIC_AUTH_TOKEN", "AWS_BEARER_TOKEN_BEDROCK",
-    "AZURE_OPENAI_API_KEY", "COPILOT_GITHUB_TOKEN", "DEEPSEEK_API_KEY", "GOOGLE_CLOUD_API_KEY", "HF_TOKEN", "KIMI_API_KEY", "ZAI_API_KEY"]) {
+    "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_BASE_URL", "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_VERSION", "AZURE_OPENAI_DEPLOYMENT_NAME", "COPILOT_GITHUB_TOKEN", "DEEPSEEK_API_KEY", "GOOGLE_CLOUD_API_KEY", "HF_TOKEN", "KIMI_API_KEY", "ZAI_API_KEY"]) {
     assert.ok(env.has(name), name);
   }
   assert.equal(env.size, mcp.env_vars.length);

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { appendFile, mkdir, mkdtemp, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, realpath, rename, rm, symlink, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { inspectSubagentActivity } from "../../src/activity/inspector.ts";
+import { fitsActivityWire, inspectSubagentActivity, mcpActivityResult, piActivityResult } from "../../src/activity/inspector.ts";
+import { ACTIVITY_WIRE_MAX_BYTES } from "../../src/core/activity-wire.ts";
 import type { ActivityQuery, ActivityResponse, ActivitySegment } from "../../src/core/types.ts";
 
 const day = "2026-08-21";
@@ -11,7 +12,8 @@ const stamp = `${day}T10:00:00Z`;
 const later = `${day}T11:00:00Z`;
 const latest = `${day}T12:00:00Z`;
 const line = (value: unknown) => JSON.stringify(value) + "\n";
-const header = line({ type: "session", id: "child", version: 3 });
+const headerRow = { type: "session", id: "child", version: 3, cwd: tmpdir() };
+const header = line(headerRow);
 const call = (id: string, ids: string[], args: unknown = {}, timestamp = stamp, name = "tool") =>
   line({ type: "message", id, parentId: null, timestamp, message: { role: "assistant",
     content: ids.map(id => ({ type: "toolCall", id, name, arguments: args })) } });
@@ -30,13 +32,17 @@ async function fixture(run: (home: string, path: string) => Promise<void>) {
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 
+function wireSizes(response: ActivityResponse) {
+  return [piActivityResult(response), mcpActivityResult(response)].map(envelope => Buffer.byteLength(JSON.stringify(envelope), "utf8"));
+}
+
 async function inspect(home: string, path: string, query: Omit<ActivityQuery, "task_id"> = {}) {
   const response = await inspectSubagentActivity(home, { task_id: path, ...query });
-  assert.ok(Buffer.byteLength(JSON.stringify(response), "utf8") <= 8192);
+  assert.ok(wireSizes(response).every(size => size <= ACTIVITY_WIRE_MAX_BYTES));
   return response;
 }
 
-function listing(value: ActivityResponse) {
+function listing(value: Awaited<ReturnType<typeof inspectSubagentActivity>>) {
   assert.equal(value.status, "success", JSON.stringify(value));
   assert.ok("items" in value);
   return value;
@@ -94,27 +100,57 @@ test("byte-limited cursor drains the frozen window exactly once, then includes n
   assert.deepEqual(seen, ids);
   assert.deepEqual(listing(await inspect(home, path, { cursor: page.cursor })).items.map(x => x.call_id), ["arrival"]);
   await writeFile(path, header + call("metadata", ["漢".repeat(4000)]));
-  failed(await inspect(home, path), "LARVA_SESSION_INVALID");
+  const unpageable = await inspect(home, path);
+  failed(unpageable, "LARVA_SESSION_INVALID");
+  assert.ok(!("cursor" in unpageable));
 }));
+
+test("wire budget includes structured data and JSON-string escaping at the byte boundary", () => {
+  const response: ActivityResponse = { status: "success", cursor: "cursor", has_more: false,
+    items: [{ call_id: "tool-id", action: '😀漢\\"\n\ud800'.repeat(20) }] };
+  if (wireSizes(response)[0] % 2) response.items[0].action += "\n"; // Five escaped wire bytes in Pi.
+  const [initial] = wireSizes(response);
+  response.items[0].action += "a".repeat((ACTIVITY_WIRE_MAX_BYTES - initial) / 2);
+  assert.equal(wireSizes(response)[0], ACTIVITY_WIRE_MAX_BYTES);
+  assert.equal(fitsActivityWire(response), true);
+  assert.deepEqual(JSON.parse(piActivityResult(response).content[0].text), response);
+  assert.deepEqual(mcpActivityResult(response).structuredContent, response);
+  response.items[0].action += "a";
+  const [pi, mcp] = wireSizes(response);
+  assert.ok(pi > ACTIVITY_WIRE_MAX_BYTES && mcp <= ACTIVITY_WIRE_MAX_BYTES);
+  assert.equal(fitsActivityWire(response), false);
+});
 
 test("incremental pages include old-call results and filter inclusively on either endpoint", () => fixture(async (home, path) => {
   await writeFile(path, header + call("old", ["late"]) + call("inside", ["matches-call"], {}, later)
     + call("excluded", ["other"], {}, later, "different"));
   const filter = { tool_name: "tool", since_timestamp: later, until_timestamp: later };
   let page = listing(await inspect(home, path, { ...filter, limit: 1 }));
-  assert.deepEqual(page.items.map(x => x.call_id), ["matches-call"]);
+  assert.deepEqual(page.items.map(x => [x.call_id, x.matched_by, x.update_type]), [["matches-call", "call_timestamp", undefined]]);
   await appendFile(path, call("new", ["new"], {}, later) + result("late", "at-boundary", "old")
     + result("matches-call", "match retained", "inside", latest));
   const cursor = page.cursor;
   failed(await inspect(home, path, { cursor }), "LARVA_BAD_INPUT");
-  const updates: [string, string | undefined][] = [];
+  const updates: unknown[] = [];
   do {
     assert.ok(updates.length < 3);
     page = listing(await inspect(home, path, { ...filter, cursor: page.cursor, limit: 1 }));
-    updates.push(...page.items.map((item): [string, string | undefined] => [item.call_id, item.result]));
+    updates.push(...page.items.map(item => [item.call_id, item.result, item.update_type, item.matched_by]));
   } while (page.has_more);
-  assert.deepEqual(updates, [["new", undefined], ["late", "at-boundary"], ["matches-call", "match retained"]]);
+  assert.deepEqual(updates, [["new", undefined, undefined, "call_timestamp"],
+    ["late", "at-boundary", "late_result", "result_timestamp"],
+    ["matches-call", "match retained", "late_result", "call_timestamp"]]);
   assert.deepEqual(listing(await inspect(home, path, { ...filter, cursor: page.cursor })).items, []);
+}));
+
+test("timestamp filtering preserves result ambiguity when only one endpoint is in range", () => fixture(async (home, path) => {
+  await writeFile(path, header + call("early", ["match"])
+    + result("match", "outside", "early", stamp) + result("match", "inside", "early", later));
+  const [item] = listing(await inspect(home, path, { since_timestamp: later, until_timestamp: later })).items;
+  assert.equal(item.matched_by, "result_timestamp");
+  assert.equal(item.result_state, "ambiguous");
+  assert.equal(item.result_candidates_count, 2);
+  assert.equal(item.result, undefined);
 }));
 
 test("duplicate call selectors and zero-based result indexes follow recorded ancestry", () => fixture(async (home, path) => {
@@ -140,6 +176,59 @@ test("duplicate call selectors and zero-based result indexes follow recorded anc
   assert.equal(unresolved.result_association, "ambiguous");
   assert.equal(unresolved.unassociated_results_count, 1);
   assert.equal(unresolved.segment, undefined);
+}));
+
+test("oversized records in sessions larger than 128 MiB do not abort a filtered one-item scan", () => fixture(async (home, path) => {
+  await writeFile(path, header + call("first", ["same"], {}, stamp, "other") + call("before-gap", ["old"]));
+  await truncate(path, 129 * 1024 * 1024); // Sparse oversized record, terminated below.
+  await appendFile(path, "\n" + result("old", "unproven across gap", "omitted-parent")
+    + call("target", ["same"], { text: "x".repeat(250) })
+    + line({ type: "custom", id: "intermediate", parentId: "target" })
+    + result("same", "verified", "intermediate") + call("too-late", ["out-of-range"], {}, latest)
+    + call("wrong-tool", ["wrong-tool"], {}, later, "other"));
+  const page = listing(await inspect(home, path, { limit: 1, since_timestamp: later, until_timestamp: later, tool_name: "tool" }));
+  assert.equal(page.inspection_complete, false);
+  assert.equal(page.diagnostics?.[0].kind, "oversized_record");
+  const [item] = page.items;
+  assert.equal(page.items.length, 1);
+  assert.equal(item.call_id, "same");
+  assert.equal(item.disambiguation_index, 1); // Full exact-lookup index, even under a tool filter.
+  assert.equal(item.action.length, 200);
+  assert.equal(item.action_truncated, true);
+  assert.equal(item.matched_by, "result_timestamp");
+  assert.equal(item.result, "verified");
+  assert.equal(item.update_type, undefined);
+  const old = detail(await inspect(home, path, { tool_call_id: "old" }));
+  assert.equal(old.result_association, "ambiguous");
+  assert.equal(old.unassociated_results_count, 1);
+  assert.equal(old.segment, undefined);
+}));
+
+test("a single matching call still requires a unique, earlier parent chain", () => fixture(async (home, path) => {
+  await writeFile(path, header + call("target", ["unique"]) + call("other-branch", ["different"])
+    + result("unique", "wrong branch", "other-branch")
+    + line({ type: "custom", id: "link", parentId: "target" })
+    + result("unique", "proved", "link")
+    + line({ type: "custom", id: "link", parentId: "target" })
+    + result("unique", "duplicate link", "link", latest));
+  const exact = { tool_call_id: "unique" };
+  const callDetail = detail(await inspect(home, path, exact));
+  assert.equal(callDetail.unassociated_results_count, 2);
+  assert.equal(callDetail.result_candidates_count, 3);
+  assert.equal(callDetail.segment, undefined);
+  const verified = detail(await inspect(home, path, { ...exact, result_index: 1 }));
+  assert.equal(JSON.parse(verified.segment?.text ?? "").content, "proved");
+}));
+
+test("activity uses the shared Pi header admission and requires a complete session ID", () => fixture(async (home, path) => {
+  for (const invalid of [{ cwd: "relative" }, { cwd: "/bad\0cwd" }, { cwd: undefined }, { version: 1 }, { id: undefined }]) {
+    await writeFile(path, line({ ...headerRow, ...invalid }) + call("entry", ["id"]));
+    failed(await inspect(home, path), "LARVA_SESSION_INVALID");
+  }
+  await writeFile(path, header.trimEnd());
+  failed(await inspect(home, path), "LARVA_SESSION_INVALID");
+  await writeFile(path, line({ ...headerRow, version: 2 }) + call("entry", ["id"]));
+  assert.equal(listing(await inspect(home, path)).items[0].call_id, "id");
 }));
 
 test("UTF-16 segments bind exact selections and validate the consumed prefix across append and rewrite", () => fixture(async (home, path) => {

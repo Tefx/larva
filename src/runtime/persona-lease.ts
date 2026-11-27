@@ -31,6 +31,7 @@ export type PersonaSwitchContext = {
   }) => void | Promise<void>;
 };
 export type Continuation = { persona_id: string; reason: string };
+type PendingContinuation = Continuation & { fromPersona: string | null };
 export type PersonaSwitchOutcome = PersonaSwitchToolOutput & { terminate?: true };
 
 function badInput(message: string): LarvaError {
@@ -77,64 +78,58 @@ export async function larva_persona_switch(
 
 export async function confirmSwitch(
   ctx: PersonaSwitchContext, request: PersonaSwitchToolInput, timeoutMs: number, signal: AbortSignal,
-): Promise<Exclude<SwitchConfirmationChoice, "deny">> {
+): Promise<SwitchConfirmationChoice | "timeout" | "dismissed" | "cancelled"> {
   const confirm = ctx.confirm;
   if (ctx.mode !== "tui" || !confirm) {
     throw new LarvaError("LARVA_CONFIRMATION_UNAVAILABLE", "Persona switch confirmation requires a TUI dialog.");
   }
   const dialog = new AbortController();
   const deadline = timeoutMs === 0 ? Infinity : performance.now() + timeoutMs;
-  const choice = await new Promise<SwitchConfirmationChoice | null>((resolve, reject) => {
+  return new Promise<SwitchConfirmationChoice | "timeout" | "dismissed" | "cancelled">((resolve, reject) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const finish = (value: SwitchConfirmationChoice | null) => {
+    const finish = (value?: SwitchConfirmationChoice | "timeout" | "dismissed" | "cancelled") => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       signal.removeEventListener("abort", abort);
       dialog.abort();
-      resolve(value);
+      if (value === undefined) reject(new LarvaError("LARVA_CONFIRMATION_UNAVAILABLE", "Could not present persona switch confirmation."));
+      else resolve(value);
     };
-    const abort = () => finish(null);
-    const unavailable = () => {
-      if (settled) return;
-      reject(new LarvaError("LARVA_CONFIRMATION_UNAVAILABLE", "Could not present persona switch confirmation."));
-      abort();
-    };
+    const abort = () => finish("cancelled");
+    const unavailable = () => finish();
     if (signal.aborted) { abort(); return; }
     signal.addEventListener("abort", abort, { once: true });
-    if (timeoutMs !== 0) timer = setTimeout(abort, timeoutMs);
+    if (timeoutMs !== 0) timer = setTimeout(() => finish("timeout"), timeoutMs);
     try {
-      const respond = (value: SwitchConfirmationChoice | null) => finish(performance.now() < deadline ? value : null);
+      const respond = (value: SwitchConfirmationChoice | null) => finish(performance.now() < deadline ? value ?? "dismissed" : "timeout");
       void Promise.resolve(confirm({ ...request, choices: CHOICES, signal: dialog.signal, respond })).catch(unavailable);
     } catch { unavailable(); }
   });
-  if (signal.aborted || (choice !== "borrow_once" && choice !== "auto_borrow" && choice !== "switch_persistently")) {
-    throw badInput("Persona switch was denied or cancelled.");
-  }
-  return choice;
 }
 
 /** Tracks the first borrow pre-image and one outstanding continuation dispatch. */
 export class PersonaLeaseState {
   origin: PersonaLease | null = null;
   #count = 0;
-  #continuation: Continuation | null = null;
+  #continuation: PendingContinuation | null = null;
 
-  assertAllowed(mode: SwitchMode): void {
+  assertAllowed(mode: SwitchMode, changing: boolean): void {
     if (mode === "manual") throw new LarvaError("LARVA_TOOL_DENIED", "Autonomous persona switching is disabled.");
+    if (!changing) return;
     if (this.#count === SWITCH_CHAIN_LIMIT) {
       throw new LarvaError("LARVA_SWITCH_CHAIN_LIMIT", "Persona switch chain limit reached for this user turn.");
     }
   }
 
-  recordSwitch(input: PersonaSwitchToolInput, origin: PersonaLease | null): void {
+  recordSwitch(input: PersonaSwitchToolInput, origin: PersonaLease | null, fromPersona: string | null): void {
     this.#count++;
     this.origin ??= origin;
-    if (input.continue_task) this.#continuation = { persona_id: input.persona_id, reason: input.reason };
+    if (input.continue_task) this.#continuation = { persona_id: input.persona_id, reason: input.reason, fromPersona };
   }
 
-  takeContinuation(): Continuation | null {
+  takeContinuation(): PendingContinuation | null {
     const next = this.#continuation;
     this.#continuation = null;
     return next;

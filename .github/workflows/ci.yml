@@ -73,7 +73,9 @@ jobs:
             run('tar', ['-xzf', tarball, '-C', install, '--strip-components=1']);
             const options = { cwd: tmp, env: { PATH: process.env.PATH, HOME: home,
               LARVA_HOME: join(tmp, 'larva'), PI_CODING_AGENT_DIR: join(tmp, 'pi') } };
-            const cli = join(install, 'dist/cli.mjs');
+            // Execute the packaged files directly from node_modules, without TS loaders.
+            const cli = 'node_modules/pi-larva/dist/cli.mjs';
+            const mcp = 'node_modules/pi-larva/dist/mcp-server.mjs';
             assert.match(run(process.execPath, [cli, '--help'], options), /larva --help/);
             assert.equal(run(process.execPath, [cli, '--version'], options).trim(), manifest.version);
 
@@ -81,7 +83,7 @@ jobs:
             const input = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
               protocolVersion, capabilities: {}, clientInfo: { name: 'tarball-smoke', version: '1.0.0' },
             } }) + '\n';
-            for (const args of [[join(install, 'dist/mcp-server.mjs')], [cli, 'mcp']]) {
+            for (const args of [[mcp], [cli, 'mcp']]) {
               const response = JSON.parse(run(process.execPath, args, { ...options, input }));
               assert.equal(response.jsonrpc, '2.0');
               assert.equal(response.id, 1);

@@ -1,28 +1,31 @@
 import { randomUUID } from "node:crypto";
-import { lstat, realpath, rename, rm, stat } from "node:fs/promises";
+import { addAbortListener } from "node:events";
+import { constants } from "node:fs";
+import { lstat, open, realpath, rm, stat } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadLarvaConfig, resolveWatchdogTimeouts } from "../core/config.ts";
 import { LarvaError, toErrorEnvelope, type LarvaErrorCode } from "../core/errors.ts";
 import { resolveModelRoute, isValidProfileName } from "../core/model-map.ts";
 import { getLarvaHomePaths, isLexicallyContained, modelMapProfilePath, resolveBasePiAgentDir, resolveLarvaHome } from "../core/paths.ts";
-import { isValidPersonaId } from "../core/persona.ts";
+import { isRecord, isValidPersonaId } from "../core/predicates.ts";
 import { assertCanSpawnTarget, evaluateEffectiveCanSpawn } from "../core/spawn-policy.ts";
 import type { LarvaConfig, McpSubagentToolInput, McpSubagentWaitOutput, ModelMapDoc, PersonaSpec, RunSnapshot, StartupFailureRecord,
   SubagentAcceptedReceipt, SubagentCancelOutput, SubagentCancelToolInput, SubagentStatusOutput, SubagentStatusToolInput, SubagentTerminalOutput,
-  SubagentTerminalStatus, SubagentWaitToolInput, SubagentWaitOutput, OutputSnapshot } from "../core/types.ts";
-import { writeOutputSnapshot } from "../store/artifacts.ts";
+  SubagentTerminalStatus, SubagentWaitToolInput, SubagentWaitOutput, OutputSnapshot, RunTextSliceQuery, RunTextSliceReader, ToolSnapshot } from "../core/types.ts";
+import { readArtifactSlice, readRunTextSlice, writeOutputSnapshot } from "../store/artifacts.ts";
 import * as capsule from "../store/capsule.ts";
 import { entryExists, loadDiskModelMap, readBoundedRegularText } from "../store/model-map.ts";
 import { PersonaStore } from "../store/persona-store.ts";
 import { canonicalPath, readDiskSession, readSessionHeader, resolveCanonicalSessionPath, scanDiskSessions } from "../store/session-index.ts";
 import { createSessionLeaseStore } from "../store/session-lease.ts";
-import { launchChild, previewToolArgs, type ChildRpcClient } from "./child-rpc-client.ts";
+import { fitsPrompt, GRACE_MS, launchChild, previewToolArgs, sanitizeRpcError, type ChildRpcClient } from "./child-rpc-client.ts";
 import { isTerminal, mintRunEpoch, RunOutbox, terminalOutput } from "./outbox.ts";
 import { discoverPiInstallation } from "./pi-binary.ts";
 import { childSettlementBarrier, type FrameBridge } from "./settlement-barrier.ts";
 
-type AdmissionContext = { selfTaskId?: string } & (
+type AdmissionContext = { selfTaskId?: string; signal?: AbortSignal } & (
   | { surface: "pi"; cwd: string; activePersona: Pick<PersonaSpec, "can_spawn"> | null; sessionKey: string }
   // Supply the MCP roots/list request only when the client advertised roots support.
   | { surface: "mcp"; listRoots?: () => Promise<{ roots: readonly { uri: string }[] }> }
@@ -40,7 +43,8 @@ type Options = {
 };
 type Lease = Awaited<ReturnType<ReturnType<typeof createSessionLeaseStore>["acquire"]>>;
 type Run = {
-  s: RunSnapshot; parent?: string; rpc?: ChildRpcClient; abort?: LarvaError; prompted: boolean;
+  s: RunSnapshot & { tool_call_count: number }; prompt: string; parent?: string; sessionEpoch: number;
+  rpc?: ChildRpcClient; abort?: LarvaError; prompted: boolean;
   activeTools: Map<string, NonNullable<RunSnapshot["active_tool"]>>;
   accepted: PromiseWithResolvers<SubagentAcceptedReceipt>; cleaned: PromiseWithResolvers<boolean>;
   stall?: NodeJS.Timeout; watchdog?: NodeJS.Timeout;
@@ -51,7 +55,7 @@ const bad = (message: string): never => { throw new LarvaError("LARVA_BAD_INPUT"
 const cancelled = (message: string) => new LarvaError("LARVA_CHILD_CANCELLED", message);
 const now = () => new Date().toISOString();
 function keys(value: unknown, names: string[]) {
-  if (!capsule.metadataObject(value) || Object.keys(value).some(k => !names.includes(k))) bad("Invalid or unknown input fields.");
+  if (!isRecord(value) || Object.keys(value).some(k => !names.includes(k))) bad("Invalid or unknown input fields.");
 }
 async function directory(path: string, code: LarvaErrorCode) {
   try { if (isAbsolute(path) && (await stat(path)).isDirectory()) return await realpath(path); } catch { /* fail below */ }
@@ -103,6 +107,72 @@ function clearLive(run: Run) {
   run.s.live_thinking = false;
 }
 
+function toolText(result: unknown): string | undefined {
+  if (!isRecord(result) || !Array.isArray(result.content)) return undefined;
+  let text = "";
+  for (const part of result.content) {
+    if (!isRecord(part) || part.type !== "text" || typeof part.text !== "string") continue;
+    text += `${text ? "\n" : ""}${part.text.slice(0, 600)}`;
+    if (text.length >= 600) break;
+  }
+  return text ? sanitizeRpcError(text) : undefined;
+}
+
+async function diskPrompt(home: string, taskId: string): Promise<string | undefined> {
+  await readSessionHeader(home, taskId);
+  const file = await open(taskId, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
+  try {
+    const before = await file.stat({ bigint: true });
+    if (!before.isFile() || before.size === 0n || before.size > BigInt(Number.MAX_SAFE_INTEGER)) return;
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    const buffer = Buffer.alloc(64 * 1024), parts: string[] = [];
+    let prompt: string | undefined;
+    const consume = (line: string) => {
+      if (!line) return true;
+      const entry: unknown = JSON.parse(line);
+      if (!isRecord(entry) || entry.type !== "message" || !isRecord(entry.message) || entry.message.role !== "user") return true;
+      if (prompt !== undefined) return false; // A resumed transcript does not disambiguate its epochs.
+      const { content } = entry.message;
+      if (typeof content === "string") prompt = content;
+      else if (Array.isArray(content)) prompt = content.flatMap(part => isRecord(part) && part.type === "text"
+        && typeof part.text === "string" ? [part.text] : []).join("");
+      return prompt !== undefined;
+    };
+    for (let remaining = Number(before.size); remaining > 0;) {
+      const { bytesRead } = await file.read(buffer, 0, Math.min(buffer.length, remaining), null);
+      if (!bytesRead) return;
+      remaining -= bytesRead;
+      const lines = decoder.decode(buffer.subarray(0, bytesRead), { stream: remaining > 0 }).split("\n");
+      const tail = lines.pop()!;
+      for (const line of lines) {
+        parts.push(line);
+        if (!consume(parts.join(""))) return;
+        parts.length = 0;
+      }
+      parts.push(tail);
+    }
+    if (!consume(parts.join(""))) return;
+    const after = await file.stat({ bigint: true });
+    if (before.size === after.size && before.mtimeNs === after.mtimeNs && before.ctimeNs === after.ctimeNs) return prompt;
+  } finally { await file.close(); }
+}
+
+async function terminateDescendants(home: string, root: string, rpc: ChildRpcClient, stopping: Promise<boolean>): Promise<void> {
+  const live = async () => (await capsule.inspectDescendantPids(home, root)).pids.filter(pid =>
+    pid !== rpc.pid && pid !== process.pid && pid !== process.ppid && !capsule.pidExited(pid));
+  const signal = (pid: number, sig: NodeJS.Signals) => { try { process.kill(pid, sig); } catch { /* exit proof is separate */ } };
+  const deadline = performance.now() + GRACE_MS;
+  for (const pid of await live()) signal(pid, "SIGTERM");
+  await stopping;
+  let pids = await live(); // Include descendants published during the root's grace period.
+  if (!pids.length) return;
+  if (deadline > performance.now()) await delay(deadline - performance.now());
+  pids = await live();
+  for (const pid of pids) signal(pid, "SIGKILL");
+  const confirmation = performance.now() + GRACE_MS;
+  while (pids.some(pid => !capsule.pidExited(pid)) && performance.now() < confirmation) await delay(25);
+}
+
 function applyTelemetry(run: Run, frame: Record<string, unknown>): boolean {
   const { s, activeTools } = run;
   switch (frame.type) {
@@ -112,9 +182,14 @@ function applyTelemetry(run: Run, frame: Record<string, unknown>): boolean {
       clearLive(run);
       return changed;
     }
+    case "message_start":
+      if (!isRecord(frame.message) || frame.message.role !== "assistant") return false;
+      s.live_assistant_preview = "";
+      s.live_thinking = false;
+      return true;
     case "message_update": {
       const e = frame.assistantMessageEvent;
-      if (!capsule.metadataObject(e)) return false;
+      if (!isRecord(e)) return false;
       if (e.type === "text_delta" && typeof e.delta === "string") {
         s.live_thinking = false;
         // At most two UTF-16 code units per code point. Limit the slice before spreading it.
@@ -136,11 +211,17 @@ function applyTelemetry(run: Run, frame: Record<string, unknown>): boolean {
         status: frame.type === "tool_execution_end" ? (frame.isError === true ? "error" : "done") : "running" };
       const snapshots = [...(s.tool_snapshots ?? [])];
       const index = snapshots.findIndex(t => t.tool_call_id === toolCallId);
-      if (index !== -1 || frame.type === "tool_execution_start") {
-        const args_preview = frame.args === undefined ? snapshots[index]?.args_preview : previewToolArgs(frame.args);
-        const row = { ...tool, ...(args_preview === undefined ? {} : { args_preview }) };
-        if (index !== -1) snapshots[index] = row;
-        else snapshots.push(row);
+      const starting = frame.type === "tool_execution_start";
+      if (starting) s.tool_call_count++;
+      if (index !== -1 || starting) {
+        const row: ToolSnapshot = { ...(starting ? undefined : snapshots[index]), ...tool };
+        if (frame.args !== undefined) row.args_preview = previewToolArgs(frame.args);
+        const text = toolText(frame.type === "tool_execution_update" ? frame.partialResult : frame.result);
+        if (text !== undefined) row[frame.isError === true ? "error_preview" : "output_preview"] = text;
+        if (starting) {
+          if (index !== -1) snapshots.splice(index, 1);
+          snapshots.push(row);
+        } else snapshots[index] = row;
         s.tool_snapshots = snapshots.slice(-25);
       }
       // The display window can evict a tool that is still running.
@@ -169,8 +250,12 @@ export class SubagentSupervisor {
   readonly #outbox = new RunOutbox();
   readonly #failures: StartupFailureRecord[] = [];
   readonly #observers = new Set<() => void>();
-  readonly #callbacks = new Map<RunSnapshot, string>();
+  readonly #callbacks = new Map<string, { key: string; details: ReturnType<typeof terminalOutput> }>();
+  readonly #activity = new WeakMap<RunSnapshot, number>();
+  #activitySequence = 0;
   #binding?: NativeBinding;
+  #sessionKey?: string;
+  #sessionEpoch = 0;
   #reloading = false;
   #closing = false;
   #profile: string;
@@ -188,6 +273,15 @@ export class SubagentSupervisor {
 
   beginReload() { this.#reloading = true; this.#binding = undefined; this.barrier.unbind(); }
   rebind(binding: NativeBinding) {
+    if (this.#sessionKey !== undefined && this.#sessionKey !== binding.sessionKey) {
+      this.#profile = "default"; ++this.#generation; ++this.#sessionEpoch;
+      this.barrier.retire();
+      for (const run of this.#active.values()) if (run.parent === this.#sessionKey) {
+        run.parent = undefined;
+        this.#abort(run, "Parent session changed.");
+      }
+    }
+    this.#sessionKey = binding.sessionKey;
     this.#binding = binding; this.#reloading = false;
     const session = binding.childSession;
     if (session) this.barrier.bind(session.bridge, () => session.branch(), () => session.activePersona(), session);
@@ -203,16 +297,19 @@ export class SubagentSupervisor {
     this.#telemetryTimer = undefined;
     for (const f of [...this.#observers]) { try { f(); } catch { /* observers do not own the transition */ } }
   }
+  #touch(s: RunSnapshot) {
+    s.updated_at = now();
+    this.#activity.set(s, ++this.#activitySequence);
+  }
   #deliver() {
-    for (const [s, key] of this.#callbacks) {
+    for (const [id, { key, details }] of this.#callbacks) {
       if (this.#reloading) return;
-      this.#callbacks.delete(s); // Commit to this binding before invoking external code.
-      if (s.output_state === "evicted" || !this.#binding || this.#binding.sessionKey !== key) { this.barrier.delivery(s.run_epoch, "stale"); continue; }
-      const binding = this.#binding;
+      this.#callbacks.delete(id); // Commit to this binding before invoking external code.
+      if (!this.#binding || this.#binding.sessionKey !== key) { this.barrier.delivery(id, "stale"); continue; }
       try {
-        void Promise.resolve(binding.steer({ customType: "larva-subagent-result", details: { ...terminalOutput(s), callback_id: s.run_epoch } }))
-          .then(() => this.barrier.delivery(s.run_epoch, "delivered"), () => this.barrier.delivery(s.run_epoch, "failed"));
-      } catch { this.barrier.delivery(s.run_epoch, "failed"); }
+        void Promise.resolve(this.#binding.steer({ customType: "larva-subagent-result", details: { ...details, callback_id: id } }))
+          .then(() => this.barrier.delivery(id, "delivered"), () => this.barrier.delivery(id, "failed"));
+      } catch { this.barrier.delivery(id, "failed"); }
     }
   }
   #taskSyntax(id: unknown) {
@@ -226,20 +323,46 @@ export class SubagentSupervisor {
     return loadDiskModelMap(this.home, modelMapProfilePath(this.home, profile));
   }
 
-  async spawn(input: McpSubagentToolInput, ctx: AdmissionContext): Promise<SubagentAcceptedReceipt | SubagentTerminalOutput> {
-    // Capture callback scope at ingress; /reload may replace the surface while admitting.
+  #recordStartupFailure(epoch: string, personaId: string, failure: unknown): LarvaError {
+    const error = failure instanceof LarvaError ? failure : new LarvaError("LARVA_CHILD_START_FAILED", "Could not start the Pi child.");
+    this.#failures.unshift({ startup_id: epoch, persona_id: personaId, status: "failed",
+      phase: "startup_failed", updated_at: now(), error: toErrorEnvelope(error).error });
+    this.#failures.length = Math.min(25, this.#failures.length);
+    return error;
+  }
+
+  async spawn(input: McpSubagentToolInput, ctx: AdmissionContext, signal = ctx.signal): Promise<SubagentAcceptedReceipt | SubagentTerminalOutput> {
+    // Capture callback scope at ingress, not after asynchronous admission.
     const epoch = mintRunEpoch(), parentSession = ctx.surface === "pi" ? ctx.sessionKey : undefined;
+    const sessionEpoch = this.#sessionEpoch;
+    const interrupted = Promise.withResolvers<never>();
+    interrupted.promise.catch(() => {});
+    let owned: Run | undefined;
+    let accepted = false;
+    const reason = "Subagent request was aborted.";
+    const abort = signal && addAbortListener(signal, () => {
+      interrupted.reject(cancelled(reason));
+      if (owned && this.#active.get(owned.s.task_id) === owned) this.#abort(owned, reason);
+    });
+    const checkAdmission = () => {
+      if (signal?.aborted) throw cancelled(reason);
+      if (parentSession !== undefined && (this.#sessionEpoch !== sessionEpoch
+        || (this.#sessionKey !== undefined && this.#sessionKey !== parentSession))) throw cancelled("Parent session changed.");
+    };
     if (ctx.surface === "pi" && this.#env.LARVA_PI_LAUNCHED === "1") this.barrier.register("larva-subagent-result", epoch);
     try {
+      checkAdmission();
       keys(input, ["persona_id", "task", "task_id", "cwd", "no_progress_timeout_ms", "stall_alert_ms",
         ...(ctx.surface === "mcp" ? ["parent_persona_id", "wait_for_completion"] : [])]);
       if (!isValidPersonaId(input.persona_id) || typeof input.task !== "string" || !input.task.trim()
           || (input.cwd !== undefined && (typeof input.cwd !== "string" || !isAbsolute(input.cwd) || input.cwd.includes("\0")))
           || (input.parent_persona_id !== undefined && !isValidPersonaId(input.parent_persona_id))
           || (input.wait_for_completion !== undefined && typeof input.wait_for_completion !== "boolean")) bad("Invalid spawn input.");
+      if (!fitsPrompt(input.task)) bad("Task exceeds the child RPC prompt byte limit.");
       resolveWatchdogTimeouts(input, { stall_alert_ms: 0 });
       if (input.task_id !== undefined) this.#taskSyntax(input.task_id);
-      const { cwd, taskId } = await workspace(this.home, input, ctx);
+      const { cwd, taskId } = await Promise.race([workspace(this.home, input, ctx), interrupted.promise]);
+      checkAdmission();
       const home = await canonicalPath(this.home);
       const root = getLarvaHomePaths(home).sessions;
       const chain = await lineage(this.#env, root, ctx.selfTaskId ?? this.#env.LARVA_PI_TASK_ID);
@@ -253,6 +376,7 @@ export class SubagentSupervisor {
       assertCanSpawnTarget(evaluateEffectiveCanSpawn(ctx.surface === "pi" ? { ...authority, surface: "pi", isLaunchedChild: descendant,
         activePersona: ctx.activePersona, rootSessionSpawn: config.subagent.root_session_spawn } : { ...authority, surface: "mcp", depth: chain.depth }), input.persona_id);
       const spec = await this.#personas.get(input.persona_id);
+      checkAdmission();
       const id = taskId ?? join(root, `${randomUUID()}.jsonl`);
       if (chain.ancestors.includes(id) || this.#active.has(id)) throw new LarvaError("LARVA_SESSION_BUSY", "Session is already owned.");
       if (this.#closing || this.#active.size >= (config.subagent.max_active_runs ?? Infinity)) throw new LarvaError("LARVA_CHILD_START_FAILED", "Supervisor cannot admit another child.");
@@ -260,24 +384,27 @@ export class SubagentSupervisor {
       const run: Run = { s: { task_id: id, run_epoch: epoch, cwd, started_at, updated_at: started_at, persona_id: spec.id,
         phase: "starting", status: "running", output_state: "pending", thinking: spec.thinking,
         task_preview: Array.from(input.task.replace(/\s+/g, " ").trim().slice(0, 280)).slice(0, 140).join(""),
-        active_tool: null, live_thinking: false, live_assistant_preview: "", tool_snapshots: [] },
+        active_tool: null, live_thinking: false, live_assistant_preview: "", tool_snapshots: [], tool_call_count: 0 },
         activeTools: new Map(), accepted: Promise.withResolvers(), cleaned: Promise.withResolvers(),
-        prompted: false, parent: parentSession };
+        prompted: false, prompt: input.task, parent: parentSession, sessionEpoch };
+      owned = run;
+      this.#touch(run.s);
       this.#active.set(id, run); // No await between capacity check and reservation.
       void this.#drive(run, spec, input, chain, config, home);
       this.#notify();
-      const accepted = await run.accepted.promise;
-      if (!input.wait_for_completion) return accepted;
-      await this.#observe(() => isTerminal(run.s.status) && run.s.output_state !== "pending");
+      const receipt = await run.accepted.promise;
+      accepted = true;
+      if (!input.wait_for_completion) return receipt;
+      await this.#observe(() => isTerminal(run.s.status) && run.s.output_state !== "pending", undefined, signal);
       return terminalOutput(run.s);
     } catch (e) {
+      if (accepted) throw e;
       this.barrier.delivery(epoch, "suppressed");
-      const failure = e instanceof LarvaError ? e : new LarvaError("LARVA_CHILD_START_FAILED", "Could not start the Pi child.");
-      this.#failures.unshift({ startup_id: epoch, persona_id: typeof input?.persona_id === "string" ? input.persona_id : "", status: "failed",
-        phase: "startup_failed", updated_at: now(), error: toErrorEnvelope(failure).error });
-      this.#failures.length = Math.min(25, this.#failures.length);
+      if (owned) throw e; // #drive records reserved startup failures before notifying observers.
+      const failure = this.#recordStartupFailure(epoch, typeof input?.persona_id === "string" ? input.persona_id : "", e);
+      this.#notify();
       throw failure;
-    }
+    } finally { abort?.[Symbol.dispose](); }
   }
 
   async #drive(run: Run, spec: PersonaSpec, input: McpSubagentToolInput, chain: Awaited<ReturnType<typeof lineage>>, config: LarvaConfig, home: string) {
@@ -288,16 +415,24 @@ export class SubagentSupervisor {
     const times = resolveWatchdogTimeouts(input, config.subagent);
     const telemetry = (frame: Record<string, unknown>) => {
       if (s.status !== "running" || !applyTelemetry(run, frame)) return;
+      this.#touch(s);
       this.#telemetryTimer ??= setTimeout(() => this.#notify(), 50);
     };
     const progress = () => {
       if (!accepted || s.status !== "running") return;
       const phaseChanged = s.phase !== "waiting_for_child";
-      clearTimers(run); s.phase = "waiting_for_child"; s.updated_at = now();
+      clearTimers(run); s.phase = "waiting_for_child"; this.#touch(s);
+      if (run.parent !== undefined && run.parent === this.#sessionKey) {
+        try { this.barrier.relayProgress(); } catch { /* transport is an observer */ }
+      }
       if (times.stall_alert_ms) run.stall = setTimeout(() => {
-        s.phase = "stall_suspected"; s.updated_at = now();
+        s.phase = "stall_suspected"; this.#touch(s);
         if (run.parent !== undefined && this.#binding?.sessionKey === run.parent && !this.#reloading) {
-          try { void Promise.resolve(this.#binding.steer({ customType: "larva-subagent-alert", details: structuredClone(s) })).catch(() => {}); } catch { /* observer only */ }
+          const { task_id, run_epoch, persona_id, phase, status, updated_at } = s;
+          try {
+            void Promise.resolve(this.#binding.steer({ customType: "larva-subagent-alert",
+              details: { task_id, run_epoch, persona_id, phase, status, updated_at } })).catch(() => {});
+          } catch { /* observer only */ }
         }
         this.#notify();
       }, times.stall_alert_ms);
@@ -347,13 +482,13 @@ export class SubagentSupervisor {
           route = resolveModelRoute(spec.model, await this.#map(this.#profile));
           await rpc.setRoute(route, spec.thinking);
         }
-        await rpc.verify(route, spec.thinking, id, spec.id);
+        s.thinking = await rpc.verify(route, spec.thinking, id, spec.id);
         check();
         if (generation === this.#generation) break;
       }
       s.model = `${route.provider}/${route.model_id}`;
       run.prompted = true; // Fence linearization point: prompt write precedes the next await.
-      await rpc.prompt(input.task); check();
+      await rpc.prompt(run.prompt); check();
       accepted = true; s.status = "running"; progress();
       run.accepted.resolve({ status: "accepted", task_id: id, run_epoch: s.run_epoch, cwd: s.cwd });
       await rpc.settled; check();
@@ -368,28 +503,37 @@ export class SubagentSupervisor {
       } else if (accepted) void this.#publish(run, undefined);
     } finally {
       clearTimers(run);
+      const stopping = run.rpc?.stop(!!failure || !!run.abort);
       const settleOwnership = async () => {
         try {
-          if (run.rpc && !await run.rpc.stop(!!failure) && !(run.rpc.pid && capsule.pidExited(run.rpc.pid))) throw new Error("Unconfirmed child exit.");
-          if (box) {
-            if (!(await capsule.inspectCapsule(home, box.root, run.rpc?.pid, "live"))?.all_exited) throw new Error("Unconfirmed capsule exit.");
-            // Detach capsule + lease in ONE commit (release renames the complete directory).
-            // Roll back a pre-commit failure rather than unlinking ownership evidence piecemeal.
-            const staged = join(getLarvaHomePaths(home).sessions, `${basename(id)}.lock`, "capsule");
-            await rename(box.root, staged);
-            try { await lease!.release(); } catch (e) { await rename(staged, box.root); throw e; }
-          } else await lease?.release();
-          if (manifest) await rm(manifest, { force: true }).catch(() => {}); // dead PID + absent capsule also proves retirement
+          const rpc = run.rpc;
+          if (box && rpc && stopping && (failure || run.abort)) await terminateDescendants(home, box.root, rpc, stopping);
+          if (stopping && !await stopping && !(rpc?.pid !== undefined && capsule.pidExited(rpc.pid))) throw new Error("Unconfirmed child exit.");
+          if (box && !(await capsule.inspectCapsule(home, box.root, run.rpc?.pid, "live"))?.all_exited) throw new Error("Unconfirmed capsule exit.");
+          // Keep capsule evidence at its canonical path until releasing the lease
+          // commits. A crash after release can leave a GC-recoverable dead capsule.
+          await lease?.release();
+          if (box) await rm(box.root, { recursive: true, force: true }).catch(() => {});
+          if (manifest) await rm(manifest, { force: true }).catch(() => {});
+          if (run.s.cleanup_unconfirmed) run.s.cleanup_unconfirmed = false;
           this.#active.delete(id);
           return true;
         } catch { await lease?.markUnreconciled().catch(() => {}); return false; }
       };
       const confirmed = await settleOwnership();
       if (!confirmed) {
-        // Explicit later cancel/shutdown can recheck the retained evidence. Serialize
-        // reconcilers so no two attempts move the same directory or release a successor.
+        s.cleanup_unconfirmed = true;
         let checking: Promise<boolean> | undefined;
-        run.reconcile = () => checking ??= settleOwnership().finally(() => { checking = undefined; });
+        let timer: NodeJS.Timeout | undefined;
+        let interval = 250;
+        const reconcile = run.reconcile = () => checking ??= settleOwnership().then(ok => {
+          clearTimeout(timer);
+          if (ok) { run.reconcile = undefined; this.#touch(s); this.#notify(); }
+          else { interval = Math.min(interval * 2, 5000); schedule(); }
+          return ok;
+        }).finally(() => { checking = undefined; });
+        const schedule = () => { timer = setTimeout(() => { void reconcile(); }, interval).unref(); };
+        schedule();
       }
       run.cleaned.resolve(confirmed);
       if (!accepted) {
@@ -397,7 +541,10 @@ export class SubagentSupervisor {
         s.status = s.phase = run.abort ? "cancelled" : "failed";
         s.error = toErrorEnvelope(failure).error;
         Object.assign(s, { output_state: "inline", result_text: "" });
-        run.accepted.reject(failure ?? new LarvaError("LARVA_CHILD_START_FAILED", "Pi startup failed."));
+        this.#touch(s);
+        if (!confirmed) this.#outbox.retain(s, run.prompt);
+        run.accepted.reject(this.#recordStartupFailure(s.run_epoch, s.persona_id,
+          failure ?? new LarvaError("LARVA_CHILD_START_FAILED", "Pi startup failed.")));
       }
       this.#notify();
     }
@@ -406,8 +553,9 @@ export class SubagentSupervisor {
   #finalize(run: Run, status: SubagentTerminalStatus, error?: unknown) {
     clearTimers(run);
     clearLive(run);
-    Object.assign(run.s, { status, phase: status, updated_at: now() }, error ? { error: toErrorEnvelope(error).error } : {});
-    this.#outbox.retain(run.s); this.#notify();
+    Object.assign(run.s, { status, phase: status }, error ? { error: toErrorEnvelope(error).error } : {});
+    this.#touch(run.s);
+    this.#outbox.retain(run.s, run.prompt); this.#notify();
   }
   async #publish(run: Run, text: string | undefined) {
     let output: OutputSnapshot;
@@ -418,17 +566,20 @@ export class SubagentSupervisor {
     this.#outbox.publish(run.s, output); this.#notify();
     if (run.parent !== undefined) {
       await run.cleaned.promise;
-      if (this.#closing || run.s.output_state === "evicted") { this.barrier.delivery(run.s.run_epoch, "stale"); return; }
-      for (const s of this.#callbacks.keys()) if (s.output_state === "evicted") {
-        this.#callbacks.delete(s); this.barrier.delivery(s.run_epoch, "stale");
+      if (this.#closing || run.parent === undefined || run.sessionEpoch !== this.#sessionEpoch) {
+        this.barrier.delivery(run.s.run_epoch, "stale"); return;
       }
-      this.#callbacks.set(run.s, run.parent); this.#deliver();
+      this.#callbacks.set(run.s.run_epoch, { key: run.parent, details: terminalOutput(run.s, output) });
+      this.#deliver();
     }
   }
   #abort(run: Run, reason: string) {
-    if (run.abort || isTerminal(run.s.status)) return;
-    clearTimers(run); run.abort = cancelled(reason); run.s.status = run.s.phase = "cancelling"; run.s.updated_at = now();
-    void run.rpc?.stop(true); this.#notify();
+    if (run.abort) return;
+    run.abort = cancelled(reason);
+    void run.rpc?.stop(true);
+    if (isTerminal(run.s.status)) return; // Execution settled; only interrupt output/ownership cleanup.
+    clearTimers(run); run.s.status = run.s.phase = "cancelling"; this.#touch(run.s);
+    this.#notify();
   }
   #lookup(id: string) { return this.#active.get(id)?.s ?? this.#outbox.lookup(id); }
   async #admitExactHandle(id: string): Promise<boolean> {
@@ -446,25 +597,52 @@ export class SubagentSupervisor {
     const s = this.#active.get(taskId)?.s;
     return structuredClone((s?.run_epoch === epoch ? s : this.#outbox.lookup(taskId, epoch)) ?? { task_id: taskId, run_epoch: epoch, output_state: "evicted" });
   }
-  async #observe(done: () => boolean, deadline?: number) {
+  readRunTextSlice: RunTextSliceReader = async (query: RunTextSliceQuery) => {
+    const unavailable = { state: "unavailable" } as const;
+    try {
+      const { task_id, run_epoch, source } = query;
+      const exists = await this.#admitExactHandle(task_id);
+      const active = this.#active.get(task_id);
+      const local = active && (run_epoch === undefined || active.s.run_epoch === run_epoch) ? active : undefined;
+      const snapshot = local?.s ?? this.#outbox.lookup(task_id, run_epoch);
+      if (source === "prompt") {
+        const text = snapshot ? local?.prompt ?? this.#outbox.prompt(snapshot.run_epoch)
+          : run_epoch === undefined && exists && await this.#leases.diskLockState(task_id) === "unlocked"
+            ? await diskPrompt(this.home, task_id) : undefined;
+        return text === undefined ? unavailable : readRunTextSlice(text, query);
+      }
+      if (source === "output") {
+        if (snapshot?.output_state === "inline" && snapshot.result_text !== undefined) return readRunTextSlice(snapshot.result_text, query);
+        if (snapshot?.output_state === "artifactized" && snapshot.full_output_artifact) {
+          return await readArtifactSlice(this.home, snapshot.full_output_artifact.path, query);
+        }
+      }
+    } catch { /* Missing or unreadable inputs are not valid empty slices. */ }
+    return unavailable;
+  };
+  async #observe(done: () => boolean, deadline?: number, signal?: AbortSignal) {
+    if (signal?.aborted) throw cancelled("Subagent wait was aborted.");
     if (done() || (deadline !== undefined && deadline <= performance.now())) return;
     let timer: NodeJS.Timeout | undefined;
     const result = Promise.withResolvers<void>();
     const notify = () => { if (done()) result.resolve(); };
     const unsubscribe = this.subscribe(notify);
+    const abort = signal && addAbortListener(signal, () => result.reject(cancelled("Subagent wait was aborted.")));
     if (deadline !== undefined) timer = setTimeout(result.resolve, Math.max(0, deadline - performance.now()));
-    try { await result.promise; } finally { clearTimeout(timer); unsubscribe(); }
+    try { await result.promise; } finally { clearTimeout(timer); unsubscribe(); abort?.[Symbol.dispose](); }
   }
-  wait(input: SubagentWaitToolInput, surface?: "mcp"): Promise<McpSubagentWaitOutput>;
-  wait(input: SubagentWaitToolInput, surface: "pi"): Promise<SubagentWaitOutput>;
-  async wait(input: SubagentWaitToolInput, surface: "mcp" | "pi" = "mcp") {
+  wait(input: SubagentWaitToolInput, surface?: "mcp", signal?: AbortSignal): Promise<McpSubagentWaitOutput>;
+  wait(input: SubagentWaitToolInput, surface: "pi", signal?: AbortSignal): Promise<SubagentWaitOutput>;
+  async wait(input: SubagentWaitToolInput, surface: "mcp" | "pi" = "mcp", signal?: AbortSignal) {
     const start = performance.now();
     keys(input, ["task_ids", "return_when", "timeout_ms"]); this.#ids(input.task_ids);
     const { return_when: mode = "all", timeout_ms: timeout = 10000 } = input;
     if (!["all", "any", "first_error"].includes(mode) || !Number.isInteger(timeout) || timeout < 0 || timeout > 86400000) bad("Invalid wait condition or timeout.");
     const bound = input.task_ids.map(id => this.#lookup(id) ?? bad("No observed run for requested task_id."));
-    const ready = () => mode === "all" ? bound.every(s => isTerminal(s.status)) : bound.some(s => mode === "any" ? isTerminal(s.status) : s.status === "failed" || s.status === "cancelled");
-    await this.#observe(() => ready() && (surface === "pi" || bound.every(s => !isTerminal(s.status) || s.output_state !== "pending")), start + timeout);
+    const matches = (s: RunSnapshot) => mode === "first_error" ? s.status === "failed" || s.status === "cancelled" : isTerminal(s.status);
+    const satisfied = (predicate: (s: RunSnapshot) => boolean) => mode === "all" ? bound.every(predicate) : bound.some(predicate);
+    const ready = () => satisfied(matches);
+    await this.#observe(() => satisfied(s => matches(s) && (surface === "pi" || s.output_state !== "pending")), start + timeout, signal);
     const runs = structuredClone(bound);
     const result = { runs, ready: ready(), timed_out: !ready() };
     return surface === "pi" ? result : { ...result, terminal_outputs: Object.fromEntries(runs.filter(s => isTerminal(s.status)).map(s => [s.task_id, terminalOutput(s)])) } satisfies McpSubagentWaitOutput;
@@ -477,7 +655,7 @@ export class SubagentSupervisor {
     if (expected !== undefined) {
       if (!Array.isArray(expected) || expected.length > 25) return bad("Invalid expected_run_epochs.");
       for (const guard of expected) {
-        if (!capsule.metadataObject(guard) || Object.keys(guard).length !== 2
+        if (!isRecord(guard) || Object.keys(guard).length !== 2
             || !Object.hasOwn(guard, "task_id") || !Object.hasOwn(guard, "run_epoch")) return bad("Invalid expected_run_epochs.");
         const { task_id, run_epoch } = guard;
         if (typeof task_id !== "string" || !input.task_ids.includes(task_id) || guards.has(task_id)
@@ -511,7 +689,16 @@ export class SubagentSupervisor {
     if (scope === "disk") return { runs: [], startup_failures: [], disk_sessions: (await scanDiskSessions(this.home, this.#leases)).slice(0, limit) };
     const active = [...this.#active.values()].map(r => r.s);
     const runs = scope === "active" ? active : [...new Set([...active, ...this.#outbox.recent()])];
-    return structuredClone({ runs: runs.sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, limit), startup_failures: this.#failures.slice(0, limit) });
+    return structuredClone({ runs: runs.sort((a, b) => (this.#activity.get(b) ?? 0) - (this.#activity.get(a) ?? 0)).slice(0, limit), startup_failures: this.#failures.slice(0, limit) });
+  }
+
+  liveCounts(): { running: number; cancelling: number } {
+    const counts = { running: 0, cancelling: 0 };
+    for (const { s } of this.#active.values()) {
+      if (s.status === "running" || s.status === "accepted") counts.running++;
+      else if (s.status === "cancelling") counts.cancelling++;
+    }
+    return counts;
   }
 
   /** Capture the fleet BEFORE the parent's asynchronous route transaction, then commit only on parent success. */
@@ -537,17 +724,6 @@ export class SubagentSupervisor {
     const owned = [...this.#active.values()];
     for (const run of owned) this.#abort(run, "Supervisor shutdown.");
     const settled = (await Promise.all(owned.map(r => r.reconcile?.() ?? r.cleaned.promise))).every(Boolean);
-    const host = process as NodeJS.Process & { [shared]?: SubagentSupervisor };
-    if (settled && host[shared] === this) delete host[shared];
     return { settled };
   }
-}
-
-const shared = Symbol.for("larva.0.9.native-subagent-supervisor");
-export function getNativeSupervisor(options: Options, binding: NativeBinding): SubagentSupervisor {
-  const processState = process as NodeJS.Process & { [shared]?: SubagentSupervisor };
-  const supervisor = processState[shared] ??= new SubagentSupervisor(options);
-  if (supervisor.home !== (options.home ?? resolveLarvaHome(options.env))) throw new LarvaError("LARVA_CONFIG_INVALID", "Cannot rebind supervisor to a different Larva home.");
-  supervisor.rebind(binding);
-  return supervisor;
 }

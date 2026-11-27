@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PersonaSpec",
-  "description": "Larva 0.9 canonical JSON persona definition. Normalization and supplied digest verification are performed by Larva.",
+  "description": "Larva 0.9 JSON persona input. Canonical output includes all fields, with defaults applied, text normalized, policy arrays sorted, and a computed digest. Larva checks filename binding and verifies any supplied digest.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "description", "prompt", "model"],
   "properties": {
     "id": { "$ref": "#/$defs/personaId" },
-    "description": { "type": "string", "minLength": 1, "pattern": "\\S" },
-    "prompt": { "type": "string", "minLength": 1, "pattern": "\\S" },
-    "model": { "type": "string", "minLength": 1, "pattern": "^[^\\s/]+/[^\\s]+$" },
+    "description": { "$ref": "#/$defs/personaText" },
+    "prompt": { "$ref": "#/$defs/personaText" },
+    "model": { "$ref": "#/$defs/wellFormedString", "type": "string", "pattern": "^[^\\s/]+/[^\\s]+$" },
     "thinking": {
       "type": "string",
       "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
@@ -40,11 +40,17 @@
     "spec_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
   },
   "$defs": {
+    "wellFormedString": {
+      "$comment": "Under Unicode-aware regex matching, a valid surrogate pair is one code point outside this range.",
+      "type": "string",
+      "not": { "type": "string", "pattern": "[\\uD800-\\uDFFF]" }
+    },
+    "personaText": { "$ref": "#/$defs/wellFormedString", "type": "string", "pattern": "\\S" },
     "personaId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
     "toolPatterns": {
       "type": "array",
       "uniqueItems": true,
-      "items": { "type": "string", "pattern": "^[^\\s*]+\\*?$" }
+      "items": { "$ref": "#/$defs/wellFormedString", "type": "string", "pattern": "^[^\\s*]+\\*?$" }
     }
   }
 }

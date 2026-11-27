@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { once } from "node:events";
-import { access, chmod, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, copyFile, mkdir, mkdtemp, readFile, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { build } from "esbuild";
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { compile } from "@earendil-works/pi-schema";
 import { registerPiTools } from "../../src/surfaces/pi-tools.ts";
@@ -31,7 +30,10 @@ try { writeFileSync(id, JSON.stringify({type:'session', version:3, cwd:process.c
 catch (e) { if (e.code !== 'EEXIST') throw e; }
 writeFileSync(id+'.pid', String(process.pid));
 const send = frame => process.stdout.write(JSON.stringify(frame)+'\\n');
-const settled = () => send({type:'agent_settled', aborted:false});
+const settled = () => {
+  send({type:'message_end', message:{role:'assistant', stopReason:'stop', content:[]}});
+  send({type:'agent_settled', aborted:false});
+};
 let task, outputRequest, outputReleased = false;
 const reply = (q, data) => send({type:'response', id:q.id, command:q.type, success:true, data});
 const output = q => reply(q, {text:task === 'complete-path' ? process.env.PATH : 'result: '+task});
@@ -42,7 +44,10 @@ createInterface({input:process.stdin}).on('line', line => {
   switch (q.type) {
     case 'get_state': return reply(q, {model:{provider,id:model}, sessionFile:id, persona_id, thinkingLevel:arg('--thinking')});
     case 'switch_session': return reply(q, {cancelled:false});
-    case 'prompt': task = q.message; reply(q, {disposition:'started'}); if (task.startsWith('complete')) settled(); return;
+    case 'prompt': task = q.message; reply(q, {disposition:'started'});
+      if (task.startsWith('complete')) settled();
+      if (task === 'abort-task') send({type:'agent_settled', aborted:true});
+      return;
     case 'get_last_assistant_text': if (task !== 'hold-output' || outputReleased) return output(q); outputRequest = q; return;
   }
 }).on('close', () => process.exit(0));`;
@@ -68,11 +73,7 @@ async function setup(home: string) {
   ]);
   const env: NodeJS.ProcessEnv = { HOME: home, PATH: process.env.PATH, LARVA_HOME: home, PI_CODING_AGENT_DIR: agent, LARVA_PI_CLI_SCRIPT: join(pi, "cli.mjs") };
   return { home, work, host, env, async bundle() {
-    await build({
-      absWorkingDir: repo, entryPoints: ["src/mcp-server.ts", "src/child-rpc-preload.ts"], outdir: home,
-      outExtension: { ".js": ".mjs" }, bundle: true, platform: "node", format: "esm",
-      define: { __LARVA_VERSION__: JSON.stringify(version) },
-    });
+    for (const name of ["mcp-server.mjs", "child-rpc-preload.mjs"]) await copyFile(join(repo, "dist", name), join(home, name));
     return join(home, "mcp-server.mjs");
   } };
 }
@@ -100,8 +101,9 @@ function connect(f: Fixture, main: string, args: string[]) {
   child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk; });
   child.stdin.on("error", () => {});
   type Reply = { framing: Framing; message: ReturnType<typeof JSON.parse> };
-  const pending = new Map<number, PromiseWithResolvers<Reply>>();
+  const pending = new Map<number | string, PromiseWithResolvers<Reply>>();
   const rootsRequests: Framing[] = [];
+  const replies: Reply[] = [];
   let roots: unknown = [];
   let respondToRoots = true;
   const send = (frame: object, framing: Framing) => child.stdin.write(encode({ jsonrpc: "2.0", ...frame }, framing));
@@ -120,7 +122,11 @@ function connect(f: Fixture, main: string, args: string[]) {
       if (message.method === "roots/list") {
         rootsRequests.push(framing);
         if (respondToRoots) send({ id: message.id, result: { roots } }, framing);
-      } else pending.get(message.id)?.resolve({ framing, message });
+      } else {
+        const reply: Reply = { framing, message };
+        replies.push(reply);
+        pending.get(message.id)?.resolve(reply);
+      }
     }
   });
   const exit = close.then(([code, signal]) => {
@@ -130,8 +136,9 @@ function connect(f: Fixture, main: string, args: string[]) {
   // Give cleanup a hard bound even after a failing assertion or transport regression.
   const kill = setTimeout(() => child.kill("SIGKILL"), 20_000);
   void exit.finally(() => clearTimeout(kill));
-  async function request(method: string, params: object = {}, framing: Framing = "line", splitUnicode = false) {
-    const id = ++nextId;
+  async function request(method: string, params: object = {}, framing: Framing = "line",
+    { id = ++nextId, splitUnicode = false }: { id?: number | string; splitUnicode?: boolean } = {},
+  ) {
     const reply = Promise.withResolvers<Reply>();
     pending.set(id, reply);
     const timer = setTimeout(() => reply.reject(new Error(`No response to ${method}: ${stderr}`)), 7000);
@@ -160,7 +167,7 @@ function connect(f: Fixture, main: string, args: string[]) {
     assert.equal(typeof result.isError, "boolean");
     return result;
   };
-  return { child, exit, request, call, rootsRequests, setRoots(value: unknown) { roots = value; }, ignoreRoots() { respondToRoots = false; } };
+  return { child, exit, request, call, send, get nextRequestId() { return nextId + 1; }, rootsRequests, replies, setRoots(value: unknown) { roots = value; }, ignoreRoots() { respondToRoots = false; } };
 }
 
 const cli = join(repo, "src", "cli.ts");
@@ -170,9 +177,13 @@ const init = { protocolVersion: "2025-11-25", capabilities: { roots: {} }, clien
 test("standalone MCP serves both framings, closed tool schemas, byte-exact instructions, and Codex resources", () => fixture(async f => {
   await withServer(f, server, async c => {
     const skill = await readFile(join(repo, "plugins/codex/skills/larva-subagent/SKILL.md"));
-    const { result: initialized } = await c.request("initialize", init, "length", true);
+    const { result: initialized } = await c.request("initialize", init, "length", { splitUnicode: true });
     assert.deepEqual(Buffer.from(initialized.instructions), skill);
     assert.equal(initialized.serverInfo.version, version);
+    assert.equal(initialized.protocolVersion, "2025-11-25");
+    for (const protocolVersion of ["2026-07-28", "unsupported"]) {
+      assert.equal((await c.request("initialize", { ...init, protocolVersion })).result.protocolVersion, "2026-07-28");
+    }
     assert.deepEqual(initialized.capabilities, { tools: {}, resources: {} });
     const { result: { tools } } = await c.request("tools/list");
     const model = ["larva_personas", "larva_subagent", "larva_subagent_wait", "larva_subagent_status", "larva_subagent_activity", "larva_subagent_cancel"];
@@ -221,7 +232,10 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     assert.deepEqual(tools[6]._meta["openai/extensions"], { "mentions/search": { preload: true } });
     assert.equal(tools[7]._meta.ui.resourceUri, panelUri);
     assert.deepEqual(tools[7]._meta["openai/ui"], { entrypoints: [{ type: "thread" }], availableDisplayModes: ["fullscreen"] });
-    assert.deepEqual(tools[7].inputSchema.properties.run_epochs, { ...cancelGuards, minItems: 1 });
+    const pins = tools[7].inputSchema.properties.run_epochs;
+    assert.deepEqual(pins.items, cancelGuards.items);
+    assert.equal(pins.minItems, 1);
+    assert.equal(pins.maxItems, cancelGuards.maxItems);
 
     const uri = "larva://personas/worker";
     const { result: { resources } } = await c.request("resources/list", {}, "length");
@@ -242,7 +256,8 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     assert.equal((await c.request("resources/read", { uri: "larva://personas/%zz" })).error.code, -32602);
     assert.equal((await c.request("resources/read", { uri: "larva://personas/absent" })).error.data.code, "LARVA_PERSONA_NOT_FOUND");
     const mention = await c.call("search_mentions", { query: "@larva:wo", preload: true });
-    assert.equal(mention.content[0].uri, uri);
+    assert.equal(mention.content.find((item: { type: string }) => item.type === "resource_link").uri, uri);
+    assert.match(mention.content[0].text, /matching Persona resources/);
     const p = (await c.call("larva_personas", { query: "local/one" })).structuredContent.personas;
     assert.equal(p[0].id, "worker"); assert.equal(p[0].prompt, undefined);
     for (const [name, args] of [
@@ -273,6 +288,198 @@ test("standalone MCP serves both framings, closed tool schemas, byte-exact instr
     assert.equal(absent.structuredContent.results[0].outcome, "not_found");
     c.child.stdin.end();
     assert.deepEqual(await c.exit, { code: 0, signal: null, stderr: "" });
+  });
+}));
+
+test("MCP EOF drains accepted replies and rejects incomplete frames", () => fixture(async f => {
+  await withServer(f, server, async c => {
+    const replies = [c.request("initialize", init, "length"), c.request("resources/list"), c.request("ping")];
+    c.child.stdin.end();
+    const [initialized, resources, ping] = await Promise.all(replies);
+    assert.equal(initialized.result.protocolVersion, "2025-11-25");
+    assert.equal(resources.result.resources.length, 3);
+    assert.deepEqual(ping.result, {});
+    assert.equal((await c.exit).code, 0);
+  });
+  for (const truncated of ["{", "Content-Length: 8\r\n", "Content-Length: 8\r\n\r\n{}"]) {
+    await withServer(f, server, async c => {
+      c.child.stdin.end(truncated);
+      assert.equal((await c.exit).code, 1);
+    });
+  }
+}));
+
+test("MCP paginates resources and cancels only the specified request", () => fixture(async f => {
+  await Promise.all(Array.from({ length: 55 }, (_, i) => {
+    const id = `worker-${String(i).padStart(2, "0")}`;
+    return writeFile(join(f.home, "personas", `${id}.json`), JSON.stringify({ id, description: id, prompt: "Private", model: "local/one" }));
+  }));
+  await withServer(f, server, async c => {
+    await c.request("initialize", init);
+    const { result: first } = await c.request("resources/list");
+    assert.ok(first.nextCursor);
+    const { result: last } = await c.request("resources/list", { cursor: first.nextCursor });
+    const uris = [...first.resources, ...last.resources].map(resource => resource.uri);
+    assert.equal(last.nextCursor, undefined);
+    assert.equal(uris.length, 58);
+    assert.equal(new Set(uris).size, uris.length);
+    assert.deepEqual(uris.slice(0, 3), [panelUri, widgetUri, "larva://personas/worker"]);
+    assert.equal(uris.at(-1), "larva://personas/worker-54");
+    assert.equal((await c.request("resources/list", { cursor: 3 })).error.code, -32602);
+
+    c.ignoreRoots();
+    const id = c.nextRequestId;
+    const pending = c.call("larva_subagent", input);
+    const exited = assert.rejects(pending, /MCP exited \(0\/null\)/);
+    await c.request("ping");
+    assert.equal(c.rootsRequests.length, 1, "the request must reach the roots bridge before cancellation");
+    c.send({ method: "notifications/cancelled", params: { requestId: id } }, "length");
+    assert.deepEqual((await c.request("ping")).result, {});
+    assert.equal(c.replies.some(({ message }) => message.id === id), false);
+    const live = await c.call("larva_subagent", { ...input, cwd: f.work });
+    assert.equal(live.isError, false);
+    c.child.stdin.end();
+    assert.equal((await c.exit).code, 0);
+    await exited;
+  });
+}));
+
+for (const [name, count, framing] of [["larva_personas", 9, "line"], ["search_mentions", 3, "length"]] as const) {
+  test(`MCP isolates oversized ${name} replies without interrupting an owned child`, () => fixture(async f => {
+    const description = "é".repeat(485_000);
+    // Each source is valid and under 1 MiB. The persona list sends nine
+    // descriptions; mention links carry each of three descriptions four times.
+    for (let i = 0; i < count; i++) {
+      const id = `catalog-${i}`;
+      const source = JSON.stringify({ id, description, prompt: "Private", model: "local/one" });
+      assert.ok(Buffer.byteLength(source) < 1024 * 1024);
+      await writeFile(join(f.home, "personas", `${id}.json`), source);
+    }
+    await withServer(f, framing === "length" ? await f.bundle() : server, async c => {
+      const { isError, structuredContent: { task_id, status } } = await c.call("larva_subagent", { ...input, cwd: f.work });
+      assert.equal(isError, false);
+      assert.equal(status, "accepted");
+      const pid = Number(await readFile(`${task_id}.pid`, "utf8"));
+      const small = await c.call(name, { query: "catalog-0" }, framing);
+      assert.equal(small.isError, false);
+      const matches = name === "larva_personas" ? small.structuredContent.personas : small.structuredContent.items;
+      assert.equal(matches.length, 1);
+      assert.ok(matches[0].description === description, "in-budget results retain the full description");
+
+      const id = c.nextRequestId;
+      const reply = await c.request("tools/call", { name, arguments: { query: "catalog-" } }, framing);
+      assert.equal(reply.id, id);
+      assert.equal(reply.error, undefined);
+      assert.equal(reply.result.isError, true);
+      assert.match(reply.result.content[0].text, /response.*limit.*narrow the query/i);
+      assert.equal(reply.result.structuredContent.error.details.matches, count);
+      assert.ok(encode(reply, framing).length < 1024);
+      assert.deepEqual((await c.request("ping", {}, framing)).result, {});
+      assert.equal((await c.call("larva_subagent_status", { task_id })).structuredContent.runs[0].status, "running");
+      process.kill(pid, "SIGUSR2");
+      const settled = await c.call("larva_subagent_wait", { task_ids: [task_id] });
+      assert.equal(settled.structuredContent.terminal_outputs[task_id].result_text, `result: ${input.task}`);
+      c.child.stdin.end();
+      assert.deepEqual(await c.exit, { code: 0, signal: null, stderr: "" });
+    });
+  }));
+}
+
+test("MCP admits IDs by encoded byte length and correlates reply overflow in both framings", () => fixture(async f => {
+  const cap = 8 * 1024 * 1024, idCap = 1024;
+  const id = 'é"'.repeat(255) + "é";
+  assert.equal(Buffer.byteLength(JSON.stringify(id)), idCap);
+  const overLimit = id + "x";
+  assert.equal(Buffer.byteLength(JSON.stringify(overLimit)), idCap + 1);
+  const ping = { jsonrpc: "2.0", id: "", method: "ping" };
+
+  // Eight admissible files yield a catalog whose reply fits with a numeric ID
+  // but runs out of room when the transport adds the maximum string ID.
+  const count = 8;
+  const description = "é".repeat((cap / count - 240) / 2);
+  for (let i = 0; i < count; i++) {
+    const id = `catalog-${i}`;
+    const source = JSON.stringify({ id, description, prompt: "Private", model: "local/one" });
+    assert.ok(Buffer.byteLength(source) < 1024 * 1024);
+    await writeFile(join(f.home, "personas", `${id}.json`), source);
+  }
+  for (const framing of ["line", "length"] as const) {
+    await withServer(f, framing === "line" ? server : await f.bundle(), async c => {
+      const { isError, structuredContent: { task_id, status } } = await c.call("larva_subagent", { ...input, cwd: f.work }, framing);
+      assert.equal(isError, false);
+      assert.equal(status, "accepted");
+      assert.deepEqual(await c.request("ping", {}, framing, { id }), { jsonrpc: "2.0", id, result: {} });
+
+      const params = { name: "larva_personas", arguments: { query: "catalog-" } };
+      const numeric = await c.request("tools/call", params, framing);
+      assert.equal(numeric.result.isError, false);
+      assert.equal(numeric.result.structuredContent.personas.length, count);
+      assert.ok(encode(numeric, framing).length <= cap);
+      assert.ok(encode({ ...numeric, id }, framing).length > cap);
+      const overflow = await c.request("tools/call", params, framing, { id });
+      assert.deepEqual(overflow, { jsonrpc: "2.0", id, error: { code: -32603, message: "Response exceeds the transport limit." } });
+      assert.ok(encode(overflow, framing).length <= cap);
+
+      const nearFrameCap = "x".repeat(cap - encode(ping, framing).length - 64);
+      const before = c.replies.length;
+      for (const id of [overLimit, nearFrameCap]) c.send({ id, method: ping.method }, framing);
+      assert.deepEqual((await c.request("ping", {}, framing)).result, {});
+      const rejected = c.replies.slice(before, -1);
+      assert.equal(rejected.length, 2);
+      for (const reply of rejected) {
+        assert.equal(reply.framing, framing);
+        assert.deepEqual(reply.message.error, { code: -32600, message: "Invalid Request" });
+        assert.equal(reply.message.id, null);
+        assert.equal(reply.message.result, undefined);
+      }
+      const small = await c.call("larva_personas", { query: "catalog-0" }, framing);
+      assert.equal(small.isError, false);
+      const matches = small.structuredContent.personas;
+      assert.equal(matches.length, 1);
+      assert.ok(matches[0].description === description, "in-budget results retain the full description");
+      assert.equal((await c.call("larva_subagent_status", { task_id }, framing)).structuredContent.runs[0].status, "running");
+      c.child.stdin.end();
+      assert.deepEqual(await c.exit, { code: 0, signal: null, stderr: "" });
+      await assert.rejects(access(`${task_id}.lock`), { code: "ENOENT" });
+    });
+  }
+}));
+
+test("MCP bounds the activity envelope and marks partial inspection and cancelled completion as errors", () => fixture(async f => {
+  await withServer(f, server, async c => {
+    const cancelled = await c.call("larva_subagent", { ...input, task: "abort-task", cwd: f.work, wait_for_completion: true });
+    assert.equal(cancelled.structuredContent.status, "cancelled");
+    assert.equal(cancelled.isError, true);
+    const task_id = join(f.home, "state", "sessions", "recorded.jsonl");
+    const payload = { example: "é".repeat(4000) };
+    await writeFile(task_id, [
+      JSON.stringify({ type: "session", id: "activity-fixture", version: 3, cwd: f.work }),
+      JSON.stringify({ type: "message", id: "row", parentId: null, timestamp: "2026-01-01T00:00:00Z", message: {
+        role: "assistant", content: [{ type: "toolCall", id: "read", name: "read", arguments: payload }],
+      } }),
+      "malformed row", "",
+    ].join("\n"));
+    const read = (args: object) => c.call("larva_subagent_activity", { task_id, ...args });
+    const args = { tool_call_id: "read", segment_part: "args", length: 4000 };
+    const first = await read(args);
+    assert.equal(first.isError, false);
+    assert.equal(first.content[0].text, "Recorded tool call details.");
+    assert.ok(Buffer.byteLength(JSON.stringify(first)) <= 8192);
+    let page = first.structuredContent.call.segment;
+    let text = page.text;
+    assert.equal(page.has_more, true);
+    for (let i = 0; page.has_more; i++) {
+      assert.ok(i < 10 && page.continuation_offset > page.offset);
+      const next = await read({ ...args, offset: page.continuation_offset, source_version: page.source_version });
+      assert.equal(next.isError, false);
+      assert.ok(Buffer.byteLength(JSON.stringify(next)) <= 8192);
+      page = next.structuredContent.call.segment;
+      text += page.text;
+    }
+    assert.equal(text, JSON.stringify(payload));
+    const partial = await read({ tool_call_id: "unobserved" });
+    assert.equal(partial.structuredContent.status, "partial");
+    assert.equal(partial.isError, true);
   });
 }));
 
@@ -375,7 +582,10 @@ test("MCP wait applies one deadline to readiness and output; panel pins and evic
     const settle = async () => call("larva_subagent_cancel", { task_ids, reason: "Join completed ownership cleanup" });
     await settle();
     const guard = { task_id, run_epoch };
-    for (const args of [{ run_epochs: [] }, { run_epochs: { [task_id]: run_epoch } },
+    const slice = { task_id, run_epoch, source: "prompt" };
+    for (const args of [{ slice, task_id }, { slice, run_epochs: [guard] }, { slice, scope: "recent" }, { slice, limit: 1 },
+      { slice: { ...slice, offset: -1 } }, { run_epochs: [guard], task_id }, { run_epochs: [guard], scope: "disk" },
+      { run_epochs: [] }, { run_epochs: { [task_id]: run_epoch } },
       { run_epochs: [guard, { ...guard, run_epoch: "other" }] }, { run_epochs: [{ ...guard, extra: true }] },
       { task_id, run_epochs: [{ ...guard, task_id: join(dirname(task_id), "unrequested.jsonl") }] },
       { run_epochs: Array(26).fill(guard) }]) {
@@ -383,11 +593,16 @@ test("MCP wait applies one deadline to readiness and output; panel pins and evic
       assert.equal(reply.isError, true);
       assert.equal(reply.structuredContent.error.code, "LARVA_BAD_INPUT");
     }
-    const pinned = (epoch: string) => call("larva_subagent_panel", { task_id, run_epochs: [{ task_id, run_epoch: epoch }] });
+    const panelSlice = await call("larva_subagent_panel", { slice });
+    assert.equal(panelSlice.slice.state, "ok");
+    assert.equal(panelSlice.slice.text, "hold-output");
+    const pinned = (epoch: string) => call("larva_subagent_panel", { run_epochs: [{ task_id, run_epoch: epoch }] });
     const resume = (n: number) => call("larva_subagent", { ...input, task_id, task: `complete-${n}`, wait_for_completion: true });
     const newer = await resume(2);
     assert.notEqual(newer.run_epoch, run_epoch);
-    assert.equal((await pinned(run_epoch)).terminal_outputs[task_id].result_text, "result: hold-output");
+    const original = await pinned(run_epoch);
+    assert.equal(original.runs[0].result_text, "result: hold-output");
+    assert.equal(original.terminal_outputs, undefined);
     assert.equal((await call("larva_subagent_panel", { task_id })).runs[0].run_epoch, newer.run_epoch);
     await settle();
     for (let n = 3; n <= 26; n++) { await resume(n); await settle(); }
@@ -395,14 +610,16 @@ test("MCP wait applies one deadline to readiness and output; panel pins and evic
     await rename(task_id, moved);
     await symlink(sessions, dirAlias, "dir");
     await symlink(moved, task_id);
-    for (const id of [task_id, join(dirAlias, "missing.jsonl")]) {
-      const result = await c.call("larva_subagent_panel", { run_epochs: [{ task_id: id, run_epoch: newer.run_epoch }] });
-      assert.equal(result.isError, true);
-      assert.equal(result.structuredContent.error.code, "LARVA_SESSION_INVALID");
-    }
+    const corrupted = [task_id, join(dirAlias, "missing.jsonl")];
+    const badRows = await call("larva_subagent_panel", { run_epochs: corrupted.map(task_id => ({ task_id, run_epoch: newer.run_epoch })) });
+    assert.deepEqual(badRows.runs, []);
+    assert.deepEqual(badRows.row_errors.map((row: { error: { code: string } }) => row.error.code), corrupted.map(() => "LARVA_SESSION_INVALID"));
     await rm(task_id);
-    assert.deepEqual(await pinned(run_epoch), { runs: [], startup_failures: [], terminal_outputs: {} });
-    assert.equal((await pinned(newer.run_epoch)).terminal_outputs[task_id].result_text, "result: complete-2");
+    assert.deepEqual(await pinned(run_epoch), { runs: [], startup_failures: [], row_errors: [] });
+    const mixed = await call("larva_subagent_panel", { run_epochs: [{ task_id, run_epoch: newer.run_epoch },
+      { task_id: corrupted[1], run_epoch: newer.run_epoch }] });
+    assert.equal(mixed.runs[0].result_text, "result: complete-2");
+    assert.equal(mixed.row_errors[0].task_id, corrupted[1]);
     c.child.stdin.end();
     assert.equal((await c.exit).code, 0);
   });

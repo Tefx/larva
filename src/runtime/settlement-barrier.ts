@@ -1,10 +1,11 @@
-import { metadataObject } from "../store/capsule.ts";
+import { isRecord } from "../core/predicates.ts";
 
 export type CallbackKind = "larva-subagent-result" | "larva-subagent-alert";
 export type CallbackDelivery = "pending" | "delivered" | "failed" | "suppressed" | "stale";
+type Frame = Record<string, unknown>;
 export type FrameBridge = {
-  configure(transform: (record: string) => readonly string[]): void;
-  emit(records: readonly string[]): void;
+  configure(transform: (frame: Frame) => readonly Frame[]): void;
+  emit(frames: readonly Frame[]): void;
 };
 
 /** Child-side adapter. Supply Pi's current branch, not the whole (possibly forked) transcript. */
@@ -12,9 +13,10 @@ export function childSettlementBarrier() {
   const pending = new Map<string, "reserved" | "queued" | "redriven">();
   let continuation: { isIdle(): boolean; triggerTurn(): void | Promise<void> } | undefined;
   let scheduled = false;
-  let parked: string | undefined;
+  let parked: Frame | undefined;
   let bridge: FrameBridge | undefined;
   let branch: () => readonly unknown[] = () => [];
+  let lastHeartbeat = -Infinity;
 
   function release() {
     if (parked === undefined || pending.size) return;
@@ -52,33 +54,48 @@ export function childSettlementBarrier() {
       }
     },
     unbind() { continuation = undefined; },
+    retire() { pending.clear(); parked = undefined; },
+    relayProgress() {
+      const time = performance.now();
+      if (!bridge || time - lastHeartbeat < 1000) return;
+      lastHeartbeat = time;
+      bridge.emit([{ type: "larva_descendant_progress" }]);
+    },
     bind(next: FrameBridge, getBranch: () => readonly unknown[], getActivePersona?: () => string | null, idleContinuation?: typeof continuation) {
       bridge = next;
       continuation = idleContinuation;
       wake();
       branch = getBranch;
-      next.configure(record => {
-        const frame: unknown = JSON.parse(record);
-        if (!metadataObject(frame)) return [record];
-        if (getActivePersona && frame.type === "response" && frame.command === "get_state" && frame.success === true && metadataObject(frame.data)) {
-          return [JSON.stringify({ ...frame, data: { ...frame.data, persona_id: getActivePersona() } })];
+      next.configure(frame => {
+        if (getActivePersona && frame.type === "response" && frame.command === "get_state" && frame.success === true && isRecord(frame.data)) {
+          return [{ ...frame, data: { ...frame.data, persona_id: getActivePersona() } }];
         }
         if (frame.type === "agent_start") parked = undefined;
-        if (frame.type !== "agent_settled" || !pending.size) return [record];
+        if (pending.size && frame.type === "extension_error" && frame.extensionPath === "<runtime>" && frame.event === "send_message") {
+          pending.clear();
+          parked = undefined;
+          return [{ type: "larva_rpc_frame_error", error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "Could not correlate a child callback delivery error." } }];
+        }
+        if (frame.type !== "agent_settled" || !pending.size) return [frame];
+        if (frame.aborted === true) {
+          parked = undefined;
+          pending.clear();
+          return [frame];
+        }
         // A recorded callback at the tip is only queued evidence. Require an assistant
         // entry AFTER it on this branch, and the enclosing native settlement event.
         let assistant = false;
         const entries = branch();
         for (let i = entries.length - 1; i >= 0; i--) {
           const e = entries[i];
-          if (!metadataObject(e)) continue;
-          if (e.type === "message" && metadataObject(e.message) && e.message.role === "assistant") assistant = true;
+          if (!isRecord(e)) continue;
+          if (e.type === "message" && isRecord(e.message) && e.message.role === "assistant") assistant = true;
           const details = e.type === "custom_message" ? e.details : e.type === "custom" ? e.data : undefined;
-          if (assistant && e.customType === "larva-subagent-result" && metadataObject(details)
+          if (assistant && e.customType === "larva-subagent-result" && isRecord(details)
               && typeof details.callback_id === "string") pending.delete(details.callback_id);
         }
-        if (!pending.size) { parked = undefined; return [record]; }
-        parked = record;
+        if (!pending.size) { parked = undefined; return [frame]; }
+        parked = frame;
         wake();
         return [];
       });

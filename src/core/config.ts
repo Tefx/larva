@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { LarvaError } from "./errors.ts";
+import { isRecord, isValidPersonaId } from "./predicates.ts";
 import type { LarvaConfig } from "./types.ts";
 
 const MAX_TIMEOUT_MS = 86_400_000;
@@ -10,11 +11,11 @@ function invalid(field: string): never {
 }
 
 function object(value: unknown, field: string, keys: readonly string[]): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return invalid(field);
+  if (!isRecord(value)) return invalid(field);
   const prototype: unknown = Object.getPrototypeOf(value);
   if ((prototype !== null && prototype !== Object.prototype)
       || Object.keys(value).some(key => !keys.includes(key))) return invalid(field);
-  return value as Record<string, unknown>;
+  return value;
 }
 
 function field(obj: Record<string, unknown>, key: string, fallback: unknown): unknown {
@@ -36,7 +37,7 @@ function isStallAlert(value: unknown): value is number {
 export function parseLarvaConfig(value: unknown): LarvaConfig {
   const config = object(value, "root object", ["default_persona", "switch_mode", "confirm_timeout_ms", "subagent", "gc"]);
   const persona = field(config, "default_persona", null);
-  if (persona !== null && (typeof persona !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(persona))) {
+  if (persona !== null && !isValidPersonaId(persona)) {
     return invalid("default_persona");
   }
   const mode = field(config, "switch_mode", "confirm");
@@ -51,7 +52,7 @@ export function parseLarvaConfig(value: unknown): LarvaConfig {
   if (!Array.isArray(sources)) return invalid("subagent.extension_sources");
   const uniqueSources = new Set<string>();
   for (const source of sources) {
-    if (typeof source !== "string" || source === "" || uniqueSources.has(source)) {
+    if (typeof source !== "string" || source === "" || source.includes("\0") || uniqueSources.has(source)) {
       return invalid("subagent.extension_sources");
     }
     uniqueSources.add(source);

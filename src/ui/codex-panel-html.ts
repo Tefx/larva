@@ -1,17 +1,17 @@
 export const CODEX_PANEL_URI = "ui://larva-pi-subagent/panel-v4";
 export const CODEX_PANEL_DISPLAY_MODES = ["fullscreen"] as const;
 
-export function renderCodexPanelHtml(): string {
-  return renderCodexAppHtml("panel", CODEX_PANEL_DISPLAY_MODES);
+export function renderCodexPanelHtml(version?: string): string {
+  return renderCodexAppHtml("panel", CODEX_PANEL_DISPLAY_MODES, version);
 }
 
 /** Shared observer for both app resources; the iframe needs no modules or network. */
-export function renderCodexAppHtml(surface: "panel" | "widget", modes: readonly string[]): string {
+export function renderCodexAppHtml(surface: "panel" | "widget", modes: readonly string[], version = "source"): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
 <title>Larva Subagents</title><style>${styles}</style></head>
-<body><div id="app"></div><script>(${app})(${JSON.stringify(surface)},${JSON.stringify(modes)});</script></body></html>`;
+<body><div id="app"></div><script>(${app})(${JSON.stringify(surface)},${JSON.stringify(modes)},${JSON.stringify(version)});</script></body></html>`;
 }
 
 const styles = `
@@ -26,7 +26,8 @@ const styles = `
 [data-theme=light] { color-scheme: light }
 [data-theme=dark] { color-scheme: dark }
 * { box-sizing: border-box }
-body { margin: 0; padding: calc(12px + var(--safe-top, 0px)) calc(12px + var(--safe-right, 0px)) calc(12px + var(--safe-bottom, 0px)) calc(12px + var(--safe-left, 0px)); overflow-wrap: anywhere }
+body { margin: 0 }
+#app { padding: calc(12px + var(--safe-top, 0px)) calc(12px + var(--safe-right, 0px)) calc(12px + var(--safe-bottom, 0px)) calc(12px + var(--safe-left, 0px)); overflow-wrap: anywhere }
 header, .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
 header { margin-bottom: 12px; justify-content: space-between }
 h1, h2, h3, p { margin: 0 0 8px }
@@ -39,12 +40,14 @@ button[aria-pressed=true] { background: var(--subtle); border-color: currentColo
 button:disabled { opacity: .6; cursor: default }
 main { display: grid; gap: 12px; align-items: start }
 [data-mode=fullscreen] main:has(> nav) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) }
-.list { display: grid; gap: 6px; overflow: auto; max-height: 32dvh; padding: 3px }
+.list { display: grid; gap: 6px; overflow: auto; max-height: 180px; padding: 3px }
 [data-mode=fullscreen] .list { max-height: 75dvh }
 .list button { text-align: start }
 article { border: 1px solid var(--border); border-radius: var(--border-radius-md, 8px); padding: 10px; min-width: 0 }
 article .controls { margin-bottom: 8px }
 article .controls h2 { margin: 0 }
+.summary { overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
+.badge { border: 1px solid var(--border); border-radius: 6px; padding-inline: 5px }
 .telemetry { list-style: none; padding: 0; margin: 0 0 8px }
 .telemetry li + li { border-top: 1px solid var(--border); padding-top: 6px }
 .notice { padding: 8px 10px; background: var(--subtle); border-inline-start: 3px solid }
@@ -61,7 +64,7 @@ pre { margin: 0 0 8px; padding: 8px; background: var(--subtle); white-space: pre
 
 // Keep this script as JavaScript source: the Node bundler must not inject
 // helpers that aren't available in the sandboxed app document.
-const app = String.raw`function (surface, modes) {
+const app = String.raw`function (surface, modes, version) {
   const panel = surface === 'panel';
   const root = document.getElementById('app');
   const terminal = new Set(['success', 'failed', 'cancelled']);
@@ -78,12 +81,14 @@ const app = String.raw`function (surface, modes) {
   const cancelling = new Set();
   const detailsOpen = new Set();
   const requests = new Map();
-  let activity;
-  let sequence = 0, view = 0, renderVersion = 0, pollTimer, poll, displayRequest, mode = modes[0];
+  const cancelNotices = new Map();
+  const tabs = ['All', 'Timeline', 'Result', 'Task & Session'];
+  let tab = tabs[0], activity, textRead;
+  let sequence = 0, view = 0, renderVersion = 0, pollTimer, clockTimer, poll, displayRequest, mode = modes[0], availableModes = modes;
   let connection = 'connecting';
-  let target = panel ? { kind: 'latest', query: { scope: 'recent' } } : { kind: 'pending' };
-  let toolInput, initialResult;
-  let rows = [], failures = [], selected, loading = true, readError, cancelNotice;
+  let target = { kind: 'pending' };
+  let toolInput, initialResult, waitOutcome, renderDeferred = false;
+  let rows = [], failures = [], selected, loading = true, readError;
 
   const visible = () => document.visibilityState !== 'hidden';
   const observing = () => connection === 'ready' && visible();
@@ -96,7 +101,7 @@ const app = String.raw`function (surface, modes) {
       const timer = setTimeout(() => {
         requests.delete(id);
         reject(new Error('The host did not respond.'));
-        disconnect();
+        if (kind === 'initialize') disconnect();
       }, 15000);
       requests.set(id, { resolve, reject, timer, kind });
       try { post({ id, method, params }); }
@@ -122,8 +127,11 @@ const app = String.raw`function (surface, modes) {
   function stopObserving() {
     view++;
     clearTimeout(pollTimer);
+    clearInterval(clockTimer);
+    clockTimer = undefined;
     poll = undefined;
     clearActivity();
+    clearTextRead();
     retireRequests(kind => kind === 'observer');
   }
 
@@ -138,7 +146,9 @@ const app = String.raw`function (surface, modes) {
   }
 
   function applyContext(context) {
-    if (modes.includes(context?.displayMode)) mode = context.displayMode;
+    if (Array.isArray(context?.availableDisplayModes)) availableModes = modes.filter(candidate => context.availableDisplayModes.includes(candidate));
+    if (availableModes.includes(context?.displayMode)) mode = context.displayMode;
+    else if (!availableModes.includes(mode) && availableModes.length) mode = availableModes[0];
     const html = document.documentElement;
     if (context?.theme === 'light' || context?.theme === 'dark') html.dataset.theme = context.theme;
     for (const [name, value] of Object.entries(context?.styles?.variables ?? {})) {
@@ -182,16 +192,23 @@ const app = String.raw`function (surface, modes) {
   }
 
   function acceptSnapshot(data, pinRefresh = false) {
-    const runs = (Array.isArray(data?.runs) ? data.runs : []).slice(0, 25).filter(pair);
+    const runs = (Array.isArray(data?.runs) ? data.runs : []).filter(pair);
     if (target.kind === 'pinned') {
       rows = Array.from(target.pairs, ([id, epoch]) => {
         const run = runs.find(row => row.task_id === id && row.run_epoch === epoch);
         if (run) {
           const current = terminalOutput(run, data.terminal_outputs);
           if (isCaptured(current)) captured.set(id, current);
-          return { kind: 'run', run: captured.get(id) ?? current };
+          const saved = captured.get(id);
+          return { kind: 'run', run: saved ? { ...saved, ...current, ...(!isCaptured(current) && {
+            output_state: saved.output_state, result_text: saved.result_text, result_preview: saved.result_preview,
+            full_output_artifact: saved.full_output_artifact, output_diagnostic: saved.output_diagnostic,
+          }) } : current };
         }
         const saved = captured.get(id);
+        const previous = rows.find(row => row.run?.task_id === id && row.run?.run_epoch === epoch)?.run ?? saved;
+        const error = data.row_errors?.find(item => item.task_id === id && item.run_epoch === epoch)?.error;
+        if (error) return { kind: 'fault', run: previous ?? { task_id: id, run_epoch: epoch }, error };
         return saved ? { kind: 'run', run: saved }
           : { kind: pinRefresh ? 'expired' : 'run', run: { task_id: id, run_epoch: epoch, output_state: 'pending' } };
       });
@@ -210,26 +227,27 @@ const app = String.raw`function (surface, modes) {
         kind: 'disk', disk, run: disk.lock_state === 'active_local' ? live.find(run => run.task_id === disk.task_id) : undefined,
       }));
     } else {
-      rows = live.filter(run => query.scope !== 'active' || active(run) || run.status === 'cancelling').map(run => ({ kind: 'run', run }));
+      rows = live.filter(run => query.scope !== 'active' || !terminal.has(run.status) || run.cleanup_unconfirmed).map(run => ({ kind: 'run', run }));
     }
   }
 
   function applyInvocation() {
-    if (target.kind !== 'pending' || initialResult === undefined) return;
+    if (target.kind !== 'pending' || !toolInput || initialResult === undefined) return;
     const data = dataOf(initialResult);
     const runs = Array.isArray(data?.runs) ? data.runs.slice(0, 25) : [];
     // The app notifications carry arguments and a result, not necessarily the
     // tool name. Use the disjoint spawn/wait receipt shapes, never input IDs
     // alone, as the authority for binding an epoch.
-    const waitResult = (!toolInput || toolInput.kind === 'wait') && !initialResult.isError &&
+    const waitResult = toolInput.kind === 'wait' && !initialResult.isError &&
       typeof data?.ready === 'boolean' && typeof data.timed_out === 'boolean';
+    if (waitResult) waitOutcome = [data.ready ? 'Wait ready' : 'Wait not ready', data.timed_out && 'Timed out'].filter(Boolean).join(' · ');
     let snapshots = [];
-    if ((!toolInput || toolInput.kind === 'spawn') && pair(data) &&
+    if (toolInput.kind === 'spawn' && pair(data) &&
         (terminal.has(data.status) || (!initialResult.isError && data.status === 'accepted'))) {
-      snapshots = [{ persona_id: toolInput?.personaId, phase: data.status === 'accepted' ? 'starting' : data.status,
+      snapshots = [{ persona_id: toolInput.personaId, phase: data.status === 'accepted' ? 'starting' : data.status,
         output_state: 'pending', ...data }];
     } else if (waitResult) {
-      snapshots = runs.filter(row => !toolInput || toolInput.taskIds.includes(row?.task_id));
+      snapshots = runs.filter(row => toolInput.taskIds.includes(row?.task_id));
     }
     const pairs = new Map(snapshots.filter(pair).map(row => [row.task_id, row.run_epoch]));
     if (pairs.size) {
@@ -238,7 +256,7 @@ const app = String.raw`function (surface, modes) {
     } else if (initialResult.isError || data?.error || waitResult) {
       const message = errorOf(initialResult) ?? (waitResult ? 'No run snapshot was returned for this wait.' : 'The tool call was rejected.');
       target = { kind: 'rejected', message };
-    } else if (toolInput?.kind === 'status' && Array.isArray(data?.runs) && Array.isArray(data.startup_failures)) {
+    } else if (toolInput.kind === 'status' && Array.isArray(data?.runs) && Array.isArray(data.startup_failures)) {
       target = { kind: 'latest', query: toolInput.query };
       acceptSnapshot(data);
     } else {
@@ -258,25 +276,52 @@ const app = String.raw`function (surface, modes) {
   async function refresh() {
     if (!observing() || poll || (target.kind !== 'pinned' && target.kind !== 'latest')) return;
     clearTimeout(pollTimer);
-    const ticket = poll = {};
+    const ticket = poll = { stale: false };
     const args = target.kind === 'pinned' ? { run_epochs: Array.from(target.pairs, ([task_id, run_epoch]) => ({ task_id, run_epoch })) } : target.query;
     try {
-      const response = await tool('larva_subagent_panel', args);
-      if (poll !== ticket) return;
-      if (response?.isError) throw new Error(errorOf(response) ?? 'Could not refresh runs.');
-      const data = dataOf(response);
-      if (!Array.isArray(data?.runs)) throw new Error('Invalid run snapshot from the host.');
-      acceptSnapshot(data, true);
-      readError = undefined;
+      const read = async query => {
+        const response = await tool('larva_subagent_panel', query);
+        if (response?.isError) throw new Error(errorOf(response) ?? 'Could not refresh runs.');
+        const data = dataOf(response);
+        if (!Array.isArray(data?.runs)) throw new Error('Invalid run snapshot from the host.');
+        return data;
+      };
+      const grouped = target.kind === 'latest' && !args.task_id && (!args.scope || args.scope === 'recent') && mode === 'fullscreen';
+      if (grouped) {
+        const results = await Promise.allSettled([read({ ...args, scope: 'active', limit: args.limit ?? 25 }), read({ ...args, limit: args.limit ?? 25 })]);
+        if (poll !== ticket || ticket.stale) return;
+        const [live, recent] = results;
+        const combined = new Map();
+        // Without a fresh side, preserve its existing rows rather than reporting their disappearance.
+        for (const [side, outcome] of results.entries()) {
+          const source = outcome.status === 'fulfilled' ? outcome.value.runs
+            : rows.filter(row => row.kind === 'run' && (side === 0 ? !terminal.has(row.run.status) : terminal.has(row.run.status))).map(row => row.run);
+          for (const run of source) if (pair(run)) {
+            const id = key(run), previous = combined.get(id);
+            if (!previous || previous.updated_at < run.updated_at) combined.set(id, run);
+          }
+        }
+        acceptSnapshot({ runs: [...combined.values()], startup_failures: recent.value?.startup_failures ?? live.value?.startup_failures ?? failures });
+        readError = results.flatMap((outcome, index) => outcome.status === 'rejected' ? [(index ? 'Done: ' : 'Active: ') + outcome.reason.message] : []).join(' ') || undefined;
+      } else {
+        const data = await read(args);
+        if (poll !== ticket || ticket.stale) return;
+        acceptSnapshot(data, true);
+        readError = undefined;
+      }
     } catch (error) {
-      if (poll === ticket) readError = error.message;
+      if (poll === ticket && !ticket.stale) readError = error.message;
     } finally {
       if (poll === ticket) {
         poll = undefined;
-        loading = false;
-        render();
-        if (target.kind === 'latest' || readError || rows.some(row => row.kind === 'run' && !isCaptured(row.run))) {
-          pollTimer = setTimeout(refresh, 2500);
+        if (ticket.stale) void refresh();
+        else {
+          loading = false;
+          render(true);
+          if (target.kind === 'latest' || readError || rows.some(row => row.kind === 'fault' ||
+              row.kind === 'run' && (!isCaptured(row.run) || row.run.cleanup_unconfirmed))) {
+            pollTimer = setTimeout(refresh, 1000);
+          }
         }
       }
     }
@@ -290,18 +335,19 @@ const app = String.raw`function (surface, modes) {
   function setQuery(query) {
     stopObserving();
     target = { kind: 'latest', query };
-    rows = []; failures = []; selected = undefined; readError = undefined; cancelNotice = undefined;
+    rows = []; failures = []; selected = undefined; readError = undefined;
     loading = true;
     reopen();
   }
 
   async function changeMode() {
-    if (!observing() || displayRequest) return;
+    const requested = mode === 'inline' ? 'fullscreen' : 'inline';
+    if (!observing() || displayRequest || !availableModes.includes(requested)) return;
     const ticket = displayRequest = {};
     const token = view;
     render();
     try {
-      const result = await rpc('ui/request-display-mode', { mode: mode === 'inline' ? 'fullscreen' : 'inline' });
+      const result = await rpc('ui/request-display-mode', { mode: requested });
       if (token !== view || !observing()) return;
       applyContext({ displayMode: result?.mode });
       void refresh();
@@ -314,11 +360,11 @@ const app = String.raw`function (surface, modes) {
 
   async function cancel(run) {
     const id = key(run);
-    const owns = row => same(row.run, run) && active(row.run);
-    if (!observing() || loading || readError || cancelling.has(id) || !rows.some(owns)) return;
+    const owns = row => row.kind === 'run' && same(row.run, run) && (active(row.run) || row.run.cleanup_unconfirmed);
+    if (!observing() || loading || cancelling.has(id) || !rows.some(owns)) return;
     const token = view;
     cancelling.add(id);
-    cancelNotice = undefined;
+    cancelNotices.delete(id);
     render();
     try {
       const response = await tool('larva_subagent_cancel', {
@@ -331,23 +377,22 @@ const app = String.raw`function (surface, modes) {
         case 'cancelled':
         case 'already_terminal': break;
         case 'cleanup_unconfirmed':
-          cancelNotice = { text: 'Cancellation cleanup could not be confirmed.', style: 'warning' }; break;
+          cancelNotices.set(id, { text: 'Cancellation cleanup could not be confirmed.', style: 'warning' }); break;
         case 'not_found':
-          cancelNotice = { text: 'Run not found for cancellation. No newer run was targeted.', style: 'error' }; break;
+          cancelNotices.set(id, { text: 'Run not found for cancellation. No newer run was targeted.', style: 'error' }); break;
         default: throw new Error(errorOf(response) ?? 'Cancellation outcome unavailable.');
       }
       if (item.outcome !== 'cleanup_unconfirmed') {
-        // Do not offer another Cancel on an observed pre-cancel snapshot.
-        rows = rows.filter(row => !owns(row));
         loading = true;
+        if (poll) poll.stale = true;
       }
     } catch (error) {
-      if (token === view && observing()) cancelNotice = { text: error.message, style: 'error' };
+      if (token === view && observing()) cancelNotices.set(id, { text: error.message, style: 'error' });
     } finally {
       cancelling.delete(id);
       if (token === view && observing()) {
-        stopObserving();
-        reopen();
+        render();
+        void refresh();
       }
     }
   }
@@ -414,6 +459,59 @@ const app = String.raw`function (surface, modes) {
     element('code', path, line);
   }
 
+  function clearTextRead() {
+    textRead = undefined;
+    retireRequests(kind => kind === 'slice');
+  }
+
+  async function readText(run, source, offset) {
+    if (!observing()) return;
+    const previous = offset !== undefined ? textRead : undefined;
+    clearTextRead();
+    const request = textRead = { runKey: key(run), source, state: 'loading' };
+    render();
+    try {
+      let text = '';
+      do {
+        const response = await tool('larva_subagent_panel', { slice: {
+          task_id: run.task_id, ...(run.run_epoch && { run_epoch: run.run_epoch }), source,
+          offset: offset ?? 0,
+        } }, 'slice');
+        if (textRead !== request || !observing()) return;
+        const page = dataOf(response)?.slice;
+        if (response?.isError) throw new Error(errorOf(response) ?? 'Could not read text.');
+        if (page?.state !== 'ok') throw new Error('Full ' + source + ' is unavailable.');
+        if (page.offset !== (offset ?? 0) || typeof page.text !== 'string' ||
+            (page.continuation_offset !== undefined && (!Number.isSafeInteger(page.continuation_offset) || page.continuation_offset <= page.offset))) {
+          throw new Error('Invalid text page from host.');
+        }
+        text += page.text;
+        offset = page.continuation_offset;
+      } while (source === 'prompt' && offset !== undefined);
+      Object.assign(request, { state: 'ready', text, next: offset, start: previous?.next ?? 0 });
+    } catch (error) {
+      if (textRead !== request || !observing()) return;
+      Object.assign(request, { state: 'error', message: error.message });
+    }
+    render(true);
+  }
+
+  function textReader(run, source, parent) {
+    const current = textRead?.source === source && textRead.runKey === key(run) ? textRead : undefined;
+    const label = source === 'prompt' ? 'Load full prompt' : 'Read full output';
+    button(label, () => void readText(run, source), parent, { disabled: !observing() || current?.state === 'loading' });
+    if (current?.state === 'loading') notice('Reading ' + source + '…', '', parent);
+    if (current?.state === 'error') notice(current.message, 'error', parent);
+    if (current?.state !== 'ready') return;
+    element('pre', current.text, parent).dataset.scrollKey = 'full:' + source + ':' + key(run);
+    if (source === 'prompt') copyButton('Copy full prompt', current.text, parent, key(run));
+    else {
+      copyButton('Copy output page', current.text, parent, key(run));
+      if (current.next !== undefined) button('Next output page', () => void readText(run, source, current.next), parent, { disabled: !observing() });
+      if (current.start) button('First output page', () => void readText(run, source), parent, { disabled: !observing() });
+    }
+  }
+
   function output(run, parent) {
     element('h3', 'Result', parent);
     const artifact = run.full_output_artifact?.path;
@@ -432,6 +530,7 @@ const app = String.raw`function (surface, modes) {
         if (preview) show(preview);
         copyButton('Copy output preview', preview, parent, key(run));
         pathLine(artifact ? 'Full output artifact' : 'Recorded transcript', artifact ?? run.task_id, parent);
+        textReader(run, 'output', parent);
         break;
       case 'delivery_failed':
         notice((run.status === 'success' ? 'Execution succeeded, but output delivery failed.' : 'Output delivery failed.') +
@@ -448,30 +547,34 @@ const app = String.raw`function (surface, modes) {
     }
   }
 
-  async function inspect(run, toolCall, part) {
+  async function inspect(run, callId, part, selection = {}) {
     if (!observing()) return;
     clearActivity();
-    const request = activity = { runKey: key(run), callId: toolCall.tool_call_id, part, state: 'loading' };
+    const request = activity = { runKey: key(run), callId, part, selection, state: 'loading' };
     render();
     try {
       const result = await tool('larva_subagent_activity', {
-        task_id: run.task_id, tool_call_id: request.callId, segment_part: part,
+        task_id: run.task_id, tool_call_id: callId, segment_part: part, ...selection,
       }, 'activity');
       if (activity !== request || !observing()) return;
       const data = dataOf(result);
       const segment = data?.call?.segment;
       if (result?.isError || data?.error) throw new Error(errorOf(result) ?? 'Recorded activity unavailable.');
-      if (data?.status === 'ambiguous') throw new Error('Multiple recorded calls match this tool ID. Inspect the recorded transcript.');
-      if (part === 'result' && data?.call?.result_state === 'ambiguous') throw new Error('The recorded result is ambiguous. Inspect the recorded transcript.');
-      if (data?.status !== 'success' || data.call?.call_id !== request.callId || segment?.part !== part || typeof segment.text !== 'string') {
-        throw new Error('No recorded ' + part + ' available for this call yet.');
+      if (data?.status === 'ambiguous') {
+        Object.assign(request, { state: 'choose', candidates: data.candidates, coordinate: 'disambiguation_index' });
+      } else if (!segment && part === 'result' && data?.call?.result_state === 'ambiguous') {
+        Object.assign(request, { state: 'choose', candidates: data.call.result_candidates, coordinate: 'result_index' });
+      } else {
+        if (data?.status !== 'success' || data.call?.call_id !== callId || segment?.part !== part || typeof segment.text !== 'string') {
+          throw new Error('No recorded ' + part + ' available for this call yet.');
+        }
+        Object.assign(request, { state: 'ready', segment, partial: segment.upstream_truncated || data.inspection_complete === false });
       }
-      Object.assign(request, { state: 'ready', text: segment.text, partial: segment.has_more || segment.upstream_truncated || data.inspection_complete === false });
     } catch (error) {
       if (activity !== request || !observing()) return;
       Object.assign(request, { state: 'error', text: error.message });
     }
-    render();
+    render(true);
   }
 
   function recentTools(run, parent) {
@@ -479,24 +582,36 @@ const app = String.raw`function (surface, modes) {
     element('h3', 'Recent tool calls', parent);
     const list = element('ul', undefined, parent);
     list.className = 'telemetry';
-    for (const call of run.tool_snapshots.slice().reverse()) {
+    // One live summary per call ID; the recording inspector owns duplicate candidates.
+    const calls = new Map(run.tool_snapshots.map(call => [call.tool_call_id, call]));
+    for (const call of [...calls.values()].reverse()) {
       const item = element('li', undefined, list);
       element('p', call.name + ' (' + call.status + ')', item);
-      if (call.args_preview) element('pre', call.args_preview, item);
+      for (const text of [call.args_preview, call.output_preview, call.error_preview]) if (text) element('pre', text, item);
       const controls = element('div', undefined, item);
       controls.className = 'controls';
       const current = activity?.callId === call.tool_call_id ? activity : undefined;
       const callKey = key(run) + ':' + call.tool_call_id;
-      for (const part of ['args', 'result']) button(part === 'args' ? 'Recorded args' : 'Recorded result', () => void inspect(run, call, part), controls, {
+      for (const part of ['args', 'result']) button(part === 'args' ? 'Recorded args' : 'Recorded result', () => void inspect(run, call.tool_call_id, part), controls, {
         key: part + ':' + callKey, disabled: !observing() || (current?.part === part && current.state === 'loading'),
       });
       if (!current) continue;
       button('Close recording', () => { clearActivity(); render(); }, controls, { key: 'close:' + callKey });
       if (current.state === 'loading') notice('Loading recorded ' + current.part + '…', '', item);
       else if (current.state === 'error') notice(current.text, 'error', item);
-      else {
+      else if (current.state === 'choose') {
+        notice('Multiple recordings match; select a candidate.', 'warning', item);
+        for (const candidate of current.candidates ?? []) button('Recording ' + (candidate.index + 1) + ' · line ' + candidate.line_number,
+          () => void inspect(run, current.callId, current.part, { ...current.selection, [current.coordinate]: candidate.index }), item,
+          { disabled: !observing() });
+      } else {
         element('h3', 'Recorded ' + current.part, item);
-        element('pre', current.text, item).dataset.scrollKey = current.part + ':' + callKey;
+        const segment = current.segment;
+        element('pre', segment.text, item).dataset.scrollKey = current.part + ':' + callKey;
+        if (Number.isSafeInteger(segment.continuation_offset) && segment.continuation_offset > segment.offset && segment.source_version) {
+          button('Next recorded page', () => void inspect(run, current.callId, current.part, { ...current.selection,
+            offset: segment.continuation_offset, source_version: segment.source_version }), item, { disabled: !observing() });
+        }
         if (current.partial) notice('Partial recording. Inspect the transcript for more.', 'warning', item);
       }
     }
@@ -509,7 +624,15 @@ const app = String.raw`function (surface, modes) {
     if (row.kind === 'disk') return [row.disk.task_id, row.disk.cwd, diskStatus(row.disk),
       row.disk.cwd_exists === false ? 'Missing workspace' : ''].filter(Boolean).join(' · ');
     const run = row.run;
-    return (run.persona_id ?? run.task_id) + ' · ' + (row.kind === 'expired' ? 'Snapshot expired' : phase(run) ?? 'Pending');
+    return [run.persona_id, run.task_id.split('/').pop(), run.run_epoch?.slice(0, 8),
+      row.kind === 'expired' ? 'Snapshot expired' : row.kind === 'fault' ? 'Refresh failed' : phase(run) ?? 'Pending'].filter(Boolean).join(' · ');
+  }
+
+  function tick() {
+    for (const elapsed of root.querySelectorAll('[data-started-at]')) {
+      const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(elapsed.dataset.startedAt)) / 1000));
+      elapsed.textContent = Math.floor(seconds / 60) + 'm ' + seconds % 60 + 's elapsed';
+    }
   }
 
   function renderContent() {
@@ -517,19 +640,19 @@ const app = String.raw`function (surface, modes) {
     element('h1', 'Larva Subagents', header);
     const controls = element('div', undefined, header);
     controls.className = 'controls';
-    if (panel) {
+    if (panel && target.kind === 'latest') {
       for (const scope of scopes) button(labels[scope], () => setQuery({ scope, ...(target.query.limit ? { limit: target.query.limit } : {}) }), controls, {
         pressed: !target.query.task_id && target.query.scope === scope, disabled: !observing(),
       });
     }
     if (target.kind === 'latest' || target.kind === 'pinned') button('Refresh', refresh, controls, { disabled: !observing() });
-    if (!panel) button(mode === 'inline' ? 'Fullscreen' : 'Inline', changeMode, controls, {
+    if (!panel && availableModes.includes(mode === 'inline' ? 'fullscreen' : 'inline')) button(mode === 'inline' ? 'Fullscreen' : 'Inline', changeMode, controls, {
       key: 'display', disabled: !observing() || !!displayRequest,
     });
     if (connection === 'lost') notice('Connection lost. This view is read-only.', 'warning');
     if (readError) notice(readError, 'error');
-    if (cancelNotice) notice(cancelNotice.text, cancelNotice.style);
-    if (target.kind === 'pending') { notice('Waiting for this tool call…', ''); return; }
+    if (waitOutcome) notice(waitOutcome, '');
+    if (target.kind === 'pending') { notice(panel ? 'Waiting for panel input…' : 'Waiting for this tool call…', ''); return; }
     if (target.kind === 'rejected') { notice(target.message, 'error'); return; }
     for (const failure of failures) {
       if (failure?.error?.message) notice('Startup failed · ' + failure.persona_id + ' · ' + failure.error.message, 'error');
@@ -546,9 +669,18 @@ const app = String.raw`function (surface, modes) {
       list.className = 'list';
       list.dataset.scrollKey = 'list';
       list.setAttribute('aria-label', 'Subagent runs');
-      for (const item of rows) button(rowLabel(item), () => { selected = rowKey(item); render(); }, list, {
-        key: rowKey(item), pressed: item === row,
-      });
+      const group = (title, items) => {
+        if (!items.length) return;
+        if (title) element('h3', title, list);
+        for (const item of items) button(rowLabel(item), () => { selected = rowKey(item); render(); }, list, {
+          key: rowKey(item), pressed: item === row,
+        }).title = [item.run?.task_id ?? item.disk?.task_id, item.run?.run_epoch].filter(Boolean).join(' · ');
+      };
+      if (mode === 'fullscreen') {
+        group('Active', rows.filter(row => row.kind === 'run' && !terminal.has(row.run.status)));
+        group('Done', rows.filter(row => row.kind !== 'disk' && (row.kind !== 'run' || terminal.has(row.run.status))));
+        group('Disk', rows.filter(row => row.kind === 'disk'));
+      } else group(undefined, rows);
     }
     const detail = element('article', undefined, main);
     if (row.kind === 'expired') {
@@ -557,6 +689,7 @@ const app = String.raw`function (surface, modes) {
       copyButton('Copy task_id', row.run.task_id, detail, key(row.run));
       return;
     }
+    if (row.kind === 'fault') notice(row.error.message, 'error', detail);
     const run = row.run;
     if (row.kind === 'disk') {
       element('h2', 'Recorded session', detail);
@@ -566,6 +699,7 @@ const app = String.raw`function (surface, modes) {
       if (row.disk.cwd_exists === false) notice('Missing workspace', 'warning', detail);
       if (!run) {
         copyButton('Copy task_id', row.disk.task_id, detail, rowKey(row));
+        textReader(row.disk, 'prompt', detail);
         return;
       }
     }
@@ -575,52 +709,91 @@ const app = String.raw`function (surface, modes) {
     heading.dir = 'auto';
     const status = ({ accepted: 'Accepted', running: 'Running' })[run.status];
     element('span', [status, phase(run) ?? 'Pending'].filter(Boolean).join(' · '), bar)
-      .className = run.phase === 'stall_suspected' ? 'warning' : '';
+      .className = run.phase === 'stall_suspected' ? 'badge warning' : '';
+    if (Number.isFinite(Date.parse(run.started_at)) && !terminal.has(run.status)) {
+      element('span', undefined, bar).dataset.startedAt = run.started_at;
+    }
+    if (Number.isSafeInteger(run.tool_call_count)) element('span', run.tool_call_count + ' tool calls', bar);
+    for (const [state, label] of [['delivery_failed', 'Delivery failed'], ['evicted', 'Output evicted']]) {
+      if (run.output_state === state) element('span', label, bar).className = 'badge warning';
+    }
+    if (run.cleanup_unconfirmed) element('span', 'Cleanup unconfirmed', bar).className = 'badge warning';
     const route = [run.model, run.thinking && 'thinking: ' + run.thinking].filter(Boolean).join(' · ');
     if (route) element('span', route, bar);
     if (run.active_tool) element('span', run.active_tool.name + ' (' + run.active_tool.status + ')', bar);
     if (run.live_thinking) element('span', 'Thinking…', bar);
     const id = key(run);
-    if (active(run) && observing()) button('Cancel', () => void cancel(run), bar, {
-      key: 'cancel:' + id, disabled: loading || !!readError || cancelling.has(id),
-    }).className = 'cancel';
-    if (!panel) {
+    if (row.kind === 'run' && pair(run) && (active(run) || run.cleanup_unconfirmed) && observing()) {
+      button(run.cleanup_unconfirmed ? 'Retry cleanup' : 'Cancel', () => void cancel(run), bar, {
+        key: 'cancel:' + id, disabled: loading || cancelling.has(id),
+      }).className = 'cancel';
+    }
+    const cancelNotice = cancelNotices.get(id);
+    if (cancelNotice) notice(cancelNotice.text, cancelNotice.style, detail);
+    if (mode === 'inline') {
       const open = detailsOpen.has(id);
       button(open ? 'Hide details' : 'Details', () => {
         if (open) detailsOpen.delete(id);
         else detailsOpen.add(id);
         render();
       }, bar, { key: 'details:' + id, expanded: open });
-      if (!open) return;
+      if (!open) {
+        const summary = [run.error?.message, run.output_diagnostic?.message, run.active_tool?.name,
+          run.result_text ?? run.result_preview ?? run.live_assistant_preview].filter(Boolean).map(text => text.slice(0, 180)).join(' · ').replace(/\s+/g, ' ');
+        if (summary) element('p', summary, detail).className = 'summary';
+        return;
+      }
+    } else {
+      const inspector = element('nav', undefined, detail);
+      inspector.className = 'controls';
+      inspector.setAttribute('aria-label', 'Run inspector');
+      for (const label of tabs) button(label, () => { tab = label; render(); }, inspector, { pressed: tab === label });
     }
-    if (row.kind !== 'disk') {
+    const shows = label => mode === 'inline' || tab === 'All' || tab === label;
+    if (shows('Task & Session')) {
       pathLine('Workspace', run.cwd, detail);
       pathLine('Session', run.task_id, detail);
+      copyButton('Copy task_id', run.task_id, detail, id);
+      if (run.task_preview) {
+        element('h3', 'Task preview', detail);
+        element('pre', run.task_preview, detail);
+        copyButton('Copy prompt preview', run.task_preview, detail, id);
+      }
+      textReader(run, 'prompt', detail);
     }
-    copyButton('Copy task_id', run.task_id, detail, id);
-    if (run.error?.message) notice(run.error.message, 'error', detail);
-    if (run.task_preview) {
-      element('h3', 'Task preview', detail);
-      element('pre', run.task_preview, detail);
-      copyButton('Copy prompt', run.task_preview, detail, id);
+    if (shows('Timeline')) {
+      if (run.live_assistant_preview) {
+        element('h3', 'Live assistant preview', detail);
+        element('pre', run.live_assistant_preview, detail);
+      }
+      recentTools(run, detail);
     }
-    if (run.live_assistant_preview) {
-      element('h3', 'Live assistant preview', detail);
-      element('pre', run.live_assistant_preview, detail);
+    if (shows('Result')) {
+      if (run.error?.message) notice(run.error.message, 'error', detail);
+      output(run, detail);
     }
-    recentTools(run, detail);
-    output(run, detail);
   }
 
-  function render() {
+  function render(background = false) {
     if (!visible() || connection === 'closed') return;
+    const selection = document.getSelection?.();
+    if (background && selection && !selection.isCollapsed && root.contains(selection.anchorNode)) {
+      renderDeferred = true;
+      return;
+    }
+    renderDeferred = false;
     renderVersion++;
     const liveKeys = new Set(rows.filter(row => row.kind !== 'expired' && row.run).map(row => key(row.run)));
     for (const id of detailsOpen) if (!liveKeys.has(id)) detailsOpen.delete(id);
+    for (const id of cancelNotices.keys()) if (!liveKeys.has(id)) cancelNotices.delete(id);
+    if (textRead) {
+      const row = selectedRow(), run = row?.run ?? row?.disk;
+      if (!run || row.kind === 'expired' || key(run) !== textRead.runKey) clearTextRead();
+    }
     if (activity) {
       const row = selectedRow();
       const run = row?.run;
-      if (row?.kind === 'expired' || !run || key(run) !== activity.runKey || (!panel && !detailsOpen.has(activity.runKey)) ||
+      if (row?.kind === 'expired' || !run || key(run) !== activity.runKey || (mode === 'inline' && !detailsOpen.has(activity.runKey)) ||
           !run.tool_snapshots?.some(call => call.tool_call_id === activity.callId)) clearActivity();
     }
     const focus = document.activeElement?.dataset?.focusKey;
@@ -630,14 +803,22 @@ const app = String.raw`function (surface, modes) {
     renderContent();
     for (const node of root.querySelectorAll('[data-scroll-key]')) if (scroll.has(node.dataset.scrollKey)) node.scrollTop = scroll.get(node.dataset.scrollKey);
     if (focus) Array.from(root.querySelectorAll('button')).find(node => node.dataset.focusKey === focus)?.focus({ preventScroll: true });
+    tick();
+    measure();
+    if (observing() && clockTimer === undefined) clockTimer = setInterval(tick, 1000);
   }
 
-  const observer = new ResizeObserver(() => {
-    if (observing() && mode === 'inline') notify('ui/notifications/size-changed', { height: document.documentElement.scrollHeight });
-  });
-  observer.observe(root);
+  let lastHeight;
+  function measure() {
+    if (!observing() || mode !== 'inline') { lastHeight = undefined; return; }
+    const height = Math.ceil(root.getBoundingClientRect().height);
+    if (height !== lastHeight) { lastHeight = height; notify('ui/notifications/size-changed', { height }); }
+  }
+  const observer = new ResizeObserver(measure);
+  observer.observe(root, { box: 'border-box' });
+  document.addEventListener('selectionchange', () => { if (renderDeferred) render(true); });
   document.addEventListener('visibilitychange', () => {
-    if (!visible()) stopObserving();
+    if (!visible()) { stopObserving(); lastHeight = undefined; }
     else {
       loading = true;
       reopen();
@@ -671,7 +852,7 @@ const app = String.raw`function (surface, modes) {
         applyContext(message.params?.hostContext ?? message.params); break;
       case 'ui/notifications/tool-input':
         if (message.params?.arguments && typeof message.params.arguments === 'object' && !Array.isArray(message.params.arguments)) {
-          if (panel) setQuery(queryFor(message.params.arguments, 'recent'));
+          if (panel && (target.kind === 'pending' || target.kind === 'latest')) setQuery(queryFor(message.params.arguments, 'recent'));
           else if (target.kind === 'pending' && toolInput === undefined) {
             toolInput = invocationFor(message.params.arguments);
             applyInvocation();
@@ -694,12 +875,12 @@ const app = String.raw`function (surface, modes) {
     }
   });
   render();
-  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version: '0.9.0' },
+  rpc('ui/initialize', { protocolVersion: '2026-01-26', appInfo: { name: 'Larva Subagents', version },
     appCapabilities: { availableDisplayModes: modes } }, 'initialize').then(result => {
     if (connection !== 'connecting') return;
     connection = 'ready';
-    applyContext(result?.hostContext);
     notify('ui/notifications/initialized');
+    applyContext(result?.hostContext);
     void refresh();
   }).catch(disconnect);
 }`;

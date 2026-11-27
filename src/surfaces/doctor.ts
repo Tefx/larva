@@ -1,11 +1,11 @@
-import { readdir } from "node:fs/promises";
+import { lstat, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { loadLarvaConfig } from "../core/config.ts";
 import { LarvaError, toErrorEnvelope } from "../core/errors.ts";
 import { isValidProfileName, resolveModelRoute } from "../core/model-map.ts";
 import { getLarvaHomePaths, modelMapProfilePath, resolveBasePiAgentDir, resolveLarvaHome } from "../core/paths.ts";
 import type { DoctorReport, ModelMapDoc, PersonaSpec } from "../core/types.ts";
-import { discoverPiInstallation, resolveModelInRegistry } from "../runtime/pi-binary.ts";
+import { discoverPiInstallation, loadModelRegistry } from "../runtime/pi-binary.ts";
 import { isErrno } from "../store/capsule.ts";
 import { entryExists, loadDiskModelMap, readBoundedRegularText } from "../store/model-map.ts";
 import { PersonaStore } from "../store/persona-store.ts";
@@ -43,12 +43,41 @@ export async function runDoctor({ env = process.env, profile }: DoctorOptions = 
 
   let personas: PersonaSpec[] = [];
   try {
+    // The store treats ENOENT from readdir as an empty store, including when
+    // personas/ is a symlink to a missing target.
+    const link = await lstat(paths.personas).catch(() => undefined);
+    if (link?.isSymbolicLink()) {
+      try {
+        await stat(paths.personas);
+      } catch (error) {
+        if (isErrno(error, "ENOENT")) {
+          throw new LarvaError("LARVA_PERSONA_INVALID", "The persona directory is a dangling symlink.");
+        }
+        throw new LarvaError("LARVA_PERSONA_INVALID", "Cannot access the persona directory.");
+      }
+    }
     const store = new PersonaStore(home);
     personas = await store.list({ full: true });
     report.personas_checked = personas.length;
     report.diagnostics.push(...store.diagnostics);
   } catch (error) {
     diagnose(error, { path: paths.personas });
+  }
+
+  for (const path of [paths.sessions, paths.capsules, paths.artifacts]) {
+    try {
+      const info = await lstat(path);
+      const mode = info.mode & 0o7777;
+      if (!info.isDirectory()) {
+        diagnose(new LarvaError("LARVA_CONFIG_INVALID", "Expected a real state directory."), { path });
+      } else if (mode !== 0o700) {
+        diagnose(new LarvaError("LARVA_CONFIG_INVALID", `Insecure directory permissions: expected 0700, found ${mode.toString(8).padStart(4, "0")}.`), { path });
+      }
+    } catch (error) {
+      if (!isErrno(error, "ENOENT")) {
+        diagnose(new LarvaError("LARVA_CONFIG_INVALID", "Cannot inspect state directory permissions."), { path });
+      }
+    }
   }
 
   const defaultPath = paths.model_map;
@@ -84,12 +113,12 @@ export async function runDoctor({ env = process.env, profile }: DoctorOptions = 
   try {
     const pi = await discoverPiInstallation(env);
     report.pi = { path: pi.path, ...(pi.version === undefined ? {} : { version: pi.version }) };
-    if (selected !== undefined) {
-      const agentDir = resolveBasePiAgentDir(env);
+    if (selected !== undefined && personas.length) {
+      const findModel = await loadModelRegistry(pi, resolveBasePiAgentDir(env));
       for (const persona of personas) {
         try {
           const route = resolveModelRoute(persona.model, selected.map);
-          if (await resolveModelInRegistry(pi, route, agentDir) === null) {
+          if (findModel(route) === null) {
             throw new LarvaError("LARVA_MODEL_UNAVAILABLE", "The resolved Persona model is not in the Pi registry.");
           }
         } catch (error) {

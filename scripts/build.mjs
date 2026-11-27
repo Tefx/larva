@@ -15,6 +15,25 @@ const entries = {
   "child-rpc-preload.mjs": "src/child-rpc-preload.ts",
 };
 const shebang = "#!/usr/bin/env node";
+const nodeBuiltins = {
+  name: "node-builtins",
+  setup(build) {
+    build.onResolve({ filter: /^[a-z]/ }, ({ path }) => {
+      if (!path.startsWith("node:") && isBuiltin(path)) return { path: `node:${path}`, external: true };
+    });
+  },
+};
+const requireBridge = 'import { createRequire as larvaCreateRequire } from "node:module";'
+  + '\nconst require = larvaCreateRequire(import.meta.url);';
+// import.meta.main arrived after Node 22.0. Compare canonical paths on older Node,
+// so a direct entry through a symlink works without starting on ordinary imports.
+const mainBridge = `import { realpathSync as larvaRealpath } from "node:fs";
+import { fileURLToPath as larvaFilePath } from "node:url";
+const larvaIsMain = import.meta.main ?? (() => {
+  try {
+    return process.argv[1] !== undefined && larvaRealpath(process.argv[1]) === larvaFilePath(import.meta.url);
+  } catch { return false; }
+})();`;
 
 async function optional(promise) {
   try {
@@ -27,10 +46,10 @@ async function optional(promise) {
 
 function validateManifest(pkg) {
   const exactVersion = value => typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value);
-  const pinned = ["typescript", "esbuild", "@types/node", "@earendil-works/pi-coding-agent", tui];
+  const pinned = ["typescript", "esbuild", "@types/node", "@earendil-works/pi-coding-agent", tui, "yaml"];
   const files = pkg.files;
   if (pkg.name !== "pi-larva" || pkg.type !== "module" || pkg.license !== "AGPL-3.0-or-later"
-    || !exactVersion(pkg.version)
+    || !exactVersion(pkg.version) || pkg.engines?.node !== ">=22.0.0"
     || !pinned.every(name => exactVersion(pkg.devDependencies?.[name]))
     || pkg.bin?.larva !== "./dist/cli.mjs" || Object.keys(pkg.bin).length !== 1
     || pkg.pi?.extensions?.length !== 1 || pkg.pi.extensions[0] !== "./dist/pi-extension.js"
@@ -54,7 +73,7 @@ async function scan(dir, includes) {
   }
 }
 
-async function bundle(name, entry, version) {
+async function bundle(name, entry, packageVersion) {
   const path = join(dist, name);
   const allowedExternal = name === "pi-extension.js" ? ["node:*", tui] : ["node:*"];
   const result = await build({
@@ -65,12 +84,16 @@ async function bundle(name, entry, version) {
     splitting: false,
     format: "esm",
     platform: "node",
+    target: "node22",
     external: allowedExternal,
+    plugins: [nodeBuiltins],
+    banner: { js: name === "mcp-server.mjs" ? `${requireBridge}\n${mainBridge}` : requireBridge },
     define: {
-      __LARVA_VERSION__: JSON.stringify(version),
+      __LARVA_VERSION__: JSON.stringify(packageVersion),
       // Bundling MCP into CLI gives the imported code the CLI's import.meta.
       // Only the standalone MCP bundle may start the server at module entry.
       ...(name === "cli.mjs" ? { "import.meta.main": "false" } : {}),
+      ...(name === "mcp-server.mjs" ? { "import.meta.main": "larvaIsMain" } : {}),
     },
     metafile: true,
     write: false,
@@ -86,6 +109,9 @@ async function bundle(name, entry, version) {
         throw new Error(`dist/${name} has a forbidden external import: ${item.path}.`);
       }
     }
+  }
+  if (name === "child-rpc-preload.mjs" && Object.keys(result.metafile.inputs).some(input => /(?:^|[\\/])node_modules[\\/]yaml[\\/]/.test(resolve(root, input)))) {
+    throw new Error(`dist/${name} must not include YAML modules.`);
   }
   if (name.endsWith(".mjs")) assertNoTui(output.text, path);
   if (name !== "cli.mjs") return output.text;

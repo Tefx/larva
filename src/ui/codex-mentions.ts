@@ -1,4 +1,6 @@
-import type { PersonaSummary, SearchMentionsToolInput, SearchMentionsToolOutput } from "../core/types.ts";
+import { isValidPersonaId } from "../core/predicates.ts";
+import type { SearchMentionsToolInput, SearchMentionsToolOutput } from "../core/types.ts";
+import type { PersonaStore } from "../store/persona-store.ts";
 
 export const CODEX_PERSONA_URI_TEMPLATE = "larva://personas/{persona_id}";
 
@@ -7,25 +9,17 @@ export function personaResourceUri(id: string): string {
 }
 
 export function parsePersonaResourceUri(uri: string): string | undefined {
-  const match = /^larva:\/\/personas\/([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(uri);
-  return match?.[0] === uri ? match[1] : undefined;
+  const prefix = "larva://personas/";
+  const id = uri.startsWith(prefix) ? uri.slice(prefix.length) : undefined;
+  return isValidPersonaId(id) ? id : undefined;
 }
 
-export function buildSearchMentionsOutput(
-  personas: readonly Pick<PersonaSummary, "id" | "description" | "model">[],
-  input: SearchMentionsToolInput,
-): SearchMentionsToolOutput {
+export async function buildSearchMentionsOutput(
+  personas: PersonaStore, input: SearchMentionsToolInput,
+): Promise<SearchMentionsToolOutput> {
   const text = input.query.trim().toLowerCase();
-  const query = /^@(?:larva|persona)$/.test(text) ? "" : text.replace(/^(?:@?(?:larva|persona):|@)/, "").trim();
-  const items = personas.flatMap(persona => {
-    const id = persona.id.toLowerCase();
-    const rank = !query || id === query ? 0
-      : id.startsWith(query) ? 1
-      : id.includes(query) ? 2
-      : persona.description.toLowerCase().includes(query) ? 3
-      : -1;
-    return rank < 0 ? [] : [{ persona, rank }];
-  }).sort((a, b) => a.rank - b.rank).slice(0, input.preload ? 200 : 30).map(({ persona }) => {
+  const query = /^@(?:larva(?: subagents)?|persona)$/.test(text) ? "" : text.replace(/^(?:@?(?:larva|persona):|@)/, "");
+  const items = (await personas.list({ query, limit: input.preload ? 200 : 30 })).map(persona => {
     const title = `@larva:${persona.id}`;
     return {
       type: "resource_link" as const,

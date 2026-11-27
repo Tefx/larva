@@ -42,7 +42,9 @@ To replace Markdown with JSON, run `larva persona put reviewer.json`; it install
 
 ## Use personas in Pi
 
-Start with `pi --larva-persona reviewer`, or use `/larva-persona reviewer` in an open session. `/larva-persona` without an ID and `Ctrl+Alt+P` open the TUI selector. Check the badge to see which persona is active. `/larva-mode` reports the autonomous switch mode: `manual` keeps selection human-controlled, `confirm` asks in the TUI, `auto` lets the agent borrow a persona for a turn, and `free` allows the agent to switch persistently.
+Start with `pi --larva-persona reviewer`, or use `/larva-persona reviewer` in an open session. In an idle TUI, run `/larva-persona`, `/larva-mode`, or `/larva-model-map` without an argument to open a selector. `Ctrl+Alt+P` also opens the persona selector. Escape leaves the selection unchanged. Add `--status` to any of the three commands to inspect current state without opening a selector. Outside the TUI, no argument also means inspection.
+
+The `🎭` badge shows the active persona, a temporary borrow and its origin, or a warning. The `🤖` badge shows running and cancelling subagent counts and is hidden when both are zero. Switch mode controls what the agent can do: `manual` leaves selection to the human, `confirm` asks in the TUI, `auto` allows a turn-scoped borrow, and `free` allows persistent switching.
 
 To delegate, create a second persona with an explicit spawn allowlist. For example, save this as `coordinator.md`, update the route, and run `larva persona put coordinator.md`:
 
@@ -57,12 +59,12 @@ Delegate change reviews to the reviewer persona. Summarize its findings and
 state any remaining uncertainty.
 ```
 
-Activate `coordinator` and ask it to delegate a review to `reviewer`. The child has its own Pi process, config capsule, and recorded transcript. Open `/larva-subagent` to monitor runs. Cancelling a run is explicit; leaving the console does not cancel it.
+Activate `coordinator` and ask it to delegate a review to `reviewer`. The child has its own Pi process, config capsule, and recorded transcript. Open `/larva-subagent` to monitor runs in **Summary**, **Output**, **Prompt**, **Timeline**, and **Metadata**. Use **Cancel** to stop a run or **Retry cleanup** when Larva could not confirm teardown. Leaving the console does not cancel a run.
 
 ## Delegate from Codex
 
 Enable Larva Subagents from the local marketplace entry for `plugins/codex/`. The plugin ships its own MCP server but needs Pi available to launch children. Use the same `LARVA_HOME` as in the persona setup.
 
-Mention `@larva:reviewer` to delegate directly, or use `@larva` without an ID to search. On fresh runs give Codex an authorized absolute workspace path if the host cannot supply exactly one usable local root. To resume, use the exact `task_id`; Larva reuses the workspace recorded in the transcript. Spawn and wait cards follow the run they started, even if the transcript is later resumed in a different run.
+Mention `@larva:reviewer` to delegate directly, or use `@larva` without an ID to search. On fresh runs give Codex an authorized absolute workspace path if the host cannot supply exactly one usable local root. To resume, use the exact `task_id`; Larva reuses the workspace recorded in the transcript. Spawn and wait cards stay pinned to the original run, even if the transcript is later resumed in a different run. The fullscreen inspector has four tabs: **All**, **Timeline**, **Result**, and **Task & Session**.
 
 For configuration and troubleshooting, see the [operator guide](USAGE.md). For the full launcher and tool surface, see [Interfaces](../reference/INTERFACES.md).

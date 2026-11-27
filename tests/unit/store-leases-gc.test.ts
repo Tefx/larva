@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { once } from "node:events";
-import { lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import { link, lstat, mkdir, mkdtemp, readFile, readdir, readlink, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { test } from "node:test";
@@ -10,7 +11,7 @@ import { getLarvaHomePaths } from "../../src/core/paths.ts";
 import { writeOutputSnapshot } from "../../src/store/artifacts.ts";
 import * as capsules from "../../src/store/capsule.ts";
 import { runGc } from "../../src/store/gc.ts";
-import { readDiskSession, readSessionHeader, resolveCanonicalSessionPath, scanDiskSessions } from "../../src/store/session-index.ts";
+import { MAX_SESSION_NAME_BYTES, readDiskSession, readSessionHeader, resolveCanonicalSessionPath, scanDiskSessions } from "../../src/store/session-index.ts";
 import { createSessionLeaseStore } from "../../src/store/session-lease.ts";
 
 const exec = promisify(execFile);
@@ -137,6 +138,19 @@ test("stale reclaimers compare the observed lease ID and cannot detach a success
   });
   await successor.release();
   assert.deepEqual(await fileNames(paths.sessions), []);
+}));
+
+test("a settled hardlink claim cannot self-lock a later reclaim in the same process", () => fixture(async ({ paths, leases }) => {
+  const task = join(paths.sessions, "recover.jsonl");
+  const { lease_id } = await leaseFromExitedOwner(paths.home, task);
+  const digest = createHash("sha256").update(lease_id).digest("hex");
+  const source = join(paths.sessions, "private-claim");
+  await capsules.writeMetadata(source, { pid: process.pid });
+  await link(source, join(`${task}.lock`, `.reclaim.${digest}.0`));
+  assert.equal(await leases.reclaim(task, lease_id), false);
+  await rm(source);
+  assert.equal(await leases.reclaim(task, lease_id), true);
+  assert.equal((await leases.inspect(task)).disposition, "missing");
 }));
 
 test("dead spawning owners remain unreconciled until child and descendant exit evidence exists", () => fixture(async ({ paths, leases, piAgentDir }) => {
@@ -287,7 +301,10 @@ test("capsule settings are private copies and extension paths resolve before sta
   await assert.rejects(lease.markSpawning(capsule.root), { code: "LARVA_SESSION_BUSY" });
   await lease.markUnreconciled();
   assert.equal(await leases.diskLockState(task), "unreconciled");
+  const ownerPath = join(capsule.root, "owner.json");
+  const owner = await readFile(ownerPath, "utf8");
   await lease.release();
+  assert.equal(await readFile(ownerPath, "utf8"), owner);
 }));
 
 test("capsule projects canonical shared resources and snapshots an external models.json without sharing writes", () => fixture(async ({ paths, piAgentDir }) => {
@@ -336,6 +353,9 @@ test("capsule projects canonical shared resources and snapshots an external mode
   await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID" });
   await mkdir(original);
   await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID" });
+  await rm(modelPath);
+  await symlink(original + ".absent", join(piAgentDir, "settings.json"));
+  await assert.rejects(create(), { code: "LARVA_CONFIG_INVALID", message: /Pi settings\.json/ });
   assert.deepEqual(await fileNames(paths.capsules), before);
 }));
 
@@ -418,6 +438,78 @@ test("GC applies age then byte eviction oldest first without deleting protected 
   const ageOnly = await runGc({ leases, capsules, max_age_days: 1 });
   assert.equal(ageOnly.protected_bytes, MIB + 17);
   await lease.release();
+}));
+
+test("session paths are flat, byte-bounded, and refuse symlinked managed directories", () => fixture(async ({ paths, leases, piAgentDir }) => {
+  const exact = `${"é".repeat((MAX_SESSION_NAME_BYTES - 6) / 2)}.jsonl`;
+  const task = join(paths.sessions, exact);
+  assert.equal(Buffer.byteLength(exact), MAX_SESSION_NAME_BYTES);
+  const handle = await leases.acquire(task);
+  await handle.release();
+  await assert.rejects(leases.acquire(join(paths.sessions, `x${exact}`)), { code: "LARVA_SESSION_INVALID" });
+  await assert.rejects(leases.acquire(join(paths.sessions, "nested", "leaf.jsonl")), { code: "LARVA_SESSION_INVALID" });
+  await writeFile(task, JSON.stringify({ type: "session", version: 3, cwd: paths.home }));
+  const moved = join(paths.home, "moved");
+  await rm(paths.artifacts, { recursive: true });
+  await rm(paths.capsules, { recursive: true });
+  await rm(task);
+  await rm(paths.sessions, { recursive: true });
+  await rm(paths.state, { recursive: true });
+  await mkdir(join(moved, "sessions"), { recursive: true });
+  await writeFile(join(moved, "sessions", exact), JSON.stringify({ type: "session", version: 3, cwd: paths.home }));
+  await symlink(moved, paths.state, "dir");
+  assert.equal((await leases.inspect(task)).disposition, "invalid");
+  await assert.rejects(leases.acquire(task), { code: "LARVA_STORE_WRITE_FAILED" });
+  await assert.rejects(readSessionHeader(paths.home, task), { code: "LARVA_SESSION_INVALID" });
+  await assert.rejects(capsules.createCapsule({ home: paths.home, pi_agent_dir: piAgentDir, extension_sources: [] }), { code: "LARVA_STORE_WRITE_FAILED" });
+  assert.deepEqual(await fileNames(moved), ["sessions"]);
+}));
+
+test("GC keeps unreadable descendant evidence and removes only dead-PID staging debris", () => fixture(async ({ paths, leases, piAgentDir }) => {
+  const task = join(paths.sessions, "crashed.jsonl");
+  const { root, pid } = await leaseFromExitedOwner(paths.home, task, piAgentDir);
+  assert.ok(root);
+  const record = join(root, "descendants", "bad.json");
+  await capsules.writeMetadata(join(root, "child_self.json"), { pid });
+  await symlink("missing", record);
+  const deadDebris = [join(paths.sessions, `orphan.jsonl.lock.tmp.${pid}.${"0".repeat(32)}`),
+    join(paths.sessions, `orphan.jsonl.lock.retired.${process.pid}.${"1".repeat(32)}`),
+    join(paths.capsules, `.child-${pid}-${"2".repeat(32)}.tmp`)];
+  const artifactStage = join(paths.artifacts, `.artifact.tmp.${pid}.00000000-0000-0000-0000-000000000000`);
+  await writeFile(artifactStage, "partial");
+  const live = join(paths.sessions, `.guard.tmp.${process.pid}.${"3".repeat(32)}`);
+  await writeFile(live, "live");
+  for (const path of deadDebris) await mkdir(path);
+  const options = { leases, capsules };
+  assert.deepEqual((await runGc({ ...options, dry_run: true })).unreconciled_capsules, [root]);
+  for (const path of deadDebris) await lstat(path);
+  assert.deepEqual((await runGc(options)).unreconciled_capsules, [root]);
+  for (const path of [...deadDebris, artifactStage]) await assert.rejects(lstat(path), { code: "ENOENT" });
+  assert.equal(await readFile(live, "utf8"), "live");
+  assert.deepEqual(await capsules.inspectDescendantPids(paths.home, root), { pids: [pid], complete: false });
+  await rm(record);
+  await capsules.writeMetadata(join(root, "descendants", "live.json"), { pid: process.pid });
+  assert.deepEqual(await capsules.inspectDescendantPids(paths.home, root), { pids: [pid, process.pid], complete: true });
+}));
+
+test("GC reports committed session deletions even when the GC lease cannot release", () => fixture(async ({ paths, leases }) => {
+  const task = join(paths.sessions, "expired.jsonl");
+  await agedFile(task, 81, 90 * DAY);
+  const report = await runGc({ capsules, leases: {
+    ...leases,
+    async acquire(path, state) {
+      const held = await leases.acquire(path, state);
+      return { async release() {
+        await rm(join(`${path}.lock`, "lease.json"));
+        await held.release();
+      } };
+    },
+  } });
+  assert.equal(report.deleted_sessions, 1);
+  assert.equal(report.freed_bytes, 81);
+  assert.equal(report.remaining_bytes, 0);
+  await assert.rejects(lstat(task), { code: "ENOENT" });
+  assert.equal((await leases.inspect(task)).disposition, "invalid");
 }));
 
 test("live GC holds gc_unlinking across the final stat and unlink and skips a newly refreshed transcript", () => fixture(async ({ paths, leases }) => {

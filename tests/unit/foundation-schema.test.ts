@@ -5,8 +5,10 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
+import { ACTIVITY_WIRE_MAX_BYTES, utf8ByteLength } from "../../src/core/activity-wire.ts";
 import { exitCodeForError, LarvaError, toErrorEnvelope, toSuccessEnvelope } from "../../src/core/errors.ts";
-import type { PersonaSpec, ThinkingLevel } from "../../src/core/types.ts";
+import type { PersonaSpec, RunTextSliceQuery, SubagentPanelToolInput, ThinkingLevel } from "../../src/core/types.ts";
+import { admitToolInput, commonToolSchemas, personaSwitchSchema, searchMentionsSchema, subagentPanelSchema } from "../../src/surfaces/tool-schemas.ts";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const schema: object = JSON.parse(readFileSync(join(root, "contracts/persona_spec.schema.json"), "utf8"));
@@ -94,6 +96,36 @@ test("CLI envelopes preserve typed details and map success, domain failure and u
   assert.equal(exitCodeForError(new LarvaError("LARVA_MODEL_UNAVAILABLE", "Startup model unavailable.", undefined, 2)), 2);
 });
 
+test("shared tool schemas describe parameters and reject invalid switch, mention and slice inputs", () => {
+  for (const schema of [...Object.values(commonToolSchemas), personaSwitchSchema, searchMentionsSchema, subagentPanelSchema]) {
+    assert.equal(schema.additionalProperties, false);
+    for (const field of Object.values(schema.properties)) assert.ok(field.description);
+  }
+  assert.equal(personaSwitchSchema.properties.reason.maxLength, 1000);
+  assert.throws(() => admitToolInput("larva_persona_switch", personaSwitchSchema,
+    { persona_id: "alice", reason: "x".repeat(1001) }), { code: "LARVA_BAD_INPUT" });
+  assert.throws(() => admitToolInput("search_mentions", searchMentionsSchema, { query: "alice", path: [""] }),
+    { code: "LARVA_BAD_INPUT" });
+  assert.deepEqual(admitToolInput("search_mentions", searchMentionsSchema, { query: "", path: ["personas"] }),
+    { query: "", path: ["personas"] });
+  const slice = { task_id: "/tmp/child.jsonl", run_epoch: "epoch", source: "prompt", offset: 0, length: 4000 } satisfies RunTextSliceQuery;
+  assert.deepEqual(admitToolInput<SubagentPanelToolInput>("larva_subagent_panel", subagentPanelSchema, { slice }), { slice });
+  assert.deepEqual(admitToolInput("larva_subagent_panel", subagentPanelSchema,
+    { slice: { task_id: slice.task_id, source: "output" } }), { slice: { task_id: slice.task_id, source: "output" } });
+  for (const changes of [{ offset: -1 }, { length: 0 }, { length: 4001 }, { length: 1.5 }, { source: "timeline" }, { extra: true }]) {
+    assert.throws(() => admitToolInput("larva_subagent_panel", subagentPanelSchema, { slice: { ...slice, ...changes } }),
+      { code: "LARVA_BAD_INPUT" });
+  }
+});
+
+test("activity budget measures the final serialized UTF-8 wire, not JS code units", () => {
+  const wire = JSON.stringify({ text: "é🔎\n" });
+  assert.equal(utf8ByteLength(wire), 19);
+  const exact = wire.padEnd(wire.length + ACTIVITY_WIRE_MAX_BYTES - 19);
+  assert.equal(utf8ByteLength(exact), 8192);
+  assert.equal(utf8ByteLength(exact + "🔎"), 8196);
+});
+
 function runBuild(cwd: string, ...args: string[]) {
   const result = spawnSync(process.execPath, ["scripts/build.mjs", ...args], { cwd, encoding: "utf8", timeout: 15_000 });
   assert.ifError(result.error);
@@ -147,10 +179,10 @@ test("build check rejects TUI references in headless source, old bundles, and ne
     assert.ok(result.stderr.includes(file === "src/mcp-server.ts" ? "dist/mcp-server.mjs" : file));
     rmSync(join(fixture.path, file));
   }
-  fixture.write("src/mcp-server.ts", 'export { format } from "util";\n');
-  const bareBuiltin = runBuild(fixture.path, "--check-only");
-  assert.equal(bareBuiltin.status, 1, bareBuiltin.stderr);
-  assert.match(bareBuiltin.stderr, /forbidden external import: util/);
+  fixture.write("src/child-rpc-preload.ts", 'export { parse } from "yaml";\n');
+  const yamlPreload = runBuild(fixture.path, "--check-only");
+  assert.equal(yamlPreload.status, 1, yamlPreload.stderr);
+  assert.match(yamlPreload.stderr, /child-rpc-preload\.mjs must not include YAML modules/);
 });
 
 test("dist-only and full replace stale bundles, only full updates Codex, and check-only leaves outputs alone", t => {
@@ -160,7 +192,12 @@ test("dist-only and full replace stale bundles, only full updates Codex, and che
   fixture.write(pluginManifest, '{"name":"larva","version":"0.0.0"}\n');
   fixture.write("src/pi-extension.ts", 'export { Text } from "@earendil-works/pi-tui";\n');
   fixture.write("src/cli.ts", '#!/usr/bin/env node\nconsole.log(__LARVA_VERSION__);\n');
-  fixture.write("src/mcp-server.ts", 'export const version = __LARVA_VERSION__;\n');
+  fixture.write("src/mcp-server.ts", `
+import { format } from "util";
+export const version = __LARVA_VERSION__;
+const { basename } = require("path");
+if (import.meta.main) console.log(format("%s %s", basename(process.argv[1]), version));
+`);
   const preloadSource = "src/child-rpc-preload.ts";
   const shared = ["child-rpc-preload.mjs", "mcp-server.mjs", "pi-extension.js"];
   const rootBundles = [...shared, "cli.mjs"].sort();
@@ -195,6 +232,17 @@ test("dist-only and full replace stale bundles, only full updates Codex, and che
   assert.ifError(invoked.error);
   assert.equal(invoked.status, 0, invoked.stderr);
   assert.equal(invoked.stdout.trim(), packageVersion);
+  assert.match(fixture.read("dist/mcp-server.mjs"), /from "node:util"/);
+  const mcpEntry = spawnSync(process.execPath, ["dist/mcp-server.mjs"], { cwd: fixture.path, encoding: "utf8", timeout: 5_000 });
+  assert.ifError(mcpEntry.error);
+  assert.equal(mcpEntry.status, 0, mcpEntry.stderr);
+  assert.equal(mcpEntry.stdout.trim(), `mcp-server.mjs ${packageVersion}`);
+  const mcpImport = spawnSync(process.execPath, ["-e", 'import("./dist/mcp-server.mjs")'], {
+    cwd: fixture.path, encoding: "utf8", timeout: 5_000,
+  });
+  assert.ifError(mcpImport.error);
+  assert.equal(mcpImport.status, 0, mcpImport.stderr);
+  assert.equal(mcpImport.stdout, "");
 
   fixture.write(rootStale, previous);
   fixture.write("dist/stale.mjs", 'import "@earendil-works/pi-tui";\n');

@@ -5,10 +5,12 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { LarvaError } from "../core/errors.ts";
 import { getLarvaHomePaths, resolveExtensionSources } from "../core/paths.ts";
-import { readBoundedRegularBytes } from "./bounded-read.ts";
-import { canonicalPath } from "./session-index.ts";
+import { isRecord } from "../core/predicates.ts";
+import { canonicalPath, isErrno, readBoundedRegularBytes, readBoundedRegularText, requireStateDirectory } from "./bounded-read.ts";
 
-const { O_RDONLY, O_NONBLOCK, O_NOFOLLOW, R_OK, X_OK } = constants;
+export { isErrno } from "./bounded-read.ts";
+
+const { O_NOFOLLOW, R_OK, X_OK } = constants;
 const CAPSULE_NAME = /^child-([1-9][0-9]*)-[a-f0-9]+$/;
 const MAX_TREE_DEPTH = 100;
 const MAX_CENSUS_ENTRIES = 10_000;
@@ -22,10 +24,6 @@ type CapsuleOptions = {
   user_home?: string;
   extension_sources: readonly string[];
 };
-
-export function isErrno(error: unknown, code: string): boolean {
-  return error instanceof Error && "code" in error && error.code === code;
-}
 
 export function isPid(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 0x7fff_ffff;
@@ -42,38 +40,18 @@ export function pidExited(pid: number): boolean {
 }
 
 export async function privateDirectory(path: string): Promise<void> {
-  const parent = dirname(path);
-  await mkdir(parent, { recursive: true, mode: 0o700 });
-  if (!(await lstat(parent)).isDirectory()) {
-    throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Expected a real state directory.");
+  try {
+    const entry = await requireStateDirectory(path, true);
+    if ((entry.mode & 0o077) === 0) return;
+  } catch {
+    throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Cannot prepare private state directory: ${path}`);
   }
-  await mkdir(path, { recursive: true, mode: 0o700 });
-  const entry = await lstat(path);
-  if (!entry.isDirectory() || (entry.mode & 0o077) !== 0) {
-    throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Expected a private state directory.");
-  }
+  throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Expected a private state directory: ${path}`);
 }
 
 /** Bounded, non-blocking reads of managed metadata, without following a final symlink. */
 export async function readMetadata(path: string): Promise<unknown> {
-  const file = await open(path, O_RDONLY | O_NONBLOCK | O_NOFOLLOW);
-  try {
-    const buffer = Buffer.alloc(65_537);
-    if (!(await file.stat()).isFile()) throw new Error("Expected regular metadata file.");
-    let used = 0;
-    while (used < buffer.length) {
-      const { bytesRead } = await file.read(buffer, used, buffer.length - used, used);
-      if (bytesRead === 0) return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, used)));
-      used += bytesRead;
-    }
-    throw new Error("Metadata exceeds the read limit.");
-  } finally {
-    await file.close();
-  }
-}
-
-export function metadataObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+  return JSON.parse(await readBoundedRegularText(path, { maxBytes: 65_536, flags: O_NOFOLLOW }));
 }
 
 export async function writeMetadata(path: string, value: object): Promise<void> {
@@ -99,15 +77,10 @@ const missingBase = (error: unknown) => isErrno(error, "ENOENT") || isErrno(erro
 async function snapshotPiConfig(agentDir: string, name: "settings.json" | "models.json") {
   const path = join(agentDir, name);
   try {
-    if (name === "models.json") {
-      // Distinguish an absent entry from a present but invalid/dangling symlink.
-      const entry = await lstat(path).catch(error => { if (!missingBase(error)) throw error; });
-      if (!entry) return undefined;
-      return (await readBoundedRegularBytes(await realpath(path), { maxBytes: 1_048_576, flags: O_NOFOLLOW })).bytes;
-    }
-    return (await readBoundedRegularBytes(path, { maxBytes: 1_048_576 }).catch(error => {
-      if (!missingBase(error)) throw error;
-    }))?.bytes;
+    // Distinguish an absent entry from a present but invalid/dangling symlink.
+    const entry = await lstat(path).catch(error => { if (!missingBase(error)) throw error; });
+    if (!entry) return undefined;
+    return (await readBoundedRegularBytes(await realpath(path), { maxBytes: 1_048_576, flags: O_NOFOLLOW })).bytes;
   } catch {
     throw new LarvaError("LARVA_CONFIG_INVALID", `Pi ${name} must be a readable regular file of at most 1 MiB.`);
   }
@@ -156,17 +129,20 @@ export async function createCapsule(options: CapsuleOptions): Promise<CapsulePat
   const agent_dir = join(root, "agent");
   const settings_path = join(agent_dir, "settings.json");
   const models_path = models === undefined ? undefined : join(agent_dir, "models.json");
-  await mkdir(root, { mode: 0o700 });
+  const staged = join(capsules, `.${basename(root)}.tmp`);
+  const stagedAgent = join(staged, "agent");
+  await mkdir(staged, { mode: 0o700 });
   try {
-    await mkdir(join(root, "descendants"), { mode: 0o700 });
-    await mkdir(agent_dir, { mode: 0o700 });
-    await writeFile(settings_path, settings ?? "{}\n", { mode: 0o600, flag: "wx" });
-    if (models !== undefined && models_path !== undefined) await writeFile(models_path, models, { mode: 0o600, flag: "wx" });
-    await projectPiResources(options.pi_agent_dir, agent_dir);
-    await writeMetadata(join(root, "owner.json"), { owner_pid: process.pid, state: "reserving" } satisfies CapsuleOwner);
+    await mkdir(join(staged, "descendants"), { mode: 0o700 });
+    await mkdir(stagedAgent, { mode: 0o700 });
+    await writeFile(join(stagedAgent, "settings.json"), settings ?? "{}\n", { mode: 0o600, flag: "wx" });
+    if (models !== undefined) await writeFile(join(stagedAgent, "models.json"), models, { mode: 0o600, flag: "wx" });
+    await projectPiResources(options.pi_agent_dir, stagedAgent);
+    await writeMetadata(join(staged, "owner.json"), { owner_pid: process.pid, state: "reserving" } satisfies CapsuleOwner);
+    await rename(staged, root);
     return { root, agent_dir, settings_path, models_path, extension_sources };
   } catch (error) {
-    await rm(root, { recursive: true, force: true });
+    await rm(staged, { recursive: true, force: true }).catch(() => {});
     throw error;
   }
 }
@@ -180,7 +156,7 @@ export function capsuleParentPid(home: string, root: string): number | undefined
 }
 
 function parseOwner(value: unknown): CapsuleOwner {
-  if (!metadataObject(value) || Object.keys(value).some(key => !["owner_pid", "state", "child_pid"].includes(key))) {
+  if (!isRecord(value) || Object.keys(value).some(key => !["owner_pid", "state", "child_pid"].includes(key))) {
     throw new Error("Invalid capsule owner metadata.");
   }
   const { owner_pid, state, child_pid } = value;
@@ -192,17 +168,21 @@ function parseOwner(value: unknown): CapsuleOwner {
   return { owner_pid, state, child_pid };
 }
 
-type DescendantRecord = { pid: unknown; linked?: { root: string; owner: number } };
+type DescendantRecord = { pid: number | undefined; linked?: { root: string; owner: number } };
 
 async function* readDescendants(home: string, dir: string, names: readonly string[]): AsyncGenerator<DescendantRecord | undefined> {
   for (const name of names) {
     const record = await readMetadata(join(dir, name)).catch(() => undefined);
-    if (!metadataObject(record)) {
+    if (!isRecord(record)) {
       yield undefined;
       continue;
     }
     const { pid, capsule_root: root } = record;
     const owner = typeof root === "string" ? capsuleParentPid(home, root) : undefined;
+    if ((pid !== undefined && !isPid(pid)) || (pid === undefined && owner === undefined)) {
+      yield undefined;
+      continue;
+    }
     yield typeof root === "string" && owner !== undefined ? { pid, linked: { root, owner } }
       : root === undefined ? { pid } : undefined;
   }
@@ -224,16 +204,74 @@ function descendantCensus() {
 export async function linkedCapsuleRoots(home: string, root: string): Promise<Set<string>> {
   const dir = join(root, "descendants");
   const links = new Set<string>();
+  const canonicalHome = await canonicalPath(home);
+  if (capsuleParentPid(canonicalHome, root) === undefined) throw new Error("Invalid capsule path.");
+  await requireStateDirectory(dirname(root));
+  if (!(await lstat(root)).isDirectory() || !(await lstat(dir)).isDirectory()) throw new Error("Invalid capsule descendant directory.");
+  for await (const record of readDescendants(canonicalHome, dir, await descendantCensus()(dir))) {
+    if (!record) throw new Error("Invalid capsule descendant record.");
+    if (record.linked) links.add(record.linked.root);
+  }
+  return links;
+}
+
+async function readCapsulePids(root: string, owner: CapsuleOwner, expectedPid?: number | null): Promise<Set<number>> {
+  const pids = new Set<number>();
+  if (expectedPid != null) pids.add(expectedPid);
+  if (owner.child_pid != null) pids.add(owner.child_pid);
   try {
-    if (!(await lstat(root)).isDirectory() || !(await lstat(dir)).isDirectory()) return links;
-    const canonicalHome = await canonicalPath(home);
-    for await (const record of readDescendants(canonicalHome, dir, await descendantCensus()(dir))) {
-      if (record?.linked) links.add(record.linked.root);
-    }
+    const self = await readMetadata(join(root, "child_self.json"));
+    if (!isRecord(self) || !isPid(self.pid)) throw new Error("Invalid capsule PID record.");
+    pids.add(self.pid);
   } catch (error) {
     if (!isErrno(error, "ENOENT")) throw error;
   }
-  return links;
+  return pids;
+}
+
+/** Discover recorded child PIDs even while the tree is live. Not an exit proof. */
+export async function inspectDescendantPids(home: string, root: string): Promise<{ pids: number[]; complete: boolean }> {
+  const seen = new Set<string>();
+  const pids = new Set<number>();
+  const records = descendantCensus();
+  let complete = true;
+  async function visit(canonicalHome: string, path: string, ownerPid: number, depth: number): Promise<void> {
+    if (depth > MAX_TREE_DEPTH || seen.has(path) || !(await lstat(path)).isDirectory()) throw new Error("Invalid capsule tree.");
+    seen.add(path);
+    try {
+      const owner = parseOwner(await readMetadata(join(path, "owner.json")));
+      if (owner.owner_pid !== ownerPid) throw new Error("Capsule owner does not match its path.");
+      if (owner.child_pid != null) pids.add(owner.child_pid);
+      const children = await readCapsulePids(path, owner);
+      for (const pid of children) pids.add(pid);
+      if ((owner.state === "spawning" || owner.state === "unreconciled") && children.size === 0) complete = false;
+    } catch {
+      complete = false;
+    }
+    const dir = join(path, "descendants");
+    if (!(await lstat(dir)).isDirectory()) throw new Error("Invalid descendant directory.");
+    for await (const record of readDescendants(canonicalHome, dir, await records(dir))) {
+      if (!record) { complete = false; continue; }
+      if (record.pid !== undefined) pids.add(record.pid);
+      if (record.linked) {
+        const { root, owner } = record.linked;
+        try { await visit(canonicalHome, root, owner, depth + 1); }
+        catch (error) {
+          if (!(record.pid !== undefined && isErrno(error, "ENOENT") && pidExited(record.pid) && pidExited(owner))) complete = false;
+        }
+      }
+    }
+  }
+  try {
+    const canonicalHome = await canonicalPath(home);
+    const owner = capsuleParentPid(canonicalHome, root);
+    if (owner === undefined) throw new Error("Invalid capsule path.");
+    await requireStateDirectory(dirname(root));
+    await visit(canonicalHome, root, owner, 0);
+  } catch {
+    complete = false;
+  }
+  return { pids: [...pids], complete };
 }
 
 type CapsuleProof = { all_exited: boolean; has_child: boolean; state: OwnerState };
@@ -255,16 +293,7 @@ export async function inspectCapsule(
     const ownerSettled = ownedHere ? ppid === process.pid : pidExited(ppid);
     const owner = parseOwner(await readMetadata(join(root, "owner.json")));
     if (owner.owner_pid !== ppid) throw new Error("Capsule owner does not match its path.");
-    const childPids = new Set<number>();
-    if (expectedPid != null) childPids.add(expectedPid);
-    if (owner.child_pid != null) childPids.add(owner.child_pid);
-    try {
-      const self = await readMetadata(join(root, "child_self.json"));
-      if (!metadataObject(self) || !isPid(self.pid)) throw new Error("Invalid capsule PID record.");
-      childPids.add(self.pid);
-    } catch (error) {
-      if (!isErrno(error, "ENOENT")) throw error;
-    }
+    const childPids = await readCapsulePids(root, owner, expectedPid);
     const proof = { all_exited: false, has_child: childPids.size > 0, state: owner.state };
     if (!ownerSettled || (ownedHere && expectedPid != null && childPids.size !== 1)) return proof;
     if (![...childPids].every(pidExited)) return proof;
@@ -277,7 +306,6 @@ export async function inspectCapsule(
     for await (const record of readDescendants(canonicalHome, descendants, names)) {
       if (!record) throw new Error("Invalid descendant record.");
       const { pid, linked } = record;
-      if ((pid !== undefined && !isPid(pid)) || (pid === undefined && !linked)) throw new Error("Invalid descendant PID record.");
       if (pid !== undefined && !pidExited(pid)) return proof;
       if (!linked) continue;
       if (seen.has(linked.root)) return proof;
@@ -303,7 +331,10 @@ export async function inspectCapsule(
   try {
     const canonicalHome = await canonicalPath(home);
     const ppid = capsuleParentPid(canonicalHome, root);
-    if (ppid !== undefined && (await lstat(dirname(root))).isDirectory()) return await inspect(canonicalHome, root, ppid, leaseChildPid, 0);
+    if (ppid !== undefined) {
+      await requireStateDirectory(dirname(root));
+      return await inspect(canonicalHome, root, ppid, leaseChildPid, 0);
+    }
   } catch {
     // Missing, partial, malformed, or over-limit evidence is not proof.
   }

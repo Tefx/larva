@@ -64,7 +64,7 @@ test("standalone preload caps complete and fragmented UTF-8 frames, signaling lo
       process.stdout.write('discarded-tail\n{"type":"following"}\n');
       process.stdout.write(Buffer.from([0xff, 0x0a]));
       const bridge = globalThis[Symbol.for('larva.pi.child-rpc-frame-preload.v1')];
-      bridge.emit([JSON.stringify({extra: 'z'.repeat(1048576)})]);
+      bridge.emit([{extra: 'z'.repeat(1048576)}]);
       process.stdout.write('{"type":"last"}\n');
     `);
     assert.equal(child.status, 0, child.stderr);
@@ -111,6 +111,21 @@ test("standalone handshake and terminal synthesis preserve the definitive Pi set
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("orphan guard exits after stdin EOF even if active work keeps the child alive", () => {
+  const root = temporaryRoot();
+  try {
+    const { run } = fixture(root);
+    const child = run(`
+      process.stdin.resume();
+      process.stdin.on('end', () => process.stdout.write('{"type":"eof"}\\n'));
+      setInterval(() => {}, 1000);
+    `);
+    assert.ifError(child.error);
+    assert.equal(child.status, 1, child.stderr);
+    assert.deepEqual(JSON.parse(child.stdout), { type: "eof" });
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test("standalone preload publishes its PID and advertises get_state capability in a store-created capsule", async () => {
@@ -213,16 +228,21 @@ test("managed launcher discovery verifies the selected release and refuses trave
     writeFileSync(join(binDir, "pi"), "#!/bin/sh\nexit 77\n", { mode: 0o700 });
     symlinkSync(verified, binLink);
     writeFileSync(version, "fixture\n");
-    assert.equal((await discoverPiInstallation({ PATH: binDir })).path, verified);
+    const env = { HOME: root, PATH: binDir };
+    assert.equal((await discoverPiInstallation(env)).path, verified);
+    const standard = join(root, ".pi");
+    mkdirSync(standard);
+    symlinkSync(join(root, "agent"), join(standard, "agent"), "dir");
+    assert.equal((await discoverPiInstallation({ ...env, PATH: "/usr/bin:/bin" })).path, verified);
     chmodSync(verified, 0o600);
-    await assert.rejects(discoverPiInstallation({ PATH: binDir }), startFailure);
+    await assert.rejects(discoverPiInstallation(env), startFailure);
     chmodSync(verified, 0o700);
     writeFileSync(version, "../fixture\n");
-    await assert.rejects(discoverPiInstallation({ PATH: binDir }), startFailure);
+    await assert.rejects(discoverPiInstallation(env), startFailure);
     writeFileSync(version, "fixture\n");
     rmSync(binLink);
     symlinkSync(packageBin(join(root, "elsewhere"), piPackage), binLink);
-    await assert.rejects(discoverPiInstallation({ PATH: binDir }), startFailure);
+    await assert.rejects(discoverPiInstallation(env), startFailure);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -241,7 +261,7 @@ test("registry uses the base Pi agent dir instead of the capsule and rereads pri
     const child = run(`
       import assert from 'node:assert/strict';
       import { readFileSync, writeFileSync } from 'node:fs';
-      import { discoverPiInstallation, resolveModelInRegistry } from ${JSON.stringify(moduleUrl)};
+      import { discoverPiInstallation, loadModelRegistry, resolveModelInRegistry } from ${JSON.stringify(moduleUrl)};
       const pi = await discoverPiInstallation();
       const models = ${JSON.stringify(models)};
       const route = { provider: 'fixture-provider', model_id: 'org/test-model' };
@@ -254,7 +274,10 @@ test("registry uses the base Pi agent dir instead of the capsule and rereads pri
       assert.equal(await resolveModelInRegistry(pi, route, process.env.PI_CODING_AGENT_DIR), null);
       assert.equal(await resolveModelInRegistry(pi, { ...route, model_id: 'test-model' }), null);
       assert.equal(readFileSync(models, 'utf8'), config);
+      const check = await loadModelRegistry(pi);
       writeFileSync(models, '{"providers":{}}');
+      assert.deepEqual(check(route), route);
+      assert.equal(check({ ...route, model_id: 'missing' }), null);
       assert.equal(await resolveModelInRegistry(pi, route), null);
       writeFileSync(models, '{"private-data":');
       await assert.rejects(resolveModelInRegistry(pi, route), error =>

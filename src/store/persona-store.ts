@@ -1,12 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { lstat, mkdir, open, readdir, rename, stat, unlink } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { mkdir, open, readdir, rename, rm, stat, unlink } from "node:fs/promises";
+import { basename, dirname, extname, join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { LarvaError, type ErrorInfo } from "../core/errors.ts";
 import { getLarvaHomePaths, resolveLarvaHome } from "../core/paths.ts";
 import { isValidPersonaId, parsePersonaInput, toPersonaSummary } from "../core/persona.ts";
+import { isRecord } from "../core/predicates.ts";
 import type { PersonaInputFormat, PersonaSpec, PersonaSummary, PersonasToolInput } from "../core/types.ts";
-import { readBoundedRegularBytes } from "./bounded-read.ts";
+import { entryExists, isErrno, readBoundedRegularBytes, requireRealDirectory } from "./bounded-read.ts";
+import { isPid, pidExited, readMetadata, writeMetadata } from "./capsule.ts";
+import { withReclaimClaim } from "./session-lease.ts";
 
 const MAX_PERSONA_BYTES = 1_048_576;
 
@@ -23,8 +27,66 @@ export type PersonaListOptions = PersonasToolInput & { full?: boolean };
 export type PersonaPutOptions = { prune?: boolean; stdinText?: string };
 export type PersonaPutResult = { committed_ids: string[]; pruned_ids: string[] };
 
-function isMissing(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
+const isMissing = (error: unknown) => isErrno(error, "ENOENT");
+
+async function personaNames(directory: string): Promise<Set<string>> {
+  try {
+    await requireRealDirectory(directory);
+    return new Set(await readdir(directory));
+  } catch (error) {
+    if (isMissing(error)) return new Set();
+    throw new LarvaError("LARVA_PERSONA_INVALID", `Cannot read persona directory: ${directory}`);
+  }
+}
+
+async function lockOwner(path: string) {
+  await requireRealDirectory(path);
+  const value = await readMetadata(join(path, "owner.json"));
+  if (!isRecord(value) || !isPid(value.pid) || typeof value.id !== "string" || !value.id) {
+    throw new Error("Invalid persona write lock owner.");
+  }
+  return { pid: value.pid, id: value.id };
+}
+
+async function withPersonaLock<T>(directory: string, operation: () => Promise<T>): Promise<T> {
+  const path = join(directory, ".write.lock");
+  const id = randomUUID();
+  const stage = join(directory, `.write.${process.pid}.${id}.tmp`);
+  const retired = join(directory, `.write.${process.pid}.${id}.retired`);
+  async function detach() {
+    await rename(path, retired);
+    await rm(retired, { recursive: true, force: true }).catch(() => {});
+  }
+  await mkdir(stage, { mode: 0o700 });
+  try {
+    await writeMetadata(join(stage, "owner.json"), { id, pid: process.pid });
+    const deadline = performance.now() + 5_000;
+    for (;;) {
+      try {
+        await rename(stage, path);
+        break;
+      } catch (error) {
+        if (!isErrno(error, "EEXIST") && !isErrno(error, "ENOTEMPTY")) throw error;
+      }
+      const observed = await lockOwner(path).catch(error => { if (!isMissing(error)) throw error; });
+      if (observed && pidExited(observed.pid) && await withReclaimClaim(path, observed.id, async () => {
+        const current = await lockOwner(path).catch(error => { if (!isMissing(error)) throw error; });
+        if (current?.id !== observed.id || !pidExited(current.pid)) return false;
+        await detach();
+        return true;
+      })) continue;
+      if (performance.now() >= deadline) throw new Error("Timed out waiting for the persona write lock.");
+      await delay(20);
+    }
+    const result = await operation().catch(async error => {
+      await detach().catch(() => {});
+      throw error;
+    });
+    await detach();
+    return result;
+  } finally {
+    await rm(stage, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 function compareIds(a: string, b: string): number {
@@ -92,9 +154,8 @@ async function loadInput(target: string, { prune, stdinText }: PersonaPutOptions
     if (Buffer.byteLength(stdinText, "utf8") > MAX_PERSONA_BYTES) {
       throw new LarvaError("LARVA_PERSONA_INVALID", "Persona stdin exceeds 1 MiB.");
     }
-    const bytes = Buffer.from(stdinText, "utf8");
-    const text = bytes.toString("utf8");
-    return [{ spec: parsePersonaInput(text), format: text.trimStart().startsWith("{") ? "json" : "md", bytes }];
+    const spec = parsePersonaInput(stdinText);
+    return [{ spec, format: stdinText.trimStart().startsWith("{") ? "json" : "md", bytes: Buffer.from(stdinText, "utf8") }];
   }
 
   let files: string[];
@@ -111,6 +172,8 @@ async function loadInput(target: string, { prune, stdinText }: PersonaPutOptions
         if (batch[i - 1].id === batch[i].id && isValidPersonaId(batch[i].id)) throw conflict(batch[i].id);
       }
       files = batch.map(file => file.path);
+    } else if (!(await readdir(dirname(target))).includes(basename(target))) {
+      throw new LarvaError("LARVA_PERSONA_INVALID", `Persona filename must match ${basename(target)} exactly.`);
     }
   } catch (error) {
     if (error instanceof LarvaError) throw error;
@@ -138,7 +201,7 @@ async function unlinkIfPresent(path: string): Promise<boolean> {
 }
 
 async function stageAndRename(directory: string, { spec, format, bytes }: Input): Promise<void> {
-  const temporary = join(directory, `.${spec.id}.${randomUUID()}.tmp`);
+  const temporary = join(directory, `.${randomUUID()}.tmp`);
   const file = await open(temporary, "wx", 0o600);
   try {
     try {
@@ -153,7 +216,7 @@ async function stageAndRename(directory: string, { spec, format, bytes }: Input)
   }
 }
 
-function rank(spec: PersonaSpec, query: string): number {
+function rank(spec: PersonaSummary, query: string): number {
   if (spec.id === query) return 0;
   if (spec.id.startsWith(query)) return 1;
   if (spec.id.includes(query)) return 2;
@@ -164,7 +227,6 @@ export class PersonaStore {
   readonly #directory: string;
   readonly #cache = new Map<string, CacheEntry>();
   #diagnostics: PersonaDiagnostic[] = [];
-  #mutation: Promise<unknown> = Promise.resolve();
 
   constructor(home = resolveLarvaHome()) {
     this.#directory = getLarvaHomePaths(home).personas;
@@ -179,15 +241,16 @@ export class PersonaStore {
     return (await loadInput(target, { stdinText })).map(input => input.spec);
   }
 
-  async #installed(id: string): Promise<Candidate[]> {
+  async #installed(id: string, names: ReadonlySet<string>): Promise<Candidate[]> {
     const found: Candidate[] = [];
     for (const format of formats) {
-      const path = join(this.#directory, `${id}.${format}`);
-      try {
-        await lstat(path);
-        found.push({ path, id, format });
-      } catch (error) {
-        if (!isMissing(error)) throw unreadable(path);
+      const name = `${id}.${format}`;
+      const path = join(this.#directory, name);
+      if (names.has(name)) found.push({ path, id, format });
+      else if (await entryExists(path).catch(error => { if (!isErrno(error, "ENAMETOOLONG")) throw unreadable(path); })) {
+        // An entry that appeared after a concurrent rename is not a case alias.
+        if ((await personaNames(this.#directory)).has(name)) found.push({ path, id, format });
+        else if (await entryExists(path)) throw new LarvaError("LARVA_PERSONA_INVALID", `Persona filename must match ${name} exactly.`);
       }
     }
     return found;
@@ -195,8 +258,12 @@ export class PersonaStore {
 
   async get(id: string): Promise<PersonaSpec> {
     assertId(id);
+    return this.#get(id, await personaNames(this.#directory));
+  }
+
+  async #get(id: string, names: ReadonlySet<string>): Promise<PersonaSpec> {
     try {
-      const found = await this.#installed(id);
+      const found = await this.#installed(id, names);
       if (found.length === 0) throw notFound(id);
       if (found.length > 1) throw conflict(id);
       const [{ path, format }] = found;
@@ -229,18 +296,18 @@ export class PersonaStore {
       throw new LarvaError("LARVA_BAD_INPUT", "Persona list limit must be a positive integer.");
     }
     const diagnostics: PersonaDiagnostic[] = [];
-    let files: Candidate[] = [];
+    let names: Set<string>;
     try {
-      files = candidates(this.#directory, await readdir(this.#directory));
+      names = await personaNames(this.#directory);
     } catch (error) {
-      if (!isMissing(error)) diagnostics.push({
-        code: "LARVA_PERSONA_INVALID", message: "Cannot enumerate the persona directory.", path: this.#directory,
-      });
+      if (!(error instanceof LarvaError)) throw error;
+      this.#diagnostics = [{ code: error.code, message: error.message, path: this.#directory }];
+      return [];
     }
 
-    const valid: PersonaSpec[] = [];
+    const valid: (PersonaSpec | PersonaSummary)[] = [];
     const checked = new Set<string>();
-    for (const { id, path } of files) {
+    for (const { id, path } of candidates(this.#directory, names)) {
       if (!isValidPersonaId(id)) {
         if (diagnostics.length < maxDiagnostics) diagnostics.push({
           code: "LARVA_PERSONA_INVALID", message: "Invalid persona filename stem.", path,
@@ -250,14 +317,13 @@ export class PersonaStore {
       if (checked.has(id)) continue;
       checked.add(id);
       try {
-        valid.push(await this.get(id));
+        const spec = await this.#get(id, names);
+        valid.push(full ? spec : toPersonaSummary(spec));
       } catch (error) {
         if (!(error instanceof LarvaError)) throw error;
         if (diagnostics.length < maxDiagnostics) diagnostics.push({
           code: error.code, persona_id: id,
-          message: error.code === "LARVA_PERSONA_CONFLICT" ? "Both persona formats exist."
-            : error.code === "LARVA_PERSONA_NOT_FOUND" ? "Persona disappeared during listing."
-              : "Persona file is malformed or unreadable.",
+          message: error.message,
           ...(error.code === "LARVA_PERSONA_CONFLICT" ? {} : { path }),
         });
       }
@@ -270,33 +336,32 @@ export class PersonaStore {
       .sort((a, b) => a.score - b.score || compareIds(a.spec.id, b.spec.id))
       .map(item => item.spec) : valid;
     const selected = matches.slice(0, limit);
-    return full ? selected : selected.map(toPersonaSummary);
-  }
-
-  #mutate<T>(operation: () => Promise<T>): Promise<T> {
-    // Two overlapping format replacements must not each unlink the other's commit.
-    const next = this.#mutation.then(operation);
-    this.#mutation = next.catch(() => undefined);
-    return next;
+    return full ? selected.filter(spec => "prompt" in spec) : selected;
   }
 
   async put(target: string, options: PersonaPutOptions = {}): Promise<PersonaPutResult> {
     const prune = options.prune;
     const inputs = await loadInput(target, options);
-    return this.#mutate(async () => {
-      const committed_ids: string[] = [];
-      const pruned = new Set<string>();
-      let failed_id: string | null = null;
-      try {
-        failed_id = inputs[0]?.spec.id ?? null;
-        await mkdir(this.#directory, { recursive: true, mode: 0o700 });
+    const committed_ids: string[] = [];
+    const pruned = new Set<string>();
+    let failed_id: string | null = inputs[0]?.spec.id ?? null;
+    try {
+      await mkdir(dirname(this.#directory), { recursive: true, mode: 0o700 });
+      await requireRealDirectory(this.#directory, true);
+      return await withPersonaLock(this.#directory, async () => {
+        const names = await personaNames(this.#directory);
+        for (const { spec } of inputs) {
+          failed_id = spec.id;
+          await this.#installed(spec.id, names); // Check spelling, without validating the old contents.
+        }
         for (const input of inputs) {
           failed_id = input.spec.id;
           this.#cache.delete(failed_id);
           await stageAndRename(this.#directory, input);
           committed_ids.push(failed_id);
           const other = input.format === "md" ? "json" : "md";
-          await unlinkIfPresent(join(this.#directory, `${failed_id}.${other}`));
+          const otherName = `${failed_id}.${other}`;
+          if (names.has(otherName)) await unlinkIfPresent(join(this.#directory, otherName));
         }
         if (prune) {
           failed_id = null;
@@ -311,30 +376,46 @@ export class PersonaStore {
             if (await unlinkIfPresent(path)) pruned.add(id);
           }
         }
-      } catch {
-        throw new LarvaError("LARVA_STORE_WRITE_FAILED", "Could not finish writing the persona store.", {
-          committed_ids, pruned_ids: [...pruned], failed_id,
-        });
-      }
-      return { committed_ids, pruned_ids: [...pruned] };
-    });
+        failed_id = null;
+        return { committed_ids, pruned_ids: [...pruned] };
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? ` ${error.message}` : "";
+      throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Could not finish writing the persona store.${detail}`, {
+        committed_ids, pruned_ids: [...pruned], failed_id,
+      });
+    }
   }
 
   async rm(ids: readonly string[]): Promise<void> {
     const requested = [...new Set(ids)];
     requested.forEach(assertId);
-    return this.#mutate(async () => {
-      for (const id of requested) {
-        if ((await this.#installed(id)).length === 0) throw notFound(id);
-      }
-      for (const id of requested) {
-        this.#cache.delete(id);
-        try {
-          for (const format of formats) await unlinkIfPresent(join(this.#directory, `${id}.${format}`));
-        } catch {
-          throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Could not remove persona ${id}.`, { failed_id: id });
+    if (requested.length === 0) return;
+    let failed_id = requested[0];
+    try {
+      await requireRealDirectory(this.#directory);
+    } catch (error) {
+      if (isMissing(error)) throw notFound(failed_id);
+      throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Cannot access persona directory: ${this.#directory}`);
+    }
+    try {
+      await withPersonaLock(this.#directory, async () => {
+        const names = await personaNames(this.#directory);
+        const removal: Candidate[] = [];
+        for (const id of requested) {
+          const files = await this.#installed(id, names);
+          if (files.length === 0) throw notFound(id);
+          removal.push(...files);
         }
-      }
-    });
+        for (const { id, path } of removal) {
+          failed_id = id;
+          this.#cache.delete(id);
+          await unlinkIfPresent(path);
+        }
+      });
+    } catch (error) {
+      if (error instanceof LarvaError) throw error;
+      throw new LarvaError("LARVA_STORE_WRITE_FAILED", `Could not remove persona ${failed_id}.`, { failed_id });
+    }
   }
 }

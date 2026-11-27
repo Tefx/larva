@@ -5,7 +5,7 @@ import { parseLarvaConfig } from "../core/config.ts";
 import { LarvaError } from "../core/errors.ts";
 import { getLarvaHomePaths } from "../core/paths.ts";
 import type { GcConfig, GcReport, SessionLeaseRecord } from "../core/types.ts";
-import { canonicalPath } from "./session-index.ts";
+import { canonicalPath, isErrno } from "./bounded-read.ts";
 
 type GcOptions = Partial<GcConfig> & {
   dry_run?: boolean;
@@ -24,9 +24,12 @@ type GcOptions = Partial<GcConfig> & {
 type Candidate = { path: string; session: boolean; stat: Stats };
 const DAY_MS = 86_400_000;
 
-function absent(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
-}
+const absent = (error: unknown) => isErrno(error, "ENOENT");
+const SESSION_DEBRIS = /^(?:[\s\S]*\.jsonl\.lock\.(?:tmp|guard\.tmp)|\.guard\.tmp)\.([1-9][0-9]{0,9})\.[a-f0-9]{32}(?:\.tmp\.[1-9][0-9]{0,9}\.[a-f0-9]{32})?$/;
+// Public lease detachment is the commit point; no PID proof is needed afterward.
+const RETIRED_LEASE = /^[\s\S]*\.jsonl\.lock\.retired\.([1-9][0-9]{0,9})\.[a-f0-9]{32}$/;
+const CAPSULE_DEBRIS = /^\.child-([1-9][0-9]{0,9})-[a-f0-9]{32}\.tmp$/;
+const ARTIFACT_DEBRIS = /^\.artifact\.tmp\.([1-9][0-9]{0,9})\.[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 
 async function entry(path: string): Promise<Stats | undefined> {
   try {
@@ -48,8 +51,8 @@ async function names(path: string): Promise<string[]> {
 
 export async function runGc(options: GcOptions): Promise<GcReport> {
   const { dry_run, leases, capsules } = options;
-  const home = await canonicalPath(leases.home);
-  const paths = getLarvaHomePaths(home);
+  const canonicalHome = await canonicalPath(leases.home);
+  const paths = getLarvaHomePaths(canonicalHome);
   const { max_age_days, max_bytes } = parseLarvaConfig({ gc: {
     ...(options.max_age_days === undefined ? {} : { max_age_days: options.max_age_days }),
     ...(options.max_bytes === undefined ? {} : { max_bytes: options.max_bytes }),
@@ -62,10 +65,28 @@ export async function runGc(options: GcOptions): Promise<GcReport> {
   };
   if (!(await entry(paths.state))?.isDirectory()) return report;
 
-  // Reconsider the leases first. An outstanding lease may still need the
-  // capsule's positive PID evidence; do not erase it before the lease settles.
-  const pinned = new Map<string, boolean>();
-  for (const name of await names(paths.sessions)) {
+  // Snapshot capsule proof before sweeping leases, but don't remove any
+  // evidence until the scan has reconciled and rechecked its lease references.
+  const capsuleNames = await names(paths.capsules);
+  const graph = new Map<string, { incoming: number; links: Set<string> }>();
+  const retained = new Set<string>();
+  const unreconciled = new Set<string>();
+  for (const name of capsuleNames) {
+    const root = join(paths.capsules, name);
+    const ppid = capsules.capsuleParentPid(canonicalHome, root);
+    if (ppid === undefined || !(await entry(root))?.isDirectory()) continue;
+    graph.set(root, { incoming: 0, links: new Set() });
+    if (!capsules.pidExited(ppid)) { retained.add(root); continue; }
+    const proof = await capsules.inspectCapsule(canonicalHome, root);
+    if (!proof || ((proof.state === "spawning" || proof.state === "unreconciled") && (!proof.all_exited || !proof.has_child))) {
+      unreconciled.add(root);
+    }
+    if (!proof?.all_exited || unreconciled.has(root)) retained.add(root);
+  }
+
+  const sessionNames = await names(paths.sessions);
+  let unknownReferences = false;
+  for (const name of sessionNames) {
     if (!name.endsWith(".jsonl.lock")) continue;
     const path = join(paths.sessions, name.slice(0, -".lock".length));
     let inspection = await leases.inspect(path);
@@ -73,49 +94,61 @@ export async function runGc(options: GcOptions): Promise<GcReport> {
       await leases.reclaim(path, inspection.record.lease_id);
       inspection = await leases.inspect(path);
     }
+    if (inspection.disposition === "invalid") unknownReferences = true;
     if (!("record" in inspection) || inspection.record.capsule_root === null) continue;
     const root = inspection.record.capsule_root;
-    pinned.set(root, pinned.get(root) === true || inspection.disposition === "uncertain");
-  }
-
-  const graph = new Map<string, { incoming: number; links: Set<string> }>();
-  const retained = new Set<string>();
-  for (const name of await names(paths.capsules)) {
-    const root = join(paths.capsules, name);
-    const ppid = capsules.capsuleParentPid(home, root);
-    if (ppid === undefined || !(await entry(root))?.isDirectory()) continue;
-    graph.set(root, { incoming: 0, links: new Set() });
-    if (pinned.has(root) || !capsules.pidExited(ppid)) {
-      retained.add(root);
-      if (pinned.get(root)) report.unreconciled_capsules.push(root);
-      continue;
-    }
-    const proof = await capsules.inspectCapsule(home, root);
-    const unreconciled = !proof || ((proof.state === "spawning" || proof.state === "unreconciled") && (!proof.all_exited || !proof.has_child));
-    if (unreconciled) report.unreconciled_capsules.push(root);
-    if (unreconciled || !proof.all_exited) retained.add(root);
+    if (!(dry_run && inspection.disposition === "stale")) retained.add(root);
+    if (inspection.disposition === "uncertain") unreconciled.add(root);
   }
 
   // Sample links after exit checks, so an intent published by a just-exited
   // owner is visible before any of its evidence becomes eligible for removal.
   for (const [root, node] of graph) {
-    node.links = await capsules.linkedCapsuleRoots(home, root);
+    try {
+      node.links = await capsules.linkedCapsuleRoots(canonicalHome, root);
+    } catch {
+      if (await entry(root)) {
+        unreconciled.add(root);
+        unknownReferences = true; // The unreadable record could refer to any capsule.
+      }
+    }
     for (const link of node.links) {
       const child = graph.get(link);
       if (child) child.incoming++;
     }
   }
+  if (unknownReferences) {
+    for (const root of graph.keys()) if (!retained.has(root)) unreconciled.add(root);
+  }
+  report.unreconciled_capsules = [...unreconciled].sort();
+
   // A single topological pass propagates retention and removes ancestors first.
   // Cycles (and everything dependent on them) never reach zero incoming edges.
   const ready = [...graph.keys()].filter(root => graph.get(root)!.incoming === 0);
   for (const root of ready) {
-    if (!retained.has(root) && !dry_run) await rm(root, { recursive: true, force: true });
+    if (!unknownReferences && !retained.has(root) && !dry_run) await rm(root, { recursive: true, force: true });
     for (const link of graph.get(root)!.links) {
       const child = graph.get(link);
       if (!child) continue;
       if (retained.has(root)) retained.add(link);
       if (--child.incoming === 0) ready.push(link);
     }
+  }
+
+  async function cleanDebris(directory: string, entries: string[], pattern: RegExp, retired = false) {
+    for (const name of entries) {
+      const pid = Number(pattern.exec(name)?.[1]);
+      if (!Number.isInteger(pid) || pid > 0x7fff_ffff || (!retired && !capsules.pidExited(pid))) continue;
+      const path = join(directory, name);
+      const info = await entry(path);
+      if (info?.isDirectory() || info?.isFile()) await rm(path, { recursive: info.isDirectory(), force: true });
+    }
+  }
+  if (!dry_run) {
+    await cleanDebris(paths.sessions, sessionNames, SESSION_DEBRIS);
+    await cleanDebris(paths.sessions, sessionNames, RETIRED_LEASE, true);
+    await cleanDebris(paths.capsules, capsuleNames, CAPSULE_DEBRIS);
+    await cleanDebris(paths.artifacts, await names(paths.artifacts), ARTIFACT_DEBRIS);
   }
 
   async function locked(path: string): Promise<boolean> {
@@ -173,7 +206,8 @@ export async function runGc(options: GcOptions): Promise<GcReport> {
       report.freed_bytes += current.size;
       return true;
     } finally {
-      await lease?.release();
+      // A release failure may leave a conservative lock, but doesn't undo unlink.
+      try { await lease?.release(); } catch { /* Unlink is already committed. */ }
     }
   }
 

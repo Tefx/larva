@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -123,6 +124,44 @@ test("persona validates and installs file and directory inputs; get and list pro
   });
 });
 
+test("persona CLI renders human output and sorts query matches by ID rather than relevance", async () => {
+  await fixture(async ({ env }) => {
+    const alice = { ...persona("alice"), description: "Supports bob" };
+    const bob = persona("bob");
+    const validate = await invoke(["persona", "validate", "-"], env, { stdin: stdin(JSON.stringify(bob)) });
+    assert.deepEqual(validate, { exit: 0, stdout: "Validated 1 persona(s).\nbob\n", stderr: "" });
+    for (const spec of [bob, alice]) {
+      const put = await invoke(["persona", "put", "-"], env, { stdin: stdin(JSON.stringify(spec)) });
+      assert.deepEqual(put, { exit: 0, stdout: `Installed: ${spec.id}\nPruned: none\n`, stderr: "" });
+    }
+    const matched = ["persona", "list", "--query", "bob"];
+    for (const flags of [[], ["--full"]]) {
+      const args = [...matched, ...flags];
+      const items = await success<(PersonaSummary | PersonaSpec)[]>(args, env);
+      assert.deepEqual(items.map(({ id }) => id), ["alice", "bob"]);
+      assert.equal(items.every(item => "prompt" in item), flags.length > 0);
+      const result = await invoke(args, env);
+      assert.equal(result.exit, 0);
+      assert.equal(result.stderr, "");
+      if (flags.length === 0) {
+        const [header, ...rows] = result.stdout.trimEnd().split("\n");
+        assert.match(header, /^ID\s+MODEL/);
+        assert.deepEqual(rows.map(row => row.split("\t")[0]), ["alice", "bob"]);
+        assert.ok(!result.stdout.includes(bob.prompt));
+      } else {
+        assert.ok(result.stdout.includes(alice.prompt));
+        assert.ok(result.stdout.indexOf(alice.prompt) < result.stdout.indexOf(bob.prompt));
+      }
+    }
+    const get = await invoke(["persona", "get", "bob"], env);
+    assert.equal(get.exit, 0);
+    assert.ok(get.stdout.includes(bob.prompt));
+    assert.deepEqual(await invoke(["persona", "rm", "bob"], env), { exit: 0, stdout: "Removed: bob\n", stderr: "" });
+    assert.deepEqual(await invoke(matched, env), { exit: 0, stdout: "ID\tMODEL\tTHINKING\tCAN SPAWN\tDESCRIPTION\nalice\tfixture-provider/team/model\tmedium\tno\tSupports bob\n", stderr: "" });
+    assert.match((await invoke(["persona", "list", "--query", "no-match"], env)).stdout, /No matching personas/);
+  });
+});
+
 test("persona puts and reads accept exactly 1 MiB and reject oversized persona files before commit", async () => {
   await fixture(async ({ root, home, env }) => {
     const input = join(root, "alice.json");
@@ -187,6 +226,12 @@ test("doctor checks the selected profile against the real Pi catalog and stays r
       ok: true, larva_home: home, profile: "default", personas_checked: 1, diagnostics: [],
       pi: { path: await realpath(join(npmBin, "pi")), version: "1.6.1" },
     });
+
+    const human = await invoke(["doctor"], env);
+    assert.equal(human.exit, 0);
+    assert.equal(human.stderr, "");
+    assert.match(human.stdout, /Larva health check passed/);
+    assert.match(human.stdout, /personas checked: 1/);
 
     // Only the second Persona needs mapping. A successful profile must check both.
     const bobPath = join(personas, "bob.json");
@@ -281,6 +326,45 @@ test("doctor reports broken and conflicting personas, bad config, malformed unse
       ["broken", "LARVA_PERSONA_INVALID"], ["conflict", "LARVA_PERSONA_CONFLICT"], ["alice", "LARVA_MODEL_UNAVAILABLE"],
     ]);
     assert.deepEqual((await failure(["doctor", "--profile", "ci"], env, 1, "LARVA_CONFIG_INVALID")).details, report);
+    const human = await invoke(["doctor", "--profile", "ci"], env);
+    assert.equal(human.exit, 1);
+    assert.equal(human.stdout, "");
+    const lines = human.stderr.split("\n");
+    for (const { path, persona_id, code, message } of report.diagnostics) {
+      assert.ok(lines.includes(`${path ?? persona_id}: ${code}: ${message}`));
+    }
+  });
+});
+
+test("doctor distinguishes a missing persona directory from a dangling link and checks all state directory modes", async () => {
+  await fixture(async ({ home, env }) => {
+    const personas = join(home, "personas");
+    const state = join(home, "state");
+    assert.equal((await runDoctor({ env })).ok, true);
+    await symlink(join(home, "missing-personas"), personas);
+    await mkdir(state);
+    const dirs = ["sessions", "capsules", "artifacts"].map(name => join(state, name));
+    for (const [path, mode] of dirs.map((path, i) => [path, [0o755, 0o770, 0o701][i]] as const)) {
+      await mkdir(path);
+      await chmod(path, mode);
+    }
+    const report = await runDoctor({ env });
+    assert.equal(report.ok, false);
+    assert.deepEqual(report.diagnostics.map(({ code, path }) => [code, path]), [
+      ["LARVA_PERSONA_INVALID", personas], ...dirs.map(path => ["LARVA_CONFIG_INVALID", path]),
+    ]);
+    assert.match(report.diagnostics[0].message, /dangling symlink/);
+    assert.deepEqual(report.diagnostics.slice(1).map(item => item.message.match(/found (\d+)/)?.[1]), ["0755", "0770", "0701"]);
+    assert.ok((await lstat(personas)).isSymbolicLink());
+    assert.equal((await lstat(dirs[0])).mode & 0o777, 0o755);
+    await rm(personas);
+    await mkdir(personas);
+    const dangling = join(personas, "dangling.json");
+    await symlink(join(home, "missing.json"), dangling);
+    for (const path of dirs) await chmod(path, 0o700);
+    assert.deepEqual((await runDoctor({ env })).diagnostics.map(item => item.path), [dangling]);
+    await rm(dangling);
+    assert.equal((await runDoctor({ env })).ok, true);
   });
 });
 
@@ -327,9 +411,14 @@ test("gc previews age and budget evictions then commits the same eligible deleti
       deleted_sessions: 1, deleted_artifacts: 1, freed_bytes: 1_048_579, remaining_bytes: 6, protected_bytes: 6,
       budget_met: true, unreconciled_capsules: [],
     });
+    const dry = await invoke(["gc", ...flags, "--dry-run"], env);
+    assert.equal(dry.exit, 0);
+    assert.match(dry.stdout, /Dry run: would delete 1 session\(s\) and 1 artifact\(s\)/);
     assert.deepEqual(await readdir(sessions), ["expired.jsonl"]);
     assert.equal((await lstat(excess)).size, 1_048_576);
-    assert.deepEqual(await success(["gc", ...flags], env), preview);
+    const live = await invoke(["gc", ...flags], env);
+    assert.equal(live.exit, 0);
+    assert.match(live.stdout, /Cleanup applied: deleted 1 session\(s\) and 1 artifact\(s\)/);
     assert.deepEqual(await readdir(sessions), []);
     assert.deepEqual(await readdir(artifacts), ["recent.txt"]);
   });
@@ -337,24 +426,33 @@ test("gc previews age and budget evictions then commits the same eligible deleti
 
 test("CLI rejects invalid argument shapes with usage status and keeps MCP stdout protocol-only", async () => {
   await fixture(async ({ home, env }) => {
-    const usageCases = [
-      ["persona", "validate"], ["persona", "get", "alice", "extra"], ["persona", "rm"],
-      ["persona", "list", "--prune"], ["persona", "list", "--full", "--full"],
-      ["persona", "put", "--unknown", "-"], ["doctor", "ignore-me"], ["doctor", "--profile"],
-      ["gc", "--max-age", "1.5"], ["gc", "--max-bytes", "9007199254740992"],
+    const usageCases: [string[], string][] = [
+      [["persona", "validate"], "<file|dir|->"], [["persona", "get", "alice", "extra"], "extra"], [["persona", "rm"], "<id>"],
+      [["persona", "list", "--prune"], "--prune"], [["persona", "list", "--full", "--full"], "--full"],
+      [["persona", "put", "--unknown", "-"], "--unknown"], [["doctor", "ignore-me"], "ignore-me"], [["doctor", "--profile"], "--profile"],
+      [["persona", "list", "--query"], "--query"], [["persona", "list", "--full=true"], "--full"],
+      [["gc", "--max-age", "1.5"], "--max-age"], [["gc", "--max-bytes", "9007199254740992"], "--max-bytes"],
     ];
-    for (const args of usageCases) await failure(args, env, 2, "LARVA_CLI_USAGE");
+    for (const [args, offending] of usageCases) {
+      const plain = await invoke(args, env);
+      assert.equal(plain.exit, 2);
+      assert.equal(plain.stdout, "");
+      assert.ok(plain.stderr.includes(offending), plain.stderr);
+      const error = await failure(args, env, 2, "LARVA_CLI_USAGE");
+      assert.ok(error.message.includes(offending), error.message);
+    }
     await failure(["gc", "--max-age", "0"], env, 1, "LARVA_CONFIG_INVALID");
     await failure(["gc", "--max-bytes", "1024"], env, 1, "LARVA_CONFIG_INVALID");
     assert.deepEqual(await readdir(home), []);
 
     let calls = 0;
     const mcp = { runMcp: async () => { calls++; return 1; } };
-    for (const arg of ["--json", "--unknown", "--help", "extra"]) {
+    for (const arg of ["--json", "--unknown", "extra"]) {
       const invalid = await invoke(["mcp", arg], env, mcp);
       assert.equal(invalid.exit, 2);
       assert.equal(invalid.stdout, "");
       assert.match(invalid.stderr, /^LARVA_CLI_USAGE:/);
+      assert.ok(invalid.stderr.includes(arg));
     }
     assert.equal(calls, 0);
     assert.deepEqual(await invoke(["mcp"], env, mcp), { exit: 1, stdout: "", stderr: "" });
@@ -368,11 +466,32 @@ test("CLI rejects invalid argument shapes with usage status and keeps MCP stdout
     assert.equal(sourceVersion.exit, 0);
     assert.equal(sourceVersion.stderr, "");
     assert.match(sourceVersion.stdout, /^\d+\.\d+\.\d+\n$/);
-    for (const args of [[], ["--help"], ["-h"]]) {
-      const help = await invoke(args, env);
+  });
+});
+
+test("CLI help covers every command without reading inputs or starting MCP", async () => {
+  const env = { LARVA_HOME: "invalid-relative-home" };
+  const scopes = [[], ["persona"], ...["validate", "put", "get", "list", "rm"].map(action => ["persona", action]),
+    ["doctor"], ["gc"], ["mcp"]];
+  for (const scope of scopes) {
+    for (const flag of ["--help", "-h"]) {
+      const help = await invoke([...scope, flag], env);
       assert.equal(help.exit, 0);
       assert.equal(help.stderr, "");
-      assert.match(help.stdout, /larva doctor \[--profile <name>\] \[--json\]/);
+      assert.match(help.stdout, /^Usage:/);
+      assert.ok(help.stdout.includes(`  larva ${scope.join(" ")}`), help.stdout);
     }
+  }
+  assert.match((await invoke([], env)).stdout, /larva doctor \[--profile <name>\]/);
+  const afterSeparator = await invoke(["doctor", "--", "--help"], env);
+  assert.equal(afterSeparator.exit, 2);
+  assert.match(afterSeparator.stderr, /--help/);
+  await fixture(async ({ env }) => {
+    const cli = fileURLToPath(new URL("../../src/cli.ts", import.meta.url));
+    const child = spawnSync(process.execPath, [cli, "mcp", "--help"], { env, encoding: "utf8", timeout: 5_000 });
+    assert.ifError(child.error);
+    assert.equal(child.status, 0);
+    assert.equal(child.stderr, "");
+    assert.match(child.stdout, /^Usage:\n  larva mcp/);
   });
 });

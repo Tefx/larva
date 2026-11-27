@@ -91,26 +91,29 @@ export async function resolveExtensionSources(
     if (source === "" || source.includes("\0")) {
       throw new LarvaError("LARVA_CONFIG_INVALID", `Invalid extension_sources entry at index ${index}.`);
     }
-    if (/^(?:builtin|npm|git):/.test(source)
-        || (!isAbsolute(source) && !source.startsWith("pi-agent:") && URL.canParse(source))) {
-      paths.push(source);
-      continue;
-    }
     try {
-      let path: string;
-      if (source.startsWith("~/")) {
-        path = join(context.userHome, source.slice(2));
-      } else if (source.startsWith("pi-agent:")) {
+      let realPath: string;
+      if (source.startsWith("pi-agent:")) {
         const suffix = source.slice("pi-agent:".length);
         if (!suffix || isAbsolute(suffix)) throw new Error("Expected a relative path.");
-        path = resolve(context.piAgentDir, suffix);
-      } else if (isAbsolute(source)) {
-        path = source;
+        realPath = await resolveContainedPath(context.piAgentDir, resolve(context.piAgentDir, suffix), context.realpath);
+      } else if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
+        if (!/^(?:builtin|npm|git):/.test(source)) {
+          const url = new URL(source);
+          if (!["http:", "https:", "file:"].includes(url.protocol)) throw new Error("Unsupported extension URL.");
+        }
+        paths.push(source);
+        continue;
       } else {
-        realHome ??= await context.realpath(context.larvaHome);
-        path = resolve(realHome, source);
+        let path: string;
+        if (source.startsWith("~/")) path = join(context.userHome, source.slice(2));
+        else if (isAbsolute(source)) path = source;
+        else {
+          realHome ??= await context.realpath(context.larvaHome);
+          path = resolve(realHome, source);
+        }
+        realPath = await context.realpath(path);
       }
-      const realPath = await context.realpath(path);
       await context.assertReadable(realPath);
       paths.push(realPath);
     } catch {

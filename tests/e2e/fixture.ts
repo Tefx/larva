@@ -46,9 +46,19 @@ function sse(response: ServerResponse, model: string, answer: Answer, id: string
       index, id: `${id}-${index}`, type: "function", function: { name, arguments: JSON.stringify(input) },
     })),
   };
+  const event = (payload: object, finish_reason: string | null) => `data: ${JSON.stringify({ id, object: "chat.completion.chunk", created: 1, model,
+    choices: [{ index: 0, delta: payload, finish_reason }] })}\n\n`;
   response.writeHead(200, { "Content-Type": "text/event-stream" });
-  response.end(`data: ${JSON.stringify({ id, object: "chat.completion.chunk", created: 1, model,
-    choices: [{ index: 0, delta, finish_reason: typeof answer === "string" ? "stop" : "tool_calls" }] })}\n\ndata: [DONE]\n\n`);
+  if (typeof answer === "string" && answer.length > 16_384) {
+    // A large assembled assistant event need not be a single SSE transport record.
+    for (let start = 0; start < answer.length;) {
+      let end = Math.min(answer.length, start + 16_384);
+      if (end < answer.length && /[\uD800-\uDBFF]/.test(answer[end - 1])) end--;
+      response.write(event({ role: "assistant", content: answer.slice(start, end) }, null));
+      start = end;
+    }
+    response.end(`${event({}, "stop")}data: [DONE]\n\n`);
+  } else response.end(`${event(delta, typeof answer === "string" ? "stop" : "tool_calls")}data: [DONE]\n\n`);
 }
 
 type SetupOptions = { modelsOnly?: boolean; aliasedHome?: boolean };
@@ -62,7 +72,7 @@ async function setup(root: string, cleanup: (() => Promise<unknown>)[], options:
   await Promise.all([agent, cwd, join(host, ".pi"), cache, sessions, join(home, "personas")]
     .map(dir => mkdir(dir, { recursive: true, mode: 0o700 })));
   await writeFile(join(host, ".pi", "settings.json"), "not JSON: MCP must not consult this directory");
-  await writeFile(join(agent, "settings.json"), JSON.stringify({ defaultProjectTrust: "decline", retry: { enabled: false } }));
+  await writeFile(join(agent, "settings.json"), JSON.stringify({ defaultProjectTrust: "decline", retry: { enabled: false }, compaction: { enabled: false } }));
   const personaFile = (name: string) => join(home, "personas", `${name}.json`);
   for (const [id, can_spawn] of [["parent", ["worker"]], ["worker", true], ["leaf", false]] as const) {
     await writeFile(personaFile(id), JSON.stringify({ id, description: `E2E ${id}`, prompt: `E2E identity ${id}`,
@@ -117,9 +127,9 @@ async function setup(root: string, cleanup: (() => Promise<unknown>)[], options:
   }));
   await config({});
   for (const file of ["mcp-server.mjs", "pi-extension.js", "child-rpc-preload.mjs"]) {
-    await copyFile(join(dist, file), join(cache, file));
+    await copyFile(join(repo, "plugins", "codex", "dist", file), join(cache, file));
   }
-  await writeFile(join(cache, "package.json"), '{"type":"module"}\n');
+  await copyFile(join(repo, "plugins", "codex", "dist", "package.json"), join(cache, "package.json"));
   const piScript = await realpath(join(repo, "node_modules", ".bin", "pi"));
   const configuredHome = options.aliasedHome ? join(root, "larva-link") : home;
   if (options.aliasedHome) await symlink(home, configuredHome, "dir");

@@ -167,9 +167,30 @@ test("YAML explicit block and flow keys produce the same canonical PersonaSpec a
   });
 });
 
+test("explicit YAML Core tags preserve canonical PersonaSpec and digest parity", () => {
+  const expected = parsePersonaInput(json({ description: "123", can_spawn: true, tools: { allow: ["read"] } }));
+  assert.deepEqual(parsePersonaFile(md([
+    'description: "123"', "model: provider/model", "can_spawn: true", "tools: { allow: [read] }",
+  ].join("\n")), "/tmp/review-2.md"), expected);
+  assert.deepEqual(parsePersonaFile(md([
+    "!!map", "!!str description: !!str 123", "model: provider/model",
+    "can_spawn: !!bool TRUE", "tools: !!map { allow: !!seq [read] }",
+  ].join("\n")), "/tmp/review-2.md"), expected);
+  assert.deepEqual(parseYamlFrontmatter(md("values: [!!int 0x10, !!float -2.5e2, !!null null]")).fields,
+    { values: [16, -250, null] });
+  for (const description of ["123", "!!int 123", "!!float 123.0", "!!null null"]) {
+    invalid(() => parsePersonaFile(md(`model: provider/model\ndescription: ${description}`), "/tmp/review-2.md"), description);
+  }
+});
+
 test("YAML rejects forbidden constructs and malformed document boundaries", () => {
   for (const header of [
-    "description: &anchor hi", "description: *alias", "description: !!str hi", "description: !custom hi",
+    "description: &anchor hi", "description: &anchor !!str hi", "description: *alias",
+    "description: !custom hi", "description: !!binary aGk=", "description: ! 123",
+    "description: !!set {hi: null}", "description: !!str [hi]", "description: !!float .inf", "!!str <<: hi",
+    "%YAML 1.2\n--- # extra document boundary\ndescription: hi",
+    "%TAG !! tag:yaml.org,2002:\n--- # explicit default tag handle\ndescription: hi",
+    "%UNKNOWN warning\n--- # extra document boundary\ndescription: hi", "description: hi\n...",
     "description: [&anchor hi]", "description: [{key: *alias}]", "description: {key: !tag hi}",
     "description: {<<: x}", "description:\n  '<<': x", "description: one\ndescription: two",
     'description: one\n"descrip\\u0074ion": two', "tools: {allow: [], 'allow': []}",
@@ -199,6 +220,23 @@ test("both representations normalize only description and prompt and preserve sp
   for (const value of [" provider/model", "provider/model ", "provider/mod el", "provider/", "/model", "provider", 1]) {
     invalid(() => parsePersonaInput(json({ model: value })), String(value));
   }
+});
+
+test("Persona admission rejects lone UTF-16 surrogates without rejecting supplementary characters", () => {
+  for (const surrogate of ["\uD800", "\uDFFF"]) {
+    for (const fields of [
+      { description: `inspect${surrogate}` }, { prompt: `check${surrogate}` }, { model: `provider/model${surrogate}` },
+      { tools: { allow: [`read${surrogate}*`] } }, { tools: { deny: [`write${surrogate}`] } },
+      { id: `review${surrogate}` }, { can_spawn: [`agent${surrogate}`] }, { thinking: `high${surrogate}` },
+      { spec_digest: `sha256:${"a".repeat(63)}${surrogate}` },
+    ]) invalid(() => parsePersonaInput(json(fields)), JSON.stringify(fields));
+    invalid(() => parsePersonaFile(md(basicHeader, `body${surrogate}`), "/tmp/review-2.md"));
+    const escaped = JSON.stringify(`inspect${surrogate}`);
+    invalid(() => parsePersonaFile(md(`description: ${escaped}\nmodel: provider/model`), "/tmp/review-2.md"));
+    invalid(() => parsePersonaFile(md(`${basicHeader}\ntools: { allow: [${escaped}] }`), "/tmp/review-2.md"));
+  }
+  const spec = parsePersonaInput(json({ description: "Inspect 🔎", prompt: "Search 🔎", model: "provider/🔎", tools: { allow: ["🔎*"] } }));
+  assert.deepEqual(parsePersonaInput(serializePersonaMarkdown(spec)), spec);
 });
 
 test("can_spawn, tool patterns, and thinking enforce strict domains and cardinality", () => {

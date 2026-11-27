@@ -156182,7 +156182,7 @@ phases:
       unchanged, 0 pi-tui in 5 headless bundles, exact 7-file npm pack.'
 - id: larva_0_9_completion
   name: Larva 0.9.0 Completeness, UI/UX Parity & Runtime Resilience Closure
-  status: pending
+  status: done
   gate: 'Independent FULL gate (l09c.gate) passes: npm run typecheck, full npm test,
     npm run build && git diff --exit-code plugins/codex/, npm pack --dry-run (exact
     7-file list, 0 runtime dependencies, 0 @earendil-works/pi-tui in .mjs bundles,
@@ -156196,7 +156196,7 @@ phases:
   - id: l09c.w1_core_build_types
     name: 'Wave 1: Core YAML Replacement, Admission Closure, Store SCC Leaf, Shared
       DTOs & Build/CI'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156277,9 +156277,51 @@ phases:
     refs:
     - design/larva-0.9-architecture.md
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:22:23.521174Z'
+    done_at: '2026-11-27T16:31:15.208915+00:00'
+    evidence: 'Artifact:
+
+      - Commit: c624cad56402ab9c43a57931c823d2f6fe133dfb (rebased & ff onto v0.9;
+      worktree removed; +333/-448 lines across 16 files)
+
+
+      Changes:
+
+      - [YAML-ESM] Replaced custom YAML parser in src/core/yaml-frontmatter.ts with
+      bundled `yaml` (`parseDocument`, YAML 1.2 Core/JSON AST rejecting errors, warnings,
+      directives, aliases, anchors, custom tags, merge keys, duplicate keys). Extracted
+      parser-free src/core/predicates.ts (`isRecord`, `THINKING_LEVELS`, `isValidPersonaId`).
+      Updated scripts/build.mjs (node:* builtin normalization, createRequire ESM bridge,
+      PACKAGE_VERSION, import.meta.main, 0 YAML in preload check), package.json (engines
+      >=22.0.0), tsconfig.json (ES2024), .github/workflows/ci.yml (installed tarball
+      bare-node smoke).
+
+      - [CORE-ADMIT] Enforced String.prototype.isWellFormed() across PersonaSpec strings
+      in src/core/persona.ts; rejected empty routed model_id in src/core/model-map.ts;
+      rejected NUL + enforced pi-agent: base-dir containment and explicit http:/https:/file:/builtin:/npm:/git:
+      extension_sources validation in src/core/{config,paths}.ts.
+
+      - [DTO-SCHEMAS] Added src/core/activity-wire.ts (ACTIVITY_WIRE_MAX_BYTES = 8192
+      + UTF-8 byte counter), extended RunSnapshot/ToolSnapshot + RunTextSliceQuery/Result/Reader
+      in src/core/types.ts, and added per-parameter descriptions + panel.slice + non-empty
+      search_mentions.path items in src/surfaces/tool-schemas.ts.
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/{core-persona,core-routing-policy,foundation-schema}.test.ts
+      -> 32/32 pass (147/147 unit tests pass)
+
+      - npm run build:dist && ESM import of all 4 dist/* bundles (''ESM OK'') -> 0
+      YAML modules in child-rpc-preload.mjs, 0 @earendil-works/pi-tui in .mjs bundles,
+      installed-tarball CLI/MCP smoke pass.
+
+      - Note: [STORE-LEAF] consolidation into src/store/bounded-read.ts is completed
+      cleanly with its store consumers in l09c.w2a_store (within allowed_paths).'
   - id: l09c.w1_docs_sync
     name: 'Wave 1: Documentation & Persona Schema Parity Sync'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156332,10 +156374,34 @@ phases:
     refs:
     - design/larva-0.9-architecture.md
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:22:23.522149Z'
+    done_at: '2026-11-27T16:27:02.241615+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 13802f83e682563e96f17d2b644a4c1e3473e5a9 (ff onto v0.9; worktree removed;
+      +51/-31 lines across 9 files)
+
+
+      Changes:
+
+      - [DOCS-PARITY & DOC-SURFACES] Aligned README.md, contracts/persona_spec.schema.json
+      (rejecting lone UTF-16 surrogates while accepting valid supplementary characters),
+      docs/README.md, docs/guides/{USAGE,USER_GUIDE}.md, docs/reference/{ARCHITECTURE,INTERFACES,PI_AGENT_PERSONA_SWITCH_POLICY,PI_EXTENSION_ASYNC_SUBAGENTS}.md
+      with design/larva-0.9-architecture.md (badges, idle selectors, --status vs model-map.status.json,
+      5-tab Pi & 4-tab Codex consoles, CLI help/output, nested executeTool admission,
+      cleanup_unconfirmed retry, <=8192B activity wire envelope).
+
+
+      Verification:
+
+      - node --test tests/unit/foundation-schema.test.ts -> 7/7 pass
+
+      - npm run typecheck, isolated dist build, and 29 Unicode schema checks passed.'
   - id: l09c.w2a_store
     name: 'Wave 2A-1: Store SCC Break, Capsule/Lease/GC Resilience & PersonaStore
       Hardening'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156405,10 +156471,50 @@ phases:
     depends_on:
     - l09c.w1_core_build_types
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:31:35.488556Z'
+    done_at: '2026-11-27T16:45:37.251478+00:00'
+    evidence: 'Artifact:
+
+      - Commit: cffe6c6eba62d7272f6d3479ac3ea3328311c6d8 (rebased & ff onto v0.9;
+      worktree removed; +683/-254 lines across 10 files)
+
+
+      Changes:
+
+      - [SCC-BREAK] Sunk stateless FS leaf helpers (isErrno, entryExists, canonicalPath,
+      readTextIfPresent) into src/store/bounded-read.ts, eliminated the 3-node Store
+      import cycle (model-map/session-index/capsule), and retained public re-exports
+      for parallel Wave 2 branches.
+
+      - [GC] src/store/gc.ts: canonicalHome everywhere (incl. capsuleParentPid), dead
+      capsule snapshot before sweeping leases, preserved deleted counts on lease.release()
+      throw, unreadable descendants/*.json treated as unreconciled, cleanup of dead-PID
+      temp files & .retired.* tombstones.
+
+      - [CAPSULE-LEASE-ARTIFACTS] src/store/{capsule,session-lease,session-index,artifacts}.ts:
+      atomic hidden temp staging with owner.json before rename, retained evidence
+      until lease release, exported inspectDescendantPids for Wave 2A-2, real-directory
+      lstat checks, fail-closed dangling settings.json symlinks, hardlink recovery
+      self-lock fix, flat session filename bounding under NAME_MAX, and readArtifactSlice/readRunTextSlice
+      in artifacts.ts.
+
+      - [PERSONA-STORE] src/store/persona-store.ts: short-name cross-process lock
+      with dead-writer recovery, directory preflight, case-exact filename check, specific
+      LarvaError diagnostics, and prompt-free summary projection.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build:dist && node --test tests/unit/store-leases-gc.test.ts
+      tests/unit/store-personas-artifacts.test.ts -> 29/29 Store tests pass (85/85
+      broader suite pass)
+
+      - Import scan -> 0 cycles across src/store/* and 0 forbidden imports.'
   - id: l09c.w2a_runtime
     name: 'Wave 2A-2: Preload Frame Projection, Supervisor Resilience, Settlement
       Barrier & Pi Binary'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156489,10 +156595,55 @@ phases:
     - l09c.w1_core_build_types
     - l09c.w2a_store
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:45:46.926413Z'
+    done_at: '2026-11-27T17:07:48.614711+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 4c2b5728be8186782481e16b667ec12ba5c9c1f8 (rebased from 53aed4fac7f5211b167754f6e4b2fb121b61c357
+      & ff onto v0.9; worktree removed; +764/-203 lines across 8 files)
+
+
+      Changes:
+
+      - [PRELOAD-CLIENT] src/child-rpc-preload.ts & src/runtime/child-rpc-client.ts:
+      projected >1 MiB non-response events into <=1 MiB bounded summary frames, recovered
+      >1 MiB final assistant completions into state/artifacts/, passed pre-parsed
+      frames across bridge, armed 1500ms stdin-closure orphan self-exit.
+
+      - [SUPERVISOR-SLICE-SNAP] src/runtime/supervisor.ts: implemented readRunTextSlice
+      (epoch-bound initial prompt + single-epoch .jsonl fallback + paged inline/artifact
+      output), cleanup_unconfirmed, monotonic tool_call_count, live running/cancelling
+      counts, per-message stream reset, tool previews, recent ordering by latest activity.
+
+      - [SUPERVISOR-RESILIENCE] src/runtime/{supervisor,child-rpc-client}.ts: multi-hop
+      descendant heartbeat relay, owner.json + descendants/*.json PID reaping on cancel/abort/retire,
+      bounded background cleanup re-polls until ESRCH, #promptSent after confirmed
+      prompt, turn-scoped final output, Stage 1 task validation, output() vs cancel/shutdown
+      bounds, non-reasoning thinking clamping, 60s readiness budget, earliest structured
+      stderr LarvaError, Basic/*_api_key redaction, AbortSignal support, wait(any/first_error)
+      isolation from sibling artifact writes.
+
+      - [BARRIER-OUTBOX-BIN] src/runtime/{settlement-barrier,outbox,pi-binary}.ts:
+      fail-closed uncorrelatable host send_message extension_error, aborted=true cancellation,
+      pending queue decoupled from 25-entry replay window, persona_id/phase metadata,
+      slim alert payloads without cloning mutable RunSnapshots, minimal-PATH pi discovery,
+      and loadModelRegistry export for Wave 3A.
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/supervisor.test.ts tests/unit/preload-and-pi-bin.test.ts
+      && npm run build:dist -> 37/37 targeted + 25/25 schema/Codex UI tests pass;
+      bare-node doctor --json smoke with PATH=/usr/bin:/bin found Pi 1.6.1; 0 YAML/pi-tui
+      in child-rpc-preload.mjs; 0 plugins/codex/ edits.
+
+      - Noted pre-merge integration baseline failures on cb9d3472 (before w2c & w2e
+      merged) to verify in Wave 3A on integrated v0.9.'
   - id: l09c.w2b_activity_inspector
     name: 'Wave 2B: Streaming Activity Inspector, Ancestry Verification & 8192B Wire
       Budgeter'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156552,10 +156703,37 @@ phases:
     depends_on:
     - l09c.w1_core_build_types
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:31:35.489398Z'
+    done_at: '2026-11-27T16:42:40.628615+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 763cf1d308ed30aa41159273b9655544c7c01c22 (rebased & ff onto v0.9;
+      worktree removed; 2 files)
+
+
+      Changes:
+
+      - [STREAM-SCAN, ANCESTRY-FIELDS, WIRE-BUDGET] src/activity/inspector.ts & tests/unit/activity-inspector.test.ts:
+      incremental streaming scan without 128 MiB cap, oversized line skipping with
+      diagnostics, during-scan timestamp/tool filtering, explicit parent-chain ancestry
+      verification on truncated transcripts, action_truncated (200 chars), update_type
+      ("late_result"), matched_by, unified session-header validation, and <= 8192B
+      serialized Pi/MCP ToolResult wire-envelope budgeting before committing cursor/continuation_offset.
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/activity-inspector.test.ts ->
+      12/12 pass
+
+      - Foundation & store tests -> 20/20 pass; npm run build:dist & Pi/MCP stdio
+      wire-envelope smoke -> 4,683/4,693B listing and 6,868/6,878B args segment (both
+      <= 8,192B), 0 Codex artifact changes.'
   - id: l09c.w2c_session_pi_hooks
     name: 'Wave 2C: Session Context Attribution, System Prompt Resolution & Pi Extension
       Hooks'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156636,9 +156814,61 @@ phases:
     depends_on:
     - l09c.w1_core_build_types
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:56:45.674237Z'
+    done_at: '2026-11-27T16:56:54.603035+00:00'
+    evidence: 'Artifact:
+
+      - Commit: e9a44304a4fe35e998f83279997b46d5cc553efa (rebased from d6db0b242d1818e0e25e5bb6c0bbf8e72228b6f7
+      & ff onto v0.9; worktree removed; +817/-216 lines across 5 files)
+
+
+      Changes:
+
+      - [SESSION-ATTR] src/runtime/{session-context,persona-lease}.ts: attributed
+      Larva route writes, recognized legacy 0.8.x borrow/restore entries on startup
+      & /tree restore, validated candidate entries before newest selection, persisted
+      initial default_persona commits, preserved active model-map profile & restore_failed/route_uncertain
+      latches across session_tree, made same-persona switch no-op, emitted complete
+      audit metadata, and removed adapter leak / applyModel / #switchFrom / prompt
+      clones.
+
+      - [SYS-PROMPT] src/runtime/system-prompt.ts & src/pi-extension.ts: removed {
+      systemPrompt } return from before_agent_start; composed idempotently in context_with_system,
+      before_provider_request, and extension-load-registered synchronous larva:resolve-system-prompt:v1;
+      stripped legacy continuation/unmatched markers.
+
+      - [PI-HOOKS] src/pi-extension.ts: tool_call gating with nested executeTool pass-through,
+      per-branch tool masks across /tree & reopen, same-model /model reconciliation,
+      payload.context.messages + Bedrock empty tools + Anthropic placeholder cleanup,
+      streaming /larva-persona isolation, queued-turn resets, /reload vs /new|/resume|/fork
+      separation, unified config/model-map fence snapshot, launched-child command/shortcut
+      suppression, 🎭/🤖 badges, immediate streaming stall alerts, and renderer hook
+      for Wave 3A.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build:dist -> pass (0 plugins/codex/ edits)
+
+      - node --test tests/unit/session-context.test.ts -> 40/40 pass; full unit suite
+      -> 153/153 pass
+
+      - tests/integration/pi-extension-surface.test.ts -> 11/14 pass (remaining 3
+      assert legacy badge strings / uncomposed payload.context.messages; out of scope
+      for w2c and queued for Wave 3A alignment).'
+    rejection_reason: Premature orchestrator completion before w2c_session_pi_hooks
+      child callback returned; restoring pending until actual commit and verification
+      integrate.
+    rejection_history:
+    - reason: Premature orchestrator completion before w2c_session_pi_hooks child
+        callback returned; restoring pending until actual commit and verification
+        integrate.
+      timestamp: '2026-11-27T16:48:59.437291+00:00'
+      reviewer: vectl-orchestrator
   - id: l09c.w2d_cli_doctor
     name: 'Wave 2D: CLI Human Formatting, Help/Flag Diagnostics & Doctor Parity'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156699,9 +156929,40 @@ phases:
     depends_on:
     - l09c.w1_core_build_types
     agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T16:31:35.490661Z'
+    done_at: '2026-11-27T16:38:19.582572+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 1e8226f22af3e7fad0e51e67f8633c5483921b23 (rebased & ff onto v0.9;
+      worktree removed; 4 files)
+
+
+      Changes:
+
+      - [CLI-HUMAN & CLI-HELP] src/cli.ts & src/surfaces/cli-commands.ts: human-readable
+      summaries/tables when --json is omitted, lexicographically sorted persona list
+      [--query], --help/-h (exit 0) across top-level + all subcommands including `larva
+      mcp --help` before stdio transport, and explicit offending/missing flag diagnostics
+      on exit 2.
+
+      - [DOCTOR] src/surfaces/doctor.ts: reports dangling personas/ symlinks and insecure
+      existing state/{sessions,capsules,artifacts} permissions without modifying them,
+      preserving readConfigTextIfPresent export. (Note: batch ModelRegistry reuse
+      awaits src/runtime/pi-binary.ts in l09c.w2a_runtime + Wave 3A wiring, and specific
+      Persona parse messages come from l09c.w2a_store''s PersonaStore hardening.)
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/{cli-and-doctor,preload-and-pi-bin}.test.ts
+      -> 20/20 pass
+
+      - npm run build:dist -> bundled CLI --version (0.9.0) & mcp --help pass, 0 Codex
+      artifact edits.'
   - id: l09c.w2e_mcp_codex_ui
     name: 'Wave 2E: MCP Protocol/Tools Parity, Codex 4-Tab Panel & Widget-v4 UI'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156779,10 +157040,54 @@ phases:
     depends_on:
     - l09c.w1_core_build_types
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-27T16:47:18.917099Z'
+    done_at: '2026-11-27T16:47:27.586923+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 32eb0b6f4bb55ed1f34421f08b5bef7ba4c0ee7e (rebased from 1c735ddc923eb399d7d70283d9c1813890a43034
+      & ff onto v0.9; worktree removed; +807/-246 lines across 8 files)
+
+
+      Changes:
+
+      - [CODEX-UI] src/ui/{codex-panel-html,codex-widget-html}.ts: widget-v4 collapsed
+      single-line telemetry/output/error summary, tool_call_count, delivery_failed/evicted/stall_suspected/wait
+      badges, shrink-capable size-changed measurement; panel-v4 Active/Done + Disk
+      split, distinguishable row titles, 4-tab inspector (All/Timeline/Result/Task
+      & Session), 1s elapsed timer, non-overlapping polling, on-demand prompt copy
+      & paged output via panel.slice, expandable Timeline paging & duplicate tool_call_id
+      disambiguation, Retry cleanup on cleanup_unconfirmed, hostContext.availableDisplayModes
+      intersection.
+
+      - [MENTIONS-PLUGIN] src/ui/codex-mentions.ts & plugins/codex/.mcp.json: PersonaStore
+      ranker, SKILL.md guidance, isValidPersonaId, Azure OpenAI env forwarding.
+
+      - [MCP-PROTOCOL-TOOLS] src/mcp-server.ts & src/surfaces/mcp-tools.ts: 2026-07-28/2025-11-25
+      negotiation, notifications/cancelled AbortController, stdout drain & clean EOF
+      vs truncated error exit, outgoing byte cap in send(), resources/list pagination,
+      shared PersonaStore, aligned isError on wait_for_completion & partial activity,
+      panel.slice delegation, <=8192B activity wire envelope ([DEFER_TO_CONSOLIDATE]
+      noted for Wave 3A).
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/codex-ui-and-plugin.test.ts tests/integration/mcp-server-surface.test.ts
+      -> 29/29 pass
+
+      - node scripts/build.mjs --check-only -> pass, 0 plugins/codex/dist edits.'
+    rejection_reason: Premature orchestrator completion before frontend-engineer worktree
+      commit returned; restoring pending until actual commit and verification integrate.
+    rejection_history:
+    - reason: Premature orchestrator completion before frontend-engineer worktree
+        commit returned; restoring pending until actual commit and verification integrate.
+      timestamp: '2026-11-27T16:43:22.113985+00:00'
+      reviewer: vectl-orchestrator
   - id: l09c.w3a_pi_tui_workbench
     name: 'Wave 3A: Pi TUI Selectors, Cards, 5-Tab Console Workbench & Consolidation
       Build'
-    status: pending
+    status: done
     description: 'step_type: implementation
 
       repo_change_policy: modifies_repo
@@ -156822,12 +157127,27 @@ phases:
       + timestamp + task preview rows; visible `startup_failures`; mouse `press`-pinned
       target disabling concurrent actions during cancel; `Retry cleanup` on `cleanup_unconfirmed`.
 
-      - [CONSOLIDATE-BUILD] Close any Wave 2 `[DEFER_TO_CONSOLIDATE]` seam dedup (wire
-      `mcp-tools.ts` to `w2b` canonical wire budgeter & `w2a_runtime` `readRunTextSlice`
-      if deferred), update integration/E2E tests, run single-writer `npm run build`
-      refreshing `plugins/codex/dist/**`, and verify full `npm run typecheck && npm
-      test && git diff --exit-code plugins/codex/` (after staging/committing built
-      Codex artifacts).
+      - [CONSOLIDATE-BUILD] Close Wave 1/2 `[DEFER_TO_CONSOLIDATE]` cross-step seam
+      alignments: (1) `src/surfaces/doctor.ts`: replace per-persona `resolveModelInRegistry(pi,
+      route, agentDir)` inside the persona loop with hoisted `loadModelRegistry(pi,
+      agentDir)` from `src/runtime/pi-binary.ts`; (2) `src/core/types.ts` & `src/activity/inspector.ts`:
+      promote `RunSnapshot.tool_call_count` from optional (`?`) to required `number`,
+      and move `ActivityCallItem` optional `update_type`/`matched_by` fields onto
+      `src/core/types.ts` (removing local `ListingItem`/`ListingResponse`/`InspectorResponse`
+      aliases in `inspector.ts`); (3) `src/activity/inspector.ts` & `src/surfaces/mcp-tools.ts`:
+      eliminate the duplicate activity wire-budgeter in `mcp-tools.ts` by moving envelope-aware
+      budgeting into `src/activity/inspector.ts` (or a shared helper) so Pi and MCP
+      share it, and drop redundant `PanelSupervisor` / `wait` optional casts now that
+      `w2a_runtime` exposes `readRunTextSlice` and `wait(..., signal)`; (4) `src/surfaces/tool-schemas.ts`
+      & `scripts/build.mjs`: apply any schema/build parity adjustments needed for
+      `SKILL.md` single-source sync or tool metadata; (5) update affected unit/integration/E2E
+      tests & `tests/e2e/fixture.ts` for required `RunSnapshot.tool_call_count`, the
+      3 legacy badge/`payload.context.messages` assertions in `tests/integration/pi-extension-surface.test.ts`
+      (flagged by `w2c_session_pi_hooks`), and the `Dynamic require of "process"`
+      / reload test in `tests/integration/mcp-server-surface.test.ts` (flagged by
+      `w2a_runtime`); (6) run single-writer `npm run build` refreshing `plugins/codex/dist/**`,
+      and verify full `npm run typecheck && npm test && git diff --exit-code plugins/codex/`
+      (after staging/committing built Codex artifacts).
 
 
       Implementation Notes (Non-Binding):
@@ -156835,15 +157155,21 @@ phases:
       - Keep `@earendil-works/pi-tui` strictly inside Pi extension/TUI modules; verify
       0 `@earendil-works/pi-tui` references in any `.mjs` bundle.
 
+      - `tests/unit/supervisor.test.ts`, `tests/unit/codex-ui-and-plugin.test.ts`,
+      and `tests/integration/pi-extension-surface.test.ts` construct `RunSnapshot`
+      literals that need `tool_call_count` once promoted to required.
+
       - Run full `npm test` once after consolidation; ensure hermetic temp `LARVA_HOME`
       fixtures.
 
 
       Boundary:
 
-      - scope.allowed_paths: `src/surfaces/{pi-commands,pi-tools,mcp-tools}.ts`, `src/ui/{pi-selector-tui,pi-subagent-console-tui,pi-message-views}.ts`,
-      `src/pi-extension.ts`, `plugins/codex/dist/**`, `tests/integration/{pi-extension-surface,mcp-server-surface}.test.ts`,
-      `tests/e2e/{pi-rpc,pi-subagents,codex-mcp}.test.ts`.
+      - scope.allowed_paths: `src/surfaces/{pi-commands,pi-tools,mcp-tools,doctor,tool-schemas}.ts`,
+      `src/ui/{pi-selector-tui,pi-subagent-console-tui,pi-message-views,codex-mentions}.ts`,
+      `src/{pi-extension,core/types,activity/inspector}.ts`, `scripts/build.mjs`,
+      `plugins/codex/dist/**`, `tests/unit/*.test.ts`, `tests/integration/{pi-extension-surface,mcp-server-surface}.test.ts`,
+      `tests/e2e/fixture.ts`, `tests/e2e/{pi-rpc,pi-subagents,codex-mcp}.test.ts`.
 
       - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
 
@@ -156872,9 +157198,58 @@ phases:
     - l09c.w2d_cli_doctor
     - l09c.w2e_mcp_codex_ui
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-11-27T17:10:51.064845Z'
+    done_at: '2026-11-27T17:47:20.530519+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 1a6210233c222490e81e020a0f9790517bad1a89 (ff onto v0.9; worktree removed;
+      21 files including regenerated plugins/codex/dist/*)
+
+
+      Changes:
+
+      - [PI-SELECTORS-CMDS] src/surfaces/pi-commands.ts & src/ui/pi-selector-tui.ts:
+      unified idle-TUI selectors on no-arg /larva-persona, /larva-mode, /larva-model-map;
+      --status read-only views; sync-safe force-aware Tab completions; token-scoped
+      @persona: autocomplete; sequence-safe TUI notifications; viewport-safe scrolling
+      confirmPersonaSwitch with timeout/dismiss/deny distinctions and dispose settlement.
+
+      - [PI-CARDS-TOOLS] src/surfaces/pi-tools.ts, src/ui/pi-message-views.ts, & src/pi-extension.ts:
+      state-colored larva-subagent-result/larva-subagent-alert cards (without raw
+      model anti-injection preamble) and compact status-aware renderCall/renderResult
+      across all 7 larva_* tools.
+
+      - [PI-CONSOLE-5TAB] src/ui/pi-subagent-console-tui.ts: bordered 5-Tab /larva-subagent
+      Console Workbench (Summary/Output/Prompt/Timeline/Metadata), independent scope/target/tab
+      state, soft-wrapped pagination down to 5-row viewports, on-demand readRunTextSlice
+      prompt/output paging, live+recorded Timeline with Following tail, 80-col distinguishable
+      rows, startup_failures visibility, press-pinned target during cancel, Retry
+      cleanup on cleanup_unconfirmed.
+
+      - [CONSOLIDATE-BUILD] Closed all deferred Wave 1/2 seams: hoisted loadModelRegistry
+      in src/surfaces/doctor.ts, promoted RunSnapshot.tool_call_count + ActivityCallItem
+      update_type/matched_by in src/core/types.ts, unified activity pagination wire-budgeting
+      across Pi and MCP in src/activity/inspector.ts & src/surfaces/mcp-tools.ts,
+      aligned unit/integration/E2E tests (including 15x80/5x80 TUI, Headless Chrome
+      Codex 4-tab + widget grow/shrink, native Pi reload, legacy 0.8.x borrow-history
+      restore, and 1,301,929-byte >1 MiB agent_end artifact E2E recovery), and rebuilt
+      plugins/codex/dist/**.
+
+
+      Verification:
+
+      - npm run typecheck -> pass
+
+      - npm test -> 227/227 hermetic tests pass (0 skips)
+
+      - npm run build && npm run build -- --check-only && git diff --exit-code plugins/codex/
+      -> pass (0 drift)
+
+      - npm pack --dry-run -> exact 7 files; unpacked bare-Node CLI/MCP smoke -> pass.'
   - id: l09c.gate
     name: 'Wave 3B: Independent FULL Phase Verification Gate'
-    status: pending
+    status: done
     description: 'step_type: gate
 
       repo_change_policy: no_repo_change
@@ -156931,4 +157306,549 @@ phases:
     - design/larva-0.9-architecture.md
     depends_on:
     - l09c.w3a_pi_tui_workbench
+    - l09c.r1_consolidate_build
+    - l09c.r2_mcp_id_admission
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-11-27T18:26:37.968920Z'
+    done_at: '2026-11-27T18:30:56.613314+00:00'
+    evidence: 'Gate: PASS (DELTA Phase Gate at git:460b827f111fc2b048f08cfec41869ad29f4629b;
+      validator valid:true, binding_checked:true, evidence_disposition:POSITIVE_GATE_EVIDENCE)
+
+      Report: /tmp/larva-0.9-completion-gate/report-delta2.json (prior FULL: report.json,
+      DELTA-1: report-delta.json)
+
+
+      Verification:
+
+      - F-01..F-06 and F-01-DELTA all closed and independently verified with live
+      probes across both line and Content-Length framings.
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> pass (0 drift)
+
+      - npm pack --dry-run -> exact 7 files; bare-Node CLI/MCP tarball smoke -> pass;
+      0 runtime dependencies, 0 pi-tui in .mjs, 0 YAML in preload bundles
+
+      - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      npm test -> 233/233 passed, 0 failed, 0 skipped (incl. Chrome 4-tab/widget grow+shrink,
+      5x80 Pi TUI, legacy 0.8.x borrow restore, >1 MiB agent_end artifact recovery).'
+  - id: l09c.r1a_mcp_catalog_bounds
+    name: 'Gate R1A: MCP Catalog Outbound Bounds & Non-Fatal Reply Overflow (F-01,
+      F-06-MCP)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F-01] `src/mcp-server.ts:send`, `src/surfaces/mcp-tools.ts:createMcpTools`
+      (`larva_personas`, `search_mentions`), `src/ui/codex-mentions.ts:buildSearchMentionsOutput`:
+      under the existing outbound `maxMessageBytes` transport cap, settle oversized
+      valid catalog result sets cleanly (bounded reply or request-local error) and
+      prevent `send()` reply-size overflow from calling `stop("fault")` or killing
+      the MCP server or shared supervisor; a subsequent `ping` on the same MCP connection
+      must succeed and unrelated owned children must keep running.
+
+      - [F-06-MCP] `src/surfaces/mcp-tools.ts:isObject`, `src/mcp-server.ts`: delete
+      the duplicate `isObject` helper export in `src/surfaces/mcp-tools.ts` and import
+      `isRecord` from `src/core/predicates.ts` in both files.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/mcp-server.ts`, `src/surfaces/mcp-tools.ts`, and `src/ui/codex-mentions.ts`
+      free of `@earendil-works/pi-tui`.
+
+      - Do NOT modify `plugins/codex/dist/**` (`l09c.r1_consolidate_build` is single-writer
+      build owner); verify with `npm run build:dist` and targeted integration/E2E
+      tests reproducing large valid `larva_personas` and `search_mentions` catalogs
+      followed by `ping` + live child survival.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/mcp-server.ts`, `src/surfaces/mcp-tools.ts`, `src/ui/codex-mentions.ts`,
+      `tests/integration/mcp-server-surface.test.ts`, `tests/e2e/codex-mcp.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit; hermetic temp `LARVA_HOME` fixtures only.
+
+
+      Admit:
+
+      - `npm run typecheck`, `tests/integration/mcp-server-surface.test.ts`, `tests/e2e/codex-mcp.test.ts`,
+      and `npm run build:dist` pass with discriminating oversized-catalog + subsequent-`ping`
+      + surviving-child regressions.
+
+
+      Recovery:
+
+      - Preserve worktree and report any MCP framing or protocol contradiction against
+      `design/larva-0.9-architecture.md`.'
+    verification: npm run typecheck && node --test tests/integration/mcp-server-surface.test.ts
+      tests/e2e/codex-mcp.test.ts && npm run build:dist
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w3a_pi_tui_workbench
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T17:59:58.141772Z'
+    done_at: '2026-11-27T18:05:35.560414+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f5e6881bed2a29faea43419690a168986fd05c96 (rebased onto v0.9 & ff;
+      worktree removed; 5 files)
+
+
+      Changes:
+
+      - [F-01] src/mcp-server.ts, src/surfaces/mcp-tools.ts, src/ui/codex-mentions.ts:
+      bounded serialized catalog responses under maxMessageBytes with request-local
+      error (match count + narrow-query guidance) when oversized; updated send() so
+      a single oversized reply returns JSON-RPC -32603 without calling stop("fault")
+      or killing the MCP server/supervisor, preserving stop("fault") for real stdout
+      queue overflow.
+
+      - [F-06-MCP] src/surfaces/mcp-tools.ts & src/mcp-server.ts: removed duplicate
+      isObject helper and imported isRecord from src/core/predicates.ts.
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/integration/mcp-server-surface.test.ts
+      tests/e2e/codex-mcp.test.ts && npm run build:dist -> 19 passed (1 browser test
+      skipped without LARVA_TEST_CHROME); discriminating F-01 regressions reproduced
+      exit 1 before fix and verified subsequent ping + live child completion after
+      fix; 0 plugins/codex/ edits.'
+  - id: l09c.r1b_pi_supervisor_workbench
+    name: 'Gate R1B: Pi Selector Fault Isolation, Startup-Failure Refresh & Supervisor
+      De-Bloat (F-03, F-04, F-05, F-06-PI)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F-03] `src/surfaces/pi-commands.ts` (`/larva-model-map` handler): isolate
+      per-row `resolveModelRoute` failures when building no-argument selector previews
+      so one profile resolving to an empty `model_id` does not abort opening the selector
+      for healthy profiles; keep healthy profiles selectable and clearly flag/reject
+      the broken profile without committing it.
+
+      - [F-04] `src/runtime/supervisor.ts` (`spawn`, `#drive`), `src/ui/pi-subagent-console-tui.ts`:
+      emit `#notify()` when recording pre-reservation `startup_failures` in `spawn()`,
+      and record `startup_failures` before calling `#notify()` on `#drive()` rejection
+      so an already-open Recent/Active console renders the failure immediately without
+      a second event or manual `R`.
+
+      - [F-05] `src/pi-extension.ts`, `src/runtime/supervisor.ts`: remove the duplicate
+      async `wait`/`structuredClone` badge counter in `src/pi-extension.ts` in favor
+      of synchronous `supervisor.liveCounts()` (matching `"accepted"`/`"running"`/`"cancelling"`
+      badge states); delete the duplicate process-global `getNativeSupervisor`/`shared`
+      handover from `src/runtime/supervisor.ts` and migrate its tests in `tests/unit/supervisor.test.ts`
+      to direct `SubagentSupervisor` / Pi extension reload tests in `tests/integration/pi-extension-surface.test.ts`
+      (preserving badge, reload callback continuity, and session-replacement isolation
+      regressions).
+
+      - [F-06-PI] `src/pi-extension.ts`, `src/runtime/supervisor.ts`, `src/ui/pi-message-views.ts`,
+      `src/surfaces/pi-tools.ts`: replace `metadataObject`/`capsule.metadataObject`
+      with `isRecord` from `src/core/predicates.ts` (leave `capsule.metadataObject`
+      export intact until `l09c.r1_consolidate_build`).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/runtime/**` free of `@earendil-works/pi-tui`; keep `src/core/model-map.ts`
+      empty-`model_id` guard intact.
+
+      - Do NOT modify `plugins/codex/dist/**` (`l09c.r1_consolidate_build` is single-writer
+      build owner).
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/surfaces/{pi-commands,pi-tools}.ts`, `src/runtime/supervisor.ts`,
+      `src/ui/{pi-subagent-console-tui,pi-message-views}.ts`, `src/pi-extension.ts`,
+      `tests/unit/supervisor.test.ts`, `tests/integration/pi-extension-surface.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit; hermetic temp `LARVA_HOME` fixtures only.
+
+
+      Admit:
+
+      - `npm run typecheck` and targeted supervisor + Pi extension integration tests
+      pass covering F-03 selector isolation, F-04 immediate console startup-failure
+      refresh (both pre-reservation and post-reservation), F-05 synchronous badge
+      counts + reload handover, and F-06-PI predicate redirect.
+
+
+      Recovery:
+
+      - Preserve worktree and escalate in place if an unexpected Pi host lifecycle
+      constraint blocks closure.'
+    verification: npm run typecheck && node --test tests/unit/supervisor.test.ts tests/integration/pi-extension-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w3a_pi_tui_workbench
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T18:07:00.697462Z'
+    done_at: '2026-11-27T18:07:08.551212+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 870dd2dc97511be8b0233669669379cca59080aa (rebased from 2a18b4f387e40c00bdeeb7d2ac41869001cc9287
+      & ff onto v0.9; worktree removed; +241/-128 lines across 8 files)
+
+
+      Changes:
+
+      - [F-03] src/surfaces/pi-commands.ts: isolated per-row resolveModelRoute errors
+      in /larva-model-map selector previews so broken/empty-model_id profiles stay
+      flagged & rejected without disabling healthy profiles.
+
+      - [F-04] src/runtime/supervisor.ts & src/ui/pi-subagent-console-tui.ts: emitted
+      #notify() on pre-reservation spawn() failures and recorded startup_failures
+      before #notify() on #drive() rejections so open Active/Recent consoles repaint
+      automatically without manual R refresh.
+
+      - [F-05] src/pi-extension.ts & src/runtime/supervisor.ts: replaced duplicate
+      async wait/structuredClone badge counter with synchronous supervisor.liveCounts(),
+      deleted duplicate process-global getNativeSupervisor/shared handover, and migrated
+      handover/isolation/badge regressions to tests/integration/pi-extension-surface.test.ts.
+
+      - [F-06-PI] src/{pi-extension,runtime/supervisor,ui/pi-message-views,surfaces/pi-tools}.ts:
+      replaced metadataObject callers with src/core/predicates.ts:isRecord.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build:dist && node --test tests/unit/supervisor.test.ts
+      tests/integration/pi-extension-surface.test.ts -> 49 requested + 59 additional
+      tests pass; 0 plugins/codex/ edits; 0 pi-tui in src/runtime/.'
+    rejection_reason: Premature orchestrator completion before l09c.r1b_pi_supervisor_workbench
+      child callback returned; restoring pending until actual commit and verification
+      integrate.
+    rejection_history:
+    - reason: Premature orchestrator completion before l09c.r1b_pi_supervisor_workbench
+        child callback returned; restoring pending until actual commit and verification
+        integrate.
+      timestamp: '2026-11-27T18:06:18.770612+00:00'
+      reviewer: vectl-orchestrator
+  - id: l09c.r1c_core_yaml_predicates
+    name: 'Gate R1C: YAML 1.2 Core Tags & Headless Record Predicate Consolidation
+      (F-02, F-06-HEADLESS)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F-02] `src/core/yaml-frontmatter.ts:parseYamlFrontmatter`: permit YAML 1.2
+      Core standard explicit tags (`tag:yaml.org,2002:{str,int,float,bool,null,map,seq}`)
+      already resolved by `parseDocument(..., { schema: "core" })` so tagged equivalents
+      (e.g., `description: !!str 123`) yield the identical canonical value and digest
+      as untagged equivalents, while continuing to reject custom tags, directives,
+      anchors, aliases, merge keys, non-finite numbers, and invalid `PersonaSpec`
+      field types; update `tests/unit/core-persona.test.ts`.
+
+      - [F-06-HEADLESS] `src/child-rpc-preload.ts:isRecord`, `src/activity/inspector.ts:object`,
+      `src/runtime/pi-binary.ts:isRecord`, `src/runtime/session-context.ts:isRecord`,
+      `src/runtime/settlement-barrier.ts`: delete the four duplicate local record
+      predicates and redirect `settlement-barrier.ts` from `capsule.metadataObject`
+      to `src/core/predicates.ts:isRecord` (keeping stronger own-key/prototype/schema
+      checks local).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Verify `npm run build:dist` still emits 0 YAML modules in `dist/child-rpc-preload.mjs`
+      and 0 `@earendil-works/pi-tui` references in all `.mjs` bundles.
+
+      - Keep `src/core/**` 100% I/O-free; do NOT modify `plugins/codex/dist/**` (`l09c.r1_consolidate_build`
+      is single-writer build owner).
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/core/yaml-frontmatter.ts`, `src/child-rpc-preload.ts`,
+      `src/activity/inspector.ts`, `src/runtime/{pi-binary,session-context,settlement-barrier}.ts`,
+      `tests/unit/{core-persona,preload-and-pi-bin,activity-inspector,session-context}.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit; hermetic temp `LARVA_HOME` fixtures only.
+
+
+      Admit:
+
+      - `npm run typecheck`, targeted core/preload/activity/session unit suites, and
+      `npm run build:dist` pass (including YAML Core tag digest-parity vs custom-tag
+      rejection tests and 0 YAML modules in `dist/child-rpc-preload.mjs`).
+
+
+      Recovery:
+
+      - Preserve worktree and report if any YAML tag edge case conflicts with `contracts/persona_spec.schema.json`.'
+    verification: npm run typecheck && node --test tests/unit/core-persona.test.ts
+      tests/unit/preload-and-pi-bin.test.ts tests/unit/activity-inspector.test.ts
+      tests/unit/session-context.test.ts && npm run build:dist
+    refs:
+    - design/larva-0.9-architecture.md
+    - contracts/persona_spec.schema.json
+    depends_on:
+    - l09c.w3a_pi_tui_workbench
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T17:59:58.143177Z'
+    done_at: '2026-11-27T18:04:06.062352+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 5cb9094d1fd320608a1fc7a8ca0402ce0f8c9c34 (rebased & ff onto v0.9;
+      worktree removed; 10 files)
+
+
+      Changes:
+
+      - [F-02] src/core/yaml-frontmatter.ts & tests/unit/core-persona.test.ts: accepted
+      YAML 1.2 Core standard explicit tags (tag:yaml.org,2002:{str,int,float,bool,null,map,seq})
+      while continuing to reject custom/unsupported tags (including !!binary), directives,
+      anchors, aliases, merge keys, and invalid field types; verified !!str 123, quoted
+      "123", and JSON "123" yield identical canonical PersonaSpec and spec_digest.
+
+      - [F-06-HEADLESS] src/{child-rpc-preload,activity/inspector,runtime/{pi-binary,session-context,settlement-barrier}}.ts:
+      removed four duplicate local record predicates and redirected settlement-barrier.ts
+      from capsule.metadataObject to src/core/predicates.ts:isRecord.
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/{core-persona,preload-and-pi-bin,activity-inspector,session-context}.test.ts
+      -> 73/73 (+3 supervisor) pass
+
+      - npm run build:dist && --check-only -> 0 YAML modules in preload, 0 pi-tui
+      in .mjs, 0 plugins/codex/ edits.'
+  - id: l09c.r1_consolidate_build
+    name: 'Gate R1 Consolidation: Final Store Predicate Closure, Codex Bundle Build
+      & Full Suite (F-06-STORE)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F-06-STORE] `src/store/capsule.ts:metadataObject`, `src/store/persona-store.ts`,
+      `src/store/session-lease.ts`, `src/runtime/child-rpc-client.ts`: delete `export
+      function metadataObject` from `src/store/capsule.ts` and redirect all remaining
+      callers (including `session-lease.ts` IO interface) to `src/core/predicates.ts:isRecord`;
+      grep `src/` and `tests/` to confirm zero remaining `metadataObject` references
+      or duplicate `isRecord`/`isObject` helpers.
+
+      - [BUILD-VERIFY] Run single-writer `npm run build` to regenerate tracked `plugins/codex/dist/**`
+      cleanly, confirm 0 `@earendil-works/pi-tui` references across all `.mjs` bundles
+      and 0 YAML modules in both `dist/child-rpc-preload.mjs` and `plugins/codex/dist/child-rpc-preload.mjs`,
+      and pass full `npm run typecheck && npm run build && npm test && git diff --exit-code
+      plugins/codex/` on the committed tree.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/store/**` cycle-free and free of `src/runtime/**` or `@earendil-works/pi-tui`
+      imports.
+
+      - Update any remaining uncontested `src/**`/`tests/**` import if grep finds
+      a leftover `metadataObject` caller after merging R1A/R1B/R1C.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/store/{capsule,persona-store,session-lease}.ts`,
+      `src/runtime/child-rpc-client.ts`, `plugins/codex/dist/**`, `tests/unit/{store-leases-gc,store-personas-artifacts,preload-and-pi-bin}.test.ts`
+      (plus any leftover `metadataObject` caller import update in uncontested `src/**`/`tests/**`).
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+      - Reversible git worktree commit; single-writer owner for `plugins/codex/dist/**`;
+      hermetic temp `LARVA_HOME` fixtures only.
+
+
+      Admit:
+
+      - `npm run typecheck`, `npm run build`, full `npm test`, and `git diff --exit-code
+      plugins/codex/` all pass with zero drift and zero duplicate record predicates.
+
+
+      Recovery:
+
+      - Preserve worktree and resolve any post-merge integration mismatch cleanly
+      before yielding to `l09c.gate`.'
+    verification: npm run typecheck && npm run build && npm test && git diff --exit-code
+      plugins/codex/
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.r1a_mcp_catalog_bounds
+    - l09c.r1b_pi_supervisor_workbench
+    - l09c.r1c_core_yaml_predicates
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T18:07:13.912122Z'
+    done_at: '2026-11-27T18:12:37.801394+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 1d3c04ac41968a648d11b25e5fe0f1bfaed2dd3d (ff onto v0.9; worktree removed;
+      7 files including regenerated plugins/codex/dist/*)
+
+
+      Changes:
+
+      - [F-06-STORE] src/store/{capsule,persona-store,session-lease}.ts & src/runtime/child-rpc-client.ts:
+      deleted export function metadataObject from capsule.ts, removed predicate from
+      LeaseIO, redirected all remaining callers to src/core/predicates.ts:isRecord
+      (0 metadataObject references and 0 duplicate isRecord/isObject helpers across
+      src/ and tests/).
+
+      - [BUILD-VERIFY] Regenerated root dist/ and tracked plugins/codex/dist/* cleanly.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> pass (0 drift)
+
+      - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      npm test -> 233/233 passed, 0 failed, 0 skipped
+
+      - Store dependency scan -> 0 cycles, 0 runtime imports, 0 Pi TUI imports; 0
+      Pi TUI in .mjs bundles; 0 YAML in both preload bundles.'
+  - id: l09c.r2_mcp_id_admission
+    name: 'Gate R2: MCP JSON-RPC Request ID Admission Limit & Correlated Overflow
+      Closure (F-01-DELTA)'
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F-01-DELTA] `src/mcp-server.ts:isId, send`: enforce a documented bounded
+      JSON-RPC `id` admission limit (`maxIdBytes = 1024`, checking `Buffer.byteLength(JSON.stringify(value))
+      <= maxIdBytes` for string IDs in `isId`) before dispatch so oversized IDs are
+      rejected with `{ id: null, error: { code: -32600, message: "Invalid Request"
+      } }` pre-dispatch, guaranteeing every admitted request''s correlated `-32603`
+      overflow error frame fits cleanly under `maxMessageBytes` in both `"line"` and
+      `"length"` framings; remove the unreachable `id: null` overflow fallback in
+      `send()` (`Pi_down`).
+
+      - [TEST-CLOSURE] `tests/integration/mcp-server-surface.test.ts`: update the
+      oversized-frame test (`lines 387–406`) to cover both sides of the ID admission
+      limit in both `"line"` and `"length"` framings—(a) valid ID at the exact 1024-byte
+      JSON-encoded limit succeeds on normal requests and receives a correlated `-32603`
+      error echoing the exact ID when a reply exceeds `maxMessageBytes`, (b) oversized
+      ID (`> 1024` JSON-encoded bytes, including near-frame-cap IDs) is rejected pre-dispatch
+      with `-32600` Invalid Request (`id: null`), and (c) subsequent `ping`, surviving
+      live child ownership, in-budget catalog output, and EOF exit `0` are preserved.
+
+      - [BUILD-SYNC] `plugins/codex/dist/**`: rebuild `dist/` and tracked `plugins/codex/dist/**`
+      cleanly and verify `npm run typecheck && npm run build && npm test && git diff
+      --exit-code plugins/codex/`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Measure `Buffer.byteLength(JSON.stringify(value)) <= maxIdBytes` so UTF-8
+      multibyte and JSON-escaped strings cannot bypass the wire cap.
+
+      - Preserve `isId` behavior for `null`, finite numbers, `notifications/cancelled`
+      (`params.requestId`), and notification omission (`id === undefined`).
+
+      - Trigger `send()`''s correlated `-32603` branch with a valid 1024-byte ID using
+      an admitted payload whose raw row sum passes `checkCatalogSize` but whose encoded
+      frame exceeds `maxMessageBytes`.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/mcp-server.ts`, `tests/integration/mcp-server-surface.test.ts`,
+      `plugins/codex/dist/**`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+      - Reversible git worktree commit; hermetic temp `LARVA_HOME` and Pi agent fixtures
+      only; never mutate host `~/.larva` or `~/.pi/agent/settings.json`.
+
+
+      Admit:
+
+      - `npm run typecheck`, `npm run build`, full `npm test`, and `git diff --exit-code
+      plugins/codex/` pass with zero drift and both sides of the ID admission limit
+      verified across `"line"` and `"length"` framings.
+
+
+      Recovery:
+
+      - Preserve worktree and fix any test or Codex bundle parity mismatch before
+      yielding to `l09c.gate`.'
+    verification: npm run typecheck && npm run build && npm test && git diff --exit-code
+      plugins/codex/
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.r1_consolidate_build
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-27T18:20:37.965538Z'
+    done_at: '2026-11-27T18:26:27.976271+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 148a9b74788640964704dabb75ce6317e849075c (ff onto v0.9; worktree removed;
+      3 files including regenerated plugins/codex/dist/mcp-server.mjs)
+
+
+      Changes:
+
+      - [F-01-DELTA] src/mcp-server.ts: enforced maxIdBytes = 1024 on JSON-encoded
+      request IDs in isId before dispatch (rejecting oversized IDs with -32600 Invalid
+      Request / id: null) and removed the unreachable id: null overflow fallback in
+      send().
+
+      - [TEST-CLOSURE] tests/integration/mcp-server-surface.test.ts: verified both
+      sides of 1024-byte ID admission (exact 1024-byte normal + -32603 overflow correlated
+      reply vs 1025-byte & near-8MiB -32600 pre-dispatch rejection) across both line
+      and Content-Length framings, preserving ping, surviving live child ownership,
+      and EOF exit 0.
+
+
+      Verification:
+
+      - npm run typecheck && npm run build && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ -> pass (0 drift)
+
+      - tests/integration/mcp-server-surface.test.ts -> 13/13 pass
+
+      - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      npm test -> 233/233 passed, 0 failed, 0 skipped.'

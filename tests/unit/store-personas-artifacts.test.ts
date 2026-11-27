@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, unlink, utimes, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, symlink, unlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { promisify } from "node:util";
 import { LarvaError } from "../../src/core/errors.ts";
 import { getLarvaHomePaths, resolveLarvaHome } from "../../src/core/paths.ts";
-import { writeOutputSnapshot } from "../../src/store/artifacts.ts";
+import { readArtifactSlice, readRunTextSlice, writeOutputSnapshot } from "../../src/store/artifacts.ts";
 import { PersonaStore } from "../../src/store/persona-store.ts";
 
 function json(id: string, prompt = "Private instructions", description = `Persona ${id}`): string {
@@ -73,7 +75,8 @@ test("list ranks ID matches before metadata matches and caps diagnostics indepen
   for (let i = 0; i < 101; i++) await writeFile(join(personas, `bad-${i}.json`), '{"private field":"secret"}');
   assert.deepEqual((await store.list({ query: "worker", limit: 2 })).map(item => item.id), ["worker", "worker-z"]);
   assert.equal(store.diagnostics.length, 100);
-  assert.ok(store.diagnostics.every(item => !item.message.includes("private field")));
+  assert.ok(store.diagnostics.every(item => item.message === 'Unexpected persona field: "private field".'));
+  assert.ok(store.diagnostics.every(item => !item.message.includes("secret")));
 }));
 
 test("put and rm repair dual-format conflicts independently of the read validator", () => fixture(async (_, store, personas) => {
@@ -227,6 +230,82 @@ test("output threshold counts Unicode code points and artifacts have private mod
   assert.equal((await readdir(artifacts)).length, 1);
 
   assert.equal((await writeOutputSnapshot(home, `${inline}😀`)).output_state, "artifactized");
+}));
+
+test("artifact and inline pages count code points across UTF-8 read boundaries", () => fixture(async (home) => {
+  const full = `\ufeff${"a".repeat(16_379)}😀é\n${"b".repeat(20_000)}\nend`;
+  const output = await writeOutputSnapshot(home, full);
+  const path = output.full_output_artifact?.path;
+  assert.ok(path);
+  const query = { offset: 16_379, length: 4 };
+  const expected = { state: "ok", text: "a😀é\n", offset: 16_379, length: 4, continuation_offset: 16_383 };
+  assert.deepEqual(readRunTextSlice(full, query), expected);
+  assert.deepEqual(await readArtifactSlice(home, path, query), expected);
+  const tail = { offset: 36_384, length: 3 };
+  assert.deepEqual(await readArtifactSlice(home, path, tail), { state: "ok", text: "end", offset: 36_384, length: 3 });
+  assert.deepEqual(await readArtifactSlice(home, path, { length: 4_001 }), { state: "unavailable" });
+  const alias = join(dirname(path), "alias.txt");
+  await symlink(path, alias);
+  assert.deepEqual(await readArtifactSlice(home, alias, query), { state: "unavailable" });
+  await unlink(path);
+  assert.deepEqual(await readArtifactSlice(home, path, query), { state: "unavailable" });
+}));
+
+test("managed directories do not redirect persona mutations or artifact I/O through symlinks", () => fixture(async (home, store, personas, sources) => {
+  const outside = join(sources, "outside");
+  await mkdir(outside);
+  await mkdir(join(outside, "artifacts"));
+  await writeFile(join(outside, "artifacts", "secret.txt"), "outside");
+  await writeFile(join(outside, "alpha.json"), json("alpha"));
+  const { state, artifacts } = getLarvaHomePaths(home);
+  await symlink(outside, state);
+  await rm(personas, { recursive: true });
+  await symlink(outside, personas);
+  assert.equal((await writeOutputSnapshot(home, "z".repeat(36_001))).output_state, "delivery_failed");
+  assert.deepEqual(await readArtifactSlice(home, join(artifacts, "secret.txt"), {}), { state: "unavailable" });
+  await assert.rejects(store.get("alpha"), { code: "LARVA_PERSONA_INVALID" });
+  await assert.rejects(store.put("-", { stdinText: json("alpha", "replacement") }), assertPartial([], [], "alpha"));
+  await assert.rejects(store.rm(["alpha"]), { code: "LARVA_STORE_WRITE_FAILED" });
+  assert.deepEqual(await readdir(join(outside, "artifacts")), ["secret.txt"]);
+  assert.equal(await readFile(join(outside, "alpha.json"), "utf8"), json("alpha"));
+}));
+
+test("independent writers recover a dead short lock and serialize long-name format replacement", () => fixture(async (home, store, personas) => {
+  const id = "a".repeat(250);
+  const lock = join(personas, ".write.lock");
+  const exec = promisify(execFile);
+  const node = (script: string, args: string[]) => exec(process.execPath, ["--input-type=module", "--eval", script, ...args], { timeout: 10_000 });
+  await node(`
+    import { mkdir, writeFile } from "node:fs/promises";
+    const path = process.argv[1];
+    await mkdir(path);
+    await writeFile(path + "/owner.json", JSON.stringify({ id: "exited-writer", pid: process.pid }));
+  `, [lock]);
+  await writeFile(join(personas, `${id}.md`), markdown());
+  await writeFile(join(personas, `${id}.json`), json(id));
+  const script = `
+    import { PersonaStore } from ${JSON.stringify(import.meta.resolve("../../src/store/persona-store.ts"))};
+    const [home, stdinText] = process.argv.slice(1);
+    await new PersonaStore(home).put("-", { stdinText });
+  `;
+  await Promise.all([node(script, [home, json(id, "json replacement")]), node(script, [home, markdown("md replacement", id)])]);
+  const [name, ...rest] = await readdir(personas);
+  assert.deepEqual(rest, []);
+  assert.equal((await store.get(id)).prompt, name.endsWith(".md") ? "md replacement" : "json replacement");
+}));
+
+test("case aliases cannot be read as canonical persona filenames", () => fixture(async (_, store, personas) => {
+  await writeFile(join(personas, "ALPHA.json"), json("alpha"));
+  const alias = join(personas, "alpha.json");
+  const foldsCase = await stat(alias).then(() => true, () => false);
+  await assert.rejects(store.get("alpha"), foldsCase
+    ? { code: "LARVA_PERSONA_INVALID", message: /match alpha\.json exactly/ }
+    : { code: "LARVA_PERSONA_NOT_FOUND" });
+  await assert.rejects(store.validate(alias), foldsCase
+    ? { code: "LARVA_PERSONA_INVALID", message: /match alpha\.json exactly/ }
+    : { code: "LARVA_PERSONA_INVALID", message: /Cannot read persona input/ });
+  assert.deepEqual(await store.list(), []);
+  assert.equal(store.diagnostics[0]?.message, "Invalid persona filename stem.");
 }));
 
 test("failed output delivery contains no replay and does not mask run success", () => fixture(async (home) => {

@@ -4,24 +4,36 @@ import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toErrorEnvelope } from "./core/errors.ts";
+import { isRecord } from "./core/predicates.ts";
 import { SubagentSupervisor } from "./runtime/supervisor.ts";
 import { PersonaStore } from "./store/persona-store.ts";
-import { createMcpTools, isObject } from "./surfaces/mcp-tools.ts";
+import { createMcpTools } from "./surfaces/mcp-tools.ts";
 import { CODEX_INITIALIZE_INSTRUCTIONS, CODEX_PERSONA_URI_TEMPLATE, parsePersonaResourceUri, personaResourceUri } from "./ui/codex-mentions.ts";
 import { CODEX_PANEL_DISPLAY_MODES, CODEX_PANEL_URI, renderCodexPanelHtml } from "./ui/codex-panel-html.ts";
 import { CODEX_WIDGET_DISPLAY_MODES, CODEX_WIDGET_URI, renderCodexWidgetHtml } from "./ui/codex-widget-html.ts";
 
-const versions = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
+const versions = ["2026-07-28", "2025-11-25"];
+const resourcePageSize = 50;
 const maxMessageBytes = 8 * 1024 * 1024;
+const maxIdBytes = 1024;
 const maxHeaderBytes = 8192;
 const maxConcurrentRequests = 128;
 const rootsTimeoutMs = 5000;
 const decoder = new TextDecoder("utf-8", { fatal: true });
 const isId = (value: unknown): value is string | number | null =>
-  value === null || typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
+  value === null || (typeof value === "string" && Buffer.byteLength(JSON.stringify(value)) <= maxIdBytes)
+  || (typeof value === "number" && Number.isFinite(value));
 type Framing = "line" | "length";
 type Id = string | number | null;
 type Roots = { roots: { uri: string }[] };
+
+function encodeFrame(message: object, framing: Framing) {
+  const body = JSON.stringify({ jsonrpc: "2.0", ...message });
+  const bodyBytes = Buffer.byteLength(body);
+  if (framing === "line") return { frame: `${body}\n`, bytes: bodyBytes + 1 };
+  const header = `Content-Length: ${bodyBytes}\r\n\r\n`;
+  return { frame: header + body, bytes: header.length + bodyBytes };
+}
 
 function stdioReader(message: (body: Buffer, framing: Framing) => void) {
   let buffer = Buffer.alloc(0), used = 0;
@@ -44,7 +56,7 @@ function stdioReader(message: (body: Buffer, framing: Framing) => void) {
     message(body, framing);
     if (buffer.length > 65536) buffer = Buffer.alloc(0);
   }
-  return (chunk: Buffer) => {
+  function feed(chunk: Buffer) {
     let at = 0;
     while (at < chunk.length) {
       if (readingBody) {
@@ -84,13 +96,14 @@ function stdioReader(message: (body: Buffer, framing: Framing) => void) {
       } else if (!/^(?!content-length:)[a-z0-9-]+:[\t\x20-\x7e]*\r$/i.test(line.toString("latin1"))) return false;
     }
     return true;
-  };
+  }
+  return { feed, complete: () => used === 0 && length === undefined };
 }
 
 async function packageVersion(): Promise<string> {
   if (typeof __LARVA_VERSION__ === "string") return __LARVA_VERSION__;
   const manifest: unknown = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-  if (!isObject(manifest) || typeof manifest.version !== "string") throw new Error("Package version is unavailable.");
+  if (!isRecord(manifest) || typeof manifest.version !== "string") throw new Error("Package version is unavailable.");
   return manifest.version;
 }
 
@@ -122,49 +135,72 @@ export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promis
     }),
   });
   const personas = new PersonaStore(supervisor.home);
-  const tools = createMcpTools(supervisor, personas);
-  let rootsSupported = false, inFlight = 0, stopping = false;
+  const tools = createMcpTools(supervisor, personas, maxMessageBytes);
+  let rootsSupported = false, closed = false, eof = false, failed = false, running = 0;
   let version: Promise<string> | undefined;
   const stopped = Promise.withResolvers<0 | 1>();
   const pendingRoots = new Map<string, (value: unknown) => void>();
+  const requests = new Map<Id, { controller: AbortController; work: Promise<void>; detachOnEof: boolean }>();
+  let shutdown: Promise<void> | undefined;
+  const brokenOutput = Promise.withResolvers<void>();
 
-  function stop() {
-    if (stopping) return;
-    stopping = true;
+  function stop(mode: "eof" | "signal" | "fault" | "output") {
+    if (mode === "fault" || mode === "output") failed = true;
+    if (mode === "output") brokenOutput.resolve();
+    if (mode !== "eof") closed = true;
     stdin.pause();
-    for (const settle of pendingRoots.values()) settle(undefined);
-    void supervisor.shutdown().then(({ settled }) => stopped.resolve(settled ? 0 : 1), stopped.reject);
+    const pending = Array.from(requests.values());
+    for (const request of pending) if (closed || request.detachOnEof) request.controller.abort();
+    shutdown ??= (async () => {
+      const [{ settled }] = await Promise.all([supervisor.shutdown(), ...pending.map(({ work }) => work)]);
+      if (!stdout.destroyed && stdout.writableLength) {
+        // Wait for a write callback behind all queued replies, not for process.exit().
+        await Promise.race([brokenOutput.promise, new Promise<void>(resolve => stdout.write("", () => resolve()))]);
+      }
+      closed = true;
+      stopped.resolve(settled && !failed ? 0 : 1);
+    })().catch(stopped.reject);
   }
-  function send(message: object, framing: Framing) {
-    if (stopping) return;
-    const body = JSON.stringify({ jsonrpc: "2.0", ...message });
-    // Bound queued data if the peer sends requests without reading replies.
-    if (stdout.writableLength > maxMessageBytes) { stop(); return; }
-    stdout.write(framing === "length" ? `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}` : `${body}\n`);
+  function send(message: { id: Id } & Record<string, unknown>, framing: Framing) {
+    if (closed) return;
+    let output = encodeFrame(message, framing);
+    if (output.bytes > maxMessageBytes) {
+      const error = { code: -32603, message: "Response exceeds the transport limit." };
+      output = encodeFrame({ id: message.id, error }, framing);
+    }
+    if (stdout.writableLength > 0 && stdout.writableLength + output.bytes > maxMessageBytes) {
+      stop("fault");
+      return;
+    }
+    stdout.write(output.frame);
   }
   function rpcError(id: Id, code: number, message: string, framing: Framing, data?: unknown) {
     send({ id, error: { code, message, data } }, framing);
   }
-  function listRoots(framing: Framing): Promise<Roots> {
-    if (stopping) return Promise.resolve({ roots: [] });
+  function listRoots(framing: Framing, signal: AbortSignal): Promise<Roots> {
+    signal.throwIfAborted();
+    if (closed || eof) return Promise.resolve({ roots: [] });
     const id = `roots:${randomUUID()}`;
     const reply = Promise.withResolvers<unknown>();
     const timeout = setTimeout(reply.resolve, rootsTimeoutMs, undefined);
+    const abort = () => reply.resolve(undefined);
+    signal.addEventListener("abort", abort, { once: true });
     pendingRoots.set(id, reply.resolve);
     send({ id, method: "roots/list" }, framing);
     return reply.promise.then(value => {
-      if (!isObject(value) || !Array.isArray(value.roots) || value.roots.length !== 1) return { roots: [] };
+      signal.throwIfAborted();
+      if (!isRecord(value) || !Array.isArray(value.roots) || value.roots.length !== 1) return { roots: [] };
       const root: unknown = value.roots[0];
-      return { roots: isObject(root) && typeof root.uri === "string" ? [{ uri: root.uri }] : [] };
-    }).finally(() => { clearTimeout(timeout); pendingRoots.delete(id); });
+      return { roots: isRecord(root) && typeof root.uri === "string" ? [{ uri: root.uri }] : [] };
+    }).finally(() => { clearTimeout(timeout); pendingRoots.delete(id); signal.removeEventListener("abort", abort); });
   }
 
-  async function dispatch(id: Id, method: string, params: Record<string, unknown>, framing: Framing) {
+  async function dispatch(id: Id, method: string, params: Record<string, unknown>, framing: Framing, signal: AbortSignal) {
     const invalid = (message: string) => rpcError(id, -32602, message, framing);
     let result: unknown;
     switch (method) {
       case "initialize":
-        rootsSupported = isObject(params.capabilities) && isObject(params.capabilities.roots);
+        rootsSupported = isRecord(params.capabilities) && isRecord(params.capabilities.roots);
         result = {
           protocolVersion: typeof params.protocolVersion === "string" && versions.includes(params.protocolVersion) ? params.protocolVersion : versions[0],
           capabilities: { tools: {}, resources: {} },
@@ -177,25 +213,41 @@ export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promis
       case "tools/call": {
         if (typeof params.name !== "string") return invalid("Expected a tool name.");
         result = await tools.call(params.name, params.arguments === undefined ? {} : params.arguments,
-          rootsSupported ? () => listRoots(framing) : undefined);
+          rootsSupported ? () => listRoots(framing, signal) : undefined, signal);
         break;
       }
       case "resources/templates/list":
         result = { resourceTemplates: [{ uriTemplate: CODEX_PERSONA_URI_TEMPLATE, name: "larva-persona", title: "Larva Persona", mimeType: "text/markdown" }] };
         break;
-      case "resources/list":
-        result = { resources: [...apps.map(app => app.resource), ...(await personas.list()).map(persona => ({
-          uri: personaResourceUri(persona.id), name: persona.id, title: `@larva:${persona.id}`,
-          mimeType: "text/markdown", description: persona.description,
-        }))] };
+      case "resources/list": {
+        const { cursor } = params;
+        if (cursor !== undefined && (typeof cursor !== "string" || !/^r:[1-9]\d*$/.test(cursor))) return invalid("Invalid resource cursor.");
+        const start = typeof cursor === "string" ? Number(cursor.slice(2)) : 0;
+        const catalog = await personas.list();
+        const total = apps.length + catalog.length;
+        if (!Number.isSafeInteger(start) || start > total) return invalid("Invalid resource cursor.");
+        const resources = [];
+        let bytes = 0, index = start;
+        for (; index < total && resources.length < resourcePageSize; index++) {
+          const persona = catalog[index - apps.length];
+          const row = index < apps.length ? apps[index].resource : {
+            uri: personaResourceUri(persona.id), name: persona.id, title: `@larva:${persona.id}`,
+            mimeType: "text/markdown", description: persona.description,
+          };
+          bytes += Buffer.byteLength(JSON.stringify(row)) + 1;
+          if (bytes > maxMessageBytes / 2 && resources.length) break;
+          resources.push(row);
+        }
+        result = { resources, ...(index < total && { nextCursor: `r:${index}` }) };
         break;
+      }
       case "resources/read": {
         const uri = params.uri;
         if (typeof uri !== "string") return invalid("Expected a resource URI.");
         const app = apps.find(entry => entry.resource.uri === uri);
         if (app) {
           const { mimeType, _meta } = app.resource;
-          result = { contents: [{ uri, mimeType, _meta, text: app.render() }] };
+          result = { contents: [{ uri, mimeType, _meta, text: app.render(await (version ??= packageVersion())) }] };
           break;
         }
         const personaId = parsePersonaResourceUri(uri);
@@ -208,18 +260,19 @@ export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promis
       }
       default: return rpcError(id, -32601, "Method not found", framing);
     }
-    send({ id, result }, framing);
+    if (!signal.aborted) send({ id, result }, framing);
   }
 
-  const onData = stdioReader((body, framing) => {
-    if (stopping) return;
+  const reader = stdioReader((body, framing) => {
+    if (closed || eof) return;
     let message: unknown;
     try { message = JSON.parse(decoder.decode(body)); }
     catch { return rpcError(null, -32700, "Parse error", framing); }
-    if (!isObject(message) || message.jsonrpc !== "2.0" || (Object.hasOwn(message, "id") && !isId(message.id))) {
+    if (!isRecord(message) || message.jsonrpc !== "2.0") {
       return rpcError(null, -32600, "Invalid Request", framing);
     }
     const { id, method, params } = message;
+    if (id !== undefined && !isId(id)) return rpcError(null, -32600, "Invalid Request", framing);
     if (!Object.hasOwn(message, "method")) {
       if (typeof id === "string") {
         const settle = pendingRoots.get(id);
@@ -231,32 +284,57 @@ export async function runMcpServer(env: NodeJS.ProcessEnv = process.env): Promis
         }
       }
       if (!Object.hasOwn(message, "result") && !Object.hasOwn(message, "error")) {
-        rpcError(isId(id) ? id : null, -32600, "Invalid Request", framing);
+        rpcError(id ?? null, -32600, "Invalid Request", framing);
       }
       return;
     }
-    if (typeof method !== "string") return rpcError(isId(id) ? id : null, -32600, "Invalid Request", framing);
-    if (!isId(id)) return; // Notification (including notifications/initialized).
-    if (params !== undefined && !isObject(params)) return rpcError(id, -32602, "Expected named parameters", framing);
-    if (inFlight >= maxConcurrentRequests) return rpcError(id, -32000, "Too many concurrent requests", framing);
-    ++inFlight;
-    void dispatch(id, method, params ?? {}, framing).catch(error => {
+    if (typeof method !== "string") return rpcError(id ?? null, -32600, "Invalid Request", framing);
+    if (id === undefined) {
+      if (method === "notifications/cancelled" && isRecord(params) && isId(params.requestId)) {
+        requests.get(params.requestId)?.controller.abort();
+      }
+      return;
+    }
+    if (params !== undefined && !isRecord(params)) return rpcError(id, -32602, "Expected named parameters", framing);
+    if (requests.has(id)) return rpcError(null, -32600, "Request ID is already in use", framing);
+    if (running >= maxConcurrentRequests) return rpcError(id, -32000, "Too many concurrent requests", framing);
+    const controller = new AbortController(), { signal } = controller;
+    const detachOnEof = method === "tools/call" && (params?.name === "larva_subagent" || params?.name === "larva_subagent_wait");
+    const cancelled = Promise.withResolvers<void>();
+    const abort = () => cancelled.resolve();
+    signal.addEventListener("abort", abort, { once: true });
+    ++running;
+    const dispatched = Promise.resolve().then(() => {
+      if (!signal.aborted) return dispatch(id, method, params ?? {}, framing, signal);
+    }).catch(error => {
+      if (signal.aborted) return;
       const { error: info } = toErrorEnvelope(error);
       const code = info.code === "LARVA_PERSONA_NOT_FOUND" ? -32002 : -32603;
       rpcError(id, code, info.message, framing, info);
-    }).finally(() => { --inFlight; });
+    }).finally(() => { --running; });
+    const work = Promise.race([dispatched, cancelled.promise]).finally(() => {
+      signal.removeEventListener("abort", abort);
+      requests.delete(id);
+    });
+    requests.set(id, { controller, work, detachOnEof });
   });
-  const feed = (chunk: Buffer) => { if (!onData(chunk)) stop(); };
+  const feed = (chunk: Buffer) => { if (!reader.feed(chunk)) stop("fault"); };
+  const onEnd = () => { eof = true; stop(reader.complete() ? "eof" : "fault"); };
+  const onFault = () => stop("fault");
+  const onClose = () => { if (!eof) onFault(); };
+  const onOutputError = () => stop("output");
+  const onSignal = () => stop("signal");
   const signals = ["SIGTERM", "SIGINT"] as const;
-  for (const signal of signals) process.on(signal, stop);
-  stdout.on("error", stop);
-  stdin.on("end", stop).on("close", stop).on("error", stop).on("data", feed);
-  if (stdin.readableEnded || stdin.destroyed) stop();
+  for (const signal of signals) process.on(signal, onSignal);
+  stdout.on("error", onOutputError);
+  stdin.on("end", onEnd).on("close", onClose).on("error", onFault).on("data", feed);
+  if (stdin.readableEnded) onEnd();
+  else if (stdin.destroyed) onClose();
   try { return await stopped.promise; }
   finally {
-    stdin.off("data", feed).off("end", stop).off("close", stop).off("error", stop);
-    stdout.off("error", stop);
-    for (const signal of signals) process.off(signal, stop);
+    stdin.off("data", feed).off("end", onEnd).off("close", onClose).off("error", onFault);
+    stdout.off("error", onOutputError);
+    for (const signal of signals) process.off(signal, onSignal);
   }
 }
 

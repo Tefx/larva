@@ -1,11 +1,12 @@
 import type { ErrorInfo, LarvaError } from "./errors.ts";
+import type { THINKING_LEVELS } from "./predicates.ts";
 
 declare global {
   /** Injected into executable bundles by scripts/build.mjs. */
   const __LARVA_VERSION__: string;
 }
 
-export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 export type CanSpawn = boolean | string[];
 export type ToolPolicy = { allow: string[]; deny: string[] };
 export type PersonaInputFormat = "md" | "json";
@@ -106,6 +107,15 @@ export type OutputSnapshot = {
   full_output_artifact?: ArtifactRef;
   output_diagnostic?: ErrorInfo;
 };
+export type ToolSnapshot = {
+  tool_call_id: string;
+  name: string;
+  status: "running" | "done" | "error";
+  /** Bounded previews, not full tool payloads. */
+  args_preview?: string;
+  output_preview?: string;
+  error_preview?: string;
+};
 export type RunSnapshot = OutputSnapshot & {
   task_id: string;
   run_epoch: string;
@@ -120,11 +130,14 @@ export type RunSnapshot = OutputSnapshot & {
   model?: string;
   thinking?: ThinkingLevel;
   task_preview?: string;
-  active_tool?: { tool_call_id: string; name: string; status: "running" | "done" | "error" } | null;
+  active_tool?: Pick<ToolSnapshot, "tool_call_id" | "name" | "status"> | null;
   live_thinking?: boolean;
   live_assistant_preview?: string;
-  /** At most the 25 most recent tools, with bounded argument previews. */
-  tool_snapshots?: ReadonlyArray<{ tool_call_id: string; name: string; status: "running" | "done" | "error"; args_preview?: string }>;
+  /** Monotonic lifetime count. */
+  tool_call_count: number;
+  cleanup_unconfirmed?: boolean;
+  /** At most the 25 most recent tools. */
+  tool_snapshots?: ReadonlyArray<ToolSnapshot>;
 };
 export type StartupFailureRecord = {
   startup_id: string;
@@ -134,6 +147,20 @@ export type StartupFailureRecord = {
   updated_at: string;
   error: ErrorInfo;
 };
+
+export type RunTextSliceQuery = {
+  task_id: string;
+  run_epoch?: string;
+  source: "prompt" | "output";
+  /** Zero-based code point offset. */
+  offset?: number;
+  /** Requested code points, 1..4000 when supplied. */
+  length?: number;
+};
+export type RunTextSliceResult =
+  | { state: "ok"; text: string; offset: number; length: number; continuation_offset?: number }
+  | { state: "unavailable" };
+export type RunTextSliceReader = (query: RunTextSliceQuery) => Promise<RunTextSliceResult>;
 
 export type ActivityQuery = {
   task_id: string;
@@ -155,6 +182,8 @@ export type ActivityCallItem = {
   call_id: string;
   action: string;
   action_truncated?: boolean;
+  update_type?: "late_result";
+  matched_by?: "call_timestamp" | "result_timestamp";
   result?: string;
   is_error?: boolean;
   result_state?: "ambiguous" | "incomplete" | "not_observed" | "present_omitted";
@@ -264,8 +293,11 @@ export type RunEpochGuard = { task_id: string; run_epoch: string };
 export type SubagentCancelToolInput = { task_ids: string[]; reason: string; expected_run_epochs?: RunEpochGuard[] };
 export type SubagentCancelItem = { task_id: string; outcome: CancelOutcome; error?: ErrorInfo };
 export type SubagentCancelOutput = { results: SubagentCancelItem[]; isError: boolean };
-export type SubagentPanelToolInput = SubagentStatusToolInput & { run_epochs?: RunEpochGuard[] };
-export type SubagentPanelOutput = SubagentStatusOutput & { terminal_outputs?: Record<string, SubagentTerminalOutput> };
+export type SubagentPanelToolInput = SubagentStatusToolInput & { run_epochs?: RunEpochGuard[]; slice?: RunTextSliceQuery };
+export type SubagentPanelOutput = SubagentStatusOutput & {
+  terminal_outputs?: Record<string, SubagentTerminalOutput>;
+  slice?: RunTextSliceResult;
+};
 export type SearchMentionsToolInput = { query: string; preload?: boolean; path?: string[] };
 export type SearchMentionsToolOutput = {
   items: {

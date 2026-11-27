@@ -118,7 +118,13 @@ test("extension source resolution supports local directories and each source for
     await mkdir(piAgentDir);
     await writeFile(localFile, "");
     await writeFile(agent, "");
-    const schemes = ["builtin:larva", "npm:example", "git:example/repo", "https://example.com/ext.ts"];
+    const insideLink = join(piAgentDir, "inside.ts"), escapeLink = join(piAgentDir, "outside.ts");
+    const aliasAgentDir = join(dir, "linked-agent");
+    await symlink(agent, insideLink);
+    await symlink(localFile, escapeLink);
+    await symlink(piAgentDir, aliasAgentDir);
+    const schemes = ["builtin:larva", "npm:example", "git:example/repo", "https://example.com/ext.ts",
+      "http://localhost/ext.ts", "file:///opt/extensions/ext.ts"];
     const context = {
       larvaHome, userHome, piAgentDir, realpath,
       async assertReadable(path: string) {
@@ -129,7 +135,11 @@ test("extension source resolution supports local directories and each source for
     };
     assert.deepEqual(await resolveExtensionSources(["relative.ts", "~/ext", "pi-agent:agent.ts", localFile, ...schemes], context),
       [...await Promise.all([localFile, localDir, agent, localFile].map(path => realpath(path))), ...schemes]);
-    for (const source of ["missing.ts", "pi-agent:", `pi-agent:${agent}`, "\0"]) {
+    assert.deepEqual(await resolveExtensionSources(["pi-agent:inside.ts"], { ...context, piAgentDir: aliasAgentDir }),
+      [await realpath(agent)]);
+    for (const source of ["missing.ts", "pi-agent:", "pi-agent:.", `pi-agent:${agent}`,
+      "pi-agent:../managed/relative.ts", "pi-agent:outside.ts", "https://[bad]/ext.ts", "https://", "ftp://example.com/ext.ts",
+      "data:text/plain,extension", "javascript:alert(1)", "https://example.com/a\0b", "\0"]) {
       await assert.rejects(resolveExtensionSources([source], context), { code: "LARVA_CONFIG_INVALID" });
     }
     assert.deepEqual(await resolveExtensionSources(schemes, { ...context, larvaHome: join(dir, "absent") }), schemes);
@@ -153,6 +163,7 @@ test("config defaults, allowed endpoints, and closed nested validation", () => {
     { switch_mode: "unknown" }, { confirm_timeout_ms: 999 }, { confirm_timeout_ms: 86_400_001 },
     { subagent: null }, { subagent: { unknown: 1 } }, { subagent: { root_session_spawn: true } },
     { subagent: { extension_sources: ["same", "same"] } }, { subagent: { extension_sources: [""] } },
+    { subagent: { extension_sources: ["npm:example\0"] } },
     { subagent: { extension_sources: [1] } }, { subagent: { max_depth: 0 } }, { subagent: { max_active_runs: 101 } },
     { subagent: { stall_alert_ms: 59_999 } }, { gc: { unknown: 1 } }, { gc: { max_age_days: 1.5 } },
     { gc: { max_age_days: 3651 } }, { gc: { max_bytes: 1_048_575 } }, { gc: { max_bytes: Infinity } }]) {
@@ -209,6 +220,12 @@ test("model-map validation and precedence: exact key, longest prefix, then split
     assert.deepEqual(resolveModelRoute("old/new", map), { provider: "broad", model_id: "all/new" });
     assert.deepEqual(resolveModelRoute("other/group/model", map), { provider: "other", model_id: "group/model" });
   }
+  const entire = { ...narrow, from_prefix: "old/group" };
+  const empty = parseModelMapDoc({ prefix_rules: [broad, entire] });
+  assert.throws(() => resolveModelRoute("old/group", empty), { code: "LARVA_MODEL_MAP_INVALID" });
+  assert.deepEqual(resolveModelRoute("old/group2", empty), { provider: "narrow", model_id: "2" });
+  const nonempty = parseModelMapDoc({ prefix_rules: [{ ...entire, to_model_id_prefix: "replacement" }] });
+  assert.deepEqual(resolveModelRoute("old/group", nonempty), { provider: "narrow", model_id: "replacement" });
   const own = parseModelMapDoc({ models: { ["__proto__"]: exact } });
   assert.deepEqual(resolveModelRoute("__proto__", own), exact);
   assert.throws(() => resolveModelRoute("constructor", own), { code: "LARVA_BAD_INPUT" });

@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { EventEmitter, once } from "node:events";
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { test, type TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
 import { compile } from "@earendil-works/pi-schema";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { CombinedAutocompleteProvider, visibleWidth } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import larvaExtension, { formatSubagentMessage } from "../../src/pi-extension.ts";
 import { SPAWN_TOOLS } from "../../src/core/tool-policy.ts";
@@ -64,7 +63,9 @@ function tuiHost(workspace: string) {
   let dialog: any;
   let mouseMode: "fullscreen" | "regular" = "fullscreen";
   const writes: string[] = [];
-  const render = () => dialog?.render(80);
+  let height = 15;
+  const terminal = { get rows() { return height; }, write: (data: string) => writes.push(data) };
+  const render = (width = 80) => dialog?.render(width);
   const ctx = {
     cwd: workspace, mode: "tui", hasUI: true, isIdle: () => idle, get model() { return selectedModel; },
     modelRegistry: { find: (provider: string, id: string) => ({ provider, id, api: "openai-completions" }) },
@@ -75,8 +76,10 @@ function tuiHost(workspace: string) {
       addAutocompleteProvider: (fn: Function) => {
         autocompleteInstalls++;
         autocomplete = fn(autocomplete ?? {
-          getSuggestions: async (lines: string[], line: number, col: number) => {
+          getSuggestions: async (lines: string[], line: number, col: number, options: { force?: boolean; signal: AbortSignal }) => {
             const suffix = lines[line].slice(0, col);
+            if (suffix.startsWith("/")) return new CombinedAutocompleteProvider([...commands].map(([name, command]) => ({ name, ...command })), workspace)
+              .getSuggestions(lines, line, col, options);
             if (suffix.endsWith("@a")) return { prefix: "@a", items: [{ value: "@a.ts", label: "a.ts" }] };
             if (suffix.endsWith("@persona:")) return { prefix: "@persona:", items: [{ value: "@persona:alice", label: "native alice" }] };
             return null;
@@ -85,8 +88,8 @@ function tuiHost(workspace: string) {
         });
       },
       custom: (factory: Function, options: any) => new Promise(resolve => {
-        dialog = factory({ mode: mouseMode, terminal: { rows: 15, write: (data: string) => writes.push(data) }, requestRender: render },
-          { fg: (_: string, text: string) => text }, {}, (value: unknown) => { dialog?.dispose?.(); resolve(value); });
+        dialog = factory({ mode: mouseMode, terminal, requestRender: () => events.emit("paint", render()) },
+          { fg: (_: string, text: string) => text }, {}, (value: unknown) => resolve(value));
         options.onHandle?.({});
         events.emit("dialog-opened");
       }),
@@ -111,7 +114,7 @@ function tuiHost(workspace: string) {
     return output.at(-1);
   };
   return { pi, ctx, commands, shortcuts, tools, events, emit, entries, notifications, statuses, writes, render,
-    dialog: () => dialog, autocomplete: () => autocomplete, autocompleteInstalls: () => autocompleteInstalls,
+    setHeight: (value: number) => { height = value; }, dialog: () => dialog, autocomplete: () => autocomplete, autocompleteInstalls: () => autocompleteInstalls,
     setIdle: (next: boolean) => { idle = next; }, setMouseMode: (mode: typeof mouseMode) => { mouseMode = mode; },
     setApi: (api: string) => { selectedModel = { ...selectedModel, api }; } };
 }
@@ -139,6 +142,10 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
     assert.deepEqual(matches.items.map(({ value }: { value: string }) => value), ["@a.ts", "@persona:alice", "@persona:bob"]);
     assert.ok(!JSON.stringify(matches).includes("private prompt"));
     assert.deepEqual((await f.commands.get("larva-persona").getArgumentCompletions("bob")).map((x: any) => x.value), ["bob"]);
+    for (const tool of f.tools.values()) {
+      assert.equal(typeof tool.renderCall, "function");
+      assert.equal(typeof tool.renderResult, "function");
+    }
     const assistant = { type: "message", message: { role: "assistant", content: [{ type: "toolCall", id: "c1" }, { type: "toolCall", id: "later" }] } };
     f.entries.push(assistant);
     const input = { persona_id: "bob", reason: "Use Bob", continue_task: true };
@@ -159,7 +166,7 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
     f.dialog().handleInput("\r");
     const switchResult = await borrowed;
     assert.equal(switchResult.terminate, true);
-    assert.equal(f.statuses.get("larva-persona"), "larva: bob");
+    assert.equal(f.statuses.get("larva"), "🎭 bob ↩ alice");
     assert.deepEqual(await f.emit("turn_end", { outcome: "completed", toolResults: [{ toolName: "larva_persona_switch", details: switchResult.details }] }), { continue: true });
     const continued = await f.emit("before_provider_request", { payload: { system: "base" } }) as { system: string };
     assert.match(continued.system, /Switched from alice to bob\. Reason: Use Bob\. Treat the persona switch as a hard boundary/);
@@ -168,7 +175,7 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
     assert.doesNotMatch(next.system, /larva:persona-switch-continuation/);
     assert.match(next.system, /private prompt bob/);
     await f.emit("agent_before_settle");
-    assert.equal(f.statuses.get("larva-persona"), "larva: alice");
+    assert.equal(f.statuses.get("larva"), "🎭 alice");
     await f.commands.get("larva-mode").handler("manual", f.ctx);
     assert.ok(!f.pi.getActiveTools().includes("larva_persona_switch"));
     assert.equal((await execute("larva_persona_switch", input)).details.error.code, "LARVA_TOOL_DENIED");
@@ -176,28 +183,47 @@ test("seven closed Pi tools, visibility and stale invocation checks, native-firs
     const beforeShortcut = f.entries.length;
     await f.shortcuts.get("ctrl+alt+p").handler(f.ctx);
     assert.equal(f.entries.length, beforeShortcut);
-    assert.equal(f.statuses.get("larva-persona"), "larva: alice");
+    assert.equal(f.statuses.get("larva"), "🎭 alice");
     assert.match(f.notifications.at(-1)!, /active turn/);
     f.setIdle(true);
-    await f.shortcuts.get("ctrl+alt+p").handler(f.ctx);
+    const openSelector = async () => {
+      const menu = once(f.events, "dialog-opened");
+      const selected = f.shortcuts.get("ctrl+alt+p").handler(f.ctx);
+      await menu;
+      f.dialog().handleInput("bob");
+      assert.match(f.render().join("\n"), /Route: surface\/bob · Thinking: off · Spawn: allowed/);
+      return { selected };
+    };
+    assert.match(f.notifications.find(msg => /dismissed/.test(msg))!, /Do not retry/);
+    const stale = await openSelector();
+    f.setIdle(false);
+    f.dialog().handleInput("\r");
+    await stale.selected;
+    assert.equal(f.statuses.get("larva"), "🎭 alice", "do not commit after becoming busy");
+    f.setIdle(true);
+    const choice = await openSelector();
+    f.dialog().handleInput("\r");
+    await choice.selected;
     assert.ok(f.pi.getActiveTools().includes("write"));
-    assert.equal(f.statuses.get("larva-persona"), "larva: bob");
+    assert.equal(f.statuses.get("larva"), "🎭 bob");
     assert.ok(f.notifications.some(message => message.startsWith("larva-persona:")));
     assert.ok(f.notifications.some(message => message.startsWith("larva-mode:")));
-    const start = await f.emit("before_agent_start", { messageType: "user", systemPrompt: "base" }) as { systemPrompt: string };
-    const payload = { messages: [{ role: "system", content: start.systemPrompt }, { role: "system", content: "other system" }],
+    assert.equal(await f.emit("before_agent_start", { messageType: "user", systemPrompt: "base" }), undefined, "do not freeze the native system prompt");
+    const payload = { messages: [{ role: "system", content: "base" }, { role: "system", content: "other system" }],
       tools: [...SPAWN_TOOLS].map(name => ({ type: "function", function: { name } })) };
-    assert.equal(await f.emit("before_provider_request", { payload }), undefined, "fixed point must not add a second identity");
+    const first = await f.emit("before_provider_request", { payload }) as typeof payload;
+    assert.match(first.messages[0].content, /private prompt bob/);
+    assert.equal(await f.emit("before_provider_request", { payload: first }), undefined, "fixed point must not add a second identity");
     let resolved: unknown;
-    f.events.emit("larva:resolve-system-prompt:v1", { scope: "main", systemPrompt: start.systemPrompt, reply: (value: unknown) => { resolved = value; } });
-    assert.deepEqual(resolved, { status: "ok", systemPrompt: start.systemPrompt });
+    f.events.emit("larva:resolve-system-prompt:v1", { scope: "main", systemPrompt: first.messages[0].content, reply: (value: unknown) => { resolved = value; } });
+    assert.deepEqual(resolved, { status: "ok", systemPrompt: first.messages[0].content });
     const aliceCommit = f.entries.find(entry => entry.customType === "larva-active-persona-commit" && entry.data.persona_id === "alice");
     assert.ok(aliceCommit);
     f.entries.splice(0, f.entries.length, aliceCommit,
       { type: "model_change", provider: "surface", modelId: "chosen" },
       { type: "thinking_level_change", thinkingLevel: "high" });
     await f.emit("session_tree");
-    assert.equal(f.statuses.get("larva-persona"), "larva: alice");
+    assert.equal(f.statuses.get("larva"), "🎭 alice");
     assert.equal(f.ctx.model?.id, "chosen");
     assert.equal(f.pi.getThinkingLevel(), "high");
   } finally {
@@ -249,15 +275,24 @@ test("autocomplete remains single-wrapped across session starts and supports per
       const suggestions = await suggest(`${before}@persona:`);
       assert.equal(suggestions.prefix, "@persona:");
       assert.deepEqual(suggestions.items.map((item: { value: string }) => item.value), ["@persona:alice", "@persona:bob"]);
-      assert.equal(suggestions.items[0].label, "native alice", "native metadata wins deduplication");
+      assert.equal(suggestions.items[0].label, "alice", "an explicit persona token never borrows file metadata");
       assert.deepEqual((await suggest(`${before}@persona:b`)).items.map((item: { value: string }) => item.value), ["@persona:bob"]);
     }
     assert.equal(await suggest("alice@persona:" + "b"), null);
+    await Promise.all(Array.from({ length: 51 }, (_, i) => {
+      const id = `worker-${i}`;
+      return writeFile(join(home, "personas", `${id}.json`), JSON.stringify(spec(id)));
+    }));
+    const text = "Use (@persona:wor) then continue", col = text.indexOf(")");
+    const suggestions = await f.autocomplete().getSuggestions([text], 0, col, { force: true, signal: AbortSignal.timeout(1000) });
+    assert.equal(suggestions.items.length, 51);
+    const completed = f.autocomplete().applyCompletion([text], 0, col, suggestions.items[0], suggestions.prefix);
+    assert.equal(completed.lines[0], `Use (${suggestions.items[0].value}) then continue`);
     for (const reason of ["new", "resume"]) {
       await f.emit("session_shutdown", { reason });
       await f.emit("session_start", { reason });
       assert.equal(f.autocompleteInstalls(), 1);
-      assert.equal((await suggest("@persona")).items.length, 2);
+      assert.equal((await suggest("@persona")).items.length, 53);
     }
     await writeFile(join(home, "personas", "carol.json"), JSON.stringify(spec("carol")));
     assert.equal((await suggest("@persona:c")).items[0].value, "@persona:carol");
@@ -265,6 +300,8 @@ test("autocomplete remains single-wrapped across session starts and supports per
     const mode = f.commands.get("larva-mode").getArgumentCompletions;
     assert.deepEqual(mode("").map((item: { value: string }) => item.value), ["manual", "confirm", "auto", "free"]);
     assert.deepEqual(mode("co"), [{ value: "confirm", label: "confirm" }]);
+    assert.deepEqual((await f.autocomplete().getSuggestions(["/larva-mode co"], 0, 14, { force: true, signal: AbortSignal.timeout(1000) })).items,
+      [{ value: "confirm", label: "confirm" }]);
     await writeFile(join(home, "model-map.team.json"), "{}");
     await symlink("model-map.team.json", join(home, "model-map.team-alias.json"));
     await mkdir(join(home, "model-map.directory.json"));
@@ -278,6 +315,90 @@ test("autocomplete remains single-wrapped across session starts and supports per
   } finally {
     await f.emit("session_shutdown", { reason: "quit" });
   }
+});
+
+test("model-map selector rejects a broken parent route without hiding healthy profiles", { timeout: 5000 }, async t => {
+  const { home, workspace } = await fixture(t);
+  t.after(isolateLarvaHome(home));
+  await writeFile(join(home, "model-map.broken.json"), JSON.stringify({ prefix_rules: [
+    { from_prefix: "surface/alice", to_provider: "surface", to_model_id_prefix: "" },
+  ] }));
+  await writeFile(join(home, "model-map.healthy.json"), JSON.stringify({ models: {
+    "surface/alice": { provider: "surface", model_id: "healthy" },
+  } }));
+  const f = tuiHost(workspace);
+  larvaExtension(f.pi);
+  try {
+    await f.emit("session_start", { reason: "startup" });
+    await f.commands.get("larva-persona").handler("alice", f.ctx);
+    const command = f.commands.get("larva-model-map").handler;
+    const open = async () => {
+      const opened = once(f.events, "dialog-opened", { signal: AbortSignal.timeout(2000) });
+      const pending: Promise<void> = command("", f.ctx);
+      await Promise.race([opened, pending.then(() => assert.fail("Profile selector did not open"))]);
+      return { pending };
+    };
+    const input = (key: string) => f.dialog().handleInput(key);
+    const broken = await open();
+    assert.match(f.render().join("\n"), /default \(current\)[\s\S]*broken \(invalid route\)[\s\S]*healthy/);
+    input("\x1b[B");
+    assert.match(f.render().join("\n"), /Invalid resolved model_id/);
+    input("\r");
+    await broken.pending;
+    assert.match(f.notifications.at(-1)!, /Invalid resolved model_id/);
+    assert.equal(f.ctx.model?.id, "alice");
+    await command("--status", f.ctx);
+    assert.match(f.notifications.at(-1)!, /Profile default \(generation 0\)/);
+
+    const healthy = await open();
+    input("\x1b[B"); input("\x1b[B");
+    assert.match(f.render().join("\n"), /Parent route: surface\/healthy/);
+    input("\r");
+    await healthy.pending;
+    assert.equal(f.ctx.model?.id, "healthy");
+    assert.match(f.notifications.at(-1)!, /Profile healthy \(generation 1\).*switched/);
+  } finally { await f.emit("session_shutdown", { reason: "quit" }); }
+});
+
+test("open Recent and Active consoles repaint on pre- and post-reservation startup failures", { timeout: 7000 }, async t => {
+  const { home, workspace } = await fixture(t);
+  const restoreEnv = isolateLarvaHome(home);
+  process.env.LARVA_PI_CLI_SCRIPT = join(workspace, "missing-pi");
+  t.after(() => { delete process.env.LARVA_PI_CLI_SCRIPT; restoreEnv(); });
+  const f = tuiHost(workspace);
+  f.setHeight(24);
+  let painted = "";
+  f.events.on("paint", (frame?: string[]) => { painted = frame?.join("\n") ?? ""; });
+  const expectPaint = async (pattern: RegExp) => {
+    const signal = AbortSignal.timeout(2000);
+    while (!pattern.test(painted)) {
+      try { await once(f.events, "paint", { signal }); }
+      catch { assert.fail(`Missing automatic repaint for ${pattern}:\n${painted}`); }
+    }
+  };
+  larvaExtension(f.pi);
+  try {
+    await f.emit("session_start", { reason: "startup" });
+    await f.commands.get("larva-persona").handler("alice", f.ctx);
+    const opened = f.commands.get("larva-subagent").handler("", f.ctx);
+    const submit = (persona_id: string) => f.tools.get("larva_subagent")
+      .execute("spawn", { persona_id, task: "Exercise startup failure" }, undefined, undefined, f.ctx);
+    try {
+      for (const [scope, validPersona] of [["Recent", "bob"], ["Active", "alice"]]) {
+        await expectPaint(new RegExp(`Console · ${scope}[\\s\\S]*No subagent sessions`));
+        const absent = `absent-${scope.toLowerCase()}`;
+        const pre = await submit(absent);
+        assert.equal(pre.details.error.code, "LARVA_PERSONA_NOT_FOUND");
+        await expectPaint(new RegExp(`Startup failed · ${absent}`));
+        const post = await submit(validPersona);
+        assert.equal(post.details.error.code, "LARVA_CHILD_START_FAILED");
+        assert.match(post.details.error.message, /verified Pi/);
+        await expectPaint(new RegExp(`Startup failed · ${validPersona}`));
+        assert.equal(f.statuses.get("larva-subagents"), undefined);
+        if (scope === "Recent") { f.dialog().handleInput("s"); f.dialog().handleInput("s"); }
+      }
+    } finally { f.dialog().handleInput("\x1b"); await opened; }
+  } finally { await f.emit("session_shutdown", { reason: "quit" }); }
 });
 
 test("stall alerts name the persona and distinguish a silence episode from a terminal outcome", () => {
@@ -396,13 +517,15 @@ test("provider request reconciliation narrows native tool shapes and composes on
         assert.equal(await request(api, wrap([peer])), undefined, `${api}: a grant must not change the frozen catalog`);
       }
     }
-    assert.equal(await request("pi-messages", revoked), undefined, "a native removal never produces a synthetic regrant");
+    const recomposed = await request("pi-messages", revoked) as typeof revoked;
+    assert.equal(recomposed.context.messages[1], delta, "a native removal never produces a synthetic regrant");
     const historical = await f.emit("context_with_system", { messages: revoked.context.messages }) as { messages: unknown[] };
     assert.deepEqual((historical.messages[0] as { toolsAdded: unknown[] }).toolsAdded, [peer]);
     assert.equal(historical.messages[1], delta, "keep native removal markers; never replay a removed definition");
 
     const base = "Late system prompt";
-    const { systemPrompt } = await f.emit("before_agent_start", { messageType: "user", systemPrompt: base }) as { systemPrompt: string };
+    assert.equal(await f.emit("before_agent_start", { messageType: "user", systemPrompt: base }), undefined);
+    const { system: systemPrompt } = await request("pi-virtual", { system: base }) as { system: string };
     assert.match(systemPrompt, /private prompt alice/);
     const claudeCode = { type: "text", text: "You are Claude Code, Anthropic's official CLI for Claude." };
     const message = (content: string) => ({ role: "system", content });
@@ -435,7 +558,7 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   const f = tuiHost("/tmp");
   const task_id = "/tmp/one.jsonl";
   const row: RunSnapshot = { task_id, run_epoch: "incoming", status: "running", phase: "waiting_for_child", cwd: "/tmp", persona_id: "alice",
-    started_at: "now", updated_at: "now", output_state: "pending", model: "surface/\x1b[31malice\x1b[0m", thinking: "high",
+    started_at: "now", updated_at: "now", output_state: "pending", tool_call_count: 6, model: "surface/\x1b[31malice\x1b[0m", thinking: "high",
     task_preview: "inspect the widget", active_tool: { tool_call_id: "read-1", name: "read", status: "running" }, live_thinking: true,
     live_assistant_preview: "working on the preview", tool_snapshots: [
       ...Array.from({ length: 4 }, (_, index) => ({ tool_call_id: `older-${index}`, name: "read", status: "done" as const })),
@@ -450,11 +573,14 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   const active = () => ({ task_id, run_epoch: row.run_epoch });
   const supervisor = {
     captureFleet: () => [active()], status: async () => ({ runs: [{ ...row }], startup_failures: [] }),
+    readRunTextSlice: async ({ source }: { source: string }) => source === "prompt"
+      ? { state: "ok", text: "First line\n\nThird line", offset: 0, length: 22 }
+      : { state: "unavailable" },
     subscribe: (cb: () => void) => { updates.on("change", cb); return () => updates.off("change", cb); },
     cancel: async (request: SubagentCancelToolInput) => {
       requests.push(request);
       const guard = request.expected_run_epochs?.find(item => item.task_id === task_id);
-      return { results: [{ task_id, outcome: guard?.run_epoch === row.run_epoch ? "cancelled" : "already_terminal" }], isError: false };
+      return { results: [{ task_id, outcome: guard?.run_epoch === row.run_epoch && row.status === "running" ? "cancelled" : "already_terminal" }], isError: false };
     },
   } as unknown as SubagentSupervisor;
   f.ctx.ui.confirm = () => confirm.promise;
@@ -465,65 +591,58 @@ test("TUI cancel captures the ingress epoch; fullscreen console leaves Pi's mous
   confirm.resolve(true);
   await pending;
   assert.deepEqual(requests[0].expected_run_epochs, [{ task_id, run_epoch: "incoming" }]);
-  assert.match(f.notifications.at(-1)!, /already_terminal/);
+  assert.match(f.notifications.at(-1)!, /already terminal/);
 
   const opened = command("", f.ctx);
-  await Promise.resolve();
+  await settleInput();
   const visible = () => f.render()?.join("\n") as string;
   const input = (key: string) => f.dialog().handleInput(key);
   assert.match(visible(), /\[Cancel\]/);
-  for (const text of ["surface/alice · thinking: high", "Task: inspect the widget", "read (running) · Thinking…",
-    "Assistant: working on the preview", "read (running) · widget.ts", "bash (error) · check"]) {
-    assert.ok(visible().includes(text), text);
-  }
+  assert.match(visible(), /\[Summary\] \/ Output \/ Prompt \/ Timeline \/ Metadata/);
+  assert.match(visible(), /Route: surface\/alice · thinking: high/);
   assert.doesNotMatch(visible(), /\x1b/);
-  const prompt = /Confirm cancel alice · one\.jsonl\?/;
-  assert.doesNotMatch(visible(), /Output pending/);
-  input("\x1b[6~");
+  f.setHeight(5);
+  input("\t");
+  await settleInput();
   assert.match(visible(), /Output pending/);
-  input("\x1b[5~");
-  assert.match(visible(), /Route: surface\/alice/);
-  for (const abort of ["n", "\x1b"]) {
-    input("c");
-    assert.match(visible(), prompt);
-    input(abort);
-    assert.doesNotMatch(visible(), prompt);
-    assert.match(visible(), /Larva Subagent Console/);
-    assert.equal(updates.listenerCount("change"), 1);
-    input("y");
-    assert.equal(requests.length, 1);
-  }
-
-  input("c");
-  row.run_epoch = "too-late"; // Confirm before the replacement is painted.
-  input("y");
+  input("\t");
   await settleInput();
-  assert.match(visible(), /Cancel skipped: the run settled or was replaced/);
-  assert.equal(requests.length, 1);
-  input("c");
-  row.status = row.phase = "success";
-  await updated();
-  assert.match(visible(), prompt);
-  input("\r");
-  await settleInput();
-  assert.match(visible(), /Cancel skipped: the run settled or was replaced/);
+  assert.match(visible(), /First line/);
+  assert.equal(f.render().length, 5);
+  assert.ok(f.render().every((line: string) => visibleWidth(line) === 80));
+  input("\x1b[6~");
+  assert.match(f.render()[3], /^│ +│$/, "blank line is a real screen row");
+  input("\x1b[6~");
+  assert.match(visible(), /Third line/);
+  input("\t");
+  assert.match(visible(), /Following tail/);
+  input("f");
+  assert.match(visible(), /Tail paused/);
+  f.setHeight(15);
+  const prompt = /Confirm cancel alice · one\?/;
+  input("c"); assert.match(visible(), prompt);
+  input("n"); assert.doesNotMatch(visible(), prompt);
   assert.equal(requests.length, 1);
 
-  row.status = "running";
-  row.phase = "waiting_for_child";
+  f.dialog().handleMouse({ type: "press", button: "left", x: 3, y: 2 });
+  row.run_epoch = "replacement-after-press";
   await updated();
-  input("c"); input("y");
-  await settleInput();
-  assert.deepEqual(requests[1].expected_run_epochs, [{ task_id, run_epoch: "too-late" }]);
-  row.run_epoch = "mouse-target";
-  await updated();
+  visible();
   f.dialog().handleMouse({ type: "click", button: "left", x: 3, y: 2 });
   assert.match(visible(), prompt);
-  assert.equal(requests.length, 2);
   input("\r"); input("\r");
   await settleInput();
-  assert.equal(requests.length, 3);
-  assert.deepEqual(requests[2].expected_run_epochs, [{ task_id, run_epoch: "mouse-target" }]);
+  assert.equal(requests.length, 2);
+  assert.match(visible(), /Cancel: already terminal/);
+  assert.deepEqual(requests[1].expected_run_epochs, [{ task_id, run_epoch: "replacement" }]);
+  row.status = row.phase = "success";
+  row.cleanup_unconfirmed = true;
+  await updated();
+  input("\x1b[B");
+  assert.match(visible(), /\[Retry cleanup\]/);
+  input("c"); input("y");
+  await settleInput();
+  assert.deepEqual(requests[2].expected_run_epochs, [{ task_id, run_epoch: "replacement-after-press" }]);
   input("\x1b");
   await opened;
   assert.equal(updates.listenerCount("change"), 0);
@@ -570,9 +689,8 @@ for (const [api, phase, hideStatus, virtual = false] of [
   { timeout: 15_000 }, async t => {
     const { workspace, home, agent, onCleanup } = await fixture(t);
     const cli = await realpath(join(root, "node_modules", ".bin", "pi"));
-    const extension = join(workspace, "pi-extension.mjs");
-    await build({ absWorkingDir: root, entryPoints: ["src/pi-extension.ts"], outfile: extension,
-      bundle: true, format: "esm", platform: "node", external: ["@earendil-works/pi-tui"] });
+    await copyFile(join(root, "dist", "pi-extension.js"), join(workspace, "pi-extension.js"));
+    await writeFile(join(workspace, "package.json"), '{"type":"module"}');
     const bob = join(home, "personas", "bob.json");
     const status = { name: "larva_subagent_status", input: { scope: "active" } };
     const readBob = { name: "read", input: { path: bob } };
@@ -619,7 +737,7 @@ for (const [api, phase, hideStatus, virtual = false] of [
         contextWindow: 16384, maxTokens: 2048, compat: { supportsStrictMode: true,
           ...(api === "openai-responses" && { supportsMidConvoSystemMessages: true, supportsAdditionalTools: true }) } }] };
     const driver = join(workspace, "driver.mjs"), activeSnapshots = join(workspace, "active-tools.jsonl");
-    await writeFile(driver, `import larva from './pi-extension.mjs';
+    await writeFile(driver, `import larva from './pi-extension.js';
 import { appendFile, readFile, writeFile } from 'node:fs/promises';
 export default pi => {
   pi.registerProvider('surface', ${JSON.stringify(provider)});
@@ -731,13 +849,10 @@ test("installed Pi refreshes live child authority before native reload and rebin
   const extension = join(workspace, "pi-extension.js");
   const cli = await realpath(join(root, "node_modules", ".bin", "pi"));
   await writeFile(join(workspace, "package.json"), '{"type":"module"}');
-  await build({ absWorkingDir: root, entryPoints: { "pi-extension": "src/pi-extension.ts", "child-rpc-preload": "src/child-rpc-preload.ts" },
-    bundle: true, format: "esm", platform: "node", external: ["@earendil-works/pi-tui"], outdir: workspace,
-    outExtension: { ".js": ".mjs" } });
-  // Pi discovers the extension as .js; the preload stays .mjs.
-  const { rename } = await import("node:fs/promises");
-  await rename(join(workspace, "pi-extension.mjs"), extension);
+  await copyFile(join(root, "dist", "pi-extension.js"), extension);
+  await copyFile(join(root, "dist", "child-rpc-preload.mjs"), join(workspace, "child-rpc-preload.mjs"));
   let held: { response: ServerResponse; payload: any } | undefined;
+  let retirementRequests = 0;
   const bob = join(home, "personas", "bob.json"), conflict = join(home, "personas", "bob.md");
   const bobContents = (can_spawn: boolean) => JSON.stringify(spec("bob", { can_spawn, tools: { allow: [], deny: ["bash"] } }));
   const writeBob = (canSpawn: boolean) => writeFile(bob, bobContents(canSpawn));
@@ -807,6 +922,13 @@ test("installed Pi refreshes live child authority before native reload and rebin
           held = { response, payload };
           changes.emit("frame");
         }
+      } else if (last?.role === "user" && text?.includes("hold for retirement")) {
+        retirementRequests++;
+        changes.emit("frame"); // Keep the request open until the child is cancelled or retired.
+      } else if (last?.role === "user" && text?.includes("spawn children to retire")) {
+        sse(response, payload.model, [1, 2].map(index => ({
+          name: "larva_subagent", input: { persona_id: "bob", task: `hold for retirement ${index}` },
+        })));
       } else if (last?.role === "user" && text?.includes("check status selectors")) sse(response, payload.model, statusChecks);
       else if (last?.role === "user" && text?.includes("spawn real child")) sse(response, payload.model, {
         name: "larva_subagent", input: { persona_id: "bob", task: "hold until reload" },
@@ -866,7 +988,7 @@ export default pi => {
   await symlink("routes.json", join(home, "model-map.test-profile.json"));
   await writeFile(join(workspace, "outside-routes.json"), mapContents);
   await symlink("../outside-routes.json", join(home, "model-map.outside.json"));
-  await writeFile(join(agent, "settings.json"), '{"defaultProjectTrust":"decline"}');
+  await writeFile(join(agent, "settings.json"), '{"defaultProjectTrust":"decline","compaction":{"enabled":false}}');
   const driver = join(workspace, "driver.mjs");
   await writeFile(driver, `import larva from './pi-extension.js';
 import provider from './provider.mjs';
@@ -953,7 +1075,7 @@ export default function(pi) {
   const { response, payload } = await waitFor(() => held);
   assert.match(JSON.stringify(payload.messages[0]), /private prompt bob/);
   assert.equal(payload.model, "bob");
-  assert.ok(events.slice(spawnIndex).some(event => event.statusKey === "larva-subagents" && event.statusText === "subagents: 1"));
+  assert.ok(events.slice(spawnIndex).some(event => event.statusKey === "larva-subagents" && event.statusText === "🤖 1"));
   const subagentNames = deniedCalls.map(({ name }) => name).sort();
   const advertisedSubagentNames = (request: { tools: { function?: { name: string } }[] }) =>
     request.tools.flatMap(tool => tool.function && subagentNames.includes(tool.function.name) ? [tool.function.name] : []).sort();
@@ -1055,6 +1177,8 @@ export default function(pi) {
     children: { fenced_for_startup: 0, in_flight_until_run_settles: 1, ended_during_switch: 0, failed: 0 } });
   const reload = await command("/surface-reload");
   assert.deepEqual(await outcome(reload, "reload"), { persona_id: "alice", switch_mode: "free" });
+  assert.deepEqual(events.slice(reload).filter(event => event.statusKey === "larva-subagents").map(event => event.statusText), ["🤖 1"],
+    "reload immediately renders the retained fleet without clearing the badge first");
   assert.deepEqual(await outcome(await command("/larva-model-map"), "larva-model-map"), { status: "inspect", profile: "test-profile", generation: 1 });
   const snapshot = await outcome(await command(`/larva-subagent ${task_id}`), "larva-subagent");
   assert.equal(snapshot.runs[0].run_epoch, run_epoch);
@@ -1062,7 +1186,7 @@ export default function(pi) {
   const completion = events.length;
   const output = "live child finished after reload\n```\nText with ```` backticks\n" + "x".repeat(36_001);
   sse(response, "bob", output);
-  await waitFor(() => events.slice(completion).find(event => event.type === "agent_settled"));
+  await waitFor(() => events.slice(completion).find(event => event.type === "message_end" && event.message?.customType === "larva-subagent-result"));
   const messageId = "surface-read-messages";
   child.stdin.write(`${JSON.stringify({ type: "get_messages", id: messageId })}\n`);
   const result = await waitFor(() => events.find(event => event.id === messageId));
@@ -1085,4 +1209,32 @@ export default function(pi) {
   assert.ok(content.endsWith(`\n\n\`\`\`\`\`text\n${details.result_preview}\n\`\`\`\`\``));
   assert.equal(providerRequests.at(-1).model, "profile");
   assert.ok(events.slice(completion).some(event => event.method === "setStatus" && event.statusKey === "larva-subagents" && event.statusText === undefined));
+  await waitFor(() => events.slice(completion).find(event => event.type === "agent_settled"));
+
+  const retiring = await command("spawn children to retire", "started");
+  await waitFor(() => events.slice(retiring).find(event => event.type === "agent_settled"));
+  await waitFor(() => retirementRequests === 2 ? true : undefined);
+  const children = events.slice(retiring).filter(event => event.type === "tool_execution_end" && event.toolName === "larva_subagent")
+    .map(event => event.result.details);
+  assert.deepEqual(children.map(row => row.status), ["accepted", "accepted"]);
+  assert.ok(events.slice(retiring).some(event => event.statusKey === "larva-subagents" && event.statusText === "🤖 2"));
+  const [cancelled, replaced] = children;
+  const cancellation = await command(`/larva-subagent --cancel ${cancelled.task_id}`);
+  assert.equal((await outcome(cancellation, "larva-subagent")).results[0].outcome, "cancelled");
+  assert.deepEqual(events.slice(cancellation).filter(event => event.statusKey === "larva-subagents").map(event => event.statusText), ["🤖 1 · 1 🛑", "🤖 1"]);
+  await waitFor(() => events.slice(cancellation).find(event => event.type === "agent_settled"));
+
+  const replacement = events.length, replacementId = "surface-new-session";
+  child.stdin.write(`${JSON.stringify({ id: replacementId, type: "new_session" })}\n`);
+  const created = await waitFor(() => events.find(event => event.id === replacementId));
+  assert.equal(created.success, true, JSON.stringify(created));
+  assert.equal(created.data.cancelled, false);
+  assert.deepEqual(await outcome(await command("/larva-model-map"), "larva-model-map"), { status: "inspect", profile: "default", generation: 0 });
+  const recent = await outcome(await command("/larva-subagent"), "larva-subagent");
+  assert.deepEqual(recent, { runs: [], startup_failures: [] });
+  assert.deepEqual(events.slice(replacement).filter(event => event.statusKey === "larva-subagents").map(event => event.statusText), [undefined]);
+  await assert.rejects(access(`${replaced.task_id}.lock`), { code: "ENOENT" });
+  const newMessages = "surface-read-new-messages";
+  child.stdin.write(`${JSON.stringify({ type: "get_messages", id: newMessages })}\n`);
+  assert.deepEqual((await waitFor(() => events.find(event => event.id === newMessages))).data.messages, []);
 });

@@ -1,12 +1,13 @@
 import { basename, extname } from "node:path";
 import { canonicalizePersona } from "./digest.ts";
 import { LarvaError } from "./errors.ts";
-import type { PersonaInputFormat, PersonaSpec, PersonaSummary, ThinkingLevel } from "./types.ts";
+import { isRecord, isValidPersonaId, THINKING_LEVELS } from "./predicates.ts";
+import type { PersonaInputFormat, PersonaSpec, PersonaSummary } from "./types.ts";
 import { parseYamlFrontmatter, serializeYamlFrontmatter } from "./yaml-frontmatter.ts";
 
 export { computePersonaDigest } from "./digest.ts";
 
-const thinkingLevels: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+export { isValidPersonaId } from "./predicates.ts";
 const markdownFields = ["id", "description", "model", "thinking", "can_spawn", "tools"];
 const jsonFields = [...markdownFields, "prompt", "spec_digest"];
 const modelRoute = /^[^\s/]+\/[^\s]+$/;
@@ -16,12 +17,8 @@ function invalid(message: string): never {
   throw new LarvaError("LARVA_PERSONA_INVALID", message);
 }
 
-export function isValidPersonaId(value: unknown): value is string {
-  return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
-}
-
 function closedObject(value: unknown, label: string, allowed: readonly string[]): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) invalid(`${label} must be an object.`);
+  if (!isRecord(value)) invalid(`${label} must be an object.`);
   const fields: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value)) {
     if (!allowed.includes(key)) invalid(`Unexpected ${label} field: ${JSON.stringify(key)}.`);
@@ -30,8 +27,12 @@ function closedObject(value: unknown, label: string, allowed: readonly string[])
   return fields;
 }
 
+function isWellFormedString(value: unknown): value is string {
+  return typeof value === "string" && value.isWellFormed();
+}
+
 function normalizeText(value: unknown, field: "description" | "prompt"): string {
-  if (typeof value !== "string") invalid(`${field} must be a non-empty string.`);
+  if (!isWellFormedString(value)) invalid(`${field} must be a non-empty, well-formed string.`);
   const normalized = value.replace(/\r\n?/g, "\n").trim();
   if (!normalized) invalid(`${field} must be a non-empty string.`);
   return normalized;
@@ -41,7 +42,7 @@ function uniqueStrings(value: unknown, field: string, matches: (entry: string) =
   if (!Array.isArray(value)) invalid(`${field} must be an array.`);
   const entries = new Set<string>();
   for (const entry of value) {
-    if (typeof entry !== "string" || !matches(entry)) invalid(`${field} contains an invalid entry.`);
+    if (!isWellFormedString(entry) || !matches(entry)) invalid(`${field} contains an invalid entry.`);
     if (entries.has(entry)) invalid(`${field} contains a duplicate entry.`);
     entries.add(entry);
   }
@@ -65,8 +66,8 @@ function parse(text: string, format: PersonaInputFormat, stem?: string): Persona
   const id = md && !Object.hasOwn(fields, "id") ? stem : fields.id;
   if (!isValidPersonaId(id)) invalid("id must be a lowercase kebab-case identifier.");
   if (stem !== undefined && id !== stem) invalid("Persona id must match the filename stem.");
-  if (typeof model !== "string" || !modelRoute.test(model)) invalid("model must be a whitespace-free provider/model_id route.");
-  const level = thinking === undefined ? undefined : thinkingLevels.find(candidate => candidate === thinking);
+  if (!isWellFormedString(model) || !modelRoute.test(model)) invalid("model must be a whitespace-free provider/model_id route.");
+  const level = THINKING_LEVELS.find(candidate => candidate === thinking);
   if (thinking !== undefined && level === undefined) invalid("Invalid thinking level.");
 
   let spawn: PersonaSpec["can_spawn"] | undefined;

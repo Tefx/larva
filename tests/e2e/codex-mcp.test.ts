@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { access, mkdir, readFile, rename, rm, stat, symlink, utimes, writeFile } from "node:fs/promises";
 import { once } from "node:events";
 import { createServer, type ServerResponse } from "node:http";
@@ -6,11 +8,130 @@ import { basename, dirname, join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { fixture, tool } from "./fixture.ts";
 
 const spawn = "larva_subagent", wait = "larva_subagent_wait", cancel = "larva_subagent_cancel",
   status = "larva_subagent_status", activity = "larva_subagent_activity", panel = "larva_subagent_panel";
 const worker = { persona_id: "worker" };
+
+test("packaged Codex resources render four panel tabs and actually grow and shrink the widget", {
+  skip: !process.env.LARVA_TEST_CHROME && "Set LARVA_TEST_CHROME to a Chromium executable.", timeout: 30_000,
+}, () => fixture(async f => {
+  const client = f.mcp();
+  await client.initialize();
+  const get = async (uri: string) => (await client.request("resources/read", { uri })).contents[0].text as string;
+  const [panelHtml, widgetHtml] = await Promise.all([get("ui://larva-pi-subagent/panel-v4"), get("ui://larva-pi-subagent/widget-v4")]);
+  const literal = (text: string) => JSON.stringify(text).replaceAll("<", "\\u003c");
+  const file = join(f.host, "browser.html");
+  await writeFile(file, `<!doctype html><meta charset="utf-8"><div id="result">waiting</div><script>
+const result = document.querySelector('#result');
+window.addEventListener('error', event => { result.textContent = event.message; });
+const run = { task_id: '/example/child.jsonl', run_epoch: 'epoch-one', persona_id: 'worker', cwd: '/example',
+  status: 'success', phase: 'success', output_state: 'inline', tool_call_count: 3, task_preview: 'Browser fixture task',
+  result_text: 'Real output\\n\\n' + 'Measured content\\n'.repeat(30) };
+const reply = { structuredContent: { runs: [run], startup_failures: [] } };
+const setup = (full, html) => {
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'width:420px;height:600px';
+  const heights = [];
+  let pollCount = 0;
+  const send = data => frame.contentWindow.postMessage({ jsonrpc: '2.0', ...data }, '*');
+  const notify = (method, params) => send({ method, params });
+  window.addEventListener('message', ({source, data}) => {
+    if (source !== frame.contentWindow) return;
+    if (data.method === 'ui/initialize') send({ id: data.id, result: { hostContext: { displayMode: full ? 'fullscreen' : 'inline' } } });
+    else if (data.method === 'ui/notifications/initialized') {
+      notify('ui/notifications/tool-input', { arguments: { scope: 'recent' } });
+      if (!full) notify('ui/notifications/tool-result', reply);
+    } else if (data.method === 'tools/call') { pollCount++; send({ id: data.id, result: reply }); }
+    else if (data.method === 'ui/notifications/size-changed') heights.push(data.params.height);
+  });
+  frame.srcdoc = html;
+  document.body.append(frame);
+  const buttons = () => [...frame.contentDocument.querySelectorAll('button')];
+  return { heights, buttons, pollCount: () => pollCount, send };
+};
+const panel = setup(true, ${literal(panelHtml)}), widget = setup(false, ${literal(widgetHtml)});
+let stage = 0, before = 0, grown = 0, stopped = 0;
+const timer = setInterval(() => {
+  const by = (app, text) => app.buttons().find(button => button.textContent === text);
+  if (stage === 0 && !result.textContent.startsWith('Error')) result.textContent = 'waiting: panel=' + panel.buttons().map(b => b.textContent) + '; widget=' + widget.buttons().map(b => b.textContent) + '; heights=' + widget.heights;
+  if (stage === 0 && widget.heights.length && by(widget, 'Details') && by(panel, 'Task & Session')) {
+    const names = ['All','Timeline','Result','Task & Session'];
+    if (!names.every(name => by(panel, name)?.getBoundingClientRect().width > 0)) throw Error('Missing visible panel tab');
+    by(panel, 'Result').click();
+    if (by(panel, 'Result').getAttribute('aria-pressed') !== 'true' || by(panel, 'Copy task_id')) throw Error('Result tab did not isolate content');
+    before = widget.heights.at(-1);
+    by(widget, 'Details').click(); stage++;
+  } else if (stage === 1 && by(widget, 'Hide details') && widget.heights.at(-1) !== before) {
+    grown = widget.heights.at(-1);
+    if (grown <= before) throw Error('Widget did not grow');
+    by(widget, 'Hide details').click(); stage++;
+  } else if (stage === 2 && by(widget, 'Details') && widget.heights.at(-1) !== grown) {
+    const shrunk = widget.heights.at(-1);
+    if (shrunk !== before || shrunk >= grown) throw Error('Widget did not shrink');
+    panel.send({ id: 700, method: 'ui/resource-teardown' });
+    stopped = panel.pollCount(); stage++;
+    setTimeout(() => {
+      if (panel.pollCount() !== stopped) throw Error('Panel polled after teardown');
+      clearInterval(timer); result.textContent = 'verified-browser-layout';
+    }, 1600);
+  }
+}, 50);
+</script>`);
+  const browser = promisify(execFile)(process.env.LARVA_TEST_CHROME!, ["--headless", "--no-first-run", "--no-default-browser-check",
+    "--disable-gpu", "--disable-background-networking", "--disable-component-update", `--user-data-dir=${join(f.host, "browser-profile")}`,
+    "--virtual-time-budget=7000", "--dump-dom", pathToFileURL(file).href], { timeout: 20_000, maxBuffer: 2 * 1024 * 1024 });
+  const { stdout } = await browser.catch((error: { code?: number; stdout?: string; stderr?: string }) => {
+    if (error.code === 2 && error.stdout && error.stderr?.includes("Teardown watchdog expired")) return { stdout: error.stdout };
+    throw error;
+  });
+  assert.equal(/<div id="result">([^<]*)<\/div>/.exec(stdout)?.[1], "verified-browser-layout");
+  assert.equal((await client.close()).code, 0);
+}));
+
+test("packaged MCP recovers real Pi oversized completion and pages its exact artifact", { timeout: 30_000 }, () => fixture(async f => {
+  const client = f.mcp();
+  await client.initialize();
+  const marker = join(f.host, "native-events.jsonl");
+  const observe = join(f.host, "observe.mjs");
+  await writeFile(observe, `import { appendFileSync } from 'node:fs';
+export default pi => {
+  for (const name of ['agent_end', 'agent_settled']) pi.on(name, event => {
+    appendFileSync(${JSON.stringify(marker)}, JSON.stringify({ name, bytes: Buffer.byteLength(JSON.stringify(event)) }) + '\\n');
+  });
+};`);
+  await f.config({ subagent: { extension_sources: [join(dirname(f.modelCatalog), "provider.mjs"), observe] } });
+  const task = "Return a large multiline Unicode completion";
+  const accepted = await client.ok(spawn, { ...worker, task, cwd: f.cwd });
+  const { task_id, run_epoch } = accepted;
+  const output = "Start of native output\n\n" + "é🙂 output\n".repeat(86_000) + "End of native output";
+  const bytes = Buffer.byteLength(output);
+  assert.ok(bytes > 1_048_576);
+  (await f.provider(0, task)).reply(output);
+  const settled = await client.ok(wait, { task_ids: [task_id], timeout_ms: 15_000 }, 20_000);
+  const terminal = settled.terminal_outputs[task_id];
+  const nativeEvents = (await readFile(marker, "utf8").catch(() => "")).trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
+  assert.ok(terminal, `Native events: ${JSON.stringify(nativeEvents)}; MCP state: ${JSON.stringify(settled).slice(0, 900)}`);
+  assert.ok(nativeEvents.some(event => event.name === "agent_end" && event.bytes > 1_048_576), JSON.stringify(nativeEvents));
+  assert.ok(nativeEvents.some(event => event.name === "agent_settled"), JSON.stringify(nativeEvents));
+  assert.deepEqual([terminal.run_epoch, terminal.status, terminal.output_state], [run_epoch, "success", "artifactized"]);
+  const artifact = terminal.full_output_artifact;
+  assert.equal(artifact.bytes, bytes);
+  assert.equal(artifact.sha256, createHash("sha256").update(output).digest("hex"));
+  assert.equal(createHash("sha256").update(await readFile(artifact.path)).digest("hex"), artifact.sha256);
+  // The persisted assistant message proves the native source was itself oversized.
+  const messages = (await readFile(task_id, "utf8")).trimEnd().split("\n").map(line => JSON.parse(line));
+  const assistant = messages.findLast(entry => entry.message?.role === "assistant");
+  assert.ok(Buffer.byteLength(JSON.stringify(assistant.message)) > 1_048_576);
+  const page = async (offset: number, length: number) => (await client.ok(panel, { slice: { task_id, run_epoch, source: "output", offset, length } })).slice;
+  const first = await page(0, 37);
+  const second = await page(first.continuation_offset, 61);
+  assert.equal(first.text + second.text, [...output].slice(0, 98).join(""));
+  assert.equal((await page([...output].length - 20, 4000)).text, [...output].slice(-20).join(""));
+  await client.ok(cancel, { task_ids: [task_id], reason: "Join child cleanup" });
+}));
 const lease = async (id: string) => JSON.parse(await readFile(`${id}.lock/lease.json`, "utf8"));
 const header = (cwd: string) => `${JSON.stringify({ type: "session", version: 3, id: "fixture", cwd })}\n`;
 const age = async (path: string) => {
@@ -69,26 +190,26 @@ test("external-cache MCP uses singleton roots, recorded resume cwd and contained
   const missingId = join(f.sessions, "missing.jsonl"), directoryAlias = join(f.sessions, "alias-dir");
   await symlink(id, alias);
   await symlink(f.sessions, directoryAlias, "dir");
-  const pin = (task_id: string) => ({ task_id, run_epochs: [{ task_id, run_epoch: accepted.run_epoch }] });
+  const pin = (task_id: string) => ({ run_epochs: [{ task_id, run_epoch: accepted.run_epoch }] });
   for (const [task_id, code] of [[alias, "LARVA_SESSION_INVALID"], [aliasedHomeId, "LARVA_SESSION_INVALID"],
     [join(directoryAlias, "missing.jsonl"), "LARVA_SESSION_INVALID"], [missingId, "LARVA_SESSION_NOT_FOUND"]]) {
     for (const tool of [status, activity, panel]) await mcp.error(tool, { task_id }, code);
     await mcp.error(spawn, { ...worker, task_id, task: "Rejected exact handle" }, code);
-    if (code === "LARVA_SESSION_INVALID") await mcp.error(panel, pin(task_id), code);
+    if (code === "LARVA_SESSION_INVALID") assert.equal((await mcp.ok(panel, pin(task_id))).row_errors[0].error.code, code);
     await assert.rejects(access(`${task_id}.lock`), { code: "ENOENT" });
   }
-  assert.deepEqual(await mcp.ok(panel, pin(missingId)), { runs: [], startup_failures: [], terminal_outputs: {} });
+  assert.deepEqual(await mcp.ok(panel, pin(missingId)), { runs: [], startup_failures: [], row_errors: [] });
   assert.equal((await mcp.ok(status, { task_id: id })).runs[0].task_id, id);
   assert.equal((await mcp.ok(panel, { task_id: id })).runs[0].task_id, id);
   assert.equal((await mcp.ok(panel, pin(id))).runs[0].run_epoch, accepted.run_epoch);
   const moved = join(f.sessions, "moved.jsonl");
   await rename(id, moved);
   await symlink(moved, id);
-  await mcp.error(panel, pin(id), "LARVA_SESSION_INVALID");
+  assert.equal((await mcp.ok(panel, pin(id))).row_errors[0].error.code, "LARVA_SESSION_INVALID");
   await rm(id);
   assert.equal((await mcp.ok(panel, { task_id: id })).runs[0].run_epoch, accepted.run_epoch);
   const retained = await mcp.ok(panel, pin(id));
-  assert.equal(retained.terminal_outputs[id].result_text, "Read from the rooted workspace");
+  assert.equal(retained.runs[0].result_text, "Read from the rooted workspace");
   await rename(moved, id);
   // A byte-identical, valid transcript just outside the real containment boundary.
   await writeFile(outside, await readFile(id));
@@ -275,7 +396,7 @@ test("two real MCP processes serialize resume, live leases beat GC, and dead-own
   for (const c of clients) assert.equal((await c.close()).code, 0);
 }));
 
-test("MCP stale epochs cannot cancel replacements; a live deep descendant retains ownership after supervisor exit", { timeout: 30_000 }, () => fixture(async f => {
+test("MCP stale epochs cannot cancel replacements; a live deep descendant retains ownership until shutdown reaps it", { timeout: 30_000 }, () => fixture(async f => {
   const mcp = f.mcp();
   await mcp.initialize();
   const seed = await mcp.ok(spawn, { ...worker, cwd: f.cwd, task: "Seed epoch replacement" });
@@ -313,6 +434,10 @@ test("MCP stale epochs cannot cancel replacements; a live deep descendant retain
   const evidence = join(capsule_root, "descendants", `child-${child_pid}-aa.json`);
   await writeFile(evidence, JSON.stringify({ pid: midPid, capsule_root: midRoot }));
   await writeFile(join(midRoot, "descendants", `child-${midPid}-bb.json`), JSON.stringify({ capsule_root: leafRoot }));
+  // Settle execution naturally: cancelling a running subtree would signal its
+  // discoverable leaf. Retrying terminal cleanup must preserve the live proof.
+  held.reply("Leader finished while the recorded descendant was still live");
+  assert.equal((await mcp.ok(wait, { task_ids: [id] })).terminal_outputs[id].status, "success");
   const declined = await mcp.call(cancel, { ...cancellation, expected_run_epochs: [{ task_id: id, run_epoch: next.run_epoch }] });
   assert.equal(declined.isError, true);
   assert.deepEqual(declined.structuredContent.results, [{ task_id: id, outcome: "cleanup_unconfirmed" }]);
@@ -323,11 +448,9 @@ test("MCP stale epochs cannot cancel replacements; a live deep descendant retain
   assert.equal((await mcp.ok(status, { task_id: unrelated.task_id })).runs[0].status, "running");
   assert.deepEqual(await mcp.request("ping"), {});
   assert.equal(mcp.child.exitCode, null);
-  assert.deepEqual(await mcp.close(), { code: 1, signal: null, stderr: "" });
   await access(evidence);
   await access(join(capsule_root, "owner.json"));
   await access(`${id}.lock/lease.json`);
-  await assert.rejects(access(`${unrelated.task_id}.lock`), { code: "ENOENT" });
 
   await age(id);
   const competitor = f.mcp();
@@ -344,14 +467,16 @@ test("MCP stale epochs cannot cancel replacements; a live deep descendant retain
   assert.equal((await competitor.ok(status, { task_id: id })).disk_sessions[0].lock_state, "unreconciled");
   await competitor.error(spawn, { ...worker, task_id: id, task: "Do not reclaim live deep leaf" }, "LARVA_SESSION_BUSY");
   assert.equal((await lease(id)).lease_id, lease_id);
-  assert.equal((await leaf.close()).code, 0);
+  assert.deepEqual(await mcp.close(), { code: 0, signal: null, stderr: "" });
+  await leaf.exited();
+  await assert.rejects(access(`${unrelated.task_id}.lock`), { code: "ENOENT" });
   assert.throws(() => process.kill(leafPid, 0), { code: "ESRCH" });
   assert.equal((await competitor.ok(status, { task_id: id })).disk_sessions[0].lock_state, "unlocked");
   for (const dryRun of [true, false]) {
     const gc = f.gc(dryRun);
     assert.equal((await gc.exited()).code, 0);
     assert.equal(gc.frames[0].data.deleted_sessions, 1);
-    if (dryRun) await access(`${id}.lock/lease.json`);
+    if (dryRun) await access(id);
   }
   for (const path of [id, `${id}.lock`, capsule_root, midRoot, leafRoot]) await assert.rejects(access(path), { code: "ENOENT" });
 }));

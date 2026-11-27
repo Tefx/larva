@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, unlink, writeFile } from "node:fs/promises";
+import { appendFile, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fixture, tool } from "./fixture.ts";
@@ -66,6 +66,37 @@ test("Pi RPC startup: explicit flags, restored branch, config, and fail-closed i
   assert.deepEqual(actual, identity(null, "manual"));
   assert.equal(warning.code, "LARVA_PERSONA_NOT_FOUND");
   assert.deepEqual(await degraded.route(), ["fixture", "native", "off"]);
+}));
+
+test("installed Pi restores the genuine route override from a legacy 0.8.x borrow transcript", { timeout: 30_000 }, () => fixture(async f => {
+  const seed = f.pi(["--larva-persona", "parent"]);
+  assert.deepEqual(await seed.outcome(0, "startup"), identity("parent", "confirm"));
+  const from = await seed.prompt("Persist a session before a legacy borrow");
+  (await f.provider(0, "Persist a session before a legacy borrow")).reply("Persisted");
+  await seed.settled(from);
+  await seed.rpc("set_model", { provider: "fixture", modelId: "native" });
+  await seed.rpc("set_thinking_level", { level: "high" });
+  const { sessionFile } = await seed.rpc("get_state");
+  assert.equal((await seed.close()).code, 0);
+  const history = (await readFile(sessionFile, "utf8")).trimEnd().split("\n").map(line => JSON.parse(line));
+  const lease = { scope: "turn", borrowedPersonaId: "worker", originPersonaId: "parent", originPiModelCaptured: true };
+  const timestamp = new Date().toISOString();
+  let parentId = history.at(-1).id;
+  const legacy = [
+    { type: "model_change", provider: "fixture", modelId: "worker" },
+    { type: "thinking_level_change", thinkingLevel: "off" },
+    { type: "custom", customType: "larva-tool-declarations", data: {} },
+    { type: "custom", customType: "larva-agent-persona-switch-audit", data: { source: "tool", committed: true, lease } },
+  ].map((entry, index) => {
+    const id = `1e9ac${index}01`;
+    const row = { ...entry, id, timestamp, parentId };
+    parentId = id;
+    return JSON.stringify(row);
+  });
+  await appendFile(sessionFile, `${legacy.join("\n")}\n`);
+  const restored = f.pi(["--session", sessionFile]);
+  assert.deepEqual(await restored.outcome(0, "startup"), identity("parent", "confirm"));
+  assert.deepEqual(await restored.route(), ["fixture", "native", "high"], "legacy worker/off is not a genuine user override");
 }));
 
 test("Pi RPC tree restores larva:none route overrides and retains explicit launch mode across reload", { timeout: 30_000 }, () => fixture(async f => {

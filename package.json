@@ -7,6 +7,7 @@
   "bin": { "larva": "./dist/cli.mjs" },
   "pi": { "extensions": ["./dist/pi-extension.js"] },
   "files": ["dist/", "README.md", "LICENSE"],
+  "engines": { "node": ">=22.0.0" },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",

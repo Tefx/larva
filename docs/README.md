@@ -1,6 +1,6 @@
 # Larva 0.9 documentation
 
-The [0.9 architecture specification](../design/larva-0.9-architecture.md) and the [PersonaSpec schema](../contracts/persona_spec.schema.json) define the current contract.
+The [0.9 architecture specification](../design/larva-0.9-architecture.md) defines the release contract. The [PersonaSpec schema](../contracts/persona_spec.schema.json) checks the JSON input shape; Larva normalizes definitions and verifies supplied digests.
 
 ## Guides
 
@@ -10,6 +10,6 @@ The [0.9 architecture specification](../design/larva-0.9-architecture.md) and th
 ## Reference
 
 - [Architecture](reference/ARCHITECTURE.md): components, filesystem, canonical data, and state ownership.
-- [Interfaces](reference/INTERFACES.md): CLI, model tools, Pi commands, and Codex integration.
-- [Asynchronous subagents](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md): admission, ownership, observation, and settlement.
-- [Pi persona switching](reference/PI_AGENT_PERSONA_SWITCH_POLICY.md): startup precedence, switching modes, leases, and model-map changes.
+- [Interfaces](reference/INTERFACES.md): CLI help and output, Pi selectors and badges, model tools, and the Pi and Codex consoles.
+- [Asynchronous subagents](reference/PI_EXTENSION_ASYNC_SUBAGENTS.md): admission and ownership, recorded activity, cancellation, and cleanup retry.
+- [Pi persona switching](reference/PI_AGENT_PERSONA_SWITCH_POLICY.md): startup precedence, switching modes, leases, nested tool admission, and model-map changes.

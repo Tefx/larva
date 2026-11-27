@@ -4,7 +4,12 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { LarvaError } from "../core/errors.ts";
 import { getLarvaHomePaths, isLexicallyContained } from "../core/paths.ts";
 import type { DiskLockState, DiskSessionSummary } from "../core/types.ts";
-import { entryExists } from "./model-map.ts";
+import { canonicalPath, isErrno, requireStateDirectory } from "./bounded-read.ts";
+
+export { canonicalPath } from "./bounded-read.ts";
+
+// Leave space for .lock.retired.<up to 10 PID digits>.<32 hex digits>.
+export const MAX_SESSION_NAME_BYTES = 255 - ".lock.retired.".length - 10 - 1 - 32;
 
 const HEADER_LIMIT = 1_048_576;
 
@@ -31,25 +36,19 @@ function parseHeader(bytes: Uint8Array, task_id: string): SessionHeader {
 }
 
 function sessionReadError(error: unknown): LarvaError {
-  if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+  if (isErrno(error, "ENOENT")) {
     return new LarvaError("LARVA_SESSION_NOT_FOUND", "Session transcript is missing.");
   }
   return error instanceof LarvaError ? error : invalid();
 }
 
-// Pi can allocate its exact session path before the first persisted message.
-export async function canonicalPath(path: string): Promise<string> {
-  if (await entryExists(path)) return realpath(path);
-  return join(await canonicalPath(dirname(path)), basename(path));
-}
-
 export async function resolveCanonicalSessionPath(home: string, taskId: string): Promise<string> {
   if (taskId.includes("\0") || !isAbsolute(taskId) || resolve(taskId) !== taskId || !taskId.endsWith(".jsonl")) throw invalid();
   try {
-    const root = await canonicalPath(getLarvaHomePaths(home).sessions);
-    // Check existing ancestors before classifying a missing leaf. A dangling
-    // symlink fails realpath during canonicalization, so it is invalid too.
-    if (!isLexicallyContained(root, taskId) || await canonicalPath(taskId) !== taskId) throw invalid();
+    const root = getLarvaHomePaths(await canonicalPath(home)).sessions;
+    if (!isLexicallyContained(root, taskId) || dirname(taskId) !== root
+        || Buffer.byteLength(basename(taskId)) > MAX_SESSION_NAME_BYTES) throw invalid();
+    await requireStateDirectory(root).catch(error => { throw sessionReadError(error); });
     const info = await lstat(taskId).catch(error => { throw sessionReadError(error); });
     if (!info.isFile() || await realpath(taskId) !== taskId) throw invalid();
     return taskId;
@@ -101,11 +100,12 @@ export async function readDiskSession(home: string, taskId: string, leases: Lock
 export async function scanDiskSessions(home: string, leases: LockReader): Promise<DiskSessionSummary[]> {
   let root: string, names: string[];
   try {
-    root = await realpath(getLarvaHomePaths(home).sessions);
+    root = getLarvaHomePaths(await canonicalPath(home)).sessions;
+    await requireStateDirectory(root);
     names = await readdir(root);
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return [];
-    throw error;
+    if (isErrno(error, "ENOENT")) return [];
+    throw sessionReadError(error);
   }
   const sessions: DiskSessionSummary[] = [];
   for (const name of names.sort()) {

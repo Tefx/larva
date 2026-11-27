@@ -1,5 +1,6 @@
 import { basename, join } from "node:path";
 import { LarvaError } from "./errors.ts";
+import { isRecord } from "./predicates.ts";
 import type { ModelMapDoc, ModelMapEntry, ModelMapPrefixRule, ResolvedModelRoute } from "./types.ts";
 
 function invalid(field: string): never {
@@ -7,11 +8,11 @@ function invalid(field: string): never {
 }
 
 function object(value: unknown, field: string, keys?: readonly string[]): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return invalid(field);
+  if (!isRecord(value)) return invalid(field);
   const prototype: unknown = Object.getPrototypeOf(value);
   if ((prototype !== null && prototype !== Object.prototype)
       || (keys && Object.keys(value).some(key => !keys.includes(key)))) return invalid(field);
-  return value as Record<string, unknown>;
+  return value;
 }
 
 function token(value: unknown, field: string, allowEmpty = false): string {
@@ -93,7 +94,9 @@ export function resolveModelRoute(specModel: string, modelMap?: ModelMapDoc): Re
     }
   }
   if (best) {
-    return { provider: best.to_provider, model_id: best.to_model_id_prefix + specModel.slice(best.from_prefix.length) };
+    const model_id = best.to_model_id_prefix + specModel.slice(best.from_prefix.length);
+    if (model_id === "") return invalid("resolved model_id");
+    return { provider: best.to_provider, model_id };
   }
   const slash = specModel.indexOf("/");
   if (slash <= 0 || slash === specModel.length - 1 || /\s/.test(specModel)) {

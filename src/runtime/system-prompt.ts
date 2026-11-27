@@ -16,16 +16,28 @@ const switchGuidance = {
 };
 export type ResolveSystemPromptResult =
   | { status: "ok"; systemPrompt: string }
-  | { status: "unavailable"; reason: string };
+  | { status: "unavailable"; reason?: string };
+
+export function replyToSystemPrompt(request: unknown, resolve?: (base: string) => string): void {
+  if (typeof request !== "object" || request === null || !("reply" in request) || typeof request.reply !== "function") return;
+  try {
+    const result: ResolveSystemPromptResult = !resolve ? { status: "unavailable" }
+      : !("scope" in request) || request.scope !== "main" || !("systemPrompt" in request) || typeof request.systemPrompt !== "string"
+        ? { status: "unavailable", reason: "invalid request" }
+        : { status: "ok", systemPrompt: resolve(request.systemPrompt) };
+    request.reply(result);
+  } catch { /* Peers cannot interrupt the session. */ }
+}
 
 type Block = "identity-policy" | "active-persona" | "persona-switch-continuation";
 const marker = (block: Block, edge: "begin" | "end") => `<!-- larva:${block}:${edge} -->`;
-const tokens = /<!-- larva:(identity-policy|active-persona|persona-switch-continuation):(begin|end) -->/g;
+const tokens = /<!--\s*larva:(identity-policy|active-persona|persona-switch-continuation|continuation[\w:-]*?):(begin|end)\s*-->/g;
+const legacyMarkers = /<!--\s*larva:continuation[\w:-]*\s*-->/g;
 const opaqueHeader = /\n<!-- larva:opaque-body:(\d+) -->\n/y;
 
 function managedBlock(block: Block, body: string): string {
   // Persona Markdown can contain literal examples of these very delimiters.
-  const header = new RegExp(tokens).test(body) || body.startsWith("<!-- larva:opaque-body:")
+  const header = new RegExp(tokens).test(body) || new RegExp(legacyMarkers).test(body) || body.startsWith("<!-- larva:opaque-body:")
     ? `<!-- larva:opaque-body:${body.length} -->\n` : "";
   return `${marker(block, "begin")}\n${header}${body}\n${marker(block, "end")}`;
 }
@@ -63,7 +75,7 @@ function stripManaged(base: string): string {
     }
   }
   foreign.push(base.slice(cursor));
-  return foreign.join("");
+  return foreign.join("").replace(tokens, "").replace(legacyMarkers, "");
 }
 
 /** All three Pi prompt surfaces compose against the current session snapshot. */

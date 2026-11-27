@@ -1,13 +1,16 @@
 import { createHash, randomBytes } from "node:crypto";
 import { link, lstat, mkdir, rename, rm } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { LarvaError } from "../core/errors.ts";
-import { getLarvaHomePaths, isLexicallyContained } from "../core/paths.ts";
+import { getLarvaHomePaths } from "../core/paths.ts";
+import { isRecord } from "../core/predicates.ts";
 import type { DiskLockState, SessionLeaseRecord } from "../core/types.ts";
-import { canonicalPath } from "./session-index.ts";
+import { canonicalPath, isErrno, requireStateDirectory } from "./bounded-read.ts";
+import { isPid, pidExited, readMetadata, writeMetadata } from "./capsule.ts";
+import { MAX_SESSION_NAME_BYTES } from "./session-index.ts";
 
 type LeaseIO = Pick<typeof import("./capsule.ts"),
-  "privateDirectory" | "readMetadata" | "writeMetadata" | "metadataObject" | "isErrno" | "isPid"
+  "privateDirectory" | "readMetadata" | "writeMetadata" | "isPid"
   | "pidExited" | "capsuleParentPid" | "inspectCapsule"
 >;
 type Inspection =
@@ -25,6 +28,40 @@ type LeaseHandle = {
 const LEASE_KEYS = ["lease_id", "owner_pid", "state", "child_pid", "capsule_root"];
 const randomId = () => randomBytes(16).toString("hex");
 
+/** Serialize recovery for one observed instance; the callback must recheck its ID before mutation. */
+export async function withReclaimClaim(path: string, observedId: string, recover: () => Promise<boolean>): Promise<boolean> {
+  const prefix = createHash("sha256").update(observedId).digest("hex");
+  const stage = join(dirname(path), `.guard.tmp.${process.pid}.${randomId()}`);
+  await writeMetadata(stage, { pid: process.pid });
+  try {
+    for (let slot = 0; ; slot++) {
+      const candidate = join(path, `.reclaim.${prefix}.${slot}`);
+      try {
+        await link(stage, candidate);
+        break;
+      } catch (error) {
+        if (isErrno(error, "ENOENT")) return false;
+        if (!isErrno(error, "EEXIST")) throw error;
+      }
+      try {
+        // Never recycle slots. Removing the private source drops the claim's
+        // link count and settles it, without rewriting the shared pathname.
+        const info = await lstat(candidate);
+        if (!info.isFile()) return false;
+        const guard = await readMetadata(candidate);
+        if (!isRecord(guard)) return false;
+        if (guard.done === true) continue;
+        if (!isPid(guard.pid) || (info.nlink !== 1 && !pidExited(guard.pid))) return false;
+      } catch {
+        return false;
+      }
+    }
+    return await recover();
+  } finally {
+    await rm(stage, { force: true }).catch(() => {});
+  }
+}
+
 /** Bind the filesystem/evidence primitives supplied by the capsule module. */
 export function createSessionLeaseStore(home: string, io: LeaseIO) {
   const configuredSessions = getLarvaHomePaths(home).sessions;
@@ -32,15 +69,15 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
   async function lockPath(taskId: string) {
     const canonicalHome = await canonicalPath(home);
     const sessions = getLarvaHomePaths(canonicalHome).sessions;
-    if (!taskId.endsWith(".jsonl") || taskId.includes("\0")
-        || (!isLexicallyContained(sessions, taskId) && !isLexicallyContained(configuredSessions, taskId))) {
+    if (!taskId.endsWith(".jsonl") || taskId.includes("\0") || resolve(taskId) !== taskId
+        || (dirname(taskId) !== sessions && dirname(taskId) !== configuredSessions)) {
       throw new LarvaError("LARVA_SESSION_INVALID", "Expected a contained .jsonl task_id.");
     }
     return { path: join(sessions, `${basename(taskId)}.lock`), canonicalHome };
   }
 
   function parseRecord(value: unknown, canonicalHome: string): SessionLeaseRecord | undefined {
-    if (!io.metadataObject(value) || Object.keys(value).some(key => !LEASE_KEYS.includes(key))) return undefined;
+    if (!isRecord(value) || Object.keys(value).some(key => !LEASE_KEYS.includes(key))) return undefined;
     const { lease_id, state, owner_pid, child_pid, capsule_root } = value;
     if (typeof lease_id !== "string" || !lease_id.trim() || !io.isPid(owner_pid)) return undefined;
     if ((state === "reserving" || state === "gc_unlinking") && child_pid === null && capsule_root === null) {
@@ -57,9 +94,10 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
 
   async function read(path: string, canonicalHome: string): Promise<SessionLeaseRecord | "missing" | "invalid"> {
     try {
-      if (!(await lstat(dirname(path))).isDirectory() || !(await lstat(path)).isDirectory()) return "invalid";
+      await requireStateDirectory(dirname(path));
+      if (!(await lstat(path)).isDirectory()) return "invalid";
     } catch (error) {
-      return io.isErrno(error, "ENOENT") ? "missing" : "invalid";
+      return isErrno(error, "ENOENT") ? "missing" : "invalid";
     }
     try {
       return parseRecord(await io.readMetadata(join(path, "lease.json")), canonicalHome) ?? "invalid";
@@ -78,6 +116,7 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
 
   async function inspect(taskId: string): Promise<Inspection> {
     const { path, canonicalHome } = await lockPath(taskId);
+    if (Buffer.byteLength(basename(taskId)) > MAX_SESSION_NAME_BYTES) return { disposition: "invalid" };
     const record = await read(path, canonicalHome);
     if (typeof record === "string") return { disposition: record };
     return { disposition: await assess(record, canonicalHome), record };
@@ -109,60 +148,25 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
     const disposition = await assess(observed, canonicalHome);
     if (disposition !== "stale" && observed.state !== "spawning") return false;
 
-    // Hash untrusted IDs before using them in a pathname; generated IDs are opaque.
-    const prefix = createHash("sha256").update(observedId).digest("hex");
-    const stage = `${path}.guard.tmp.${process.pid}.${randomId()}`;
-    let claim: string | undefined;
-    await io.writeMetadata(stage, { pid: process.pid });
-    try {
-      for (let slot = 0; ; slot++) {
-        const candidate = join(path, `.reclaim.${prefix}.${slot}`);
-        try {
-          await link(stage, candidate);
-          claim = candidate;
-          break;
-        } catch (error) {
-          if (io.isErrno(error, "ENOENT")) return false;
-          if (!io.isErrno(error, "EEXIST")) throw error;
-        }
-        let guard: unknown;
-        try {
-          guard = await io.readMetadata(candidate);
-        } catch {
-          return false;
-        }
-        if (!io.metadataObject(guard) || !(guard.done === true || (io.isPid(guard.pid) && io.pidExited(guard.pid)))) return false;
-      }
-
-      // Re-read under the claim, after which no protocol participant can move
-      // this instance until our guard settles. This is the compare-and-swap.
+    return withReclaimClaim(path, observedId, async () => {
       const current = await read(path, canonicalHome);
       if (typeof current === "string" || current.lease_id !== observedId || !io.pidExited(current.owner_pid)) return false;
       if (await assess(current, canonicalHome) === "stale") {
         await detach(path);
-        claim = undefined;
         return true;
       }
       if (current.state === "spawning") {
         await io.writeMetadata(join(path, "lease.json"), { ...current, state: "unreconciled" });
       }
       return false;
-    } finally {
-      try {
-        // A rename may already have installed a successor. Only settle a claim
-        // still belonging to the observed instance.
-        if (claim !== undefined) {
-          const current = await read(path, canonicalHome);
-          if (typeof current !== "string" && current.lease_id === observedId) await io.writeMetadata(claim, { done: true });
-        }
-      } finally {
-        await rm(stage, { force: true }).catch(() => {});
-      }
-    }
+    });
   }
 
   async function acquire(taskId: string, state: "reserving" | "gc_unlinking" = "reserving"): Promise<LeaseHandle> {
     const target = await lockPath(taskId);
+    if (Buffer.byteLength(basename(taskId)) > MAX_SESSION_NAME_BYTES) {
+      throw new LarvaError("LARVA_SESSION_INVALID", `Session filename exceeds ${MAX_SESSION_NAME_BYTES} UTF-8 bytes.`);
+    }
     const { path, canonicalHome } = target;
     const lease_id = randomId();
     const temp = `${path}.tmp.${process.pid}.${lease_id}`;
@@ -179,7 +183,7 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
       try {
         await rename(temp, path);
       } catch (error) {
-        if (io.isErrno(error, "EEXIST") || io.isErrno(error, "ENOTEMPTY") || io.isErrno(error, "ENOTDIR")) throw busy();
+        if (isErrno(error, "EEXIST") || isErrno(error, "ENOTEMPTY") || isErrno(error, "ENOTDIR")) throw busy();
         throw error;
       }
     } finally {
@@ -207,6 +211,7 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
       lease_id,
       markSpawning: capsule_root => mutate(async current => {
         if (current.state !== "reserving" || io.capsuleParentPid(canonicalHome, capsule_root) !== process.pid) throw busy();
+        await requireStateDirectory(dirname(capsule_root));
         if (!(await lstat(capsule_root)).isDirectory()) throw busy();
         // Write capsule intent first. An interruption between these writes may
         // retain an orphan, but can never erase ambiguous spawn evidence.
@@ -228,6 +233,9 @@ export function createSessionLeaseStore(home: string, io: LeaseIO) {
   }
 
   return { home, acquire, inspect, diskLockState,
-    async reclaim(taskId: string, observedId: string) { return reclaimLock(await lockPath(taskId), observedId); },
+    async reclaim(taskId: string, observedId: string) {
+      const target = await lockPath(taskId);
+      return Buffer.byteLength(basename(taskId)) <= MAX_SESSION_NAME_BYTES && reclaimLock(target, observedId);
+    },
   };
 }

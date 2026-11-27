@@ -10,6 +10,8 @@ larva persona put reviewer.md
 larva doctor --json
 ```
 
+The CLI prints human-readable summaries by default; use `--json` for scripts. Every subcommand supports `--help` (`-h`). `larva mcp --help` prints help without starting MCP; normal `larva mcp` traffic reserves stdout for the protocol.
+
 `larva doctor` is read-only. It diagnoses malformed definitions, dual-format conflicts, invalid route maps, Pi discovery, and unavailable models. It validates all maps and checks persona routes under `--profile <name>` when given, otherwise under `model-map.json` if present, or against literal routes when absent.
 
 ### Runtime configuration
@@ -31,7 +33,7 @@ larva doctor --json
 
 ### Model maps
 
-Store the default map in `model-map.json` and a named map such as `team` in `model-map.team.json`. Both are optional. A map contains only optional `models` and `prefix_rules` keys:
+Store the default map in `model-map.json` and a named map such as `work` in `model-map.work.json`. Both are optional; named profiles use lowercase letters, digits, and hyphens, and `default` is reserved for the default map. A map contains only optional `models` and `prefix_rules` keys:
 
 ```json
 {
@@ -44,7 +46,7 @@ Store the default map in `model-map.json` and a named map such as `team` in `mod
 }
 ```
 
-Entries are closed. Keys and values are nonempty and whitespace-free, except `to_model_id_prefix` may be empty. Duplicate `from_prefix` values are invalid. An exact route wins over the longest matching prefix; if neither matches, Larva uses the literal route. Run `larva doctor --profile team` to check a named profile, and use `/larva-model-map team` in Pi to select it.
+Entries are closed. Keys and values are nonempty and whitespace-free, except `to_model_id_prefix` may be empty. Duplicate `from_prefix` values are invalid. An exact route wins over the longest matching prefix; if neither matches, Larva uses the literal route. Run `larva doctor --profile work` to check the named profile and `/larva-model-map work` in Pi to select it. Use `/larva-model-map --status` to inspect the active profile and generation; `/larva-model-map status` selects `model-map.status.json` if it exists.
 
 ## Configure an external MCP host
 
@@ -52,7 +54,7 @@ Register `larva mcp` as a stdio server and pass the same `LARVA_HOME` and Pi pro
 
 For a fresh spawn, supply an authorized, existing absolute `cwd` unless the host exposes exactly one usable local workspace root. Do not assume the server's own working directory is the workspace. For a resume, supply the exact `task_id` and omit `cwd` to use the recorded workspace.
 
-Use `larva_subagent_wait` with `return_when: "any"` to observe the next ready result in a batch and `larva_subagent_status` to inspect current ownership. `larva_subagent_activity` reads recorded tool traces, not live state. To cancel, pass `task_ids` and `reason` to `larva_subagent_cancel`; include `expected_run_epochs` when acting on an earlier snapshot.
+Use `larva_subagent_wait` with `return_when: "any"` to observe the next ready result in a batch and `larva_subagent_status` to inspect current ownership. `larva_subagent_activity` reads recorded tool traces, not live state, and caps the final serialized `ToolResult` at 8,192 UTF-8 bytes. To cancel, pass `task_ids` and `reason` to `larva_subagent_cancel`; include `expected_run_epochs` when acting on an earlier snapshot. `cleanup_unconfirmed` means Larva kept the ownership evidence and will recheck cleanup in the background; the consoles also offer **Retry cleanup**.
 
 ## Inspect and retain state
 
