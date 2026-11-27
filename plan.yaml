@@ -156180,3 +156180,755 @@ phases:
 
       - Full hermetic npm test -> 182/182 pass, 0 leaked processes, ~/.larva & ~/.pi/agent/settings.json
       unchanged, 0 pi-tui in 5 headless bundles, exact 7-file npm pack.'
+- id: larva_0_9_completion
+  name: Larva 0.9.0 Completeness, UI/UX Parity & Runtime Resilience Closure
+  status: pending
+  gate: 'Independent FULL gate (l09c.gate) passes: npm run typecheck, full npm test,
+    npm run build && git diff --exit-code plugins/codex/, npm pack --dry-run (exact
+    7-file list, 0 runtime dependencies, 0 @earendil-works/pi-tui in .mjs bundles,
+    0 YAML modules in dist/child-rpc-preload.mjs), bare-node tarball smoke, multi-viewport
+    TUI + real DOM/browser mount verification of plugins/codex/dist/ (panel-v4 & widget-v4
+    grow+shrink), legacy .jsonl borrow-history restore, and real >1 MiB agent_end
+    + >1 MiB final output artifact E2E verification.'
+  depends_on:
+  - larva_0_9_parity_closure
+  steps:
+  - id: l09c.w1_core_build_types
+    name: 'Wave 1: Core YAML Replacement, Admission Closure, Store SCC Leaf, Shared
+      DTOs & Build/CI'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [YAML-ESM] Delete/replace `src/core/yaml-frontmatter.ts` with bundled `yaml`
+      (`parseDocument`, YAML 1.2 Core/JSON AST rejecting `errors`, `warnings` incl.
+      unresolved custom tags, `directives`, `Alias`, `.anchor`, custom `.tag`, merge
+      keys, duplicate map keys). Extract parser-free `src/core/predicates.ts` (`isRecord`,
+      `THINKING_LEVELS`, `isValidPersonaId`) so `dist/child-rpc-preload.mjs` pulls
+      0 YAML modules. In `scripts/build.mjs`, normalize bare builtins to `node:*`,
+      inject `createRequire` ESM bridge, build-time `PACKAGE_VERSION`, and `import.meta.main`;
+      keep `package.json` at 0 runtime `dependencies` with `"engines": { "node": ">=22.0.0"
+      }`, upgrade `tsconfig.json` to `ES2024`, add bare-`node` `node_modules/pi-larva/dist/{cli.mjs,mcp-server.mjs}`
+      smoke to `.github/workflows/ci.yml`.
+
+      - [CORE-ADMIT] `src/core/persona.ts`: enforce `String.prototype.isWellFormed()`
+      across all `PersonaSpec` strings. `src/core/model-map.ts:resolveModelRoute`:
+      reject empty `model_id: ""` when `prefix_rules` consumes full input. `src/core/config.ts`/`paths.ts`:
+      reject `\0` in `config.subagent.extension_sources`, enforce base-dir containment
+      on `pi-agent:`, restrict URL pass-through to valid `http:`/`https:`/`file:`
+      alongside `builtin:`/`npm:`/`git:`.
+
+      - [STORE-LEAF] Sink stateless FS leaf helpers (`isErrno`, `entryExists`, `canonicalPath`,
+      `readTextIfPresent`) into `src/store/bounded-read.ts` (keep `src/core/**` 100%
+      I/O-free).
+
+      - [DTO-SCHEMAS] `src/core/types.ts`: extend `RunSnapshot` (`cleanup_unconfirmed?:
+      boolean`, monotonic `tool_call_count: number`, bounded `output_preview`/`error_preview`
+      on `ToolSnapshot`); define `RunTextSliceQuery`, `RunTextSliceResult` (`offset?`,
+      `length` 1..4000 code points, `state: "ok" | "unavailable"`), `RunTextSliceReader`,
+      and `ACTIVITY_WIRE_MAX_BYTES = 8192` + pure UTF-8 wire-length helper. `src/surfaces/tool-schemas.ts`:
+      restore per-parameter `description` metadata (`larva_persona_switch.reason`
+      max length, `larva_subagent_panel.slice`, non-empty `search_mentions.path` items).
+
+
+      Implementation Notes (Non-Binding):
+
+      - `yaml` is already in `devDependencies`; verify real ESM import of `dist/{cli.mjs,mcp-server.mjs,pi-extension.js,child-rpc-preload.mjs}`
+      via `npm run build:dist` without touching `plugins/codex/dist/**`.
+
+      - Keep `src/core/**` free of side-effect I/O and `@earendil-works/pi-tui`.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/core/**`, `src/store/bounded-read.ts`, `src/surfaces/tool-schemas.ts`,
+      `scripts/build.mjs`, `package.json`, `tsconfig.json`, `.github/workflows/ci.yml`,
+      `tests/unit/core-persona.test.ts`, `tests/unit/core-routing-policy.test.ts`,
+      `tests/unit/foundation-schema.test.ts` (plus caller import updates across uncontested
+      `src/**`/`tests/**` only if deleting `src/core/yaml-frontmatter.ts` requires
+      them).
+
+      - scope.blocked_paths: `plan.yaml`, `plugins/codex/**`.
+
+      - Reversible git worktree commit; no external effects or host `~/.larva` edits.
+
+
+      Admit:
+
+      - `npm run typecheck`, targeted unit tests, `npm run build:dist`, ESM import
+      smoke of all 4 `dist/*` bundles, 0 YAML modules in `dist/child-rpc-preload.mjs`,
+      0 `@earendil-works/pi-tui` in `.mjs` bundles.
+
+
+      Recovery:
+
+      - Preserve worktree and stop on unresolved schema/contract contradiction against
+      `design/larva-0.9-architecture.md`.'
+    verification: npm run typecheck && node --test tests/unit/core-persona.test.ts
+      tests/unit/core-routing-policy.test.ts tests/unit/foundation-schema.test.ts
+      && npm run build:dist && node -e "Promise.all(['./dist/cli.mjs','./dist/mcp-server.mjs','./dist/pi-extension.js','./dist/child-rpc-preload.mjs'].map(p=>import(p))).then(()=>console.log('ESM
+      OK'))"
+    refs:
+    - design/larva-0.9-architecture.md
+    agent: software-engineer
+  - id: l09c.w1_docs_sync
+    name: 'Wave 1: Documentation & Persona Schema Parity Sync'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [DOCS-PARITY] Align `README.md`, `contracts/persona_spec.schema.json`, `docs/README.md`,
+      `docs/guides/USAGE.md`, `docs/guides/USER_GUIDE.md`, `docs/reference/INTERFACES.md`,
+      and `docs/reference/PI_AGENT_PERSONA_SWITCH_POLICY.md` with `design/larva-0.9-architecture.md`.
+
+      - [DOC-SURFACES] Document `🎭`/`🤖` status badges, idle-TUI interactive `/larva-{persona,mode,model-map}`
+      selectors + `--status` preserving `model-map.status.json`, 5-Tab Pi console
+      (`Summary/Output/Prompt/Timeline/Metadata`) & 4-Tab Codex console (`All/Timeline/Result/Task
+      & Session`), CLI human-readable output & `--help` across all subcommands including
+      `larva mcp --help`, nested `executeTool` admission, `cleanup_unconfirmed` retry,
+      and `<= 8192B` wire-envelope `larva_subagent_activity`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep docs concise, English-only, generic examples (`personal`, `work`, `alice`,
+      `bob`, `acme/service`), zero stale 0.8.x or contradicted 0.9.0 claims.
+
+      - Verify `contracts/persona_spec.schema.json` remains valid JSON Schema matching
+      `PersonaSpec` rules.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `README.md`, `contracts/persona_spec.schema.json`, `docs/**`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit; no production TypeScript or external edits.
+
+
+      Admit:
+
+      - `node --test tests/unit/foundation-schema.test.ts` passes and every listed
+      doc/schema matches `design/larva-0.9-architecture.md`.
+
+
+      Recovery:
+
+      - Preserve worktree and report any spec ambiguity in `design/larva-0.9-architecture.md`.'
+    verification: node --test tests/unit/foundation-schema.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    agent: software-engineer
+  - id: l09c.w2a_store
+    name: 'Wave 2A-1: Store SCC Break, Capsule/Lease/GC Resilience & PersonaStore
+      Hardening'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [SCC-BREAK] Break 3-node Store SCC (`src/store/{model-map,session-index,capsule}.ts`)
+      by importing `isErrno`, `entryExists`, `canonicalPath`, `readTextIfPresent`
+      from `src/store/bounded-read.ts` (retain existing public exports on `model-map.ts`/`session-index.ts`
+      for parallel Wave 2 consumers).
+
+      - [GC] `src/store/gc.ts`: pass `canonicalHome` everywhere (`capsuleParentPid`),
+      snapshot dead capsules before sweeping leases, preserve deleted counts if `lease.release()`
+      throws, treat unreadable `descendants/*.json` as unreconciled, clean dead-PID
+      temp files & `.retired.*` tombstones.
+
+      - [CAPSULE-LEASE-ARTIFACTS] `src/store/capsule.ts`: stage capsules in hidden
+      temp dirs writing `owner.json` before atomic `rename`, keep evidence in place
+      until lease release, expose descendant PID inspection (`owner.json` + `descendants/*.json`)
+      for Wave 2A-2, enforce real-directory `lstat` on managed state subdirs & fail
+      closed on dangling `settings.json` symlinks. `src/store/session-lease.ts` &
+      `session-index.ts`: fix hardlink recovery self-lock, bound flat session filenames
+      under `NAME_MAX`, enforce real-directory `lstat`. `src/store/artifacts.ts`:
+      enforce real-directory `lstat` and add contained `state/artifacts/` slice/text
+      reader for `readRunTextSlice`.
+
+      - [PERSONA-STORE] `src/store/persona-store.ts`: short-name cross-process lock,
+      directory preflight, case-exact filename check, specific `LarvaError.message`
+      diagnostics, and prompt-free summary projection.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/store/**` free of `@earendil-works/pi-tui` and `src/runtime/**`
+      imports.
+
+      - Hermetic temp `LARVA_HOME` fixtures only; never touch host `~/.larva`.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/store/{capsule,session-lease,session-index,artifacts,gc,model-map,persona-store}.ts`,
+      `tests/unit/store-leases-gc.test.ts`, `tests/unit/store-personas-artifacts.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit.
+
+
+      Admit:
+
+      - `npm run typecheck` and targeted store unit suites pass; zero cycle across
+      `src/store/*`.
+
+
+      Recovery:
+
+      - Preserve worktree and report if a needed `bounded-read.ts` leaf signature
+      is missing from Wave 1.'
+    verification: npm run typecheck && node --test tests/unit/store-leases-gc.test.ts
+      tests/unit/store-personas-artifacts.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_core_build_types
+    agent: software-engineer
+  - id: l09c.w2a_runtime
+    name: 'Wave 2A-2: Preload Frame Projection, Supervisor Resilience, Settlement
+      Barrier & Pi Binary'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [PRELOAD-CLIENT] `src/child-rpc-preload.ts` & `src/runtime/child-rpc-client.ts`:
+      project `> 1 MiB` non-response child RPC events (`agent_end`, `turn_end`, `message_end`,
+      `tool_execution_*`) into `<= 1 MiB` summary frames preserving lifecycle/stop
+      fields and bounded assistant/tool excerpts (never killing child with `larva_rpc_frame_error`);
+      recover `> 1 MiB` final assistant completions (matching Pi last-assistant selection)
+      into `state/artifacts/`; pass pre-parsed frames across in-process bridge (no
+      double `JSON.parse`); arm `1500ms` `stdin`-closure orphan self-exit.
+
+      - [SUPERVISOR-SLICE-SNAP] `src/runtime/supervisor.ts`: implement `readRunTextSlice(query)`
+      (`RunTextSliceReader`: epoch-bound initial `prompt` for active/25-recent local
+      runs, single-epoch `.jsonl` user-prompt fallback on `disk`, else `state: "unavailable"`;
+      paged `output` over inline/retained text or contained `state/artifacts/` preserving
+      blank lines & multi-byte code points); populate `cleanup_unconfirmed`, monotonic
+      `tool_call_count`, live `{ running, cancelling }` counts, per-message stream
+      reset, tool `output_preview`/`error_preview`, and `recent` ordering by latest
+      activity/completion.
+
+      - [SUPERVISOR-RESILIENCE] `src/runtime/supervisor.ts`: relay multi-hop descendant
+      progress heartbeats to reset ancestor silence watchdogs; reap `owner.json` +
+      `descendants/*.json` PIDs on cancel/abort/retire; schedule bounded background
+      re-polls on `cleanup_unconfirmed` until `ESRCH` releases slots & leases; arm
+      `#promptSent` after confirmed `prompt` success; scope final output to current
+      turn; validate `task` length at Stage 1; bound `output()` against `cancel`/`shutdown`;
+      handle non-reasoning `thinking` clamping; restore `60s` readiness budget; preserve
+      earliest structured `LarvaError` on `stderr`; redact `Basic`/`*_api_key`; honor
+      `AbortSignal`; isolate `wait(any/first_error)` from sibling artifact writes.
+
+      - [BARRIER-OUTBOX-BIN] `src/runtime/{settlement-barrier,outbox}.ts`: fail closed
+      on uncorrelatable host `send_message` `extension_error` while callbacks pending,
+      treat `aborted: true` as cancellation, decouple pending callback queue from
+      25-entry replay window, include `persona_id`/`phase` on payloads, slim alert
+      payloads without cloning mutable `RunSnapshot`s. `src/runtime/pi-binary.ts`:
+      resolve `pi` cleanly under bare `node .../cli.mjs` with minimal `PATH`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/runtime/**` and `src/child-rpc-preload.ts` free of `@earendil-works/pi-tui`,
+      and preload free of YAML modules.
+
+      - Consume Wave 2A-1 `capsule.ts`, `artifacts.ts`, `session-lease.ts`, and `persona-store.ts`
+      APIs.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/child-rpc-preload.ts`, `src/runtime/{pi-binary,child-rpc-client,supervisor,settlement-barrier,outbox}.ts`,
+      `tests/unit/supervisor.test.ts`, `tests/unit/preload-and-pi-bin.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit; hermetic temp fixtures only.
+
+
+      Admit:
+
+      - `npm run typecheck` and targeted runtime/preload unit suites pass with discriminating
+      regression tests.
+
+
+      Recovery:
+
+      - Preserve worktree and escalate in place if an undiagnosed concurrency/protocol
+      dead end blocks closure.'
+    verification: npm run typecheck && node --test tests/unit/supervisor.test.ts tests/unit/preload-and-pi-bin.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_core_build_types
+    - l09c.w2a_store
+    agent: software-engineer
+  - id: l09c.w2b_activity_inspector
+    name: 'Wave 2B: Streaming Activity Inspector, Ancestry Verification & 8192B Wire
+      Budgeter'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [STREAM-SCAN] `src/activity/inspector.ts`: stream `.jsonl` records incrementally
+      without the `128 MiB` whole-file index ceiling; handle oversized lines without
+      aborting `limit: 1` queries; apply `since_timestamp`/`until_timestamp`/`tool_name`
+      predicates during scan.
+
+      - [ANCESTRY-FIELDS] `src/activity/inspector.ts`: verify explicit parent-chain
+      ancestry on truncated transcripts (remove unsafe single-ID shortcut); emit `action_truncated:
+      true` at 200 chars, `update_type: "late_result"`, and `matched_by`; unify session-header
+      validation.
+
+      - [WIRE-BUDGET] `src/activity/inspector.ts`: export and enforce final wire-envelope
+      byte budgeter guaranteeing serialized Pi and MCP `ToolResult` envelopes (`content[0].text`
+      + `details`/`structuredContent`) never exceed `8,192` UTF-8 bytes (`ACTIVITY_WIRE_MAX_BYTES`)
+      before committing `next_cursor` or `continuation_offset`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/activity/**` free of `@earendil-works/pi-tui`.
+
+      - Align wire-budgeter helper signature with `src/core/` UTF-8 length primitive
+      from Wave 1 so `w2e` and `w3a` can consume it cleanly.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/activity/inspector.ts`, `tests/unit/activity-inspector.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit.
+
+
+      Admit:
+
+      - `npm run typecheck` and `tests/unit/activity-inspector.test.ts` pass covering
+      streaming oversized lines, ancestry verification, fields, and `<= 8192B` wire-envelope
+      budgeting.
+
+
+      Recovery:
+
+      - Preserve worktree and report if any `ActivityQuery`/`ActivityResult` DTO field
+      is missing from Wave 1.'
+    verification: npm run typecheck && node --test tests/unit/activity-inspector.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_core_build_types
+    agent: software-engineer
+  - id: l09c.w2c_session_pi_hooks
+    name: 'Wave 2C: Session Context Attribution, System Prompt Resolution & Pi Extension
+      Hooks'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [SESSION-ATTR] `src/runtime/{session-context,persona-lease}.ts`: attribute
+      Larva-originated `(model, thinking)` changes and recognize `0.8.x` borrow/restore
+      audit entries so startup & `/tree` restore preserve only genuine user overrides
+      after latest `larva-active-persona-commit`, validating candidate `model_change`/`thinking_level_change`/`switch-mode`
+      entries before choosing newest; persist initial `default_persona` commit; preserve
+      active `model-map` `profile` & unsettled `restore_failed`/`route_uncertain`
+      latches across `session_tree`; make same-persona `switch` no-op; emit complete
+      `larva-agent-persona-switch-audit` (`reason`, distinct deny/timeout/dismiss,
+      `restore`); remove `#options.adapter` leak, dead `{ applyModel }` return, split
+      `#switchFrom`, and full-prompt deep-clones.
+
+      - [SYS-PROMPT] `src/runtime/system-prompt.ts` & `src/pi-extension.ts`: remove
+      `{ systemPrompt }` return from `before_agent_start`; compose idempotently in
+      `context_with_system`, `before_provider_request`, and extension-load-registered
+      synchronous `larva:resolve-system-prompt:v1` (returning `{ status: "unavailable"
+      }` pre-`session_start` or in launched children; stripping legacy `larva:continuation*`/unmatched
+      markers).
+
+      - [PI-HOOKS] `src/pi-extension.ts`: gate `tool_call` on Persona `allow`/`deny`,
+      spawn/switch rules, and `routeUncertain` while permitting nested `ctx.executeTool()`
+      (`parentToolCallId`/Pi callable set for `codemode`/`tool_search`); restore per-branch
+      tool baseline/masks across `/tree` & reopen; reconcile `routeUncertain` on same-model
+      `/model` (`source === "set"`); project `payload.context.messages`, omit empty
+      Bedrock `toolConfig.tools: []`, strip orphan Anthropic `[__pi_deferred_placeholder__]`
+      in `before_provider_request`; isolate `/larva-persona` during streaming; reset
+      lease/continuation/8-switch budget across queued user turns; separate `/reload`
+      handover from `/new`/`/resume`/`/fork` replacement (retire prior children, reset
+      `profile` in `SessionContext` + `supervisor`); unify validated `config.json`/`model-map`
+      snapshot across fleet fence (support valid named profiles even if default `model-map.json`
+      is broken); suppress mutating `/larva-*` & `Ctrl+Alt+P` when `LARVA_PI_LAUNCHED
+      === "1"`; render `"larva"` (`🎭 ...`) & `"larva-subagents"` (`🤖 ...` from live
+      counts) badges; surface immediate stall alerts during active parent streaming;
+      expose clean custom-message renderer hook for Wave 3A.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Import `canonicalPath` from `./store/bounded-read.ts` (Wave 1 leaf) and keep
+      `src/runtime/**` free of `@earendil-works/pi-tui`.
+
+      - Do not edit `src/surfaces/pi-{commands,tools}.ts` or `src/ui/**` (owned by
+      Wave 3A).
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/runtime/{session-context,persona-lease,system-prompt}.ts`,
+      `src/pi-extension.ts`, `tests/unit/session-context.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit.
+
+
+      Admit:
+
+      - `npm run typecheck` and `tests/unit/session-context.test.ts` pass covering
+      attribution, 0.8.x history restore, system-prompt composition, nested `executeTool`,
+      `/reload` vs `/new`, and status badges.
+
+
+      Recovery:
+
+      - Preserve worktree and escalate in place if a Pi extension lifecycle hook contract
+      contradicts `design/larva-0.9-architecture.md`.'
+    verification: npm run typecheck && node --test tests/unit/session-context.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_core_build_types
+    agent: software-engineer
+  - id: l09c.w2d_cli_doctor
+    name: 'Wave 2D: CLI Human Formatting, Help/Flag Diagnostics & Doctor Parity'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [CLI-HUMAN] `src/cli.ts` & `src/surfaces/cli-commands.ts`: emit concise human-readable
+      summaries/tables when `--json` is omitted (`persona validate` without full prompt
+      dump, `persona list` & `list --full`, `doctor` with specific per-file parse
+      errors, `gc` distinguishing `--dry-run` vs applied cleanup); preserve `--json`
+      envelopes & exit codes; sort CLI `persona list [--query]` lexicographically
+      by `id`.
+
+      - [CLI-HELP] `src/cli.ts` & `src/surfaces/cli-commands.ts`: support `--help`/`-h`
+      with exit `0` across top-level and all subcommands (including `larva mcp --help`
+      before stdio transport); report exact offending/missing flag names on exit `2`.
+
+      - [DOCTOR] `src/surfaces/doctor.ts`: instantiate `ModelRegistry` once outside
+      the persona loop; check dangling `personas/` symlinks and insecure existing
+      `state/{sessions,capsules,artifacts}` permissions; preserve `readConfigTextIfPresent`
+      export for `src/pi-extension.ts`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `src/cli.ts` and `src/surfaces/{cli-commands,doctor}.ts` free of `@earendil-works/pi-tui`.
+
+      - Use build-injected `PACKAGE_VERSION` / `import.meta.main` from Wave 1 where
+      applicable.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/cli.ts`, `src/surfaces/{cli-commands,doctor}.ts`,
+      `tests/unit/cli-and-doctor.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/**`.
+
+      - Reversible git worktree commit.
+
+
+      Admit:
+
+      - `npm run typecheck` and `tests/unit/cli-and-doctor.test.ts` pass covering
+      human vs `--json`, `--help` across all subcommands incl. `larva mcp --help`,
+      flag errors, and doctor checks.
+
+
+      Recovery:
+
+      - Preserve worktree and report any contradiction with `design/larva-0.9-architecture.md`.'
+    verification: npm run typecheck && node --test tests/unit/cli-and-doctor.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_core_build_types
+    agent: software-engineer
+  - id: l09c.w2e_mcp_codex_ui
+    name: 'Wave 2E: MCP Protocol/Tools Parity, Codex 4-Tab Panel & Widget-v4 UI'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [CODEX-UI] `src/ui/{codex-widget-html,codex-panel-html}.ts`: restore `widget-v4`
+      collapsed single-line activity/output/error summary + `tool_call_count` + `delivery_failed`/`evicted`/`stall_suspected`
+      badges + `wait` `ready`/`timed_out` outcome + shrink-capable intrinsic height
+      measurement (`size-changed` without `documentElement.scrollHeight` viewport
+      floor); restore fullscreen Active/Done grouped list (merging `active`+`recent`
+      without hiding live runs behind 25 completed rows, keeping `Disk` separate)
+      + distinguishable row titles + direct 4-Tab inspector (`All / Timeline / Result
+      / Task & Session`) + `1s` elapsed clock & non-overlapping polling + on-demand
+      full prompt copy & paged output via `larva_subagent_panel.slice` + expandable
+      Timeline items (`continuation_offset`/`source_version` paging, duplicate `tool_call_id`
+      disambiguation) + `Retry cleanup` on `cleanup_unconfirmed` + per-request/row
+      fault isolation + `tool-input`-gated initial poll + `hostContext.availableDisplayModes`
+      intersection + preserved text selection/focus & Tagged-Union state cleanup.
+
+      - [MENTIONS-PLUGIN] `src/ui/codex-mentions.ts`: reuse `PersonaStore` ranker,
+      single-source `SKILL.md` guidance, & `isValidPersonaId`. `plugins/codex/.mcp.json`:
+      forward `AZURE_OPENAI_BASE_URL`/`AZURE_OPENAI_ENDPOINT`/`AZURE_OPENAI_API_VERSION`/`AZURE_OPENAI_DEPLOYMENT_NAME`.
+
+      - [MCP-PROTOCOL-TOOLS] `src/mcp-server.ts` & `src/surfaces/mcp-tools.ts`: negotiate
+      `2026-07-28`/`2025-11-25`, wire per-request `AbortController` on `notifications/cancelled`,
+      drain `stdout` before clean `stdin` EOF exit & exit non-zero on truncated frame/stream
+      error, count outgoing frame in `send()` byte cap, support `resources/list` pagination,
+      share single `PersonaStore`, align `isError` on `wait_for_completion: true`
+      failed/cancelled child and `activity` `partial`, enforce `larva_subagent_panel`
+      mutual exclusion & per-row error isolation without duplicate `terminal_outputs`,
+      emit concise human-readable `content[0].text` summaries (enforcing `<= 8192B`
+      wire envelope on `larva_subagent_activity`), use build-injected `PACKAGE_VERSION`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Cut-set seam: type `mcp-tools.ts` supervisor parameter as `SubagentSupervisor
+      & Partial<RunTextSliceReader>` (from Wave 1 `src/core/types.ts`) and use the
+      Wave 1 `ACTIVITY_WIRE_MAX_BYTES` pure helper so `tsc --noEmit` passes in parallel
+      before Wave 2A-2/2B merge; mark any wire-budgeter dedup `[DEFER_TO_CONSOLIDATE]`
+      for Wave 3A.
+
+      - Do NOT regenerate `plugins/codex/dist/**` here (Wave 3A is single-writer build
+      owner). Keep `src/mcp-server.ts`, `src/surfaces/mcp-tools.ts`, and `src/ui/codex-*.ts`
+      free of `@earendil-works/pi-tui`.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/mcp-server.ts`, `src/surfaces/mcp-tools.ts`, `src/ui/{codex-panel-html,codex-widget-html,codex-mentions}.ts`,
+      `plugins/codex/.mcp.json`, `tests/unit/codex-ui-and-plugin.test.ts`, `tests/integration/mcp-server-surface.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`, `plugins/codex/dist/**`.
+
+      - Reversible git worktree commit.
+
+
+      Admit:
+
+      - `npm run typecheck` and `node --test tests/unit/codex-ui-and-plugin.test.ts
+      tests/integration/mcp-server-surface.test.ts` pass.
+
+
+      Recovery:
+
+      - Preserve worktree and report any MCP/UI contract mismatch against `design/larva-0.9-architecture.md`.'
+    verification: npm run typecheck && node --test tests/unit/codex-ui-and-plugin.test.ts
+      tests/integration/mcp-server-surface.test.ts
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_core_build_types
+    agent: frontend-engineer
+  - id: l09c.w3a_pi_tui_workbench
+    name: 'Wave 3A: Pi TUI Selectors, Cards, 5-Tab Console Workbench & Consolidation
+      Build'
+    status: pending
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [PI-SELECTORS-CMDS] `src/surfaces/pi-commands.ts` & `src/ui/pi-selector-tui.ts`:
+      unified idle-TUI interactive selectors on no-arg `/larva-persona` (`LarvaPersonaSelector`:
+      live search filter, `(current)` badge, route/thinking/spawn/description preview,
+      `None` clear, session+`ctx.isIdle()` re-check on commit), `/larva-mode` (`(current)`
+      highlight), `/larva-model-map` (`default` + valid profiles with `(current)`
+      & parent route preview); `--status` read-only inspection across all three (preserving
+      `/larva-model-map status` for `model-map.status.json`); sync-safe `force: true`-aware
+      Tab completions; token-scoped `@persona:` autocomplete without eating trailing
+      `)`, mixing files, or capping at 50; human-readable sequence-safe TUI `notify`
+      messages; viewport-safe scrolling `confirmPersonaSwitch` (`from -> to`, wrapped
+      `reason`, distinct timeout/dismiss/deny feedback with anti-retry note, `dispose`
+      Promise settlement).
+
+      - [PI-CARDS-TOOLS] `src/surfaces/pi-tools.ts` (+ optional `src/ui/pi-message-views.ts`
+      plugged into `src/pi-extension.ts` renderer hook): state-colored `larva-subagent-result`/`larva-subagent-alert`
+      TUI cards (`toolSuccessBg`/`toolErrorBg`/`toolPendingBg`, collapsed preview,
+      expanded Markdown/JSON/plain view without raw model anti-injection preamble)
+      and compact status-aware `renderCall`/`renderResult` across all 7 `larva_*`
+      tools.
+
+      - [PI-CONSOLE-5TAB] `src/ui/pi-subagent-console-tui.ts`: full bordered 5-Tab
+      `/larva-subagent` Console Workbench (`Summary/Output/Prompt/Timeline/Metadata`):
+      independent scope (`Active/Recent/Disk`, pagination `> 25`, non-blocking scope
+      switch) vs selected `(task_id, run_epoch)` vs active Tab; soft-wrapped pagination
+      preserving blank lines down to 5-row viewports; on-demand full `Prompt` & paged
+      `Output` via `supervisor.readRunTextSlice`; `Timeline` live stream + recorded
+      tool drill-down with `Following tail` toggle; distinguishable 80-col short-handle
+      + timestamp + task preview rows; visible `startup_failures`; mouse `press`-pinned
+      target disabling concurrent actions during cancel; `Retry cleanup` on `cleanup_unconfirmed`.
+
+      - [CONSOLIDATE-BUILD] Close any Wave 2 `[DEFER_TO_CONSOLIDATE]` seam dedup (wire
+      `mcp-tools.ts` to `w2b` canonical wire budgeter & `w2a_runtime` `readRunTextSlice`
+      if deferred), update integration/E2E tests, run single-writer `npm run build`
+      refreshing `plugins/codex/dist/**`, and verify full `npm run typecheck && npm
+      test && git diff --exit-code plugins/codex/` (after staging/committing built
+      Codex artifacts).
+
+
+      Implementation Notes (Non-Binding):
+
+      - Keep `@earendil-works/pi-tui` strictly inside Pi extension/TUI modules; verify
+      0 `@earendil-works/pi-tui` references in any `.mjs` bundle.
+
+      - Run full `npm test` once after consolidation; ensure hermetic temp `LARVA_HOME`
+      fixtures.
+
+
+      Boundary:
+
+      - scope.allowed_paths: `src/surfaces/{pi-commands,pi-tools,mcp-tools}.ts`, `src/ui/{pi-selector-tui,pi-subagent-console-tui,pi-message-views}.ts`,
+      `src/pi-extension.ts`, `plugins/codex/dist/**`, `tests/integration/{pi-extension-surface,mcp-server-surface}.test.ts`,
+      `tests/e2e/{pi-rpc,pi-subagents,codex-mcp}.test.ts`.
+
+      - scope.blocked_paths: `plan.yaml`, `package.json`, `tsconfig.json`.
+
+      - Reversible git worktree commit; single-writer owner for `plugins/codex/dist/**`.
+
+
+      Admit:
+
+      - `npm run typecheck`, full `npm test`, `npm run build`, and `git diff --exit-code
+      plugins/codex/` on the committed tree all pass.
+
+
+      Recovery:
+
+      - Preserve worktree and fix any cross-wave integration seam mismatch cleanly
+      before yielding to `l09c.gate`.'
+    verification: npm run typecheck && npm run build && npm test && git diff --exit-code
+      plugins/codex/
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w1_docs_sync
+    - l09c.w2a_runtime
+    - l09c.w2b_activity_inspector
+    - l09c.w2c_session_pi_hooks
+    - l09c.w2d_cli_doctor
+    - l09c.w2e_mcp_codex_ui
+    agent: frontend-engineer
+  - id: l09c.gate
+    name: 'Wave 3B: Independent FULL Phase Verification Gate'
+    status: pending
+    description: 'step_type: gate
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - [BUILD-PACK-GATE] Verify `npm run typecheck`, full `npm test`, `npm run build
+      && git diff --exit-code plugins/codex/`, and `npm pack --dry-run` (exact 7-file
+      list, 0 runtime `dependencies`, 0 `@earendil-works/pi-tui` in `.mjs` bundles,
+      0 YAML modules in `dist/child-rpc-preload.mjs`).
+
+      - [LIVE-SMOKE-GATE] Verify bare-`node` tarball execution smoke (`node_modules/pi-larva/dist/{cli.mjs,mcp-server.mjs}`
+      with minimal `PATH`), multi-viewport TUI rendering (including 5-row & 80-col
+      layouts), real DOM/browser mount of `plugins/codex/dist/` (`panel-v4` 4-Tab
+      & `widget-v4` grow + shrink height measurement), legacy 0.8.x `.jsonl` borrow-history
+      restore, and real `> 1 MiB` `agent_end` + `> 1 MiB` final output artifact E2E
+      recovery.
+
+      - [REPORT] Emit `gate.report.v2` with exact command receipts, observed outputs,
+      and any blocking defects against `design/larva-0.9-architecture.md` and `contracts/persona_spec.schema.json`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - Execute all checks strictly read-only in temp/hermetic scratch dirs (never
+      mutating repo files, `plan.yaml`, or host `~/.larva`).
+
+      - Clean up transient `npm pack` tarballs/temp dirs before exiting.
+
+
+      Boundary:
+
+      - scope.allowed_paths: read-only inspection only (`no_repo_change`).
+
+      - scope.blocked_paths: `plan.yaml`, `src/**`, `docs/**`, `plugins/**`, `package.json`,
+      `tsconfig.json`.
+
+      - Zero repository or host state mutations.
+
+
+      Admit:
+
+      - All listed build, packaging, bare-node smoke, TUI/browser UI, legacy restore,
+      and >1 MiB E2E checks pass with zero blocking findings.
+
+
+      Recovery:
+
+      - Report concrete failing evidence and stop without modifying repository files.'
+    verification: npm run typecheck && npm test && npm run build && git diff --exit-code
+      plugins/codex/ && npm pack --dry-run
+    refs:
+    - design/larva-0.9-architecture.md
+    depends_on:
+    - l09c.w3a_pi_tui_workbench
+    agent: gate-reviewer
