@@ -189,6 +189,7 @@ export class SessionContext {
   #persona: PersonaSpec | null = null;
   #profile: ModelMapProfile = { name: "default", generation: 0 };
   #config?: LarvaConfig;
+  #reloadConfigInvalid = false;
   #modeOverride?: SwitchMode;
   #profileError?: unknown;
   #startupWarning?: ErrorInfo;
@@ -214,7 +215,9 @@ export class SessionContext {
     const origin = this.#lease.origin;
     return `🎭 ${id}${origin ? ` ↩ ${origin.origin_persona_id ?? "none"}` : ""}`;
   }
-  get switchMode(): SwitchMode { return this.#child ? "manual" : this.#modeOverride ?? this.#config?.switch_mode ?? "confirm"; }
+  get switchMode(): SwitchMode {
+    return this.#child || this.#reloadConfigInvalid ? "manual" : this.#modeOverride ?? this.#config?.switch_mode ?? "confirm";
+  }
   get restoreFailed(): boolean { return this.#restoreFailed !== undefined; }
   get routeUncertain(): boolean { return this.#routeUncertain !== undefined; }
 
@@ -408,12 +411,13 @@ export class SessionContext {
     await this.#exclusive(() => this.endContinuationTurn());
   }
 
-  /** Reload the adapter/config in-place; startup flags and later session overrides retain their authority. */
-  async reload(config: LarvaConfig, adapter = this.#adapter): Promise<void> {
+  /** Rebind even when config admission fails; only a valid reload can restore autonomous switching. */
+  async reload(config: LarvaConfig | undefined, adapter = this.#adapter): Promise<void> {
     await this.#exclusive(() => {
       this.#request?.abort();
       this.#adapter = adapter;
-      this.#config = config;
+      this.#reloadConfigInvalid = config === undefined;
+      if (config) this.#config = config;
       this.#report("reload", { persona_id: this.#persona?.id ?? null, switch_mode: this.switchMode });
     });
   }
@@ -425,7 +429,7 @@ export class SessionContext {
 
   /** Bind this handler to larva:resolve-system-prompt:v1; no prompt data in unavailable replies. */
   resolveSystemPrompt(request: unknown): void {
-    replyToSystemPrompt(request, this.#child || this.#transition || !this.#config || this.#routeUncertain
+    replyToSystemPrompt(request, this.#transition || !this.#config || this.#routeUncertain
       ? undefined : base => this.composeSystemPrompt(base));
   }
 

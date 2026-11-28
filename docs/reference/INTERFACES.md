@@ -40,7 +40,9 @@ Input objects are closed. A question mark denotes an optional field. Availabilit
 - `/larva-subagent [task_id | --cancel <task_id>]` opens the fullscreen **Summary / Output / Prompt / Timeline / Metadata** console or requests targeted cancellation. The console exposes startup failures, paged prompt and artifact text, and **Retry cleanup** for `cleanup_unconfirmed` rows. Targeted cancellation captures the run epoch before confirmation so it cannot cancel a replacement run.
 - Larva-launched children don't register these slash commands or the shortcut. See [nested tool admission](PI_AGENT_PERSONA_SWITCH_POLICY.md#tool-admission) for direct and nested calls.
 - Editor completion supports `/larva-persona <query>`, `@persona:<query>`, and `@<query>` (native file suggestions first).
-- Slash command outcomes use TUI notifications or structured RPC custom/status events. Peer Pi extensions can use `larva:resolve-system-prompt:v1` with `scope: "main"`.
+- Slash command outcomes use TUI notifications or structured RPC custom/status events. If `/reload` cannot load `config.json`, Larva reports `reload-config`, preserves the active persona and route, and disables autonomous persona switching until a valid reload.
+- Peer Pi extensions can emit `larva:resolve-system-prompt:v1` with `{ scope: "main", systemPrompt, reply }` for a main agent turn, including in launched children, but not for maintenance or compaction. The callback receives `{ status: "ok", systemPrompt }` or `{ status: "unavailable", reason }`.
+- A settled child assistant error reports `LARVA_CHILD_RUNTIME_FAILED` with redacted detail when available. RPC protocol failures use `LARVA_CHILD_PROTOCOL_FAILED`.
 
 ## Codex and external MCP
 

@@ -43,42 +43,116 @@ function frameBridge(): FrameBridge {
   return bridge as FrameBridge;
 }
 
+const LARVA_PROMPT_SECTION = "larva_persona";
+const stripPersonaPrompt = (text: string) => composeSystemPrompt({ activePersona: null }, text);
+
+function promptSections(message: Record<string, unknown>): Record<string, unknown> | undefined {
+  const sections = message.sections;
+  if (!isRecord(sections)) return;
+  const prototype = Object.getPrototypeOf(sections);
+  if (prototype === Object.prototype || prototype === null) return sections;
+}
+
+function projectTranscriptPrompt<T>(messages: readonly T[], compose: (text: string) => string): T[] | undefined {
+  const head = messages[0];
+  const structured = isRecord(head) && head.role === "system" && !!promptSections(head);
+  const managed = structured ? compose("") : "";
+  let tail = 0;
+  if (managed) {
+    // Pi replays section replacements in place, but inserts new keys at the end.
+    // Keep Larva on the head for ordinary updates; a newly inserted native section
+    // needs the managed tail after its insertion to preserve the replayed order.
+    const names = new Set<string>();
+    for (const [index, message] of messages.entries()) {
+      if (!isRecord(message) || message.role !== "system") continue;
+      const sections = promptSections(message);
+      if (!sections) continue;
+      for (const [name, value] of Object.entries(sections)) {
+        if (name === LARVA_PROMPT_SECTION) continue;
+        if (value === null) names.delete(name);
+        else if (typeof value === "string" && !names.has(name)) { names.add(name); tail = index; }
+      }
+    }
+  }
+  let changed = false;
+  const next = messages.map((message, index) => {
+    if (!isRecord(message) || message.role !== "system") return message;
+    const sections = promptSections(message);
+    const { content } = message;
+    const text = typeof content === "string" ? content : Array.isArray(content)
+      && content.every(part => isRecord(part) && part.type === "text" && typeof part.text === "string")
+      ? content.map(part => part.text).join("\n") : undefined;
+    const updated = text === undefined ? undefined : (index === 0 && !structured ? compose : stripPersonaPrompt)(text);
+    const entries = Object.entries(sections ?? {});
+    const projected = entries.filter(([name]) => name !== LARVA_PROMPT_SECTION)
+      .map(([name, value]) => [name, typeof value === "string" ? stripPersonaPrompt(value) : value]);
+    if (managed && index === tail) projected.push([LARVA_PROMPT_SECTION, managed]);
+    const sectionsChanged = projected.length !== entries.length || projected.some(([name, value], i) =>
+      name !== entries[i][0] || value !== entries[i][1]);
+    if (updated === text && !sectionsChanged) return message;
+    changed = true;
+    return { ...message, ...(updated !== text && { content: updated }), ...(sectionsChanged && { sections: Object.fromEntries(projected) }) };
+  });
+  return changed ? next : undefined;
+}
+
 /** Rewrite existing instruction slots only. Incremental provider frames can omit them. */
 function projectProviderPrompt(payload: unknown, compose: (text: string) => string): unknown {
   if (!isRecord(payload)) return;
-  const patchText = (record: Record<string, unknown>, key: string) => {
+  type Transform = (text: string) => string;
+  type Patch = Record<string, unknown> | null | undefined;
+  const patchText = (record: Record<string, unknown>, key: string, transform: Transform): Patch => {
     const text = record[key];
     if (typeof text !== "string") return;
-    const updated = compose(text);
-    return updated === text ? undefined : { [key]: updated };
+    const updated = transform(text);
+    return updated === text ? null : { [key]: updated };
   };
-  const patchList = (record: Record<string, unknown>, key: string, update: (item: Record<string, unknown>) => Record<string, unknown> | null | undefined) => {
+  const patchList = (record: Record<string, unknown>, key: string, transform: Transform,
+    update: (item: Record<string, unknown>, transform: Transform) => Patch): Patch => {
     const items = record[key];
     if (!Array.isArray(items)) return;
+    let handled = false;
+    let next: unknown[] | undefined;
     for (const [index, item] of items.entries()) {
       if (!isRecord(item)) continue;
-      const next = update(item);
-      if (next !== undefined) return next === null ? null : { [key]: items.with(index, { ...item, ...next }) };
+      const patch = update(item, handled ? stripPersonaPrompt : transform);
+      if (patch === undefined) continue;
+      handled = true;
+      if (patch) (next ??= items.slice())[index] = { ...item, ...patch };
     }
+    // A fixed-point slot still claims the prompt; do not compose into a fallback.
+    return next ? { [key]: next } : handled ? null : undefined;
   };
-  const patchPart = (part: Record<string, unknown>) => typeof part.text === "string" ? patchText(part, "text") ?? null : undefined;
-  const patchMessage = (message: Record<string, unknown>) => {
+  const patchPart = (part: Record<string, unknown>, transform: Transform) => patchText(part, "text", transform);
+  const patchMessage = (message: Record<string, unknown>, transform: Transform) => {
     if (message.role !== "system" && message.role !== "developer") return;
-    return typeof message.content === "string" ? patchText(message, "content") ?? null : patchList(message, "content", patchPart);
+    return typeof message.content === "string" ? patchText(message, "content", transform)
+      : patchList(message, "content", transform, patchPart);
   };
   const context = isRecord(payload.context) ? payload.context : undefined;
   const config = isRecord(payload.config) ? payload.config : undefined;
-  const hasContextPrompt = context !== undefined && typeof context.systemPrompt === "string";
-  const contextPrompt = hasContextPrompt ? patchText(context, "systemPrompt") : undefined;
-  const contextMessages = context && !hasContextPrompt ? patchList(context, "messages", patchMessage) : undefined;
-  const configPrompt = config && patchText(config, "systemInstruction");
-  const systemInstruction = patchText(payload, "systemInstruction");
-  // null means a slot was handled and already at the fixed point; do not fall back to another message.
-  const system = typeof payload.system === "string" ? patchText(payload, "system") ?? null : patchList(payload, "system", part =>
-    part.text === "You are Claude Code, Anthropic's official CLI for Claude." ? undefined : patchPart(part));
-  const input = patchList(payload, "input", patchMessage);
-  const instructions = input === undefined ? patchText(payload, "instructions") : undefined;
-  const messages = !hasContextPrompt && system === undefined && input === undefined ? patchList(payload, "messages", patchMessage) : undefined;
+  // A provider envelope can carry both a dedicated prompt and a message list.
+  // Once the preferred slot is claimed, other instruction fields are strip-only.
+  let transform = compose;
+  const claim = (patch: Patch): Patch => {
+    if (patch !== undefined) transform = stripPersonaPrompt;
+    return patch;
+  };
+  const contextPrompt = claim(context && patchText(context, "systemPrompt", transform));
+  const transcript = context?.messages;
+  const hasSections = Array.isArray(transcript) && transcript.some(message =>
+    isRecord(message) && message.role === "system" && promptSections(message));
+  const projected = hasSections ? projectTranscriptPrompt(transcript, transform) : undefined;
+  const contextMessages = claim(hasSections ? projected ? { messages: projected } : null
+    : context && patchList(context, "messages", transform, patchMessage));
+  const configPrompt = claim(config && patchText(config, "systemInstruction", transform));
+  const systemInstruction = claim(patchText(payload, "systemInstruction", transform));
+  const system = claim(typeof payload.system === "string" ? patchText(payload, "system", transform)
+    : patchList(payload, "system", transform, (part, project) =>
+      part.text === "You are Claude Code, Anthropic's official CLI for Claude." ? undefined : patchPart(part, project)));
+  const input = claim(patchList(payload, "input", transform, patchMessage));
+  const instructions = claim(patchText(payload, "instructions", transform));
+  const messages = patchList(payload, "messages", transform, patchMessage);
   if (contextPrompt || contextMessages || configPrompt || systemInstruction || system || input || instructions || messages) {
     return { ...payload, ...systemInstruction, ...system, ...input, ...instructions, ...messages,
       ...((contextPrompt || contextMessages) && { context: { ...context, ...contextPrompt, ...contextMessages } }),
@@ -261,10 +335,11 @@ export default function larvaExtension(pi: ExtensionAPI): void {
       await state.session.reconcileManualModel();
     }
   };
-  pi.events.on(LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, request => {
+  const subscribePrompt = () => pi.events.on(LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, request => {
     if (live) live.session.resolveSystemPrompt(request);
     else replyToSystemPrompt(request);
   });
+  let unsubscribePrompt: (() => void) | undefined = subscribePrompt();
   const autocompleteUIs = new WeakSet<object>();
   const current = () => {
     if (!live) throw new LarvaError("LARVA_SESSION_BUSY", "Larva session is not ready.");
@@ -393,6 +468,8 @@ export default function larvaExtension(pi: ExtensionAPI): void {
   registerSubagentMessageRenderers(pi);
 
   pi.on("session_start", async ({ reason }, ctx) => {
+    // Native /new, /resume and /fork can reuse this extension instance.
+    unsubscribePrompt ??= subscribePrompt();
     const personaFlag = pi.getFlag("larva-persona");
     const modeFlag = pi.getFlag("larva-mode");
     const persona = (reason === "startup" || child) && typeof personaFlag === "string" ? personaFlag : undefined;
@@ -435,10 +512,9 @@ export default function larvaExtension(pi: ExtensionAPI): void {
         },
       };
       const config = await loadLarvaConfig(home, readConfigTextIfPresent).catch(error => {
-        const previous = saved?.session.config;
-        if (!previous) throw error;
+        if (!saved) throw error;
         reportPiOutcome(ctx, "reload-config", toErrorEnvelope(error));
-        return previous;
+        return undefined;
       });
       const session = saved?.session ?? new SessionContext({ personas, flags: { persona, mode }, adapter,
         env: { LARVA_PI_LAUNCHED: env.LARVA_PI_LAUNCHED, LARVA_PI_INITIAL_PERSONA_ID: env.LARVA_PI_INITIAL_PERSONA_ID,
@@ -446,7 +522,7 @@ export default function larvaExtension(pi: ExtensionAPI): void {
         loadProfile: profile => loadDiskModelMap(home, modelMapProfilePath(home, profile)) });
       const branch = ctx.sessionManager.getBranch();
       if (saved) await session.reload(config, adapter);
-      else await session.initialize(config, branch);
+      else if (config) await session.initialize(config, branch);
       if (session.routeUncertain) uncertainModelEntry = lastModelEntry(ctx)?.id;
       const supervisor = saved?.supervisor ?? new SubagentSupervisor({ home, env });
       supervisor.rebind({
@@ -504,9 +580,12 @@ export default function larvaExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("session_shutdown", async ({ reason }) => {
+    unsubscribePrompt?.();
+    unsubscribePrompt = undefined;
+    dispose?.();
+    dispose = undefined;
     const state = live;
     if (!state) return;
-    dispose?.();
     live = undefined;
     state.supervisor.beginReload();
     await state.session.detach();
@@ -559,7 +638,7 @@ export default function larvaExtension(pi: ExtensionAPI): void {
     for (const name of allowed) if (!visible.has(name)) allowed.delete(name);
     // Responses can serialize historical declarations even after a native removal.
     let changed = false;
-    const messages = event.messages.map((message, index) => {
+    const messages = event.messages.map(message => {
       if (message.role !== "system") return message;
       let next = message;
       if (message.toolsAdded) {
@@ -569,13 +648,11 @@ export default function larvaExtension(pi: ExtensionAPI): void {
           next = tools.length ? { ...rest, toolsAdded: tools } : rest;
         }
       }
-      const text = typeof next.content === "string" ? next.content : next.content.map(part => part.text).join("\n");
-      const content = index === 0 ? state.session.composeSystemPrompt(text) : composeSystemPrompt({ activePersona: null }, text);
-      if (content !== text) next = { ...next, content };
       changed ||= next !== message;
       return next;
     });
-    if (changed) return { messages };
+    const projected = projectTranscriptPrompt(messages, text => state.session.composeSystemPrompt(text));
+    if (changed || projected) return { messages: projected ?? messages };
   });
   pi.on("before_provider_request", async ({ payload }, ctx) => {
     const state = live;

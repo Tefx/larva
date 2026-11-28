@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
-import { createAgentSession, DefaultResourceLoader, SessionManager, SettingsManager, type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createAgentSession, createEventBus, DefaultResourceLoader, SessionManager, SettingsManager, type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream, type AssistantMessage } from "@earendil-works/pi-ai";
 import larvaExtension from "../../src/pi-extension.ts";
 import { parseLarvaConfig } from "../../src/core/config.ts";
@@ -13,7 +12,7 @@ import { parseModelMapDoc } from "../../src/core/model-map.ts";
 import type { ModelMapEntry, SwitchConfirmationChoice, ThinkingLevel } from "../../src/core/types.ts";
 import type { PersonaSwitchContext, PersonaSwitchOutcome } from "../../src/runtime/persona-lease.ts";
 import { SessionContext, type NativeRoute, type SessionAdapter } from "../../src/runtime/session-context.ts";
-import { composeSystemPrompt } from "../../src/runtime/system-prompt.ts";
+import { composeSystemPrompt, replyToSystemPrompt } from "../../src/runtime/system-prompt.ts";
 import { PersonaStore } from "../../src/store/persona-store.ts";
 
 const COMMIT = "larva-active-persona-commit";
@@ -335,6 +334,10 @@ test("child fresh/resume uses launch persona/manual mode without touching Pi rou
     await session.initialize(config, branch, source);
     assert.equal(session.activePersona?.id, "alpha");
     assert.equal(session.switchMode, "manual");
+    const replies: unknown[] = [];
+    session.resolveSystemPrompt({ scope: "main", systemPrompt: "base", reply: (value: unknown) => replies.push(value) });
+    assert.deepEqual(replies, [{ status: "ok", systemPrompt: session.composeSystemPrompt("base") }]);
+    assert.match(session.composeSystemPrompt("base"), /PRIVATE PROMPT FOR alpha/);
   }
   assert.deepEqual(entries.map(({ customType, data }) => [customType, data.persona_id]), [[COMMIT, "alpha"], [COMMIT, "alpha"]]);
   assert.deepEqual(writes, []);
@@ -610,6 +613,7 @@ test("Pi hooks preserve reload state, replace it on /new, and compose at request
   await writeFile(join(home, "config.json"), JSON.stringify({ default_persona: "alpha", switch_mode: "auto" }));
   await writeFile(join(home, "model-map.alt.json"), JSON.stringify({ models: { "test/alpha": model("mapped-alpha") } }));
   const statuses = new Map<string, string | undefined>();
+  const outcomes: string[] = [];
   const branch: unknown[] = [];
   let identifier = "original";
   let idle = true;
@@ -619,14 +623,17 @@ test("Pi hooks preserve reload state, replace it on /new, and compose at request
   const hostContext = {
     mode: "rpc", hasUI: false, isIdle: () => idle, cwd: home, abort: () => assert.fail("Unexpected abort"),
     get model() { return native; }, modelRegistry: { find: (provider: string, id: string) => ({ provider, id }) },
-    ui: { setStatus: (key: string, value?: string) => statuses.set(key, value) },
+    ui: { setStatus(key: string, value?: string) {
+      statuses.set(key, value);
+      if (key === "larva-outcome" && value) outcomes.push(value);
+    } },
     sessionManager: { getSessionId: () => identifier, getSessionFile: () => undefined, getBranch: () => branch.slice() },
   } as unknown as ExtensionContext;
+  const events = createEventBus();
   const load = () => {
     const handlers = new Map<string, ((event: unknown, ctx: ExtensionContext) => unknown)[]>();
     const commands = new Map<string, (args: string, ctx: ExtensionContext) => Promise<void>>();
     const tools: ToolDefinition[] = [];
-    const events = new EventEmitter();
     let active = ["read", "write"];
     const api = {
       on(name: string, handler: (event: unknown, ctx: ExtensionContext) => unknown) {
@@ -657,15 +664,18 @@ test("Pi hooks preserve reload state, replace it on /new, and compose at request
       invokeSwitch: () => tools.find(tool => tool.name === "larva_persona_switch")!.execute("switch", request, undefined, undefined,
         hostContext as Parameters<ToolDefinition["execute"]>[4]),
       resolvePrompt(systemPrompt: string) {
-        let result: unknown;
-        events.emit("larva:resolve-system-prompt:v1", { scope: "main", systemPrompt, reply: (value: unknown) => { result = value; } });
-        return result;
+        const replies: unknown[] = [];
+        events.emit("larva:resolve-system-prompt:v1", { scope: "main", systemPrompt, reply: (value: unknown) => replies.push(value) });
+        assert.ok(replies.length <= 1, "only the active extension generation can reply");
+        return replies[0];
       },
     };
   };
   let pi = load();
   t.after(async () => { await pi.emit("session_shutdown", { reason: "quit" }); });
-  assert.deepEqual(pi.resolvePrompt("base"), { status: "unavailable" });
+  assert.deepEqual(pi.resolvePrompt("base"), { status: "unavailable", reason: "not ready" });
+  await pi.emit("session_shutdown", { reason: "quit" });
+  assert.equal(pi.resolvePrompt("base"), undefined, "shutdown before startup removes the responder");
   await pi.emit("session_start", { reason: "startup" });
   assert.equal(statuses.get("larva"), "🎭 alpha");
   assert.equal(statuses.get("larva-subagents"), undefined);
@@ -708,6 +718,33 @@ test("Pi hooks preserve reload state, replace it on /new, and compose at request
   await pi.command("larva-model-map", "");
   assert.match(statuses.get("larva-outcome")!, /"profile":"alt"/);
   assert.equal(native.id, "mapped-alpha");
+  const configPath = join(home, "config.json");
+  await writeFile(configPath, JSON.stringify({ default_persona: "alpha", switch_mode: "free" }));
+  await pi.emit("session_shutdown", { reason: "reload" });
+  assert.equal(pi.resolvePrompt("base"), undefined);
+  pi = load();
+  await pi.emit("session_start", { reason: "reload" });
+  assert.ok(pi.tools().includes("larva_persona_switch"));
+  assert.match(JSON.stringify(pi.resolvePrompt("base")), /Switches persist/);
+  await writeFile(configPath, "{invalid");
+  await pi.emit("session_shutdown", { reason: "reload" });
+  pi = load();
+  await pi.emit("session_start", { reason: "reload" });
+  assert.ok(outcomes.some(value => /reload-config.*LARVA_CONFIG_INVALID/.test(value)));
+  assert.equal(statuses.get("larva"), "🎭 alpha");
+  assert.deepEqual([native.id, thinking], ["mapped-alpha", "low"]);
+  assert.match(JSON.stringify(pi.resolvePrompt("base")), /PRIVATE PROMPT FOR alpha/);
+  assert.doesNotMatch(JSON.stringify(pi.resolvePrompt("base")), /larva_persona_switch/);
+  assert.ok(!pi.tools().includes("larva_persona_switch"));
+  assert.match(JSON.stringify(await pi.invokeSwitch()), /LARVA_TOOL_DENIED/);
+  await pi.command("larva-mode", "free");
+  assert.ok(!pi.tools().includes("larva_persona_switch"));
+  await writeFile(configPath, JSON.stringify({ default_persona: "alpha", switch_mode: "auto" }));
+  await pi.emit("session_shutdown", { reason: "reload" });
+  pi = load();
+  await pi.emit("session_start", { reason: "reload" });
+  assert.ok(pi.tools().includes("larva_persona_switch"));
+  assert.match(JSON.stringify(pi.resolvePrompt("base")), /Switches persist/, "restore the explicit session override after valid reload");
   await pi.emit("session_shutdown", { reason: "new" });
   branch.length = 0;
   identifier = "replacement";
@@ -876,6 +913,19 @@ test("switch guidance follows live mode; continuation is a one-turn fixed point 
     assert.equal(session.activePersona?.id, "alpha");
     assert.doesNotMatch(session.composeSystemPrompt(composed), marker);
   }
+});
+
+test("prompt event replies once when resolution or the peer callback throws", () => {
+  const replies: unknown[] = [];
+  const request = { scope: "main", systemPrompt: "private prompt", reply(result: unknown) {
+    replies.push(result);
+    throw new Error("Peer failed");
+  } };
+  replyToSystemPrompt(request, () => { throw new Error("Private resolver failure"); });
+  assert.deepEqual(replies, [{ status: "unavailable", reason: "request unavailable" }]);
+  replies.length = 0;
+  replyToSystemPrompt(request, text => text);
+  assert.deepEqual(replies, [{ status: "ok", systemPrompt: "private prompt" }]);
 });
 
 test("prompt fixed point across hook calls and main-scope event; changing personas removes old managed blocks", async t => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { EventEmitter, once } from "node:events";
-import { access, copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,6 +9,7 @@ import { createInterface } from "node:readline";
 import { test, type TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
 import { compile } from "@earendil-works/pi-schema";
+import { getCurrentSystemPrompt, type SystemMessage } from "@earendil-works/pi-ai";
 import { CombinedAutocompleteProvider, CURSOR_MARKER, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import larvaExtension, { formatSubagentMessage } from "../../src/pi-extension.ts";
@@ -647,16 +648,29 @@ test("provider request reconciliation narrows native tool shapes and composes on
     const message = (content: string) => ({ role: "system", content });
     const later = message("Do not recompose this sibling");
     const inputTool = { type: "additional_tools", role: "developer", tools: [spawn] };
-    const developer = (text: string) => ({ role: "developer", content: [{ type: "input_text", text }] });
+    const textPart = (text: string) => ({ type: "input_text", text });
+    const developer = (...texts: string[]) => ({ role: "developer", content: texts.map(textPart) });
+    const contaminated = (text: string) => `${text}\n\n${systemPrompt.slice(base.length + 2)}`;
+    const wireDelta = developer(contaminated("Native developer delta"), contaminated("Other part"));
+    const cleanDelta = developer("Native developer delta", "Other part");
+    const user = { role: "user", content: contaminated("User text is not an instruction slot") };
     const promptCases = [
-      [{ context: { systemPrompt: base }, messages: [later] }, { context: { systemPrompt }, messages: [later] }],
-      [{ config: { systemInstruction: base }, systemInstruction: base }, { config: { systemInstruction: systemPrompt }, systemInstruction: systemPrompt }],
-      [{ system: [claudeCode, { text: base }], messages: [later] }, { system: [claudeCode, { text: systemPrompt }], messages: [later] }],
+      [{ context: { systemPrompt: base, messages: [wireDelta] }, messages: [wireDelta] },
+        { context: { systemPrompt, messages: [cleanDelta] }, messages: [cleanDelta] }],
+      [{ context: { messages: [message(systemPrompt), wireDelta, user] } },
+        { context: { messages: [message(systemPrompt), cleanDelta, user] } }],
+      [{ config: { systemInstruction: base }, systemInstruction: contaminated(base) },
+        { config: { systemInstruction: systemPrompt }, systemInstruction: base }],
+      [{ systemInstruction: base }, { systemInstruction: systemPrompt }],
+      [{ system: [claudeCode, { text: base }, { text: contaminated("Native part"), cache_control: { type: "ephemeral" } }], messages: [wireDelta] },
+        { system: [claudeCode, { text: systemPrompt }, { text: "Native part", cache_control: { type: "ephemeral" } }], messages: [cleanDelta] }],
       [{ system: base }, { system: systemPrompt }],
-      [{ input: [inputTool, developer(base), later], instructions: base, messages: [later] },
-        { input: [inputTool, developer(systemPrompt), later], instructions: base, messages: [later] }],
+      [{ input: [inputTool, developer(base, contaminated("Part two")), { ...later, content: contaminated(later.content) }],
+        instructions: contaminated(base), messages: [wireDelta] },
+        { input: [inputTool, developer(systemPrompt, "Part two"), later], instructions: base, messages: [cleanDelta] }],
       [{ input: [inputTool], instructions: base }, { input: [inputTool], instructions: systemPrompt }],
-      [{ messages: [message(base), later] }, { messages: [message(systemPrompt), later] }],
+      [{ messages: [message(base), user, wireDelta, { ...later, content: contaminated(later.content) }] },
+        { messages: [message(systemPrompt), user, cleanDelta, later] }],
     ];
     for (const [payload, expected] of promptCases) {
       const original = structuredClone(payload);
@@ -668,6 +682,62 @@ test("provider request reconciliation narrows native tool shapes and composes on
   } finally {
     await f.emit("session_shutdown", { reason: "quit" });
   }
+});
+
+test("structured prompt projection preserves native section replay and a single trailing persona", async t => {
+  const { home, workspace } = await fixture(t);
+  t.after(isolateLarvaHome(home));
+  const f = tuiHost(workspace);
+  larvaExtension(f.pi);
+  const resolve = (systemPrompt: string) => {
+    const replies: unknown[] = [];
+    f.events.emit("larva:resolve-system-prompt:v1", { scope: "main", systemPrompt, reply: (value: unknown) => replies.push(value) });
+    assert.equal(replies.length, 1);
+    const reply = replies[0] as { status: string; systemPrompt: string };
+    assert.equal(reply.status, "ok");
+    return reply.systemPrompt;
+  };
+  try {
+    await f.emit("session_start", { reason: "startup" });
+    await f.commands.get("larva-persona").handler("alice", f.ctx);
+    const stale = resolve("");
+    await f.commands.get("larva-persona").handler("bob", f.ctx);
+    const head: SystemMessage = { role: "system", timestamp: 1, content: "", sections: { preamble: "Native preamble", tools: "Old tools", rules: "Rules\n " } };
+    const delta: SystemMessage = { role: "system", timestamp: 2, content: "Native delta",
+      sections: { tools: "New tools", rules: null }, toolsRemoved: [{ name: "read" }] };
+    for (const rest of [[], [delta], [delta, { ...delta, timestamp: 3, content: "", sections: { rules: "New rules" } }]]) {
+      const native = [head, ...rest];
+      const contaminated = native.map(({ sections, ...message }) => ({ ...message,
+        content: [message.content, stale].filter(Boolean).join("\n\n"),
+        sections: { ...sections, ...(typeof sections?.tools === "string" && { tools: `${sections.tools}\n\n${stale}` }), larva_persona: stale },
+      }));
+      const original = structuredClone(contaminated);
+      const expected = resolve(getCurrentSystemPrompt(native));
+      for (const surface of ["context", "provider"]) {
+        const apply = async (messages: SystemMessage[]) => surface === "context"
+          ? (await f.emit("context_with_system", { messages }) as { messages: SystemMessage[] } | undefined)?.messages
+          : (await f.emit("before_provider_request", { payload: { context: { messages } } }) as
+              { context: { messages: SystemMessage[] } } | undefined)?.context.messages;
+        const projected = await apply(contaminated);
+        assert.ok(projected);
+        const rendered = getCurrentSystemPrompt(projected);
+        assert.equal(rendered, expected);
+        assert.equal(resolve(rendered), rendered);
+        assert.equal(rendered.match(/larva:active-persona:begin/g)?.length, 1);
+        assert.deepEqual(contaminated, original);
+        assert.deepEqual(projected.map(message => message.toolsRemoved), native.map(message => message.toolsRemoved));
+        if (rest.length <= 1) {
+          assert.equal(Object.keys(projected[0].sections!).at(-1), "larva_persona");
+          if (rest.length) assert.deepEqual(projected[1], delta);
+        }
+        assert.equal(await apply(projected), undefined);
+      }
+    }
+    f.pi.appendEntry("larva-active-persona-commit", { schema_version: 1, persona_id: null });
+    await f.emit("session_tree");
+    const stripped = await f.emit("context_with_system", { messages: [{ ...head, sections: { ...head.sections, larva_persona: stale } }] });
+    assert.deepEqual(stripped, { messages: [head] });
+  } finally { await f.emit("session_shutdown", { reason: "quit" }); }
 });
 
 test("TUI log separates selector and detail, preserves short-viewport pages and pins cancellation at ingress", { timeout: 5000 }, async t => {
@@ -849,6 +919,90 @@ function responsesSse(response: ServerResponse, content: string | MockCall) {
   response.writeHead(200, { "Content-Type": "text/event-stream" });
   response.end(events.map(event => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(""));
 }
+
+test("mid-conversation Completions wire has one Larva prompt and preserves Pi's native delta", { timeout: 15_000 }, async t => {
+  const { workspace, home, agent, onCleanup } = await fixture(t);
+  const cli = await realpath(process.env.LARVA_TEST_PI_BIN ?? join(root, "node_modules", ".bin", "pi"));
+  await copyFile(join(root, "dist", "pi-extension.js"), join(workspace, "pi-extension.js"));
+  await writeFile(join(workspace, "package.json"), '{"type":"module"}');
+  await writeFile(join(agent, "settings.json"), '{"defaultProjectTrust":"decline","providerRetry":{"maxRetries":0}}');
+  const bodies: string[] = [];
+  const server = createServer(async (request, response) => {
+    try {
+      if (request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const turn = bodies.push(Buffer.concat(chunks).toString());
+      sse(response, "alice", `Reply ${turn}`);
+    } catch { response.writeHead(400).end(); }
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const stopServer = () => {
+    server.closeAllConnections();
+    return new Promise<void>(resolve => server.close(() => resolve()));
+  };
+  onCleanup(stopServer);
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const extra = "A new native section on turn two.";
+  const driver = join(workspace, "driver.mjs");
+  const provider = { baseUrl: `http://127.0.0.1:${address.port}/v1`, api: "openai-completions", apiKey: "surface-test-not-secret",
+    models: [{ id: "alice", name: "alice", reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 16384, maxTokens: 2048, compat: { supportsMidConvoSystemMessages: true } }] };
+  await writeFile(driver, `import larva from './pi-extension.js';
+export default pi => {
+  pi.registerProvider('surface', ${JSON.stringify(provider)});
+  larva(pi);
+  pi.on('before_agent_start', event => {
+    if (event.prompt !== 'Second turn') return;
+    event.systemPromptOptions.sections.extra = ${JSON.stringify(extra)};
+    pi.setActiveTools(pi.getActiveTools().filter(name => name !== 'read'));
+  });
+};`);
+  const sessions = join(workspace, "sessions");
+  const child = spawn(process.execPath, [cli, "--mode", "json", "--no-extensions", "-e", driver, "--session-dir", sessions,
+    "--model", "surface/alice", "--larva-persona", "alice", "-p", "First turn", "Second turn"], {
+    cwd: workspace, env: { HOME: workspace, PATH: `${dirname(process.execPath)}:/usr/bin:/bin`, PI_OFFLINE: "1", PI_SKIP_VERSION_CHECK: "1",
+      PI_CODING_AGENT_DIR: agent, LARVA_HOME: home },
+  });
+  const closed = once(child, "close");
+  child.stdin.end();
+  onCleanup(async () => {
+    try { if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); await closed; }
+    finally { await stopServer(); }
+  });
+  let stdout = "", stderr = "";
+  child.stdout.setEncoding("utf8").on("data", chunk => { stdout += chunk; });
+  child.stderr.setEncoding("utf8").on("data", chunk => { stderr += chunk; });
+  const [code, signal] = await closed;
+  assert.equal(code, 0, `${signal ?? ""} ${stderr}`);
+  assert.equal(bodies.length, 2, stderr || stdout.slice(-4000));
+  type WireRequest = { messages: { role: string; content?: string }[]; tools?: { function: { name: string } }[] };
+  const [first, second] = bodies.map(body => JSON.parse(body) as WireRequest);
+  assert.ok(first.tools?.some(tool => tool.function.name === "read"));
+  assert.ok(second.tools?.length && second.tools.every(tool => tool.function.name !== "read"));
+  assert.ok(second.messages.slice(1).some(message => message.role === "system" && message.content?.includes(extra)));
+  const markers = /<!-- larva:(identity-policy|active-persona):begin -->/g;
+  const blocks = (text: string) => [...text.matchAll(markers)].map(match => match[1]);
+  assert.deepEqual(blocks(second.messages[0].content ?? ""), ["identity-policy", "active-persona"]);
+  assert.deepEqual(blocks(bodies[1]), ["identity-policy", "active-persona"], "no duplicate blocks anywhere in the turn-two request");
+  assert.match(second.messages[0].content ?? "", /private prompt alice/);
+  const sessionFiles = await readdir(sessions);
+  assert.equal(sessionFiles.length, 1);
+  const events = stdout.trim().split("\n").map(line => JSON.parse(line));
+  const transcript = (await readFile(join(sessions, sessionFiles[0]), "utf8")).trim().split("\n").map(line => JSON.parse(line));
+  const persisted = transcript.filter(entry => entry.type === "message").map(entry => entry.message);
+  const emitted = events.filter(event => event.type === "message_end").map(event => event.message);
+  assert.deepEqual(emitted.filter(message => message.role === "assistant").map(message => message.content),
+    [[{ type: "text", text: "Reply 1" }], [{ type: "text", text: "Reply 2" }]]);
+  assert.equal(JSON.stringify(persisted), JSON.stringify(emitted), "persisted and emitted native messages are byte-for-byte identical");
+  const systemMessages: SystemMessage[] = persisted.filter(message => message.role === "system");
+  assert.equal(systemMessages.length, 2);
+  assert.equal(systemMessages[1].sections?.extra, `<extra>\n${extra}\n</extra>`);
+  assert.ok(systemMessages[1].toolsRemoved?.some(tool => tool.name === "read"));
+  assert.deepEqual(blocks(JSON.stringify(persisted)), [], "wire-only Larva blocks must never enter the native transcript");
+});
 
 for (const [api, phase, hideStatus, virtual = false] of [
   ["openai-responses", "turn_end", false], ["openai-responses", "context", false], ["openai-responses", "context_with_system", false],

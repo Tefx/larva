@@ -128,7 +128,13 @@ export class ChildRpcClient {
     const buffer = Buffer.allocUnsafe(MAX_RECORD);
     const decoder = new TextDecoder("utf-8", { fatal: true });
     let used = 0;
-    let stopReason: unknown;
+    let assistantEnd: { stopReason: unknown; errorMessage?: string } | undefined;
+    const captureAssistantEnd = (message: Frame, previous?: typeof assistantEnd) => {
+      const stopReason = message.stopReason ?? previous?.stopReason;
+      const errorMessage = typeof message.errorMessage === "string" ? sanitizeRpcError(message.errorMessage)
+        : stopReason === previous?.stopReason ? previous?.errorMessage : undefined;
+      assistantEnd = { stopReason, errorMessage };
+    };
     for await (const chunk of this.#child.stdout as AsyncIterable<Buffer>) {
       for (let start = 0; start < chunk.length;) {
         const lf = chunk.indexOf(10, start);
@@ -173,13 +179,16 @@ export class ChildRpcClient {
         telemetry(frame);
         if (frame.type === "agent_settled") {
           if (typeof frame.aborted !== "boolean") throw protocol("Malformed terminal frame.");
-          if (frame.aborted || stopReason === "aborted") this.#terminal.reject(new LarvaError("LARVA_CHILD_CANCELLED", "Child aborted."));
-          else if (stopReason === "error") this.#terminal.reject(protocol("Child assistant turn failed."));
-          else this.#terminal.resolve();
-        } else if (frame.type === "agent_start") stopReason = undefined;
-        else if (frame.type === "message_end" && isRecord(frame.message) && frame.message.role === "assistant") stopReason = frame.message.stopReason;
+          if (frame.aborted || assistantEnd?.stopReason === "aborted") this.#terminal.reject(new LarvaError("LARVA_CHILD_CANCELLED", "Child aborted."));
+          else if (assistantEnd?.stopReason === "error") {
+            const detail = assistantEnd.errorMessage;
+            this.#terminal.reject(new LarvaError("LARVA_CHILD_RUNTIME_FAILED", detail ? `Child assistant turn failed: ${detail}` : "Child assistant turn failed."));
+          } else this.#terminal.resolve();
+        } else if (frame.type === "agent_start") assistantEnd = undefined;
+        else if (frame.type === "message_end" && isRecord(frame.message) && frame.message.role === "assistant") captureAssistantEnd(frame.message);
         else if (frame.type === "agent_end") {
-          if (Array.isArray(frame.messages)) stopReason = frame.messages.findLast(m => isRecord(m) && m.role === "assistant")?.stopReason ?? stopReason;
+          const message: unknown = Array.isArray(frame.messages) && frame.messages.findLast(m => isRecord(m) && m.role === "assistant");
+          if (isRecord(message)) captureAssistantEnd(message, assistantEnd);
           progress();
         } else if (["tool_execution_start", "tool_execution_update", "tool_execution_end", "larva_descendant_progress"].includes(frame.type)) progress();
         else if (frame.type === "message_update" && isRecord(frame.assistantMessageEvent)) {

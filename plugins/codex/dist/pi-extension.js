@@ -7591,6 +7591,7 @@ var ALL_LARVA_ERROR_CODES = [
   "LARVA_SESSION_BUSY",
   "LARVA_CHILD_START_FAILED",
   "LARVA_CHILD_PROTOCOL_FAILED",
+  "LARVA_CHILD_RUNTIME_FAILED",
   "LARVA_CHILD_CANCELLED",
   "LARVA_INTERNAL_ERROR",
   "LARVA_CLI_USAGE"
@@ -8230,10 +8231,23 @@ var switchGuidance = {
 };
 function replyToSystemPrompt(request, resolve8) {
   if (typeof request !== "object" || request === null || !("reply" in request) || typeof request.reply !== "function") return;
+  const { reply } = request;
+  let replied = false;
+  const replyOnce = (result) => {
+    if (replied) return;
+    replied = true;
+    reply.call(request, result);
+  };
   try {
-    const result = !resolve8 ? { status: "unavailable" } : !("scope" in request) || request.scope !== "main" || !("systemPrompt" in request) || typeof request.systemPrompt !== "string" ? { status: "unavailable", reason: "invalid request" } : { status: "ok", systemPrompt: resolve8(request.systemPrompt) };
-    request.reply(result);
+    if (!resolve8) replyOnce({ status: "unavailable", reason: "not ready" });
+    else if (!("scope" in request) || request.scope !== "main" || !("systemPrompt" in request) || typeof request.systemPrompt !== "string") {
+      replyOnce({ status: "unavailable", reason: "invalid request" });
+    } else replyOnce({ status: "ok", systemPrompt: resolve8(request.systemPrompt) });
   } catch {
+    try {
+      replyOnce({ status: "unavailable", reason: "request unavailable" });
+    } catch {
+    }
   }
 }
 var marker = (block, edge) => `<!-- larva:${block}:${edge} -->`;
@@ -8418,6 +8432,7 @@ var SessionContext = class {
   #persona = null;
   #profile = { name: "default", generation: 0 };
   #config;
+  #reloadConfigInvalid = false;
   #modeOverride;
   #profileError;
   #startupWarning;
@@ -8446,7 +8461,7 @@ var SessionContext = class {
     return `\u{1F3AD} ${id}${origin ? ` \u21A9 ${origin.origin_persona_id ?? "none"}` : ""}`;
   }
   get switchMode() {
-    return this.#child ? "manual" : this.#modeOverride ?? this.#config?.switch_mode ?? "confirm";
+    return this.#child || this.#reloadConfigInvalid ? "manual" : this.#modeOverride ?? this.#config?.switch_mode ?? "confirm";
   }
   get restoreFailed() {
     return this.#restoreFailed !== void 0;
@@ -8643,12 +8658,13 @@ var SessionContext = class {
     this.#request?.abort();
     await this.#exclusive(() => this.endContinuationTurn());
   }
-  /** Reload the adapter/config in-place; startup flags and later session overrides retain their authority. */
+  /** Rebind even when config admission fails; only a valid reload can restore autonomous switching. */
   async reload(config, adapter = this.#adapter) {
     await this.#exclusive(() => {
       this.#request?.abort();
       this.#adapter = adapter;
-      this.#config = config;
+      this.#reloadConfigInvalid = config === void 0;
+      if (config) this.#config = config;
       this.#report("reload", { persona_id: this.#persona?.id ?? null, switch_mode: this.switchMode });
     });
   }
@@ -8662,7 +8678,7 @@ var SessionContext = class {
   }
   /** Bind this handler to larva:resolve-system-prompt:v1; no prompt data in unavailable replies. */
   resolveSystemPrompt(request) {
-    replyToSystemPrompt(request, this.#child || this.#transition || !this.#config || this.#routeUncertain ? void 0 : (base) => this.composeSystemPrompt(base));
+    replyToSystemPrompt(request, this.#transition || !this.#config || this.#routeUncertain ? void 0 : (base) => this.composeSystemPrompt(base));
   }
   async personaCandidates(query = "", surface = "mention") {
     const results = await this.#options.personas.list({ query, limit: 50 });
@@ -10215,7 +10231,12 @@ var ChildRpcClient = class {
     const buffer = Buffer.allocUnsafe(MAX_RECORD);
     const decoder4 = new TextDecoder("utf-8", { fatal: true });
     let used = 0;
-    let stopReason;
+    let assistantEnd;
+    const captureAssistantEnd = (message, previous) => {
+      const stopReason = message.stopReason ?? previous?.stopReason;
+      const errorMessage = typeof message.errorMessage === "string" ? sanitizeRpcError(message.errorMessage) : stopReason === previous?.stopReason ? previous?.errorMessage : void 0;
+      assistantEnd = { stopReason, errorMessage };
+    };
     for await (const chunk of this.#child.stdout) {
       for (let start = 0; start < chunk.length; ) {
         const lf = chunk.indexOf(10, start);
@@ -10260,13 +10281,16 @@ var ChildRpcClient = class {
         telemetry(frame);
         if (frame.type === "agent_settled") {
           if (typeof frame.aborted !== "boolean") throw protocol("Malformed terminal frame.");
-          if (frame.aborted || stopReason === "aborted") this.#terminal.reject(new LarvaError("LARVA_CHILD_CANCELLED", "Child aborted."));
-          else if (stopReason === "error") this.#terminal.reject(protocol("Child assistant turn failed."));
-          else this.#terminal.resolve();
-        } else if (frame.type === "agent_start") stopReason = void 0;
-        else if (frame.type === "message_end" && isRecord(frame.message) && frame.message.role === "assistant") stopReason = frame.message.stopReason;
+          if (frame.aborted || assistantEnd?.stopReason === "aborted") this.#terminal.reject(new LarvaError("LARVA_CHILD_CANCELLED", "Child aborted."));
+          else if (assistantEnd?.stopReason === "error") {
+            const detail2 = assistantEnd.errorMessage;
+            this.#terminal.reject(new LarvaError("LARVA_CHILD_RUNTIME_FAILED", detail2 ? `Child assistant turn failed: ${detail2}` : "Child assistant turn failed."));
+          } else this.#terminal.resolve();
+        } else if (frame.type === "agent_start") assistantEnd = void 0;
+        else if (frame.type === "message_end" && isRecord(frame.message) && frame.message.role === "assistant") captureAssistantEnd(frame.message);
         else if (frame.type === "agent_end") {
-          if (Array.isArray(frame.messages)) stopReason = frame.messages.findLast((m) => isRecord(m) && m.role === "assistant")?.stopReason ?? stopReason;
+          const message = Array.isArray(frame.messages) && frame.messages.findLast((m) => isRecord(m) && m.role === "assistant");
+          if (isRecord(message)) captureAssistantEnd(message, assistantEnd);
           progress();
         } else if (["tool_execution_start", "tool_execution_update", "tool_execution_end", "larva_descendant_progress"].includes(frame.type)) progress();
         else if (frame.type === "message_update" && isRecord(frame.assistantMessageEvent)) {
@@ -13203,39 +13227,97 @@ function frameBridge() {
   }
   return bridge;
 }
+var LARVA_PROMPT_SECTION = "larva_persona";
+var stripPersonaPrompt = (text2) => composeSystemPrompt({ activePersona: null }, text2);
+function promptSections(message) {
+  const sections = message.sections;
+  if (!isRecord(sections)) return;
+  const prototype = Object.getPrototypeOf(sections);
+  if (prototype === Object.prototype || prototype === null) return sections;
+}
+function projectTranscriptPrompt(messages, compose) {
+  const head = messages[0];
+  const structured = isRecord(head) && head.role === "system" && !!promptSections(head);
+  const managed = structured ? compose("") : "";
+  let tail = 0;
+  if (managed) {
+    const names = /* @__PURE__ */ new Set();
+    for (const [index, message] of messages.entries()) {
+      if (!isRecord(message) || message.role !== "system") continue;
+      const sections = promptSections(message);
+      if (!sections) continue;
+      for (const [name, value] of Object.entries(sections)) {
+        if (name === LARVA_PROMPT_SECTION) continue;
+        if (value === null) names.delete(name);
+        else if (typeof value === "string" && !names.has(name)) {
+          names.add(name);
+          tail = index;
+        }
+      }
+    }
+  }
+  let changed = false;
+  const next = messages.map((message, index) => {
+    if (!isRecord(message) || message.role !== "system") return message;
+    const sections = promptSections(message);
+    const { content } = message;
+    const text2 = typeof content === "string" ? content : Array.isArray(content) && content.every((part) => isRecord(part) && part.type === "text" && typeof part.text === "string") ? content.map((part) => part.text).join("\n") : void 0;
+    const updated = text2 === void 0 ? void 0 : (index === 0 && !structured ? compose : stripPersonaPrompt)(text2);
+    const entries = Object.entries(sections ?? {});
+    const projected = entries.filter(([name]) => name !== LARVA_PROMPT_SECTION).map(([name, value]) => [name, typeof value === "string" ? stripPersonaPrompt(value) : value]);
+    if (managed && index === tail) projected.push([LARVA_PROMPT_SECTION, managed]);
+    const sectionsChanged = projected.length !== entries.length || projected.some(([name, value], i) => name !== entries[i][0] || value !== entries[i][1]);
+    if (updated === text2 && !sectionsChanged) return message;
+    changed = true;
+    return { ...message, ...updated !== text2 && { content: updated }, ...sectionsChanged && { sections: Object.fromEntries(projected) } };
+  });
+  return changed ? next : void 0;
+}
 function projectProviderPrompt(payload, compose) {
   if (!isRecord(payload)) return;
-  const patchText = (record2, key2) => {
+  const patchText = (record2, key2, transform2) => {
     const text2 = record2[key2];
     if (typeof text2 !== "string") return;
-    const updated = compose(text2);
-    return updated === text2 ? void 0 : { [key2]: updated };
+    const updated = transform2(text2);
+    return updated === text2 ? null : { [key2]: updated };
   };
-  const patchList = (record2, key2, update) => {
+  const patchList = (record2, key2, transform2, update) => {
     const items = record2[key2];
     if (!Array.isArray(items)) return;
+    let handled = false;
+    let next;
     for (const [index, item] of items.entries()) {
       if (!isRecord(item)) continue;
-      const next = update(item);
-      if (next !== void 0) return next === null ? null : { [key2]: items.with(index, { ...item, ...next }) };
+      const patch = update(item, handled ? stripPersonaPrompt : transform2);
+      if (patch === void 0) continue;
+      handled = true;
+      if (patch) (next ??= items.slice())[index] = { ...item, ...patch };
     }
+    return next ? { [key2]: next } : handled ? null : void 0;
   };
-  const patchPart = (part) => typeof part.text === "string" ? patchText(part, "text") ?? null : void 0;
-  const patchMessage = (message) => {
+  const patchPart = (part, transform2) => patchText(part, "text", transform2);
+  const patchMessage = (message, transform2) => {
     if (message.role !== "system" && message.role !== "developer") return;
-    return typeof message.content === "string" ? patchText(message, "content") ?? null : patchList(message, "content", patchPart);
+    return typeof message.content === "string" ? patchText(message, "content", transform2) : patchList(message, "content", transform2, patchPart);
   };
   const context = isRecord(payload.context) ? payload.context : void 0;
   const config = isRecord(payload.config) ? payload.config : void 0;
-  const hasContextPrompt = context !== void 0 && typeof context.systemPrompt === "string";
-  const contextPrompt = hasContextPrompt ? patchText(context, "systemPrompt") : void 0;
-  const contextMessages = context && !hasContextPrompt ? patchList(context, "messages", patchMessage) : void 0;
-  const configPrompt = config && patchText(config, "systemInstruction");
-  const systemInstruction = patchText(payload, "systemInstruction");
-  const system = typeof payload.system === "string" ? patchText(payload, "system") ?? null : patchList(payload, "system", (part) => part.text === "You are Claude Code, Anthropic's official CLI for Claude." ? void 0 : patchPart(part));
-  const input = patchList(payload, "input", patchMessage);
-  const instructions = input === void 0 ? patchText(payload, "instructions") : void 0;
-  const messages = !hasContextPrompt && system === void 0 && input === void 0 ? patchList(payload, "messages", patchMessage) : void 0;
+  let transform = compose;
+  const claim = (patch) => {
+    if (patch !== void 0) transform = stripPersonaPrompt;
+    return patch;
+  };
+  const contextPrompt = claim(context && patchText(context, "systemPrompt", transform));
+  const transcript = context?.messages;
+  const hasSections = Array.isArray(transcript) && transcript.some((message) => isRecord(message) && message.role === "system" && promptSections(message));
+  const projected = hasSections ? projectTranscriptPrompt(transcript, transform) : void 0;
+  const contextMessages = claim(hasSections ? projected ? { messages: projected } : null : context && patchList(context, "messages", transform, patchMessage));
+  const configPrompt = claim(config && patchText(config, "systemInstruction", transform));
+  const systemInstruction = claim(patchText(payload, "systemInstruction", transform));
+  const system = claim(typeof payload.system === "string" ? patchText(payload, "system", transform) : patchList(payload, "system", transform, (part, project) => part.text === "You are Claude Code, Anthropic's official CLI for Claude." ? void 0 : patchPart(part, project)));
+  const input = claim(patchList(payload, "input", transform, patchMessage));
+  const instructions = claim(patchText(payload, "instructions", transform));
+  const messages = patchList(payload, "messages", transform, patchMessage);
   if (contextPrompt || contextMessages || configPrompt || systemInstruction || system || input || instructions || messages) {
     return {
       ...payload,
@@ -13414,10 +13496,11 @@ function larvaExtension(pi) {
       await state.session.reconcileManualModel();
     }
   };
-  pi.events.on(LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, (request) => {
+  const subscribePrompt = () => pi.events.on(LARVA_RESOLVE_SYSTEM_PROMPT_EVENT, (request) => {
     if (live) live.session.resolveSystemPrompt(request);
     else replyToSystemPrompt(request);
   });
+  let unsubscribePrompt = subscribePrompt();
   const autocompleteUIs = /* @__PURE__ */ new WeakSet();
   const current = () => {
     if (!live) throw new LarvaError("LARVA_SESSION_BUSY", "Larva session is not ready.");
@@ -13547,6 +13630,7 @@ function larvaExtension(pi) {
   });
   registerSubagentMessageRenderers(pi);
   pi.on("session_start", async ({ reason }, ctx) => {
+    unsubscribePrompt ??= subscribePrompt();
     const personaFlag = pi.getFlag("larva-persona");
     const modeFlag = pi.getFlag("larva-mode");
     const persona = (reason === "startup" || child) && typeof personaFlag === "string" ? personaFlag : void 0;
@@ -13593,10 +13677,9 @@ function larvaExtension(pi) {
         }
       };
       const config = await loadLarvaConfig(home, readConfigTextIfPresent).catch((error) => {
-        const previous = saved?.session.config;
-        if (!previous) throw error;
+        if (!saved) throw error;
         reportPiOutcome(ctx, "reload-config", toErrorEnvelope(error));
-        return previous;
+        return void 0;
       });
       const session = saved?.session ?? new SessionContext({
         personas,
@@ -13611,7 +13694,7 @@ function larvaExtension(pi) {
       });
       const branch = ctx.sessionManager.getBranch();
       if (saved) await session.reload(config, adapter);
-      else await session.initialize(config, branch);
+      else if (config) await session.initialize(config, branch);
       if (session.routeUncertain) uncertainModelEntry = lastModelEntry(ctx)?.id;
       const supervisor = saved?.supervisor ?? new SubagentSupervisor({ home, env });
       supervisor.rebind({
@@ -13685,9 +13768,12 @@ function larvaExtension(pi) {
     }
   });
   pi.on("session_shutdown", async ({ reason }) => {
+    unsubscribePrompt?.();
+    unsubscribePrompt = void 0;
+    dispose?.();
+    dispose = void 0;
     const state = live;
     if (!state) return;
-    dispose?.();
     live = void 0;
     state.supervisor.beginReload();
     await state.session.detach();
@@ -13739,7 +13825,7 @@ function larvaExtension(pi) {
     const allowed = declaredSpawnTools(event.messages);
     for (const name of allowed) if (!visible.has(name)) allowed.delete(name);
     let changed = false;
-    const messages = event.messages.map((message, index) => {
+    const messages = event.messages.map((message) => {
       if (message.role !== "system") return message;
       let next = message;
       if (message.toolsAdded) {
@@ -13749,13 +13835,11 @@ function larvaExtension(pi) {
           next = tools.length ? { ...rest, toolsAdded: tools } : rest;
         }
       }
-      const text2 = typeof next.content === "string" ? next.content : next.content.map((part) => part.text).join("\n");
-      const content = index === 0 ? state.session.composeSystemPrompt(text2) : composeSystemPrompt({ activePersona: null }, text2);
-      if (content !== text2) next = { ...next, content };
       changed ||= next !== message;
       return next;
     });
-    if (changed) return { messages };
+    const projected = projectTranscriptPrompt(messages, (text2) => state.session.composeSystemPrompt(text2));
+    if (changed || projected) return { messages: projected ?? messages };
   });
   pi.on("before_provider_request", async ({ payload }, ctx) => {
     const state = live;

@@ -236,6 +236,37 @@ test("non-zero startup exit preserves a known redacted stderr envelope and reaps
   await assert.rejects(f.spawn(), { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "Child exited before RPC completed." });
 }));
 
+test("accepted child failures preserve redacted diagnostics from either terminal assistant event", () => fixture(async f => {
+  const detail = `Provider quota exceeded.\nAuthorization: Bearer fixture-private ${"😀".repeat(300)}`;
+  const message = { role: "assistant", stopReason: "error", errorMessage: detail };
+  const end = { type: "agent_end", messages: [{ role: "assistant", stopReason: "error" }] };
+  const failed = { type: "message_end", message };
+  const retry = { type: "agent_start" };
+  const diagnostic = `Child assistant turn failed: ${sanitizeRpcError(detail)}`;
+  for (const { frames, expected } of [
+    { frames: [failed, end], expected: diagnostic },
+    { frames: [{ ...end, messages: [message, { role: "user" }] }], expected: diagnostic },
+    { frames: [failed, retry, end], expected: "Child assistant turn failed." },
+    { frames: [failed, retry, { type: "agent_end", messages: [] }], expected: undefined },
+  ]) {
+    const { task_id } = await f.spawn();
+    const peer = f.peers.at(-1)!;
+    peer.emit({ type: "agent_start" });
+    for (const frame of frames) peer.emit(frame);
+    peer.emit({ type: "agent_settled", aborted: false });
+    const { runs: [run], terminal_outputs } = await f.supervisor.wait({ task_ids: [task_id] });
+    if (expected === undefined) {
+      assert.equal(run.status, "success");
+      assert.equal(run.error, undefined);
+    } else {
+      assert.equal(run.status, "failed");
+      assert.deepEqual(run.error, { code: "LARVA_CHILD_RUNTIME_FAILED", message: expected });
+      assert.deepEqual(terminal_outputs?.[task_id].error, run.error);
+      assert.doesNotMatch(JSON.stringify(terminal_outputs), /fixture-private/);
+    }
+  }
+}));
+
 test("omitted and null assistant text settle as empty inline output", () => fixture(async f => {
   for (const [data, output_state] of [[{}, "inline"], [{ text: null }, "inline"], [{ text: 42 }, "delivery_failed"]] as const) {
     f.hook.command = (q, _, reply) => {

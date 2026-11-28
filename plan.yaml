@@ -158383,3 +158383,406 @@ phases:
 
       - LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       npm test -> 235/235 passed, 0 failed, 0 skipped.'
+- id: larva_0_9_nunc_interop_closure
+  name: Larva 0.9.0 pi-nunc Interop, Structured Prompt Sections & Child Error Closure
+  status: done
+  gate: l09n.gate passes with independent verification of F1-F5 + S1, full npm test
+    with Chrome, npm run typecheck, npm run build -- --check-only, git diff --exit-code
+    plugins/codex/, npm pack --dry-run 7-file/isolation invariants, and live Pi +
+    pi-larva + pi-nunc child-session interop smoke verification.
+  depends_on:
+  - larva_0_9_ui_visual_parity
+  steps:
+  - id: l09n.interop_and_runtime_fix
+    name: Close pi-nunc interop, structured prompt sections, child error classification,
+      reload fail-closed & listener cleanup
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F1] `src/runtime/session-context.ts:SessionContext.resolveSystemPrompt`:
+      remove `this.#child ||` from the guard (keep `this.#transition || !this.#config
+      || this.#routeUncertain`). In `larva:resolve-system-prompt:v1`, `scope: "main"`
+      distinguishes main agent turns from `pi-nunc` maintenance/compaction turns (not
+      depth-0 parent only), so initialized launched subagent children (`LARVA_PI_LAUNCHED=1`)
+      return `{ status: "ok", systemPrompt }`.
+
+      - [F2] `src/runtime/system-prompt.ts:replyToSystemPrompt`: require `reason:
+      string` on the `unavailable` union arm; reply `{ status: "unavailable", reason:
+      "not ready" }` when `!resolve`; guard `request.reply` with `replyOnce` and reply
+      `{ status: "unavailable", reason: "request unavailable" }` if `resolve(request.systemPrompt)`
+      throws; update `tests/unit/session-context.test.ts:668`.
+
+      - [F3] `src/pi-extension.ts:context_with_system`: when `messages[0]` carries
+      plain-object `sections` (Pi 1.7.0 structured system prompt), strip Larva blocks
+      from `content` and existing section values, place composed Larva blocks in a
+      trailing section key (e.g. `larva_persona`, omitted/deleted when `activePersona
+      === null`), and strip Larva markers from `content` and `sections` of later `role:
+      "system"` delta messages (`index > 0`), so `getCurrentSystemPrompt(messages)
+      === composeSystemPrompt(snapshot, getCurrentSystemPrompt(messages))` byte-for-byte
+      on turn 1 and after subsequent tool-section deltas. Keep flat `content` path
+      when `sections` is absent.
+
+      - [F4] `src/core/errors.ts` + `src/runtime/child-rpc-client.ts`: restore `LARVA_CHILD_RUNTIME_FAILED`
+      in `ALL_LARVA_ERROR_CODES`. Capture `errorMessage` alongside `stopReason` on
+      `message_end`/`agent_end` (reset on `agent_start`), sanitize via `sanitizeRpcError`,
+      and reject `stopReason === "error"` with `LARVA_CHILD_RUNTIME_FAILED` carrying
+      sanitized detail (reserve `LARVA_CHILD_PROTOCOL_FAILED` for RPC framing/protocol
+      failures).
+
+      - [F5] `src/pi-extension.ts` (`session_start` `/reload`) + `src/runtime/session-context.ts`:
+      on `/reload` `loadLarvaConfig` failure (invalid `config.json`), preserve running
+      persona/route without crashing, emit `reload-config` diagnostic, and lock config-dependent
+      autonomous `larva_persona_switch` fail-closed until a valid `config.json` is
+      reloaded (never retain stale `switch_mode: "free"`).
+
+      - [S1] `src/pi-extension.ts`: store the unsubscribe callback from `pi.events.on(LARVA_RESOLVE_SYSTEM_PROMPT_EVENT,
+      ...)` and invoke it in `session_shutdown` alongside `dispose?.()`.
+
+      - Docs & Tests & Build: sync concise contract wording in `design/larva-0.9-architecture.md`
+      / `docs/reference/INTERFACES.md` where applicable; merge discriminating regression
+      tests for F1-F5 + S1 into existing domain test files (no grab-bag test files);
+      rebuild and commit regenerated `plugins/codex/dist/**`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - In `src/pi-extension.ts:session_shutdown`, invoke the stored event unsubscribe
+      even when `live` is undefined (pre-startup shutdown) so listener teardown is
+      total.
+
+      - Check sibling `projectProviderPrompt` (`before_provider_request`) in `src/pi-extension.ts`
+      for structured-`sections` handling if `payload.context.messages` carries `sections`,
+      keeping `composeSystemPrompt` fixed-point behavior consistent.
+
+      - Preserve `src/core/**` purity and zero `@earendil-works/pi-tui` / zero YAML-in-preload
+      isolation invariants.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`; authority: repository implementation on branch
+      `v0.9`.
+
+      - `scope.allowed_paths`: `["src/runtime/session-context.ts", "src/runtime/system-prompt.ts",
+      "src/pi-extension.ts", "src/core/errors.ts", "src/runtime/child-rpc-client.ts",
+      "design/larva-0.9-architecture.md", "docs/reference/INTERFACES.md", "plugins/codex/dist/**",
+      "tests/unit/session-context.test.ts", "tests/integration/pi-extension-surface.test.ts",
+      "tests/unit/preload-and-pi-bin.test.ts", "tests/unit/supervisor.test.ts", "tests/e2e/pi-subagents.test.ts"]`.
+
+      - `scope.blocked_paths`: `["plan.yaml", "package.json", "tsconfig.json"]`.
+
+      - Protected state: host `~/.larva` and `~/.pi/agent/settings.json` (hermetic
+      temp fixtures only). Rollback class: git worktree revert.
+
+
+      Admit:
+
+      - All 6 findings (`F1`-`F5`, `S1`) implemented with discriminating regressions
+      in existing domain test files, `npm run typecheck`, targeted affected `node
+      --test` suites, `npm run build` with committed `plugins/codex/dist/**`, `git
+      diff --exit-code plugins/codex/`, and `npm pack --dry-run` 7-file manifest (`0`
+      `@earendil-works/pi-tui` in `.mjs`, `0` YAML in `child-rpc-preload.mjs`) all
+      green.
+
+
+      Recovery:
+
+      - If any targeted test, build check, or manifest check fails, fix in place within
+      `scope.allowed_paths`; if a contract contradiction emerges outside `scope.allowed_paths`,
+      stop and escalate with a minimal counterexample.'
+    verification: npm run typecheck && node --test tests/unit/session-context.test.ts
+      tests/integration/pi-extension-surface.test.ts tests/unit/preload-and-pi-bin.test.ts
+      tests/unit/supervisor.test.ts tests/e2e/pi-subagents.test.ts && npm run build
+      && git diff --exit-code plugins/codex/ && npm pack --dry-run (verify 7-file
+      manifest, 0 @earendil-works/pi-tui in .mjs bundles, 0 YAML in child-rpc-preload.mjs)
+    evidence_template: Commits + changed files; F1-F5 + S1 summary; npm run typecheck;
+      targeted node --test pass counts; npm run build + git diff --exit-code plugins/codex/;
+      npm pack --dry-run 7-file & bundle isolation checks.
+    refs:
+    - src/runtime/session-context.ts
+    - src/runtime/system-prompt.ts
+    - src/pi-extension.ts
+    - src/core/errors.ts
+    - src/runtime/child-rpc-client.ts
+    - design/larva-0.9-architecture.md
+    - docs/reference/INTERFACES.md
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-28T09:12:22.059833Z'
+    done_at: '2026-11-28T09:23:53.834112+00:00'
+    evidence: 'Artifact:
+
+      - Commit: b5a8e7663f8de41c5327deb26a4db6b2648347f4 (ff onto v0.9; worktree removed;
+      +399/-74 lines across 13 files including regenerated plugins/codex/dist/*)
+
+
+      Changes:
+
+      - [F1] src/runtime/session-context.ts: removed this.#child || from resolveSystemPrompt
+      guard so initialized launched subagent children return { status: "ok", systemPrompt
+      }.
+
+      - [F2] src/runtime/system-prompt.ts & tests/unit/session-context.test.ts: added
+      required reason: string on unavailable responses, replied "not ready" when !resolve,
+      guarded request.reply with replyOnce, and replied "request unavailable" when
+      resolve throws.
+
+      - [F3] src/pi-extension.ts: updated context_with_system (and request-time prompt
+      projection) to preserve Pi 1.7.0 structured sections, stripping Larva blocks
+      from content/sections/deltas and placing activePersona in trailing sections.larva_persona
+      (byte-for-byte fixed point on turn 1 and tool deltas), preserving flat content
+      fallback.
+
+      - [F4] src/core/errors.ts & src/runtime/child-rpc-client.ts: restored LARVA_CHILD_RUNTIME_FAILED,
+      captured/reset/sanitized errorMessage on message_end/agent_end, and rejected
+      stopReason === "error" with LARVA_CHILD_RUNTIME_FAILED.
+
+      - [F5] src/pi-extension.ts & src/runtime/session-context.ts: on invalid /reload
+      config.json, preserved running persona/route, emitted reload-config diagnostic,
+      and locked autonomous switching fail-closed until a valid reload.
+
+      - [S1] src/pi-extension.ts: stored pi.events.on unsubscribe callback and invoked
+      it in session_shutdown (even pre-startup).
+
+      - Docs & Build: synced design/larva-0.9-architecture.md & docs/reference/INTERFACES.md,
+      merged regressions into existing domain test suites, rebuilt dist/ & plugins/codex/dist/*.
+
+
+      Verification:
+
+      - npm run typecheck && node --test tests/unit/session-context.test.ts tests/integration/pi-extension-surface.test.ts
+      tests/unit/preload-and-pi-bin.test.ts tests/unit/supervisor.test.ts tests/e2e/pi-subagents.test.ts
+      -> 107/107 pass
+
+      - Pi 1.7.0 smoke -> byte-for-byte structured prompt fixed point on turn 1 &
+      tool-section delta
+
+      - npm run build && npm run build -- --check-only && git diff --exit-code plugins/codex/
+      -> pass (0 drift); npm pack --dry-run -> exact 7 files, 0 pi-tui in .mjs, 0
+      YAML in preload.'
+  - id: l09n.gate
+    name: 'Gate: verify pi-nunc interop, structured prompt sections, child error closure
+      & live child smoke'
+    status: done
+    description: 'step_type: gate
+
+      repo_change_policy: no_repo_change
+
+
+      Deliver:
+
+      - Independent code and contract review of `l09n.interop_and_runtime_fix` closing
+      `F1`-`F5` + `S1` (plus sibling/seam checks across `session-context.ts`, `system-prompt.ts`,
+      `pi-extension.ts`, `errors.ts`, `child-rpc-client.ts`, docs, and domain regression
+      tests).
+
+      - Independent execution of full test suite (with Chrome), typecheck, build check-only,
+      Codex plugin drift check, and `npm pack --dry-run` 7-file & bundle isolation
+      checks.
+
+      - Live Pi + `pi-larva` + `pi-nunc` child-session interop smoke verification:
+      launch a real Pi child session with `pi-nunc` loaded in an isolated hermetic
+      environment and verify clean turn completion plus structured `sections` fixed-point
+      parity (`larva:resolve-system-prompt:v1` returns `ok` and matches composed system
+      prompt).
+
+
+      Boundary:
+
+      - Owner: `gate-reviewer`; authority: strictly read-only (`no_repo_change`),
+      zero repository or host `~/.larva` / `~/.pi/agent/settings.json` mutations.
+
+      - `scope.allowed_paths`: `[]` (read-only inspection and hermetic verification
+      commands only).
+
+      - `scope.blocked_paths`: `["plan.yaml", "src/**", "docs/**", "plugins/**", "package.json",
+      "tsconfig.json"]`.
+
+      - Rollback class: none (no repo mutation).
+
+
+      Admit:
+
+      - Every F1-F5 + S1 postcondition verified in diff and runtime; full `npm test`
+      with Chrome, `npm run typecheck`, `npm run build -- --check-only`, `git diff
+      --exit-code plugins/codex/`, `npm pack --dry-run` 7-file/isolation checks, and
+      live Pi + `pi-larva` + `pi-nunc` child-session interop smoke test all pass with
+      zero blocking defects.
+
+
+      Recovery:
+
+      - On any blocking defect or failed check, record concrete failing evidence/counterexamples
+      and report `FAIL` without modifying repository files so the orchestrator can
+      schedule bounded remediation.'
+    verification: LARVA_TEST_CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google
+      Chrome" npm test && npm run typecheck && npm run build -- --check-only && git
+      diff --exit-code plugins/codex/ && npm pack --dry-run (7-file manifest, 0 @earendil-works/pi-tui
+      in .mjs, 0 YAML in child-rpc-preload.mjs) && live Pi + pi-larva + pi-nunc child-session
+      interop smoke test
+    evidence_template: Review verdict for F1-F5 + S1; full npm test (with Chrome)
+      pass summary; typecheck + build --check-only + plugins/codex diff + npm pack
+      7-file/isolation checks; live Pi + pi-larva + pi-nunc child smoke transcript/assertions.
+    refs:
+    - src/runtime/session-context.ts
+    - src/runtime/system-prompt.ts
+    - src/pi-extension.ts
+    - src/core/errors.ts
+    - src/runtime/child-rpc-client.ts
+    - design/larva-0.9-architecture.md
+    - docs/reference/INTERFACES.md
+    depends_on:
+    - l09n.f3_wire_fix
+    agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-11-28T09:40:12.859722Z'
+    done_at: '2026-11-28T09:44:18.682042+00:00'
+    evidence: 'Gate report validated: /tmp/larva-0.9-nunc-interop-gate/report.json
+      (status=PASS, review_mode=DELTA, target_ref=git:59fec70b50e1f8fc23be76405f828a541a806dae,
+      valid=true, binding_checked=true, evidence_disposition=POSITIVE_GATE_EVIDENCE).
+
+
+      All 7 requirements PROVEN (0 findings):
+
+      - F1-SUBAGENT-RESOLVE-SYSTEM-PROMPT: PROVEN (launched children resolve; Pi 1.7.0
+      + pi-nunc 0.3.5 child smoke returned status=ok matching structured prompt byte-for-byte).
+
+      - F2-UNAVAILABLE-REASON-REPLY-ONCE: PROVEN (reason required on unavailable;
+      replyOnce + request unavailable on resolver throw).
+
+      - F3-STRUCTURED-PROMPT-SECTIONS-PARITY: PROVEN (F3-MID-CONVERSATION-WIRE-DUPLICATION
+      closed; Pi 1.7.0 supportsMidConvoSystemMessages=true HTTP capture confirmed
+      1 identity + 1 persona block on turn 1 & turn 2 while preserving sections.extra,
+      read removal, and byte-for-byte replay/event parity).
+
+      - F4-CHILD-RUNTIME-FAILED-DIAGNOSTIC: PROVEN (LARVA_CHILD_RUNTIME_FAILED restored;
+      Pi 1.7.0 child Nunc CONFIG diagnostic surfaced cleanly).
+
+      - F5-INVALID-RELOAD-FAIL-CLOSED: PROVEN (invalid /reload preserves persona/route,
+      emits reload-config, disables autonomous switching until valid reload).
+
+      - S1-EVENT-UNSUBSCRIBE-SHUTDOWN: PROVEN (listener unsubscribed on pre-startup/reload/shutdown).
+
+      - LIVE-NUNC-CHILD-SMOKE-AND-PACK: PROVEN (99/99 targeted tests on 59fec70b +
+      retained 238/238 full Chrome suite on 9ed9635e; typecheck, build --check-only,
+      git diff --exit-code plugins/codex/, 7-file npm pack --dry-run, 0 pi-tui in
+      .mjs, 0 YAML in preload).'
+  - id: l09n.f3_wire_fix
+    name: Fix F3 mid-conversation system/developer wire prompt duplication
+    status: done
+    description: 'step_type: implementation
+
+      repo_change_policy: modifies_repo
+
+      [REQUIRES_SKILL: contract-and-simplicity]
+
+
+      Deliver:
+
+      - [F3-MID-CONVERSATION-WIRE-DUPLICATION] `src/pi-extension.ts:projectProviderPrompt`
+      / `patchList`: when `before_provider_request` projects a message list (`payload.messages`,
+      `payload.input`, or non-structured `payload.context.messages`) containing multiple
+      `system`/`developer` messages (e.g. Pi 1.7.0 `compat.supportsMidConvoSystemMessages=true`
+      after a structured section insertion delta), compose Larva blocks onto the leading
+      instruction message and strip Larva blocks (`stripPersonaPrompt`) from all subsequent
+      `system`/`developer` messages in the list (covering both string and text-part
+      array `content`) so serialized provider payloads never duplicate Larva identity/persona
+      blocks and remain fixed-point idempotent.
+
+      - Rebuild `dist/` and `plugins/codex/dist/*` via `npm run build`.
+
+      - Add a discriminating multi-message serialized provider request regression
+      in `tests/integration/pi-extension-surface.test.ts` (including native Pi 1.7.0
+      `supportsMidConvoSystemMessages=true` wire check) verifying zero duplicate Larva
+      blocks across `payload.messages`, `payload.input`, and `payload.context.messages`.
+
+
+      Implementation Notes (Non-Binding):
+
+      - In `projectProviderPrompt`, `patchList` currently exits after updating the
+      first matching `system`/`developer` message, leaving later mid-conversation
+      `system`/`developer` messages untouched; scan the full message list so the first
+      instruction message applies `compose` and every subsequent `system`/`developer`
+      message applies `stripPersonaPrompt` while preserving `null` fixed-point signaling
+      (preventing fallback to secondary payload slots) and keeping `payload.system`
+      part projection unchanged.
+
+      - Preserve `src/core/**` purity and zero `@earendil-works/pi-tui` / zero YAML-in-preload
+      isolation invariants.
+
+
+      Boundary:
+
+      - Owner: `software-engineer`; authority: repository implementation on branch
+      `v0.9`.
+
+      - `scope.allowed_paths`: `["src/pi-extension.ts", "plugins/codex/dist/**", "tests/integration/pi-extension-surface.test.ts"]`.
+
+      - `scope.blocked_paths`: `["plan.yaml", "package.json", "tsconfig.json"]`.
+
+      - Protected state: host `~/.larva` and `~/.pi/agent/settings.json` (hermetic
+      temp fixtures only). Rollback class: git worktree revert.
+
+
+      Admit:
+
+      - `F3-MID-CONVERSATION-WIRE-DUPLICATION` fixed in `src/pi-extension.ts`, `dist/`
+      and `plugins/codex/dist/*` rebuilt via `npm run build`, discriminating multi-message
+      and Pi 1.7.0 `supportsMidConvoSystemMessages=true` wire regression added in
+      `tests/integration/pi-extension-surface.test.ts`, and `npm run typecheck`, `npm
+      run build -- --check-only`, `git diff --exit-code plugins/codex/`, and `node
+      --test tests/integration/pi-extension-surface.test.ts` all pass.
+
+
+      Recovery:
+
+      - If any targeted test or build check fails, fix in place within `scope.allowed_paths`;
+      if a contract contradiction emerges outside `scope.allowed_paths`, stop and
+      escalate with a minimal counterexample.'
+    verification: npm run typecheck && npm run build && npm run build -- --check-only
+      && git diff --exit-code plugins/codex/ && node --test tests/integration/pi-extension-surface.test.ts
+    refs:
+    - src/pi-extension.ts
+    - tests/integration/pi-extension-surface.test.ts
+    depends_on:
+    - l09n.interop_and_runtime_fix
+    agent: software-engineer
+    claimed_by: software-engineer
+    claimed_at: '2026-11-28T09:34:14.164944Z'
+    done_at: '2026-11-28T09:40:03.931094+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 5400ed028408dec0ad9f1e2aeed326d4fcb9c457 (ff onto v0.9; worktree removed;
+      +171/-49 lines across src/pi-extension.ts, plugins/codex/dist/pi-extension.js,
+      and tests/integration/pi-extension-surface.test.ts)
+
+
+      Changes:
+
+      - Fixed F3-MID-CONVERSATION-WIRE-DUPLICATION in src/pi-extension.ts (projectProviderPrompt):
+      composes Larva identity/persona into the leading instruction slot and strips
+      copies from subsequent system/developer messages and text parts while preserving
+      the unchanged-leading-slot sentinel.
+
+      - Rebuilt dist/ and plugins/codex/dist/pi-extension.js.
+
+      - Added discriminating Pi 1.7.0 supportsMidConvoSystemMessages=true turn-1/turn-2
+      HTTP capture regression in tests/integration/pi-extension-surface.test.ts.
+
+
+      Verification:
+
+      - npm run typecheck -> pass
+
+      - node --test tests/integration/pi-extension-surface.test.ts -> 24/24 pass (including
+      real Pi 1.7.0 turn-2 wire capture)
+
+      - npm run build && npm run build -- --check-only && git diff --exit-code plugins/codex/
+      -> pass (0 drift).'

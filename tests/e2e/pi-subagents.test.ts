@@ -140,6 +140,16 @@ test("real Pi uses projected auth and resources, returns empty text, and reports
   await writeFile(agents, "Fixture global instructions marker");
   await writeFile(join(skills, "probe.md"), "---\nname: probe\ndescription: Fixture skill discovery marker\n---\nA fixture skill.");
 
+  const peer = join(base, "prompt-peer.mjs"), promptReceipt = join(base, "prompt-reply.json");
+  await writeFile(peer, `import { writeFile } from 'node:fs/promises';
+export default pi => pi.on('before_provider_request', async () => {
+  const replies = [];
+  pi.events.emit('larva:resolve-system-prompt:v1', {
+    scope: 'main', systemPrompt: 'Peer base', reply: value => replies.push(value),
+  });
+  await writeFile(${JSON.stringify(promptReceipt)}, JSON.stringify(replies));
+});`);
+  await f.config({ subagent: { extension_sources: [peer] } });
   const mcp = f.mcp();
   await mcp.initialize();
   const args = { persona_id: "worker", cwd: f.cwd };
@@ -149,6 +159,11 @@ test("real Pi uses projected auth and resources, returns empty text, and reports
   const messages = JSON.stringify(request.payload.messages);
   assert.match(messages, /Fixture global instructions marker/);
   assert.match(messages, /Fixture skill discovery marker/);
+  const replies = JSON.parse(await readFile(promptReceipt, "utf8"));
+  assert.equal(replies.length, 1);
+  assert.equal(replies[0].status, "ok");
+  assert.match(replies[0].systemPrompt, /^Peer base\n\n[\s\S]*E2E identity worker/);
+  assert.doesNotMatch(replies[0].systemPrompt, /Use larva_persona_switch/);
   const { capsule_root } = JSON.parse(await readFile(`${receipt.task_id}.lock/lease.json`, "utf8"));
   for (const path of [auth, agents, skills]) assert.equal(await readlink(join(capsule_root, "agent", basename(path))), path);
   assert.equal((await lstat(auth)).mode & 0o777, 0o600);

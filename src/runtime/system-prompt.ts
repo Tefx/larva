@@ -16,17 +16,26 @@ const switchGuidance = {
 };
 export type ResolveSystemPromptResult =
   | { status: "ok"; systemPrompt: string }
-  | { status: "unavailable"; reason?: string };
+  | { status: "unavailable"; reason: string };
 
 export function replyToSystemPrompt(request: unknown, resolve?: (base: string) => string): void {
   if (typeof request !== "object" || request === null || !("reply" in request) || typeof request.reply !== "function") return;
+  const { reply } = request;
+  let replied = false;
+  const replyOnce = (result: ResolveSystemPromptResult) => {
+    if (replied) return;
+    replied = true;
+    reply.call(request, result);
+  };
   try {
-    const result: ResolveSystemPromptResult = !resolve ? { status: "unavailable" }
-      : !("scope" in request) || request.scope !== "main" || !("systemPrompt" in request) || typeof request.systemPrompt !== "string"
-        ? { status: "unavailable", reason: "invalid request" }
-        : { status: "ok", systemPrompt: resolve(request.systemPrompt) };
-    request.reply(result);
-  } catch { /* Peers cannot interrupt the session. */ }
+    if (!resolve) replyOnce({ status: "unavailable", reason: "not ready" });
+    else if (!("scope" in request) || request.scope !== "main" || !("systemPrompt" in request) || typeof request.systemPrompt !== "string") {
+      replyOnce({ status: "unavailable", reason: "invalid request" });
+    } else replyOnce({ status: "ok", systemPrompt: resolve(request.systemPrompt) });
+  } catch {
+    try { replyOnce({ status: "unavailable", reason: "request unavailable" }); }
+    catch { /* Peers cannot interrupt the session. */ }
+  }
 }
 
 type Block = "identity-policy" | "active-persona" | "persona-switch-continuation";
